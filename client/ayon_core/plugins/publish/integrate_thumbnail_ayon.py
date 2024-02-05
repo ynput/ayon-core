@@ -171,7 +171,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         version_docs_by_str_id,
         project_name
     ):
-        from ayon_core.client.server.operations import create_thumbnail
+        from ayon_core.client.operations import create_thumbnail
 
         # Make sure each entity id has defined only one thumbnail id
         thumbnail_info_by_entity_id = {}

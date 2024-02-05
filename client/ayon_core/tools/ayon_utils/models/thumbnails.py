@@ -2,7 +2,7 @@ import collections
 
 import ayon_api
 
-from ayon_core.client.server.thumbnails import AYONThumbnailCache
+from ayon_core.client.thumbnails import AYONThumbnailCache
 
 from .cache import NestedCacheItem
 
