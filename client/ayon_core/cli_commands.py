@@ -3,11 +3,9 @@
 import os
 import sys
 import json
-import time
-import signal
 
 
-class PypeCommands:
+class Commands:
     """Class implementing commands used by Pype.
 
     Most of its methods are called by :mod:`cli` module.
@@ -22,18 +20,7 @@ class PypeCommands:
         tray.main()
 
     @staticmethod
-    def launch_settings_gui(dev):
-        from ayon_core.tools import settings
-
-        # TODO change argument options to allow enum of user roles
-        if dev:
-            user_role = "developer"
-        else:
-            user_role = "manager"
-        settings.main(user_role)
-
-    @staticmethod
-    def add_modules(click_func):
+    def add_addons(click_func):
         """Modules/Addons can add their cli commands dynamically."""
 
         from ayon_core.lib import Logger
@@ -41,35 +28,17 @@ class PypeCommands:
 
         manager = ModulesManager()
         log = Logger.get_logger("CLI-AddModules")
-        for module in manager.modules:
+        for addon in manager.modules:
             try:
-                module.cli(click_func)
+                addon.cli(click_func)
 
             except Exception:
                 log.warning(
                     "Failed to add cli command for module \"{}\"".format(
-                        module.name
+                        addon.name
                     )
                 )
         return click_func
-
-    @staticmethod
-    def launch_eventservercli(*args):
-        from openpype_modules.ftrack.ftrack_server.event_server_cli import (
-            run_event_server
-        )
-        return run_event_server(*args)
-
-    @staticmethod
-    def launch_webpublisher_webservercli(*args, **kwargs):
-        from ayon_core.hosts.webpublisher.webserver_service import run_webserver
-
-        return run_webserver(*args, **kwargs)
-
-    @staticmethod
-    def launch_traypublisher():
-        from ayon_core.tools import traypublisher
-        traypublisher.main()
 
     @staticmethod
     def publish(paths, targets=None, gui=False):
@@ -198,21 +167,13 @@ class PypeCommands:
             json.dump(env, file_stream, indent=4)
 
     @staticmethod
-    def launch_project_manager():
-        from ayon_core.tools import project_manager
-
-        project_manager.main()
-
-    @staticmethod
     def contextselection(output_path, project_name, asset_name, strict):
         from ayon_core.tools.context_dialog import main
 
         main(output_path, project_name, asset_name, strict)
 
-    def validate_jsons(self):
-        pass
-
-    def run_tests(self, folder, mark, pyargs,
+    @staticmethod
+    def run_tests(folder, mark, pyargs,
                   test_data_folder, persist, app_variant, timeout, setup_only,
                   mongo_url, app_group, dump_databases):
         """
@@ -285,27 +246,3 @@ class PypeCommands:
         print("run_tests args: {}".format(args))
         import pytest
         pytest.main(args)
-
-    def repack_version(self, directory):
-        """Repacking OpenPype version."""
-        from ayon_core.tools.repack_version import VersionRepacker
-
-        version_packer = VersionRepacker(directory)
-        version_packer.process()
-
-    def pack_project(self, project_name, dirpath, database_only):
-        from ayon_core.lib.project_backpack import pack_project
-
-        if database_only and not dirpath:
-            raise ValueError((
-                "Destination dir must be defined when using --dbonly."
-                " Use '--dirpath {output dir path}' flag"
-                " to specify directory."
-            ))
-
-        pack_project(project_name, dirpath, database_only)
-
-    def unpack_project(self, zip_filepath, new_root, database_only):
-        from ayon_core.lib.project_backpack import unpack_project
-
-        unpack_project(zip_filepath, new_root, database_only)

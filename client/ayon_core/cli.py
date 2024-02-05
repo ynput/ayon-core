@@ -5,8 +5,7 @@ import sys
 import code
 import click
 
-from ayon_core import AYON_SERVER_ENABLED
-from .pype_commands import PypeCommands
+from .cli_commands import Commands
 
 
 class AliasedGroup(click.Group):
@@ -36,7 +35,7 @@ class AliasedGroup(click.Group):
 @click.option("--debug", is_flag=True, expose_value=False,
               help="Enable debug")
 @click.option("--verbose", expose_value=False,
-              help=("Change OpenPype log level (debug - critical or 0-50)"))
+              help=("Change AYON log level (debug - critical or 0-50)"))
 @click.option("--automatic-tests", is_flag=True, expose_value=False,
               help=("Run in automatic tests mode"))
 def main(ctx):
@@ -47,25 +46,11 @@ def main(ctx):
 
     if ctx.invoked_subcommand is None:
         # Print help if headless mode is used
-        if AYON_SERVER_ENABLED:
-            is_headless = os.getenv("AYON_HEADLESS_MODE") == "1"
-        else:
-            is_headless = os.getenv("OPENPYPE_HEADLESS_MODE") == "1"
-        if is_headless:
+        if os.getenv("AYON_HEADLESS_MODE") == "1":
             print(ctx.get_help())
             sys.exit(0)
         else:
             ctx.invoke(tray)
-
-
-@main.command()
-@click.option("-d", "--dev", is_flag=True, help="Settings in Dev mode")
-def settings(dev):
-    """Show Pype Settings UI."""
-
-    if AYON_SERVER_ENABLED:
-        raise RuntimeError("AYON does not support 'settings' command.")
-    PypeCommands().launch_settings_gui(dev)
 
 
 @main.command()
@@ -75,13 +60,13 @@ def tray():
     Default action of pype command is to launch tray widget to control basic
     aspects of pype. See documentation for more information.
     """
-    PypeCommands().launch_tray()
+    Commands.launch_tray()
 
 
-@PypeCommands.add_modules
-@main.group(help="Run command line arguments of OpenPype addons")
+@Commands.add_addons
+@main.group(help="Run command line arguments of AYON addons")
 @click.pass_context
-def module(ctx):
+def addon(ctx):
     """Addon specific commands created dynamically.
 
     These commands are generated dynamically by currently loaded addons.
@@ -90,70 +75,7 @@ def module(ctx):
 
 
 # Add 'addon' as alias for module
-main.set_alias("module", "addon")
-
-
-@main.command()
-@click.option("--ftrack-url", envvar="FTRACK_SERVER",
-              help="Ftrack server url")
-@click.option("--ftrack-user", envvar="FTRACK_API_USER",
-              help="Ftrack api user")
-@click.option("--ftrack-api-key", envvar="FTRACK_API_KEY",
-              help="Ftrack api key")
-@click.option("--legacy", is_flag=True,
-              help="run event server without mongo storing")
-@click.option("--clockify-api-key", envvar="CLOCKIFY_API_KEY",
-              help="Clockify API key.")
-@click.option("--clockify-workspace", envvar="CLOCKIFY_WORKSPACE",
-              help="Clockify workspace")
-def eventserver(ftrack_url,
-                ftrack_user,
-                ftrack_api_key,
-                legacy,
-                clockify_api_key,
-                clockify_workspace):
-    """Launch ftrack event server.
-
-    This should be ideally used by system service (such us systemd or upstart
-    on linux and window service).
-    """
-
-    if AYON_SERVER_ENABLED:
-        raise RuntimeError("AYON does not support 'eventserver' command.")
-    PypeCommands().launch_eventservercli(
-        ftrack_url,
-        ftrack_user,
-        ftrack_api_key,
-        legacy,
-        clockify_api_key,
-        clockify_workspace
-    )
-
-
-@main.command()
-@click.option("-h", "--host", help="Host", default=None)
-@click.option("-p", "--port", help="Port", default=None)
-@click.option("-e", "--executable", help="Executable")
-@click.option("-u", "--upload_dir", help="Upload dir")
-def webpublisherwebserver(executable, upload_dir, host=None, port=None):
-    """Starts webserver for communication with Webpublish FR via command line
-
-        OP must be congigured on a machine, eg. OPENPYPE_MONGO filled AND
-        FTRACK_BOT_API_KEY provided with api key from Ftrack.
-
-        Expect "pype.club" user created on Ftrack.
-    """
-
-    if AYON_SERVER_ENABLED:
-        raise RuntimeError(
-            "AYON does not support 'webpublisherwebserver' command."
-        )
-    PypeCommands().launch_webpublisher_webservercli(
-        upload_dir=upload_dir,
-        executable=executable,
-        host=host,
-        port=port
-    )
+main.set_alias("addon", "module")
 
 
 @main.command()
@@ -175,7 +97,7 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
 
     Context options are "project", "asset", "task", "app"
     """
-    PypeCommands.extractenvironments(
+    Commands.extractenvironments(
         output_json_path, project, asset, task, app, envgroup
     )
 
@@ -193,14 +115,7 @@ def publish(paths, targets, gui):
     More than one path is allowed.
     """
 
-    PypeCommands.publish(list(paths), targets, gui)
-
-
-@main.command(context_settings={"ignore_unknown_options": True})
-def projectmanager():
-    if AYON_SERVER_ENABLED:
-        raise RuntimeError("AYON does not support 'projectmanager' command.")
-    PypeCommands().launch_project_manager()
+    Commands.publish(list(paths), targets, gui)
 
 
 @main.command(context_settings={"ignore_unknown_options": True})
@@ -230,7 +145,7 @@ def contextselection(
     Context is project name, asset name and task name. The result is stored
     into json file which path is passed in first argument.
     """
-    PypeCommands.contextselection(
+    Commands.contextselection(
         output_path,
         project,
         asset,
@@ -302,84 +217,9 @@ def run(script):
 def runtests(folder, mark, pyargs, test_data_folder, persist, app_variant,
              timeout, setup_only, mongo_url, app_group, dump_databases):
     """Run all automatic tests after proper initialization via start.py"""
-    PypeCommands().run_tests(folder, mark, pyargs, test_data_folder,
+    Commands.run_tests(folder, mark, pyargs, test_data_folder,
                              persist, app_variant, timeout, setup_only,
                              mongo_url, app_group, dump_databases)
-
-
-@main.command(help="DEPRECATED - run sync server")
-@click.pass_context
-@click.option("-a", "--active_site", required=True,
-              help="Name of active site")
-def syncserver(ctx, active_site):
-    """Run sync site server in background.
-
-    Deprecated:
-        This command is deprecated and will be removed in future versions.
-        Use '~/openpype_console module sync_server syncservice' instead.
-
-    Details:
-        Some Site Sync use cases need to expose site to another one.
-        For example if majority of artists work in studio, they are not using
-        SS at all, but if you want to expose published assets to 'studio' site
-        to SFTP for only a couple of artists, some background process must
-        mark published assets to live on multiple sites (they might be
-        physically in same location - mounted shared disk).
-
-        Process mimics OP Tray with specific 'active_site' name, all
-        configuration for this "dummy" user comes from Setting or Local
-        Settings (configured by starting OP Tray with env
-        var OPENPYPE_LOCAL_ID set to 'active_site'.
-    """
-
-    if AYON_SERVER_ENABLED:
-        raise RuntimeError("AYON does not support 'syncserver' command.")
-
-    from ayon_core.modules.sync_server.sync_server_module import (
-        syncservice)
-    ctx.invoke(syncservice, active_site=active_site)
-
-
-@main.command()
-@click.argument("directory")
-def repack_version(directory):
-    """Repack OpenPype version from directory.
-
-    This command will re-create zip file from specified directory,
-    recalculating file checksums. It will try to use version detected in
-    directory name.
-    """
-    if AYON_SERVER_ENABLED:
-        raise RuntimeError("AYON does not support 'repack-version' command.")
-    PypeCommands().repack_version(directory)
-
-
-@main.command()
-@click.option("--project", help="Project name")
-@click.option(
-    "--dirpath", help="Directory where package is stored", default=None)
-@click.option(
-    "--dbonly", help="Store only Database data", default=False, is_flag=True)
-def pack_project(project, dirpath, dbonly):
-    """Create a package of project with all files and database dump."""
-
-    if AYON_SERVER_ENABLED:
-        raise RuntimeError("AYON does not support 'pack-project' command.")
-    PypeCommands().pack_project(project, dirpath, dbonly)
-
-
-@main.command()
-@click.option("--zipfile", help="Path to zip file")
-@click.option(
-    "--root", help="Replace root which was stored in project", default=None
-)
-@click.option(
-    "--dbonly", help="Store only Database data", default=False, is_flag=True)
-def unpack_project(zipfile, root, dbonly):
-    """Create a package of project with all files and database dump."""
-    if AYON_SERVER_ENABLED:
-        raise RuntimeError("AYON does not support 'unpack-project' command.")
-    PypeCommands().unpack_project(zipfile, root, dbonly)
 
 
 @main.command()
@@ -390,20 +230,12 @@ def interactive():
     interpreter.
 
     Warning:
-        Executable 'openpype_gui' on Windows won't work.
+        Executable 'ayon.exe' on Windows won't work.
     """
-
-    if AYON_SERVER_ENABLED:
-        version = os.environ["AYON_VERSION"]
-        banner = (
-            f"AYON launcher {version}\nPython {sys.version} on {sys.platform}"
-        )
-    else:
-        from ayon_core.version import __version__
-
-        banner = (
-            f"OpenPype {__version__}\nPython {sys.version} on {sys.platform}"
-        )
+    version = os.environ["AYON_VERSION"]
+    banner = (
+        f"AYON launcher {version}\nPython {sys.version} on {sys.platform}"
+    )
     code.interact(banner)
 
 
@@ -411,22 +243,9 @@ def interactive():
 @click.option("--build", help="Print only build version",
               is_flag=True, default=False)
 def version(build):
-    """Print OpenPype version."""
-    if AYON_SERVER_ENABLED:
-        print(os.environ["AYON_VERSION"])
-        return
+    """Print AYON launcher version.
 
-    from ayon_core.version import __version__
-    from igniter.bootstrap_repos import BootstrapRepos, OpenPypeVersion
-    from pathlib import Path
-
-    if getattr(sys, 'frozen', False):
-        local_version = BootstrapRepos.get_version(
-            Path(os.getenv("OPENPYPE_ROOT")))
-    else:
-        local_version = OpenPypeVersion.get_installed_version_str()
-
-    if build:
-        print(local_version)
-        return
-    print(f"{__version__} (booted: {local_version})")
+    Deprecated:
+        This function has questionable usage.
+    """
+    print(os.environ["AYON_VERSION"])
