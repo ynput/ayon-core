@@ -8,8 +8,6 @@ from qtpy import QtCore, QtGui, QtWidgets
 from ayon_core import style
 import ayon_core.version
 from ayon_core import resources
-from ayon_core import AYON_SERVER_ENABLED
-from ayon_core.settings.lib import get_local_settings
 from ayon_core.lib import get_openpype_execute_args
 from ayon_core.lib.pype_info import (
     get_all_current_info,
@@ -220,9 +218,7 @@ class PypeInfoWidget(QtWidgets.QWidget):
 
         icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
         self.setWindowIcon(icon)
-        self.setWindowTitle(
-            "{} info".format("AYON" if AYON_SERVER_ENABLED else "OpenPype")
-        )
+        self.setWindowTitle("AYON info")
 
         scroll_area = QtWidgets.QScrollArea(self)
         info_widget = PypeInfoSubWidget(scroll_area)
@@ -333,9 +329,6 @@ class PypeInfoSubWidget(QtWidgets.QWidget):
         main_layout.addWidget(self._create_openpype_info_widget(), 0)
         main_layout.addWidget(self._create_separator(), 0)
         main_layout.addWidget(self._create_workstation_widget(), 0)
-        if not AYON_SERVER_ENABLED:
-            main_layout.addWidget(self._create_separator(), 0)
-            main_layout.addWidget(self._create_local_settings_widget(), 0)
         main_layout.addWidget(self._create_separator(), 0)
         main_layout.addWidget(self._create_environ_widget(), 1)
 
@@ -405,19 +398,6 @@ class PypeInfoSubWidget(QtWidgets.QWidget):
 
         return wokstation_info_widget
 
-    def _create_local_settings_widget(self):
-        local_settings = get_local_settings()
-
-        local_settings_widget = CollapsibleWidget("Local settings", self)
-
-        settings_input = QtWidgets.QPlainTextEdit(local_settings_widget)
-        settings_input.setReadOnly(True)
-        settings_input.setPlainText(json.dumps(local_settings, indent=4))
-
-        local_settings_widget.set_content_widget(settings_input)
-
-        return local_settings_widget
-
     def _create_environ_widget(self):
         env_widget = CollapsibleWidget("Environments", self)
 
@@ -432,60 +412,33 @@ class PypeInfoSubWidget(QtWidgets.QWidget):
     def _create_openpype_info_widget(self):
         """Create widget with information about OpenPype application."""
 
-        if AYON_SERVER_ENABLED:
-            executable_args = get_openpype_execute_args()
-            username = "N/A"
-            user_info = ayon_api.get_user()
-            if user_info:
-                username = user_info.get("name") or username
-                full_name = user_info.get("attrib", {}).get("fullName")
-                if full_name:
-                    username = "{} ({})".format(full_name, username)
-            info_values = {
-                "executable": executable_args[-1],
-                "server_url": os.environ["AYON_SERVER_URL"],
-                "bundle_name": os.environ["AYON_BUNDLE_NAME"],
-                "username": username
-            }
-            key_label_mapping = {
-                "executable": "AYON Executable:",
-                "server_url": "AYON Server:",
-                "bundle_name": "AYON Bundle:",
-                "username": "AYON Username:"
-            }
-            # Prepare keys order
-            keys_order = [
-                "server_url",
-                "bundle_name",
-                "username",
-                "executable",
-            ]
-
-        else:
-            # Get pype info data
-            info_values = get_openpype_info()
-            # Modify version key/values
-            version_value = "{} ({})".format(
-                info_values.pop("version", self.not_applicable),
-                info_values.pop("version_type", self.not_applicable)
-            )
-            info_values["version_value"] = version_value
-            # Prepare label mapping
-            key_label_mapping = {
-                "version_value": "Running version:",
-                "build_verison": "Build version:",
-                "executable": "OpenPype executable:",
-                "pype_root": "OpenPype location:",
-                "mongo_url": "OpenPype Mongo URL:"
-            }
-            # Prepare keys order
-            keys_order = [
-                "version_value",
-                "build_verison",
-                "executable",
-                "pype_root",
-                "mongo_url"
-            ]
+        executable_args = get_openpype_execute_args()
+        username = "N/A"
+        user_info = ayon_api.get_user()
+        if user_info:
+            username = user_info.get("name") or username
+            full_name = user_info.get("attrib", {}).get("fullName")
+            if full_name:
+                username = "{} ({})".format(full_name, username)
+        info_values = {
+            "executable": executable_args[-1],
+            "server_url": os.environ["AYON_SERVER_URL"],
+            "bundle_name": os.environ["AYON_BUNDLE_NAME"],
+            "username": username
+        }
+        key_label_mapping = {
+            "executable": "AYON Executable:",
+            "server_url": "AYON Server:",
+            "bundle_name": "AYON Bundle:",
+            "username": "AYON Username:"
+        }
+        # Prepare keys order
+        keys_order = [
+            "server_url",
+            "bundle_name",
+            "username",
+            "executable",
+        ]
 
         for key in info_values.keys():
             if key not in keys_order:
@@ -519,16 +472,16 @@ class PypeInfoSubWidget(QtWidgets.QWidget):
             info_layout.addWidget(
                 value_label, row, 1, 1, 1
             )
-        if AYON_SERVER_ENABLED:
-            row = info_layout.rowCount()
-            info_layout.addWidget(
-                QtWidgets.QLabel("OpenPype Addon:"), row, 0, 1, 1
-            )
-            value_label = QtWidgets.QLabel(ayon_core.version.__version__)
-            value_label.setTextInteractionFlags(
-                QtCore.Qt.TextSelectableByMouse
-            )
-            info_layout.addWidget(
-                value_label, row, 1, 1, 1
-            )
+
+        row = info_layout.rowCount()
+        info_layout.addWidget(
+            QtWidgets.QLabel("Core Addon:"), row, 0, 1, 1
+        )
+        value_label = QtWidgets.QLabel(ayon_core.version.__version__)
+        value_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse
+        )
+        info_layout.addWidget(
+            value_label, row, 1, 1, 1
+        )
         return info_widget

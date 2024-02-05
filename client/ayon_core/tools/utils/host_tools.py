@@ -7,7 +7,6 @@ import os
 
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.host import IWorkfileHost, ILoadHost
 from ayon_core.lib import Logger
 from ayon_core.pipeline import (
@@ -39,7 +38,6 @@ class HostToolsHelper:
         self._publisher_tool = None
         self._subset_manager_tool = None
         self._scene_inventory_tool = None
-        self._library_loader_tool = None
         self._experimental_tools_dialog = None
 
     @property
@@ -48,29 +46,13 @@ class HostToolsHelper:
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
-    def _init_ayon_workfiles_tool(self, parent):
-        from ayon_core.tools.ayon_workfiles.widgets import WorkfilesToolWindow
-
-        workfiles_window = WorkfilesToolWindow(parent=parent)
-        self._workfiles_tool = workfiles_window
-
-    def _init_openpype_workfiles_tool(self, parent):
-        from ayon_core.tools.workfiles.app import Window
-
-        # Host validation
-        host = registered_host()
-        IWorkfileHost.validate_workfile_methods(host)
-
-        workfiles_window = Window(parent=parent)
-        self._workfiles_tool = workfiles_window
-
     def get_workfiles_tool(self, parent):
         """Create, cache and return workfiles tool window."""
         if self._workfiles_tool is None:
-            if AYON_SERVER_ENABLED:
-                self._init_ayon_workfiles_tool(parent)
-            else:
-                self._init_openpype_workfiles_tool(parent)
+            from ayon_core.tools.workfiles.widgets import WorkfilesToolWindow
+
+            workfiles_window = WorkfilesToolWindow(parent=parent)
+            self._workfiles_tool = workfiles_window
 
         return self._workfiles_tool
 
@@ -86,22 +68,18 @@ class HostToolsHelper:
     def get_loader_tool(self, parent):
         """Create, cache and return loader tool window."""
         if self._loader_tool is None:
+            from ayon_core.tools.loader.ui import LoaderWindow
+            from ayon_core.tools.loader import LoaderController
+
             host = registered_host()
             ILoadHost.validate_load_methods(host)
-            if AYON_SERVER_ENABLED:
-                from ayon_core.tools.ayon_loader.ui import LoaderWindow
-                from ayon_core.tools.ayon_loader import LoaderController
 
-                controller = LoaderController(host=host)
-                loader_window = LoaderWindow(
-                    controller=controller,
-                    parent=parent or self._parent
-                )
+            controller = LoaderController(host=host)
+            loader_window = LoaderWindow(
+                controller=controller,
+                parent=parent or self._parent
+            )
 
-            else:
-                from ayon_core.tools.loader import LoaderWindow
-
-                loader_window = LoaderWindow(parent=parent or self._parent)
             self._loader_tool = loader_window
 
         return self._loader_tool
@@ -119,11 +97,7 @@ class HostToolsHelper:
             if use_context is None:
                 use_context = False
 
-            if not AYON_SERVER_ENABLED and use_context:
-                context = {"asset": get_current_asset_name()}
-                loader_tool.set_context(context, refresh=True)
-            else:
-                loader_tool.refresh()
+            loader_tool.refresh()
 
     def get_creator_tool(self, parent):
         """Create, cache and return creator tool window."""
@@ -174,20 +148,12 @@ class HostToolsHelper:
             host = registered_host()
             ILoadHost.validate_load_methods(host)
 
-            if AYON_SERVER_ENABLED:
-                from ayon_core.tools.ayon_sceneinventory.window import (
-                    SceneInventoryWindow)
+            from ayon_core.tools.sceneinventory.window import (
+                SceneInventoryWindow)
 
-                scene_inventory_window = SceneInventoryWindow(
-                    parent=parent or self._parent
-                )
-
-            else:
-                from ayon_core.tools.sceneinventory import SceneInventoryWindow
-
-                scene_inventory_window = SceneInventoryWindow(
-                    parent=parent or self._parent
-                )
+            scene_inventory_window = SceneInventoryWindow(
+                parent=parent or self._parent
+            )
             self._scene_inventory_tool = scene_inventory_window
 
         return self._scene_inventory_tool
@@ -206,31 +172,11 @@ class HostToolsHelper:
 
     def get_library_loader_tool(self, parent):
         """Create, cache and return library loader tool window."""
-        if AYON_SERVER_ENABLED:
-            return self.get_loader_tool(parent)
-
-        if self._library_loader_tool is None:
-            from ayon_core.tools.libraryloader import LibraryLoaderWindow
-
-            library_window = LibraryLoaderWindow(
-                parent=parent or self._parent
-            )
-            self._library_loader_tool = library_window
-
-        return self._library_loader_tool
+        return self.get_loader_tool(parent)
 
     def show_library_loader(self, parent=None):
         """Loader tool for loading representations from library project."""
-        if AYON_SERVER_ENABLED:
-            return self.show_loader(parent)
-
-        with qt_app_context():
-            library_loader_tool = self.get_library_loader_tool(parent)
-            library_loader_tool.show()
-            library_loader_tool.raise_()
-            library_loader_tool.activateWindow()
-            library_loader_tool.showNormal()
-            library_loader_tool.refresh()
+        return self.show_loader(parent)
 
     def show_publish(self, parent=None):
         """Try showing the most desirable publish GUI

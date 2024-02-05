@@ -1,6 +1,5 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.style import (
     load_stylesheet,
     app_icon_path
@@ -27,8 +26,7 @@ class ExperimentalToolsDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super(ExperimentalToolsDialog, self).__init__(parent)
-        app_label = "AYON" if AYON_SERVER_ENABLED else "OpenPype"
-        self.setWindowTitle("{} Experimental tools".format(app_label))
+        self.setWindowTitle("AYON Experimental tools")
         icon = QtGui.QIcon(app_icon_path())
         self.setWindowIcon(icon)
         self.setStyleSheet(load_stylesheet())
@@ -70,8 +68,8 @@ class ExperimentalToolsDialog(QtWidgets.QDialog):
         tool_btns_label = QtWidgets.QLabel(
             (
                 "You can enable these features in"
-                "<br><b>{} tray -> Settings -> Experimental tools</b>"
-            ).format(app_label),
+                "<br><b>AYON tray -> Settings -> Experimental tools</b>"
+            ),
             tool_btns_widget
         )
         tool_btns_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -115,7 +113,6 @@ class ExperimentalToolsDialog(QtWidgets.QDialog):
         self._window_is_active = False
 
     def refresh(self):
-        app_label = "AYON" if AYON_SERVER_ENABLED else "OpenPype"
         self._experimental_tools.refresh_availability()
 
         buttons_to_remove = set(self._buttons_by_tool_identifier.keys())
@@ -142,8 +139,8 @@ class ExperimentalToolsDialog(QtWidgets.QDialog):
             elif is_new or button.isEnabled():
                 button.setToolTip((
                     "You can enable this tool in local settings."
-                    "\n\n{} Tray > Settings > Experimental Tools"
-                ).format(app_label))
+                    "\n\nAYON Tray > Settings > Experimental Tools"
+                ))
 
             if tool.enabled != button.isEnabled():
                 button.setEnabled(tool.enabled)

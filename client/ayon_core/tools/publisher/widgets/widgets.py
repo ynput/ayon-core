@@ -9,7 +9,6 @@ import collections
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.lib.attribute_definitions import UnknownDef
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 from ayon_core.tools import resources
@@ -210,9 +209,7 @@ class CreateBtn(PublishIconBtn):
     def __init__(self, parent=None):
         icon_path = get_icon_path("create")
         super(CreateBtn, self).__init__(icon_path, "Create", parent)
-        self.setToolTip("Create new {}/s".format(
-            "product" if AYON_SERVER_ENABLED else "subset"
-        ))
+        self.setToolTip("Create new product/s")
         self.setLayoutDirection(QtCore.Qt.RightToLeft)
 
 
@@ -659,9 +656,7 @@ class TasksCombobox(QtWidgets.QComboBox):
         if invalid:
             self._set_is_valid(False)
             self.set_text(
-                "< One or more {} require Task selected >".format(
-                    "products" if AYON_SERVER_ENABLED else "subsets"
-                )
+                "< One or more products require Task selected >"
             )
         else:
             self.set_text(None)
@@ -1142,16 +1137,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         main_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         main_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
         main_layout.addRow("Variant", variant_input)
-        main_layout.addRow(
-            "Folder" if AYON_SERVER_ENABLED else "Asset",
-            asset_value_widget)
+        main_layout.addRow("Folder", asset_value_widget)
         main_layout.addRow("Task", task_value_widget)
-        main_layout.addRow(
-            "Product type" if AYON_SERVER_ENABLED else "Family",
-            family_value_widget)
-        main_layout.addRow(
-            "Product name" if AYON_SERVER_ENABLED else "Subset",
-            subset_value_widget)
+        main_layout.addRow("Product type", family_value_widget)
+        main_layout.addRow("Product name", subset_value_widget)
         main_layout.addRow(btns_layout)
 
         variant_input.value_changed.connect(self._on_variant_change)
@@ -1188,10 +1177,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         asset_names = []
         for instance in self._current_instances:
             new_variant_value = instance.get("variant")
-            if AYON_SERVER_ENABLED:
-                new_asset_name = instance.get("folderPath")
-            else:
-                new_asset_name = instance.get("asset")
+            new_asset_name = instance.get("folderPath")
             new_task_name = instance.get("task")
             if variant_value is not None:
                 new_variant_value = variant_value
@@ -1223,11 +1209,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 instance["variant"] = variant_value
 
             if asset_name is not None:
-                if AYON_SERVER_ENABLED:
-                    instance["folderPath"] = asset_name
-                else:
-                    instance["asset"] = asset_name
-
+                instance["folderPath"] = asset_name
                 instance.set_asset_invalid(False)
 
             if task_name is not None:
@@ -1325,10 +1307,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
             variants.add(instance.get("variant") or self.unknown_value)
             families.add(instance.get("family") or self.unknown_value)
-            if AYON_SERVER_ENABLED:
-                asset_name = instance.get("folderPath") or self.unknown_value
-            else:
-                asset_name = instance.get("asset") or self.unknown_value
+            asset_name = instance.get("folderPath") or self.unknown_value
             task_name = instance.get("task") or ""
             asset_names.add(asset_name)
             asset_task_combinations.append((asset_name, task_name))

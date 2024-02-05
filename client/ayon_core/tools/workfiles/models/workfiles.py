@@ -19,7 +19,7 @@ from ayon_core.pipeline.workfile import (
     get_last_workfile_with_version,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
-from ayon_core.tools.ayon_workfiles.abstract import (
+from ayon_core.tools.workfiles.abstract import (
     WorkareaFilepathResult,
     FileItem,
     WorkfileInfo,

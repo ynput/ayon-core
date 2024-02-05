@@ -7,8 +7,6 @@ import platform
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-import ayon_core.version
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core import resources, style
 from ayon_core.lib import (
     Logger,
@@ -591,23 +589,11 @@ class TrayManager:
         self.tray_widget.showMessage(*args, **kwargs)
 
     def _add_version_item(self):
-        if AYON_SERVER_ENABLED:
-            login_action = QtWidgets.QAction("Login", self.tray_widget)
-            login_action.triggered.connect(self._on_ayon_login)
-            self.tray_widget.menu.addAction(login_action)
+        login_action = QtWidgets.QAction("Login", self.tray_widget)
+        login_action.triggered.connect(self._on_ayon_login)
+        self.tray_widget.menu.addAction(login_action)
 
-        subversion = os.environ.get("OPENPYPE_SUBVERSION")
-        client_name = os.environ.get("OPENPYPE_CLIENT")
-
-        if AYON_SERVER_ENABLED:
-            version_string = os.getenv("AYON_VERSION", "AYON Info")
-        else:
-            version_string = ayon_core.version.__version__
-        if subversion:
-            version_string += " ({})".format(subversion)
-
-        if client_name:
-            version_string += ", {}".format(client_name)
+        version_string = os.getenv("AYON_VERSION", "AYON Info")
 
         version_action = QtWidgets.QAction(version_string, self.tray_widget)
         version_action.triggered.connect(self._on_version_action)

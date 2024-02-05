@@ -2,7 +2,6 @@ import re
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline.create import (
     SUBSET_NAME_ALLOWED_SYMBOLS,
     PRE_CREATE_THUMBNAIL_KEY,
@@ -205,9 +204,7 @@ class CreateWidget(QtWidgets.QWidget):
         variant_subset_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         variant_subset_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
         variant_subset_layout.addRow("Variant", variant_widget)
-        variant_subset_layout.addRow(
-            "Product" if AYON_SERVER_ENABLED else "Subset",
-            subset_name_input)
+        variant_subset_layout.addRow("Product", subset_name_input)
 
         creator_basics_layout = QtWidgets.QVBoxLayout(creator_basics_widget)
         creator_basics_layout.setContentsMargins(0, 0, 0, 0)
@@ -816,13 +813,8 @@ class CreateWidget(QtWidgets.QWidget):
 
         # Where to define these data?
         # - what data show be stored?
-        if AYON_SERVER_ENABLED:
-            asset_key = "folderPath"
-        else:
-            asset_key = "asset"
-
         instance_data = {
-            asset_key: asset_name,
+            "folderPath": asset_name,
             "task": task_name,
             "variant": variant,
             "family": family

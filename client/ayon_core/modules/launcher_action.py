@@ -1,6 +1,6 @@
 import os
 
-from ayon_core import AYON_CORE_ROOT, AYON_SERVER_ENABLED
+from ayon_core import AYON_CORE_ROOT
 from ayon_core.modules import (
     OpenPypeModule,
     ITrayAction,
@@ -67,10 +67,7 @@ class LauncherAction(OpenPypeModule, ITrayAction):
     def _create_window(self):
         if self._window:
             return
-        if AYON_SERVER_ENABLED:
-            from ayon_core.tools.ayon_launcher.ui import LauncherWindow
-        else:
-            from ayon_core.tools.launcher import LauncherWindow
+        from ayon_core.tools.launcher.ui import LauncherWindow
         self._window = LauncherWindow()
 
     def _show_launcher(self):
