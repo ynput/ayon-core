@@ -1,7 +1,7 @@
 import os
 
 from ayon_core import resources
-from ayon_core.lib import Logger, OpenPypeSettingsRegistry
+from ayon_core.lib import Logger, AYONSettingsRegistry
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherAction,
@@ -276,7 +276,7 @@ class ActionsModel:
         self._actions = None
         self._action_items = {}
 
-        self._launcher_tool_reg = OpenPypeSettingsRegistry("launcher_tool")
+        self._launcher_tool_reg = AYONSettingsRegistry("launcher_tool")
 
     @property
     def log(self):

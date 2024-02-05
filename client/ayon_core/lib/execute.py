@@ -5,8 +5,6 @@ import platform
 import json
 import tempfile
 
-from ayon_core import AYON_SERVER_ENABLED
-
 from .log import Logger
 from .vendor_bin_utils import find_executable
 
@@ -41,7 +39,6 @@ def execute(args,
         int: return code of process
 
     """
-
     log_levels = ['DEBUG:', 'INFO:', 'ERROR:', 'WARNING:', 'CRITICAL:']
 
     log = Logger.get_logger('execute')
@@ -101,7 +98,6 @@ def run_subprocess(*args, **kwargs):
         RuntimeError: Exception is raised if process finished with nonzero
             return code.
     """
-
     # Modify creation flags on windows to hide console window if in UI mode
     if (
         platform.system().lower() == "windows"
@@ -176,7 +172,6 @@ def clean_envs_for_ayon_process(env=None):
     Returns:
         dict[str, str]: Environment variables for ayon process.
     """
-
     if env is None:
         env = os.environ
 
@@ -194,19 +189,7 @@ def clean_envs_for_openpype_process(env=None):
     Main reason to implement this function is to pop PYTHONPATH which may be
     affected by in-host environments.
     """
-
-    if AYON_SERVER_ENABLED:
-        return clean_envs_for_ayon_process(env=env)
-
-    if env is None:
-        env = os.environ
-
-    # Exclude some environment variables from a copy of the environment
-    env = env.copy()
-    for key in ["PYTHONPATH", "PYTHONHOME"]:
-        env.pop(key, None)
-
-    return env
+    return clean_envs_for_ayon_process(env=env)
 
 
 def run_ayon_launcher_process(*args, **kwargs):
@@ -216,7 +199,7 @@ def run_ayon_launcher_process(*args, **kwargs):
     before passed arguments and define environments if are not passed.
 
     Values from 'os.environ' are used for environments if are not passed.
-    They are cleaned using 'clean_envs_for_openpype_process' function.
+    They are cleaned using 'clean_envs_for_ayon_process' function.
 
     Example:
     ```
@@ -230,14 +213,13 @@ def run_ayon_launcher_process(*args, **kwargs):
     Returns:
         str: Full output of subprocess concatenated stdout and stderr.
     """
-
     args = get_ayon_launcher_args(*args)
     env = kwargs.pop("env", None)
     # Keep env untouched if are passed and not empty
     if not env:
         # Skip envs that can affect OpenPype process
         # - fill more if you find more
-        env = clean_envs_for_openpype_process(os.environ)
+        env = clean_envs_for_ayon_process(os.environ)
 
     # Only keep OpenPype version if we are running from build.
     if not is_running_from_build():
@@ -262,30 +244,11 @@ def run_openpype_process(*args, **kwargs):
         *args (tuple): OpenPype cli arguments.
         **kwargs (dict): Keyword arguments for subprocess.Popen.
     """
-
-    if AYON_SERVER_ENABLED:
-        return run_ayon_launcher_process(*args, **kwargs)
-
-    args = get_openpype_execute_args(*args)
-    env = kwargs.pop("env", None)
-    # Keep env untouched if are passed and not empty
-    if not env:
-        # Skip envs that can affect OpenPype process
-        # - fill more if you find more
-        env = clean_envs_for_openpype_process(os.environ)
-
-    # Only keep OpenPype version if we are running from build.
-    if not is_running_from_build():
-        env.pop("OPENPYPE_VERSION", None)
-
-    return run_subprocess(args, env=env, **kwargs)
+    return run_ayon_launcher_process(*args, **kwargs)
 
 
 def run_detached_process(args, **kwargs):
     """Execute process with passed arguments as separated process.
-
-    Values from 'os.environ' are used for environments if are not passed.
-    They are cleaned using 'clean_envs_for_openpype_process' function.
 
     Example:
         >>> run_detached_process("run", "./path_to.py")
@@ -299,7 +262,6 @@ def run_detached_process(args, **kwargs):
         subprocess.Popen: Pointer to launched process but it is possible that
             launched process is already killed (on linux).
     """
-
     env = kwargs.pop("env", None)
     # Keep env untouched if are passed and not empty
     if not env:
@@ -381,7 +343,6 @@ def get_ayon_launcher_args(*args):
     Returns:
         list[str]: List of arguments to run ayon-launcher process.
     """
-
     executable = os.environ["AYON_EXECUTABLE"]
     launch_args = [executable]
 
@@ -411,22 +372,7 @@ def get_openpype_execute_args(*args):
     It is possible to pass any arguments that will be added after pype
     executables.
     """
-
-    if AYON_SERVER_ENABLED:
-        return get_ayon_launcher_args(*args)
-
-    executable = os.environ["OPENPYPE_EXECUTABLE"]
-    launch_args = [executable]
-
-    executable_filename = os.path.basename(executable)
-    if "python" in executable_filename.lower():
-        filepath = os.path.join(os.environ["OPENPYPE_ROOT"], "start.py")
-        launch_args.append(filepath)
-
-    if args:
-        launch_args.extend(args)
-
-    return launch_args
+    return get_ayon_launcher_args(*args)
 
 
 def get_linux_launcher_args(*args):
@@ -449,19 +395,12 @@ def get_linux_launcher_args(*args):
         list: Executables with possible positional argument to script when
             called from code.
     """
-
     filename = "app_launcher"
-    if AYON_SERVER_ENABLED:
-        executable = os.environ["AYON_EXECUTABLE"]
-    else:
-        executable = os.environ["OPENPYPE_EXECUTABLE"]
+    executable = os.environ["AYON_EXECUTABLE"]
 
     executable_filename = os.path.basename(executable)
     if "python" in executable_filename.lower():
-        if AYON_SERVER_ENABLED:
-            root = os.environ["AYON_ROOT"]
-        else:
-            root = os.environ["OPENPYPE_ROOT"]
+        root = os.environ["AYON_ROOT"]
         script_path = os.path.join(root, "{}.py".format(filename))
         launch_args = [executable, script_path]
     else:

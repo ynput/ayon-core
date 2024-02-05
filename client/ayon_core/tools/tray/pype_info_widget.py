@@ -11,7 +11,6 @@ from ayon_core import resources
 from ayon_core.lib import get_openpype_execute_args
 from ayon_core.lib.pype_info import (
     get_all_current_info,
-    get_openpype_info,
     get_workstation_info,
     extract_pype_info_to_file
 )

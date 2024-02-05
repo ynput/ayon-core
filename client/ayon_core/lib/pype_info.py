@@ -5,7 +5,6 @@ import platform
 import getpass
 import socket
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.settings.lib import get_local_settings
 from .execute import get_openpype_execute_args
 from .local_settings import get_local_site_id
@@ -14,24 +13,6 @@ from .openpype_version import (
     get_openpype_version,
     get_build_version
 )
-
-
-def get_openpype_info():
-    """Information about currently used Pype process."""
-    executable_args = get_openpype_execute_args()
-    if is_running_from_build():
-        version_type = "build"
-    else:
-        version_type = "code"
-
-    return {
-        "build_verison": get_build_version(),
-        "version": get_openpype_version(),
-        "version_type": version_type,
-        "executable": executable_args[-1],
-        "pype_root": os.environ["OPENPYPE_REPOS_ROOT"],
-        "mongo_url": os.environ["OPENPYPE_MONGO"]
-    }
 
 
 def get_ayon_info():
@@ -72,12 +53,9 @@ def get_all_current_info():
     output = {
         "workstation": get_workstation_info(),
         "env": os.environ.copy(),
-        "local_settings": get_local_settings()
+        "local_settings": get_local_settings(),
+        "ayon": get_ayon_info(),
     }
-    if AYON_SERVER_ENABLED:
-        output["ayon"] = get_ayon_info()
-    else:
-        output["openpype"] = get_openpype_info()
     return output
 
 
