@@ -55,7 +55,7 @@ def setup(env):
             dst = os.path.join(util_scripts_dir, script)
 
             # TODO: Make this a less hacky workaround
-            if script == "openpype_startup.scriptlib":
+            if script == "ayon_startup.scriptlib":
                 # Handle special case for scriptlib that needs to be a folder
                 # up from the Comp folder in the Fusion scripts
                 dst = os.path.join(os.path.dirname(util_scripts_dir),
