@@ -24,7 +24,6 @@ from .events import (
 from .vendor_bin_utils import (
     ToolNotFoundError,
     find_executable,
-    get_vendor_bin_path,
     get_oiio_tools_path,
     get_oiio_tool_args,
     get_ffmpeg_tool_path,
@@ -63,7 +62,6 @@ from .execute import (
     run_detached_process,
     run_ayon_launcher_process,
     run_openpype_process,
-    clean_envs_for_openpype_process,
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
 )
@@ -117,12 +115,12 @@ from .transcoding import (
 from .local_settings import (
     IniSettingRegistry,
     JSONSettingRegistry,
+    AYONSecureRegistry,
+    AYONSettingsRegistry,
     OpenPypeSecureRegistry,
     OpenPypeSettingsRegistry,
     get_local_site_id,
-    change_openpype_mongo_url,
     get_openpype_username,
-    is_admin_password_required
 )
 
 from .applications import (
@@ -186,7 +184,6 @@ __all__ = [
     "run_detached_process",
     "run_ayon_launcher_process",
     "run_openpype_process",
-    "clean_envs_for_openpype_process",
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
 
@@ -195,7 +192,6 @@ __all__ = [
 
     "ToolNotFoundError",
     "find_executable",
-    "get_vendor_bin_path",
     "get_oiio_tools_path",
     "get_oiio_tool_args",
     "get_ffmpeg_tool_path",
@@ -240,9 +236,7 @@ __all__ = [
     "OpenPypeSecureRegistry",
     "OpenPypeSettingsRegistry",
     "get_local_site_id",
-    "change_openpype_mongo_url",
     "get_openpype_username",
-    "is_admin_password_required",
 
     "ApplicationLaunchFailed",
     "ApplictionExecutableNotFound",

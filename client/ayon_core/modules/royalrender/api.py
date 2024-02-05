@@ -3,7 +3,7 @@
 import sys
 import os
 
-from ayon_core.lib.local_settings import OpenPypeSettingsRegistry
+from ayon_core.lib.local_settings import AYONSettingsRegistry
 from ayon_core.lib import Logger, run_subprocess
 from .rr_job import RRJob, SubmitFile, SubmitterParameter
 from ayon_core.lib.vendor_bin_utils import find_tool_in_custom_paths
@@ -154,7 +154,7 @@ class Api:
         # Probably best way until we setup our own user management would be
         # to encrypt password and save it to json locally. Not bulletproof
         # but at least it is not stored in plaintext.
-        reg = OpenPypeSettingsRegistry()
+        reg = AYONSettingsRegistry("rr_settings")
         try:
             rr_user = reg.get_item("rr_username")
             rr_password = reg.get_item("rr_password")

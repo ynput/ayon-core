@@ -13,9 +13,6 @@ import os
 import sys
 
 import ayon_core.version
-from ayon_core import AYON_SERVER_ENABLED
-
-from .python_module_tools import import_filepath
 
 
 # ----------------------------------------
@@ -27,10 +24,7 @@ def get_openpype_version():
 
 
 def get_ayon_launcher_version():
-    version_filepath = os.path.join(
-        os.environ["AYON_ROOT"],
-        "version.py"
-    )
+    version_filepath = os.path.join(os.environ["AYON_ROOT"], "version.py")
     if not os.path.exists(version_filepath):
         return None
     content = {}
@@ -42,24 +36,7 @@ def get_ayon_launcher_version():
 def get_build_version():
     """OpenPype version of build."""
 
-    if AYON_SERVER_ENABLED:
-        return get_ayon_launcher_version()
-
-    # Return OpenPype version if is running from code
-    if not is_running_from_build():
-        return get_openpype_version()
-
-    # Import `version.py` from build directory
-    version_filepath = os.path.join(
-        os.environ["OPENPYPE_ROOT"],
-        "openpype",
-        "version.py"
-    )
-    if not os.path.exists(version_filepath):
-        return None
-
-    module = import_filepath(version_filepath, "openpype_build_version")
-    return getattr(module, "__version__", None)
+    return get_ayon_launcher_version()
 
 
 def is_running_from_build():
@@ -69,10 +46,7 @@ def is_running_from_build():
         bool: True if running from build.
     """
 
-    if AYON_SERVER_ENABLED:
-        executable_path = os.environ["AYON_EXECUTABLE"]
-    else:
-        executable_path = os.environ["OPENPYPE_EXECUTABLE"]
+    executable_path = os.environ["AYON_EXECUTABLE"]
     executable_filename = os.path.basename(executable_path)
     if "python" in executable_filename.lower():
         return False
@@ -80,9 +54,7 @@ def is_running_from_build():
 
 
 def is_staging_enabled():
-    if AYON_SERVER_ENABLED:
-        return os.getenv("AYON_USE_STAGING") == "1"
-    return os.environ.get("OPENPYPE_USE_STAGING") == "1"
+    return os.getenv("AYON_USE_STAGING") == "1"
 
 
 def is_running_staging():
@@ -111,37 +83,6 @@ def is_running_staging():
     Returns:
         bool: Using staging version or not.
     """
-
-    if AYON_SERVER_ENABLED:
-        return is_staging_enabled()
-
-    if os.environ.get("OPENPYPE_IS_STAGING") == "1":
-        return True
-
-    if not op_version_control_available():
-        return False
-
-    from ayon_core.settings import get_global_settings
-
-    global_settings = get_global_settings()
-    production_version = global_settings["production_version"]
-    latest_version = None
-    if not production_version or production_version == "latest":
-        latest_version = get_latest_version(local=False, remote=True)
-        production_version = latest_version
-
-    current_version = get_openpype_version()
-    if current_version == production_version:
-        return False
-
-    staging_version = global_settings["staging_version"]
-    if not staging_version or staging_version == "latest":
-        if latest_version is None:
-            latest_version = get_latest_version(local=False, remote=True)
-        staging_version = latest_version
-
-    if current_version == staging_version:
-        return True
 
     return is_staging_enabled()
 

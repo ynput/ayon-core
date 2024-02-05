@@ -3,8 +3,6 @@ import logging
 import platform
 import subprocess
 
-from ayon_core import AYON_SERVER_ENABLED
-
 log = logging.getLogger("Vendor utils")
 
 
@@ -138,30 +136,6 @@ def find_executable(executable):
                 return filepath
 
     return None
-
-
-def get_vendor_bin_path(bin_app):
-    """Path to OpenPype vendorized binaries.
-
-    Vendorized executables are expected in specific hierarchy inside build or
-    in code source.
-
-    "{OPENPYPE_ROOT}/vendor/bin/{name of vendorized app}/{platform}"
-
-    Args:
-        bin_app (str): Name of vendorized application.
-
-    Returns:
-        str: Path to vendorized binaries folder.
-    """
-
-    return os.path.join(
-        os.environ["OPENPYPE_ROOT"],
-        "vendor",
-        "bin",
-        bin_app,
-        platform.system().lower()
-    )
 
 
 def find_tool_in_custom_paths(paths, tool, validation_func=None):
@@ -322,16 +296,15 @@ def get_oiio_tools_path(tool="oiiotool"):
     if CachedToolPaths.is_tool_cached(tool):
         return CachedToolPaths.get_executable_path(tool)
 
-    if AYON_SERVER_ENABLED:
-        args = _get_ayon_oiio_tool_args(tool)
-        if args:
-            if len(args) > 1:
-                raise ValueError(
-                    "AYON oiio arguments consist of multiple arguments."
-                )
-            tool_executable_path = args[0]
-            CachedToolPaths.cache_executable_path(tool, tool_executable_path)
-            return tool_executable_path
+    args = _get_ayon_oiio_tool_args(tool)
+    if args:
+        if len(args) > 1:
+            raise ValueError(
+                "AYON oiio arguments consist of multiple arguments."
+            )
+        tool_executable_path = args[0]
+        CachedToolPaths.cache_executable_path(tool, tool_executable_path)
+        return tool_executable_path
 
     custom_paths_str = os.environ.get("OPENPYPE_OIIO_PATHS") or ""
     tool_executable_path = find_tool_in_custom_paths(
@@ -339,14 +312,6 @@ def get_oiio_tools_path(tool="oiiotool"):
         tool,
         _oiio_executable_validation
     )
-
-    if not tool_executable_path:
-        oiio_dir = get_vendor_bin_path("oiio")
-        if platform.system().lower() == "linux":
-            oiio_dir = os.path.join(oiio_dir, "bin")
-        default_path = find_executable(os.path.join(oiio_dir, tool))
-        if default_path and _oiio_executable_validation(default_path):
-            tool_executable_path = default_path
 
     # Look to PATH for the tool
     if not tool_executable_path:
@@ -371,10 +336,9 @@ def get_oiio_tool_args(tool_name, *extra_args):
 
     extra_args = list(extra_args)
 
-    if AYON_SERVER_ENABLED:
-        args = _get_ayon_oiio_tool_args(tool_name)
-        if args:
-            return args + extra_args
+    args = _get_ayon_oiio_tool_args(tool_name)
+    if args:
+        return args + extra_args
 
     path = get_oiio_tools_path(tool_name)
     if path:
@@ -449,16 +413,15 @@ def get_ffmpeg_tool_path(tool="ffmpeg"):
     if CachedToolPaths.is_tool_cached(tool):
         return CachedToolPaths.get_executable_path(tool)
 
-    if AYON_SERVER_ENABLED:
-        args = _get_ayon_ffmpeg_tool_args(tool)
-        if args is not None:
-            if len(args) > 1:
-                raise ValueError(
-                    "AYON ffmpeg arguments consist of multiple arguments."
-                )
-            tool_executable_path = args[0]
-            CachedToolPaths.cache_executable_path(tool, tool_executable_path)
-            return tool_executable_path
+    args = _get_ayon_ffmpeg_tool_args(tool)
+    if args is not None:
+        if len(args) > 1:
+            raise ValueError(
+                "AYON ffmpeg arguments consist of multiple arguments."
+            )
+        tool_executable_path = args[0]
+        CachedToolPaths.cache_executable_path(tool, tool_executable_path)
+        return tool_executable_path
 
     custom_paths_str = os.environ.get("OPENPYPE_FFMPEG_PATHS") or ""
     tool_executable_path = find_tool_in_custom_paths(
@@ -466,14 +429,6 @@ def get_ffmpeg_tool_path(tool="ffmpeg"):
         tool,
         _ffmpeg_executable_validation
     )
-
-    if not tool_executable_path:
-        ffmpeg_dir = get_vendor_bin_path("ffmpeg")
-        if platform.system().lower() == "windows":
-            ffmpeg_dir = os.path.join(ffmpeg_dir, "bin")
-        tool_path = find_executable(os.path.join(ffmpeg_dir, tool))
-        if tool_path and _ffmpeg_executable_validation(tool_path):
-            tool_executable_path = tool_path
 
     # Look to PATH for the tool
     if not tool_executable_path:
@@ -498,10 +453,9 @@ def get_ffmpeg_tool_args(tool_name, *extra_args):
 
     extra_args = list(extra_args)
 
-    if AYON_SERVER_ENABLED:
-        args = _get_ayon_ffmpeg_tool_args(tool_name)
-        if args:
-            return args + extra_args
+    args = _get_ayon_ffmpeg_tool_args(tool_name)
+    if args:
+        return args + extra_args
 
     executable_path = get_ffmpeg_tool_path(tool_name)
     if executable_path:

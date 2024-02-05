@@ -2,12 +2,10 @@
 """Package to deal with saving and retrieving user specific settings."""
 import os
 import json
-import getpass
 import platform
 from datetime import datetime
 from abc import ABCMeta, abstractmethod
 
-# TODO Use pype igniter logic instead of using duplicated code
 # disable lru cache in Python 2
 try:
     from functools import lru_cache
@@ -29,19 +27,13 @@ except ImportError:
 import six
 import appdirs
 
-from ayon_core import AYON_SERVER_ENABLED
-from ayon_core.settings import (
-    get_local_settings,
-    get_system_settings
-)
-
 from ayon_core.client.mongo import validate_mongo_connection
 from ayon_core.client import get_ayon_server_api_connection
 
 _PLACEHOLDER = object()
 
 
-class OpenPypeSecureRegistry:
+class AYONSecureRegistry:
     """Store information using keyring.
 
     Registry should be used for private data that should be available only for
@@ -255,8 +247,7 @@ class IniSettingRegistry(ASettingRegistry):
                 now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 print("# {}".format(now), cfg)
 
-    def set_item_section(
-            self, section, name, value):
+    def set_item_section(self, section, name, value):
         # type: (str, str, str) -> None
         """Set item to specific section of ini registry.
 
@@ -401,10 +392,7 @@ class JSONSettingRegistry(ASettingRegistry):
         self._registry_file = os.path.join(path, "{}.json".format(name))
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         header = {
-            "__metadata__": {
-                "openpype-version": os.getenv("OPENPYPE_VERSION", "N/A"),
-                "generated": now
-            },
+            "__metadata__": {"generated": now},
             "registry": {}
         }
 
@@ -485,28 +473,22 @@ class JSONSettingRegistry(ASettingRegistry):
             json.dump(data, cfg, indent=4)
 
 
-class OpenPypeSettingsRegistry(JSONSettingRegistry):
-    """Class handling OpenPype general settings registry.
+class AYONSettingsRegistry(JSONSettingRegistry):
+    """Class handling AYON general settings registry.
 
     Attributes:
         vendor (str): Name used for path construction.
         product (str): Additional name used for path construction.
 
+    Args:
+        name (Optional[str]): Name of the registry.
     """
 
     def __init__(self, name=None):
-        if AYON_SERVER_ENABLED:
-            vendor = "Ynput"
-            product = "AYON"
-            default_name = "AYON_settings"
-        else:
-            vendor = "pypeclub"
-            product = "openpype"
-            default_name = "openpype_settings"
-        self.vendor = vendor
-        self.product = product
+        self.vendor = "Ynput"
+        self.product = "AYON"
         if not name:
-            name = default_name
+            name = "AYON_settings"
         path = appdirs.user_data_dir(self.product, self.vendor)
         super(OpenPypeSettingsRegistry, self).__init__(name, path)
 
@@ -543,7 +525,11 @@ def get_ayon_appdirs(*args):
     )
 
 
-def _get_ayon_local_site_id():
+def get_local_site_id():
+    """Get local site identifier.
+
+    Identifier is created if does not exists yet.
+    """
     # used for background syncing
     site_id = os.environ.get("AYON_SITE_ID")
     if site_id:
@@ -566,43 +552,6 @@ def _get_ayon_local_site_id():
     return site_id
 
 
-def get_local_site_id():
-    """Get local site identifier.
-
-    Identifier is created if does not exists yet.
-    """
-
-    if AYON_SERVER_ENABLED:
-        return _get_ayon_local_site_id()
-
-    # override local id from environment
-    # used for background syncing
-    if os.environ.get("OPENPYPE_LOCAL_ID"):
-        return os.environ["OPENPYPE_LOCAL_ID"]
-
-    registry = OpenPypeSettingsRegistry()
-    try:
-        return registry.get_item("localId")
-    except ValueError:
-        return _create_local_site_id()
-
-
-def change_openpype_mongo_url(new_mongo_url):
-    """Change mongo url in pype registry.
-
-    Change of OpenPype mongo URL require restart of running pype processes or
-    processes using pype.
-    """
-
-    validate_mongo_connection(new_mongo_url)
-    key = "openPypeMongo"
-    registry = OpenPypeSecureRegistry("mongodb")
-    existing_value = registry.get_item(key, None)
-    if existing_value is not None:
-        registry.delete_item(key)
-    registry.set_item(key, new_mongo_url)
-
-
 def get_openpype_username():
     """OpenPype username used for templates and publishing.
 
@@ -613,31 +562,9 @@ def get_openpype_username():
     machine username.
     """
 
-    if AYON_SERVER_ENABLED:
-        con = get_ayon_server_api_connection()
-        return con.get_user()["name"]
-
-    username = os.environ.get("OPENPYPE_USERNAME")
-    if not username:
-        local_settings = get_local_settings()
-        username = (
-            local_settings
-            .get("general", {})
-            .get("username")
-        )
-        if not username:
-            username = getpass.getuser()
-    return username
+    con = get_ayon_server_api_connection()
+    return con.get_user()["name"]
 
 
-def is_admin_password_required():
-    system_settings = get_system_settings()
-    password = system_settings["general"].get("admin_password")
-    if not password:
-        return False
-
-    local_settings = get_local_settings()
-    is_admin = local_settings.get("general", {}).get("is_admin", False)
-    if is_admin:
-        return False
-    return True
+OpenPypeSecureRegistry = AYONSecureRegistry
+OpenPypeSettingsRegistry = AYONSettingsRegistry

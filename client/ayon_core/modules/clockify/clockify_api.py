@@ -9,7 +9,7 @@ from .constants import (
     ADMIN_PERMISSION_NAMES,
 )
 
-from ayon_core.lib.local_settings import OpenPypeSecureRegistry
+from ayon_core.lib.local_settings import AYONSecureRegistry
 from ayon_core.lib import Logger
 
 
@@ -27,7 +27,7 @@ class ClockifyAPI:
     @property
     def secure_registry(self):
         if self._secure_registry is None:
-            self._secure_registry = OpenPypeSecureRegistry("clockify")
+            self._secure_registry = AYONSecureRegistry("clockify")
         return self._secure_registry
 
     @property
