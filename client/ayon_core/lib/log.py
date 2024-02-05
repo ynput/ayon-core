@@ -1,43 +1,14 @@
-"""
-Logging to console and to mongo. For mongo logging, you need to set either
-``OPENPYPE_LOG_MONGO_URL`` to something like:
-
-.. example::
-   mongo://user:password@hostname:port/database/collection?authSource=avalon
-
-or set ``OPENPYPE_LOG_MONGO_HOST`` and other variables.
-See :func:`_mongo_settings`
-
-Best place for it is in ``repos/pype-config/environments/global.json``
-"""
-
-
-import datetime
+import os
+import sys
 import getpass
 import logging
-import os
 import platform
 import socket
-import sys
 import time
-import traceback
 import threading
 import copy
 
-from ayon_core import AYON_SERVER_ENABLED
-from ayon_core.client.mongo import (
-    MongoEnvNotSet,
-    get_default_components,
-    OpenPypeMongoConnection,
-)
 from . import Terminal
-
-try:
-    import log4mongo
-    from log4mongo.handlers import MongoHandler
-except ImportError:
-    log4mongo = None
-    MongoHandler = type("NOT_SET", (), {})
 
 # Check for `unicode` in builtins
 USE_UNICODE = hasattr(__builtins__, "unicode")
@@ -142,46 +113,6 @@ class LogFormatter(logging.Formatter):
         return out
 
 
-class MongoFormatter(logging.Formatter):
-
-    DEFAULT_PROPERTIES = logging.LogRecord(
-        '', '', '', '', '', '', '', '').__dict__.keys()
-
-    def format(self, record):
-        """Formats LogRecord into python dictionary."""
-        # Standard document
-        document = {
-            'timestamp': datetime.datetime.now(),
-            'level': record.levelname,
-            'thread': record.thread,
-            'threadName': record.threadName,
-            'message': record.getMessage(),
-            'loggerName': record.name,
-            'fileName': record.pathname,
-            'module': record.module,
-            'method': record.funcName,
-            'lineNumber': record.lineno
-        }
-        document.update(Logger.get_process_data())
-
-        # Standard document decorated with exception info
-        if record.exc_info is not None:
-            document['exception'] = {
-                'message': str(record.exc_info[1]),
-                'code': 0,
-                'stackTrace': self.formatException(record.exc_info)
-            }
-
-        # Standard document decorated with extra contextual information
-        if len(self.DEFAULT_PROPERTIES) != len(record.__dict__):
-            contextual_extra = set(record.__dict__).difference(
-                set(self.DEFAULT_PROPERTIES))
-            if contextual_extra:
-                for key in contextual_extra:
-                    document[key] = record.__dict__[key]
-        return document
-
-
 class Logger:
     DFT = '%(levelname)s >>> { %(name)s }: [ %(message)s ] '
     DBG = "  - { %(name)s }: [ %(message)s ] "
@@ -199,23 +130,8 @@ class Logger:
     }
 
     # Is static class initialized
-    bootstraped = False
     initialized = False
     _init_lock = threading.Lock()
-
-    # Defines if mongo logging should be used
-    use_mongo_logging = None
-    mongo_process_id = None
-
-    # Backwards compatibility - was used in start.py
-    # TODO remove when all old builds are replaced with new one
-    #   not using 'log_mongo_url_components'
-    log_mongo_url_components = None
-
-    # Database name in Mongo
-    log_database_name = os.environ.get("OPENPYPE_DATABASE_NAME")
-    # Collection name under database in Mongo
-    log_collection_name = "logs"
 
     # Logging level - OPENPYPE_LOG_LEVEL
     log_level = None
@@ -226,7 +142,7 @@ class Logger:
     _process_name = None
 
     @classmethod
-    def get_logger(cls, name=None, _host=None):
+    def get_logger(cls, name=None):
         if not cls.initialized:
             cls.initialize()
 
@@ -234,73 +150,19 @@ class Logger:
 
         logger.setLevel(cls.log_level)
 
-        add_mongo_handler = cls.use_mongo_logging
         add_console_handler = True
 
         for handler in logger.handlers:
-            if isinstance(handler, MongoHandler):
-                add_mongo_handler = False
-            elif isinstance(handler, LogStreamHandler):
+            if isinstance(handler, LogStreamHandler):
                 add_console_handler = False
 
         if add_console_handler:
             logger.addHandler(cls._get_console_handler())
 
-        if add_mongo_handler:
-            try:
-                handler = cls._get_mongo_handler()
-                if handler:
-                    logger.addHandler(handler)
-
-            except MongoEnvNotSet:
-                # Skip if mongo environments are not set yet
-                cls.use_mongo_logging = False
-
-            except Exception:
-                lines = traceback.format_exception(*sys.exc_info())
-                for line in lines:
-                    if line.endswith("\n"):
-                        line = line[:-1]
-                    Terminal.echo(line)
-                cls.use_mongo_logging = False
-
         # Do not propagate logs to root logger
         logger.propagate = False
 
-        if _host is not None:
-            # Warn about deprecated argument
-            # TODO remove backwards compatibility of host argument which is
-            # not used for more than a year
-            logger.warning(
-                "Logger \"{}\" is using argument `host` on `get_logger`"
-                " which is deprecated. Please remove as backwards"
-                " compatibility will be removed soon."
-            )
         return logger
-
-    @classmethod
-    def _get_mongo_handler(cls):
-        cls.bootstrap_mongo_log()
-
-        if not cls.use_mongo_logging:
-            return
-
-        components = get_default_components()
-        kwargs = {
-            "host": components["host"],
-            "database_name": cls.log_database_name,
-            "collection": cls.log_collection_name,
-            "username": components["username"],
-            "password": components["password"],
-            "capped": True,
-            "formatter": MongoFormatter()
-        }
-        if components["port"] is not None:
-            kwargs["port"] = int(components["port"])
-        if components["auth_db"]:
-            kwargs["authentication_db"] = components["auth_db"]
-
-        return MongoHandler(**kwargs)
 
     @classmethod
     def _get_console_handler(cls):
@@ -327,41 +189,6 @@ class Logger:
         # Change initialization state to prevent runtime changes
         # if is executed during runtime
         cls.initialized = False
-        if not AYON_SERVER_ENABLED:
-            cls.log_mongo_url_components = get_default_components()
-
-        # Define if should logging to mongo be used
-        if AYON_SERVER_ENABLED:
-            use_mongo_logging = False
-        else:
-            use_mongo_logging = (
-                log4mongo is not None
-                and os.environ.get("OPENPYPE_LOG_TO_SERVER") == "1"
-            )
-
-        # Set mongo id for process (ONLY ONCE)
-        if use_mongo_logging and cls.mongo_process_id is None:
-            try:
-                from bson.objectid import ObjectId
-            except Exception:
-                use_mongo_logging = False
-
-            # Check if mongo id was passed with environments and pop it
-            # - This is for subprocesses that are part of another process
-            #   like Ftrack event server has 3 other subprocesses that should
-            #   use same mongo id
-            if use_mongo_logging:
-                mongo_id = os.environ.pop("OPENPYPE_PROCESS_MONGO_ID", None)
-                if not mongo_id:
-                    # Create new object id
-                    mongo_id = ObjectId()
-                else:
-                    # Convert string to ObjectId object
-                    mongo_id = ObjectId(mongo_id)
-                cls.mongo_process_id = mongo_id
-
-        # Store result to class definition
-        cls.use_mongo_logging = use_mongo_logging
 
         # Define what is logging level
         log_level = os.getenv("OPENPYPE_LOG_LEVEL")
@@ -373,9 +200,6 @@ class Logger:
             else:
                 log_level = 20
         cls.log_level = int(log_level)
-
-        if not os.environ.get("OPENPYPE_MONGO"):
-            cls.use_mongo_logging = False
 
         # Mark as initialized
         cls.initialized = True
@@ -401,7 +225,6 @@ class Logger:
         process_name = cls.get_process_name()
 
         cls.process_data = {
-            "process_id": cls.mongo_process_id,
             "hostname": host_name,
             "hostip": host_ip,
             "username": getpass.getuser(),
@@ -446,49 +269,3 @@ class Logger:
 
         cls._process_name = process_name
         return cls._process_name
-
-    @classmethod
-    def bootstrap_mongo_log(cls):
-        """Prepare mongo logging."""
-        if cls.bootstraped:
-            return
-
-        if not cls.initialized:
-            cls.initialize()
-
-        if not cls.use_mongo_logging:
-            return
-
-        if not cls.log_database_name:
-            raise ValueError("Database name for logs is not set")
-
-        client = log4mongo.handlers._connection
-        if not client:
-            client = cls.get_log_mongo_connection()
-            # Set the client inside log4mongo handlers to not create another
-            # mongo db connection.
-            log4mongo.handlers._connection = client
-
-        logdb = client[cls.log_database_name]
-
-        collist = logdb.list_collection_names()
-        if cls.log_collection_name not in collist:
-            logdb.create_collection(
-                cls.log_collection_name,
-                capped=True,
-                max=5000,
-                size=1073741824
-            )
-        cls.bootstraped = True
-
-    @classmethod
-    def get_log_mongo_connection(cls):
-        """Mongo connection that allows to get to log collection.
-
-        This is implemented to prevent multiple connections to mongo from same
-        process.
-        """
-        if not cls.initialized:
-            cls.initialize()
-
-        return OpenPypeMongoConnection.get_mongo_client()
