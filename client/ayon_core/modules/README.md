@@ -42,9 +42,6 @@ OpenPype modules should contain separated logic of specific kind of implementati
  - they can't be added to any schema hierarchy
  - item must not be in settings group (under overrides) or in dynamic item (e.g. `list` of `dict-modifiable`)
  - addons may define it's dynamic schema items
-- they can be defined with class which inherits from `BaseModuleSettingsDef`
- - it is recommended to use pre implemented `JsonFilesSettingsDef` which defined structure and use json files to define dynamic schemas, schemas and default values
- - check it's docstring and check for `example_addon` in example addons
 - settings definition returns schemas by dynamic schemas names
 
 # Interfaces

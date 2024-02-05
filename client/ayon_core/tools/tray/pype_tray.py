@@ -25,12 +25,7 @@ from ayon_core.lib.openpype_version import (
     is_staging_enabled,
 )
 from ayon_core.modules import TrayModulesManager
-from ayon_core.settings import (
-    get_system_settings,
-    SystemSettings,
-    ProjectSettings,
-    DefaultsNotDefined
-)
+from ayon_core.settings import get_system_settings
 from ayon_core.tools.utils import (
     WrappedCallbackItem,
     paint_image_with_color,
@@ -509,17 +504,12 @@ class TrayManager:
             version_check_timer.start()
         self._version_check_timer = version_check_timer
 
-        # For storing missing settings dialog
-        self._settings_validation_dialog = None
-
         self.execute_in_main_thread(self._startup_validations)
 
     def _startup_validations(self):
         """Run possible startup validations."""
         # Trigger version validation on start
         self._version_check_timer.timeout.emit()
-
-        self._validate_settings_defaults()
 
         if not op_version_control_available():
             dialog = BuildVersionDialog()
@@ -528,45 +518,6 @@ class TrayManager:
         elif is_staging_enabled() and not is_running_staging():
             dialog = ProductionStagingDialog()
             dialog.exec_()
-
-    def _validate_settings_defaults(self):
-        valid = True
-        try:
-            SystemSettings()
-            ProjectSettings()
-
-        except DefaultsNotDefined:
-            valid = False
-
-        if valid:
-            return
-
-        title = "Settings miss default values"
-        msg = (
-            "Your OpenPype will not work as expected! \n"
-            "Some default values in settings are missing. \n\n"
-            "Please contact OpenPype team."
-        )
-        msg_box = QtWidgets.QMessageBox(
-            QtWidgets.QMessageBox.Warning,
-            title,
-            msg,
-            QtWidgets.QMessageBox.Ok,
-            flags=QtCore.Qt.Dialog
-        )
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
-        msg_box.setWindowIcon(icon)
-        msg_box.setStyleSheet(style.load_stylesheet())
-        msg_box.buttonClicked.connect(self._post_validate_settings_defaults)
-
-        self._settings_validation_dialog = msg_box
-
-        msg_box.show()
-
-    def _post_validate_settings_defaults(self):
-        widget = self._settings_validation_dialog
-        self._settings_validation_dialog = None
-        widget.deleteLater()
 
     def show_tray_message(self, title, message, icon=None, msecs=None):
         """Show tray message.
