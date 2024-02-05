@@ -7,7 +7,6 @@ from datetime import datetime
 import requests
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
     OpenPypePyblishPluginMixin
@@ -388,6 +387,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
             "TOOL_ENV",
             "FOUNDRY_LICENSE",
             "OPENPYPE_SG_USER",
+            "AYON_BUNDLE_NAME",
         ]
 
         # Add OpenPype version if we are running from build.
@@ -406,13 +406,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
                             if key in os.environ}, **legacy_io.Session)
 
         # to recognize render jobs
-        if AYON_SERVER_ENABLED:
-            environment["AYON_BUNDLE_NAME"] = os.environ["AYON_BUNDLE_NAME"]
-            render_job_label = "AYON_RENDER_JOB"
-        else:
-            render_job_label = "OPENPYPE_RENDER_JOB"
-
-        environment[render_job_label] = "1"
+        environment["AYON_RENDER_JOB"] = "1"
 
         # finally search replace in values of any key
         if self.env_search_replace_values:

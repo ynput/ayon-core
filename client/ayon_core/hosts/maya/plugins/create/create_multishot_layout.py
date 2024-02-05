@@ -5,7 +5,6 @@ from ayon_api import (
 )
 from maya import cmds  # noqa: F401
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import get_assets
 from ayon_core.hosts.maya.api import plugin
 from ayon_core.lib import BoolDef, EnumDef, TextDef
@@ -208,8 +207,3 @@ class CreateMultishotLayout(plugin.MayaCreator):
                 "name", "label", "path", "folderType", "id"
             ]
         )
-
-
-# blast this creator if Ayon server is not enabled
-if not AYON_SERVER_ENABLED:
-    del CreateMultishotLayout

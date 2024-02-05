@@ -1,4 +1,3 @@
-from ayon_core import AYON_SERVER_ENABLED
 import ayon_core.hosts.aftereffects.api as api
 from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
@@ -46,11 +45,7 @@ class AEWorkfileCreator(AutoCreator):
 
         existing_asset_name = None
         if existing_instance is not None:
-            if AYON_SERVER_ENABLED:
-                existing_asset_name = existing_instance.get("folderPath")
-
-            if existing_asset_name is None:
-                existing_asset_name = existing_instance["asset"]
+            existing_asset_name = existing_instance.get("folderPath")
 
         if existing_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
@@ -59,13 +54,10 @@ class AEWorkfileCreator(AutoCreator):
                 project_name, host_name
             )
             data = {
+                "folderPath": asset_name,
                 "task": task_name,
-                "variant": self.default_variant
+                "variant": self.default_variant,
             }
-            if AYON_SERVER_ENABLED:
-                data["folderPath"] = asset_name
-            else:
-                data["asset"] = asset_name
             data.update(self.get_dynamic_data(
                 self.default_variant, task_name, asset_doc,
                 project_name, host_name, None
@@ -88,10 +80,6 @@ class AEWorkfileCreator(AutoCreator):
                 self.default_variant, task_name, asset_doc,
                 project_name, host_name
             )
-            if AYON_SERVER_ENABLED:
-                existing_instance["folderPath"] = asset_name
-            else:
-                existing_instance["asset"] = asset_name
-
+            existing_instance["folderPath"] = asset_name
             existing_instance["task"] = task_name
             existing_instance["subset"] = subset_name

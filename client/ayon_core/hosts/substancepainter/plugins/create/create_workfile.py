@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import CreatedInstance, AutoCreator
 from ayon_core.client import get_asset_by_name
 
@@ -44,10 +43,8 @@ class CreateWorkfile(AutoCreator):
 
         if current_instance is None:
             current_instance_asset = None
-        elif AYON_SERVER_ENABLED:
-            current_instance_asset = current_instance["folderPath"]
         else:
-            current_instance_asset = current_instance["asset"]
+            current_instance_asset = current_instance["folderPath"]
 
         if current_instance is None:
             self.log.info("Auto-creating workfile instance...")
@@ -56,13 +53,10 @@ class CreateWorkfile(AutoCreator):
                 variant, task_name, asset_doc, project_name, host_name
             )
             data = {
+                "folderPath": asset_name,
                 "task": task_name,
                 "variant": variant
             }
-            if AYON_SERVER_ENABLED:
-                data["folderPath"] = asset_name
-            else:
-                data["asset"] = asset_name
             current_instance = self.create_instance_in_context(subset_name,
                                                                data)
         elif (
@@ -74,10 +68,7 @@ class CreateWorkfile(AutoCreator):
             subset_name = self.get_subset_name(
                 variant, task_name, asset_doc, project_name, host_name
             )
-            if AYON_SERVER_ENABLED:
-                current_instance["folderPath"] = asset_name
-            else:
-                current_instance["asset"] = asset_name
+            current_instance["folderPath"] = asset_name
             current_instance["task"] = task_name
             current_instance["subset"] = subset_name
 

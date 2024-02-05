@@ -1,4 +1,3 @@
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import CreatedInstance
 from ayon_core.hosts.tvpaint.api.plugin import TVPaintAutoCreator
@@ -36,10 +35,8 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
 
         if existing_instance is None:
             existing_asset_name = None
-        elif AYON_SERVER_ENABLED:
-            existing_asset_name = existing_instance["folderPath"]
         else:
-            existing_asset_name = existing_instance["asset"]
+            existing_asset_name = existing_instance["folderPath"]
 
         if existing_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
@@ -51,13 +48,10 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
                 host_name
             )
             data = {
+                "folderPath": asset_name,
                 "task": task_name,
-                "variant": self.default_variant
+                "variant": self.default_variant,
             }
-            if AYON_SERVER_ENABLED:
-                data["folderPath"] = asset_name
-            else:
-                data["asset"] = asset_name
 
             if not self.active_on_create:
                 data["active"] = False
@@ -83,9 +77,6 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
                 host_name,
                 existing_instance
             )
-            if AYON_SERVER_ENABLED:
-                existing_instance["folderPath"] = asset_name
-            else:
-                existing_instance["asset"] = asset_name
+            existing_instance["folderPath"] = asset_name
             existing_instance["task"] = task_name
             existing_instance["subset"] = subset_name

@@ -2,7 +2,6 @@ import os
 import shutil
 import platform
 from pathlib import Path
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.hosts.fusion import (
     FUSION_HOST_DIR,
     FUSION_VERSIONS_DICT,
@@ -163,12 +162,8 @@ class FusionCopyPrefsPrelaunch(PreLaunchHook):
         # to define where it can read custom scripts and tools from
         master_prefs_variable = f"FUSION{profile_version}_MasterPrefs"
 
-        if AYON_SERVER_ENABLED:
-            master_prefs = Path(
-                FUSION_HOST_DIR, "deploy", "ayon", "fusion_shared.prefs")
-        else:
-            master_prefs = Path(
-                FUSION_HOST_DIR, "deploy", "openpype", "fusion_shared.prefs")
+        master_prefs = Path(
+            FUSION_HOST_DIR, "deploy", "ayon", "fusion_shared.prefs")
 
         self.log.info(f"Setting {master_prefs_variable}: {master_prefs}")
         self.launch_context.env[master_prefs_variable] = str(master_prefs)

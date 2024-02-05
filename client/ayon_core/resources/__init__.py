@@ -1,5 +1,4 @@
 import os
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.lib.openpype_version import is_staging_enabled
 
 RESOURCES_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -41,21 +40,15 @@ def get_liberation_font_path(bold=False, italic=False):
 
 
 def get_openpype_production_icon_filepath():
-    filename = "openpype_icon.png"
-    if AYON_SERVER_ENABLED:
-        filename = "AYON_icon.png"
-    return get_resource("icons", filename)
+    return get_resource("icons", "AYON_icon.png")
 
 
 def get_openpype_staging_icon_filepath():
-    filename = "openpype_icon_staging.png"
-    if AYON_SERVER_ENABLED:
-        filename = "AYON_icon_staging.png"
-    return get_resource("icons", filename)
+    return get_resource("icons", "AYON_icon_staging.png")
 
 
 def get_openpype_icon_filepath(staging=None):
-    if AYON_SERVER_ENABLED and os.getenv("AYON_USE_DEV") == "1":
+    if os.getenv("AYON_USE_DEV") == "1":
         return get_resource("icons", "AYON_icon_dev.png")
 
     if staging is None:
@@ -70,17 +63,12 @@ def get_openpype_splash_filepath(staging=None):
     if staging is None:
         staging = is_staging_enabled()
 
-    if AYON_SERVER_ENABLED:
-        if os.getenv("AYON_USE_DEV") == "1":
-            splash_file_name = "AYON_splash_dev.png"
-        elif staging:
-            splash_file_name = "AYON_splash_staging.png"
-        else:
-            splash_file_name = "AYON_splash.png"
+    if os.getenv("AYON_USE_DEV") == "1":
+        splash_file_name = "AYON_splash_dev.png"
     elif staging:
-        splash_file_name = "openpype_splash_staging.png"
+        splash_file_name = "AYON_splash_staging.png"
     else:
-        splash_file_name = "openpype_splash.png"
+        splash_file_name = "AYON_splash.png"
     return get_resource("icons", splash_file_name)
 
 

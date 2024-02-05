@@ -2,7 +2,6 @@ import json
 
 from maya import cmds
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.hosts.maya.api import (
     lib,
     plugin
@@ -44,10 +43,7 @@ class CreateReview(plugin.MayaCreator):
             members = cmds.ls(selection=True)
 
         project_name = self.project_name
-        if AYON_SERVER_ENABLED:
-            asset_name = instance_data["folderPath"]
-        else:
-            asset_name = instance_data["asset"]
+        asset_name = instance_data["folderPath"]
         asset_doc = get_asset_by_name(project_name, asset_name)
         task_name = instance_data["task"]
         preset = lib.get_capture_preset(

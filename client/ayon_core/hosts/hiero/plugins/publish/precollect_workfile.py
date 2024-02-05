@@ -7,7 +7,6 @@ from qtpy.QtGui import QPixmap
 
 import hiero.ui
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.hosts.hiero.api.otio import hiero_export
 
 
@@ -19,9 +18,7 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
 
     def process(self, context):
         asset = context.data["asset"]
-        asset_name = asset
-        if AYON_SERVER_ENABLED:
-            asset_name = asset_name.split("/")[-1]
+        asset_name = asset.split("/")[-1]
 
         active_timeline = hiero.ui.activeSequence()
         project = active_timeline.project()

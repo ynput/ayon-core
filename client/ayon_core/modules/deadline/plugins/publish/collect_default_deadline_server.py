@@ -2,8 +2,6 @@
 """Collect default Deadline server."""
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
-
 
 class CollectDefaultDeadlineServer(pyblish.api.ContextPlugin):
     """Collect default Deadline Webservice URL.
@@ -33,15 +31,7 @@ class CollectDefaultDeadlineServer(pyblish.api.ContextPlugin):
             raise AssertionError("OpenPype Deadline module not found.")
 
         deadline_settings = context.data["project_settings"]["deadline"]
-        deadline_server_name = None
-        if AYON_SERVER_ENABLED:
-            deadline_server_name = deadline_settings["deadline_server"]
-        else:
-            deadline_servers = deadline_settings["deadline_servers"]
-            if deadline_servers:
-                deadline_server_name = deadline_servers[0]
-
-            context.data["deadlinePassMongoUrl"] = self.pass_mongo_url
+        deadline_server_name = deadline_settings["deadline_server"]
 
         deadline_webservice = None
         if deadline_server_name:

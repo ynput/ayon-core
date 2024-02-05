@@ -7,7 +7,6 @@ from abc import (
 import six
 import hou
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import (
     CreatorError,
     LegacyCreator,
@@ -185,10 +184,7 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             if node_type is None:
                 node_type = "geometry"
 
-            if AYON_SERVER_ENABLED:
-                asset_name = instance_data["folderPath"]
-            else:
-                asset_name = instance_data["asset"]
+            asset_name = instance_data["folderPath"]
 
             instance_node = self.create_instance_node(
                 asset_name, subset_name, "/out", node_type)

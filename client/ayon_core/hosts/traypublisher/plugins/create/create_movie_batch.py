@@ -2,7 +2,6 @@ import copy
 import os
 import re
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import get_asset_name_identifier
 from ayon_core.lib import (
     FileDef,
@@ -68,11 +67,8 @@ class BatchMovieCreator(TrayPublishCreator):
 
             asset_name = get_asset_name_identifier(asset_doc)
 
+            instance_data["folderPath"] = asset_name
             instance_data["task"] = task_name
-            if AYON_SERVER_ENABLED:
-                instance_data["folderPath"] = asset_name
-            else:
-                instance_data["asset"] = asset_name
 
             # Create new instance
             new_instance = CreatedInstance(self.family, subset_name,
