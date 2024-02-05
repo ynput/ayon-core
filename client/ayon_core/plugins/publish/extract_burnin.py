@@ -42,7 +42,6 @@ class ExtractBurnin(publish.Extractor):
         "hiero",
         "premiere",
         "traypublisher",
-        "standalonepublisher",
         "harmony",
         "fusion",
         "aftereffects",

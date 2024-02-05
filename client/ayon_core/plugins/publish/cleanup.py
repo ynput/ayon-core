@@ -32,7 +32,6 @@ class CleanUp(pyblish.api.InstancePlugin):
         "resolve",
         "tvpaint",
         "unreal",
-        "standalonepublisher",
         "webpublisher",
         "shell"
     ]

@@ -34,7 +34,6 @@ class CollectAudio(pyblish.api.ContextPlugin):
         "premiere",
         "harmony",
         "traypublisher",
-        "standalonepublisher",
         "fusion",
         "tvpaint",
         "resolve",

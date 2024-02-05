@@ -16,7 +16,6 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
     label = "Validate Editorial Asset Name"
     hosts = [
         "hiero",
-        "standalonepublisher",
         "resolve",
         "flame",
         "traypublisher"
