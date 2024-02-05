@@ -4,9 +4,6 @@ from .constants import (
     HOST_WORKFILE_EXTENSIONS,
 )
 
-from .mongodb import (
-    AvalonMongoDB,
-)
 from .anatomy import Anatomy
 
 from .create import (
@@ -104,9 +101,6 @@ __all__ = (
     "AVALON_CONTAINER_ID",
     "AYON_CONTAINER_ID",
     "HOST_WORKFILE_EXTENSIONS",
-
-    # --- MongoDB ---
-    "AvalonMongoDB",
 
     # --- Anatomy ---
     "Anatomy",

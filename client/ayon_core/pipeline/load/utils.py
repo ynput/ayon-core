@@ -28,7 +28,6 @@ from ayon_core.lib import (
     TemplateUnsolved,
 )
 from ayon_core.pipeline import (
-    legacy_io,
     Anatomy,
 )
 
@@ -89,27 +88,26 @@ class LoaderNotFoundError(RuntimeError):
     pass
 
 
-def get_repres_contexts(representation_ids, dbcon=None):
+def get_repres_contexts(representation_ids, project_name=None):
     """Return parenthood context for representation.
 
     Args:
         representation_ids (list): The representation ids.
-        dbcon (AvalonMongoDB): Mongo connection object. `avalon.io` used when
-            not entered.
+        project_name (Optional[str]): Project name.
 
     Returns:
         dict: The full representation context by representation id.
             keys are repre_id, value is dictionary with full documents of
             asset, subset, version and representation.
     """
-
-    if not dbcon:
-        dbcon = legacy_io
+    from ayon_core.pipeline import get_current_project_name
 
     if not representation_ids:
         return {}
 
-    project_name = dbcon.active_project()
+    if not project_name:
+        project_name = get_current_project_name()
+
     repre_docs = get_representations(project_name, representation_ids)
 
     return get_contexts_for_repre_docs(project_name, repre_docs)
@@ -188,26 +186,25 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
     return contexts
 
 
-def get_subset_contexts(subset_ids, dbcon=None):
+def get_subset_contexts(subset_ids, project_name=None):
     """Return parenthood context for subset.
 
         Provides context on subset granularity - less detail than
         'get_repre_contexts'.
     Args:
         subset_ids (list): The subset ids.
-        dbcon (AvalonMongoDB): Mongo connection object. `avalon.io` used when
-            not entered.
+        project_name (Optional[str]): Project name.
     Returns:
         dict: The full representation context by representation id.
     """
-    if not dbcon:
-        dbcon = legacy_io
+    from ayon_core.pipeline import get_current_project_name
 
     contexts = {}
     if not subset_ids:
         return contexts
 
-    project_name = dbcon.active_project()
+    if not project_name:
+        project_name = get_current_project_name()
     subset_docs = get_subsets(project_name, subset_ids)
     subset_docs_by_id = {}
     asset_ids = set()
@@ -251,7 +248,7 @@ def get_representation_context(representation):
 
     assert representation is not None, "This is a bug"
 
-    project_name = legacy_io.active_project()
+    project_name = get_current_project_name()
     if not isinstance(representation, dict):
         representation = get_representation_by_id(
             project_name, representation
@@ -456,9 +453,10 @@ def remove_container(container):
 
 def update_container(container, version=-1):
     """Update a container"""
+    from ayon_core.pipeline import get_current_project_name
 
     # Compute the different version from 'representation'
-    project_name = legacy_io.active_project()
+    project_name = get_current_project_name()
     current_representation = get_representation_by_id(
         project_name, container["representation"]
     )
@@ -514,6 +512,7 @@ def switch_container(container, representation, loader_plugin=None):
     Returns:
         function call
     """
+    from ayon_core.pipeline import get_current_project_name
 
     # Get the Loader for this container
     if loader_plugin is None:
@@ -534,7 +533,7 @@ def switch_container(container, representation, loader_plugin=None):
         )
 
     # Get the new representation to switch to
-    project_name = legacy_io.active_project()
+    project_name = get_current_project_name()
     new_representation = get_representation_by_id(
         project_name, representation["_id"]
     )
@@ -554,11 +553,12 @@ def switch_container(container, representation, loader_plugin=None):
 
 def get_representation_path_from_context(context):
     """Preparation wrapper using only context as a argument"""
-    representation = context['representation']
+    from ayon_core.pipeline import get_current_project_name
+
+    representation = context["representation"]
     project_doc = context.get("project")
     root = None
-    session_project = legacy_io.Session.get("AVALON_PROJECT")
-    if project_doc and project_doc["name"] != session_project:
+    if project_doc and project_doc["name"] != get_current_project_name():
         anatomy = Anatomy(project_doc["name"])
         root = anatomy.roots
 
@@ -611,7 +611,7 @@ def get_representation_path_with_anatomy(repre_doc, anatomy):
     return path.normalized()
 
 
-def get_representation_path(representation, root=None, dbcon=None):
+def get_representation_path(representation, root=None):
     """Get filename from representation document
 
     There are three ways of getting the path from representation which are
@@ -628,9 +628,6 @@ def get_representation_path(representation, root=None, dbcon=None):
         str: fullpath of the representation
 
     """
-
-    if dbcon is None:
-        dbcon = legacy_io
 
     if root is None:
         from ayon_core.pipeline import registered_root
@@ -659,68 +656,6 @@ def get_representation_path(representation, root=None, dbcon=None):
 
         if not path:
             return path
-
-        normalized_path = os.path.normpath(path)
-        if os.path.exists(normalized_path):
-            return normalized_path
-        return path
-
-    def path_from_config():
-        try:
-            project_name = dbcon.active_project()
-            version_, subset, asset, project = get_representation_parents(
-                project_name, representation
-            )
-        except ValueError:
-            log.debug(
-                "Representation %s wasn't found in database, "
-                "like a bug" % representation["name"]
-            )
-            return None
-
-        try:
-            template = project["config"]["template"]["publish"]
-        except KeyError:
-            log.debug(
-                "No template in project %s, "
-                "likely a bug" % project["name"]
-            )
-            return None
-
-        # default list() in get would not discover missing parents on asset
-        parents = asset.get("data", {}).get("parents")
-        if parents is not None:
-            hierarchy = "/".join(parents)
-
-        # Cannot fail, required members only
-        data = {
-            "root": root,
-            "project": {
-                "name": project["name"],
-                "code": project.get("data", {}).get("code")
-            },
-            "asset": asset["name"],
-            "hierarchy": hierarchy,
-            "subset": subset["name"],
-            "version": version_["name"],
-            "representation": representation["name"],
-            "family": representation.get("context", {}).get("family"),
-            "user": dbcon.Session.get("AVALON_USER", getpass.getuser()),
-            "app": dbcon.Session.get("AVALON_APP", ""),
-            "task": dbcon.Session.get("AVALON_TASK", "")
-        }
-
-        try:
-            template_obj = StringTemplate(template)
-            path = str(template_obj.format(data))
-            # Force replacing backslashes with forward slashed if not on
-            #   windows
-            if platform.system().lower() != "windows":
-                path = path.replace("\\", "/")
-
-        except KeyError as e:
-            log.debug("Template references unavailable data: %s" % e)
-            return None
 
         normalized_path = os.path.normpath(path)
         if os.path.exists(normalized_path):
@@ -761,9 +696,7 @@ def get_representation_path(representation, root=None, dbcon=None):
                 return os.path.normpath(path)
 
     return (
-        path_from_representation() or
-        path_from_config() or
-        path_from_data()
+        path_from_representation() or path_from_data()
     )
 
 
@@ -833,14 +766,13 @@ def get_outdated_containers(host=None, project_name=None):
         host (ModuleType): Host implementation with 'ls' function available.
         project_name (str): Name of project in which context we are.
     """
+    from ayon_core.pipeline import registered_host, get_current_project_name
 
     if host is None:
-        from ayon_core.pipeline import registered_host
-
         host = registered_host()
 
     if project_name is None:
-        project_name = legacy_io.active_project()
+        project_name = get_current_project_name()
 
     if isinstance(host, ILoadHost):
         containers = host.get_containers()

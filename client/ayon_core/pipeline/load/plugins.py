@@ -259,11 +259,12 @@ class SubsetLoaderPlugin(LoaderPlugin):
 
 def discover_loader_plugins(project_name=None):
     from ayon_core.lib import Logger
+    from ayon_core.pipeline import get_current_project_name
 
     log = Logger.get_logger("LoaderDiscover")
     plugins = discover(LoaderPlugin)
     if not project_name:
-        project_name = legacy_io.active_project()
+        project_name = get_current_project_name()
     system_settings = get_system_settings()
     project_settings = get_project_settings(project_name)
     for plugin in plugins:
