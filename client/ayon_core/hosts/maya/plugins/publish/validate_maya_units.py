@@ -2,9 +2,9 @@ import maya.cmds as cmds
 
 import pyblish.api
 
-import openpype.hosts.maya.api.lib as mayalib
-from openpype.pipeline.context_tools import get_current_project_asset
-from openpype.pipeline.publish import (
+import ayon_core.hosts.maya.api.lib as mayalib
+from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.publish import (
     RepairContextAction,
     ValidateSceneOrder,
     PublishXmlValidationError

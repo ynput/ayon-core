@@ -6,13 +6,13 @@ from collections import defaultdict
 import clique
 from maya import cmds
 
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from openpype.hosts.maya.api import lib
-from openpype.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api import lib
+from ayon_core.hosts.maya.api.pipeline import containerise
 
 
 # Do not reset these values on update but only apply on first load

@@ -5,11 +5,11 @@ import attr
 
 import pyblish.api
 
-from openpype.settings import get_project_settings
-from openpype.pipeline import publish
-from openpype.pipeline.publish import RenderInstance
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import publish
+from ayon_core.pipeline.publish import RenderInstance
 
-from openpype.hosts.aftereffects.api import get_stub
+from ayon_core.hosts.aftereffects.api import get_stub
 
 
 @attr.s

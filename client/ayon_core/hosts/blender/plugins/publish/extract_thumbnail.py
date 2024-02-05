@@ -2,9 +2,9 @@ import os
 import glob
 
 import pyblish.api
-from openpype.pipeline import publish
-from openpype.hosts.blender.api import capture
-from openpype.hosts.blender.api.lib import maintained_time
+from ayon_core.pipeline import publish
+from ayon_core.hosts.blender.api import capture
+from ayon_core.hosts.blender.api.lib import maintained_time
 
 import bpy
 

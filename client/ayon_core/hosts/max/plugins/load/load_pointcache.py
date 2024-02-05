@@ -5,10 +5,10 @@ Because of limited api, alembics can be only loaded, but not easily updated.
 
 """
 import os
-from openpype.pipeline import load, get_representation_path
-from openpype.hosts.max.api import lib, maintained_selection
-from openpype.hosts.max.api.lib import unique_namespace
-from openpype.hosts.max.api.pipeline import (
+from ayon_core.pipeline import load, get_representation_path
+from ayon_core.hosts.max.api import lib, maintained_selection
+from ayon_core.hosts.max.api.lib import unique_namespace
+from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object
 )

@@ -1,7 +1,7 @@
 import os
 
-from openpype import PLUGINS_DIR, AYON_SERVER_ENABLED
-from openpype.modules import (
+from ayon_core import AYON_CORE_ROOT, AYON_SERVER_ENABLED
+from ayon_core.modules import (
     OpenPypeModule,
     ITrayAction,
 )
@@ -31,9 +31,9 @@ class LauncherAction(OpenPypeModule, ITrayAction):
         if not self.tray_initialized:
             return
 
-        from openpype.pipeline.actions import register_launcher_action_path
+        from ayon_core.pipeline.actions import register_launcher_action_path
 
-        actions_dir = os.path.join(PLUGINS_DIR, "actions")
+        actions_dir = os.path.join(AYON_CORE_ROOT, "plugins", "actions")
         if os.path.exists(actions_dir):
             register_launcher_action_path(actions_dir)
 
@@ -68,9 +68,9 @@ class LauncherAction(OpenPypeModule, ITrayAction):
         if self._window:
             return
         if AYON_SERVER_ENABLED:
-            from openpype.tools.ayon_launcher.ui import LauncherWindow
+            from ayon_core.tools.ayon_launcher.ui import LauncherWindow
         else:
-            from openpype.tools.launcher import LauncherWindow
+            from ayon_core.tools.launcher import LauncherWindow
         self._window = LauncherWindow()
 
     def _show_launcher(self):

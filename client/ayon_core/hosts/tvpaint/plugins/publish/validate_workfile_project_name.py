@@ -1,5 +1,5 @@
 import pyblish.api
-from openpype.pipeline import PublishXmlValidationError
+from ayon_core.pipeline import PublishXmlValidationError
 
 
 class ValidateWorkfileProjectName(pyblish.api.ContextPlugin):

@@ -6,11 +6,11 @@ import json
 from typing import Any, Dict, Union
 
 import six
-from openpype.pipeline import get_current_project_name, colorspace
-from openpype.settings import get_project_settings
-from openpype.pipeline.context_tools import (
+from ayon_core.pipeline import get_current_project_name, colorspace
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline.context_tools import (
     get_current_project, get_current_project_asset)
-from openpype.style import load_stylesheet
+from ayon_core.style import load_stylesheet
 from pymxs import runtime as rt
 
 
@@ -405,7 +405,7 @@ def check_colorspace():
             project_name, "max", project_settings)
         if max_config_data and color_mgr.Mode != rt.Name("OCIO_Custom"):
             if not is_headless():
-                from openpype.widgets import popup
+                from ayon_core.widgets import popup
                 dialog = popup.Popup(parent=parent)
                 dialog.setWindowTitle("Warning: Wrong OCIO Mode")
                 dialog.setMessage("This scene has wrong OCIO "

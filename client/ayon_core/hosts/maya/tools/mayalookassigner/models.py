@@ -3,8 +3,8 @@ from collections import defaultdict
 from qtpy import QtCore
 import qtawesome
 
-from openpype.tools.utils import models
-from openpype.style import get_default_entity_icon_color
+from ayon_core.tools.utils import models
+from ayon_core.style import get_default_entity_icon_color
 
 
 class AssetModel(models.TreeModel):

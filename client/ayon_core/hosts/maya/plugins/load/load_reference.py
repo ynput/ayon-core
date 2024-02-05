@@ -5,9 +5,9 @@ import contextlib
 from maya import cmds
 import qargparse
 
-from openpype.settings import get_project_settings
-import openpype.hosts.maya.api.plugin
-from openpype.hosts.maya.api.lib import (
+from ayon_core.settings import get_project_settings
+import ayon_core.hosts.maya.api.plugin
+from ayon_core.hosts.maya.api.lib import (
     maintained_selection,
     get_container_members,
     parent_nodes,

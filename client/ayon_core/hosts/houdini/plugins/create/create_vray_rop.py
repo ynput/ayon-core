@@ -2,9 +2,9 @@
 """Creator plugin to create VRay ROP."""
 import hou
 
-from openpype.hosts.houdini.api import plugin
-from openpype.pipeline import CreatedInstance
-from openpype.lib import EnumDef, BoolDef
+from ayon_core.hosts.houdini.api import plugin
+from ayon_core.pipeline import CreatedInstance
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class CreateVrayROP(plugin.HoudiniCreator):

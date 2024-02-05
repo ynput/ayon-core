@@ -1,5 +1,5 @@
 import collections
-from openpype.client import (
+from ayon_core.client import (
     get_versions,
     get_subsets,
     get_assets,

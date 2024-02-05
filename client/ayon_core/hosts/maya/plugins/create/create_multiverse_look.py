@@ -1,5 +1,5 @@
-from openpype.hosts.maya.api import plugin
-from openpype.lib import (
+from ayon_core.hosts.maya.api import plugin
+from ayon_core.lib import (
     BoolDef,
     EnumDef
 )

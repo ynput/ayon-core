@@ -1,12 +1,12 @@
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from openpype.tools.utils import (
+from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     BaseClickableFrame,
     set_style_property,
 )
-from openpype.tools.ayon_utils.widgets import FoldersWidget
+from ayon_core.tools.ayon_utils.widgets import FoldersWidget
 
 NOT_SET = object()
 

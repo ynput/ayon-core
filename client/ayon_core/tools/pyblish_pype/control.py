@@ -22,7 +22,7 @@ import pyblish.version
 from . import util
 from .constants import InstanceStates
 
-from openpype.settings import get_current_project_settings
+from ayon_core.settings import get_current_project_settings
 
 
 class IterationBreak(Exception):

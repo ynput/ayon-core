@@ -5,14 +5,14 @@ import copy
 import collections
 import uuid
 
-from openpype.client import (
+from ayon_core.client import (
     get_project,
     get_assets,
     get_subsets,
     get_versions,
     get_representations,
 )
-from openpype.pipeline.load import (
+from ayon_core.pipeline.load import (
     discover_loader_plugins,
     SubsetLoaderPlugin,
     filter_repre_contexts_by_loader,
@@ -23,8 +23,8 @@ from openpype.pipeline.load import (
     LoadError,
     IncompatibleLoaderError,
 )
-from openpype.tools.ayon_utils.models import NestedCacheItem
-from openpype.tools.ayon_loader.abstract import ActionItem
+from ayon_core.tools.ayon_utils.models import NestedCacheItem
+from ayon_core.tools.ayon_loader.abstract import ActionItem
 
 ACTIONS_MODEL_SENDER = "actions.model"
 NOT_SET = object()

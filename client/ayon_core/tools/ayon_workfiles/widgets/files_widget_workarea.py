@@ -1,12 +1,12 @@
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.style import (
+from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from openpype.tools.utils import TreeView
-from openpype.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.tools.utils import TreeView
+from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2

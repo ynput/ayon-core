@@ -4,8 +4,8 @@ import json
 
 import six
 
-from openpype.settings import get_project_settings
-from openpype.lib import Logger
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import Logger
 
 from .anatomy import Anatomy
 from .template_data import get_project_template_data

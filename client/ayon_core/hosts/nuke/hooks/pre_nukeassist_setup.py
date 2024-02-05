@@ -1,4 +1,4 @@
-from openpype.lib.applications import PreLaunchHook
+from ayon_core.lib.applications import PreLaunchHook
 
 
 class PrelaunchNukeAssistHook(PreLaunchHook):

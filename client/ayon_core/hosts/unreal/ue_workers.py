@@ -11,8 +11,8 @@ from typing import List, Union
 
 from qtpy import QtCore
 
-import openpype.hosts.unreal.lib as ue_lib
-from openpype.settings import get_project_settings
+import ayon_core.hosts.unreal.lib as ue_lib
+from ayon_core.settings import get_project_settings
 
 
 def parse_comp_progress(line: str, progress_signal: QtCore.Signal(int)):

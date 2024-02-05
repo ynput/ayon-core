@@ -13,19 +13,19 @@ import re
 import collections
 import json
 
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_name,
     get_subsets,
     get_last_versions,
     get_representations,
     get_linked_assets,
 )
-from openpype.settings import get_project_settings
-from openpype.lib import (
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import (
     filter_profiles,
     Logger,
 )
-from openpype.pipeline.load import (
+from ayon_core.pipeline.load import (
     discover_loader_plugins,
     IncompatibleLoaderError,
     load_container,
@@ -100,7 +100,7 @@ class BuildWorkfile:
             List[Dict[str, Any]]: Loaded containers during build.
         """
 
-        from openpype.pipeline.context_tools import (
+        from ayon_core.pipeline.context_tools import (
             get_current_project_name,
             get_current_asset_name,
             get_current_task_name,
@@ -240,7 +240,7 @@ class BuildWorkfile:
             Dict[str, Any]: preset per entered task name
         """
 
-        from openpype.pipeline.context_tools import (
+        from ayon_core.pipeline.context_tools import (
             get_current_host_name,
             get_current_project_name,
         )
@@ -660,7 +660,7 @@ class BuildWorkfile:
         ```
         """
 
-        from openpype.pipeline.context_tools import get_current_project_name
+        from ayon_core.pipeline.context_tools import get_current_project_name
 
         output = {}
         if not asset_docs:

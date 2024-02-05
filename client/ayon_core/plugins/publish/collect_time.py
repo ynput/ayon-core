@@ -1,5 +1,5 @@
 import pyblish.api
-from openpype.lib import get_formatted_current_time
+from ayon_core.lib import get_formatted_current_time
 
 
 class CollectTime(pyblish.api.ContextPlugin):

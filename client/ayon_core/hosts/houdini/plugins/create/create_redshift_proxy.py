@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating Redshift proxies."""
-from openpype.hosts.houdini.api import plugin
+from ayon_core.hosts.houdini.api import plugin
 import hou
-from openpype.lib import BoolDef
+from ayon_core.lib import BoolDef
 
 
 class CreateRedshiftProxy(plugin.HoudiniCreator):

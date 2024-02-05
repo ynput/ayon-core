@@ -1,8 +1,8 @@
 import os
 
-from openpype.settings import get_project_settings
-from openpype.lib import filter_profiles, prepare_template_data
-from openpype.pipeline import legacy_io
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import filter_profiles, prepare_template_data
+from ayon_core.pipeline import legacy_io
 
 from .constants import DEFAULT_SUBSET_TEMPLATE
 

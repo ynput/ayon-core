@@ -3,8 +3,8 @@ import os
 import pyblish.api
 from pymxs import runtime as rt
 
-from openpype.hosts.max.api import maintained_selection
-from openpype.pipeline import publish
+from ayon_core.hosts.max.api import maintained_selection
+from ayon_core.pipeline import publish
 
 
 class ExtractTyCache(publish.Extractor):

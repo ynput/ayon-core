@@ -5,16 +5,16 @@ import qtpy
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_project,
     get_assets,
 )
-from openpype.style import (
+from ayon_core.style import (
     get_objected_colors,
     get_default_tools_icon_color,
 )
-from openpype.tools.flickcharm import FlickCharm
+from ayon_core.tools.flickcharm import FlickCharm
 
 from .views import (
     TreeViewSpinner,

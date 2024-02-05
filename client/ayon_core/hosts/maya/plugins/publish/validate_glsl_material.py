@@ -2,11 +2,11 @@ import os
 from maya import cmds
 
 import pyblish.api
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder
 )
-from openpype.pipeline import PublishValidationError
+from ayon_core.pipeline import PublishValidationError
 
 
 class ValidateGLSLMaterial(pyblish.api.InstancePlugin):

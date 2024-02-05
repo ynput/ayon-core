@@ -2,9 +2,9 @@ import re
 
 import pyblish.api
 
-from openpype.hosts.photoshop import api as photoshop
-from openpype.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
-from openpype.pipeline.publish import (
+from ayon_core.hosts.photoshop import api as photoshop
+from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
 )

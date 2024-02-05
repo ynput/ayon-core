@@ -1,8 +1,8 @@
 import pyblish.api
 from maya import cmds
 
-from openpype.hosts.maya.api import lib
-from openpype.pipeline.publish import (
+from ayon_core.hosts.maya.api import lib
+from ayon_core.pipeline.publish import (
     PublishValidationError, RepairAction, ValidateContentsOrder)
 
 

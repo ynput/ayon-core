@@ -13,11 +13,11 @@ from .widgets import (
     ExpandingWidget,
     IconButton
 )
-from openpype.tools.settings import (
+from ayon_core.tools.settings import (
     BTN_FIXED_SIZE,
     CHILD_OFFSET
 )
-from openpype.settings.constants import KEY_REGEX
+from ayon_core.settings.constants import KEY_REGEX
 
 
 KEY_INPUT_TOOLTIP = (

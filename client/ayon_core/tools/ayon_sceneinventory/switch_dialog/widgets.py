@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore
 
-from openpype import style
+from ayon_core import style
 
 
 class ButtonWithMenu(QtWidgets.QToolButton):

@@ -27,13 +27,13 @@ import collections
 
 import pyblish.api
 
-from openpype.client import (
+from ayon_core.client import (
     get_assets,
     get_subsets,
     get_last_versions,
     get_asset_name_identifier,
 )
-from openpype.pipeline.version_start import get_versioning_start
+from ayon_core.pipeline.version_start import get_versioning_start
 
 
 class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):

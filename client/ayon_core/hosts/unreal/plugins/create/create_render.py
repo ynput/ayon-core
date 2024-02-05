@@ -3,15 +3,15 @@ from pathlib import Path
 
 import unreal
 
-from openpype.hosts.unreal.api.pipeline import (
+from ayon_core.hosts.unreal.api.pipeline import (
     UNREAL_VERSION,
     create_folder,
     get_subsequences,
 )
-from openpype.hosts.unreal.api.plugin import (
+from ayon_core.hosts.unreal.api.plugin import (
     UnrealAssetCreator
 )
-from openpype.lib import (
+from ayon_core.lib import (
     UILabelDef,
     UISeparatorDef,
     BoolDef,

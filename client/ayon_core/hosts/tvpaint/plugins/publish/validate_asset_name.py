@@ -1,10 +1,10 @@
 import pyblish.api
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin,
 )
-from openpype.hosts.tvpaint.api.pipeline import (
+from ayon_core.hosts.tvpaint.api.pipeline import (
     list_instances,
     write_instances,
 )

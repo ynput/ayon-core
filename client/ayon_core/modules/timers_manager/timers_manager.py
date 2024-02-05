@@ -2,13 +2,13 @@ import os
 import platform
 
 
-from openpype.client import get_asset_by_name
-from openpype.modules import (
+from ayon_core.client import get_asset_by_name
+from ayon_core.modules import (
     OpenPypeModule,
     ITrayService,
     IPluginPaths
 )
-from openpype.lib.events import register_event_callback
+from ayon_core.lib.events import register_event_callback
 
 from .exceptions import InvalidContextError
 

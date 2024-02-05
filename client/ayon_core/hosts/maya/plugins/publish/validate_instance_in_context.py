@@ -3,9 +3,9 @@
 from __future__ import absolute_import
 
 import pyblish.api
-from openpype import AYON_SERVER_ENABLED
-import openpype.hosts.maya.api.action
-from openpype.pipeline.publish import (
+from ayon_core import AYON_SERVER_ENABLED
+import ayon_core.hosts.maya.api.action
+from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError,

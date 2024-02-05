@@ -1,9 +1,9 @@
 from qtpy import QtWidgets
 
-from openpype import style
-from openpype.lib import Logger
-from openpype.pipeline import legacy_io
-from openpype.tools.attribute_defs import AttributeDefinitionsWidget
+from ayon_core import style
+from ayon_core.lib import Logger
+from ayon_core.pipeline import legacy_io
+from ayon_core.tools.attribute_defs import AttributeDefinitionsWidget
 
 
 class WorkfileBuildPlaceholderDialog(QtWidgets.QDialog):

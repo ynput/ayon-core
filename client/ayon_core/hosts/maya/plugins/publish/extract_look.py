@@ -15,7 +15,7 @@ import pyblish.api
 
 from maya import cmds  # noqa
 
-from openpype.lib import (
+from ayon_core.lib import (
     find_executable,
     source_hash,
     run_subprocess,
@@ -23,9 +23,9 @@ from openpype.lib import (
     ToolNotFoundError,
 )
 
-from openpype.pipeline import legacy_io, publish, KnownPublishError
-from openpype.hosts.maya.api import lib
-from openpype import AYON_SERVER_ENABLED
+from ayon_core.pipeline import legacy_io, publish, KnownPublishError
+from ayon_core.hosts.maya.api import lib
+from ayon_core import AYON_SERVER_ENABLED
 
 # Modes for transfer
 COPY = 1

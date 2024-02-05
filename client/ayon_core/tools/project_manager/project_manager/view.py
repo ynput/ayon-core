@@ -3,7 +3,7 @@ from queue import Queue
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.client import get_project
+from ayon_core.client import get_project
 from .delegates import (
     NumberDelegate,
     NameDelegate,
@@ -11,7 +11,7 @@ from .delegates import (
     ToolsDelegate
 )
 
-from openpype.lib import ApplicationManager
+from ayon_core.lib import ApplicationManager
 from .constants import (
     REMOVED_ROLE,
     IDENTIFIER_ROLE,

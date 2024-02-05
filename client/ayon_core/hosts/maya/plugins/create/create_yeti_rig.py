@@ -1,6 +1,6 @@
 from maya import cmds
 
-from openpype.hosts.maya.api import (
+from ayon_core.hosts.maya.api import (
     lib,
     plugin
 )

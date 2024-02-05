@@ -1,4 +1,4 @@
-from openpype.lib.applications import PostLaunchHook, LaunchTypes
+from ayon_core.lib.applications import PostLaunchHook, LaunchTypes
 
 
 class PostStartTimerHook(PostLaunchHook):

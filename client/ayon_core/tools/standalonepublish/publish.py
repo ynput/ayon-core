@@ -2,8 +2,8 @@ import os
 import sys
 
 import pyblish.api
-from openpype.pipeline import install_openpype_plugins
-from openpype.tools.utils.host_tools import show_publish
+from ayon_core.pipeline import install_openpype_plugins
+from ayon_core.tools.utils.host_tools import show_publish
 
 
 def main(env):

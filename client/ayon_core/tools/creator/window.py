@@ -4,16 +4,16 @@ import re
 
 from qtpy import QtWidgets, QtCore
 
-from openpype.client import get_asset_by_name, get_subsets
-from openpype import style
-from openpype.settings import get_current_project_settings
-from openpype.tools.utils.lib import qt_app_context
-from openpype.pipeline import (
+from ayon_core.client import get_asset_by_name, get_subsets
+from ayon_core import style
+from ayon_core.settings import get_current_project_settings
+from ayon_core.tools.utils.lib import qt_app_context
+from ayon_core.pipeline import (
     get_current_project_name,
     get_current_asset_name,
     get_current_task_name,
 )
-from openpype.pipeline.create import (
+from ayon_core.pipeline.create import (
     SUBSET_NAME_ALLOWED_SYMBOLS,
     legacy_create,
     CreatorError,

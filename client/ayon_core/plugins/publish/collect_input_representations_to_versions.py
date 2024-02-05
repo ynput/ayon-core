@@ -2,7 +2,7 @@ import pyblish.api
 
 from bson.objectid import ObjectId
 
-from openpype.client import get_representations
+from ayon_core.client import get_representations
 
 
 class CollectInputRepresentationsToVersions(pyblish.api.ContextPlugin):

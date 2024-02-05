@@ -1,11 +1,11 @@
 import pyblish.api
 
-from openpype.pipeline import get_current_asset_name
-from openpype.pipeline.publish import (
+from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
 )
-from openpype.hosts.aftereffects.api import get_stub
+from ayon_core.hosts.aftereffects.api import get_stub
 
 
 class ValidateInstanceAssetRepair(pyblish.api.Action):

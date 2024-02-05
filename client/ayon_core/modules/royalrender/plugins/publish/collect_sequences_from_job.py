@@ -8,7 +8,7 @@ from pprint import pformat
 
 import pyblish.api
 
-from openpype.pipeline import legacy_io
+from ayon_core.pipeline import legacy_io
 
 
 def collect(root,

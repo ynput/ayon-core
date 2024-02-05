@@ -1,11 +1,11 @@
-from openpype.pipeline.create.creator_plugins import SubsetConvertorPlugin
-from openpype.hosts.nuke.api.lib import (
+from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
+from ayon_core.hosts.nuke.api.lib import (
     INSTANCE_DATA_KNOB,
     get_node_data,
     get_avalon_knob_data,
     AVALON_TAB,
 )
-from openpype.hosts.nuke.api.plugin import convert_to_valid_instaces
+from ayon_core.hosts.nuke.api.plugin import convert_to_valid_instaces
 
 import nuke
 

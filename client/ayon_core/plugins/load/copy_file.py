@@ -1,5 +1,5 @@
-from openpype.style import get_default_entity_icon_color
-from openpype.pipeline import load
+from ayon_core.style import get_default_entity_icon_color
+from ayon_core.pipeline import load
 
 
 class CopyFile(load.LoaderPlugin):

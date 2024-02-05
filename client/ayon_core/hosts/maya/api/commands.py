@@ -2,8 +2,8 @@
 """OpenPype script commands to be used directly in Maya."""
 from maya import cmds
 
-from openpype.client import get_asset_by_name, get_project
-from openpype.pipeline import get_current_project_name, get_current_asset_name
+from ayon_core.client import get_asset_by_name, get_project
+from ayon_core.pipeline import get_current_project_name, get_current_asset_name
 
 
 class ToolWindows:
@@ -40,10 +40,10 @@ class ToolWindows:
 
 def edit_shader_definitions():
     from qtpy import QtWidgets
-    from openpype.hosts.maya.api.shader_definition_editor import (
+    from ayon_core.hosts.maya.api.shader_definition_editor import (
         ShaderDefinitionsEditor
     )
-    from openpype.tools.utils import qt_app_context
+    from ayon_core.tools.utils import qt_app_context
 
     top_level_widgets = QtWidgets.QApplication.topLevelWidgets()
     main_window = next(widget for widget in top_level_widgets

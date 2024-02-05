@@ -49,8 +49,8 @@ class ExampleWorker(QtCore.QObject):
 import os
 from qtpy import QtCore
 from pathlib import Path
-from openpype.widgets.splash_screen import SplashScreen
-from openpype import resources
+from ayon_core.widgets.splash_screen import SplashScreen
+from ayon_core import resources
 
 
 def exec_plugin_install( engine_path: Path, env: dict = None):

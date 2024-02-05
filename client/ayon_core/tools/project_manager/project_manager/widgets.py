@@ -1,24 +1,24 @@
 import re
 import platform
 
-from openpype.client import get_projects, create_project
+from ayon_core.client import get_projects, create_project
 from .constants import (
     NAME_ALLOWED_SYMBOLS,
     NAME_REGEX
 )
-from openpype.client.operations import (
+from ayon_core.client.operations import (
     PROJECT_NAME_ALLOWED_SYMBOLS,
     PROJECT_NAME_REGEX,
     OperationsSession,
 )
-from openpype.style import load_stylesheet
-from openpype.pipeline import AvalonMongoDB
-from openpype.tools.utils import (
+from ayon_core.style import load_stylesheet
+from ayon_core.pipeline import AvalonMongoDB
+from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     get_warning_pixmap,
     PixmapLabel,
 )
-from openpype.settings.lib import get_default_anatomy_settings
+from ayon_core.settings.lib import get_default_anatomy_settings
 
 from qtpy import QtWidgets, QtCore, QtGui
 

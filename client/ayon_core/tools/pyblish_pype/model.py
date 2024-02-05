@@ -34,7 +34,7 @@ import qtawesome
 from six import text_type
 from .constants import PluginStates, InstanceStates, GroupStates, Roles
 
-from openpype.settings import get_system_settings
+from ayon_core.settings import get_system_settings
 
 
 # ItemTypes

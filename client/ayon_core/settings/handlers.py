@@ -6,13 +6,13 @@ import datetime
 from abc import ABCMeta, abstractmethod
 import six
 
-import openpype.version
-from openpype.client.mongo import (
+import ayon_core.version
+from ayon_core.client.mongo import (
     OpenPypeMongoConnection,
     get_project_connection,
 )
-from openpype.client.entities import get_project
-from openpype.lib.pype_info import get_workstation_info
+from ayon_core.client.entities import get_project
+from ayon_core.lib.pype_info import get_workstation_info
 
 
 from .constants import (
@@ -77,7 +77,7 @@ class SettingsStateInfo:
     ):
         """Create information about this machine for current time."""
 
-        from openpype.lib.pype_info import get_workstation_info
+        from ayon_core.lib.pype_info import get_workstation_info
 
         now = datetime.datetime.now()
         workstation_info = get_workstation_info()
@@ -1075,7 +1075,7 @@ class MongoSettingsHandler(SettingsHandler):
             return
         self._version_order_checked = True
 
-        from openpype.lib.openpype_version import get_OpenPypeVersion
+        from ayon_core.lib.openpype_version import get_OpenPypeVersion
 
         OpenPypeVersion = get_OpenPypeVersion()
         # Skip if 'OpenPypeVersion' is not available
@@ -1119,7 +1119,7 @@ class MongoSettingsHandler(SettingsHandler):
             project_name: None
             for project_name in project_names
         }
-        from openpype.lib.openpype_version import get_OpenPypeVersion
+        from ayon_core.lib.openpype_version import get_OpenPypeVersion
         OpenPypeVersion = get_OpenPypeVersion()
         if OpenPypeVersion is None:
             return output
@@ -1619,7 +1619,7 @@ class MongoSettingsHandler(SettingsHandler):
         if contain_legacy:
             set_versions.remove(LEGACY_SETTINGS_VERSION)
 
-        from openpype.lib.openpype_version import get_OpenPypeVersion
+        from ayon_core.lib.openpype_version import get_OpenPypeVersion
 
         OpenPypeVersion = get_OpenPypeVersion()
 
@@ -1803,7 +1803,7 @@ class MongoLocalSettingsHandler(LocalSettingsHandler):
 
     def __init__(self, local_site_id=None):
         # Get mongo connection
-        from openpype.lib import get_local_site_id
+        from ayon_core.lib import get_local_site_id
 
         if local_site_id is None:
             local_site_id = get_local_site_id()

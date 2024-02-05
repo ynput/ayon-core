@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Validate VRay Translator settings."""
 import pyblish.api
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     context_plugin_should_run,
     RepairContextAction,
     ValidateContentsOrder,

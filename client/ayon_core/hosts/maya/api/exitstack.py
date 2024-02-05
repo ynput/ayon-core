@@ -6,7 +6,7 @@ compatible implementation to support bothPython 2 and Python 3.
 
 Instead of using ExitStack from contextlib, use it from this module:
 
->>> from openpype.hosts.maya.api.exitstack import ExitStack
+>>> from ayon_core.hosts.maya.api.exitstack import ExitStack
 
 It will provide the appropriate ExitStack implementation for the current
 running Python version.

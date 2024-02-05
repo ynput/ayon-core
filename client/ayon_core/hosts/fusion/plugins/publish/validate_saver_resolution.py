@@ -1,11 +1,11 @@
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin,
 )
 
-from openpype.hosts.fusion.api.action import SelectInvalidAction
-from openpype.hosts.fusion.api import comp_lock_and_undo_chunk
+from ayon_core.hosts.fusion.api.action import SelectInvalidAction
+from ayon_core.hosts.fusion.api import comp_lock_and_undo_chunk
 
 
 class ValidateSaverResolution(

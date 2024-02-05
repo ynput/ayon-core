@@ -1,9 +1,9 @@
 import os
 import pyblish.api
-from openpype.pipeline.publish import get_errored_plugins_from_context
-from openpype.lib import version_up
+from ayon_core.pipeline.publish import get_errored_plugins_from_context
+from ayon_core.lib import version_up
 
-from openpype.hosts.photoshop import api as photoshop
+from ayon_core.hosts.photoshop import api as photoshop
 
 
 class IncrementWorkfile(pyblish.api.InstancePlugin):

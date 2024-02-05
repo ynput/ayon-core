@@ -18,9 +18,9 @@ from abc import ABCMeta, abstractmethod
 import six
 import appdirs
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import get_ayon_server_api_connection
-from openpype.settings import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import get_ayon_server_api_connection
+from ayon_core.settings import (
     get_system_settings,
     SYSTEM_SETTINGS_KEY,
     PROJECT_SETTINGS_KEY,
@@ -28,16 +28,16 @@ from openpype.settings import (
     SCHEMA_KEY_PROJECT_SETTINGS
 )
 
-from openpype.settings.lib import (
+from ayon_core.settings.lib import (
     get_studio_system_settings_overrides,
     load_json_file,
 )
-from openpype.settings.ayon_settings import (
+from ayon_core.settings.ayon_settings import (
     is_dev_mode_enabled,
     get_ayon_settings,
 )
 
-from openpype.lib import (
+from ayon_core.lib import (
     Logger,
     import_filepath,
     import_module_from_dirpath,

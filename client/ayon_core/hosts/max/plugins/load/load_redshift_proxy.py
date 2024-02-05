@@ -1,18 +1,18 @@
 import os
 import clique
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from openpype.pipeline.load import LoadError
-from openpype.hosts.max.api.pipeline import (
+from ayon_core.pipeline.load import LoadError
+from ayon_core.hosts.max.api.pipeline import (
     containerise,
     update_custom_attribute_data,
     get_previous_loaded_object
 )
-from openpype.hosts.max.api import lib
-from openpype.hosts.max.api.lib import (
+from ayon_core.hosts.max.api import lib
+from ayon_core.hosts.max.api.lib import (
     unique_namespace,
     get_plugins
 )

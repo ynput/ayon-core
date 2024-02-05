@@ -5,7 +5,7 @@ import pyblish.api
 
 import substance_painter.export
 
-from openpype.pipeline import PublishValidationError
+from ayon_core.pipeline import PublishValidationError
 
 
 class ValidateOutputMaps(pyblish.api.InstancePlugin):

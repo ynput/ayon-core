@@ -3,8 +3,8 @@ import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.tools.flickcharm import FlickCharm
-from openpype.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.tools.flickcharm import FlickCharm
+from ayon_core.tools.ayon_utils.widgets import get_qt_icon
 
 from .resources import get_options_image_path
 

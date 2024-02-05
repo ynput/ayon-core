@@ -275,7 +275,7 @@ def create_otio_reference(clip_data, fps=None):
 
 
 def create_otio_clip(clip_data):
-    from openpype.hosts.flame.api import MediaInfoFile, TimeEffectMetadata
+    from ayon_core.hosts.flame.api import MediaInfoFile, TimeEffectMetadata
 
     segment = clip_data["PySegment"]
 

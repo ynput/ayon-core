@@ -2,14 +2,14 @@ from maya import cmds
 
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     RepairAction,
     PublishValidationError
 )
 
-from openpype.hosts.maya.api import lib
-import openpype.hosts.maya.api.action
+from ayon_core.hosts.maya.api import lib
+import ayon_core.hosts.maya.api.action
 
 
 class ValidateRigControllersArnoldAttributes(pyblish.api.InstancePlugin):

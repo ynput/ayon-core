@@ -2,8 +2,8 @@ import os
 import threading
 import time
 
-from openpype.modules import OpenPypeModule, ITrayModule, IPluginPaths
-from openpype.client import get_asset_by_name
+from ayon_core.modules import OpenPypeModule, ITrayModule, IPluginPaths
+from ayon_core.client import get_asset_by_name
 
 from .constants import CLOCKIFY_FTRACK_USER_PATH, CLOCKIFY_FTRACK_SERVER_PATH
 

@@ -1,5 +1,5 @@
-from openpype.hosts.maya.api import plugin
-from openpype.pipeline import CreatorError
+from ayon_core.hosts.maya.api import plugin
+from ayon_core.pipeline import CreatorError
 
 
 class CreateRenderSetup(plugin.MayaCreator):

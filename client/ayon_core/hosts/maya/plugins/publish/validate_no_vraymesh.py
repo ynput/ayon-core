@@ -1,6 +1,6 @@
 import pyblish.api
 from maya import cmds
-from openpype.pipeline.publish import PublishValidationError
+from ayon_core.pipeline.publish import PublishValidationError
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):

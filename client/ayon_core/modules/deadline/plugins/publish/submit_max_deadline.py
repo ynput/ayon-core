@@ -3,27 +3,27 @@ import getpass
 import copy
 import attr
 
-from openpype.lib import (
+from ayon_core.lib import (
     TextDef,
     BoolDef,
     NumberDef,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     legacy_io,
     OpenPypePyblishPluginMixin
 )
-from openpype.pipeline.publish.lib import (
+from ayon_core.pipeline.publish.lib import (
     replace_with_published_scene_path
 )
-from openpype.pipeline.publish import KnownPublishError
-from openpype.hosts.max.api.lib import (
+from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.hosts.max.api.lib import (
     get_current_renderer,
     get_multipass_setting
 )
-from openpype.hosts.max.api.lib_rendersettings import RenderSettings
+from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
-from openpype.lib import is_running_from_build
+from ayon_core.lib import is_running_from_build
 
 
 @attr.s
@@ -200,11 +200,11 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
     def _use_published_name(self, data, project_settings):
         # Not all hosts can import these modules.
-        from openpype.hosts.max.api.lib import (
+        from ayon_core.hosts.max.api.lib import (
             get_current_renderer,
             get_multipass_setting
         )
-        from openpype.hosts.max.api.lib_rendersettings import RenderSettings
+        from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
 
         instance = self._instance
         job_info = copy.deepcopy(self.job_info)

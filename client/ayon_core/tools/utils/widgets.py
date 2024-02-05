@@ -4,12 +4,12 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
 import qtawesome
 
-from openpype.style import (
+from ayon_core.style import (
     get_objected_colors,
     get_style_image_path,
     get_default_tools_icon_color,
 )
-from openpype.lib.attribute_definitions import AbstractAttrDef
+from ayon_core.lib.attribute_definitions import AbstractAttrDef
 
 from .lib import get_qta_icon_by_name_and_color
 

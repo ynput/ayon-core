@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.aftereffects.api import get_stub
+from ayon_core.pipeline import publish
+from ayon_core.hosts.aftereffects.api import get_stub
 
 
 class ExtractSaveScene(pyblish.api.ContextPlugin):

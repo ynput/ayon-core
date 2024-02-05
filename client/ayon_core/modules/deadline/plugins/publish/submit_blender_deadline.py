@@ -6,16 +6,16 @@ import getpass
 import attr
 from datetime import datetime
 
-from openpype.lib import (
+from ayon_core.lib import (
     is_running_from_build,
     BoolDef,
     NumberDef,
     TextDef,
 )
-from openpype.pipeline import legacy_io
-from openpype.pipeline.publish import OpenPypePyblishPluginMixin
-from openpype.pipeline.farm.tools import iter_expected_files
-from openpype.tests.lib import is_in_tests
+from ayon_core.pipeline import legacy_io
+from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.pipeline.farm.tools import iter_expected_files
+from ayon_core.tests.lib import is_in_tests
 
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo

@@ -1,12 +1,12 @@
 import sys
 import logging
 
-from openpype.host import IWorkfileHost
-from openpype.pipeline import (
+from ayon_core.host import IWorkfileHost
+from ayon_core.pipeline import (
     registered_host,
     legacy_io,
 )
-from openpype.tools.utils import qt_app_context
+from ayon_core.tools.utils import qt_app_context
 from .window import Window
 
 log = logging.getLogger(__name__)

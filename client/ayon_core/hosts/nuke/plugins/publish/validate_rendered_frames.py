@@ -1,8 +1,8 @@
 import os
 import pyblish.api
 import clique
-from openpype.pipeline import PublishXmlValidationError
-from openpype.pipeline.publish import get_errored_instances_from_context
+from ayon_core.pipeline import PublishXmlValidationError
+from ayon_core.pipeline.publish import get_errored_instances_from_context
 
 
 class RepairActionBase(pyblish.api.Action):

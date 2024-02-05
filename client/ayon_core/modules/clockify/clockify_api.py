@@ -9,8 +9,8 @@ from .constants import (
     ADMIN_PERMISSION_NAMES,
 )
 
-from openpype.lib.local_settings import OpenPypeSecureRegistry
-from openpype.lib import Logger
+from ayon_core.lib.local_settings import OpenPypeSecureRegistry
+from ayon_core.lib import Logger
 
 
 class ClockifyAPI:

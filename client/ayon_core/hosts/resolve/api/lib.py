@@ -5,8 +5,8 @@ import os
 import contextlib
 from opentimelineio import opentime
 
-from openpype.lib import Logger
-from openpype.pipeline.editorial import (
+from ayon_core.lib import Logger
+from ayon_core.pipeline.editorial import (
     is_overlapping_otio_ranges,
     frames_to_timecode
 )

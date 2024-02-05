@@ -2,7 +2,7 @@ from pprint import pformat
 import pyblish.api
 import opentimelineio as otio
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 
 class CollectShotInstance(pyblish.api.InstancePlugin):

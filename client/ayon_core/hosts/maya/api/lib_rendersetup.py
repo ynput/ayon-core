@@ -19,7 +19,7 @@ from maya.app.renderSetup.model.override import (
     UniqueOverride
 )
 
-from openpype.hosts.maya.api.lib import get_attribute
+from ayon_core.hosts.maya.api.lib import get_attribute
 
 EXACT_MATCH = 0
 PARENT_MATCH = 1

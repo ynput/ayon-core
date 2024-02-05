@@ -2,12 +2,12 @@
 
 """
 import qargparse
-from openpype.pipeline import load
-from openpype.hosts.maya.api.lib import (
+from ayon_core.pipeline import load
+from ayon_core.hosts.maya.api.lib import (
     maintained_selection,
     get_custom_namespace
 )
-import openpype.hosts.maya.api.plugin
+import ayon_core.hosts.maya.api.plugin
 
 
 class SetFrameRangeLoader(load.LoaderPlugin):

@@ -12,8 +12,8 @@ import json
 
 import pyblish.api
 
-from openpype.pipeline import legacy_io, KnownPublishError
-from openpype.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline import legacy_io, KnownPublishError
+from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 
 
 class CollectRenderedFiles(pyblish.api.ContextPlugin):

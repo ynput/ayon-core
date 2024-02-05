@@ -4,7 +4,7 @@ import pyblish.api
 import types
 from maya import cmds
 
-from openpype.pipeline.publish import RepairContextAction
+from ayon_core.pipeline.publish import RepairContextAction
 
 
 class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin):

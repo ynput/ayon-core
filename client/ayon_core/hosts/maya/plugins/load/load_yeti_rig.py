@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 
-from openpype.settings import get_current_project_settings
-import openpype.hosts.maya.api.plugin
-from openpype.hosts.maya.api import lib
+from ayon_core.settings import get_current_project_settings
+import ayon_core.hosts.maya.api.plugin
+from ayon_core.hosts.maya.api import lib
 
 
 class YetiRigLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):

@@ -5,7 +5,7 @@ from .widgets import (
     ExpandingWidget,
     GridLabelWidget
 )
-from openpype.tools.settings import CHILD_OFFSET
+from ayon_core.tools.settings import CHILD_OFFSET
 
 
 class WrapperWidget(QtWidgets.QWidget):

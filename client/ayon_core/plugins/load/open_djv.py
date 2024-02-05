@@ -1,6 +1,6 @@
 import os
-from openpype.lib import ApplicationManager
-from openpype.pipeline import load
+from ayon_core.lib import ApplicationManager
+from ayon_core.pipeline import load
 
 
 def existing_djv_path():

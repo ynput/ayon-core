@@ -4,12 +4,12 @@ import os
 import pyblish.api
 from pymxs import runtime as rt
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-from openpype.hosts.max.api.lib import get_plugins
+from ayon_core.hosts.max.api.lib import get_plugins
 
 
 class ValidateLoadedPlugin(OptionalPyblishPluginMixin,

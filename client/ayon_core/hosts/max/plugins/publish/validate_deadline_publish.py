@@ -1,13 +1,13 @@
 import os
 import pyblish.api
 from pymxs import runtime as rt
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.hosts.max.api.lib_rendersettings import RenderSettings
+from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
 
 
 class ValidateDeadlinePublish(pyblish.api.InstancePlugin,

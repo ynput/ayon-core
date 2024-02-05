@@ -1,6 +1,6 @@
-from openpype.client import get_project, get_asset_by_name
-from openpype.settings import get_system_settings
-from openpype.lib.local_settings import get_openpype_username
+from ayon_core.client import get_project, get_asset_by_name
+from ayon_core.settings import get_system_settings
+from ayon_core.lib.local_settings import get_openpype_username
 
 
 def get_general_template_data(system_settings=None):

@@ -30,7 +30,7 @@ def CleanupDeadlinePlugin(deadlinePlugin):
 
 class OpenPypeDeadlinePlugin(DeadlinePlugin):
     """
-        Standalone plugin for publishing from OpenPype.
+        Standalone plugin for publishing from ayon_core.
 
         Calls OpenPype executable 'openpype_console' from first correctly found
         file based on plugin configuration. Uses 'publish' command and passes

@@ -11,26 +11,26 @@ import substance_painter.project
 
 import pyblish.api
 
-from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-from openpype.settings import (
+from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
+from ayon_core.settings import (
     get_current_project_settings,
     get_system_settings
 )
 
-from openpype.pipeline.template_data import get_template_data_with_names
-from openpype.pipeline import (
+from ayon_core.pipeline.template_data import get_template_data_with_names
+from ayon_core.pipeline import (
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
     Anatomy
 )
-from openpype.lib import (
+from ayon_core.lib import (
     StringTemplate,
     register_event_callback,
     emit_event,
 )
-from openpype.pipeline.load import any_outdated_containers
-from openpype.hosts.substancepainter import SUBSTANCE_HOST_DIR
+from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.hosts.substancepainter import SUBSTANCE_HOST_DIR
 
 from . import lib
 
@@ -166,7 +166,7 @@ class SubstanceHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def _install_menu(self):
         from PySide2 import QtWidgets
-        from openpype.tools.utils import host_tools
+        from ayon_core.tools.utils import host_tools
 
         parent = substance_painter.ui.get_main_window()
 
@@ -285,7 +285,7 @@ def on_open():
     log.info("Running callback on open..")
 
     if any_outdated_containers():
-        from openpype.widgets import popup
+        from ayon_core.widgets import popup
 
         log.warning("Scene has outdated content.")
 
@@ -298,7 +298,7 @@ def on_open():
 
             # Show outdated pop-up
             def _on_show_inventory():
-                from openpype.tools.utils import host_tools
+                from ayon_core.tools.utils import host_tools
                 host_tools.show_scene_inventory(parent=parent)
 
             dialog = popup.Popup(parent=parent)

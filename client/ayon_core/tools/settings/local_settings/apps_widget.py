@@ -4,8 +4,8 @@ from .widgets import (
     Separator,
     ExpandingWidget
 )
-from openpype.tools.settings import CHILD_OFFSET
-from openpype.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.settings import CHILD_OFFSET
+from ayon_core.tools.utils import PlaceholderLineEdit
 
 
 class AppVariantWidget(QtWidgets.QWidget):

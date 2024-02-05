@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin)
-from openpype.pipeline.publish import RepairAction
-from openpype.hosts.max.api.lib import get_current_renderer
+from ayon_core.pipeline.publish import RepairAction
+from ayon_core.hosts.max.api.lib import get_current_renderer
 
 from pymxs import runtime as rt
 

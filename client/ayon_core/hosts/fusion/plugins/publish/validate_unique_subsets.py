@@ -1,9 +1,9 @@
 from collections import defaultdict
 
 import pyblish.api
-from openpype.pipeline import PublishValidationError
+from ayon_core.pipeline import PublishValidationError
 
-from openpype.hosts.fusion.api.action import SelectInvalidAction
+from ayon_core.hosts.fusion.api.action import SelectInvalidAction
 
 
 class ValidateUniqueSubsets(pyblish.api.ContextPlugin):

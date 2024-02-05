@@ -1,14 +1,14 @@
 from qtpy import QtCore, QtWidgets, QtGui
 
-from openpype import style, resources
-from openpype.tools.utils import (
+from ayon_core import style, resources
+from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     MessageOverlayObject,
 )
 
-from openpype.tools.ayon_utils.widgets import FoldersWidget, TasksWidget
-from openpype.tools.ayon_workfiles.control import BaseWorkfileController
-from openpype.tools.utils import GoToCurrentButton, RefreshButton
+from ayon_core.tools.ayon_utils.widgets import FoldersWidget, TasksWidget
+from ayon_core.tools.ayon_workfiles.control import BaseWorkfileController
+from ayon_core.tools.utils import GoToCurrentButton, RefreshButton
 
 from .side_panel import SidePanelWidget
 from .files_widget import FilesWidget

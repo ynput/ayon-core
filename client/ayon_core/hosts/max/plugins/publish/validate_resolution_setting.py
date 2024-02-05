@@ -1,13 +1,13 @@
 import pyblish.api
 from pymxs import runtime as rt
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     OptionalPyblishPluginMixin
 )
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     PublishValidationError
 )
-from openpype.hosts.max.api.lib import reset_scene_resolution
+from ayon_core.hosts.max.api.lib import reset_scene_resolution
 
 
 class ValidateResolutionSetting(pyblish.api.InstancePlugin,

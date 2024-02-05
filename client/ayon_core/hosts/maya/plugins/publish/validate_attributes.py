@@ -3,8 +3,8 @@ from collections import defaultdict
 import pyblish.api
 from maya import cmds
 
-from openpype.hosts.maya.api.lib import set_attribute
-from openpype.pipeline.publish import (
+from ayon_core.hosts.maya.api.lib import set_attribute
+from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin, PublishValidationError, RepairAction,
     ValidateContentsOrder)
 

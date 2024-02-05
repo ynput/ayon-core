@@ -1,7 +1,7 @@
 import json
 
 from aiohttp.web_response import Response
-from openpype.lib import Logger
+from ayon_core.lib import Logger
 
 
 class TimersManagerModuleRestApi:

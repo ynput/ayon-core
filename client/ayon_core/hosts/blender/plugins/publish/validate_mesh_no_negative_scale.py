@@ -4,12 +4,12 @@ import bpy
 
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-import openpype.hosts.blender.api.action
+import ayon_core.hosts.blender.api.action
 
 
 class ValidateMeshNoNegativeScale(pyblish.api.Validator,

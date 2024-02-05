@@ -1,5 +1,5 @@
 import pyblish.api
-from openpype.hosts.blender.api import workio
+from ayon_core.hosts.blender.api import workio
 
 
 class CollectBlenderCurrentFile(pyblish.api.ContextPlugin):

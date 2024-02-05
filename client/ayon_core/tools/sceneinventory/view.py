@@ -6,23 +6,23 @@ from functools import partial
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from openpype.client import (
+from ayon_core.client import (
     get_version_by_id,
     get_versions,
     get_hero_versions,
     get_representation_by_id,
     get_representations,
 )
-from openpype import style
-from openpype.pipeline import (
+from ayon_core import style
+from ayon_core.pipeline import (
     legacy_io,
     HeroVersionType,
     update_container,
     remove_container,
     discover_inventory_actions,
 )
-from openpype.modules import ModulesManager
-from openpype.tools.utils.lib import (
+from ayon_core.modules import ModulesManager
+from ayon_core.tools.utils.lib import (
     iter_model_rows,
     format_version
 )

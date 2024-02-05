@@ -1,6 +1,6 @@
 import pyblish
 import nuke
-from openpype.pipeline import PublishXmlValidationError
+from ayon_core.pipeline import PublishXmlValidationError
 
 
 class FixProxyMode(pyblish.api.Action):

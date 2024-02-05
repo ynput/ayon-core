@@ -1,9 +1,9 @@
 import re
 from types import NoneType
 import pyblish
-import openpype.hosts.flame.api as opfapi
-from openpype.hosts.flame.otio import flame_export
-from openpype.pipeline.editorial import (
+import ayon_core.hosts.flame.api as opfapi
+from ayon_core.hosts.flame.otio import flame_export
+from ayon_core.pipeline.editorial import (
     is_overlapping_otio_ranges,
     get_media_range_with_retimes
 )

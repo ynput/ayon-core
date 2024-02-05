@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating Arnold ASS files."""
-from openpype.hosts.houdini.api import plugin
-from openpype.lib import BoolDef
+from ayon_core.hosts.houdini.api import plugin
+from ayon_core.lib import BoolDef
 
 
 class CreateArnoldAss(plugin.HoudiniCreator):

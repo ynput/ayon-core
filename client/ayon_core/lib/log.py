@@ -24,8 +24,8 @@ import traceback
 import threading
 import copy
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client.mongo import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client.mongo import (
     MongoEnvNotSet,
     get_default_components,
     OpenPypeMongoConnection,

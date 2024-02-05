@@ -1,8 +1,8 @@
 import pyblish.api
 
 import hou
-from openpype.pipeline.publish import RepairAction
-from openpype.hosts.houdini.api import lib
+from ayon_core.pipeline.publish import RepairAction
+from ayon_core.hosts.houdini.api import lib
 
 
 class CollectRemotePublishSettings(pyblish.api.ContextPlugin):

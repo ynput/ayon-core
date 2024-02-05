@@ -1,5 +1,5 @@
-from openpype.pipeline import publish
-from openpype.hosts.photoshop import api as photoshop
+from ayon_core.pipeline import publish
+from ayon_core.hosts.photoshop import api as photoshop
 
 
 class ExtractSaveScene(publish.Extractor):

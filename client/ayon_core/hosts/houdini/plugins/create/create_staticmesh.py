@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator for Unreal Static Meshes."""
-from openpype.hosts.houdini.api import plugin
-from openpype.lib import BoolDef, EnumDef
+from ayon_core.hosts.houdini.api import plugin
+from ayon_core.lib import BoolDef, EnumDef
 
 import hou
 

@@ -1,14 +1,14 @@
-from openpype.client import get_last_version_by_subset_id
-from openpype.pipeline import (
+from ayon_core.client import get_last_version_by_subset_id
+from ayon_core.pipeline import (
     get_representation_context,
     get_current_project_name
 )
-from openpype.hosts.resolve.api import lib, plugin
-from openpype.hosts.resolve.api.pipeline import (
+from ayon_core.hosts.resolve.api import lib, plugin
+from ayon_core.hosts.resolve.api.pipeline import (
     containerise,
     update_container,
 )
-from openpype.lib.transcoding import (
+from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,
     IMAGE_EXTENSIONS
 )

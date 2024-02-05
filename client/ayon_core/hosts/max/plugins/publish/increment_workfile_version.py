@@ -1,5 +1,5 @@
 import pyblish.api
-from openpype.lib import version_up
+from ayon_core.lib import version_up
 from pymxs import runtime as rt
 
 

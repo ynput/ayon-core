@@ -2,15 +2,15 @@ import contextlib
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_projects,
     get_project,
     get_asset_by_id,
 )
-from openpype.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.utils import PlaceholderLineEdit
 
-from openpype.style import get_default_tools_icon_color
+from ayon_core.style import get_default_tools_icon_color
 
 from . import RecursiveSortFilterProxyModel, AssetModel
 from . import TasksTemplateModel, DeselectableTreeView

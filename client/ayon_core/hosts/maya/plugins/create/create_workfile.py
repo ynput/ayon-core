@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import CreatedInstance, AutoCreator
-from openpype.client import get_asset_by_name, get_asset_name_identifier
-from openpype.hosts.maya.api import plugin
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import CreatedInstance, AutoCreator
+from ayon_core.client import get_asset_by_name, get_asset_name_identifier
+from ayon_core.hosts.maya.api import plugin
 from maya import cmds
 
 

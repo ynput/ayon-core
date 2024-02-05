@@ -5,7 +5,7 @@ import collections
 from bson.objectid import ObjectId
 from pymongo import DeleteOne, InsertOne, UpdateOne
 
-from openpype.client.operations_base import (
+from ayon_core.client.operations_base import (
     REMOVED_VALUE,
     CreateOperation,
     UpdateOperation,
@@ -572,8 +572,8 @@ def create_project(
         dict: Created project document.
     """
 
-    from openpype.settings import ProjectSettings, SaveWarningExc
-    from openpype.pipeline.schema import validate
+    from ayon_core.settings import ProjectSettings, SaveWarningExc
+    from ayon_core.pipeline.schema import validate
 
     if get_project(project_name, fields=["name"]):
         raise ValueError("Project with name \"{}\" already exists".format(

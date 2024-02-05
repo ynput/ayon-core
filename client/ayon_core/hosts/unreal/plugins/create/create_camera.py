@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import unreal
 
-from openpype.pipeline import CreatorError
-from openpype.hosts.unreal.api.pipeline import UNREAL_VERSION
-from openpype.hosts.unreal.api.plugin import (
+from ayon_core.pipeline import CreatorError
+from ayon_core.hosts.unreal.api.pipeline import UNREAL_VERSION
+from ayon_core.hosts.unreal.api.plugin import (
     UnrealAssetCreator,
 )
 

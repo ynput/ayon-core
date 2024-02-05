@@ -2,8 +2,8 @@
 import os
 import re
 
-from openpype.lib import Logger
-from openpype.client import get_assets, get_asset_by_name
+from ayon_core.lib import Logger
+from ayon_core.client import get_assets, get_asset_by_name
 
 
 def get_asset_doc_from_file_name(source_filename, project_name,

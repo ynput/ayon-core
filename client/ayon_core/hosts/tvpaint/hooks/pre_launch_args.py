@@ -1,5 +1,5 @@
-from openpype.lib import get_openpype_execute_args
-from openpype.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 
 
 class TvpaintPrelaunchHook(PreLaunchHook):
@@ -37,6 +37,6 @@ class TvpaintPrelaunchHook(PreLaunchHook):
             self.launch_context.launch_args.extend(remainders)
 
     def launch_script_path(self):
-        from openpype.hosts.tvpaint import get_launch_script_path
+        from ayon_core.hosts.tvpaint import get_launch_script_path
 
         return get_launch_script_path()

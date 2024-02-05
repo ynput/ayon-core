@@ -4,7 +4,7 @@ import asyncio
 
 from aiohttp import web
 
-from openpype.lib import Logger
+from ayon_core.lib import Logger
 from .cors_middleware import cors_middleware
 
 

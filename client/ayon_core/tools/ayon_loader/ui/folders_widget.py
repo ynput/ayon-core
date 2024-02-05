@@ -1,17 +1,17 @@
 import qtpy
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.tools.utils import (
+from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     DeselectableTreeView,
 )
-from openpype.style import get_objected_colors
+from ayon_core.style import get_objected_colors
 
-from openpype.tools.ayon_utils.widgets import (
+from ayon_core.tools.ayon_utils.widgets import (
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
 )
-from openpype.tools.ayon_utils.widgets.folders_widget import FOLDER_ID_ROLE
+from ayon_core.tools.ayon_utils.widgets.folders_widget import FOLDER_ID_ROLE
 
 if qtpy.API == "pyside":
     from PySide.QtGui import QStyleOptionViewItemV4

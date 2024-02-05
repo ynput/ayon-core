@@ -5,8 +5,8 @@ import platform
 import getpass
 import socket
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.settings.lib import get_local_settings
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.settings.lib import get_local_settings
 from .execute import get_openpype_execute_args
 from .local_settings import get_local_site_id
 from .openpype_version import (

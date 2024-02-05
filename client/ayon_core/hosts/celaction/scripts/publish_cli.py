@@ -4,10 +4,10 @@ import sys
 import pyblish.api
 import pyblish.util
 
-import openpype.hosts.celaction
-from openpype.lib import Logger
-from openpype.tools.utils import host_tools
-from openpype.pipeline import install_openpype_plugins
+import ayon_core.hosts.celaction
+from ayon_core.lib import Logger
+from ayon_core.tools.utils import host_tools
+from ayon_core.pipeline import install_openpype_plugins
 
 
 log = Logger.get_logger("celaction")

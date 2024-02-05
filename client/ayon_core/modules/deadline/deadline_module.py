@@ -3,8 +3,8 @@ import requests
 import six
 import sys
 
-from openpype.lib import requests_get, Logger
-from openpype.modules import OpenPypeModule, IPluginPaths
+from ayon_core.lib import requests_get, Logger
+from ayon_core.modules import OpenPypeModule, IPluginPaths
 
 
 class DeadlineWebserviceError(Exception):

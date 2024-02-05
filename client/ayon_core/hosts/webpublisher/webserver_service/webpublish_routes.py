@@ -7,12 +7,12 @@ import subprocess
 from bson.objectid import ObjectId
 from aiohttp.web_response import Response
 
-from openpype.client import (
+from ayon_core.client import (
     get_projects,
     get_assets,
 )
-from openpype.lib import Logger
-from openpype.settings import get_project_settings
+from ayon_core.lib import Logger
+from ayon_core.settings import get_project_settings
 from openpype_modules.webserver.base_routes import RestApiEndpoint
 from openpype_modules.webpublisher import WebpublisherAddon
 from openpype_modules.webpublisher.lib import (

@@ -10,10 +10,9 @@ import uuid
 import pyblish.api
 from pyblish.lib import MessageHandler
 
-import openpype
-from openpype import AYON_SERVER_ENABLED
-from openpype.host import HostBase
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED, AYON_CORE_ROOT
+from ayon_core.host import HostBase
+from ayon_core.client import (
     get_project,
     get_asset_by_id,
     get_asset_by_name,
@@ -21,10 +20,10 @@ from openpype.client import (
     get_asset_name_identifier,
     get_ayon_server_api_connection,
 )
-from openpype.lib.events import emit_event
-from openpype.modules import load_modules, ModulesManager
-from openpype.settings import get_project_settings
-from openpype.tests.lib import is_in_tests
+from ayon_core.lib.events import emit_event
+from ayon_core.modules import load_modules, ModulesManager
+from ayon_core.settings import get_project_settings
+from ayon_core.tests.lib import is_in_tests
 
 from .publish.lib import filter_pyblish_plugins
 from .anatomy import Anatomy
@@ -53,8 +52,7 @@ _modules_manager = None
 
 log = logging.getLogger(__name__)
 
-PACKAGE_DIR = os.path.dirname(os.path.abspath(openpype.__file__))
-PLUGINS_DIR = os.path.join(PACKAGE_DIR, "plugins")
+PLUGINS_DIR = os.path.join(AYON_CORE_ROOT, "plugins")
 
 # Global plugin paths
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

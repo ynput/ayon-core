@@ -8,8 +8,8 @@ except ImportError:
     # Allow to fall back on Multiverse 6.3.0+ pxr usd library
     from mvpxr import Usd, UsdGeom, Sdf, Kind
 
-from openpype.client import get_project, get_asset_by_name
-from openpype.pipeline import Anatomy, get_current_project_name
+from ayon_core.client import get_project, get_asset_by_name
+from ayon_core.pipeline import Anatomy, get_current_project_name
 
 log = logging.getLogger(__name__)
 

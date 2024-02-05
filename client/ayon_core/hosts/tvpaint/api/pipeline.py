@@ -7,18 +7,18 @@ import requests
 
 import pyblish.api
 
-from openpype.client import get_asset_by_name
-from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-from openpype.hosts.tvpaint import TVPAINT_ROOT_DIR
-from openpype.settings import get_current_project_settings
-from openpype.lib import register_event_callback
-from openpype.pipeline import (
+from ayon_core.client import get_asset_by_name
+from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
+from ayon_core.hosts.tvpaint import TVPAINT_ROOT_DIR
+from ayon_core.settings import get_current_project_settings
+from ayon_core.lib import register_event_callback
+from ayon_core.pipeline import (
     legacy_io,
     register_loader_plugin_path,
     register_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.pipeline.context_tools import get_global_context
+from ayon_core.pipeline.context_tools import get_global_context
 
 from .lib import (
     execute_george,

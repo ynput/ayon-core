@@ -1,6 +1,6 @@
 import collections
 
-from openpype.client.mongo.operations import CURRENT_THUMBNAIL_SCHEMA
+from ayon_core.client.mongo.operations import CURRENT_THUMBNAIL_SCHEMA
 
 from .utils import get_ayon_server_api_connection
 from .openpype_comp import get_folders_with_tasks

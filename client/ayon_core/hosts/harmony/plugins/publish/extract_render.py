@@ -3,8 +3,8 @@ import tempfile
 import subprocess
 
 import pyblish.api
-import openpype.hosts.harmony.api as harmony
-import openpype.lib
+import ayon_core.hosts.harmony.api as harmony
+import ayon_core.lib
 
 import clique
 

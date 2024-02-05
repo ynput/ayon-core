@@ -1,8 +1,8 @@
 import pyblish.api
 from maya import cmds
 
-import openpype.hosts.maya.api.action
-from openpype.pipeline.publish import PublishValidationError, RepairAction
+import ayon_core.hosts.maya.api.action
+from ayon_core.pipeline.publish import PublishValidationError, RepairAction
 
 
 class ValidateAssemblyModelTransforms(pyblish.api.InstancePlugin):
@@ -44,7 +44,7 @@ class ValidateAssemblyModelTransforms(pyblish.api.InstancePlugin):
     @classmethod
     def get_invalid(cls, instance):
 
-        from openpype.hosts.maya.api import lib
+        from ayon_core.hosts.maya.api import lib
 
         # Get all transforms in the loaded containers
         container_roots = cmds.listRelatives(instance.data["nodesHierarchy"],
@@ -91,7 +91,7 @@ class ValidateAssemblyModelTransforms(pyblish.api.InstancePlugin):
 
         from qtpy import QtWidgets
 
-        from openpype.hosts.maya.api import lib
+        from ayon_core.hosts.maya.api import lib
 
         # Store namespace in variable, cosmetics thingy
         choice = QtWidgets.QMessageBox.warning(

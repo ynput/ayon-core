@@ -8,23 +8,23 @@ import numbers
 import six
 import time
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.settings.lib import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.settings.lib import (
     get_local_settings,
 )
-from openpype.settings.constants import (
+from ayon_core.settings.constants import (
     DEFAULT_PROJECT_KEY
 )
-from openpype.client import get_project, get_ayon_server_api_connection
-from openpype.lib import Logger, get_local_site_id
-from openpype.lib.path_templates import (
+from ayon_core.client import get_project, get_ayon_server_api_connection
+from ayon_core.lib import Logger, get_local_site_id
+from ayon_core.lib.path_templates import (
     TemplateUnsolved,
     TemplateResult,
     StringTemplate,
     TemplatesDict,
     FormatObject,
 )
-from openpype.modules import ModulesManager
+from ayon_core.modules import ModulesManager
 
 log = Logger.get_logger(__name__)
 

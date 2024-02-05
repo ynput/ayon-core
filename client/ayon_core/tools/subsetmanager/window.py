@@ -4,14 +4,14 @@ import sys
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from openpype import style
-from openpype.pipeline import registered_host
-from openpype.tools.utils import PlaceholderLineEdit
-from openpype.tools.utils.lib import (
+from ayon_core import style
+from ayon_core.pipeline import registered_host
+from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.utils.lib import (
     iter_model_rows,
     qt_app_context
 )
-from openpype.tools.utils.models import RecursiveSortFilterProxyModel
+from ayon_core.tools.utils.models import RecursiveSortFilterProxyModel
 from .model import (
     InstanceModel,
     ITEM_ID_ROLE

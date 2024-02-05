@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 
-import openpype.hosts.houdini.api.usd as hou_usdlib
-from openpype.pipeline import PublishValidationError
+import ayon_core.hosts.houdini.api.usd as hou_usdlib
+from ayon_core.pipeline import PublishValidationError
 
 import hou
 

@@ -1,13 +1,13 @@
 import maya.cmds as cmds
 
 import pyblish.api
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError
 )
 
-import openpype.hosts.maya.api.action
+import ayon_core.hosts.maya.api.action
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):

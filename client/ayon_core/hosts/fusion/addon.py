@@ -1,7 +1,7 @@
 import os
 import re
-from openpype.modules import OpenPypeModule, IHostAddon
-from openpype.lib import Logger
+from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.lib import Logger
 
 FUSION_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 

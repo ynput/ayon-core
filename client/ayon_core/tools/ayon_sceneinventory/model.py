@@ -9,21 +9,21 @@ from collections import defaultdict
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from openpype.client import (
+from ayon_core.client import (
     get_assets,
     get_subsets,
     get_versions,
     get_last_version_by_subset_id,
     get_representations,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_current_project_name,
     schema,
     HeroVersionType,
 )
-from openpype.style import get_default_entity_icon_color
-from openpype.tools.utils.models import TreeModel, Item
-from openpype.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.style import get_default_entity_icon_color
+from ayon_core.tools.utils.models import TreeModel, Item
+from ayon_core.tools.ayon_utils.widgets import get_qt_icon
 
 
 def walk_hierarchy(node):

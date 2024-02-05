@@ -1,14 +1,14 @@
 import collections
 import pyblish.api
 
-from openpype.client import (
+from ayon_core.client import (
     get_assets,
     get_subsets,
     get_last_versions,
     get_representations,
     get_asset_name_identifier,
 )
-from openpype.pipeline.load import get_representation_path_with_anatomy
+from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 
 class CollectAudio(pyblish.api.ContextPlugin):

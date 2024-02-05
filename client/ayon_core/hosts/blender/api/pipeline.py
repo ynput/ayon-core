@@ -10,14 +10,14 @@ from . import ops
 
 import pyblish.api
 
-from openpype.host import (
+from ayon_core.host import (
     HostBase,
     IWorkfileHost,
     IPublishHost,
     ILoadHost
 )
-from openpype.client import get_asset_by_name
-from openpype.pipeline import (
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import (
     schema,
     legacy_io,
     get_current_project_name,
@@ -28,13 +28,13 @@ from openpype.pipeline import (
     deregister_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.lib import (
+from ayon_core.lib import (
     Logger,
     register_event_callback,
     emit_event
 )
-import openpype.hosts.blender
-from openpype.settings import get_project_settings
+import ayon_core.hosts.blender
+from ayon_core.settings import get_project_settings
 from .workio import (
     open_file,
     save_file,
@@ -198,7 +198,7 @@ def uninstall():
 
 
 def show_message(title, message):
-    from openpype.widgets.message_window import Window
+    from ayon_core.widgets.message_window import Window
     from .ops import BlenderApplication
 
     BlenderApplication.get_app()

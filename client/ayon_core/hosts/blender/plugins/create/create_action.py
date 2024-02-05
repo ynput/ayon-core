@@ -2,7 +2,7 @@
 
 import bpy
 
-from openpype.hosts.blender.api import lib, plugin
+from ayon_core.hosts.blender.api import lib, plugin
 
 
 class CreateAction(plugin.BaseCreator):

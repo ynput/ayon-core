@@ -1,11 +1,11 @@
 import os
 from pymxs import runtime as rt
-from openpype.lib import Logger
-from openpype.settings import get_project_settings
-from openpype.pipeline import get_current_project_name
-from openpype.pipeline.context_tools import get_current_project_asset
+from ayon_core.lib import Logger
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.pipeline.context_tools import get_current_project_asset
 
-from openpype.hosts.max.api.lib import (
+from ayon_core.hosts.max.api.lib import (
     set_render_frame_range,
     get_current_renderer,
     get_default_render_folder

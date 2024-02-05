@@ -3,7 +3,7 @@ import logging
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_name,
     get_assets,
     get_subset_by_name,
@@ -13,8 +13,8 @@ from openpype.client import (
     get_last_versions,
     get_representations,
 )
-from openpype.pipeline import legacy_io
-from openpype.pipeline.load import (
+from ayon_core.pipeline import legacy_io
+from ayon_core.pipeline.load import (
     discover_loader_plugins,
     switch_container,
     get_repres_contexts,

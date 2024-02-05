@@ -1,10 +1,10 @@
 import pyblish.api
 
-import openpype.hosts.maya.api.action
-from openpype.client import get_assets
-from openpype.hosts.maya.api import lib
-from openpype.pipeline import legacy_io
-from openpype.pipeline.publish import (
+import ayon_core.hosts.maya.api.action
+from ayon_core.client import get_assets
+from ayon_core.hosts.maya.api import lib
+from ayon_core.pipeline import legacy_io
+from ayon_core.pipeline.publish import (
     PublishValidationError, ValidatePipelineOrder)
 
 

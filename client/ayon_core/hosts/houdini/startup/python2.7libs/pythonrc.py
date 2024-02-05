@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """OpenPype startup script."""
-from openpype.pipeline import install_host
-from openpype.hosts.houdini.api import HoudiniHost
-from openpype import AYON_SERVER_ENABLED
+from ayon_core.pipeline import install_host
+from ayon_core.hosts.houdini.api import HoudiniHost
+from ayon_core import AYON_SERVER_ENABLED
 
 
 def main():

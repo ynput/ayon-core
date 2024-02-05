@@ -18,10 +18,10 @@ import collections
 import six
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import get_versions
-from openpype.client.operations import OperationsSession, new_thumbnail_doc
-from openpype.pipeline.publish import get_publish_instance_label
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import get_versions
+from ayon_core.client.operations import OperationsSession, new_thumbnail_doc
+from ayon_core.pipeline.publish import get_publish_instance_label
 
 InstanceFilterResult = collections.namedtuple(
     "InstanceFilterResult",

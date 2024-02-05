@@ -1,5 +1,5 @@
-from openpype import AYON_SERVER_ENABLED
-from openpype.modules import OpenPypeModule, ITrayModule
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.modules import OpenPypeModule, ITrayModule
 
 
 class LogViewModule(OpenPypeModule, ITrayModule):

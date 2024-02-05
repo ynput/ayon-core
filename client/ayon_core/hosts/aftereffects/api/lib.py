@@ -4,8 +4,8 @@ import json
 import contextlib
 import logging
 
-from openpype.pipeline.context_tools import get_current_context
-from openpype.client import get_asset_by_name
+from ayon_core.pipeline.context_tools import get_current_context
+from ayon_core.client import get_asset_by_name
 from .ws_stub import get_stub
 
 log = logging.getLogger(__name__)

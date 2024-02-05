@@ -10,7 +10,7 @@ import os
 
 import pyblish.api
 
-from openpype.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_subset_name
 
 
 class CollectReview(pyblish.api.ContextPlugin):

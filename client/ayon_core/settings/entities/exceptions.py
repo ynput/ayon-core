@@ -1,4 +1,4 @@
-from openpype.settings.constants import KEY_ALLOWED_SYMBOLS
+from ayon_core.settings.constants import KEY_ALLOWED_SYMBOLS
 
 
 class DefaultsNotDefined(Exception):

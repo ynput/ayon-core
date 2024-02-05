@@ -4,10 +4,10 @@ import re
 
 import pyblish.api
 
-import openpype.hosts.maya.api.action
-from openpype.pipeline import legacy_io
-from openpype.settings import get_project_settings
-from openpype.pipeline.publish import (
+import ayon_core.hosts.maya.api.action
+from ayon_core.pipeline import legacy_io
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
     PublishValidationError

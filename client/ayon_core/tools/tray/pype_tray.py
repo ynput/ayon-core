@@ -7,15 +7,15 @@ import platform
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-import openpype.version
-from openpype import AYON_SERVER_ENABLED
-from openpype import resources, style
-from openpype.lib import (
+import ayon_core.version
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core import resources, style
+from ayon_core.lib import (
     Logger,
     get_openpype_execute_args,
     run_detached_process,
 )
-from openpype.lib.openpype_version import (
+from ayon_core.lib.openpype_version import (
     op_version_control_available,
     get_expected_version,
     get_installed_version,
@@ -26,14 +26,14 @@ from openpype.lib.openpype_version import (
     is_running_staging,
     is_staging_enabled,
 )
-from openpype.modules import TrayModulesManager
-from openpype.settings import (
+from ayon_core.modules import TrayModulesManager
+from ayon_core.settings import (
     get_system_settings,
     SystemSettings,
     ProjectSettings,
     DefaultsNotDefined
 )
-from openpype.tools.utils import (
+from ayon_core.tools.utils import (
     WrappedCallbackItem,
     paint_image_with_color,
     get_warning_pixmap,
@@ -466,7 +466,7 @@ class TrayManager:
 
     def initialize_modules(self):
         """Add modules to tray."""
-        from openpype.modules import (
+        from ayon_core.modules import (
             ITrayAction,
             ITrayService
         )

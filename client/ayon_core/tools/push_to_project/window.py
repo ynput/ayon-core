@@ -2,14 +2,14 @@ import collections
 
 from qtpy import QtWidgets, QtGui, QtCore
 
-from openpype.style import load_stylesheet, get_app_icon_path
-from openpype.tools.utils import (
+from ayon_core.style import load_stylesheet, get_app_icon_path
+from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     SeparatorWidget,
     get_asset_icon_by_name,
     set_style_property,
 )
-from openpype.tools.utils.views import DeselectableTreeView
+from ayon_core.tools.utils.views import DeselectableTreeView
 
 from .control_context import PushToContextController
 

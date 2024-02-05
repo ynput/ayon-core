@@ -5,7 +5,7 @@ Provides:
 """
 
 import pyblish.api
-from openpype.lib.dateutils import get_datetime_data
+from ayon_core.lib.dateutils import get_datetime_data
 
 
 class CollectDateTimeData(pyblish.api.ContextPlugin):

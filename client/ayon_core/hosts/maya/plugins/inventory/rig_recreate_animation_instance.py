@@ -1,8 +1,8 @@
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     InventoryAction,
     get_representation_context
 )
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.lib import (
     create_rig_animation_instance,
     get_container_members,
 )

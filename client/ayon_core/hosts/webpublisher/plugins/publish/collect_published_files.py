@@ -14,18 +14,18 @@ import math
 
 import pyblish.api
 
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_name,
     get_last_version_by_subset_name
 )
-from openpype.lib import (
+from ayon_core.lib import (
     prepare_template_data,
     get_ffprobe_streams,
     convert_ffprobe_fps_value,
 )
-from openpype.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_subset_name
 from openpype_modules.webpublisher.lib import parse_json
-from openpype.pipeline.version_start import get_versioning_start
+from ayon_core.pipeline.version_start import get_versioning_start
 
 
 class CollectPublishedFiles(pyblish.api.ContextPlugin):

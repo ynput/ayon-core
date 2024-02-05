@@ -1,6 +1,6 @@
 import os
 
-from openpype.lib import Logger
+from ayon_core.lib import Logger
 
 
 def clear_rendered(dir_path):

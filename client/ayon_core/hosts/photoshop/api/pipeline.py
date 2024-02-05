@@ -4,23 +4,23 @@ from qtpy import QtWidgets
 
 import pyblish.api
 
-from openpype.lib import register_event_callback, Logger
-from openpype.pipeline import (
+from ayon_core.lib import register_event_callback, Logger
+from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
 
-from openpype.host import (
+from ayon_core.host import (
     HostBase,
     IWorkfileHost,
     ILoadHost,
     IPublishHost
 )
 
-from openpype.pipeline.load import any_outdated_containers
-from openpype.hosts.photoshop import PHOTOSHOP_HOST_DIR
-from openpype.tools.utils import get_openpype_qt_app
+from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.hosts.photoshop import PHOTOSHOP_HOST_DIR
+from ayon_core.tools.utils import get_openpype_qt_app
 
 from . import lib
 

@@ -4,8 +4,8 @@ from pathlib import Path
 import unreal
 from unreal import EditorLevelLibrary
 
-from openpype.client import get_representations
-from openpype.pipeline import (
+from ayon_core.client import get_representations
+from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
     load_container,
@@ -13,8 +13,8 @@ from openpype.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
-from openpype.hosts.unreal.api import plugin
-from openpype.hosts.unreal.api import pipeline as upipeline
+from ayon_core.hosts.unreal.api import plugin
+from ayon_core.hosts.unreal.api import pipeline as upipeline
 
 
 class ExistingLayoutLoader(plugin.Loader):

@@ -16,7 +16,7 @@ import uuid
 import json
 import shutil
 import pyblish.api
-from openpype.hosts.tvpaint.worker import (
+from ayon_core.hosts.tvpaint.worker import (
     SenderTVPaintCommands,
     CollectSceneData
 )

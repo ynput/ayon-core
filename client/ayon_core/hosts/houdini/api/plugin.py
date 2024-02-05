@@ -7,14 +7,14 @@ from abc import (
 import six
 import hou
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import (
     CreatorError,
     LegacyCreator,
     Creator as NewCreator,
     CreatedInstance
 )
-from openpype.lib import BoolDef
+from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
 
 

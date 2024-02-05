@@ -5,8 +5,8 @@ import json
 
 import six
 
-from openpype.client.operations_base import REMOVED_VALUE
-from openpype.client.mongo.operations import (
+from ayon_core.client.operations_base import REMOVED_VALUE
+from ayon_core.client.mongo.operations import (
     CURRENT_PROJECT_SCHEMA,
     CURRENT_ASSET_DOC_SCHEMA,
     CURRENT_SUBSET_SCHEMA,

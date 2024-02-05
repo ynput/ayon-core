@@ -2,7 +2,7 @@ import copy
 
 from qtpy import QtWidgets, QtCore
 
-from openpype.lib.attribute_definitions import (
+from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     UnknownDef,
     HiddenDef,
@@ -15,13 +15,13 @@ from openpype.lib.attribute_definitions import (
     UISeparatorDef,
     UILabelDef
 )
-from openpype.tools.utils import (
+from ayon_core.tools.utils import (
     CustomTextComboBox,
     FocusSpinBox,
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
 )
-from openpype.widgets.nice_checkbox import NiceCheckbox
+from ayon_core.widgets.nice_checkbox import NiceCheckbox
 
 from .files_widget import FilesWidget
 

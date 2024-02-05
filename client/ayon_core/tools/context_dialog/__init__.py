@@ -1,4 +1,4 @@
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 if AYON_SERVER_ENABLED:
     from ._ayon_window import ContextDialog, main

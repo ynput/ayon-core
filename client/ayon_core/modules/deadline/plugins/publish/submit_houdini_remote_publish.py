@@ -6,9 +6,9 @@ import requests
 
 import pyblish.api
 
-from openpype.pipeline import legacy_io
-from openpype.tests.lib import is_in_tests
-from openpype.lib import is_running_from_build
+from ayon_core.pipeline import legacy_io
+from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import is_running_from_build
 
 
 class HoudiniSubmitPublishDeadline(pyblish.api.ContextPlugin):

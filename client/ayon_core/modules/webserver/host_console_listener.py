@@ -5,7 +5,7 @@ import logging
 from concurrent.futures import CancelledError
 from qtpy import QtWidgets
 
-from openpype.modules import ITrayService
+from ayon_core.modules import ITrayService
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class HostListener:
         webserver.add_route('*', "/ws/host_listener", self.websocket_handler)
 
     def _host_is_connecting(self, host_name, label):
-        from openpype.tools.stdout_broker.window import ConsoleDialog
+        from ayon_core.tools.stdout_broker.window import ConsoleDialog
         """ Initialize dialog, adds to submenu. """
         services_submenu = self.module._services_submenu
         action = QtWidgets.QAction(label, services_submenu)

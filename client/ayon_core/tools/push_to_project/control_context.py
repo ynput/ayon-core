@@ -2,7 +2,7 @@ import re
 import collections
 import threading
 
-from openpype.client import (
+from ayon_core.client import (
     get_projects,
     get_assets,
     get_asset_by_id,
@@ -10,10 +10,10 @@ from openpype.client import (
     get_version_by_id,
     get_representations,
 )
-from openpype.settings import get_project_settings
-from openpype.lib import prepare_template_data
-from openpype.lib.events import EventSystem
-from openpype.pipeline.create import (
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import prepare_template_data
+from ayon_core.lib.events import EventSystem
+from ayon_core.pipeline.create import (
     SUBSET_NAME_ALLOWED_SYMBOLS,
     get_subset_name_template,
 )

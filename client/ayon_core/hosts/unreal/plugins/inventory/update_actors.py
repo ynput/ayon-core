@@ -1,12 +1,12 @@
 import unreal
 
-from openpype.hosts.unreal.api.pipeline import (
+from ayon_core.hosts.unreal.api.pipeline import (
     ls,
     replace_static_mesh_actors,
     replace_skeletal_mesh_actors,
     replace_geometry_cache_actors,
 )
-from openpype.pipeline import InventoryAction
+from ayon_core.pipeline import InventoryAction
 
 
 def update_assets(containers, selected):

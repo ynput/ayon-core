@@ -7,10 +7,10 @@ from code import InteractiveInterpreter
 import appdirs
 from qtpy import QtCore, QtWidgets, QtGui
 
-from openpype import resources
-from openpype import AYON_SERVER_ENABLED
-from openpype.style import load_stylesheet
-from openpype.lib import JSONSettingRegistry
+from ayon_core import resources
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.style import load_stylesheet
+from ayon_core.lib import JSONSettingRegistry
 
 
 

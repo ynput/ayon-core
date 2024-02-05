@@ -1,10 +1,10 @@
 import pyblish.api
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.modules.deadline.deadline_module import DeadlineModule
+from ayon_core.modules.deadline.deadline_module import DeadlineModule
 
 
 class ValidateDeadlinePools(OptionalPyblishPluginMixin,

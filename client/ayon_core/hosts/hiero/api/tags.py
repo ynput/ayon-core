@@ -3,9 +3,9 @@ import re
 import os
 import hiero
 
-from openpype.client import get_project, get_assets
-from openpype.lib import Logger
-from openpype.pipeline import get_current_project_name
+from ayon_core.client import get_project, get_assets
+from ayon_core.lib import Logger
+from ayon_core.pipeline import get_current_project_name
 
 log = Logger.get_logger(__name__)
 

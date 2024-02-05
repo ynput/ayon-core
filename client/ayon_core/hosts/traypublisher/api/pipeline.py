@@ -5,11 +5,11 @@ import atexit
 
 import pyblish.api
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     register_creator_plugin_path,
     legacy_io,
 )
-from openpype.host import HostBase, IPublishHost
+from ayon_core.host import HostBase, IPublishHost
 
 
 ROOT_DIR = os.path.dirname(os.path.dirname(

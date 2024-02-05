@@ -1,8 +1,8 @@
 import re
 from copy import deepcopy
 
-from openpype.client import get_asset_by_id
-from openpype.pipeline.create import CreatorError
+from ayon_core.client import get_asset_by_id
+from ayon_core.pipeline.create import CreatorError
 
 
 class ShotMetadataSolver:

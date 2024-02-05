@@ -19,10 +19,10 @@ import collections
 
 from .server import Server
 
-from openpype.tools.stdout_broker.app import StdOutBroker
-from openpype.tools.utils import host_tools
-from openpype import style
-from openpype.lib.applications import get_non_python_host_kwargs
+from ayon_core.tools.stdout_broker.app import StdOutBroker
+from ayon_core.tools.utils import host_tools
+from ayon_core import style
+from ayon_core.lib.applications import get_non_python_host_kwargs
 
 # Setup logging.
 log = logging.getLogger(__name__)
@@ -183,8 +183,8 @@ def launch(application_path, *args):
         application_path (str): Path to Harmony.
 
     """
-    from openpype.pipeline import install_host
-    from openpype.hosts.harmony import api as harmony
+    from ayon_core.pipeline import install_host
+    from ayon_core.hosts.harmony import api as harmony
 
     install_host(harmony)
 
@@ -473,7 +473,7 @@ def imprint(node_id, data, remove=False):
         remove (bool): Removes the data from the scene.
 
     Example:
-        >>> from openpype.hosts.harmony.api import lib
+        >>> from ayon_core.hosts.harmony.api import lib
         >>> node = "Top/Display"
         >>> data = {"str": "something", "int": 1, "float": 0.32, "bool": True}
         >>> lib.imprint(layer, data)

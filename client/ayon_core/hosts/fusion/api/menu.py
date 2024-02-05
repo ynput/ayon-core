@@ -3,18 +3,18 @@ import sys
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.tools.utils import host_tools
-from openpype.style import load_stylesheet
-from openpype.lib import register_event_callback
-from openpype.hosts.fusion.scripts import (
+from ayon_core.tools.utils import host_tools
+from ayon_core.style import load_stylesheet
+from ayon_core.lib import register_event_callback
+from ayon_core.hosts.fusion.scripts import (
     duplicate_with_inputs,
 )
-from openpype.hosts.fusion.api.lib import (
+from ayon_core.hosts.fusion.api.lib import (
     set_asset_framerange,
     set_asset_resolution,
 )
-from openpype.pipeline import get_current_asset_name
-from openpype.resources import get_openpype_icon_filepath
+from ayon_core.pipeline import get_current_asset_name
+from ayon_core.resources import get_openpype_icon_filepath
 
 from .pipeline import FusionEventHandler
 from .pulse import FusionPulse

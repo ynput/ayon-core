@@ -3,9 +3,9 @@ import re
 
 import pyblish.api
 
-from openpype.client import get_subset_by_name
-from openpype.pipeline.publish import ValidateContentsOrder
-from openpype.pipeline import PublishValidationError
+from ayon_core.client import get_subset_by_name
+from ayon_core.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline import PublishValidationError
 
 
 class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):

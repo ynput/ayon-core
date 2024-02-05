@@ -1,8 +1,8 @@
 import re
 
-from openpype.pipeline import get_representation_path
-from openpype.hosts.aftereffects import api
-from openpype.hosts.aftereffects.api.lib import get_unique_layer_name
+from ayon_core.pipeline import get_representation_path
+from ayon_core.hosts.aftereffects import api
+from ayon_core.hosts.aftereffects.api.lib import get_unique_layer_name
 
 
 class FileLoader(api.AfterEffectsLoader):

@@ -1,11 +1,11 @@
 import pyblish.api
 
-from openpype.client import (
+from ayon_core.client import (
     get_subset_by_name,
     get_asset_by_name,
     get_asset_name_identifier,
 )
-import openpype.lib.usdlib as usdlib
+import ayon_core.lib.usdlib as usdlib
 
 
 class CollectUsdBootstrap(pyblish.api.InstancePlugin):

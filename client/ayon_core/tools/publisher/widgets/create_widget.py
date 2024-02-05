@@ -2,8 +2,8 @@ import re
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline.create import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline.create import (
     SUBSET_NAME_ALLOWED_SYMBOLS,
     PRE_CREATE_THUMBNAIL_KEY,
     DEFAULT_VARIANT_VALUE,

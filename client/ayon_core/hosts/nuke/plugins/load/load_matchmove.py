@@ -1,5 +1,5 @@
 import nuke
-from openpype.pipeline import load
+from ayon_core.pipeline import load
 
 
 class MatchmoveLoader(load.LoaderPlugin):

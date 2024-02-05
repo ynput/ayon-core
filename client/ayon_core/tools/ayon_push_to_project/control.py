@@ -1,16 +1,16 @@
 import threading
 
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_id,
     get_subset_by_id,
     get_version_by_id,
     get_representations,
 )
-from openpype.settings import get_project_settings
-from openpype.lib import prepare_template_data
-from openpype.lib.events import QueuedEventSystem
-from openpype.pipeline.create import get_subset_name_template
-from openpype.tools.ayon_utils.models import ProjectsModel, HierarchyModel
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import prepare_template_data
+from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.pipeline.create import get_subset_name_template
+from ayon_core.tools.ayon_utils.models import ProjectsModel, HierarchyModel
 
 from .models import (
     PushToProjectSelectionModel,

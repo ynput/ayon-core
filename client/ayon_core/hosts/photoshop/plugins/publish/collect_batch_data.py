@@ -17,12 +17,12 @@ import os
 
 import pyblish.api
 
-from openpype.pipeline import legacy_io
+from ayon_core.pipeline import legacy_io
 from openpype_modules.webpublisher.lib import (
     get_batch_asset_task_info,
     parse_json
 )
-from openpype.tests.lib import is_in_tests
+from ayon_core.tests.lib import is_in_tests
 
 
 class CollectBatchData(pyblish.api.ContextPlugin):

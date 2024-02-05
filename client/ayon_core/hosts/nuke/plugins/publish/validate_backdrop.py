@@ -1,8 +1,8 @@
 import nuke
 import pyblish
-from openpype.hosts.nuke import api as napi
+from ayon_core.hosts.nuke import api as napi
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
     OptionalPyblishPluginMixin

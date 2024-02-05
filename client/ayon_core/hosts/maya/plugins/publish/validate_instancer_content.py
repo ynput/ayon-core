@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 import pyblish.api
 
-from openpype.hosts.maya.api import lib
-from openpype.pipeline.publish import PublishValidationError
+from ayon_core.hosts.maya.api import lib
+from ayon_core.pipeline.publish import PublishValidationError
 
 
 class ValidateInstancerContent(pyblish.api.InstancePlugin):

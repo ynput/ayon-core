@@ -4,10 +4,10 @@ import os
 
 from maya import cmds
 
-from openpype.hosts.maya.api.lib import maintained_selection
-from openpype.pipeline import AVALON_CONTAINER_ID, publish
-from openpype.pipeline.publish import OpenPypePyblishPluginMixin
-from openpype.lib import BoolDef
+from ayon_core.hosts.maya.api.lib import maintained_selection
+from ayon_core.pipeline import AVALON_CONTAINER_ID, publish
+from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.lib import BoolDef
 
 
 class ExtractMayaSceneRaw(publish.Extractor, OpenPypePyblishPluginMixin):

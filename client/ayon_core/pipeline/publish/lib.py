@@ -9,21 +9,21 @@ import pyblish.util
 import pyblish.plugin
 import pyblish.api
 
-from openpype.lib import (
+from ayon_core.lib import (
     Logger,
     import_filepath,
     filter_profiles,
     is_func_signature_supported,
 )
-from openpype.settings import (
+from ayon_core.settings import (
     get_project_settings,
     get_system_settings,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     tempdir,
     Anatomy
 )
-from openpype.pipeline.plugin_discover import DiscoverResult
+from ayon_core.pipeline.plugin_discover import DiscoverResult
 
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,

@@ -8,12 +8,12 @@ import string
 from collections import OrderedDict, defaultdict
 from abc import abstractmethod
 
-from openpype.settings import get_current_project_settings
-from openpype.lib import (
+from ayon_core.settings import get_current_project_settings
+from ayon_core.lib import (
     BoolDef,
     EnumDef
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     LegacyCreator,
     LoaderPlugin,
     CreatorError,
@@ -21,12 +21,12 @@ from openpype.pipeline import (
     CreatedInstance,
     get_current_task_name
 )
-from openpype.pipeline.colorspace import (
+from ayon_core.pipeline.colorspace import (
     get_display_view_colorspace_name,
     get_colorspace_settings_from_publish_context,
     set_colorspace_data_to_representation
 )
-from openpype.lib.transcoding import (
+from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS
 )
 from .lib import (
@@ -1220,7 +1220,7 @@ def convert_to_valid_instaces():
         }
         return mapping[family]
 
-    from openpype.hosts.nuke.api import workio
+    from ayon_core.hosts.nuke.api import workio
 
     task_name = get_current_task_name()
 

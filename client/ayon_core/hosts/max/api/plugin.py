@@ -5,8 +5,8 @@ from abc import ABCMeta
 import six
 from pymxs import runtime as rt
 
-from openpype.lib import BoolDef
-from openpype.pipeline import CreatedInstance, Creator, CreatorError
+from ayon_core.lib import BoolDef
+from ayon_core.pipeline import CreatedInstance, Creator, CreatorError
 
 from .lib import imprint, lsattr, read
 

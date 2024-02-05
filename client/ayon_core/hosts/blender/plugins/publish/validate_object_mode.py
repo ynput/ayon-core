@@ -3,11 +3,11 @@ from typing import List
 import bpy
 
 import pyblish.api
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-import openpype.hosts.blender.api.action
+import ayon_core.hosts.blender.api.action
 
 
 class ValidateObjectIsInObjectMode(

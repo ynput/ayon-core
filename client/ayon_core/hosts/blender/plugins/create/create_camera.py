@@ -2,8 +2,8 @@
 
 import bpy
 
-from openpype.hosts.blender.api import plugin, lib
-from openpype.hosts.blender.api.pipeline import AVALON_INSTANCES
+from ayon_core.hosts.blender.api import plugin, lib
+from ayon_core.hosts.blender.api.pipeline import AVALON_INSTANCES
 
 
 class CreateCamera(plugin.BaseCreator):

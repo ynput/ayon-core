@@ -3,8 +3,8 @@ import collections
 import qtawesome
 from qtpy import QtGui, QtCore
 
-from openpype.style import get_default_entity_icon_color
-from openpype.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.style import get_default_entity_icon_color
+from ayon_core.tools.ayon_utils.widgets import get_qt_icon
 
 PRODUCTS_MODEL_SENDER_NAME = "qt_products_model"
 

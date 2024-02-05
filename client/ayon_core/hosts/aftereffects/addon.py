@@ -1,4 +1,4 @@
-from openpype.modules import OpenPypeModule, IHostAddon
+from ayon_core.modules import OpenPypeModule, IHostAddon
 
 
 class AfterEffectsAddon(OpenPypeModule, IHostAddon):

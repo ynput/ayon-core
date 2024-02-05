@@ -5,13 +5,13 @@ import collections
 import ayon_api
 from qtpy import QtCore, QtGui, QtWidgets
 
-from openpype import style
-import openpype.version
-from openpype import resources
-from openpype import AYON_SERVER_ENABLED
-from openpype.settings.lib import get_local_settings
-from openpype.lib import get_openpype_execute_args
-from openpype.lib.pype_info import (
+from ayon_core import style
+import ayon_core.version
+from ayon_core import resources
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.settings.lib import get_local_settings
+from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib.pype_info import (
     get_all_current_info,
     get_openpype_info,
     get_workstation_info,

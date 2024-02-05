@@ -1,6 +1,6 @@
 import os
-from openpype.lib.applications import PreLaunchHook, LaunchTypes
-from openpype.pipeline.workfile import create_workdir_extra_folders
+from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_core.pipeline.workfile import create_workdir_extra_folders
 
 
 class CreateWorkdirExtraFolders(PreLaunchHook):

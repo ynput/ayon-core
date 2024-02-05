@@ -6,15 +6,15 @@ import xgenm
 
 from qtpy import QtWidgets
 
-import openpype.hosts.maya.api.plugin
-from openpype.hosts.maya.api.lib import (
+import ayon_core.hosts.maya.api.plugin
+from ayon_core.hosts.maya.api.lib import (
     maintained_selection,
     get_container_members,
     attribute_values,
     write_xgen_file
 )
-from openpype.hosts.maya.api import current_file
-from openpype.pipeline import get_representation_path
+from ayon_core.hosts.maya.api import current_file
+from ayon_core.pipeline import get_representation_path
 
 
 class XgenLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):

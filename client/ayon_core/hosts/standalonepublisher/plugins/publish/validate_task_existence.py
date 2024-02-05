@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype.client import get_assets
-from openpype.pipeline import PublishXmlValidationError
+from ayon_core.client import get_assets
+from ayon_core.pipeline import PublishXmlValidationError
 
 
 class ValidateTaskExistence(pyblish.api.ContextPlugin):

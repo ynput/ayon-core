@@ -2,7 +2,7 @@ import os
 import subprocess
 import tempfile
 import pyblish.api
-from openpype.lib import (
+from ayon_core.lib import (
     get_ffmpeg_tool_args,
     get_ffprobe_streams,
     path_to_subprocess_arg,

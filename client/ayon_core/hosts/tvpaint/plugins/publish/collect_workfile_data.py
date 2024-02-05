@@ -4,14 +4,14 @@ import tempfile
 
 import pyblish.api
 
-from openpype.pipeline import legacy_io
-from openpype.hosts.tvpaint.api.lib import (
+from ayon_core.pipeline import legacy_io
+from ayon_core.hosts.tvpaint.api.lib import (
     execute_george,
     execute_george_through_file,
     get_layers_data,
     get_groups_data,
 )
-from openpype.hosts.tvpaint.api.pipeline import (
+from ayon_core.hosts.tvpaint.api.pipeline import (
     SECTION_NAME_CONTEXT,
     SECTION_NAME_INSTANCES,
     SECTION_NAME_CONTAINERS,

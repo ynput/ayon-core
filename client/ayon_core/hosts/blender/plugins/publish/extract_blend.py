@@ -2,7 +2,7 @@ import os
 
 import bpy
 
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractBlend(publish.Extractor, publish.OptionalPyblishPluginMixin):

@@ -4,7 +4,7 @@ import json
 import collections
 import six
 
-from openpype import resources
+from ayon_core import resources
 
 from .color_defs import parse_color
 

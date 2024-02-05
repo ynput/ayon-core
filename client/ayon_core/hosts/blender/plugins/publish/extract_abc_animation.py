@@ -2,8 +2,8 @@ import os
 
 import bpy
 
-from openpype.pipeline import publish
-from openpype.hosts.blender.api import plugin
+from ayon_core.pipeline import publish
+from ayon_core.hosts.blender.api import plugin
 
 
 class ExtractAnimationABC(

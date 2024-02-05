@@ -1,13 +1,13 @@
 import nuke
 import six
 import sys
-from openpype.hosts.nuke.api import (
+from ayon_core.hosts.nuke.api import (
     INSTANCE_DATA_KNOB,
     NukeCreator,
     NukeCreatorError,
     set_node_data
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     CreatedInstance
 )
 

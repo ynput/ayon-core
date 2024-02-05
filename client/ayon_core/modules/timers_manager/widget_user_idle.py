@@ -1,5 +1,5 @@
 from qtpy import QtCore, QtGui, QtWidgets
-from openpype import resources, style
+from ayon_core import resources, style
 
 
 class WidgetUserIdle(QtWidgets.QWidget):

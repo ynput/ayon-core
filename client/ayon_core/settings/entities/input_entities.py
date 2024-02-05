@@ -15,7 +15,7 @@ from .exceptions import (
     EntitySchemaError
 )
 
-from openpype.settings.constants import METADATA_KEYS
+from ayon_core.settings.constants import METADATA_KEYS
 
 
 class EndpointEntity(ItemEntity):

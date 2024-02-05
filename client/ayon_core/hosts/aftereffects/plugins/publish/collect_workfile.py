@@ -2,8 +2,8 @@ import os
 
 import pyblish.api
 
-from openpype.client import get_asset_name_identifier
-from openpype.pipeline.create import get_subset_name
+from ayon_core.client import get_asset_name_identifier
+from ayon_core.pipeline.create import get_subset_name
 
 
 class CollectWorkfile(pyblish.api.ContextPlugin):

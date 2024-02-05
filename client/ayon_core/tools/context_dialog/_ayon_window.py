@@ -4,18 +4,18 @@ import json
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import style
-from openpype.lib.events import QueuedEventSystem
-from openpype.tools.ayon_utils.models import (
+from ayon_core import style
+from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.tools.ayon_utils.models import (
     ProjectsModel,
     HierarchyModel,
 )
-from openpype.tools.ayon_utils.widgets import (
+from ayon_core.tools.ayon_utils.widgets import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
 )
-from openpype.tools.utils.lib import (
+from ayon_core.tools.utils.lib import (
     center_window,
     get_openpype_qt_app,
 )

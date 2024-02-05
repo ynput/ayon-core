@@ -5,9 +5,9 @@ import logging
 
 from maya import cmds
 
-from openpype.client import get_last_version_by_subset_name
-from openpype.pipeline import get_current_project_name
-import openpype.hosts.maya.lib as maya_lib
+from ayon_core.client import get_last_version_by_subset_name
+from ayon_core.pipeline import get_current_project_name
+import ayon_core.hosts.maya.lib as maya_lib
 from . import lib
 from .alembic import get_alembic_ids_cache
 

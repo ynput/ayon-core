@@ -1,19 +1,19 @@
 import os
 
-from openpype.hosts.max.api import lib
-from openpype.hosts.max.api.lib import (
+from ayon_core.hosts.max.api import lib
+from ayon_core.hosts.max.api.lib import (
     unique_namespace,
     get_namespace,
     maintained_selection,
     object_transform_set
 )
-from openpype.hosts.max.api.lib import maintained_selection
-from openpype.hosts.max.api.pipeline import (
+from ayon_core.hosts.max.api.lib import maintained_selection
+from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
     update_custom_attribute_data
 )
-from openpype.pipeline import get_representation_path, load
+from ayon_core.pipeline import get_representation_path, load
 
 
 class ObjLoader(load.LoaderPlugin):

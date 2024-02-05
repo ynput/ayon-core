@@ -1,12 +1,12 @@
-from openpype.pipeline import InventoryAction
-from openpype.pipeline import get_current_project_name
-from openpype.pipeline.load.plugins import discover_loader_plugins
-from openpype.pipeline.load.utils import (
+from ayon_core.pipeline import InventoryAction
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.pipeline.load.plugins import discover_loader_plugins
+from ayon_core.pipeline.load.utils import (
     get_loader_identifier,
     remove_container,
     load_container,
 )
-from openpype.client import get_representation_by_id
+from ayon_core.client import get_representation_by_id
 
 
 class RemoveAndLoad(InventoryAction):

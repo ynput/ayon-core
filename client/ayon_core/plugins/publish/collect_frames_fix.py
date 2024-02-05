@@ -1,11 +1,11 @@
 import pyblish.api
-from openpype.lib.attribute_definitions import (
+from ayon_core.lib.attribute_definitions import (
     TextDef,
     BoolDef
 )
 
-from openpype.pipeline.publish import OpenPypePyblishPluginMixin
-from openpype.client.entities import (
+from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.client.entities import (
     get_last_version_by_subset_name,
     get_representations
 )

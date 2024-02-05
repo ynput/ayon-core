@@ -2,7 +2,7 @@
 
 """
 
-from openpype.pipeline import load
+from ayon_core.pipeline import load
 
 
 class SetFrameRangeLoader(load.LoaderPlugin):

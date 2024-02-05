@@ -1,11 +1,11 @@
-from openpype.client import get_project, get_asset_by_name
-from openpype.lib.applications import (
+from ayon_core.client import get_project, get_asset_by_name
+from ayon_core.lib.applications import (
     PreLaunchHook,
     EnvironmentPrepData,
     prepare_app_environments,
     prepare_context_environments
 )
-from openpype.pipeline import Anatomy
+from ayon_core.pipeline import Anatomy
 
 
 class GlobalHostDataHook(PreLaunchHook):

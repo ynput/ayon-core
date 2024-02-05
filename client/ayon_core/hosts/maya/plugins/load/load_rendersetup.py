@@ -10,12 +10,12 @@ import json
 import sys
 import six
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from openpype.hosts.maya.api import lib
-from openpype.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api import lib
+from ayon_core.hosts.maya.api.pipeline import containerise
 
 from maya import cmds
 import maya.app.renderSetup.model.renderSetup as renderSetup
@@ -35,7 +35,7 @@ class RenderSetupLoader(load.LoaderPlugin):
     def load(self, context, name, namespace, data):
         """Load RenderSetup settings."""
 
-        # from openpype.hosts.maya.api.lib import namespaced
+        # from ayon_core.hosts.maya.api.lib import namespaced
 
         asset = context['asset']['name']
         namespace = namespace or lib.unique_namespace(

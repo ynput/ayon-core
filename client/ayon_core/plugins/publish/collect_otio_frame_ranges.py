@@ -23,7 +23,7 @@ class CollectOtioFrameRanges(pyblish.api.InstancePlugin):
     def process(self, instance):
         # Not all hosts can import these modules.
         import opentimelineio as otio
-        from openpype.pipeline.editorial import (
+        from ayon_core.pipeline.editorial import (
             get_media_range_with_retimes,
             otio_range_to_frame_range,
             otio_range_with_handles

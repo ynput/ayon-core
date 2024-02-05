@@ -3,15 +3,15 @@ import json
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import style
-from openpype.pipeline import AvalonMongoDB
-from openpype.tools.utils.lib import center_window, get_openpype_qt_app
-from openpype.tools.utils.assets_widget import SingleSelectAssetsWidget
-from openpype.tools.utils.constants import (
+from ayon_core import style
+from ayon_core.pipeline import AvalonMongoDB
+from ayon_core.tools.utils.lib import center_window, get_openpype_qt_app
+from ayon_core.tools.utils.assets_widget import SingleSelectAssetsWidget
+from ayon_core.tools.utils.constants import (
     PROJECT_NAME_ROLE
 )
-from openpype.tools.utils.tasks_widget import TasksWidget
-from openpype.tools.utils.models import (
+from ayon_core.tools.utils.tasks_widget import TasksWidget
+from ayon_core.tools.utils.models import (
     ProjectModel,
     ProjectSortFilterProxy
 )

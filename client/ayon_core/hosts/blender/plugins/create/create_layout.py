@@ -2,7 +2,7 @@
 
 import bpy
 
-from openpype.hosts.blender.api import plugin, lib
+from ayon_core.hosts.blender.api import plugin, lib
 
 
 class CreateLayout(plugin.BaseCreator):

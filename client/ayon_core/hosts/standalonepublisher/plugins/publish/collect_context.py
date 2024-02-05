@@ -20,7 +20,7 @@ from pprint import pformat
 import clique
 import pyblish.api
 
-from openpype.pipeline import legacy_io
+from ayon_core.pipeline import legacy_io
 
 
 class CollectContextDataSAPublish(pyblish.api.ContextPlugin):

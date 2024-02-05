@@ -2,12 +2,12 @@ import os
 import shutil
 from PIL import Image
 
-from openpype.lib import (
+from ayon_core.lib import (
     run_subprocess,
     get_ffmpeg_tool_args,
 )
-from openpype.pipeline import publish
-from openpype.hosts.photoshop import api as photoshop
+from ayon_core.pipeline import publish
+from ayon_core.hosts.photoshop import api as photoshop
 
 
 class ExtractReview(publish.Extractor):

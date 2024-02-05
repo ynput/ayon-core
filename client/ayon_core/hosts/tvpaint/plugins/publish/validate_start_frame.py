@@ -1,9 +1,9 @@
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin,
 )
-from openpype.hosts.tvpaint.api.lib import execute_george
+from ayon_core.hosts.tvpaint.api.lib import execute_george
 
 
 class RepairStartFrame(pyblish.api.Action):

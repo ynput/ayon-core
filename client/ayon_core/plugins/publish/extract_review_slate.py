@@ -5,7 +5,7 @@ from pprint import pformat
 
 import pyblish.api
 
-from openpype.lib import (
+from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
     get_ffmpeg_tool_args,
@@ -14,8 +14,8 @@ from openpype.lib import (
     get_ffmpeg_codec_args,
     get_ffmpeg_format_args,
 )
-from openpype.pipeline import publish
-from openpype.pipeline.publish import KnownPublishError
+from ayon_core.pipeline import publish
+from ayon_core.pipeline.publish import KnownPublishError
 
 
 class ExtractReviewSlate(publish.Extractor):

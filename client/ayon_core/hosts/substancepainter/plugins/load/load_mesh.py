@@ -1,14 +1,14 @@
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from openpype.pipeline.load import LoadError
-from openpype.hosts.substancepainter.api.pipeline import (
+from ayon_core.pipeline.load import LoadError
+from ayon_core.hosts.substancepainter.api.pipeline import (
     imprint_container,
     set_container_metadata,
     remove_container_metadata
 )
-from openpype.hosts.substancepainter.api.lib import prompt_new_file_with_mesh
+from ayon_core.hosts.substancepainter.api.lib import prompt_new_file_with_mesh
 
 import substance_painter.project
 import qargparse

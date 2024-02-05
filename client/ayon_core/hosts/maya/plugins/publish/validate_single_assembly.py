@@ -1,5 +1,5 @@
 import pyblish.api
-from openpype.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline.publish import ValidateContentsOrder
 
 
 class ValidateSingleAssembly(pyblish.api.InstancePlugin):

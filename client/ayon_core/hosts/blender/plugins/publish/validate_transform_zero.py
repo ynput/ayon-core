@@ -5,8 +5,8 @@ import bpy
 
 import pyblish.api
 
-import openpype.hosts.blender.api.action
-from openpype.pipeline.publish import (
+import ayon_core.hosts.blender.api.action
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
     PublishValidationError

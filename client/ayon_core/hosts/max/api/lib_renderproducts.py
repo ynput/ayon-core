@@ -6,9 +6,9 @@ import os
 
 from pymxs import runtime as rt
 
-from openpype.hosts.max.api.lib import get_current_renderer
-from openpype.pipeline import get_current_project_name
-from openpype.settings import get_project_settings
+from ayon_core.hosts.max.api.lib import get_current_renderer
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.settings import get_project_settings
 
 
 class RenderProducts(object):

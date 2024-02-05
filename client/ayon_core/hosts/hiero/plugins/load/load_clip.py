@@ -1,16 +1,16 @@
-from openpype.client import (
+from ayon_core.client import (
     get_version_by_id,
     get_last_version_by_subset_id
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_representation_path,
     get_current_project_name,
 )
-from openpype.lib.transcoding import (
+from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,
     IMAGE_EXTENSIONS
 )
-import openpype.hosts.hiero.api as phiero
+import ayon_core.hosts.hiero.api as phiero
 
 
 class LoadClip(phiero.SequenceLoader):

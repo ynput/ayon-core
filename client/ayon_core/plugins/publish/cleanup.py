@@ -5,7 +5,7 @@ import shutil
 import pyblish.api
 import re
 
-from openpype.tests.lib import is_in_tests
+from ayon_core.tests.lib import is_in_tests
 
 
 class CleanUp(pyblish.api.InstancePlugin):

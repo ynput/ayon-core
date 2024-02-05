@@ -8,10 +8,10 @@ from bson.objectid import ObjectId
 import pyblish.util
 import pyblish.api
 
-from openpype.client.mongo import OpenPypeMongoConnection
-from openpype.settings import get_project_settings
-from openpype.lib import Logger
-from openpype.lib.profiles_filtering import filter_profiles
+from ayon_core.client.mongo import OpenPypeMongoConnection
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import Logger
+from ayon_core.lib.profiles_filtering import filter_profiles
 
 ERROR_STATUS = "error"
 IN_PROGRESS_STATUS = "in_progress"

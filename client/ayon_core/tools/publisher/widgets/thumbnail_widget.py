@@ -3,23 +3,23 @@ import uuid
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.style import get_objected_colors
-from openpype.lib import (
+from ayon_core.style import get_objected_colors
+from ayon_core.lib import (
     run_subprocess,
     is_oiio_supported,
     get_oiio_tool_args,
     get_ffmpeg_tool_args,
 )
-from openpype.lib.transcoding import (
+from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     VIDEO_EXTENSIONS,
 )
 
-from openpype.tools.utils import (
+from ayon_core.tools.utils import (
     paint_image_with_color,
     PixmapButton,
 )
-from openpype.tools.publisher.control import CardMessageTypes
+from ayon_core.tools.publisher.control import CardMessageTypes
 
 from .icons import get_image
 from .screenshot_widget import capture_to_file

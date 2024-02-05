@@ -1,6 +1,6 @@
 from pyblish import api
 
-from openpype.client import get_assets, get_asset_name_identifier
+from ayon_core.client import get_assets, get_asset_name_identifier
 
 
 class CollectAssetBuilds(api.ContextPlugin):

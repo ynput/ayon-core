@@ -1,11 +1,11 @@
 import collections
 
-from openpype.lib import Logger
-from openpype.client.entities import get_representations
-from openpype.client import get_linked_representation_id
-from openpype.modules import ModulesManager
-from openpype.tools.ayon_utils.models import NestedCacheItem
-from openpype.tools.ayon_loader.abstract import ActionItem
+from ayon_core.lib import Logger
+from ayon_core.client.entities import get_representations
+from ayon_core.client import get_linked_representation_id
+from ayon_core.modules import ModulesManager
+from ayon_core.tools.ayon_utils.models import NestedCacheItem
+from ayon_core.tools.ayon_loader.abstract import ActionItem
 
 DOWNLOAD_IDENTIFIER = "sitesync.download"
 UPLOAD_IDENTIFIER = "sitesync.upload"

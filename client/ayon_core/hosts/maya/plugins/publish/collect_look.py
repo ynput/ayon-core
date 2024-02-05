@@ -6,7 +6,7 @@ import glob
 
 from maya import cmds  # noqa
 import pyblish.api
-from openpype.hosts.maya.api import lib
+from ayon_core.hosts.maya.api import lib
 
 SHAPE_ATTRS = ["castsShadows",
                "receiveShadows",

@@ -1,7 +1,7 @@
 import click
 
-from openpype.tools.utils import get_openpype_qt_app
-from openpype.tools.push_to_project.window import PushToContextSelectWindow
+from ayon_core.tools.utils import get_openpype_qt_app
+from ayon_core.tools.push_to_project.window import PushToContextSelectWindow
 
 
 @click.command()

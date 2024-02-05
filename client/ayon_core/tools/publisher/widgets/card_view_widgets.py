@@ -25,10 +25,10 @@ import collections
 
 from qtpy import QtWidgets, QtCore
 
-from openpype.widgets.nice_checkbox import NiceCheckbox
+from ayon_core.widgets.nice_checkbox import NiceCheckbox
 
-from openpype.tools.utils import BaseClickableFrame
-from openpype.tools.utils.lib import html_escape
+from ayon_core.tools.utils import BaseClickableFrame
+from ayon_core.tools.utils.lib import html_escape
 from .widgets import (
     AbstractInstanceView,
     ContextWarningLabel,

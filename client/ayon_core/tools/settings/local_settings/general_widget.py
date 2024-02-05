@@ -1,9 +1,9 @@
 import getpass
 
 from qtpy import QtWidgets, QtCore
-from openpype.lib import is_admin_password_required
-from openpype.widgets import PasswordDialog
-from openpype.tools.utils import PlaceholderLineEdit
+from ayon_core.lib import is_admin_password_required
+from ayon_core.widgets import PasswordDialog
+from ayon_core.tools.utils import PlaceholderLineEdit
 
 
 class LocalGeneralWidgets(QtWidgets.QWidget):

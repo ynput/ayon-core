@@ -1,6 +1,8 @@
 import shutil
-import openpype
+
 import pyblish.api
+
+from ayon_core.lib import version_up
 
 
 class VersionUpScene(pyblish.api.ContextPlugin):
@@ -12,7 +14,7 @@ class VersionUpScene(pyblish.api.ContextPlugin):
 
     def process(self, context):
         current_file = context.data.get('currentFile')
-        v_up = openpype.lib.version_up(current_file)
+        v_up = version_up(current_file)
         self.log.debug('Current file is: {}'.format(current_file))
         self.log.debug('Version up: {}'.format(v_up))
 

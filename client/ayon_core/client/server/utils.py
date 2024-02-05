@@ -3,7 +3,7 @@ import uuid
 
 import ayon_api
 
-from openpype.client.operations_base import REMOVED_VALUE
+from ayon_core.client.operations_base import REMOVED_VALUE
 
 
 class _GlobalCache:
@@ -14,7 +14,7 @@ def get_ayon_server_api_connection():
     if _GlobalCache.initialized:
         con = ayon_api.get_server_api_connection()
     else:
-        from openpype.lib.local_settings import get_local_site_id
+        from ayon_core.lib.local_settings import get_local_site_id
 
         _GlobalCache.initialized = True
         site_id = get_local_site_id()

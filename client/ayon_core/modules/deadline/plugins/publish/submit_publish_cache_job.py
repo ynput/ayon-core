@@ -8,16 +8,16 @@ import requests
 
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_last_version_by_subset_name,
 )
-from openpype.pipeline import publish, legacy_io
-from openpype.lib import EnumDef, is_running_from_build
-from openpype.tests.lib import is_in_tests
-from openpype.pipeline.version_start import get_versioning_start
+from ayon_core.pipeline import publish, legacy_io
+from ayon_core.lib import EnumDef, is_running_from_build
+from ayon_core.tests.lib import is_in_tests
+from ayon_core.pipeline.version_start import get_versioning_start
 
-from openpype.pipeline.farm.pyblish_functions import (
+from ayon_core.pipeline.farm.pyblish_functions import (
     create_skeleton_instance_cache,
     create_instances_for_cache,
     attach_instances_to_subset,

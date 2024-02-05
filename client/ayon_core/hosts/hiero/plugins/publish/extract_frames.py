@@ -1,11 +1,11 @@
 import os
 import pyblish.api
 
-from openpype.lib import (
+from ayon_core.lib import (
     get_oiio_tool_args,
     run_subprocess,
 )
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractFrames(publish.Extractor):

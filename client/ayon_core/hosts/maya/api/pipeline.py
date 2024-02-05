@@ -11,21 +11,21 @@ import maya.api.OpenMaya as om
 
 import pyblish.api
 
-from openpype.settings import get_project_settings
-from openpype.host import (
+from ayon_core.settings import get_project_settings
+from ayon_core.host import (
     HostBase,
     IWorkfileHost,
     ILoadHost,
     IPublishHost,
     HostDirmap,
 )
-from openpype.tools.utils import host_tools
-from openpype.tools.workfiles.lock_dialog import WorkfileLockDialog
-from openpype.lib import (
+from ayon_core.tools.utils import host_tools
+from ayon_core.tools.workfiles.lock_dialog import WorkfileLockDialog
+from ayon_core.lib import (
     register_event_callback,
     emit_event
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     legacy_io,
     get_current_project_name,
     register_loader_plugin_path,
@@ -36,15 +36,15 @@ from openpype.pipeline import (
     deregister_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.pipeline.load import any_outdated_containers
-from openpype.pipeline.workfile.lock_workfile import (
+from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.pipeline.workfile.lock_workfile import (
     create_workfile_lock,
     remove_workfile_lock,
     is_workfile_locked,
     is_workfile_lock_enabled
 )
-from openpype.hosts.maya import MAYA_ROOT_DIR
-from openpype.hosts.maya.lib import create_workspace_mel
+from ayon_core.hosts.maya import MAYA_ROOT_DIR
+from ayon_core.hosts.maya.lib import create_workspace_mel
 
 from . import menu, lib
 from .workfile_template_builder import MayaPlaceholderLoadPlugin
@@ -583,7 +583,7 @@ def on_save():
 def on_open():
     """On scene open let's assume the containers have changed."""
 
-    from openpype.widgets import popup
+    from ayon_core.widgets import popup
 
     # Validate FPS after update_task_from_path to
     # ensure it is using correct FPS for the asset

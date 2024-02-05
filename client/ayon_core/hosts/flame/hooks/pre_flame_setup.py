@@ -5,12 +5,12 @@ import contextlib
 import socket
 from pprint import pformat
 
-from openpype.lib import (
+from ayon_core.lib import (
     get_openpype_username,
     run_subprocess,
 )
-from openpype.lib.applications import PreLaunchHook, LaunchTypes
-from openpype.hosts import flame as opflame
+from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_core.hosts import flame as opflame
 
 
 class FlamePrelaunch(PreLaunchHook):

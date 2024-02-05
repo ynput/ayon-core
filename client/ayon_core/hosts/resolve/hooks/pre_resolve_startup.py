@@ -1,7 +1,7 @@
 import os
 
-from openpype.lib.applications import PreLaunchHook, LaunchTypes
-import openpype.hosts.resolve
+from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+import ayon_core.hosts.resolve
 
 
 class PreLaunchResolveStartup(PreLaunchHook):

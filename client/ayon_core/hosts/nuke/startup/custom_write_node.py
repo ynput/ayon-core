@@ -2,8 +2,8 @@
 import os
 import nuke
 import nukescripts
-from openpype.pipeline import Anatomy
-from openpype.hosts.nuke.api.lib import (
+from ayon_core.pipeline import Anatomy
+from ayon_core.hosts.nuke.api.lib import (
     set_node_knobs_from_settings,
     get_nuke_imageio_settings
 )

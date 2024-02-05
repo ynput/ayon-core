@@ -3,17 +3,17 @@ from collections import OrderedDict
 import six
 import nuke
 
-from openpype.client import (
+from ayon_core.client import (
     get_version_by_id,
     get_last_version_by_subset_id,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_current_project_name,
     get_representation_path,
 )
-from openpype.hosts.nuke.api import lib
-from openpype.hosts.nuke.api import (
+from ayon_core.hosts.nuke.api import lib
+from ayon_core.hosts.nuke.api import (
     containerise,
     update_container,
     viewer_update_and_undo_stop

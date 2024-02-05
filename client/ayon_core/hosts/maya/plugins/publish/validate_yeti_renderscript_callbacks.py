@@ -1,7 +1,7 @@
 from maya import cmds
 
 import pyblish.api
-from openpype.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline.publish import ValidateContentsOrder
 
 
 class ValidateYetiRenderScriptCallbacks(pyblish.api.InstancePlugin):

@@ -4,12 +4,12 @@ import tempfile
 import platform
 
 import pyblish.api
-from openpype.modules.royalrender.api import (
+from ayon_core.modules.royalrender.api import (
     RRJob,
     Api as rrApi,
     SubmitterParameter
 )
-from openpype.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import KnownPublishError
 
 
 class SubmitJobsToRoyalRender(pyblish.api.ContextPlugin):

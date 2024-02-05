@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating openGL reviews."""
-from openpype.hosts.houdini.api import plugin
-from openpype.lib import EnumDef, BoolDef, NumberDef
+from ayon_core.hosts.houdini.api import plugin
+from ayon_core.lib import EnumDef, BoolDef, NumberDef
 
 import os
 import hou
@@ -134,7 +134,7 @@ class CreateReview(plugin.HoudiniCreator):
     def set_colorcorrect_to_default_view_space(self,
                                                instance_node):
         """Set ociocolorspace to the default output space."""
-        from openpype.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
+        from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
 
         # set Color Correction parameter to OpenColorIO
         instance_node.setParms({"colorcorrect": 2})

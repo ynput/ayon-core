@@ -1,6 +1,6 @@
 """Create an animation asset."""
 
-from openpype.hosts.blender.api import plugin, lib
+from ayon_core.hosts.blender.api import plugin, lib
 
 
 class CreateAnimation(plugin.BaseCreator):

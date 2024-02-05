@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype.lib import version_up
-from openpype.pipeline import registered_host
+from ayon_core.lib import version_up
+from ayon_core.pipeline import registered_host
 
 
 class IncrementWorkfileVersion(pyblish.api.ContextPlugin):

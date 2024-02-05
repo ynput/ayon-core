@@ -1,16 +1,16 @@
 import os
 
-from openpype.hosts.max.api import lib, maintained_selection
-from openpype.hosts.max.api.lib import (
+from ayon_core.hosts.max.api import lib, maintained_selection
+from ayon_core.hosts.max.api.lib import (
     unique_namespace,
 
 )
-from openpype.hosts.max.api.pipeline import (
+from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
     update_custom_attribute_data
 )
-from openpype.pipeline import get_representation_path, load
+from ayon_core.pipeline import get_representation_path, load
 
 
 class PointCloudLoader(load.LoaderPlugin):

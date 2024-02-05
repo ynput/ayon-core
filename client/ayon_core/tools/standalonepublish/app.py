@@ -6,16 +6,16 @@ import signal
 from bson.objectid import ObjectId
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.client import get_asset_by_id
+from ayon_core.client import get_asset_by_id
 
 from .widgets import (
     AssetWidget, FamilyWidget, ComponentsWidget, ShadowWidget
 )
 from .widgets.constants import HOST_NAME
-from openpype import style
-from openpype import resources
-from openpype.pipeline import AvalonMongoDB
-from openpype.modules import ModulesManager
+from ayon_core import style
+from ayon_core import resources
+from ayon_core.pipeline import AvalonMongoDB
+from ayon_core.modules import ModulesManager
 
 
 class Window(QtWidgets.QDialog):

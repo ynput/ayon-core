@@ -6,10 +6,10 @@ import os
 
 import pyblish.api
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishXmlValidationError
 )
-from openpype.hosts.aftereffects.api import get_stub
+from ayon_core.hosts.aftereffects.api import get_stub
 
 
 class ValidateFootageItems(pyblish.api.InstancePlugin):

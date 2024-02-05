@@ -3,10 +3,10 @@ import re
 import logging
 import platform
 
-from openpype.settings import get_project_settings
-from openpype.pipeline import get_current_project_name
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_project_name
 
-from openpype.lib import StringTemplate
+from ayon_core.lib import StringTemplate
 
 import hou
 

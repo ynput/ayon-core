@@ -3,15 +3,15 @@ import platform
 import subprocess
 
 from string import Formatter
-from openpype.client import (
+from ayon_core.client import (
     get_project,
     get_asset_by_name,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     Anatomy,
     LauncherAction,
 )
-from openpype.pipeline.template_data import get_template_data
+from ayon_core.pipeline.template_data import get_template_data
 
 
 class OpenTaskPath(LauncherAction):

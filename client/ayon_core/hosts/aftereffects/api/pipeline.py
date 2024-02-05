@@ -4,26 +4,26 @@ from qtpy import QtWidgets
 
 import pyblish.api
 
-from openpype.lib import Logger, register_event_callback
-from openpype.pipeline import (
+from ayon_core.lib import Logger, register_event_callback
+from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.hosts.aftereffects.api.workfile_template_builder import (
+from ayon_core.hosts.aftereffects.api.workfile_template_builder import (
     AEPlaceholderLoadPlugin,
     AEPlaceholderCreatePlugin
 )
-from openpype.pipeline.load import any_outdated_containers
-import openpype.hosts.aftereffects
+from ayon_core.pipeline.load import any_outdated_containers
+import ayon_core.hosts.aftereffects
 
-from openpype.host import (
+from ayon_core.host import (
     HostBase,
     IWorkfileHost,
     ILoadHost,
     IPublishHost
 )
-from openpype.tools.utils import get_openpype_qt_app
+from ayon_core.tools.utils import get_openpype_qt_app
 
 from .launch_logic import get_stub
 from .ws_stub import ConnectionNotEstablishedYet

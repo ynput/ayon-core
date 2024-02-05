@@ -6,10 +6,10 @@ from maya import cmds
 import pyblish.api
 import tempfile
 
-from openpype.lib import run_subprocess
-from openpype.pipeline import publish
-from openpype.pipeline.publish import OptionalPyblishPluginMixin
-from openpype.hosts.maya.api import lib
+from ayon_core.lib import run_subprocess
+from ayon_core.pipeline import publish
+from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
+from ayon_core.hosts.maya.api import lib
 
 
 class ExtractImportReference(publish.Extractor,

@@ -2,8 +2,8 @@ import os
 import inspect
 import traceback
 
-from openpype.lib import Logger
-from openpype.lib.python_module_tools import (
+from ayon_core.lib import Logger
+from ayon_core.lib.python_module_tools import (
     modules_from_path,
     classes_from_module,
 )

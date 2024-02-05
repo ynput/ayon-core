@@ -8,7 +8,7 @@ Provides:
 """
 
 import pyblish.api
-from openpype.pipeline import Anatomy, KnownPublishError
+from ayon_core.pipeline import Anatomy, KnownPublishError
 
 
 class CollectAnatomyObject(pyblish.api.ContextPlugin):

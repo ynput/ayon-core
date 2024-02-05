@@ -1,8 +1,8 @@
 """Create render."""
 import bpy
 
-from openpype.hosts.blender.api import plugin
-from openpype.hosts.blender.api.render_lib import prepare_rendering
+from ayon_core.hosts.blender.api import plugin
+from ayon_core.hosts.blender.api.render_lib import prepare_rendering
 
 
 class CreateRenderlayer(plugin.BaseCreator):

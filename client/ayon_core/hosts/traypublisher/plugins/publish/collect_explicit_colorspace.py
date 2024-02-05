@@ -1,11 +1,11 @@
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     publish,
     registered_host
 )
-from openpype.lib import EnumDef
-from openpype.pipeline import colorspace
-from openpype.pipeline.publish import KnownPublishError
+from ayon_core.lib import EnumDef
+from ayon_core.pipeline import colorspace
+from ayon_core.pipeline.publish import KnownPublishError
 
 
 class CollectColorspace(pyblish.api.InstancePlugin,

@@ -6,8 +6,8 @@ import nuke
 
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.nuke.api.lib import maintained_selection
+from ayon_core.pipeline import publish
+from ayon_core.hosts.nuke.api.lib import maintained_selection
 
 
 class ExtractCamera(publish.Extractor):

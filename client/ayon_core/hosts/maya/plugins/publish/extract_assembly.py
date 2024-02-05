@@ -1,8 +1,8 @@
 import os
 import json
 
-from openpype.pipeline import publish
-from openpype.hosts.maya.api.lib import extract_alembic
+from ayon_core.pipeline import publish
+from ayon_core.hosts.maya.api.lib import extract_alembic
 
 from maya import cmds
 

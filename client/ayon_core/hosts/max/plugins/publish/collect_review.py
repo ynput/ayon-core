@@ -3,9 +3,9 @@
 import pyblish.api
 
 from pymxs import runtime as rt
-from openpype.lib import BoolDef
-from openpype.hosts.max.api.lib import get_max_version
-from openpype.pipeline.publish import (
+from ayon_core.lib import BoolDef
+from ayon_core.hosts.max.api.lib import get_max_version
+from ayon_core.pipeline.publish import (
     OpenPypePyblishPluginMixin,
     KnownPublishError
 )

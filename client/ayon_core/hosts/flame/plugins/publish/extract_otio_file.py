@@ -1,7 +1,7 @@
 import os
 import pyblish.api
 import opentimelineio as otio
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractOTIOFile(publish.Extractor):

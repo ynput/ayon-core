@@ -4,8 +4,8 @@ import contextlib
 import pyblish.api
 import hou
 
-from openpype.pipeline import PublishXmlValidationError
-from openpype.hosts.houdini.api.action import SelectInvalidAction
+from ayon_core.pipeline import PublishXmlValidationError
+from ayon_core.hosts.houdini.api.action import SelectInvalidAction
 
 
 def group_consecutive_numbers(nums):

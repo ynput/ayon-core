@@ -2,8 +2,8 @@
 """Collector plugin for frames data on ROP instances."""
 import hou  # noqa
 import pyblish.api
-from openpype.lib import BoolDef
-from openpype.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.lib import BoolDef
+from ayon_core.pipeline import OpenPypePyblishPluginMixin
 
 
 class CollectAssetHandles(pyblish.api.InstancePlugin,

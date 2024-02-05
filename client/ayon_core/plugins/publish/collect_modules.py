@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Collect OpenPype modules."""
-from openpype.modules import ModulesManager
+from ayon_core.modules import ModulesManager
 import pyblish.api
 
 

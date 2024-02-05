@@ -3,10 +3,10 @@
 import sys
 import os
 
-from openpype.lib.local_settings import OpenPypeSettingsRegistry
-from openpype.lib import Logger, run_subprocess
+from ayon_core.lib.local_settings import OpenPypeSettingsRegistry
+from ayon_core.lib import Logger, run_subprocess
 from .rr_job import RRJob, SubmitFile, SubmitterParameter
-from openpype.lib.vendor_bin_utils import find_tool_in_custom_paths
+from ayon_core.lib.vendor_bin_utils import find_tool_in_custom_paths
 
 
 class Api:

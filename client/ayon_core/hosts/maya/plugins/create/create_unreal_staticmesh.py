@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator for Unreal Static Meshes."""
-from openpype.hosts.maya.api import plugin, lib
+from ayon_core.hosts.maya.api import plugin, lib
 from maya import cmds  # noqa
 
 

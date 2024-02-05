@@ -3,20 +3,20 @@ import shutil
 
 import ayon_api
 
-from openpype.client import get_asset_by_id
-from openpype.host import IWorkfileHost
-from openpype.lib import Logger, emit_event
-from openpype.lib.events import QueuedEventSystem
-from openpype.settings import get_project_settings
-from openpype.pipeline import Anatomy, registered_host
-from openpype.pipeline.context_tools import (
+from ayon_core.client import get_asset_by_id
+from ayon_core.host import IWorkfileHost
+from ayon_core.lib import Logger, emit_event
+from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import Anatomy, registered_host
+from ayon_core.pipeline.context_tools import (
     change_current_context,
     get_current_host_name,
     get_global_context,
 )
-from openpype.pipeline.workfile import create_workdir_extra_folders
+from ayon_core.pipeline.workfile import create_workdir_extra_folders
 
-from openpype.tools.ayon_utils.models import (
+from ayon_core.tools.ayon_utils.models import (
     HierarchyModel,
     HierarchyExpectedSelection,
     ProjectsModel,

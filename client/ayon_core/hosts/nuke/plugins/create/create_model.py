@@ -1,5 +1,5 @@
 import nuke
-from openpype.hosts.nuke.api import (
+from ayon_core.hosts.nuke.api import (
     NukeCreator,
     NukeCreatorError,
     maintained_selection

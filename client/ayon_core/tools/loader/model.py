@@ -7,8 +7,8 @@ from uuid import uuid4
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_assets,
     get_subsets,
     get_last_versions,
@@ -17,19 +17,19 @@ from openpype.client import (
     get_version_by_name,
     get_representations
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     registered_host,
     HeroVersionType,
     schema,
 )
 
-from openpype.style import get_default_entity_icon_color
-from openpype.tools.utils.models import TreeModel, Item
-from openpype.tools.utils import lib
-from openpype.host import ILoadHost
+from ayon_core.style import get_default_entity_icon_color
+from ayon_core.tools.utils.models import TreeModel, Item
+from ayon_core.tools.utils import lib
+from ayon_core.host import ILoadHost
 
-from openpype.modules import ModulesManager
-from openpype.tools.utils.constants import (
+from ayon_core.modules import ModulesManager
+from ayon_core.tools.utils.constants import (
     LOCAL_PROVIDER_ROLE,
     REMOTE_PROVIDER_ROLE,
     LOCAL_AVAILABILITY_ROLE,

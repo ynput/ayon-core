@@ -3,9 +3,9 @@ import logging
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import style
-from openpype import resources
-from openpype.pipeline import AvalonMongoDB
+from ayon_core import style
+from ayon_core import resources
+from ayon_core.pipeline import AvalonMongoDB
 
 import qtawesome
 from .models import (
@@ -22,7 +22,7 @@ from .widgets import (
     LauncherTaskWidget
 )
 
-from openpype.tools.flickcharm import FlickCharm
+from ayon_core.tools.flickcharm import FlickCharm
 
 
 class ProjectIconView(QtWidgets.QListView):

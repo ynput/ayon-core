@@ -13,7 +13,7 @@
 """
 import pyblish.api
 
-from openpype.lib.profiles_filtering import filter_profiles
+from ayon_core.lib.profiles_filtering import filter_profiles
 
 
 class PreIntegrateThumbnails(pyblish.api.InstancePlugin):

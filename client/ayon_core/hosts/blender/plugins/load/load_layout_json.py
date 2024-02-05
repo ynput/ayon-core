@@ -7,7 +7,7 @@ from typing import Dict, Optional
 
 import bpy
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     discover_loader_plugins,
     remove_container,
     load_container,
@@ -15,12 +15,12 @@ from openpype.pipeline import (
     loaders_from_representation,
     AVALON_CONTAINER_ID,
 )
-from openpype.hosts.blender.api.pipeline import (
+from ayon_core.hosts.blender.api.pipeline import (
     AVALON_INSTANCES,
     AVALON_CONTAINERS,
     AVALON_PROPERTY,
 )
-from openpype.hosts.blender.api import plugin
+from ayon_core.hosts.blender.api import plugin
 
 
 class JsonLayoutLoader(plugin.AssetLoader):

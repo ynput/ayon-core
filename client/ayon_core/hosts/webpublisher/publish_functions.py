@@ -3,13 +3,13 @@ import time
 import pyblish.api
 import pyblish.util
 
-from openpype.lib import Logger
-from openpype.lib.applications import (
+from ayon_core.lib import Logger
+from ayon_core.lib.applications import (
     ApplicationManager,
     LaunchTypes,
 )
-from openpype.pipeline import install_host
-from openpype.hosts.webpublisher.api import WebpublisherHost
+from ayon_core.pipeline import install_host
+from ayon_core.hosts.webpublisher.api import WebpublisherHost
 
 from .lib import (
     get_batch_asset_task_info,

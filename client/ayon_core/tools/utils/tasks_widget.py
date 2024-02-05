@@ -1,12 +1,12 @@
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from openpype.client import (
+from ayon_core.client import (
     get_project,
     get_asset_by_id,
 )
-from openpype.style import get_disabled_entity_icon_color
-from openpype.tools.utils.lib import get_task_icon
+from ayon_core.style import get_disabled_entity_icon_color
+from ayon_core.tools.utils.lib import get_task_icon
 
 from .views import DeselectableTreeView
 

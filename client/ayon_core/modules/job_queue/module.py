@@ -41,8 +41,8 @@ import json
 import copy
 import platform
 
-from openpype.modules import OpenPypeModule, click_wrap
-from openpype.settings import get_system_settings
+from ayon_core.modules import OpenPypeModule, click_wrap
+from ayon_core.settings import get_system_settings
 
 
 class JobQueueModule(OpenPypeModule):
@@ -172,7 +172,7 @@ class JobQueueModule(OpenPypeModule):
     @classmethod
     def start_worker(cls, app_name, server_url=None):
         import requests
-        from openpype.lib import ApplicationManager
+        from ayon_core.lib import ApplicationManager
 
         if not server_url:
             server_url = cls.get_server_url_from_settings()
@@ -200,7 +200,7 @@ class JobQueueModule(OpenPypeModule):
 
     @classmethod
     def _start_tvpaint_worker(cls, app, server_url):
-        from openpype.hosts.tvpaint.worker import main
+        from ayon_core.hosts.tvpaint.worker import main
 
         executable = app.find_executable()
         if not executable:

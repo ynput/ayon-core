@@ -6,21 +6,21 @@ import logging
 
 import hou  # noqa
 
-from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
+from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 
 import pyblish.api
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     register_creator_plugin_path,
     register_loader_plugin_path,
     register_inventory_action_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.pipeline.load import any_outdated_containers
-from openpype.hosts.houdini import HOUDINI_HOST_DIR
-from openpype.hosts.houdini.api import lib, shelves, creator_node_shelves
+from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.hosts.houdini import HOUDINI_HOST_DIR
+from ayon_core.hosts.houdini.api import lib, shelves, creator_node_shelves
 
-from openpype.lib import (
+from ayon_core.lib import (
     register_event_callback,
     emit_event,
 )
@@ -306,11 +306,11 @@ def _show_outdated_content_popup():
         log.info("Skipping outdated content pop-up "
                  "because Houdini window can't be found.")
     else:
-        from openpype.widgets import popup
+        from ayon_core.widgets import popup
 
         # Show outdated pop-up
         def _on_show_inventory():
-            from openpype.tools.utils import host_tools
+            from ayon_core.tools.utils import host_tools
             host_tools.show_scene_inventory(parent=parent)
 
         dialog = popup.Popup(parent=parent)

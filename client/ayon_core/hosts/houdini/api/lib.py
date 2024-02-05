@@ -10,10 +10,10 @@ import json
 
 import six
 
-from openpype.lib import StringTemplate
-from openpype.client import get_project, get_asset_by_name
-from openpype.settings import get_current_project_settings
-from openpype.pipeline import (
+from ayon_core.lib import StringTemplate
+from ayon_core.client import get_project, get_asset_by_name
+from ayon_core.settings import get_current_project_settings
+from ayon_core.pipeline import (
     Anatomy,
     get_current_project_name,
     get_current_asset_name,
@@ -21,11 +21,11 @@ from openpype.pipeline import (
     get_current_context,
     get_current_host_name,
 )
-from openpype.pipeline.create import CreateContext
-from openpype.pipeline.template_data import get_template_data
-from openpype.pipeline.context_tools import get_current_project_asset
-from openpype.widgets import popup
-from openpype.tools.utils.host_tools import get_tool_by_name
+from ayon_core.pipeline.create import CreateContext
+from ayon_core.pipeline.template_data import get_template_data
+from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.widgets import popup
+from ayon_core.tools.utils.host_tools import get_tool_by_name
 
 import hou
 
@@ -1045,7 +1045,7 @@ def add_self_publish_button(node):
     button_parm = hou.ButtonParmTemplate(
         "ayon_self_publish",
         "{} Publish".format(label),
-        script_callback="from openpype.hosts.houdini.api.lib import "
+        script_callback="from ayon_core.hosts.houdini.api.lib import "
                         "self_publish; self_publish()",
         script_callback_language=hou.scriptLanguage.Python,
         join_with_next=True

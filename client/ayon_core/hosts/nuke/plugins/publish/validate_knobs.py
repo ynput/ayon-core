@@ -2,7 +2,7 @@ import nuke
 import six
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairContextAction,
     PublishXmlValidationError,
 )

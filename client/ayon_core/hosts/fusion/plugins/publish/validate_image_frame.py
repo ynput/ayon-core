@@ -1,6 +1,6 @@
 import pyblish.api
 
-from openpype.pipeline import PublishValidationError
+from ayon_core.pipeline import PublishValidationError
 
 
 class ValidateImageFrame(pyblish.api.InstancePlugin):

@@ -1,10 +1,10 @@
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from openpype.hosts.houdini.api import pipeline
+from ayon_core.hosts.houdini.api import pipeline
 
-from openpype.hosts.houdini.api.lib import (
+from ayon_core.hosts.houdini.api.lib import (
     set_camera_resolution,
     get_camera_from_container
 )

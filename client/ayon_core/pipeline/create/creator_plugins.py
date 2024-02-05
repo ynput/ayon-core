@@ -6,9 +6,9 @@ from abc import ABCMeta, abstractmethod
 
 import six
 
-from openpype.settings import get_system_settings, get_project_settings
-from openpype.lib import Logger, is_func_signature_supported
-from openpype.pipeline.plugin_discover import (
+from ayon_core.settings import get_system_settings, get_project_settings
+from ayon_core.lib import Logger, is_func_signature_supported
+from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
     register_plugin_path,
@@ -832,7 +832,7 @@ def discover_convertor_plugins(*args, **kwargs):
 
 
 def discover_legacy_creator_plugins():
-    from openpype.pipeline import get_current_project_name
+    from ayon_core.pipeline import get_current_project_name
 
     log = Logger.get_logger("CreatorDiscover")
 

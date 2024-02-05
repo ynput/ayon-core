@@ -4,7 +4,7 @@ Flame utils for syncing scripts
 
 import os
 import shutil
-from openpype.lib import Logger
+from ayon_core.lib import Logger
 log = Logger.get_logger(__name__)
 
 

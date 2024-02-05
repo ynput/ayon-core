@@ -5,7 +5,7 @@ from bson.objectid import ObjectId
 
 from aiohttp.web_response import Response
 
-from openpype.client import (
+from ayon_core.client import (
     get_projects,
     get_project,
     get_assets,

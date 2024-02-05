@@ -1,14 +1,14 @@
 import re
 
-from openpype import AYON_SERVER_ENABLED
-import openpype.hosts.photoshop.api as api
-from openpype.client import get_asset_by_name
-from openpype.lib import prepare_template_data
-from openpype.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+import ayon_core.hosts.photoshop.api as api
+from ayon_core.client import get_asset_by_name
+from ayon_core.lib import prepare_template_data
+from ayon_core.pipeline import (
     AutoCreator,
     CreatedInstance
 )
-from openpype.hosts.photoshop.api.pipeline import cache_and_get_instances
+from ayon_core.hosts.photoshop.api.pipeline import cache_and_get_instances
 
 
 class PSAutoCreator(AutoCreator):

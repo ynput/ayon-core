@@ -1,17 +1,17 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.resources import get_openpype_icon_filepath
-from openpype.style import load_stylesheet
-from openpype.tools.utils import (
+from ayon_core.resources import get_openpype_icon_filepath
+from ayon_core.style import load_stylesheet
+from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     ErrorMessageBox,
     ThumbnailPainterWidget,
     RefreshButton,
     GoToCurrentButton,
 )
-from openpype.tools.utils.lib import center_window
-from openpype.tools.ayon_utils.widgets import ProjectsCombobox
-from openpype.tools.ayon_loader.control import LoaderController
+from ayon_core.tools.utils.lib import center_window
+from ayon_core.tools.ayon_utils.widgets import ProjectsCombobox
+from ayon_core.tools.ayon_loader.control import LoaderController
 
 from .folders_widget import LoaderFoldersWidget
 from .products_widget import ProductsWidget

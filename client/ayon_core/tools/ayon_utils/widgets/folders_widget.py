@@ -2,7 +2,7 @@ import collections
 
 from qtpy import QtWidgets, QtGui, QtCore
 
-from openpype.tools.utils import (
+from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     TreeView,
 )

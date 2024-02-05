@@ -1,8 +1,8 @@
 import pyblish.api
 
 
-from openpype.hosts.fusion.api.lib import get_current_comp
-from openpype.pipeline.publish import get_errored_instances_from_context
+from ayon_core.hosts.fusion.api.lib import get_current_comp
+from ayon_core.pipeline.publish import get_errored_instances_from_context
 
 
 class SelectInvalidAction(pyblish.api.Action):

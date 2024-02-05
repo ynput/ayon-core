@@ -6,17 +6,17 @@ from operator import attrgetter
 
 import json
 
-from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
+from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.hosts.max.api.menu import OpenPypeMenu
-from openpype.hosts.max.api import lib
-from openpype.hosts.max.api.plugin import MS_CUSTOM_ATTRIB
-from openpype.hosts.max import MAX_HOST_DIR
+from ayon_core.hosts.max.api.menu import OpenPypeMenu
+from ayon_core.hosts.max.api import lib
+from ayon_core.hosts.max.api.plugin import MS_CUSTOM_ATTRIB
+from ayon_core.hosts.max import MAX_HOST_DIR
 
 from pymxs import runtime as rt  # noqa
 

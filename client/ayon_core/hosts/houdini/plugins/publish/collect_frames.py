@@ -5,7 +5,7 @@ import re
 
 import hou  # noqa
 import pyblish.api
-from openpype.hosts.houdini.api import lib
+from ayon_core.hosts.houdini.api import lib
 
 
 class CollectFrames(pyblish.api.InstancePlugin):

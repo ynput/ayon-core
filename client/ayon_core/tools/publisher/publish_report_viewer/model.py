@@ -3,7 +3,7 @@ from qtpy import QtCore, QtGui
 
 import pyblish.api
 
-from openpype.tools.utils.lib import html_escape
+from ayon_core.tools.utils.lib import html_escape
 from .constants import (
     ITEM_ID_ROLE,
     ITEM_IS_GROUP_ROLE,

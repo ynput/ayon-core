@@ -2,13 +2,13 @@ import os
 import shutil
 import platform
 from pathlib import Path
-from openpype import AYON_SERVER_ENABLED
-from openpype.hosts.fusion import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.hosts.fusion import (
     FUSION_HOST_DIR,
     FUSION_VERSIONS_DICT,
     get_fusion_version,
 )
-from openpype.lib.applications import (
+from ayon_core.lib.applications import (
     PreLaunchHook,
     LaunchTypes,
     ApplicationLaunchFailed,

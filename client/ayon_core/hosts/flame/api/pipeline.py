@@ -5,8 +5,8 @@ import os
 import contextlib
 from pyblish import api as pyblish
 
-from openpype.lib import Logger
-from openpype.pipeline import (
+from ayon_core.lib import Logger
+from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     deregister_loader_plugin_path,
@@ -113,7 +113,7 @@ def on_pyblish_instance_toggled(instance, old_value, new_value):
     log.info("instance toggle: {}, old_value: {}, new_value:{} ".format(
         instance, old_value, new_value))
 
-    # from openpype.hosts.resolve import (
+    # from ayon_core.hosts.resolve import (
     #     set_publish_attribute
     # )
 

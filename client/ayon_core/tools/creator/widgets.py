@@ -5,9 +5,9 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 import qtawesome
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
-from openpype.tools.utils import ErrorMessageBox
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.tools.utils import ErrorMessageBox
 
 if hasattr(QtGui, "QRegularExpressionValidator"):
     RegularExpressionValidatorClass = QtGui.QRegularExpressionValidator

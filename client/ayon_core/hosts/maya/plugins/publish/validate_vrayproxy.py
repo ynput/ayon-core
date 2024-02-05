@@ -1,6 +1,6 @@
 import pyblish.api
 
-from openpype.pipeline import KnownPublishError
+from ayon_core.pipeline import KnownPublishError
 
 
 class ValidateVrayProxy(pyblish.api.InstancePlugin):

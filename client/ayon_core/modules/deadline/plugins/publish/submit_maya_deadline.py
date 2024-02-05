@@ -28,24 +28,24 @@ from collections import OrderedDict
 
 import attr
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     legacy_io,
     OpenPypePyblishPluginMixin
 )
-from openpype.lib import (
+from ayon_core.lib import (
     BoolDef,
     NumberDef,
     TextDef,
     EnumDef
 )
-from openpype.hosts.maya.api.lib_rendersettings import RenderSettings
-from openpype.hosts.maya.api.lib import get_attr_in_layer
+from ayon_core.hosts.maya.api.lib_rendersettings import RenderSettings
+from ayon_core.hosts.maya.api.lib import get_attr_in_layer
 
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
-from openpype.tests.lib import is_in_tests
-from openpype.lib import is_running_from_build
-from openpype.pipeline.farm.tools import iter_expected_files
+from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import is_running_from_build
+from ayon_core.pipeline.farm.tools import iter_expected_files
 
 
 def _validate_deadline_bool_value(instance, attribute, value):

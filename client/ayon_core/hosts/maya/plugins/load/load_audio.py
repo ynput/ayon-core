@@ -1,11 +1,11 @@
 from maya import cmds, mel
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from openpype.hosts.maya.api.pipeline import containerise
-from openpype.hosts.maya.api.lib import unique_namespace, get_container_members
+from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.lib import unique_namespace, get_container_members
 
 
 class AudioLoader(load.LoaderPlugin):

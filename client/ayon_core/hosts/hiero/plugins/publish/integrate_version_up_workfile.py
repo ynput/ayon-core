@@ -1,6 +1,6 @@
 from pyblish import api
 
-from openpype.lib import version_up
+from ayon_core.lib import version_up
 
 
 class IntegrateVersionUpWorkfile(api.ContextPlugin):

@@ -7,13 +7,13 @@ from qtpy import QtWidgets, QtGui
 import maya.utils
 import maya.cmds as cmds
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_current_asset_name,
     get_current_task_name
 )
-from openpype.pipeline.workfile import BuildWorkfile
-from openpype.tools.utils import host_tools
-from openpype.hosts.maya.api import lib, lib_rendersettings
+from ayon_core.pipeline.workfile import BuildWorkfile
+from ayon_core.tools.utils import host_tools
+from ayon_core.hosts.maya.api import lib, lib_rendersettings
 from .lib import get_main_window, IS_HEADLESS
 from ..tools import show_look_assigner
 

@@ -11,7 +11,7 @@ from distutils import dir_util
 from pathlib import Path
 from typing import List
 
-from openpype.settings import get_project_settings
+from ayon_core.settings import get_project_settings
 
 
 def get_engine_versions(env=None):

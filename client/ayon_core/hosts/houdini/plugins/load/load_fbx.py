@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Fbx Loader for houdini. """
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from openpype.hosts.houdini.api import pipeline
+from ayon_core.hosts.houdini.api import pipeline
 
 
 class FbxLoader(load.LoaderPlugin):

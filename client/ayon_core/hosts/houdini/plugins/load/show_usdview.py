@@ -2,8 +2,8 @@ import os
 import platform
 import subprocess
 
-from openpype.lib.vendor_bin_utils import find_executable
-from openpype.pipeline import load
+from ayon_core.lib.vendor_bin_utils import find_executable
+from ayon_core.pipeline import load
 
 
 class ShowInUsdview(load.LoaderPlugin):

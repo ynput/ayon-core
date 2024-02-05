@@ -2,8 +2,8 @@
 """Creator plugin to create Redshift ROP."""
 import hou  # noqa
 
-from openpype.hosts.houdini.api import plugin
-from openpype.lib import EnumDef, BoolDef
+from ayon_core.hosts.houdini.api import plugin
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class CreateRedshiftROP(plugin.HoudiniCreator):

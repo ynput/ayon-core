@@ -1,10 +1,10 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import style
-from openpype.resources import get_resource
+from ayon_core import style
+from ayon_core.resources import get_resource
 
-from openpype.settings import get_system_settings
-from openpype.settings.lib import (
+from ayon_core.settings import get_system_settings
+from ayon_core.settings.lib import (
     get_local_settings,
     save_local_settings
 )

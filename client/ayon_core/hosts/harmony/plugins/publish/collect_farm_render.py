@@ -4,10 +4,10 @@ from pathlib import Path
 
 import attr
 
-from openpype.lib import get_formatted_current_time
-from openpype.pipeline import publish
-from openpype.pipeline.publish import RenderInstance
-import openpype.hosts.harmony.api as harmony
+from ayon_core.lib import get_formatted_current_time
+from ayon_core.pipeline import publish
+from ayon_core.pipeline.publish import RenderInstance
+import ayon_core.hosts.harmony.api as harmony
 
 
 @attr.s

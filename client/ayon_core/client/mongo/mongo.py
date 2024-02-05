@@ -11,7 +11,7 @@ from bson.json_util import (
     CANONICAL_JSON_OPTIONS
 )
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 if sys.version_info[0] == 2:
     from urlparse import urlparse, parse_qs
 else:

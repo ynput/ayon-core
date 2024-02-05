@@ -1,7 +1,7 @@
 import os
 
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     load,
     get_representation_path
 )
@@ -21,8 +21,8 @@ class LoadVDBtoArnold(load.LoaderPlugin):
     def load(self, context, name, namespace, data):
 
         from maya import cmds
-        from openpype.hosts.maya.api.pipeline import containerise
-        from openpype.hosts.maya.api.lib import unique_namespace
+        from ayon_core.hosts.maya.api.pipeline import containerise
+        from ayon_core.hosts.maya.api.lib import unique_namespace
 
         try:
             family = context["representation"]["context"]["family"]

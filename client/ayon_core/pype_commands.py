@@ -14,8 +14,8 @@ class PypeCommands:
     """
     @staticmethod
     def launch_tray():
-        from openpype.lib import Logger
-        from openpype.tools import tray
+        from ayon_core.lib import Logger
+        from ayon_core.tools import tray
 
         Logger.set_process_name("Tray")
 
@@ -23,7 +23,7 @@ class PypeCommands:
 
     @staticmethod
     def launch_settings_gui(dev):
-        from openpype.tools import settings
+        from ayon_core.tools import settings
 
         # TODO change argument options to allow enum of user roles
         if dev:
@@ -36,8 +36,8 @@ class PypeCommands:
     def add_modules(click_func):
         """Modules/Addons can add their cli commands dynamically."""
 
-        from openpype.lib import Logger
-        from openpype.modules import ModulesManager
+        from ayon_core.lib import Logger
+        from ayon_core.modules import ModulesManager
 
         manager = ModulesManager()
         log = Logger.get_logger("CLI-AddModules")
@@ -62,13 +62,13 @@ class PypeCommands:
 
     @staticmethod
     def launch_webpublisher_webservercli(*args, **kwargs):
-        from openpype.hosts.webpublisher.webserver_service import run_webserver
+        from ayon_core.hosts.webpublisher.webserver_service import run_webserver
 
         return run_webserver(*args, **kwargs)
 
     @staticmethod
     def launch_traypublisher():
-        from openpype.tools import traypublisher
+        from ayon_core.tools import traypublisher
         traypublisher.main()
 
     @staticmethod
@@ -87,18 +87,18 @@ class PypeCommands:
             RuntimeError: When there is no path to process.
         """
 
-        from openpype.lib import Logger
-        from openpype.lib.applications import (
+        from ayon_core.lib import Logger
+        from ayon_core.lib.applications import (
             get_app_environments_for_context,
             LaunchTypes,
         )
-        from openpype.modules import ModulesManager
-        from openpype.pipeline import (
+        from ayon_core.modules import ModulesManager
+        from ayon_core.pipeline import (
             install_openpype_plugins,
             get_global_context,
         )
-        from openpype.tools.utils.host_tools import show_publish
-        from openpype.tools.utils.lib import qt_app_context
+        from ayon_core.tools.utils.host_tools import show_publish
+        from ayon_core.tools.utils.lib import qt_app_context
 
         # Register target and host
         import pyblish.api
@@ -173,7 +173,7 @@ class PypeCommands:
         Called by Deadline plugin to propagate environment into render jobs.
         """
 
-        from openpype.lib.applications import (
+        from ayon_core.lib.applications import (
             get_app_environments_for_context,
             LaunchTypes,
         )
@@ -199,13 +199,13 @@ class PypeCommands:
 
     @staticmethod
     def launch_project_manager():
-        from openpype.tools import project_manager
+        from ayon_core.tools import project_manager
 
         project_manager.main()
 
     @staticmethod
     def contextselection(output_path, project_name, asset_name, strict):
-        from openpype.tools.context_dialog import main
+        from ayon_core.tools.context_dialog import main
 
         main(output_path, project_name, asset_name, strict)
 
@@ -288,13 +288,13 @@ class PypeCommands:
 
     def repack_version(self, directory):
         """Repacking OpenPype version."""
-        from openpype.tools.repack_version import VersionRepacker
+        from ayon_core.tools.repack_version import VersionRepacker
 
         version_packer = VersionRepacker(directory)
         version_packer.process()
 
     def pack_project(self, project_name, dirpath, database_only):
-        from openpype.lib.project_backpack import pack_project
+        from ayon_core.lib.project_backpack import pack_project
 
         if database_only and not dirpath:
             raise ValueError((
@@ -306,6 +306,6 @@ class PypeCommands:
         pack_project(project_name, dirpath, database_only)
 
     def unpack_project(self, zip_filepath, new_root, database_only):
-        from openpype.lib.project_backpack import unpack_project
+        from ayon_core.lib.project_backpack import unpack_project
 
         unpack_project(zip_filepath, new_root, database_only)

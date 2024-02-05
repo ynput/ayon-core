@@ -1,7 +1,7 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.style import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.style import (
     load_stylesheet,
     app_icon_path
 )

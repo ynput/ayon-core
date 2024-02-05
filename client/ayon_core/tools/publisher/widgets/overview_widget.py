@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 from .border_label_widget import BorderedLabelWidget
 

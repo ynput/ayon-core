@@ -4,7 +4,7 @@ import sys
 import logging
 import functools
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 from . import schema
 from .mongodb import AvalonMongoDB, session_data_from_environment
 

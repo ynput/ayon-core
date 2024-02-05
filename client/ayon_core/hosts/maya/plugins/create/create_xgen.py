@@ -1,4 +1,4 @@
-from openpype.hosts.maya.api import plugin
+from ayon_core.hosts.maya.api import plugin
 
 
 class CreateXgen(plugin.MayaCreator):

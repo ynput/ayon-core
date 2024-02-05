@@ -1,5 +1,5 @@
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     PublishValidationError,
     registered_host,

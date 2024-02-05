@@ -4,8 +4,8 @@ import os
 
 import unreal
 
-from openpype.pipeline import publish
-from openpype.hosts.unreal.api.pipeline import UNREAL_VERSION
+from ayon_core.pipeline import publish
+from ayon_core.hosts.unreal.api.pipeline import UNREAL_VERSION
 
 
 class ExtractCamera(publish.Extractor):

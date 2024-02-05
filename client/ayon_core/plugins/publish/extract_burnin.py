@@ -9,17 +9,17 @@ import clique
 import six
 import pyblish.api
 
-from openpype import resources, PACKAGE_DIR
-from openpype.pipeline import publish
-from openpype.lib import (
+from ayon_core import resources, AYON_CORE_ROOT
+from ayon_core.pipeline import publish
+from ayon_core.lib import (
     run_openpype_process,
 
     get_transcode_temp_directory,
     convert_input_paths_for_ffmpeg,
     should_convert_for_ffmpeg
 )
-from openpype.lib.profiles_filtering import filter_profiles
-from openpype.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.lib.profiles_filtering import filter_profiles
+from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 
 
 class ExtractBurnin(publish.Extractor):
@@ -809,7 +809,7 @@ class ExtractBurnin(publish.Extractor):
         """Return path to python script for burnin processing."""
         scriptpath = os.path.normpath(
             os.path.join(
-                PACKAGE_DIR,
+                AYON_CORE_ROOT,
                 "scripts",
                 "otio_burnin.py"
             )

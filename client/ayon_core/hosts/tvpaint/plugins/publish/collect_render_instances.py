@@ -1,6 +1,6 @@
 import copy
 import pyblish.api
-from openpype.lib import prepare_template_data
+from ayon_core.lib import prepare_template_data
 
 
 class CollectRenderInstances(pyblish.api.InstancePlugin):

@@ -1,7 +1,7 @@
 from maya import cmds
 import xgenm
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     InventoryAction, get_representation_context, get_representation_path
 )
 

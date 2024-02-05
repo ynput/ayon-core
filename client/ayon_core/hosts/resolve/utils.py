@@ -1,8 +1,8 @@
 import os
 import shutil
-from openpype.lib import Logger, is_running_from_build
+from ayon_core.lib import Logger, is_running_from_build
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 RESOLVE_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 

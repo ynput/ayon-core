@@ -6,8 +6,8 @@ import string
 
 from qtpy import QtWidgets, QtCore
 
-from openpype.pipeline import legacy_io
-from openpype.lib import (
+from ayon_core.pipeline import legacy_io
+from ayon_core.lib import (
     execute,
     Logger,
     get_openpype_execute_args,

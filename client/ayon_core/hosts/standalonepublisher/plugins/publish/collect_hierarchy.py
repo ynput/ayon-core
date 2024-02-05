@@ -4,7 +4,7 @@ import re
 from copy import deepcopy
 import pyblish.api
 
-from openpype.client import get_asset_by_id
+from ayon_core.client import get_asset_by_id
 
 
 class CollectHierarchyInstance(pyblish.api.ContextPlugin):

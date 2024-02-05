@@ -1,5 +1,5 @@
 import pyblish.api
-from openpype.pipeline import Anatomy
+from ayon_core.pipeline import Anatomy
 from typing import Tuple, Union, List
 
 

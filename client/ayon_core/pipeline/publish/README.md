@@ -21,7 +21,7 @@ Publish plugins can be extended by additional logic when inherits from `OpenPype
 
 ```python
 import pyblish.api
-from openpype.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.pipeline import OpenPypePyblishPluginMixin
 
 
 # Example context plugin

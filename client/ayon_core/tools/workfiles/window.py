@@ -4,26 +4,26 @@ import copy
 import platform
 from qtpy import QtCore, QtWidgets, QtGui
 
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_name,
     get_workfile_info,
 )
-from openpype.client.operations import (
+from ayon_core.client.operations import (
     OperationsSession,
     new_workfile_info_doc,
     prepare_workfile_info_update_data,
 )
-from openpype import style
-from openpype import resources
-from openpype.pipeline import (
+from ayon_core import style
+from ayon_core import resources
+from ayon_core.pipeline import (
     Anatomy,
     get_current_project_name,
     get_current_asset_name,
     get_current_task_name,
 )
-from openpype.pipeline import legacy_io
-from openpype.tools.utils.assets_widget import SingleSelectAssetsWidget
-from openpype.tools.utils.tasks_widget import TasksWidget
+from ayon_core.pipeline import legacy_io
+from ayon_core.tools.utils.assets_widget import SingleSelectAssetsWidget
+from ayon_core.tools.utils.tasks_widget import TasksWidget
 
 from .files_widget import FilesWidget
 

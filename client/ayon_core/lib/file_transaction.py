@@ -4,7 +4,7 @@ import sys
 import errno
 import six
 
-from openpype.lib import create_hard_link
+from ayon_core.lib import create_hard_link
 
 # this is needed until speedcopy for linux is fixed
 if sys.platform == "win32":

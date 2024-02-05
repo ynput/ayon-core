@@ -7,10 +7,10 @@ import six
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.lib import BoolDef, Logger
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib import BoolDef, Logger
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     Anatomy,
 
@@ -24,9 +24,9 @@ from openpype.pipeline import (
     LoaderPlugin,
     get_representation_path,
 )
-from openpype.pipeline.load import LoadError
-from openpype.client import get_asset_by_name
-from openpype.pipeline.create import get_subset_name
+from ayon_core.pipeline.load import LoadError
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline.create import get_subset_name
 
 from . import lib
 from .lib import imprint, read
@@ -745,7 +745,7 @@ class ReferenceLoader(Loader):
     def update(self, container, representation):
         from maya import cmds
 
-        from openpype.hosts.maya.api.lib import get_container_members
+        from ayon_core.hosts.maya.api.lib import get_container_members
 
         node = container["objectName"]
 

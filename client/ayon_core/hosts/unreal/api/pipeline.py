@@ -9,8 +9,8 @@ import time
 
 import pyblish.api
 
-from openpype.client import get_asset_by_name, get_assets
-from openpype.pipeline import (
+from ayon_core.client import get_asset_by_name, get_assets
+from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     register_inventory_action_path,
@@ -20,9 +20,9 @@ from openpype.pipeline import (
     AYON_CONTAINER_ID,
     legacy_io,
 )
-from openpype.tools.utils import host_tools
-import openpype.hosts.unreal
-from openpype.host import HostBase, ILoadHost, IPublishHost
+from ayon_core.tools.utils import host_tools
+import ayon_core.hosts.unreal
+from ayon_core.host import HostBase, ILoadHost, IPublishHost
 
 import unreal  # noqa
 
@@ -324,7 +324,7 @@ def show_tools_popup():
 
     Popup will disappear on click or losing focus.
     """
-    from openpype.hosts.unreal.api import tools_ui
+    from ayon_core.hosts.unreal.api import tools_ui
 
     tools_ui.show_tools_popup()
 
@@ -334,7 +334,7 @@ def show_tools_dialog():
 
     Dialog will stay visible.
     """
-    from openpype.hosts.unreal.api import tools_ui
+    from ayon_core.hosts.unreal.api import tools_ui
 
     tools_ui.show_tools_dialog()
 

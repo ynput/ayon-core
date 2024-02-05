@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Module providing support for Royal Render."""
 import os
-import openpype.modules
-from openpype.modules import OpenPypeModule, IPluginPaths
+import ayon_core.modules
+from ayon_core.modules import OpenPypeModule, IPluginPaths
 
 
 class RoyalRenderModule(OpenPypeModule, IPluginPaths):

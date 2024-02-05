@@ -2,7 +2,7 @@
 import pyblish.api
 
 from collections import defaultdict
-from openpype.pipeline import PublishValidationError
+from ayon_core.pipeline import PublishValidationError
 
 
 class ValidateAbcPrimitiveToDetail(pyblish.api.InstancePlugin):

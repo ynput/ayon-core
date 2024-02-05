@@ -1,18 +1,18 @@
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_assets,
     get_subsets,
     get_last_versions,
     get_asset_name_identifier,
 )
-from openpype.lib.attribute_definitions import (
+from ayon_core.lib.attribute_definitions import (
     FileDef,
     BoolDef,
     NumberDef,
     UISeparatorDef,
 )
-from openpype.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
-from openpype.pipeline.create import (
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+from ayon_core.pipeline.create import (
     Creator,
     HiddenCreator,
     CreatedInstance,

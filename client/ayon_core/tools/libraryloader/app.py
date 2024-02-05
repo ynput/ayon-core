@@ -2,20 +2,20 @@ import sys
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import style
-from openpype.client import get_projects, get_project
-from openpype.pipeline import AvalonMongoDB
-from openpype.tools.utils import lib as tools_lib
-from openpype.tools.loader.widgets import (
+from ayon_core import style
+from ayon_core.client import get_projects, get_project
+from ayon_core.pipeline import AvalonMongoDB
+from ayon_core.tools.utils import lib as tools_lib
+from ayon_core.tools.loader.widgets import (
     ThumbnailWidget,
     VersionWidget,
     FamilyListView,
     RepresentationWidget,
     SubsetWidget
 )
-from openpype.tools.utils.assets_widget import MultiSelectAssetsWidget
+from ayon_core.tools.utils.assets_widget import MultiSelectAssetsWidget
 
-from openpype.modules import ModulesManager
+from ayon_core.modules import ModulesManager
 
 module = sys.modules[__name__]
 module.window = None

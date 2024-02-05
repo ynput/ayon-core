@@ -4,8 +4,8 @@ import os
 
 from maya import cmds
 
-from openpype.pipeline import publish
-from openpype.hosts.maya.api import lib
+from ayon_core.pipeline import publish
+from ayon_core.hosts.maya.api import lib
 
 
 class ExtractModel(publish.Extractor,

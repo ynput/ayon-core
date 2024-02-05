@@ -2,15 +2,15 @@ import os
 import copy
 import pyblish.api
 
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 import substance_painter.textureset
-from openpype.hosts.substancepainter.api.lib import (
+from ayon_core.hosts.substancepainter.api.lib import (
     get_parsed_export_maps,
     strip_template
 )
-from openpype.pipeline.create import get_subset_name
-from openpype.client import get_asset_by_name
+from ayon_core.pipeline.create import get_subset_name
+from ayon_core.client import get_asset_by_name
 
 
 class CollectTextureSet(pyblish.api.InstancePlugin):

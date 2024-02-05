@@ -3,9 +3,9 @@ from pathlib import Path
 
 import unreal
 
-from openpype.pipeline import get_current_project_name
-from openpype.pipeline import Anatomy
-from openpype.hosts.unreal.api import pipeline
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.pipeline import Anatomy
+from ayon_core.hosts.unreal.api import pipeline
 import pyblish.api
 
 

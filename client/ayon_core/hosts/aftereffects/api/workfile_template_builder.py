@@ -2,11 +2,11 @@ import os.path
 import uuid
 import shutil
 
-from openpype.pipeline import registered_host
-from openpype.tools.workfile_template_build import (
+from ayon_core.pipeline import registered_host
+from ayon_core.tools.workfile_template_build import (
     WorkfileBuildPlaceholderDialog,
 )
-from openpype.pipeline.workfile.workfile_template_builder import (
+from ayon_core.pipeline.workfile.workfile_template_builder import (
     AbstractTemplateBuilder,
     PlaceholderPlugin,
     LoadPlaceholderItem,
@@ -14,8 +14,8 @@ from openpype.pipeline.workfile.workfile_template_builder import (
     PlaceholderLoadMixin,
     PlaceholderCreateMixin
 )
-from openpype.hosts.aftereffects.api import get_stub
-from openpype.hosts.aftereffects.api.lib import set_settings
+from ayon_core.hosts.aftereffects.api import get_stub
+from ayon_core.hosts.aftereffects.api.lib import set_settings
 
 PLACEHOLDER_SET = "PLACEHOLDERS_SET"
 PLACEHOLDER_ID = "openpype.placeholder"

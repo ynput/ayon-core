@@ -1,8 +1,8 @@
 import re
 
-from openpype.pipeline import get_representation_path
-from openpype.hosts.photoshop import api as photoshop
-from openpype.hosts.photoshop.api import get_unique_layer_name
+from ayon_core.pipeline import get_representation_path
+from ayon_core.hosts.photoshop import api as photoshop
+from ayon_core.hosts.photoshop.api import get_unique_layer_name
 
 
 class ReferenceLoader(photoshop.PhotoshopLoader):

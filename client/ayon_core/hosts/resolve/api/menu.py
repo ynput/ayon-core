@@ -3,8 +3,8 @@ import sys
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.tools.utils import host_tools
-from openpype.pipeline import registered_host
+from ayon_core.tools.utils import host_tools
+from ayon_core.pipeline import registered_host
 
 
 MENU_LABEL = os.environ["AVALON_LABEL"]

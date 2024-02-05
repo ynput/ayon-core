@@ -1,9 +1,9 @@
-from openpype.pipeline import InventoryAction
-from openpype.hosts.houdini.api.lib import (
+from ayon_core.pipeline import InventoryAction
+from ayon_core.hosts.houdini.api.lib import (
     get_camera_from_container,
     set_camera_resolution
 )
-from openpype.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_project_asset
 
 
 class SetCameraResolution(InventoryAction):

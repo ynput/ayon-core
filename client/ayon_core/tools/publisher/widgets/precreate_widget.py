@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore
 
-from openpype.tools.attribute_defs import create_widget_for_attr_def
+from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 
 from ..constants import INPUTS_LAYOUT_HSPACING, INPUTS_LAYOUT_VSPACING
 
