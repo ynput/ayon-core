@@ -11,7 +11,7 @@ from ayon_core.tools.ayon_utils.widgets import (
     FoldersWidget,
     TasksWidget,
 )
-from ayon_core.tools.ayon_push_to_project.control import (
+from ayon_core.tools.push_to_project.control import (
     PushToContextController,
 )
 

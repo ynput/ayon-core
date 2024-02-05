@@ -1,37 +1,57 @@
+import collections
 import re
 import logging
+import uuid
+import copy
 
 from collections import defaultdict
 
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from ayon_core.host import ILoadHost
 from ayon_core.client import (
-    get_asset_by_id,
-    get_subset_by_id,
-    get_version_by_id,
+    get_assets,
+    get_subsets,
+    get_versions,
     get_last_version_by_subset_id,
-    get_representation_by_id,
+    get_representations,
 )
 from ayon_core.pipeline import (
     get_current_project_name,
     schema,
     HeroVersionType,
-    registered_host,
 )
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils.models import TreeModel, Item
-from ayon_core.modules import ModulesManager
+from ayon_core.tools.ayon_utils.widgets import get_qt_icon
 
-from .lib import walk_hierarchy
+
+def walk_hierarchy(node):
+    """Recursively yield group node."""
+    for child in node.children():
+        if child.get("isGroupNode"):
+            yield child
+
+        for _child in walk_hierarchy(child):
+            yield _child
 
 
 class InventoryModel(TreeModel):
     """The model for the inventory"""
 
-    Columns = ["Name", "version", "count", "family",
-               "group", "loader", "objectName"]
+    Columns = [
+        "Name",
+        "version",
+        "count",
+        "family",
+        "group",
+        "loader",
+        "objectName",
+        "active_site",
+        "remote_site",
+    ]
+    active_site_col = Columns.index("active_site")
+    remote_site_col = Columns.index("remote_site")
 
     OUTDATED_COLOR = QtGui.QColor(235, 30, 30)
     CHILD_OUTDATED_COLOR = QtGui.QColor(200, 160, 30)
@@ -39,58 +59,22 @@ class InventoryModel(TreeModel):
 
     UniqueRole = QtCore.Qt.UserRole + 2     # unique label role
 
-    def __init__(self, family_config_cache, parent=None):
+    def __init__(self, controller, parent=None):
         super(InventoryModel, self).__init__(parent)
         self.log = logging.getLogger(self.__class__.__name__)
 
-        self.family_config_cache = family_config_cache
+        self._controller = controller
 
         self._hierarchy_view = False
 
         self._default_icon_color = get_default_entity_icon_color()
 
-        manager = ModulesManager()
-        sync_server = manager.modules_by_name.get("sync_server")
-        self.sync_enabled = (
-            sync_server is not None and sync_server.enabled
-        )
-        self._site_icons = {}
-        self.active_site = self.remote_site = None
-        self.active_provider = self.remote_provider = None
+        site_icons = self._controller.get_site_provider_icons()
 
-        if not self.sync_enabled:
-            return
-
-        project_name = get_current_project_name()
-        active_site = sync_server.get_active_site(project_name)
-        remote_site = sync_server.get_remote_site(project_name)
-
-        active_provider = "studio"
-        remote_provider = "studio"
-        if active_site != "studio":
-            # sanitized for icon
-            active_provider = sync_server.get_provider_for_site(
-                project_name, active_site
-            )
-
-        if remote_site != "studio":
-            remote_provider = sync_server.get_provider_for_site(
-                project_name, remote_site
-            )
-
-        self.sync_server = sync_server
-        self.active_site = active_site
-        self.active_provider = active_provider
-        self.remote_site = remote_site
-        self.remote_provider = remote_provider
         self._site_icons = {
-            provider: QtGui.QIcon(icon_path)
-            for provider, icon_path in sync_server.get_site_icons().items()
+            provider: get_qt_icon(icon_def)
+            for provider, icon_def in site_icons.items()
         }
-        if "active_site" not in self.Columns:
-            self.Columns.append("active_site")
-        if "remote_site" not in self.Columns:
-            self.Columns.append("remote_site")
 
     def outdated(self, item):
         value = item.get("version")
@@ -177,9 +161,9 @@ class InventoryModel(TreeModel):
         if role == QtCore.Qt.DisplayRole and item.get("isGroupNode"):
             column_name = self.Columns[index.column()]
             progress = None
-            if column_name == 'active_site':
+            if column_name == "active_site":
                 progress = item.get("active_site_progress", 0)
-            elif column_name == 'remote_site':
+            elif column_name == "remote_site":
                 progress = item.get("remote_site_progress", 0)
             if progress is not None:
                 return "{}%".format(max(progress, 0) * 100)
@@ -196,109 +180,26 @@ class InventoryModel(TreeModel):
         if state != self._hierarchy_view:
             self._hierarchy_view = state
 
-    def refresh(self, selected=None, items=None):
+    def refresh(self, selected=None, containers=None):
         """Refresh the model"""
 
-        host = registered_host()
         # for debugging or testing, injecting items from outside
-        if items is None:
-            if isinstance(host, ILoadHost):
-                items = host.get_containers()
-            elif hasattr(host, "ls"):
-                items = host.ls()
-            else:
-                items = []
+        if containers is None:
+            containers = self._controller.get_containers()
 
         self.clear()
         if not selected or not self._hierarchy_view:
-            self.add_items(items)
+            self._add_containers(containers)
             return
 
-        if (
-            not hasattr(host, "pipeline")
-            or not hasattr(host.pipeline, "update_hierarchy")
-        ):
-            # If host doesn't support hierarchical containers, then
-            # cherry-pick only.
-            self.add_items((
-                item
-                for item in items
-                if item["objectName"] in selected
-            ))
-            return
+        # Filter by cherry-picked items
+        self._add_containers((
+            container
+            for container in containers
+            if container["objectName"] in selected
+        ))
 
-        # TODO find out what this part does. Function 'update_hierarchy' is
-        #   available only in 'blender' at this moment.
-
-        # Update hierarchy info for all containers
-        items_by_name = {
-            item["objectName"]: item
-            for item in host.pipeline.update_hierarchy(items)
-        }
-
-        selected_items = set()
-
-        def walk_children(names):
-            """Select containers and extend to chlid containers"""
-            for name in [n for n in names if n not in selected_items]:
-                selected_items.add(name)
-                item = items_by_name[name]
-                yield item
-
-                for child in walk_children(item["children"]):
-                    yield child
-
-        items = list(walk_children(selected))  # Cherry-picked and extended
-
-        # Cut unselected upstream containers
-        for item in items:
-            if not item.get("parent") in selected_items:
-                # Parent not in selection, this is root item.
-                item["parent"] = None
-
-        parents = [self._root_item]
-
-        # The length of `items` array is the maximum depth that a
-        # hierarchy could be.
-        # Take this as an easiest way to prevent looping forever.
-        maximum_loop = len(items)
-        count = 0
-        while items:
-            if count > maximum_loop:
-                self.log.warning("Maximum loop count reached, possible "
-                                 "missing parent node.")
-                break
-
-            _parents = list()
-            for parent in parents:
-                _unparented = list()
-
-                def _children():
-                    """Child item provider"""
-                    for item in items:
-                        if item.get("parent") == parent.get("objectName"):
-                            # (NOTE)
-                            # Since `self._root_node` has no "objectName"
-                            # entry, it will be paired with root item if
-                            # the value of key "parent" is None, or not
-                            # having the key.
-                            yield item
-                        else:
-                            # Not current parent's child, try next
-                            _unparented.append(item)
-
-                self.add_items(_children(), parent)
-
-                items[:] = _unparented
-
-                # Parents of next level
-                for group_node in parent.children():
-                    _parents += group_node.children()
-
-            parents[:] = _parents
-            count += 1
-
-    def add_items(self, items, parent=None):
+    def _add_containers(self, containers, parent=None):
         """Add the items to the model.
 
         The items should be formatted similar to `api.ls()` returns, an item
@@ -313,7 +214,7 @@ class InventoryModel(TreeModel):
             same type.
 
         Args:
-            items (generator): the items to be processed as returned by `ls()`
+            containers (generator): Container items.
             parent (Item, optional): Set this item as parent for the added
               items when provided. Defaults to the root of the model.
 
@@ -321,109 +222,109 @@ class InventoryModel(TreeModel):
             node.Item: root node which has children added based on the data
         """
 
-        # NOTE: @iLLiCiTiT this need refactor
         project_name = get_current_project_name()
 
         self.beginResetModel()
 
         # Group by representation
-        grouped = defaultdict(lambda: {"items": list()})
-        for item in items:
-            grouped[item["representation"]]["items"].append(item)
+        grouped = defaultdict(lambda: {"containers": list()})
+        for container in containers:
+            repre_id = container["representation"]
+            grouped[repre_id]["containers"].append(container)
 
+        (
+            repres_by_id,
+            versions_by_id,
+            products_by_id,
+            folders_by_id,
+        ) = self._query_entities(project_name, set(grouped.keys()))
         # Add to model
         not_found = defaultdict(list)
         not_found_ids = []
         for repre_id, group_dict in sorted(grouped.items()):
-            group_items = group_dict["items"]
-            # Get parenthood per group
-            representation = get_representation_by_id(
-                project_name, repre_id
-            )
+            group_containers = group_dict["containers"]
+            representation = repres_by_id.get(repre_id)
             if not representation:
-                not_found["representation"].extend(group_items)
+                not_found["representation"].extend(group_containers)
                 not_found_ids.append(repre_id)
                 continue
 
-            version = get_version_by_id(
-                project_name, representation["parent"]
-            )
+            version = versions_by_id.get(representation["parent"])
             if not version:
-                not_found["version"].extend(group_items)
+                not_found["version"].extend(group_containers)
                 not_found_ids.append(repre_id)
                 continue
 
-            elif version["type"] == "hero_version":
-                _version = get_version_by_id(
-                    project_name, version["version_id"]
-                )
-                version["name"] = HeroVersionType(_version["name"])
-                version["data"] = _version["data"]
-
-            subset = get_subset_by_id(project_name, version["parent"])
-            if not subset:
-                not_found["subset"].extend(group_items)
+            product = products_by_id.get(version["parent"])
+            if not product:
+                not_found["product"].extend(group_containers)
                 not_found_ids.append(repre_id)
                 continue
 
-            asset = get_asset_by_id(project_name, subset["parent"])
-            if not asset:
-                not_found["asset"].extend(group_items)
+            folder = folders_by_id.get(product["parent"])
+            if not folder:
+                not_found["folder"].extend(group_containers)
                 not_found_ids.append(repre_id)
                 continue
 
-            grouped[repre_id].update({
+            group_dict.update({
                 "representation": representation,
                 "version": version,
-                "subset": subset,
-                "asset": asset
+                "subset": product,
+                "asset": folder
             })
 
-        for id in not_found_ids:
-            grouped.pop(id)
+        for _repre_id in not_found_ids:
+            grouped.pop(_repre_id)
 
-        for where, group_items in not_found.items():
+        for where, group_containers in not_found.items():
             # create the group header
             group_node = Item()
             name = "< NOT FOUND - {} >".format(where)
             group_node["Name"] = name
             group_node["representation"] = name
-            group_node["count"] = len(group_items)
+            group_node["count"] = len(group_containers)
             group_node["isGroupNode"] = False
             group_node["isNotSet"] = True
 
             self.add_child(group_node, parent=parent)
 
-            for item in group_items:
+            for container in group_containers:
                 item_node = Item()
-                item_node.update(item)
-                item_node["Name"] = item.get("objectName", "NO NAME")
+                item_node.update(container)
+                item_node["Name"] = container.get("objectName", "NO NAME")
                 item_node["isNotFound"] = True
                 self.add_child(item_node, parent=group_node)
 
+        # TODO Use product icons
+        family_icon = qtawesome.icon(
+            "fa.folder", color="#0091B2"
+        )
+        # Prepare site sync specific data
+        progress_by_id = self._controller.get_representations_site_progress(
+            set(grouped.keys())
+        )
+        sites_info = self._controller.get_sites_information()
+
         for repre_id, group_dict in sorted(grouped.items()):
-            group_items = group_dict["items"]
-            representation = grouped[repre_id]["representation"]
-            version = grouped[repre_id]["version"]
-            subset = grouped[repre_id]["subset"]
-            asset = grouped[repre_id]["asset"]
+            group_containers = group_dict["containers"]
+            representation = group_dict["representation"]
+            version = group_dict["version"]
+            subset = group_dict["subset"]
+            asset = group_dict["asset"]
 
             # Get the primary family
-            no_family = ""
             maj_version, _ = schema.get_schema_version(subset["schema"])
             if maj_version < 3:
-                prim_family = version["data"].get("family")
-                if not prim_family:
-                    families = version["data"].get("families")
-                    prim_family = families[0] if families else no_family
+                src_doc = version
             else:
-                families = subset["data"].get("families") or []
-                prim_family = families[0] if families else no_family
+                src_doc = subset
 
-            # Get the label and icon for the family if in configuration
-            family_config = self.family_config_cache.family_config(prim_family)
-            family = family_config.get("label", prim_family)
-            family_icon = family_config.get("icon", None)
+            prim_family = src_doc["data"].get("family")
+            if not prim_family:
+                families = src_doc["data"].get("families")
+                if families:
+                    prim_family = families[0]
 
             # Store the highest available version so the model can know
             # whether current version is currently up-to-date.
@@ -433,34 +334,29 @@ class InventoryModel(TreeModel):
 
             # create the group header
             group_node = Item()
-            group_node["Name"] = "%s_%s: (%s)" % (asset["name"],
-                                                  subset["name"],
-                                                  representation["name"])
+            group_node["Name"] = "{}_{}: ({})".format(
+                asset["name"], subset["name"], representation["name"]
+            )
             group_node["representation"] = repre_id
             group_node["version"] = version["name"]
             group_node["highest_version"] = highest_version["name"]
-            group_node["family"] = family
+            group_node["family"] = prim_family or ""
             group_node["familyIcon"] = family_icon
-            group_node["count"] = len(group_items)
+            group_node["count"] = len(group_containers)
             group_node["isGroupNode"] = True
             group_node["group"] = subset["data"].get("subsetGroup")
 
-            if self.sync_enabled:
-                progress = self.sync_server.get_progress_for_repre(
-                    representation, self.active_site, self.remote_site
-                )
-                group_node["active_site"] = self.active_site
-                group_node["active_site_provider"] = self.active_provider
-                group_node["remote_site"] = self.remote_site
-                group_node["remote_site_provider"] = self.remote_provider
-                group_node["active_site_progress"] = progress[self.active_site]
-                group_node["remote_site_progress"] = progress[self.remote_site]
+            # Site sync specific data
+            progress = progress_by_id[repre_id]
+            group_node.update(sites_info)
+            group_node["active_site_progress"] = progress["active_site"]
+            group_node["remote_site_progress"] = progress["remote_site"]
 
             self.add_child(group_node, parent=parent)
 
-            for item in group_items:
+            for container in group_containers:
                 item_node = Item()
-                item_node.update(item)
+                item_node.update(container)
 
                 # store the current version on the item
                 item_node["version"] = version["name"]
@@ -468,13 +364,115 @@ class InventoryModel(TreeModel):
                 # Remapping namespace to item name.
                 # Noted that the name key is capital "N", by doing this, we
                 # can view namespace in GUI without changing container data.
-                item_node["Name"] = item["namespace"]
+                item_node["Name"] = container["namespace"]
 
                 self.add_child(item_node, parent=group_node)
 
         self.endResetModel()
 
         return self._root_item
+
+    def _query_entities(self, project_name, repre_ids):
+        """Query entities for representations from containers.
+
+        Returns:
+            tuple[dict, dict, dict, dict]: Representation, version, product
+                and folder documents by id.
+        """
+
+        repres_by_id = {}
+        versions_by_id = {}
+        products_by_id = {}
+        folders_by_id = {}
+        output = (
+            repres_by_id,
+            versions_by_id,
+            products_by_id,
+            folders_by_id,
+        )
+
+        filtered_repre_ids = set()
+        for repre_id in repre_ids:
+            # Filter out invalid representation ids
+            # NOTE: This is added because scenes from OpenPype did contain
+            #   ObjectId from mongo.
+            try:
+                uuid.UUID(repre_id)
+                filtered_repre_ids.add(repre_id)
+            except ValueError:
+                continue
+        if not filtered_repre_ids:
+            return output
+
+        repre_docs = get_representations(project_name, repre_ids)
+        repres_by_id.update({
+            repre_doc["_id"]: repre_doc
+            for repre_doc in repre_docs
+        })
+        version_ids = {
+            repre_doc["parent"] for repre_doc in repres_by_id.values()
+        }
+        if not version_ids:
+            return output
+
+        version_docs = get_versions(project_name, version_ids, hero=True)
+        versions_by_id.update({
+            version_doc["_id"]: version_doc
+            for version_doc in version_docs
+        })
+        hero_versions_by_subversion_id = collections.defaultdict(list)
+        for version_doc in versions_by_id.values():
+            if version_doc["type"] != "hero_version":
+                continue
+            subversion = version_doc["version_id"]
+            hero_versions_by_subversion_id[subversion].append(version_doc)
+
+        if hero_versions_by_subversion_id:
+            subversion_ids = set(
+                hero_versions_by_subversion_id.keys()
+            )
+            subversion_docs = get_versions(project_name, subversion_ids)
+            for subversion_doc in subversion_docs:
+                subversion_id = subversion_doc["_id"]
+                subversion_ids.discard(subversion_id)
+                h_version_docs = hero_versions_by_subversion_id[subversion_id]
+                for version_doc in h_version_docs:
+                    version_doc["name"] = HeroVersionType(
+                        subversion_doc["name"]
+                    )
+                    version_doc["data"] = copy.deepcopy(
+                        subversion_doc["data"]
+                    )
+
+            for subversion_id in subversion_ids:
+                h_version_docs = hero_versions_by_subversion_id[subversion_id]
+                for version_doc in h_version_docs:
+                    versions_by_id.pop(version_doc["_id"])
+
+        product_ids = {
+            version_doc["parent"]
+            for version_doc in versions_by_id.values()
+        }
+        if not product_ids:
+            return output
+        product_docs = get_subsets(project_name, product_ids)
+        products_by_id.update({
+            product_doc["_id"]: product_doc
+            for product_doc in product_docs
+        })
+        folder_ids = {
+            product_doc["parent"]
+            for product_doc in products_by_id.values()
+        }
+        if not folder_ids:
+            return output
+
+        folder_docs = get_assets(project_name, folder_ids)
+        folders_by_id.update({
+            folder_doc["_id"]: folder_doc
+            for folder_doc in folder_docs
+        })
+        return output
 
 
 class FilterProxyModel(QtCore.QSortFilterProxyModel):

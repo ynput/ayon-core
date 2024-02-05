@@ -1,7 +1,5 @@
 from qtpy import QtWidgets, QtCore
 
-from ayon_core import AYON_SERVER_ENABLED
-
 from .border_label_widget import BorderedLabelWidget
 
 from .card_view_widgets import InstanceCardView
@@ -37,9 +35,7 @@ class OverviewWidget(QtWidgets.QFrame):
         # --- Created Subsets/Instances ---
         # Common widget for creation and overview
         subset_views_widget = BorderedLabelWidget(
-            "{} to publish".format(
-                "Products" if AYON_SERVER_ENABLED else "Subsets"
-            ),
+            "Products to publish",
             subset_content_widget
         )
 

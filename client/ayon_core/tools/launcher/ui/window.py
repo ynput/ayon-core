@@ -3,7 +3,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core import style
 from ayon_core import resources
 
-from ayon_core.tools.ayon_launcher.control import BaseLauncherController
+from ayon_core.tools.launcher.control import BaseLauncherController
 
 from .projects_widget import ProjectsWidget
 from .hierarchy_page import HierarchyPage

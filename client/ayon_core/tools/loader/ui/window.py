@@ -11,7 +11,7 @@ from ayon_core.tools.utils import (
 )
 from ayon_core.tools.utils.lib import center_window
 from ayon_core.tools.ayon_utils.widgets import ProjectsCombobox
-from ayon_core.tools.ayon_loader.control import LoaderController
+from ayon_core.tools.loader.control import LoaderController
 
 from .folders_widget import LoaderFoldersWidget
 from .products_widget import ProductsWidget

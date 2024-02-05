@@ -7,7 +7,7 @@ from ayon_core.tools.utils import (
 )
 
 from ayon_core.tools.ayon_utils.widgets import FoldersWidget, TasksWidget
-from ayon_core.tools.ayon_workfiles.control import BaseWorkfileController
+from ayon_core.tools.workfiles.control import BaseWorkfileController
 from ayon_core.tools.utils import GoToCurrentButton, RefreshButton
 
 from .side_panel import SidePanelWidget

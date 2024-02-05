@@ -13,7 +13,6 @@ import six
 import arrow
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import (
     get_assets,
     get_asset_by_id,
@@ -74,10 +73,9 @@ class AssetDocsCache:
         "_id": True,
         "name": True,
         "data.visualParent": True,
-        "data.tasks": True
+        "data.tasks": True,
+        "data.parents": True,
     }
-    if AYON_SERVER_ENABLED:
-        projection["data.parents"] = True
 
     def __init__(self, controller):
         self._controller = controller
