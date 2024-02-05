@@ -622,7 +622,7 @@ class MongoSettingsHandler(SettingsHandler):
         self._system_settings_key = SYSTEM_SETTINGS_KEY + self.key_suffix
         self._project_settings_key = PROJECT_SETTINGS_KEY + self.key_suffix
         self._project_anatomy_key = PROJECT_ANATOMY_KEY + self.key_suffix
-        self._current_version = openpype.version.__version__
+        self._current_version = ayon_core.version.__version__
 
         database_name = os.environ["OPENPYPE_DATABASE_NAME"]
         # TODO modify to not use hardcoded keys

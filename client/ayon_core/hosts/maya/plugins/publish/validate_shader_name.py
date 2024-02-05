@@ -20,7 +20,7 @@ class ValidateShaderName(pyblish.api.InstancePlugin,
     families = ["look"]
     hosts = ['maya']
     label = 'Validate Shaders Name'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     regex = r'(?P<asset>.*)_(.*)_SHD'
 
     # The default connections to check

@@ -16,7 +16,7 @@ class ValidateYetiRigInputShapesInInstance(pyblish.api.Validator):
     hosts = ["maya"]
     families = ["yetiRig"]
     label = "Yeti Rig Input Shapes In Instance"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     def process(self, instance):
 

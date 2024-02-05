@@ -31,7 +31,7 @@ class ValidateMeshNormalsUnlocked(pyblish.api.Validator,
     hosts = ['maya']
     families = ['model']
     label = 'Mesh Normals Unlocked'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
     optional = True
 

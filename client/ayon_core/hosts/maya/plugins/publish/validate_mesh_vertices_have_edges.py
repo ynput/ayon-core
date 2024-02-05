@@ -30,7 +30,7 @@ class ValidateMeshVerticesHaveEdges(pyblish.api.InstancePlugin):
     hosts = ['maya']
     families = ['model']
     label = 'Mesh Vertices Have Edges'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
     @classmethod

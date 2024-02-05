@@ -45,7 +45,7 @@ from .workio import (
 )
 
 
-HOST_DIR = os.path.dirname(os.path.abspath(openpype.hosts.blender.__file__))
+HOST_DIR = os.path.dirname(os.path.abspath(ayon_core.hosts.blender.__file__))
 PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")

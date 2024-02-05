@@ -76,7 +76,7 @@ class FusionHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         and loaders into fusion.
 
         It is called automatically when installing via
-        `openpype.pipeline.install_host(openpype.hosts.fusion.api)`
+        `ayon_core.pipeline.install_host(ayon_core.hosts.fusion.api)`
 
         See the Maya equivalent for inspiration on how to implement this.
 
@@ -121,7 +121,7 @@ class FusionHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def open_workfile(self, filepath):
         # Hack to get fusion, see
-        #   openpype.hosts.fusion.api.pipeline.get_current_comp()
+        #   ayon_core.hosts.fusion.api.pipeline.get_current_comp()
         fusion = getattr(sys.modules["__main__"], "fusion", None)
 
         return fusion.LoadComp(filepath)

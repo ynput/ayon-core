@@ -82,7 +82,7 @@ host_tools.show_workfiles(parent)
                 <label>Set Frame Range</label>
                 <scriptCode><![CDATA[
 import ayon_core.hosts.houdini.api.lib
-openpype.hosts.houdini.api.lib.reset_framerange()
+ayon_core.hosts.houdini.api.lib.reset_framerange()
 ]]></scriptCode>
             </scriptItem>
 
@@ -90,7 +90,7 @@ openpype.hosts.houdini.api.lib.reset_framerange()
                 <label>Update Houdini Vars</label>
                 <scriptCode><![CDATA[
 import ayon_core.hosts.houdini.api.lib
-openpype.hosts.houdini.api.lib.update_houdini_vars_context_dialog()
+ayon_core.hosts.houdini.api.lib.update_houdini_vars_context_dialog()
 ]]></scriptCode>
             </scriptItem>
 

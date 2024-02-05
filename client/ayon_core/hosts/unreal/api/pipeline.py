@@ -27,7 +27,7 @@ from ayon_core.host import HostBase, ILoadHost, IPublishHost
 import unreal  # noqa
 
 # Rename to Ayon once parent module renames
-logger = logging.getLogger("openpype.hosts.unreal")
+logger = logging.getLogger("ayon_core.hosts.unreal")
 
 AYON_CONTAINERS = "AyonContainers"
 AYON_ASSET_DIR = "/Game/Ayon/Assets"
@@ -36,7 +36,7 @@ UNREAL_VERSION = semver.VersionInfo(
     *os.getenv("AYON_UNREAL_VERSION").split(".")
 )
 
-HOST_DIR = os.path.dirname(os.path.abspath(openpype.hosts.unreal.__file__))
+HOST_DIR = os.path.dirname(os.path.abspath(ayon_core.hosts.unreal.__file__))
 PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")

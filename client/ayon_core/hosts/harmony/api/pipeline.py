@@ -19,7 +19,7 @@ from ayon_core.hosts.harmony import HARMONY_HOST_DIR
 import ayon_core.hosts.harmony.api as harmony
 
 
-log = logging.getLogger("openpype.hosts.harmony")
+log = logging.getLogger("ayon_core.hosts.harmony")
 
 PLUGINS_DIR = os.path.join(HARMONY_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

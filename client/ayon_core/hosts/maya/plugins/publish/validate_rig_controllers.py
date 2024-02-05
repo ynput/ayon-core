@@ -34,7 +34,7 @@ class ValidateRigControllers(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["rig"]
     actions = [RepairAction,
-               openpype.hosts.maya.api.action.SelectInvalidAction]
+               ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     # Default controller values
     CONTROLLER_DEFAULTS = {

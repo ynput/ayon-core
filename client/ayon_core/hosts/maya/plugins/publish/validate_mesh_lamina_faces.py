@@ -16,7 +16,7 @@ class ValidateMeshLaminaFaces(pyblish.api.InstancePlugin):
     hosts = ['maya']
     families = ['model']
     label = 'Mesh Lamina Faces'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     @staticmethod
     def get_invalid(instance):

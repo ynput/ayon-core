@@ -15,7 +15,7 @@ class ValidateCycleError(pyblish.api.InstancePlugin,
     label = "Cycle Errors"
     hosts = ["maya"]
     families = ["rig"]
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     optional = True
 
     def process(self, instance):

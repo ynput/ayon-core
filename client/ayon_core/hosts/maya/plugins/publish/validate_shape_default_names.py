@@ -42,7 +42,7 @@ class ValidateShapeDefaultNames(pyblish.api.InstancePlugin,
     families = ['model']
     optional = True
     label = "Shape Default Naming"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
     @staticmethod

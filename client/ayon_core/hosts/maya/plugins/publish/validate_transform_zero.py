@@ -22,7 +22,7 @@ class ValidateTransformZero(pyblish.api.Validator):
     hosts = ["maya"]
     families = ["model"]
     label = "Transform Zero (Freeze)"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     _identity = [1.0, 0.0, 0.0, 0.0,
                  0.0, 1.0, 0.0, 0.0,

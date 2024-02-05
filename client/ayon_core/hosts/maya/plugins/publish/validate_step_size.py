@@ -19,7 +19,7 @@ class ValidateStepSize(pyblish.api.InstancePlugin):
     families = ['camera',
                 'pointcache',
                 'animation']
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     MIN = 0.01
     MAX = 1.0

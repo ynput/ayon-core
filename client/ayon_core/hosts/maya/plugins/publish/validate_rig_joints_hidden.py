@@ -25,7 +25,7 @@ class ValidateRigJointsHidden(pyblish.api.InstancePlugin):
     hosts = ['maya']
     families = ['rig']
     label = "Joints Hidden"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
     @staticmethod

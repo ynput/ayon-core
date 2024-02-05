@@ -25,7 +25,7 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
     families = ['model']
     optional = True
     label = "Mesh has map1 UV Set"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
     @staticmethod

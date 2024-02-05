@@ -17,7 +17,7 @@ from ayon_core.widgets.message_window import ScrollMessageBox
 from ayon_core.hosts.maya.api.lib import get_reference_node
 
 
-class LookLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
+class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Specific loader for lookdev"""
 
     families = ["look"]

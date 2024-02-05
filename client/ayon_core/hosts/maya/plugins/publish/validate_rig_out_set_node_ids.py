@@ -26,7 +26,7 @@ class ValidateRigOutSetNodeIds(pyblish.api.InstancePlugin):
     hosts = ['maya']
     label = 'Rig Out Set Node Ids'
     actions = [
-        openpype.hosts.maya.api.action.SelectInvalidAction,
+        ayon_core.hosts.maya.api.action.SelectInvalidAction,
         RepairAction
     ]
     allow_history_only = False

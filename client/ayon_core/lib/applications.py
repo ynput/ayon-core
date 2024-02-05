@@ -1630,7 +1630,7 @@ def prepare_app_environments(
     if app.host_name and implementation_envs:
         host_module = modules_manager.get_host_module(app.host_name)
         if not host_module:
-            module = __import__("openpype.hosts", fromlist=[app.host_name])
+            module = __import__("ayon_core.hosts", fromlist=[app.host_name])
             host_module = getattr(module, app.host_name, None)
         add_implementation_envs = None
         if host_module:

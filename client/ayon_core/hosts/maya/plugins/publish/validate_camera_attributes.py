@@ -19,7 +19,7 @@ class ValidateCameraAttributes(pyblish.api.InstancePlugin):
     families = ['camera']
     hosts = ['maya']
     label = 'Camera Attributes'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     DEFAULTS = [
         ("filmFitOffset", 0.0),

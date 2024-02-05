@@ -296,7 +296,7 @@ class ClipLoader:
         """ Initialize object
 
         Arguments:
-            loader_obj (openpype.pipeline.load.LoaderPlugin): plugin object
+            loader_obj (ayon_core.pipeline.load.LoaderPlugin): plugin object
             context (dict): loader plugin context
             options (dict)[optional]: possible keys:
                 projectBinPath: "path/to/binItem"

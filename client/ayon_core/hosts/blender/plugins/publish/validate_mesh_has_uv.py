@@ -22,7 +22,7 @@ class ValidateMeshHasUvs(
     hosts = ["blender"]
     families = ["model"]
     label = "Mesh Has UVs"
-    actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
     optional = True
 
     @staticmethod

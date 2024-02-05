@@ -22,7 +22,7 @@ class ValidateYetiRigCacheState(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["yetiRig"]
     actions = [RepairAction,
-               openpype.hosts.maya.api.action.SelectInvalidAction]
+               ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     def process(self, instance):
         invalid = self.get_invalid(instance)

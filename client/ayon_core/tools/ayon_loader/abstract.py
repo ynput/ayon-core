@@ -295,7 +295,7 @@ class ActionItem:
         #   prepared for it.
         raise NotImplementedError(
             "{}.to_data is not implemented. Use Attribute definitions"
-            " from 'openpype.lib' instead of 'qargparse'.".format(
+            " from 'ayon_core.lib' instead of 'qargparse'.".format(
                 self.__class__.__name__
             )
         )

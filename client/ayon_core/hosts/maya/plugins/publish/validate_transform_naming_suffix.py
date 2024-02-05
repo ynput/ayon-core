@@ -39,7 +39,7 @@ class ValidateTransformNamingSuffix(pyblish.api.InstancePlugin,
     families = ['model']
     optional = True
     label = 'Suffix Naming Conventions'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     SUFFIX_NAMING_TABLE = {"mesh": ["_GEO", "_GES", "_GEP", "_OSD"],
                            "nurbsCurve": ["_CRV"],
                            "nurbsSurface": ["_NRB"],

@@ -87,7 +87,7 @@ def preserve_modelpanel_cameras(container, log=None):
             cmds.modelPanel(panel, edit=True, camera=new_camera)
 
 
-class ReferenceLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
+class ReferenceLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Reference file"""
 
     families = ["model",

@@ -21,7 +21,7 @@ class ValidateMeshEmpty(pyblish.api.InstancePlugin):
     families = ["model"]
     label = "Mesh Empty"
     actions = [
-        openpype.hosts.maya.api.action.SelectInvalidAction, RepairAction
+        ayon_core.hosts.maya.api.action.SelectInvalidAction, RepairAction
     ]
 
     @classmethod

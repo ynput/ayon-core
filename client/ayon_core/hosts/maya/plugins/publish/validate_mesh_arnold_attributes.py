@@ -30,7 +30,7 @@ class ValidateMeshArnoldAttributes(pyblish.api.InstancePlugin,
     families = ["model"]
     label = "Mesh Arnold Attributes"
     actions = [
-        openpype.hosts.maya.api.action.SelectInvalidAction,
+        ayon_core.hosts.maya.api.action.SelectInvalidAction,
         RepairAction
     ]
 

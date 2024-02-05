@@ -20,7 +20,7 @@ class ValidateMeshNgons(pyblish.api.Validator):
     hosts = ["maya"]
     families = ["model"]
     label = "Mesh ngons"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     @staticmethod
     def get_invalid(instance):

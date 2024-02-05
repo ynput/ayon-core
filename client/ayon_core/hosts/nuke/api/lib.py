@@ -419,7 +419,7 @@ def add_publish_knob(node):
     return node
 
 
-@deprecated("openpype.hosts.nuke.api.lib.set_node_data")
+@deprecated("ayon_core.hosts.nuke.api.lib.set_node_data")
 def set_avalon_knob_data(node, data=None, prefix="avalon:"):
     """[DEPRECATED] Sets data into nodes's avalon knob
 
@@ -485,7 +485,7 @@ def set_avalon_knob_data(node, data=None, prefix="avalon:"):
     return node
 
 
-@deprecated("openpype.hosts.nuke.api.lib.get_node_data")
+@deprecated("ayon_core.hosts.nuke.api.lib.get_node_data")
 def get_avalon_knob_data(node, prefix="avalon:", create=True):
     """[DEPRECATED]  Gets a data from nodes's avalon knob
 
@@ -711,7 +711,7 @@ def get_nuke_imageio_settings():
     return get_project_settings(Context.project_name)["nuke"]["imageio"]
 
 
-@deprecated("openpype.hosts.nuke.api.lib.get_nuke_imageio_settings")
+@deprecated("ayon_core.hosts.nuke.api.lib.get_nuke_imageio_settings")
 def get_created_node_imageio_setting_legacy(nodeclass, creator, subset):
     '''[DEPRECATED]  Get preset data for dataflow (fileType, compression, bitDepth)
     '''
@@ -1413,7 +1413,7 @@ def create_write_node(
     return GN
 
 
-@deprecated("openpype.hosts.nuke.api.lib.create_write_node")
+@deprecated("ayon_core.hosts.nuke.api.lib.create_write_node")
 def create_write_node_legacy(
     name, data, input=None, prenodes=None,
     review=True, linked_knobs=None, farm=True
@@ -2937,7 +2937,7 @@ def _launch_workfile_app():
     host_tools.show_workfiles(parent=None, on_top=True)
 
 
-@deprecated("openpype.hosts.nuke.api.lib.start_workfile_template_builder")
+@deprecated("ayon_core.hosts.nuke.api.lib.start_workfile_template_builder")
 def process_workfile_builder():
     """ [DEPRECATED] Process workfile builder on nuke start
 

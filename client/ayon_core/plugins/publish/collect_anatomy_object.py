@@ -4,7 +4,7 @@ Requires:
     context -> projectName
 
 Provides:
-    context -> anatomy (openpype.pipeline.anatomy.Anatomy)
+    context -> anatomy (ayon_core.pipeline.anatomy.Anatomy)
 """
 
 import pyblish.api

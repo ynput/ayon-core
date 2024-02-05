@@ -94,7 +94,7 @@ class ExtractRender(pyblish.api.InstancePlugin):
 
         # Generate thumbnail.
         thumbnail_path = os.path.join(path, "thumbnail.png")
-        args = openpype.lib.get_ffmpeg_tool_args(
+        args = ayon_core.lib.get_ffmpeg_tool_args(
             "ffmpeg",
             "-y",
             "-i", os.path.join(path, list(collections[0])[0]),

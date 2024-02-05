@@ -23,7 +23,7 @@ class ValidateShapeZero(pyblish.api.Validator):
     families = ["model"]
     label = "Shape Zero (Freeze)"
     actions = [
-        openpype.hosts.maya.api.action.SelectInvalidAction,
+        ayon_core.hosts.maya.api.action.SelectInvalidAction,
         RepairAction
     ]
 

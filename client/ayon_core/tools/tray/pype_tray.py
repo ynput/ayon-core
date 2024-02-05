@@ -602,7 +602,7 @@ class TrayManager:
         if AYON_SERVER_ENABLED:
             version_string = os.getenv("AYON_VERSION", "AYON Info")
         else:
-            version_string = openpype.version.__version__
+            version_string = ayon_core.version.__version__
         if subversion:
             version_string += " ({})".format(subversion)
 

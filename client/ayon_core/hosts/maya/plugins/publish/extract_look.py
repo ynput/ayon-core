@@ -40,7 +40,7 @@ class TextureResult(object):
     # Colorspace of the resulting texture. This might not be the input
     # colorspace of the texture if a TextureProcessor has processed the file.
     colorspace = attr.ib()
-    # Hash generated for the texture using openpype.lib.source_hash
+    # Hash generated for the texture using ayon_core.lib.source_hash
     file_hash = attr.ib()
     # The transfer mode, e.g. COPY or HARDLINK
     transfer_mode = attr.ib()

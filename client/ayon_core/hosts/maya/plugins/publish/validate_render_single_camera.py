@@ -23,7 +23,7 @@ class ValidateRenderSingleCamera(pyblish.api.InstancePlugin):
     hosts = ['maya']
     families = ["renderlayer",
                 "vrayscene"]
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     R_CAMERA_TOKEN = re.compile(r'%c|<camera>', re.IGNORECASE)
 

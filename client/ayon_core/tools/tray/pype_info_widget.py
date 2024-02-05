@@ -524,7 +524,7 @@ class PypeInfoSubWidget(QtWidgets.QWidget):
             info_layout.addWidget(
                 QtWidgets.QLabel("OpenPype Addon:"), row, 0, 1, 1
             )
-            value_label = QtWidgets.QLabel(openpype.version.__version__)
+            value_label = QtWidgets.QLabel(ayon_core.version.__version__)
             value_label.setTextInteractionFlags(
                 QtCore.Qt.TextSelectableByMouse
             )

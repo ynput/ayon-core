@@ -43,7 +43,7 @@ def _process_reference(file_url, name, namespace, options):
     return nodes
 
 
-class AbcLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
+class AbcLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Loader to reference an Alembic file"""
 
     families = ["animation",
@@ -72,7 +72,7 @@ class AbcLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
         return nodes
 
 
-class FbxLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
+class FbxLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Loader to reference an Fbx files"""
 
     families = ["animation",

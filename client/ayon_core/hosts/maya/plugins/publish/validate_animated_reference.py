@@ -15,7 +15,7 @@ class ValidateAnimatedReferenceRig(pyblish.api.InstancePlugin):
     families = ["animation.fbx"]
     label = "Animated Reference Rig"
     accepted_controllers = ["transform", "locator"]
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     def process(self, instance):
         animated_sets = instance.data.get("animated_skeleton", [])

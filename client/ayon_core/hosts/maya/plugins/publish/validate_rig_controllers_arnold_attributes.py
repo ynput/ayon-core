@@ -36,7 +36,7 @@ class ValidateRigControllersArnoldAttributes(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["rig"]
     actions = [RepairAction,
-               openpype.hosts.maya.api.action.SelectInvalidAction]
+               ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     attributes = [
         "rcurve",

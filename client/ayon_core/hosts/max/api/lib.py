@@ -15,7 +15,7 @@ from pymxs import runtime as rt
 
 
 JSON_PREFIX = "JSON::"
-log = logging.getLogger("openpype.hosts.max")
+log = logging.getLogger("ayon_core.hosts.max")
 
 
 def get_main_window():
