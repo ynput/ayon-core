@@ -36,7 +36,7 @@ from typing import Optional
 
 
 ADDON_NAME = "core"
-ADDON_CLIENT_DIR = "openpype"
+ADDON_CLIENT_DIR = "ayon_core"
 
 # Patterns of directories to be skipped for server part of addon
 IGNORE_DIR_PATTERNS = [
