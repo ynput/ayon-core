@@ -139,7 +139,7 @@ class ServerThumbnailResolver(ThumbnailResolver):
     @classmethod
     def _get_cache(cls):
         if cls._cache is None:
-            from ayon_core.client.server.thumbnails import AYONThumbnailCache
+            from ayon_core.client.thumbnails import AYONThumbnailCache
 
             cls._cache = AYONThumbnailCache()
         return cls._cache

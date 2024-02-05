@@ -6,7 +6,7 @@ import json
 import six
 
 from ayon_core.client.operations_base import REMOVED_VALUE
-from ayon_core.client.mongo.operations import (
+from .constants import (
     CURRENT_PROJECT_SCHEMA,
     CURRENT_ASSET_DOC_SCHEMA,
     CURRENT_SUBSET_SCHEMA,
@@ -14,8 +14,8 @@ from ayon_core.client.mongo.operations import (
     CURRENT_HERO_VERSION_SCHEMA,
     CURRENT_REPRESENTATION_SCHEMA,
     CURRENT_WORKFILE_INFO_SCHEMA,
+    REPRESENTATION_FILES_FIELDS,
 )
-from .constants import REPRESENTATION_FILES_FIELDS
 from .utils import create_entity_id, prepare_entity_changes
 
 # --- Project entity ---

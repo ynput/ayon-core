@@ -27,7 +27,6 @@ except ImportError:
 import six
 import appdirs
 
-from ayon_core.client.mongo import validate_mongo_connection
 from ayon_core.client import get_ayon_server_api_connection
 
 _PLACEHOLDER = object()
