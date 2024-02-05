@@ -57,7 +57,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "premiere",
         "harmony",
         "traypublisher",
-        "standalonepublisher",
         "fusion",
         "tvpaint",
         "resolve",
