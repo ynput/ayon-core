@@ -1,3 +1,3 @@
 # -*- coding: utf-8 -*-
-"""Package declaring Pype version."""
-__version__ = "3.18.7-nightly.1"
+"""Package declaring AYON core version."""
+__version__ = "0.2.0"
