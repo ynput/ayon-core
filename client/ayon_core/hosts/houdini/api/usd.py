@@ -7,7 +7,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.client import get_asset_by_name
-from ayon_core.pipeline import legacy_io
+from ayon_core.pipeline import legacy_io, get_current_project_name
 from ayon_core.tools.utils.assets_widget import SingleSelectAssetsWidget
 
 from pxr import Sdf
@@ -47,7 +47,7 @@ class SelectAssetDialog(QtWidgets.QWidget):
         select_id = None
         name = self._parm.eval()
         if name:
-            project_name = legacy_io.active_project()
+            project_name = get_current_project_name()
             db_asset = get_asset_by_name(project_name, name, fields=["_id"])
             if db_asset:
                 select_id = db_asset["_id"]

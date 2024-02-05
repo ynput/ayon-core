@@ -1,22 +1,62 @@
 """Wrapper around interactions with the database"""
 
+import os
 import sys
 import logging
 import functools
 
-from ayon_core import AYON_SERVER_ENABLED
 from . import schema
-from .mongodb import AvalonMongoDB, session_data_from_environment
 
 module = sys.modules[__name__]
 
 Session = {}
 _is_installed = False
-_connection_object = AvalonMongoDB(Session)
-_mongo_client = None
-_database = database = None
 
 log = logging.getLogger(__name__)
+
+SESSION_CONTEXT_KEYS = (
+    # Name of current Project
+    "AVALON_PROJECT",
+    # Name of current Asset
+    "AVALON_ASSET",
+    # Name of current task
+    "AVALON_TASK",
+    # Name of current app
+    "AVALON_APP",
+    # Path to working directory
+    "AVALON_WORKDIR",
+    # Optional path to scenes directory (see Work Files API)
+    "AVALON_SCENEDIR"
+)
+
+
+def session_data_from_environment(context_keys=False):
+    session_data = {}
+    if context_keys:
+        for key in SESSION_CONTEXT_KEYS:
+            value = os.environ.get(key)
+            session_data[key] = value or ""
+    else:
+        for key in SESSION_CONTEXT_KEYS:
+            session_data[key] = None
+
+    for key, default_value in (
+        # Name of Avalon in graphical user interfaces
+        # Use this to customise the visual appearance of Avalon
+        # to better integrate with your surrounding pipeline
+        ("AVALON_LABEL", "Avalon"),
+
+        # Used during any connections to the outside world
+        ("AVALON_TIMEOUT", "1000"),
+
+        # Name of database used in MongoDB
+        ("AVALON_DB", "avalon"),
+    ):
+        value = os.environ.get(key) or default_value
+        if value is not None:
+            session_data[key] = value
+
+    return session_data
 
 
 def is_installed():
@@ -37,25 +77,18 @@ def install():
         # TODO(marcus): Make this mandatory
         log.warning(e)
 
-    _connection_object.Session.update(session)
-    _connection_object.install()
-
-    if not AYON_SERVER_ENABLED:
-        module._mongo_client = _connection_object.mongo_client
-        module._database = module.database = _connection_object.database
+    Session.update(session)
 
     module._is_installed = True
 
 
 def uninstall():
-    """Close any connection to the database"""
-    module._mongo_client = None
-    module._database = module.database = None
+    """Close any connection to the database.
+
+    Deprecated:
+        This function does nothing should be removed.
+    """
     module._is_installed = False
-    try:
-        module._connection_object.uninstall()
-    except AttributeError:
-        pass
 
 
 def requires_install(func):
@@ -68,93 +101,8 @@ def requires_install(func):
 
 
 @requires_install
-def projects(*args, **kwargs):
-    return _connection_object.projects(*args, **kwargs)
-
-
-@requires_install
-def insert_one(doc, *args, **kwargs):
-    return _connection_object.insert_one(doc, *args, **kwargs)
-
-
-@requires_install
-def insert_many(docs, *args, **kwargs):
-    return _connection_object.insert_many(docs, *args, **kwargs)
-
-
-@requires_install
-def update_one(*args, **kwargs):
-    return _connection_object.update_one(*args, **kwargs)
-
-
-@requires_install
-def update_many(*args, **kwargs):
-    return _connection_object.update_many(*args, **kwargs)
-
-
-@requires_install
-def replace_one(*args, **kwargs):
-    return _connection_object.replace_one(*args, **kwargs)
-
-
-@requires_install
-def replace_many(*args, **kwargs):
-    return _connection_object.replace_many(*args, **kwargs)
-
-
-@requires_install
-def delete_one(*args, **kwargs):
-    return _connection_object.delete_one(*args, **kwargs)
-
-
-@requires_install
-def delete_many(*args, **kwargs):
-    return _connection_object.delete_many(*args, **kwargs)
-
-
-@requires_install
-def find(*args, **kwargs):
-    return _connection_object.find(*args, **kwargs)
-
-
-@requires_install
-def find_one(*args, **kwargs):
-    return _connection_object.find_one(*args, **kwargs)
-
-
-@requires_install
-def distinct(*args, **kwargs):
-    return _connection_object.distinct(*args, **kwargs)
-
-
-@requires_install
-def aggregate(*args, **kwargs):
-    return _connection_object.aggregate(*args, **kwargs)
-
-
-@requires_install
-def save(*args, **kwargs):
-    return _connection_object.save(*args, **kwargs)
-
-
-@requires_install
-def drop(*args, **kwargs):
-    return _connection_object.drop(*args, **kwargs)
-
-
-@requires_install
-def parenthood(*args, **kwargs):
-    return _connection_object.parenthood(*args, **kwargs)
-
-
-@requires_install
-def bulk_write(*args, **kwargs):
-    return _connection_object.bulk_write(*args, **kwargs)
-
-
-@requires_install
 def active_project(*args, **kwargs):
-    return _connection_object.active_project(*args, **kwargs)
+    return Session["AVALON_PROJECT"]
 
 
 def current_project(*args, **kwargs):

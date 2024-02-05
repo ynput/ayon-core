@@ -2,7 +2,7 @@ import json
 import logging
 
 from ayon_core.pipeline import (
-    legacy_io,
+    get_current_project_name,
     get_representation_path,
     registered_host,
     discover_loader_plugins,
@@ -27,7 +27,7 @@ def get_look_relationships(version_id):
         dict: Dictionary of relations.
     """
 
-    project_name = legacy_io.active_project()
+    project_name = get_current_project_name()
     json_representation = get_representation_by_name(
         project_name, representation_name="json", version_id=version_id
     )
@@ -54,7 +54,7 @@ def load_look(version_id):
 
     """
 
-    project_name = legacy_io.active_project()
+    project_name = get_current_project_name()
     # Get representations of shader file and relationships
     look_representation = get_representation_by_name(
         project_name, representation_name="ma", version_id=version_id

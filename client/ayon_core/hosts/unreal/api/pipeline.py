@@ -18,7 +18,7 @@ from ayon_core.pipeline import (
     deregister_creator_plugin_path,
     deregister_inventory_action_path,
     AYON_CONTAINER_ID,
-    legacy_io,
+    get_current_project_name,
 )
 from ayon_core.tools.utils import host_tools
 import ayon_core.hosts.unreal
@@ -600,7 +600,7 @@ def generate_sequence(h, h_dir):
         factory=unreal.LevelSequenceFactoryNew()
     )
 
-    project_name = legacy_io.active_project()
+    project_name = get_current_project_name()
     asset_data = get_asset_by_name(
         project_name,
         h_dir.split('/')[-1],

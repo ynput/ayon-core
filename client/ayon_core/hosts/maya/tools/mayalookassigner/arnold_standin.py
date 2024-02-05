@@ -5,7 +5,7 @@ import logging
 
 from maya import cmds
 
-from ayon_core.pipeline import legacy_io
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.client import get_last_version_by_subset_name
 from ayon_core.hosts.maya import api
 from . import lib
@@ -142,7 +142,7 @@ def assign_look(standin, subset):
         asset_id = node_id.split(":", 1)[0]
         node_ids_by_asset_id[asset_id].add(node_id)
 
-    project_name = legacy_io.active_project()
+    project_name = get_current_project_name()
     for asset_id, node_ids in node_ids_by_asset_id.items():
 
         # Get latest look version
