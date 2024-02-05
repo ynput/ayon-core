@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Creator of Redshift proxy subset types."""
 
-from openpype.hosts.maya.api import plugin, lib
-from openpype.lib import BoolDef
+from ayon_core.hosts.maya.api import plugin, lib
+from ayon_core.lib import BoolDef
 
 
 class CreateRedshiftProxy(plugin.MayaCreator):

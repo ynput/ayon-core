@@ -4,9 +4,9 @@ from maya import cmds
 import maya.api.OpenMaya as om
 import pyblish.api
 
-from openpype.pipeline import registered_host
-from openpype.hosts.maya.api.lib import get_container_members
-from openpype.hosts.maya.api.lib_rendersetup import get_shader_in_layer
+from ayon_core.pipeline import registered_host
+from ayon_core.hosts.maya.api.lib import get_container_members
+from ayon_core.hosts.maya.api.lib_rendersetup import get_shader_in_layer
 
 
 def iter_history(nodes,

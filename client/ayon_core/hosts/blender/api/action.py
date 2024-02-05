@@ -2,7 +2,7 @@ import bpy
 
 import pyblish.api
 
-from openpype.pipeline.publish import get_errored_instances_from_context
+from ayon_core.pipeline.publish import get_errored_instances_from_context
 
 
 class SelectInvalidAction(pyblish.api.Action):

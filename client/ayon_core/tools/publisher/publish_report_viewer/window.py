@@ -7,15 +7,15 @@ import appdirs
 import arrow
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import style
-from openpype.resources import get_openpype_icon_filepath
-from openpype.tools import resources
-from openpype.tools.utils import (
+from ayon_core import style
+from ayon_core.resources import get_openpype_icon_filepath
+from ayon_core.tools import resources
+from ayon_core.tools.utils import (
     IconButton,
     paint_image_with_color
 )
 
-from openpype.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 if __package__:
     from .widgets import PublishReportViewerWidget

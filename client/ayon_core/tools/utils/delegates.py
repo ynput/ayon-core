@@ -5,11 +5,11 @@ import numbers
 
 from qtpy import QtWidgets, QtGui, QtCore
 
-from openpype.client import (
+from ayon_core.client import (
     get_versions,
     get_hero_versions,
 )
-from openpype.pipeline import HeroVersionType
+from ayon_core.pipeline import HeroVersionType
 from .models import TreeModel
 from . import lib
 

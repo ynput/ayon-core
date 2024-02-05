@@ -1,10 +1,10 @@
 import os
-from openpype.lib.applications import (
+from ayon_core.lib.applications import (
     PreLaunchHook,
     LaunchTypes,
     ApplicationLaunchFailed,
 )
-from openpype.hosts.fusion import (
+from ayon_core.hosts.fusion import (
     FUSION_HOST_DIR,
     FUSION_VERSIONS_DICT,
     get_fusion_version,

@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 
 import pyblish.api
-from openpype.lib import (
+from ayon_core.lib import (
     get_ffmpeg_tool_args,
     get_ffprobe_data,
 
@@ -14,9 +14,9 @@ from openpype.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
-from openpype.lib.transcoding import convert_colorspace
+from ayon_core.lib.transcoding import convert_colorspace
 
-from openpype.lib.transcoding import VIDEO_EXTENSIONS
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
 
 
 class ExtractThumbnail(pyblish.api.InstancePlugin):

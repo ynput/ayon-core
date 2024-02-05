@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Converter for legacy Houdini subsets."""
-from openpype.pipeline.create.creator_plugins import SubsetConvertorPlugin
-from openpype.hosts.blender.api.lib import imprint
+from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
+from ayon_core.hosts.blender.api.lib import imprint
 
 
 class BlenderLegacyConvertor(SubsetConvertorPlugin):

@@ -4,8 +4,8 @@ from qtpy import QtWidgets
 from pprint import pformat
 import atexit
 
-import openpype.hosts.flame.api as opfapi
-from openpype.pipeline import (
+import ayon_core.hosts.flame.api as opfapi
+from ayon_core.pipeline import (
     install_host,
     registered_host,
 )

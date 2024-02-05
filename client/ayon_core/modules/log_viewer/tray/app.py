@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore
 from .widgets import LogsWidget, OutputWidget
-from openpype import style
+from ayon_core import style
 
 
 class LogsWindow(QtWidgets.QWidget):

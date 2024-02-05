@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Creator plugin to create Karma ROP."""
-from openpype.hosts.houdini.api import plugin
-from openpype.pipeline import CreatedInstance
-from openpype.lib import BoolDef, EnumDef, NumberDef
+from ayon_core.hosts.houdini.api import plugin
+from ayon_core.pipeline import CreatedInstance
+from ayon_core.lib import BoolDef, EnumDef, NumberDef
 
 
 class CreateKarmaROP(plugin.HoudiniCreator):

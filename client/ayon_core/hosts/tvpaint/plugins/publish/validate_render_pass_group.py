@@ -1,6 +1,6 @@
 import collections
 import pyblish.api
-from openpype.pipeline import PublishXmlValidationError
+from ayon_core.pipeline import PublishXmlValidationError
 
 
 class ValidateLayersGroup(pyblish.api.InstancePlugin):

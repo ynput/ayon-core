@@ -16,11 +16,11 @@ from .pipeline import (
     ls_inst,
     UNREAL_VERSION
 )
-from openpype.lib import (
+from ayon_core.lib import (
     BoolDef,
     UILabelDef
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     Creator,
     LoaderPlugin,
     CreatorError,

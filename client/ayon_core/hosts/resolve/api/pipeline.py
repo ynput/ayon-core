@@ -7,14 +7,14 @@ from collections import OrderedDict
 
 from pyblish import api as pyblish
 
-from openpype.lib import Logger
-from openpype.pipeline import (
+from ayon_core.lib import Logger
+from ayon_core.pipeline import (
     schema,
     register_loader_plugin_path,
     register_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.host import (
+from ayon_core.host import (
     HostBase,
     IWorkfileHost,
     ILoadHost
@@ -246,7 +246,7 @@ def on_pyblish_instance_toggled(instance, old_value, new_value):
     log.info("instance toggle: {}, old_value: {}, new_value:{} ".format(
         instance, old_value, new_value))
 
-    from openpype.hosts.resolve.api import (
+    from ayon_core.hosts.resolve.api import (
         set_publish_attribute
     )
 

@@ -1,6 +1,6 @@
 import os
-from openpype.settings import get_project_settings
-from openpype.lib import Logger
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import Logger
 
 
 def create_workspace_mel(workdir, project_name, project_settings=None):

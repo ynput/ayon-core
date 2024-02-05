@@ -4,10 +4,10 @@
 import os
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.host import IPublishHost
-from openpype.pipeline import legacy_io, registered_host
-from openpype.pipeline.create import CreateContext
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.host import IPublishHost
+from ayon_core.pipeline import legacy_io, registered_host
+from ayon_core.pipeline.create import CreateContext
 
 
 class CollectFromCreateContext(pyblish.api.ContextPlugin):

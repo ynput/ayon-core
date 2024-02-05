@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating pointcache bgeo files."""
-from openpype.hosts.houdini.api import plugin
-from openpype.pipeline import CreatedInstance, CreatorError
+from ayon_core.hosts.houdini.api import plugin
+from ayon_core.pipeline import CreatedInstance, CreatorError
 import hou
-from openpype.lib import EnumDef, BoolDef
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class CreateBGEO(plugin.HoudiniCreator):

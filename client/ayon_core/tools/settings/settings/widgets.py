@@ -3,18 +3,18 @@ import uuid
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from openpype.client import get_projects
-from openpype.style import get_objected_colors
-from openpype.tools.utils.widgets import ImageButton
-from openpype.tools.utils.lib import paint_image_with_color
+from ayon_core.client import get_projects
+from ayon_core.style import get_objected_colors
+from ayon_core.tools.utils.widgets import ImageButton
+from ayon_core.tools.utils.lib import paint_image_with_color
 
-from openpype.widgets.nice_checkbox import NiceCheckbox
-from openpype.tools.utils import (
+from ayon_core.widgets.nice_checkbox import NiceCheckbox
+from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     DynamicQThread
 )
-from openpype.settings.lib import find_closest_version_for_projects
-from openpype.lib import get_openpype_version
+from ayon_core.settings.lib import find_closest_version_for_projects
+from ayon_core.lib import get_openpype_version
 from .images import (
     get_pixmap,
     get_image

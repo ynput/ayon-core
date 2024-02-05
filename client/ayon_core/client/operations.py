@@ -1,4 +1,4 @@
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 from .operations_base import REMOVED_VALUE
 if not AYON_SERVER_ENABLED:

@@ -5,10 +5,10 @@ import logging
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import style
-from openpype.client import get_asset_by_name
-from openpype.pipeline import legacy_io
-from openpype.tools.utils.assets_widget import SingleSelectAssetsWidget
+from ayon_core import style
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import legacy_io
+from ayon_core.tools.utils.assets_widget import SingleSelectAssetsWidget
 
 from pxr import Sdf
 

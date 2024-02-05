@@ -3,7 +3,7 @@
 from pyblish.api import ContextPlugin, ValidatorOrder
 from pymxs import runtime as rt
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
     RepairContextAction

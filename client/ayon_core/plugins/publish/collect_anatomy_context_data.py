@@ -15,7 +15,7 @@ Provides:
 import json
 import pyblish.api
 
-from openpype.pipeline.template_data import get_template_data
+from ayon_core.pipeline.template_data import get_template_data
 
 
 class CollectAnatomyContextData(pyblish.api.ContextPlugin):

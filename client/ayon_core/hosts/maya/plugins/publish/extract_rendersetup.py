@@ -2,7 +2,7 @@ import os
 import json
 
 import maya.app.renderSetup.model.renderSetup as renderSetup
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractRenderSetup(publish.Extractor):

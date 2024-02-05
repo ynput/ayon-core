@@ -6,7 +6,7 @@ import datetime
 
 from bson.objectid import ObjectId
 
-from openpype.client.operations_base import (
+from ayon_core.client.operations_base import (
     REMOVED_VALUE,
     CreateOperation,
     UpdateOperation,
@@ -14,7 +14,7 @@ from openpype.client.operations_base import (
     BaseOperationsSession
 )
 
-from openpype.client.mongo.operations import (
+from ayon_core.client.mongo.operations import (
     CURRENT_THUMBNAIL_SCHEMA,
     CURRENT_REPRESENTATION_SCHEMA,
     CURRENT_HERO_VERSION_SCHEMA,

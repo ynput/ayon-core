@@ -1,6 +1,6 @@
 import os
 import hiero.core.events
-from openpype.lib import Logger, register_event_callback
+from ayon_core.lib import Logger, register_event_callback
 from .lib import (
     sync_avalon_data_to_workfile,
     launch_workfiles_app,

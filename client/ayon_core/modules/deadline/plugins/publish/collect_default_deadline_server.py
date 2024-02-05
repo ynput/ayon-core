@@ -2,7 +2,7 @@
 """Collect default Deadline server."""
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 
 class CollectDefaultDeadlineServer(pyblish.api.ContextPlugin):

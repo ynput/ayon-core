@@ -6,7 +6,7 @@ import json
 import attr
 from wsrpc_aiohttp import WebSocketAsync
 
-from openpype.tools.adobe_webserver.app import WebServerTool
+from ayon_core.tools.adobe_webserver.app import WebServerTool
 
 
 @attr.s

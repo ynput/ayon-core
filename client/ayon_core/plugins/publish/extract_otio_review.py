@@ -19,11 +19,11 @@ import os
 import clique
 from pyblish import api
 
-from openpype.lib import (
+from ayon_core.lib import (
     get_ffmpeg_tool_args,
     run_subprocess,
 )
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractOTIOReview(publish.Extractor):
@@ -57,7 +57,7 @@ class ExtractOTIOReview(publish.Extractor):
     def process(self, instance):
         # Not all hosts can import these modules.
         import opentimelineio as otio
-        from openpype.pipeline.editorial import (
+        from ayon_core.pipeline.editorial import (
             otio_range_to_frame_range,
             make_sequence_collection
         )
@@ -282,7 +282,7 @@ class ExtractOTIOReview(publish.Extractor):
             otio.time.TimeRange: trimmed available range
         """
         # Not all hosts can import these modules.
-        from openpype.pipeline.editorial import (
+        from ayon_core.pipeline.editorial import (
             trim_media_range,
             range_from_frames
         )
@@ -345,7 +345,7 @@ class ExtractOTIOReview(publish.Extractor):
             otio.time.TimeRange: trimmed available range
         """
         # Not all hosts can import this module.
-        from openpype.pipeline.editorial import frames_to_seconds
+        from ayon_core.pipeline.editorial import frames_to_seconds
 
         # create path  and frame start to destination
         output_path, out_frame_start = self._get_ffmpeg_output()

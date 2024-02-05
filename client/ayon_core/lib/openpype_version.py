@@ -12,8 +12,8 @@ repository or locally available.
 import os
 import sys
 
-import openpype.version
-from openpype import AYON_SERVER_ENABLED
+import ayon_core.version
+from ayon_core import AYON_SERVER_ENABLED
 
 from .python_module_tools import import_filepath
 
@@ -121,7 +121,7 @@ def is_running_staging():
     if not op_version_control_available():
         return False
 
-    from openpype.settings import get_global_settings
+    from ayon_core.settings import get_global_settings
 
     global_settings = get_global_settings()
     production_version = global_settings["production_version"]

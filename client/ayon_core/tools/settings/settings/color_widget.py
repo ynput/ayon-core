@@ -2,7 +2,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from .item_widgets import InputWidget
 
-from openpype.widgets.color_widgets import (
+from ayon_core.widgets.color_widgets import (
     ColorPickerWidget,
     draw_checkerboard_tile
 )

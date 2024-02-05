@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.tools.ayon_utils.models import PROJECTS_MODEL_SENDER
+from ayon_core.tools.ayon_utils.models import PROJECTS_MODEL_SENDER
 from .utils import RefreshThread, get_qt_icon
 
 PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 1

@@ -2,9 +2,9 @@ import os
 
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.houdini.api.lib import render_rop
-from openpype.hosts.houdini.api import lib
+from ayon_core.pipeline import publish
+from ayon_core.hosts.houdini.api.lib import render_rop
+from ayon_core.hosts.houdini.api import lib
 
 import hou
 

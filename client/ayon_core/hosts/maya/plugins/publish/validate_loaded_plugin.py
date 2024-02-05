@@ -2,7 +2,7 @@ import os
 import pyblish.api
 import maya.cmds as cmds
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairContextAction,
     PublishValidationError
 )

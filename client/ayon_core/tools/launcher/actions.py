@@ -1,13 +1,13 @@
 from qtpy import QtWidgets, QtGui
 
-from openpype import style
-from openpype import resources
-from openpype.lib import (
+from ayon_core import style
+from ayon_core import resources
+from ayon_core.lib import (
     Logger,
     ApplictionExecutableNotFound,
     ApplicationLaunchFailed
 )
-from openpype.pipeline import LauncherAction
+from ayon_core.pipeline import LauncherAction
 
 
 # TODO move to 'openpype.pipeline.actions'

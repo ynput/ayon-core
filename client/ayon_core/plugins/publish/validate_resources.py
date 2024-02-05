@@ -1,6 +1,6 @@
 import os
 import pyblish.api
-from openpype.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline.publish import ValidateContentsOrder
 
 
 class ValidateResources(pyblish.api.InstancePlugin):

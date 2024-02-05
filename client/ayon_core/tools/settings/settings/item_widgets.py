@@ -2,10 +2,10 @@ import json
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.widgets.sliders import NiceSlider
-from openpype.tools.settings import CHILD_OFFSET
-from openpype.tools.utils import MultiSelectionComboBox
-from openpype.settings.entities.exceptions import BaseInvalidValue
+from ayon_core.widgets.sliders import NiceSlider
+from ayon_core.tools.settings import CHILD_OFFSET
+from ayon_core.tools.utils import MultiSelectionComboBox
+from ayon_core.settings.entities.exceptions import BaseInvalidValue
 
 from .widgets import (
     ExpandingWidget,

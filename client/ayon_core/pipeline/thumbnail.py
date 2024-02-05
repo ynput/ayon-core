@@ -2,9 +2,9 @@ import os
 import copy
 import logging
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.lib import Logger
-from openpype.client import get_project, get_ayon_server_api_connection
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib import Logger
+from ayon_core.client import get_project, get_ayon_server_api_connection
 from . import legacy_io
 from .anatomy import Anatomy
 from .plugin_discover import (
@@ -139,7 +139,7 @@ class ServerThumbnailResolver(ThumbnailResolver):
     @classmethod
     def _get_cache(cls):
         if cls._cache is None:
-            from openpype.client.server.thumbnails import AYONThumbnailCache
+            from ayon_core.client.server.thumbnails import AYONThumbnailCache
 
             cls._cache = AYONThumbnailCache()
         return cls._cache

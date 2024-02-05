@@ -7,7 +7,7 @@ from .lib import (
     NOT_SET,
     STRING_TYPE
 )
-from openpype.settings.constants import (
+from ayon_core.settings.constants import (
     METADATA_KEYS,
     M_OVERRIDDEN_KEY,
     KEY_REGEX

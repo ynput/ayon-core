@@ -1,7 +1,7 @@
 import os
 import nuke
 
-from openpype import resources
+from ayon_core import resources
 from qtpy import QtWidgets
 
 

@@ -5,9 +5,9 @@ from enum import Enum
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from openpype.lib import get_openpype_version
-from openpype.tools.utils import set_style_property
-from openpype.settings.entities import (
+from ayon_core.lib import get_openpype_version
+from ayon_core.tools.utils import set_style_property
+from ayon_core.settings.entities import (
     SystemSettings,
     ProjectSettings,
 
@@ -31,12 +31,12 @@ from openpype.settings.entities import (
     StudioDefaultsNotDefined,
     SchemaError
 )
-from openpype.settings.entities.op_version_entity import (
+from ayon_core.settings.entities.op_version_entity import (
     OpenPypeVersionInput
 )
 
-from openpype.settings import SaveWarningExc
-from openpype.settings.lib import (
+from ayon_core.settings import SaveWarningExc
+from ayon_core.settings.lib import (
     get_system_last_saved_info,
     get_project_last_saved_info,
 )

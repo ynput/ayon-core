@@ -10,7 +10,7 @@ import re
 import copy
 import pyblish.api
 
-from openpype.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_subset_name
 
 
 class CollectTVPaintInstances(pyblish.api.ContextPlugin):

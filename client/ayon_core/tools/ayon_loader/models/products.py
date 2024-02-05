@@ -5,9 +5,9 @@ import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
-from openpype.style import get_default_entity_icon_color
-from openpype.tools.ayon_utils.models import NestedCacheItem
-from openpype.tools.ayon_loader.abstract import (
+from ayon_core.style import get_default_entity_icon_color
+from ayon_core.tools.ayon_utils.models import NestedCacheItem
+from ayon_core.tools.ayon_loader.abstract import (
     ProductTypeItem,
     ProductItem,
     VersionItem,

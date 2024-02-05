@@ -6,7 +6,7 @@ from pyblish.api import Instance
 
 from maya import cmds  # noqa
 import maya.mel as mel  # noqa
-from openpype.hosts.maya.api.lib import maintained_selection
+from ayon_core.hosts.maya.api.lib import maintained_selection
 
 
 class FBXExtractor:

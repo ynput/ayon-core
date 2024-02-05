@@ -9,19 +9,19 @@ import os
 
 import maya.cmds as cmds
 
-from openpype.client import get_representation_by_name
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core.client import get_representation_by_name
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     load,
     get_current_project_name,
     get_representation_path,
 )
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.lib import (
     maintained_selection,
     namespaced,
     unique_namespace
 )
-from openpype.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.pipeline import containerise
 
 
 class VRayProxyLoader(load.LoaderPlugin):

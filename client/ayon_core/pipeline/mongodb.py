@@ -5,8 +5,8 @@ import logging
 import pymongo
 from uuid import uuid4
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import OpenPypeMongoConnection
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import OpenPypeMongoConnection
 
 from . import schema
 

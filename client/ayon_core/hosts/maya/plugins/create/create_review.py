@@ -2,18 +2,18 @@ import json
 
 from maya import cmds
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.hosts.maya.api import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.hosts.maya.api import (
     lib,
     plugin
 )
-from openpype.lib import (
+from ayon_core.lib import (
     BoolDef,
     NumberDef,
     EnumDef
 )
-from openpype.pipeline import CreatedInstance
-from openpype.client import get_asset_by_name
+from ayon_core.pipeline import CreatedInstance
+from ayon_core.client import get_asset_by_name
 
 TRANSPARENCIES = [
     "preset",

@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating textures."""
 
-from openpype.pipeline import CreatedInstance, Creator, CreatorError
-from openpype.lib import (
+from ayon_core.pipeline import CreatedInstance, Creator, CreatorError
+from ayon_core.lib import (
     EnumDef,
     UILabelDef,
     NumberDef,
     BoolDef
 )
 
-from openpype.hosts.substancepainter.api.pipeline import (
+from ayon_core.hosts.substancepainter.api.pipeline import (
     get_instances,
     set_instance,
     set_instances,
     remove_instance
 )
-from openpype.hosts.substancepainter.api.lib import get_export_presets
+from ayon_core.hosts.substancepainter.api.lib import get_export_presets
 
 import substance_painter.project
 

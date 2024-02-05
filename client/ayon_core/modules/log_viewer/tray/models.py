@@ -1,6 +1,6 @@
 import collections
 from qtpy import QtCore, QtGui
-from openpype.lib import Logger
+from ayon_core.lib import Logger
 
 
 class LogModel(QtGui.QStandardItemModel):

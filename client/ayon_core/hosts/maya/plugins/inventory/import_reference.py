@@ -1,7 +1,7 @@
 from maya import cmds
 
-from openpype.pipeline import InventoryAction
-from openpype.hosts.maya.api.lib import get_reference_node
+from ayon_core.pipeline import InventoryAction
+from ayon_core.hosts.maya.api.lib import get_reference_node
 
 
 class ImportReference(InventoryAction):

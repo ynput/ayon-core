@@ -9,7 +9,7 @@ import six
 from bson.objectid import ObjectId
 import pyblish.api
 
-from openpype.client.operations import (
+from ayon_core.client.operations import (
     OperationsSession,
     new_subset_document,
     new_version_doc,
@@ -19,17 +19,17 @@ from openpype.client.operations import (
     prepare_representation_update_data,
 )
 
-from openpype.client import (
+from ayon_core.client import (
     get_representations,
     get_subset_by_name,
     get_version_by_name,
 )
-from openpype.lib import source_hash
-from openpype.lib.file_transaction import (
+from ayon_core.lib import source_hash
+from ayon_core.lib.file_transaction import (
     FileTransaction,
     DuplicateDestinationError
 )
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_template_name,
 )

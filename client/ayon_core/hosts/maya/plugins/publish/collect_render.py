@@ -47,13 +47,13 @@ from maya import cmds
 
 import pyblish.api
 
-from openpype.pipeline import KnownPublishError
-from openpype.lib import get_formatted_current_time
-from openpype.hosts.maya.api.lib_renderproducts import (
+from ayon_core.pipeline import KnownPublishError
+from ayon_core.lib import get_formatted_current_time
+from ayon_core.hosts.maya.api.lib_renderproducts import (
     get as get_layer_render_products,
     UnsupportedRendererException
 )
-from openpype.hosts.maya.api import lib
+from ayon_core.hosts.maya.api import lib
 
 
 class CollectMayaRender(pyblish.api.InstancePlugin):

@@ -2,8 +2,8 @@ import bpy
 
 import pyblish.api
 
-from openpype.pipeline.publish import KnownPublishError
-from openpype.hosts.blender.api.pipeline import AVALON_PROPERTY
+from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.hosts.blender.api.pipeline import AVALON_PROPERTY
 
 
 class CollectBlenderInstanceData(pyblish.api.InstancePlugin):

@@ -2,13 +2,13 @@ from maya import cmds
 
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     RepairAction,
     PublishValidationError
 )
-import openpype.hosts.maya.api.action
-from openpype.hosts.maya.api.lib import undo_chunk
+import ayon_core.hosts.maya.api.action
+from ayon_core.hosts.maya.api.lib import undo_chunk
 
 
 class ValidateRigControllers(pyblish.api.InstancePlugin):

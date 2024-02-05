@@ -6,12 +6,12 @@ from maya import cmds  # noqa
 
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.maya.api.lib import (
+from ayon_core.pipeline import publish
+from ayon_core.hosts.maya.api.lib import (
     parent_nodes,
     maintained_selection
 )
-from openpype.hosts.maya.api import fbx
+from ayon_core.hosts.maya.api import fbx
 
 
 class ExtractUnrealStaticMesh(publish.Extractor):

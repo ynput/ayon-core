@@ -1,14 +1,14 @@
 import os
 import sys
 
-from openpype.pipeline import install_host
-from openpype.lib import Logger
+from ayon_core.pipeline import install_host
+from ayon_core.lib import Logger
 
 log = Logger.get_logger(__name__)
 
 
 def main(env):
-    from openpype.hosts.resolve.api import ResolveHost, launch_pype_menu
+    from ayon_core.hosts.resolve.api import ResolveHost, launch_pype_menu
 
     # activate resolve from openpype
     host = ResolveHost()

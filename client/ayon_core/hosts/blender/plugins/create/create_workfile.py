@@ -1,10 +1,10 @@
 import bpy
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import CreatedInstance, AutoCreator
-from openpype.client import get_asset_by_name
-from openpype.hosts.blender.api.plugin import BaseCreator
-from openpype.hosts.blender.api.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import CreatedInstance, AutoCreator
+from ayon_core.client import get_asset_by_name
+from ayon_core.hosts.blender.api.plugin import BaseCreator
+from ayon_core.hosts.blender.api.pipeline import (
     AVALON_PROPERTY,
     AVALON_CONTAINERS
 )

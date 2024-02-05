@@ -9,11 +9,11 @@ import re
 
 import pyblish.api
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.hosts.aftereffects.api import get_asset_settings
+from ayon_core.hosts.aftereffects.api import get_asset_settings
 
 
 class ValidateSceneSettings(OptionalPyblishPluginMixin,

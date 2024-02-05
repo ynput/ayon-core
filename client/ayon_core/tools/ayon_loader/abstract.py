@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import six
 
-from openpype.lib.attribute_definitions import (
+from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     serialize_attr_defs,
     deserialize_attr_defs,

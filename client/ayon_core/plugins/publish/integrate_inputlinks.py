@@ -3,8 +3,8 @@ from collections import OrderedDict
 from bson.objectid import ObjectId
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import legacy_io
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import legacy_io
 
 
 class IntegrateInputLinks(pyblish.api.ContextPlugin):

@@ -3,8 +3,8 @@ Temporary folder operations
 """
 
 import os
-from openpype.lib import StringTemplate
-from openpype.pipeline import Anatomy
+from ayon_core.lib import StringTemplate
+from ayon_core.pipeline import Anatomy
 
 
 def create_custom_tempdir(project_name, anatomy=None):

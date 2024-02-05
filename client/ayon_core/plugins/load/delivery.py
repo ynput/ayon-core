@@ -4,17 +4,17 @@ from collections import defaultdict
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.client import get_representations
-from openpype.pipeline import load, Anatomy
-from openpype import resources, style
+from ayon_core.client import get_representations
+from ayon_core.pipeline import load, Anatomy
+from ayon_core import resources, style
 
-from openpype.lib import (
+from ayon_core.lib import (
     format_file_size,
     collect_frames,
     get_datetime_data,
 )
-from openpype.pipeline.load import get_representation_path_with_anatomy
-from openpype.pipeline.delivery import (
+from ayon_core.pipeline.load import get_representation_path_with_anatomy
+from ayon_core.pipeline.delivery import (
     get_format_dict,
     check_destination_path,
     deliver_single_file,

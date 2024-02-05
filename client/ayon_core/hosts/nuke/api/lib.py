@@ -13,8 +13,8 @@ from collections import OrderedDict
 import nuke
 from qtpy import QtCore, QtWidgets
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_project,
     get_asset_by_name,
     get_versions,
@@ -22,36 +22,36 @@ from openpype.client import (
     get_representations,
 )
 
-from openpype.host import HostDirmap
-from openpype.tools.utils import host_tools
-from openpype.pipeline.workfile.workfile_template_builder import (
+from ayon_core.host import HostDirmap
+from ayon_core.tools.utils import host_tools
+from ayon_core.pipeline.workfile.workfile_template_builder import (
     TemplateProfileNotFound
 )
-from openpype.lib import (
+from ayon_core.lib import (
     env_value_to_bool,
     Logger,
     get_version_from_path,
     StringTemplate,
 )
 
-from openpype.settings import (
+from ayon_core.settings import (
     get_project_settings,
     get_current_project_settings,
 )
-from openpype.modules import ModulesManager
-from openpype.pipeline.template_data import get_template_data_with_names
-from openpype.pipeline import (
+from ayon_core.modules import ModulesManager
+from ayon_core.pipeline.template_data import get_template_data_with_names
+from ayon_core.pipeline import (
     discover_legacy_creator_plugins,
     Anatomy,
     get_current_host_name,
     get_current_project_name,
     get_current_asset_name,
 )
-from openpype.pipeline.context_tools import (
+from ayon_core.pipeline.context_tools import (
     get_custom_workfile_template_from_session
 )
-from openpype.pipeline.colorspace import get_imageio_config
-from openpype.pipeline.workfile import BuildWorkfile
+from ayon_core.pipeline.colorspace import get_imageio_config
+from ayon_core.pipeline.workfile import BuildWorkfile
 from . import gizmo_menu
 from .constants import ASSIST
 
@@ -360,7 +360,7 @@ def imprint(node, data, tab=None):
     Examples:
         ```
         import nuke
-        from openpype.hosts.nuke.api import lib
+        from ayon_core.hosts.nuke.api import lib
 
         node = nuke.createNode("NoOp")
         data = {

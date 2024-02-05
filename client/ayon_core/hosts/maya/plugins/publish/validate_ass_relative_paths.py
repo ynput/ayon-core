@@ -5,7 +5,7 @@ import maya.cmds as cmds
 from mtoa.core import createOptions
 
 import pyblish.api
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError

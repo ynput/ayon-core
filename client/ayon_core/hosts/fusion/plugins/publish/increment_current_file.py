@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype.pipeline import OptionalPyblishPluginMixin
-from openpype.pipeline import KnownPublishError
+from ayon_core.pipeline import OptionalPyblishPluginMixin
+from ayon_core.pipeline import KnownPublishError
 
 
 class FusionIncrementCurrentFile(
@@ -22,8 +22,8 @@ class FusionIncrementCurrentFile(
         if not self.is_active(context.data):
             return
 
-        from openpype.lib import version_up
-        from openpype.pipeline.publish import get_errored_plugins_from_context
+        from ayon_core.lib import version_up
+        from ayon_core.pipeline.publish import get_errored_plugins_from_context
 
         errored_plugins = get_errored_plugins_from_context(context)
         if any(

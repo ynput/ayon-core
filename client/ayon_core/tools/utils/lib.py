@@ -7,19 +7,19 @@ import traceback
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from openpype.client import (
+from ayon_core.client import (
     get_project,
     get_asset_by_name,
 )
-from openpype.style import (
+from ayon_core.style import (
     get_default_entity_icon_color,
     get_objected_colors,
     get_app_icon_path,
 )
-from openpype.resources import get_image_path
-from openpype.lib import filter_profiles, Logger
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core.resources import get_image_path
+from ayon_core.lib import filter_profiles, Logger
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     registered_host,
     get_current_context,
     get_current_host_name,
@@ -771,7 +771,7 @@ def get_repre_icons():
     except Exception:
         # Backwards compatibility
         try:
-            from openpype.modules import sync_server
+            from ayon_core.modules import sync_server
         except Exception:
             return icons
 

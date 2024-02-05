@@ -7,8 +7,8 @@ import inspect
 import collections
 import numbers
 
-from openpype.host import ILoadHost
-from openpype.client import (
+from ayon_core.host import ILoadHost
+from ayon_core.client import (
     get_project,
     get_assets,
     get_subsets,
@@ -23,11 +23,11 @@ from openpype.client import (
     get_representation_by_name,
     get_representation_parents
 )
-from openpype.lib import (
+from ayon_core.lib import (
     StringTemplate,
     TemplateUnsolved,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     legacy_io,
     Anatomy,
 )
@@ -633,7 +633,7 @@ def get_representation_path(representation, root=None, dbcon=None):
         dbcon = legacy_io
 
     if root is None:
-        from openpype.pipeline import registered_root
+        from ayon_core.pipeline import registered_root
 
         root = registered_root()
 
@@ -835,7 +835,7 @@ def get_outdated_containers(host=None, project_name=None):
     """
 
     if host is None:
-        from openpype.pipeline import registered_host
+        from ayon_core.pipeline import registered_host
 
         host = registered_host()
 

@@ -1,6 +1,6 @@
 import re
 
-from openpype.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
 
 
 class UserPublishValuesModel:

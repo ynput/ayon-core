@@ -1,14 +1,14 @@
 import os
 import copy
 
-from openpype.hosts.tvpaint.worker import (
+from ayon_core.hosts.tvpaint.worker import (
     SenderTVPaintCommands,
     ExecuteSimpleGeorgeScript,
     ExecuteGeorgeScript
 )
 
 import pyblish.api
-from openpype.hosts.tvpaint.lib import (
+from ayon_core.hosts.tvpaint.lib import (
     calculate_layers_extraction_data,
     get_frame_filename_template,
     fill_reference_frames,

@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.lib import get_openpype_username
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib import get_openpype_username
 
 
 class CollectCurrentUserPype(pyblish.api.ContextPlugin):

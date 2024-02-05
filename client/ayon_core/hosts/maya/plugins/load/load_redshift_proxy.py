@@ -5,17 +5,17 @@ import clique
 
 import maya.cmds as cmds
 
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.lib import (
     namespaced,
     maintained_selection,
     unique_namespace
 )
-from openpype.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.pipeline import containerise
 
 
 class RedshiftProxyLoader(load.LoaderPlugin):

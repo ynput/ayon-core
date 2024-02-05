@@ -1,11 +1,11 @@
 import pyblish.api
 from pprint import pformat
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import get_current_asset_name
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import get_current_asset_name
 
-from openpype.hosts.resolve import api as rapi
-from openpype.hosts.resolve.otio import davinci_export
+from ayon_core.hosts.resolve import api as rapi
+from ayon_core.hosts.resolve.otio import davinci_export
 
 
 class PrecollectWorkfile(pyblish.api.ContextPlugin):

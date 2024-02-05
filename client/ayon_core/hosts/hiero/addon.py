@@ -1,6 +1,6 @@
 import os
 import platform
-from openpype.modules import OpenPypeModule, IHostAddon
+from ayon_core.modules import OpenPypeModule, IHostAddon
 
 HIERO_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 

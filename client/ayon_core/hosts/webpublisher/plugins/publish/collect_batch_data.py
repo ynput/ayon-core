@@ -13,7 +13,7 @@ import os
 
 import pyblish.api
 
-from openpype.pipeline import legacy_io
+from ayon_core.pipeline import legacy_io
 from openpype_modules.webpublisher.lib import (
     parse_json,
     get_batch_asset_task_info,

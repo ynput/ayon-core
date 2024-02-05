@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """Validator for correct naming of Static Meshes."""
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline.publish import ValidateContentsOrder
 
-from openpype.hosts.houdini.api.action import SelectInvalidAction
-from openpype.hosts.houdini.api.lib import get_output_children
+from ayon_core.hosts.houdini.api.action import SelectInvalidAction
+from ayon_core.hosts.houdini.api.lib import get_output_children
 
 
 class ValidateMeshIsStatic(pyblish.api.InstancePlugin,

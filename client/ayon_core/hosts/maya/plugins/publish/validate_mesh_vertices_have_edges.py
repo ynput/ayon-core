@@ -1,9 +1,9 @@
 import pyblish.api
 from maya import cmds
 
-import openpype.hosts.maya.api.action
-from openpype.hosts.maya.api.lib import len_flattened
-from openpype.pipeline.publish import (
+import ayon_core.hosts.maya.api.action
+from ayon_core.hosts.maya.api.lib import len_flattened
+from ayon_core.pipeline.publish import (
     PublishValidationError, RepairAction, ValidateMeshOrder)
 
 

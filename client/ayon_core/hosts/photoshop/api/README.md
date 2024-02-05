@@ -17,7 +17,7 @@ ExManCmd /install {path to addon}/api/extension.zxp
 The easiest way to get the server and Photoshop launch is with:
 
 ```
-python -c ^"import openpype.hosts.photoshop;openpype.hosts.photoshop.launch(""C:\Program Files\Adobe\Adobe Photoshop 2020\Photoshop.exe"")^"
+python -c ^"import ayon_core.hosts.photoshop;openpype.hosts.photoshop.launch(""C:\Program Files\Adobe\Adobe Photoshop 2020\Photoshop.exe"")^"
 ```
 
 `avalon.photoshop.launch` launches the application and server, and also closes the server when Photoshop exists.
@@ -127,8 +127,8 @@ class CollectInstances(pyblish.api.ContextPlugin):
 ```python
 import os
 
-from openpype.pipeline import publish
-from openpype.hosts.photoshop import api as photoshop
+from ayon_core.pipeline import publish
+from ayon_core.hosts.photoshop import api as photoshop
 
 
 class ExtractImage(publish.Extractor):
@@ -195,7 +195,7 @@ class ExtractImage(publish.Extractor):
 #### Loader Plugin
 ```python
 from avalon import api, photoshop
-from openpype.pipeline import load, get_representation_path
+from ayon_core.pipeline import load, get_representation_path
 
 stub = photoshop.stub()
 

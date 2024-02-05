@@ -4,16 +4,16 @@ import logging
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from openpype.client import (
+from ayon_core.client import (
     get_subsets,
     get_versions,
     get_representations,
 )
-from openpype.style import (
+from ayon_core.style import (
     get_default_entity_icon_color,
     get_disabled_entity_icon_color,
 )
-from openpype.pipeline import get_representation_path
+from ayon_core.pipeline import get_representation_path
 
 log = logging.getLogger(__name__)
 

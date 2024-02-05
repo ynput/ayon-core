@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating camera."""
 import os
-from openpype.hosts.max.api import plugin
-from openpype.lib import BoolDef
-from openpype.hosts.max.api.lib_rendersettings import RenderSettings
+from ayon_core.hosts.max.api import plugin
+from ayon_core.lib import BoolDef
+from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
 
 
 class CreateRender(plugin.MaxCreator):

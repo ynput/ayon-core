@@ -6,28 +6,28 @@ import copy
 import qtpy
 from qtpy import QtWidgets, QtCore
 
-from openpype.host import IWorkfileHost
-from openpype.client import get_asset_by_id
-from openpype.pipeline.workfile.lock_workfile import (
+from ayon_core.host import IWorkfileHost
+from ayon_core.client import get_asset_by_id
+from ayon_core.pipeline.workfile.lock_workfile import (
     is_workfile_locked,
     is_workfile_lock_enabled,
     is_workfile_locked_for_current_process
 )
-from openpype.tools.utils import PlaceholderLineEdit
-from openpype.tools.utils.delegates import PrettyTimeDelegate
-from openpype.lib import emit_event
-from openpype.tools.workfiles.lock_dialog import WorkfileLockDialog
-from openpype.pipeline import (
+from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.lib import emit_event
+from ayon_core.tools.workfiles.lock_dialog import WorkfileLockDialog
+from ayon_core.pipeline import (
     registered_host,
     legacy_io,
     Anatomy,
     get_current_project_name,
 )
-from openpype.pipeline.context_tools import (
+from ayon_core.pipeline.context_tools import (
     compute_session_changes,
     change_current_context
 )
-from openpype.pipeline.workfile import (
+from ayon_core.pipeline.workfile import (
     get_workfile_template_key,
     create_workdir_extra_folders,
 )

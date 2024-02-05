@@ -1,5 +1,5 @@
 import os
-from openpype.settings import get_local_settings
+from ayon_core.settings import get_local_settings
 
 # Constant key under which local settings are stored
 LOCAL_EXPERIMENTAL_KEY = "experimental_tools"
@@ -162,7 +162,7 @@ class ExperimentalTools:
 
     def _show_publisher(self):
         if self._publisher_tool is None:
-            from openpype.tools.publisher.window import PublisherWindow
+            from ayon_core.tools.publisher.window import PublisherWindow
 
             self._publisher_tool = PublisherWindow(
                 parent=self._parent_widget

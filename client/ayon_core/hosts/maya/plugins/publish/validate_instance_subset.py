@@ -2,7 +2,7 @@ import pyblish.api
 import string
 
 import six
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishValidationError
 )

@@ -5,7 +5,7 @@ import tempfile
 import shutil
 import asyncio
 
-from openpype.hosts.tvpaint.api.communication_server import (
+from ayon_core.hosts.tvpaint.api.communication_server import (
     BaseCommunicator,
     CommunicationWrapper
 )

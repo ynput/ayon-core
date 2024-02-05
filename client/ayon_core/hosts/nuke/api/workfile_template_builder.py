@@ -1,7 +1,7 @@
 import collections
 import nuke
-from openpype.pipeline import registered_host
-from openpype.pipeline.workfile.workfile_template_builder import (
+from ayon_core.pipeline import registered_host
+from ayon_core.pipeline.workfile.workfile_template_builder import (
     AbstractTemplateBuilder,
     PlaceholderPlugin,
     LoadPlaceholderItem,
@@ -9,7 +9,7 @@ from openpype.pipeline.workfile.workfile_template_builder import (
     PlaceholderLoadMixin,
     PlaceholderCreateMixin
 )
-from openpype.tools.workfile_template_build import (
+from ayon_core.tools.workfile_template_build import (
     WorkfileBuildPlaceholderDialog,
 )
 from .lib import (

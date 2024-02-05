@@ -1,6 +1,6 @@
 import pyblish.api
 
-from openpype.pipeline import registered_host
+from ayon_core.pipeline import registered_host
 
 
 def collect_input_containers(tools):

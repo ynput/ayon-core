@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
-from openpype.pipeline import PublishValidationError
-from openpype.hosts.houdini.api.action import (
+from ayon_core.pipeline import PublishValidationError
+from ayon_core.hosts.houdini.api.action import (
     SelectInvalidAction,
     SelectROPAction,
 )
-from openpype.hosts.houdini.api.lib import get_obj_node_output
+from ayon_core.hosts.houdini.api.lib import get_obj_node_output
 import hou
 
 

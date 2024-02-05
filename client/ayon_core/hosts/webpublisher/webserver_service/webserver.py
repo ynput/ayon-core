@@ -6,9 +6,9 @@ import requests
 import json
 import subprocess
 
-from openpype.client import OpenPypeMongoConnection
-from openpype.modules import ModulesManager
-from openpype.lib import Logger
+from ayon_core.client import OpenPypeMongoConnection
+from ayon_core.modules import ModulesManager
+from ayon_core.lib import Logger
 
 from openpype_modules.webpublisher.lib import (
     ERROR_STATUS,

@@ -1,8 +1,8 @@
 import pyblish.api
 
-from openpype.pipeline.publish import get_errored_instances_from_context
-from openpype.hosts.nuke.api.lib import link_knobs
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import get_errored_instances_from_context
+from ayon_core.hosts.nuke.api.lib import link_knobs
+from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )

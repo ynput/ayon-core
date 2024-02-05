@@ -5,8 +5,8 @@ import traceback
 from qtpy import QtWidgets
 from pymongo.errors import ServerSelectionTimeoutError
 
-from openpype.lib import change_openpype_mongo_url
-from openpype.tools.utils import PlaceholderLineEdit
+from ayon_core.lib import change_openpype_mongo_url
+from ayon_core.tools.utils import PlaceholderLineEdit
 
 
 class OpenPypeMongoWidget(QtWidgets.QWidget):

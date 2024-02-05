@@ -1,7 +1,9 @@
 import os
 
 
-PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
-PLUGINS_DIR = os.path.join(PACKAGE_DIR, "plugins")
+AYON_CORE_ROOT = os.path.dirname(os.path.abspath(__file__))
 
-AYON_SERVER_ENABLED = os.environ.get("USE_AYON_SERVER") == "1"
+# TODO remove after '1.x.x'
+PACKAGE_DIR = AYON_CORE_ROOT
+PLUGINS_DIR = os.path.join(AYON_CORE_ROOT, "plugins")
+AYON_SERVER_ENABLED = True

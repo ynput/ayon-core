@@ -2,7 +2,7 @@ import os
 import pyblish.api
 import pyblish.util
 import pyblish.plugin
-from openpype.pipeline.publish.lib import filter_pyblish_plugins
+from ayon_core.pipeline.publish.lib import filter_pyblish_plugins
 from . import lib
 
 

@@ -1,6 +1,6 @@
 import json
 import pyblish.api
-from openpype.hosts.aftereffects.api import AfterEffectsHost
+from ayon_core.hosts.aftereffects.api import AfterEffectsHost
 
 
 class PreCollectRender(pyblish.api.ContextPlugin):

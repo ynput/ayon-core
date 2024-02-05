@@ -11,14 +11,14 @@ from abc import ABCMeta, abstractmethod
 
 import six
 
-from openpype import AYON_SERVER_ENABLED, PACKAGE_DIR
-from openpype.client import get_asset_name_identifier
-from openpype.settings import (
+from ayon_core import AYON_SERVER_ENABLED, AYON_CORE_ROOT
+from ayon_core.client import get_asset_name_identifier
+from ayon_core.settings import (
     get_system_settings,
     get_project_settings,
     get_local_settings
 )
-from openpype.settings.constants import (
+from ayon_core.settings.constants import (
     METADATA_KEYS,
     M_DYNAMIC_KEY_LABEL
 )
@@ -950,7 +950,7 @@ class ApplicationLaunchContext:
         launch_type=None,
         **data
     ):
-        from openpype.modules import ModulesManager
+        from ayon_core.modules import ModulesManager
 
         # Application object
         self.application = application
@@ -1105,10 +1105,7 @@ class ApplicationLaunchContext:
         paths = []
 
         # TODO load additional studio paths from settings
-        import openpype
-        openpype_dir = os.path.dirname(os.path.abspath(openpype.__file__))
-
-        global_hooks_dir = os.path.join(openpype_dir, "hooks")
+        global_hooks_dir = os.path.join(AYON_CORE_ROOT, "hooks")
 
         hooks_dirs = [
             global_hooks_dir
@@ -1120,7 +1117,7 @@ class ApplicationLaunchContext:
             host_module = self.modules_manager.get_host_module(self.host_name)
             if not host_module:
                 hooks_dirs.append(os.path.join(
-                    openpype_dir, "hosts", self.host_name, "hooks"
+                    AYON_CORE_ROOT, "hosts", self.host_name, "hooks"
                 ))
 
         for path in hooks_dirs:
@@ -1507,7 +1504,7 @@ def _add_python_version_paths(app, env, logger, modules_manager):
 
     # Add Python 2/3 modules
     python_vendor_dir = os.path.join(
-        PACKAGE_DIR,
+        AYON_CORE_ROOT,
         "vendor",
         "python"
     )
@@ -1547,7 +1544,7 @@ def prepare_app_environments(
     source_env = data["env"].copy()
 
     if modules_manager is None:
-        from openpype.modules import ModulesManager
+        from ayon_core.modules import ModulesManager
 
         modules_manager = ModulesManager()
 
@@ -1701,7 +1698,7 @@ def prepare_context_environments(data, env_group=None, modules_manager=None):
             result will be stored.
     """
 
-    from openpype.pipeline.template_data import get_template_data
+    from ayon_core.pipeline.template_data import get_template_data
 
     # Context environments
     log = data["log"]
@@ -1772,7 +1769,7 @@ def prepare_context_environments(data, env_group=None, modules_manager=None):
     data["task_type"] = task_type
 
     try:
-        from openpype.pipeline.workfile import get_workdir_with_workdir_data
+        from ayon_core.pipeline.workfile import get_workdir_with_workdir_data
 
         workdir = get_workdir_with_workdir_data(
             workdir_data,
@@ -1818,8 +1815,8 @@ def _prepare_last_workfile(data, workdir, modules_manager):
         workdir (str): Path to folder where workfiles should be stored.
     """
 
-    from openpype.modules import ModulesManager
-    from openpype.pipeline import HOST_WORKFILE_EXTENSIONS
+    from ayon_core.modules import ModulesManager
+    from ayon_core.pipeline import HOST_WORKFILE_EXTENSIONS
 
     if not modules_manager:
         modules_manager = ModulesManager()
@@ -1878,7 +1875,7 @@ def _prepare_last_workfile(data, workdir, modules_manager):
             extensions = HOST_WORKFILE_EXTENSIONS.get(app.host_name)
 
         if extensions:
-            from openpype.pipeline.workfile import (
+            from ayon_core.pipeline.workfile import (
                 get_workfile_template_key,
                 get_last_workfile
             )

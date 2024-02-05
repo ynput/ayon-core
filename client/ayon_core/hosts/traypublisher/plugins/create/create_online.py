@@ -7,13 +7,13 @@ exists under selected asset.
 """
 from pathlib import Path
 
-# from openpype.client import get_subset_by_name, get_asset_by_name
-from openpype.lib.attribute_definitions import FileDef, BoolDef
-from openpype.pipeline import (
+# from ayon_core.client import get_subset_by_name, get_asset_by_name
+from ayon_core.lib.attribute_definitions import FileDef, BoolDef
+from ayon_core.pipeline import (
     CreatedInstance,
     CreatorError
 )
-from openpype.hosts.traypublisher.api.plugin import TrayPublishCreator
+from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
 
 
 class OnlineCreator(TrayPublishCreator):

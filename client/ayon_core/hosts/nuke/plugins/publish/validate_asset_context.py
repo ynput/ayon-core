@@ -4,13 +4,13 @@ from __future__ import absolute_import
 
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.hosts.nuke.api import SelectInstanceNodeAction
+from ayon_core.hosts.nuke.api import SelectInstanceNodeAction
 
 
 class ValidateCorrectAssetContext(

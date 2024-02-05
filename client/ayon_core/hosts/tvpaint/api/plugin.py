@@ -1,13 +1,13 @@
 import re
 
-from openpype.pipeline import LoaderPlugin
-from openpype.pipeline.create import (
+from ayon_core.pipeline import LoaderPlugin
+from ayon_core.pipeline.create import (
     CreatedInstance,
     get_subset_name,
     AutoCreator,
     Creator,
 )
-from openpype.pipeline.create.creator_plugins import cache_and_get_instances
+from ayon_core.pipeline.create.creator_plugins import cache_and_get_instances
 
 from .lib import get_layers_data
 

@@ -1,9 +1,9 @@
 import pyblish.api
 
-from openpype.client import get_asset_name_identifier
-import openpype.hosts.flame.api as opfapi
-from openpype.hosts.flame.otio import flame_export
-from openpype.pipeline.create import get_subset_name
+from ayon_core.client import get_asset_name_identifier
+import ayon_core.hosts.flame.api as opfapi
+from ayon_core.hosts.flame.otio import flame_export
+from ayon_core.pipeline.create import get_subset_name
 
 
 class CollecTimelineOTIO(pyblish.api.ContextPlugin):

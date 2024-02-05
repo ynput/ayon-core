@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype.lib import EnumDef, TextDef
-from openpype.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.lib import EnumDef, TextDef
+from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
 
 
 class CollectTyCacheData(pyblish.api.InstancePlugin,

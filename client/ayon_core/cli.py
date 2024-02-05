@@ -5,7 +5,7 @@ import sys
 import code
 import click
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 from .pype_commands import PypeCommands
 
 
@@ -205,7 +205,7 @@ def projectmanager():
 
 @main.command(context_settings={"ignore_unknown_options": True})
 def publish_report_viewer():
-    from openpype.tools.publisher.publish_report_viewer import main
+    from ayon_core.tools.publisher.publish_report_viewer import main
 
     sys.exit(main())
 
@@ -335,7 +335,7 @@ def syncserver(ctx, active_site):
     if AYON_SERVER_ENABLED:
         raise RuntimeError("AYON does not support 'syncserver' command.")
 
-    from openpype.modules.sync_server.sync_server_module import (
+    from ayon_core.modules.sync_server.sync_server_module import (
         syncservice)
     ctx.invoke(syncservice, active_site=active_site)
 
@@ -399,7 +399,7 @@ def interactive():
             f"AYON launcher {version}\nPython {sys.version} on {sys.platform}"
         )
     else:
-        from openpype.version import __version__
+        from ayon_core.version import __version__
 
         banner = (
             f"OpenPype {__version__}\nPython {sys.version} on {sys.platform}"
@@ -416,7 +416,7 @@ def version(build):
         print(os.environ["AYON_VERSION"])
         return
 
-    from openpype.version import __version__
+    from ayon_core.version import __version__
     from igniter.bootstrap_repos import BootstrapRepos, OpenPypeVersion
     from pathlib import Path
 

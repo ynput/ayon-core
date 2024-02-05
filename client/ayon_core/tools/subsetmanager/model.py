@@ -2,7 +2,7 @@ import uuid
 
 from qtpy import QtCore, QtGui
 
-from openpype.pipeline import registered_host
+from ayon_core.pipeline import registered_host
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 

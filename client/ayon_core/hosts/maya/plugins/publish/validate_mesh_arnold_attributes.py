@@ -1,15 +1,15 @@
 from maya import cmds
 import pyblish.api
 
-import openpype.hosts.maya.api.action
-from openpype.hosts.maya.api.lib import (
+import ayon_core.hosts.maya.api.action
+from ayon_core.hosts.maya.api.lib import (
     maintained_selection,
     delete_after,
     undo_chunk,
     get_attribute,
     set_attribute
 )
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     RepairAction,
     ValidateMeshOrder,

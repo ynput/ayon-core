@@ -4,10 +4,10 @@ from collections import defaultdict
 
 from maya import cmds
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     InventoryAction, get_representation_context, get_representation_path
 )
-from openpype.hosts.maya.api.lib import get_container_members, get_id
+from ayon_core.hosts.maya.api.lib import get_container_members, get_id
 
 
 class ConnectYetiRig(InventoryAction):

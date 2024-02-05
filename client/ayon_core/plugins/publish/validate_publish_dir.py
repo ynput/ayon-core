@@ -1,6 +1,6 @@
 import pyblish.api
-from openpype.pipeline.publish import ValidateContentsOrder
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
     get_publish_template_name,
 )

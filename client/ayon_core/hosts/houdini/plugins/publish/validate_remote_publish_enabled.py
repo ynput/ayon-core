@@ -2,8 +2,8 @@
 import pyblish.api
 
 import hou
-from openpype.pipeline.publish import RepairContextAction
-from openpype.pipeline import PublishValidationError
+from ayon_core.pipeline.publish import RepairContextAction
+from ayon_core.pipeline import PublishValidationError
 
 
 class ValidateRemotePublishEnabled(pyblish.api.ContextPlugin):

@@ -7,7 +7,7 @@ from ayon_api import (
     get_versions_links,
 )
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 
 class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):

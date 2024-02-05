@@ -1,9 +1,9 @@
 import os
 
 import pyblish.api
-from openpype.pipeline.publish import get_errored_plugins_from_context
-from openpype.lib import version_up
-import openpype.hosts.harmony.api as harmony
+from ayon_core.pipeline.publish import get_errored_plugins_from_context
+from ayon_core.lib import version_up
+import ayon_core.hosts.harmony.api as harmony
 
 
 class IncrementWorkfile(pyblish.api.InstancePlugin):

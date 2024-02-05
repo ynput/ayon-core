@@ -2,8 +2,8 @@ import os
 
 from maya import cmds
 
-from openpype.pipeline import publish
-from openpype.hosts.maya.api.lib import maintained_selection
+from ayon_core.pipeline import publish
+from ayon_core.hosts.maya.api.lib import maintained_selection
 
 
 class ExtractMultiverseLook(publish.Extractor):

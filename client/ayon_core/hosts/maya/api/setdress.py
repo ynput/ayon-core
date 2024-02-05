@@ -9,14 +9,14 @@ import six
 
 from maya import cmds
 
-from openpype.client import (
+from ayon_core.client import (
     get_version_by_name,
     get_last_version_by_subset_id,
     get_representation_by_id,
     get_representation_by_name,
     get_representation_parents,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     schema,
     discover_loader_plugins,
     loaders_from_representation,
@@ -26,7 +26,7 @@ from openpype.pipeline import (
     get_representation_path,
     get_current_project_name,
 )
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.lib import (
     matrix_equals,
     unique_namespace,
     get_container_transforms,

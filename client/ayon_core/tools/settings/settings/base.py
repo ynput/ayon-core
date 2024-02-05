@@ -7,8 +7,8 @@ import datetime
 
 from qtpy import QtWidgets, QtGui, QtCore
 
-from openpype.settings.entities import ProjectSettings
-from openpype.tools.settings import CHILD_OFFSET
+from ayon_core.settings.entities import ProjectSettings
+from ayon_core.tools.settings import CHILD_OFFSET
 
 from .widgets import ExpandingWidget
 from .lib import create_deffered_value_change_timer

@@ -5,16 +5,16 @@ from ayon_api import (
 )
 from maya import cmds  # noqa: F401
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import get_assets
-from openpype.hosts.maya.api import plugin
-from openpype.lib import BoolDef, EnumDef, TextDef
-from openpype.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import get_assets
+from ayon_core.hosts.maya.api import plugin
+from ayon_core.lib import BoolDef, EnumDef, TextDef
+from ayon_core.pipeline import (
     Creator,
     get_current_asset_name,
     get_current_project_name,
 )
-from openpype.pipeline.create import CreatorError
+from ayon_core.pipeline.create import CreatorError
 
 
 class CreateMultishotLayout(plugin.MayaCreator):

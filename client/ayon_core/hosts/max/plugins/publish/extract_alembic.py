@@ -39,11 +39,11 @@ Note:
 """
 import os
 import pyblish.api
-from openpype.pipeline import publish, OptionalPyblishPluginMixin
+from ayon_core.pipeline import publish, OptionalPyblishPluginMixin
 from pymxs import runtime as rt
-from openpype.hosts.max.api import maintained_selection
-from openpype.hosts.max.api.lib import suspended_refresh
-from openpype.lib import BoolDef
+from ayon_core.hosts.max.api import maintained_selection
+from ayon_core.hosts.max.api.lib import suspended_refresh
+from ayon_core.lib import BoolDef
 
 
 class ExtractAlembic(publish.Extractor,

@@ -4,11 +4,11 @@ import sys
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from openpype import style
-from openpype.client import get_projects
-from openpype.pipeline import legacy_io
-from openpype.tools.utils.delegates import VersionDelegate
-from openpype.tools.utils.lib import (
+from ayon_core import style
+from ayon_core.client import get_projects
+from ayon_core.pipeline import legacy_io
+from ayon_core.tools.utils.delegates import VersionDelegate
+from ayon_core.tools.utils.lib import (
     qt_app_context,
     preserve_expanded_rows,
     preserve_selection,

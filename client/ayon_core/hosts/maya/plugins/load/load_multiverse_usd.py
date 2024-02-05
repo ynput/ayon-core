@@ -3,17 +3,17 @@ import maya.cmds as cmds
 from maya import mel
 import os
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.lib import (
     maintained_selection,
     namespaced,
     unique_namespace
 )
-from openpype.hosts.maya.api.pipeline import containerise
-from openpype.client import get_representation_by_id
+from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.client import get_representation_by_id
 
 
 class MultiverseUsdLoader(load.LoaderPlugin):

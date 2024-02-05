@@ -2,9 +2,9 @@ import os
 import shutil
 import winreg
 import subprocess
-from openpype.lib import get_openpype_execute_args
-from openpype.lib.applications import PreLaunchHook, LaunchTypes
-from openpype.hosts.celaction import CELACTION_ROOT_DIR
+from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_core.hosts.celaction import CELACTION_ROOT_DIR
 
 
 class CelactionPrelaunchHook(PreLaunchHook):

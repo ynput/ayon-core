@@ -1,8 +1,8 @@
 import os
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.houdini.api.lib import render_rop, splitext
+from ayon_core.pipeline import publish
+from ayon_core.hosts.houdini.api.lib import render_rop, splitext
 
 import hou
 

@@ -1,17 +1,17 @@
 from qtpy import QtWidgets, QtCore
 
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_id,
     get_subset_by_id,
     get_version_by_id,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
     get_current_project_name,
 )
-from openpype.hosts.maya.api.pipeline import containerise
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.lib import (
     unique_namespace,
     namespaced,
     pairwise,

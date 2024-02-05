@@ -7,7 +7,7 @@ import tempfile
 from string import Formatter
 
 import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
-from openpype.lib import (
+from ayon_core.lib import (
     get_ffmpeg_tool_args,
     get_ffmpeg_codec_args,
     get_ffmpeg_format_args,

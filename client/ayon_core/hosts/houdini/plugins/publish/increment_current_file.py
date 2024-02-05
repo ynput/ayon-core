@@ -1,10 +1,10 @@
 import pyblish.api
 
-from openpype.lib import version_up
-from openpype.pipeline import registered_host
-from openpype.pipeline.publish import get_errored_plugins_from_context
-from openpype.hosts.houdini.api import HoudiniHost
-from openpype.pipeline.publish import KnownPublishError
+from ayon_core.lib import version_up
+from ayon_core.pipeline import registered_host
+from ayon_core.pipeline.publish import get_errored_plugins_from_context
+from ayon_core.hosts.houdini.api import HoudiniHost
+from ayon_core.pipeline.publish import KnownPublishError
 
 
 class IncrementCurrentFile(pyblish.api.ContextPlugin):

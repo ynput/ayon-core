@@ -5,9 +5,9 @@ import copy
 from maya import cmds
 
 import pyblish.api
-from openpype.hosts.maya.api.lib import extract_alembic
-from openpype.pipeline import publish
-from openpype.lib import StringTemplate
+from ayon_core.hosts.maya.api.lib import extract_alembic
+from ayon_core.pipeline import publish
+from ayon_core.lib import StringTemplate
 
 
 class ExtractWorkfileXgen(publish.Extractor):

@@ -2,7 +2,7 @@ import re
 import os
 import glob
 import nuke
-from openpype.lib import Logger
+from ayon_core.lib import Logger
 log = Logger.get_logger(__name__)
 
 SINGLE_FILE_FORMATS = ['avi', 'mp4', 'mxf', 'mov', 'mpg', 'mpeg', 'wmv', 'm4v',

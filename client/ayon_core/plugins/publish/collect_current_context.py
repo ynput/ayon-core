@@ -6,7 +6,7 @@ Provides:
 """
 
 import pyblish.api
-from openpype.pipeline import get_current_context
+from ayon_core.pipeline import get_current_context
 
 
 class CollectCurrentContext(pyblish.api.ContextPlugin):

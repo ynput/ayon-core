@@ -5,14 +5,14 @@ import logging
 
 from qtpy import QtWidgets, QtCore
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     registered_host,
     legacy_io,
 )
-from openpype.pipeline.workfile import get_last_workfile_with_version
-from openpype.pipeline.template_data import get_template_data_with_names
-from openpype.tools.utils import PlaceholderLineEdit
-from openpype.pipeline import version_start, get_current_host_name
+from ayon_core.pipeline.workfile import get_last_workfile_with_version
+from ayon_core.pipeline.template_data import get_template_data_with_names
+from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.pipeline import version_start, get_current_host_name
 
 log = logging.getLogger(__name__)
 

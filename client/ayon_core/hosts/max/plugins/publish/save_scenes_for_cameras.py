@@ -4,9 +4,9 @@ import sys
 import tempfile
 
 from pymxs import runtime as rt
-from openpype.lib import run_subprocess
-from openpype.hosts.max.api.lib_rendersettings import RenderSettings
-from openpype.hosts.max.api.lib_renderproducts import RenderProducts
+from ayon_core.lib import run_subprocess
+from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
+from ayon_core.hosts.max.api.lib_renderproducts import RenderProducts
 
 
 class SaveScenesForCamera(pyblish.api.InstancePlugin):

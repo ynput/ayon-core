@@ -2,7 +2,7 @@ import sys
 import os
 import subprocess
 
-from openpype.pipeline import load
+from ayon_core.pipeline import load
 
 
 def open(filepath):

@@ -5,8 +5,8 @@ if sys.version_info < (3, 7):
     # hack to handle discrepancy between distributed libraries and Python 3.6
     # mostly because wrong version of urllib3
     # TODO remove when not necessary
-    from openpype import PACKAGE_DIR
-    FUSION_HOST_DIR = os.path.join(PACKAGE_DIR, "hosts", "fusion")
+    from ayon_core import AYON_CORE_ROOT
+    FUSION_HOST_DIR = os.path.join(AYON_CORE_ROOT, "hosts", "fusion")
 
     vendor_path = os.path.join(FUSION_HOST_DIR, "vendor")
     if vendor_path not in sys.path:
@@ -14,8 +14,8 @@ if sys.version_info < (3, 7):
 
     print(f"Added vendorized libraries from {vendor_path}")
 
-from openpype.lib import Logger
-from openpype.pipeline import (
+from ayon_core.lib import Logger
+from ayon_core.pipeline import (
     install_host,
     registered_host,
 )
@@ -26,8 +26,8 @@ def main(env):
     # However the contents of that folder can conflict with Qt library dlls
     # so we make sure to move out of it to avoid DLL Load Failed errors.
     os.chdir("..")
-    from openpype.hosts.fusion.api import FusionHost
-    from openpype.hosts.fusion.api import menu
+    from ayon_core.hosts.fusion.api import FusionHost
+    from ayon_core.hosts.fusion.api import menu
 
     # activate resolve from pype
     install_host(FusionHost())

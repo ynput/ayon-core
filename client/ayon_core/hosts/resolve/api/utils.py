@@ -7,13 +7,13 @@ Resolve's tools for setting environment
 import os
 import sys
 
-from openpype.lib import Logger
+from ayon_core.lib import Logger
 
 log = Logger.get_logger(__name__)
 
 
 def get_resolve_module():
-    from openpype.hosts.resolve import api
+    from ayon_core.hosts.resolve import api
     # dont run if already loaded
     if api.bmdvr:
         log.info(("resolve module is assigned to "

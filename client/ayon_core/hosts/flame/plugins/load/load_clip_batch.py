@@ -2,9 +2,9 @@ from copy import deepcopy
 import os
 import flame
 from pprint import pformat
-import openpype.hosts.flame.api as opfapi
-from openpype.lib import StringTemplate
-from openpype.lib.transcoding import (
+import ayon_core.hosts.flame.api as opfapi
+from ayon_core.lib import StringTemplate
+from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,
     IMAGE_EXTENSIONS
 )

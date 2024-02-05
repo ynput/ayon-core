@@ -3,10 +3,10 @@ import re
 import json
 import clique
 import subprocess
-import openpype.lib
+import ayon_core.lib
 from qtpy import QtWidgets, QtCore
 
-from openpype.lib import get_ffprobe_data
+from ayon_core.lib import get_ffprobe_data
 from . import DropEmpty, ComponentsList, ComponentItem
 
 

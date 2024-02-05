@@ -1,5 +1,5 @@
-from openpype.resources import get_image_path
-from openpype.tools.flickcharm import FlickCharm
+from ayon_core.resources import get_image_path
+from ayon_core.tools.flickcharm import FlickCharm
 
 from qtpy import QtWidgets, QtCore, QtGui, QtSvg
 

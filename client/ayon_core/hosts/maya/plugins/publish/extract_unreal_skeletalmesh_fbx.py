@@ -7,8 +7,8 @@ from maya import cmds  # noqa
 
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.maya.api import fbx
+from ayon_core.pipeline import publish
+from ayon_core.hosts.maya.api import fbx
 
 
 @contextmanager

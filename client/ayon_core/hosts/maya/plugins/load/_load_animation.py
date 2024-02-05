@@ -1,4 +1,4 @@
-import openpype.hosts.maya.api.plugin
+import ayon_core.hosts.maya.api.plugin
 import maya.cmds as cmds
 
 
@@ -14,7 +14,7 @@ def _process_reference(file_url, name, namespace, options):
     Returns:
         list: list of object nodes
     """
-    from openpype.hosts.maya.api.lib import unique_namespace
+    from ayon_core.hosts.maya.api.lib import unique_namespace
     # Get name from asset being loaded
     # Assuming name is subset name from the animation, we split the number
     # suffix from the name to ensure the namespace is unique

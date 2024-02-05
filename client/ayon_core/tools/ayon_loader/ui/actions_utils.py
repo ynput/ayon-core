@@ -3,14 +3,14 @@ import uuid
 from qtpy import QtWidgets, QtGui
 import qtawesome
 
-from openpype.lib.attribute_definitions import AbstractAttrDef
-from openpype.tools.attribute_defs import AttributeDefinitionsDialog
-from openpype.tools.utils.widgets import (
+from ayon_core.lib.attribute_definitions import AbstractAttrDef
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
+from ayon_core.tools.utils.widgets import (
     OptionalMenu,
     OptionalAction,
     OptionDialog,
 )
-from openpype.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.tools.ayon_utils.widgets import get_qt_icon
 
 
 def show_actions_menu(action_items, global_point, one_item_selected, parent):

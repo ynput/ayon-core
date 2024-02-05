@@ -1,9 +1,9 @@
 import os
 import json
-from openpype.lib import Logger, filter_profiles
-from openpype.lib.pype_info import get_workstation_info
-from openpype.settings import get_project_settings
-from openpype.pipeline import get_process_id
+from ayon_core.lib import Logger, filter_profiles
+from ayon_core.lib.pype_info import get_workstation_info
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_process_id
 
 
 def _read_lock_file(lock_filepath):

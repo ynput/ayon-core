@@ -10,19 +10,19 @@ from datetime import datetime
 
 import pyblish.api
 
-from openpype.lib import BoolDef, NumberDef, is_running_from_build
-from openpype.lib.execute import run_openpype_process
-from openpype.modules.royalrender.api import Api as rrApi
-from openpype.modules.royalrender.rr_job import (
+from ayon_core.lib import BoolDef, NumberDef, is_running_from_build
+from ayon_core.lib.execute import run_openpype_process
+from ayon_core.modules.royalrender.api import Api as rrApi
+from ayon_core.modules.royalrender.rr_job import (
     CustomAttribute,
     RRJob,
     RREnvList,
     get_rr_platform,
 )
-from openpype.pipeline import OpenPypePyblishPluginMixin
-from openpype.pipeline.publish import KnownPublishError
-from openpype.pipeline.publish.lib import get_published_workfile_instance
-from openpype.tests.lib import is_in_tests
+from ayon_core.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish.lib import get_published_workfile_instance
+from ayon_core.tests.lib import is_in_tests
 
 
 class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,

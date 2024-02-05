@@ -1,11 +1,11 @@
 import os
 import re
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from openpype.hosts.houdini.api import pipeline
-from openpype.pipeline.load import LoadError
+from ayon_core.hosts.houdini.api import pipeline
+from ayon_core.pipeline.load import LoadError
 
 import hou
 

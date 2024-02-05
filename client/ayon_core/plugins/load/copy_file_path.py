@@ -1,6 +1,6 @@
 import os
 
-from openpype.pipeline import load
+from ayon_core.pipeline import load
 
 
 class CopyFilePath(load.LoaderPlugin):

@@ -1,8 +1,8 @@
 import os
 from pprint import pformat
 import pyblish.api
-from openpype.pipeline import publish
-from openpype.pipeline import colorspace
+from ayon_core.pipeline import publish
+from ayon_core.pipeline import colorspace
 
 
 class CollectColorspaceLook(pyblish.api.InstancePlugin,

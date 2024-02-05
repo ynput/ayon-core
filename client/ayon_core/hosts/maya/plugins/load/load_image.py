@@ -1,22 +1,22 @@
 import os
 import copy
 
-from openpype.lib import EnumDef
-from openpype.pipeline import (
+from ayon_core.lib import EnumDef
+from ayon_core.pipeline import (
     load,
     get_representation_context,
     get_current_host_name,
 )
-from openpype.pipeline.load.utils import get_representation_path_from_context
-from openpype.pipeline.colorspace import (
+from ayon_core.pipeline.load.utils import get_representation_path_from_context
+from ayon_core.pipeline.colorspace import (
     get_imageio_file_rules_colorspace_from_filepath,
     get_imageio_config,
     get_imageio_file_rules
 )
-from openpype.settings import get_project_settings
+from ayon_core.settings import get_project_settings
 
-from openpype.hosts.maya.api.pipeline import containerise
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.lib import (
     unique_namespace,
     namespaced
 )

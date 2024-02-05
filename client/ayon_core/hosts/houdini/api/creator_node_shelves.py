@@ -12,10 +12,10 @@ import tempfile
 import logging
 import os
 
-from openpype.client import get_asset_by_name
-from openpype.pipeline import registered_host
-from openpype.pipeline.create import CreateContext
-from openpype.resources import get_openpype_icon_filepath
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import registered_host
+from ayon_core.pipeline.create import CreateContext
+from ayon_core.resources import get_openpype_icon_filepath
 
 import hou
 import stateutils
@@ -34,7 +34,7 @@ CATEGORY_GENERIC_TOOL = {
 
 
 CREATE_SCRIPT = """
-from openpype.hosts.houdini.api.creator_node_shelves import create_interactive
+from ayon_core.hosts.houdini.api.creator_node_shelves import create_interactive
 create_interactive("{identifier}", **kwargs)
 """
 
@@ -146,7 +146,7 @@ def install():
     This function is re-entrant and can be called again to reinstall and
     update the node definitions. For example during development it can be
     useful to call it manually:
-        >>> from openpype.hosts.houdini.api.creator_node_shelves import install
+        >>> from ayon_core.hosts.houdini.api.creator_node_shelves import install
         >>> install()
 
     Returns:

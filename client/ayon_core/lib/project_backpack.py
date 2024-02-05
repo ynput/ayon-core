@@ -22,7 +22,7 @@ import shutil
 import datetime
 
 import zipfile
-from openpype.client.mongo import (
+from ayon_core.client.mongo import (
     load_json_file,
     get_project_connection,
     replace_project_documents,

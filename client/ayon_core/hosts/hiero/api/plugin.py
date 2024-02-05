@@ -8,10 +8,10 @@ import hiero
 from qtpy import QtWidgets, QtCore
 import qargparse
 
-from openpype.settings import get_current_project_settings
-from openpype.lib import Logger
-from openpype.pipeline import LoaderPlugin, LegacyCreator
-from openpype.pipeline.load import get_representation_path_from_context
+from ayon_core.settings import get_current_project_settings
+from ayon_core.lib import Logger
+from ayon_core.pipeline import LoaderPlugin, LegacyCreator
+from ayon_core.pipeline.load import get_representation_path_from_context
 from . import lib
 
 log = Logger.get_logger(__name__)
@@ -612,7 +612,7 @@ class Creator(LegacyCreator):
 
     def __init__(self, *args, **kwargs):
         super(Creator, self).__init__(*args, **kwargs)
-        import openpype.hosts.hiero.api as phiero
+        import ayon_core.hosts.hiero.api as phiero
         self.presets = get_current_project_settings()[
             "hiero"]["create"].get(self.__class__.__name__, {})
 

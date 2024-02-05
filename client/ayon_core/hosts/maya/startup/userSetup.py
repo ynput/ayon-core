@@ -1,8 +1,8 @@
 import os
 
-from openpype.settings import get_project_settings
-from openpype.pipeline import install_host, get_current_project_name
-from openpype.hosts.maya.api import MayaHost
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import install_host, get_current_project_name
+from ayon_core.hosts.maya.api import MayaHost
 
 from maya import cmds
 

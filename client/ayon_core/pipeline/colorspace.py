@@ -8,15 +8,15 @@ import tempfile
 import warnings
 from copy import deepcopy
 
-from openpype import PACKAGE_DIR
-from openpype.settings import get_project_settings
-from openpype.lib import (
+from ayon_core import AYON_CORE_ROOT
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import (
     StringTemplate,
     run_openpype_process,
     Logger
 )
-from openpype.pipeline import Anatomy
-from openpype.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
+from ayon_core.pipeline import Anatomy
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
 
 log = Logger.get_logger(__name__)
@@ -113,7 +113,7 @@ def get_ocio_config_script_path():
     """
     return os.path.normpath(
         os.path.join(
-            PACKAGE_DIR,
+            AYON_CORE_ROOT,
             "scripts",
             "ocio_wrapper.py"
         )
@@ -295,7 +295,7 @@ def get_config_file_rules_colorspace_from_filepath(config_path, filepath):
             return result_data[0]
 
     # TODO: refactor this so it is not imported but part of this file
-    from openpype.scripts.ocio_wrapper import _get_config_file_rules_colorspace_from_filepath  # noqa: E501
+    from ayon_core.scripts.ocio_wrapper import _get_config_file_rules_colorspace_from_filepath  # noqa: E501
 
     result_data = _get_config_file_rules_colorspace_from_filepath(
         config_path, filepath)
@@ -478,7 +478,7 @@ def compatibility_check_config_version(config_path, major=1, minor=None):
     if not CachedData.config_version_data.get(config_path):
         if compatibility_check():
             # TODO: refactor this so it is not imported but part of this file
-            from openpype.scripts.ocio_wrapper import _get_version_data
+            from ayon_core.scripts.ocio_wrapper import _get_version_data
 
             CachedData.config_version_data[config_path] = \
                 _get_version_data(config_path)
@@ -525,7 +525,7 @@ def get_ocio_config_colorspaces(config_path):
             )
         else:
             # TODO: refactor this so it is not imported but part of this file
-            from openpype.scripts.ocio_wrapper import _get_colorspace_data
+            from ayon_core.scripts.ocio_wrapper import _get_colorspace_data
 
             CachedData.ocio_config_colorspaces[config_path] = \
                 _get_colorspace_data(config_path)
@@ -722,7 +722,7 @@ def get_ocio_config_views(config_path):
         )
 
     # TODO: refactor this so it is not imported but part of this file
-    from openpype.scripts.ocio_wrapper import _get_views_data
+    from ayon_core.scripts.ocio_wrapper import _get_views_data
 
     return _get_views_data(config_path)
 
@@ -773,7 +773,7 @@ def get_imageio_config(
     anatomy = anatomy or Anatomy(project_name)
 
     if not anatomy_data:
-        from openpype.pipeline.context_tools import (
+        from ayon_core.pipeline.context_tools import (
             get_template_data_from_session)
         anatomy_data = get_template_data_from_session()
 
@@ -1157,7 +1157,7 @@ def get_display_view_colorspace_name(config_path, display, view):
         return get_display_view_colorspace_subprocess(config_path,
                                                       display, view)
 
-    from openpype.scripts.ocio_wrapper import _get_display_view_colorspace_name  # noqa
+    from ayon_core.scripts.ocio_wrapper import _get_display_view_colorspace_name  # noqa
 
     return _get_display_view_colorspace_name(config_path, display, view)
 

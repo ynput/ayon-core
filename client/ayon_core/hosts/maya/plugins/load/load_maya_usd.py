@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from openpype.pipeline.load import get_representation_path_from_context
-from openpype.hosts.maya.api.lib import (
+from ayon_core.pipeline.load import get_representation_path_from_context
+from ayon_core.hosts.maya.api.lib import (
     namespaced,
     unique_namespace
 )
-from openpype.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.pipeline import containerise
 
 
 class MayaUsdLoader(load.LoaderPlugin):

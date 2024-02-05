@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating review in Max."""
-from openpype.hosts.max.api import plugin
-from openpype.lib import BoolDef, EnumDef, NumberDef
+from ayon_core.hosts.max.api import plugin
+from ayon_core.lib import BoolDef, EnumDef, NumberDef
 
 
 class CreateReview(plugin.MaxCreator):

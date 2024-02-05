@@ -1,9 +1,9 @@
 from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.widgets.nice_checkbox import NiceCheckbox
+from ayon_core.widgets.nice_checkbox import NiceCheckbox
 
-# from openpype.tools.utils import DeselectableTreeView
+# from ayon_core.tools.utils import DeselectableTreeView
 from .constants import (
     ITEM_ID_ROLE,
     ITEM_IS_GROUP_ROLE

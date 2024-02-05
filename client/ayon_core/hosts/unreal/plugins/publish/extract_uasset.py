@@ -3,7 +3,7 @@ import shutil
 
 import unreal
 
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractUAsset(publish.Extractor):

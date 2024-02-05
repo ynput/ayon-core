@@ -1,7 +1,7 @@
 import os
 
 import pyblish.api
-from openpype.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.pipeline import OpenPypePyblishPluginMixin
 
 
 class CollectMovieBatch(

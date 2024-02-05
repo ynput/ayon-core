@@ -1,7 +1,7 @@
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import get_asset_by_name
-from openpype.pipeline import CreatedInstance
-from openpype.hosts.tvpaint.api.plugin import TVPaintAutoCreator
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import CreatedInstance
+from ayon_core.hosts.tvpaint.api.plugin import TVPaintAutoCreator
 
 
 class TVPaintWorkfileCreator(TVPaintAutoCreator):

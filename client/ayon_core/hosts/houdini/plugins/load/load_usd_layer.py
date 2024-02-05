@@ -1,9 +1,9 @@
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.hosts.houdini.api import lib
+from ayon_core.hosts.houdini.api import lib
 
 
 class USDSublayerLoader(load.LoaderPlugin):

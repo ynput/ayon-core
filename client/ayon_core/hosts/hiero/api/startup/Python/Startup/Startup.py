@@ -1,8 +1,8 @@
 import traceback
 
 # activate hiero from pype
-from openpype.pipeline import install_host
-import openpype.hosts.hiero.api as phiero
+from ayon_core.pipeline import install_host
+import ayon_core.hosts.hiero.api as phiero
 install_host(phiero)
 
 try:
@@ -15,5 +15,5 @@ except ImportError as e:
 
 else:
     # Setup integration
-    import openpype.hosts.hiero.api as phiero
+    import ayon_core.hosts.hiero.api as phiero
     phiero.lib.setup()

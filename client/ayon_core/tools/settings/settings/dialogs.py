@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore
 
-from openpype.tools.utils.delegates import pretty_date
+from ayon_core.tools.utils.delegates import pretty_date
 
 
 class BaseInfoDialog(QtWidgets.QDialog):

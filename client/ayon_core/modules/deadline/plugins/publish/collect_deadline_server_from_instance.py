@@ -6,7 +6,7 @@ attribute or using default server if that attribute doesn't exists.
 
 """
 import pyblish.api
-from openpype.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import KnownPublishError
 
 
 class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):

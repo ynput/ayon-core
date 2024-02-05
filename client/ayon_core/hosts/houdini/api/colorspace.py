@@ -1,7 +1,7 @@
 import attr
 import hou
-from openpype.hosts.houdini.api.lib import get_color_management_preferences
-from openpype.pipeline.colorspace import get_display_view_colorspace_name
+from ayon_core.hosts.houdini.api.lib import get_color_management_preferences
+from ayon_core.pipeline.colorspace import get_display_view_colorspace_name
 
 @attr.s
 class LayerMetadata(object):

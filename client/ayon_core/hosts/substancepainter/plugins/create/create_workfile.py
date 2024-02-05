@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import CreatedInstance, AutoCreator
-from openpype.client import get_asset_by_name
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import CreatedInstance, AutoCreator
+from ayon_core.client import get_asset_by_name
 
-from openpype.hosts.substancepainter.api.pipeline import (
+from ayon_core.hosts.substancepainter.api.pipeline import (
     set_instances,
     set_instance,
     get_instances

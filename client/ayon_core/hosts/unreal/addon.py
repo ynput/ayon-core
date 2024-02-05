@@ -1,6 +1,6 @@
 import os
 import re
-from openpype.modules import IHostAddon, OpenPypeModule
+from ayon_core.modules import IHostAddon, OpenPypeModule
 
 UNREAL_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -25,7 +25,7 @@ class UnrealAddon(OpenPypeModule, IHostAddon):
 
         from .lib import get_compatible_integration
 
-        from openpype.widgets.message_window import Window
+        from ayon_core.widgets.message_window import Window
 
         pattern = re.compile(r'^\d+-\d+$')
 

@@ -3,18 +3,18 @@ import traceback
 
 from qtpy import QtWidgets, QtCore
 
-from openpype.client import get_projects, get_project
-from openpype import style
-from openpype.lib import register_event_callback
-from openpype.pipeline import (
+from ayon_core.client import get_projects, get_project
+from ayon_core import style
+from ayon_core.lib import register_event_callback
+from ayon_core.pipeline import (
     install_openpype_plugins,
     legacy_io,
 )
-from openpype.tools.utils import (
+from ayon_core.tools.utils import (
     lib,
     PlaceholderLineEdit
 )
-from openpype.tools.utils.assets_widget import MultiSelectAssetsWidget
+from ayon_core.tools.utils.assets_widget import MultiSelectAssetsWidget
 
 from .widgets import (
     SubsetWidget,
@@ -25,7 +25,7 @@ from .widgets import (
     OverlayFrame
 )
 
-from openpype.modules import ModulesManager
+from ayon_core.modules import ModulesManager
 
 module = sys.modules[__name__]
 module.window = None

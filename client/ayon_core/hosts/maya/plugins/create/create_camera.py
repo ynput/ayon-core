@@ -1,8 +1,8 @@
-from openpype.hosts.maya.api import (
+from ayon_core.hosts.maya.api import (
     lib,
     plugin
 )
-from openpype.lib import BoolDef
+from ayon_core.lib import BoolDef
 
 
 class CreateCamera(plugin.MayaCreator):

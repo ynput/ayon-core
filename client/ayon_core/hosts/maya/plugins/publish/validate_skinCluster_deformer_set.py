@@ -2,8 +2,8 @@ from maya import cmds
 
 import pyblish.api
 
-import openpype.hosts.maya.api.action
-from openpype.pipeline.publish import ValidateContentsOrder
+import ayon_core.hosts.maya.api.action
+from ayon_core.pipeline.publish import ValidateContentsOrder
 
 
 class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin):

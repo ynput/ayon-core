@@ -1,6 +1,6 @@
 import pyblish
-from openpype.pipeline import PublishXmlValidationError
-from openpype.hosts.nuke import api as napi
+from ayon_core.pipeline import PublishXmlValidationError
+from ayon_core.hosts.nuke import api as napi
 import nuke
 
 

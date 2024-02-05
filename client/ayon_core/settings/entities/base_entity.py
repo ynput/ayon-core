@@ -15,7 +15,7 @@ from .exceptions import (
     EntitySchemaError
 )
 
-from openpype.lib import Logger
+from ayon_core.lib import Logger
 
 
 @six.add_metaclass(ABCMeta)

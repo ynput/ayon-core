@@ -1,6 +1,6 @@
 import substance_painter.export
 
-from openpype.pipeline import KnownPublishError, publish
+from ayon_core.pipeline import KnownPublishError, publish
 
 
 class ExtractTextures(publish.Extractor,

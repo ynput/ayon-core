@@ -1,4 +1,4 @@
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     install_host,
     LegacyCreator,
     register_creator_plugin,

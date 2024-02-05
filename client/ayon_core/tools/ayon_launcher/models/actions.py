@@ -1,8 +1,8 @@
 import os
 
-from openpype import resources
-from openpype.lib import Logger, OpenPypeSettingsRegistry
-from openpype.pipeline.actions import (
+from ayon_core import resources
+from ayon_core.lib import Logger, OpenPypeSettingsRegistry
+from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherAction,
 )
@@ -99,7 +99,7 @@ class ApplicationAction(LauncherAction):
 
     def _show_message_box(self, title, message, details=None):
         from qtpy import QtWidgets, QtGui
-        from openpype import style
+        from ayon_core import style
 
         dialog = QtWidgets.QMessageBox()
         icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
@@ -114,7 +114,7 @@ class ApplicationAction(LauncherAction):
     def process(self, session, **kwargs):
         """Process the full Application action"""
 
-        from openpype.lib import (
+        from ayon_core.lib import (
             ApplictionExecutableNotFound,
             ApplicationLaunchFailed,
         )
@@ -474,7 +474,7 @@ class ActionsModel:
         return action_items
 
     def _get_applications_action_classes(self):
-        from openpype.lib.applications import (
+        from ayon_core.lib.applications import (
             CUSTOM_LAUNCH_APP_GROUPS,
             ApplicationManager,
         )

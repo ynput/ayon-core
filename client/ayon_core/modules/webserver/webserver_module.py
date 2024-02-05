@@ -23,8 +23,8 @@ of server.
 import os
 import socket
 
-from openpype import resources
-from openpype.modules import OpenPypeModule, ITrayService
+from ayon_core import resources
+from ayon_core.modules import OpenPypeModule, ITrayService
 
 
 class WebServerModule(OpenPypeModule, ITrayService):

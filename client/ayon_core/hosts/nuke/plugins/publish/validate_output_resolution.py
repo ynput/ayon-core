@@ -1,8 +1,8 @@
 import pyblish.api
 
-from openpype.hosts.nuke import api as napi
-from openpype.pipeline.publish import RepairAction
-from openpype.pipeline import (
+from ayon_core.hosts.nuke import api as napi
+from ayon_core.pipeline.publish import RepairAction
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )

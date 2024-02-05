@@ -5,18 +5,18 @@ import collections
 import copy
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import (
+from ayon_core import (
     resources,
     style
 )
-from openpype import AYON_SERVER_ENABLED
-from openpype.tools.utils import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.tools.utils import (
     ErrorMessageBox,
     PlaceholderLineEdit,
     MessageOverlayObject,
     PixmapLabel,
 )
-from openpype.tools.utils.lib import center_window
+from ayon_core.tools.utils.lib import center_window
 
 from .constants import ResetKeySequence
 from .publish_report_viewer import PublishReportViewerWidget

@@ -1,16 +1,16 @@
 import re
 import json
 
-from openpype.client import (
+from ayon_core.client import (
     get_representation_by_id,
     get_representations
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     InventoryAction,
     get_representation_context,
     get_current_project_name,
 )
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.lib import (
     maintained_selection,
     apply_shaders
 )

@@ -6,24 +6,24 @@ import shutil
 
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_version_by_id,
     get_hero_version_by_subset_id,
     get_archived_representations,
     get_representations,
 )
-from openpype.client.operations import (
+from ayon_core.client.operations import (
     OperationsSession,
     new_hero_version_doc,
     prepare_hero_version_update_data,
     prepare_representation_update_data,
 )
-from openpype.lib import create_hard_link
-from openpype.pipeline import (
+from ayon_core.lib import create_hard_link
+from ayon_core.pipeline import (
     schema
 )
-from openpype.pipeline.publish import get_publish_template_name
+from ayon_core.pipeline.publish import get_publish_template_name
 
 
 class IntegrateHeroVersion(pyblish.api.InstancePlugin):

@@ -3,7 +3,7 @@ import re
 
 import pyblish.api
 
-from openpype.pipeline.publish import PublishValidationError
+from ayon_core.pipeline.publish import PublishValidationError
 
 
 def is_cache_resource(resource):

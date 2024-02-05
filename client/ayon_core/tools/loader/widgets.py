@@ -7,7 +7,7 @@ import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.client import (
+from ayon_core.client import (
     get_subset_families,
     get_subset_by_id,
     get_subsets,
@@ -17,10 +17,10 @@ from openpype.client import (
     get_thumbnail_id_from_source,
     get_thumbnail,
 )
-from openpype.client.operations import OperationsSession, REMOVED_VALUE
-from openpype.pipeline import HeroVersionType, Anatomy
-from openpype.pipeline.thumbnail import get_thumbnail_binary
-from openpype.pipeline.load import (
+from ayon_core.client.operations import OperationsSession, REMOVED_VALUE
+from ayon_core.pipeline import HeroVersionType, Anatomy
+from ayon_core.pipeline.thumbnail import get_thumbnail_binary
+from ayon_core.pipeline.load import (
     discover_loader_plugins,
     SubsetLoaderPlugin,
     loaders_from_repre_context,
@@ -32,30 +32,30 @@ from openpype.pipeline.load import (
     LoadError,
     IncompatibleLoaderError,
 )
-from openpype.tools.utils import (
+from ayon_core.tools.utils import (
     ErrorMessageBox,
     lib as tools_lib
 )
-from openpype.tools.utils.lib import checkstate_int_to_enum
-from openpype.tools.utils.delegates import (
+from ayon_core.tools.utils.lib import checkstate_int_to_enum
+from ayon_core.tools.utils.delegates import (
     VersionDelegate,
     PrettyTimeDelegate
 )
-from openpype.tools.utils.widgets import (
+from ayon_core.tools.utils.widgets import (
     OptionalMenu,
     PlaceholderLineEdit
 )
-from openpype.tools.utils.views import (
+from ayon_core.tools.utils.views import (
     TreeViewSpinner,
     DeselectableTreeView
 )
-from openpype.tools.utils.constants import (
+from ayon_core.tools.utils.constants import (
     LOCAL_PROVIDER_ROLE,
     REMOTE_PROVIDER_ROLE,
     LOCAL_AVAILABILITY_ROLE,
     REMOTE_AVAILABILITY_ROLE,
 )
-from openpype.tools.assetlinks.widgets import SimpleLinkView
+from ayon_core.tools.assetlinks.widgets import SimpleLinkView
 
 from .model import (
     SubsetsModel,

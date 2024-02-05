@@ -1,6 +1,6 @@
 import os
 import pyblish.api
-from openpype.pipeline import PublishValidationError
+from ayon_core.pipeline import PublishValidationError
 
 
 class ValidateFilePath(pyblish.api.InstancePlugin):

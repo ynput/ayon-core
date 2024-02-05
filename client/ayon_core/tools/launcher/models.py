@@ -9,27 +9,27 @@ import appdirs
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from openpype.client import (
+from ayon_core.client import (
     get_projects,
     get_project,
     get_assets,
 )
-from openpype.lib import JSONSettingRegistry
-from openpype.lib.applications import (
+from ayon_core.lib import JSONSettingRegistry
+from ayon_core.lib.applications import (
     CUSTOM_LAUNCH_APP_GROUPS,
     ApplicationManager
 )
-from openpype.settings import get_project_settings
-from openpype.pipeline import discover_launcher_actions
-from openpype.tools.utils.lib import (
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import discover_launcher_actions
+from ayon_core.tools.utils.lib import (
     DynamicQThread,
     get_project_icon,
 )
-from openpype.tools.utils.assets_widget import (
+from ayon_core.tools.utils.assets_widget import (
     AssetModel,
     ASSET_NAME_ROLE
 )
-from openpype.tools.utils.tasks_widget import (
+from ayon_core.tools.utils.tasks_widget import (
     TasksModel,
     TasksProxyModel,
     TASK_TYPE_ROLE,

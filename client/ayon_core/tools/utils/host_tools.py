@@ -7,10 +7,10 @@ import os
 
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.host import IWorkfileHost, ILoadHost
-from openpype.lib import Logger
-from openpype.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.host import IWorkfileHost, ILoadHost
+from ayon_core.lib import Logger
+from ayon_core.pipeline import (
     registered_host,
     get_current_asset_name,
 )
@@ -49,13 +49,13 @@ class HostToolsHelper:
         return self._log
 
     def _init_ayon_workfiles_tool(self, parent):
-        from openpype.tools.ayon_workfiles.widgets import WorkfilesToolWindow
+        from ayon_core.tools.ayon_workfiles.widgets import WorkfilesToolWindow
 
         workfiles_window = WorkfilesToolWindow(parent=parent)
         self._workfiles_tool = workfiles_window
 
     def _init_openpype_workfiles_tool(self, parent):
-        from openpype.tools.workfiles.app import Window
+        from ayon_core.tools.workfiles.app import Window
 
         # Host validation
         host = registered_host()
@@ -89,8 +89,8 @@ class HostToolsHelper:
             host = registered_host()
             ILoadHost.validate_load_methods(host)
             if AYON_SERVER_ENABLED:
-                from openpype.tools.ayon_loader.ui import LoaderWindow
-                from openpype.tools.ayon_loader import LoaderController
+                from ayon_core.tools.ayon_loader.ui import LoaderWindow
+                from ayon_core.tools.ayon_loader import LoaderController
 
                 controller = LoaderController(host=host)
                 loader_window = LoaderWindow(
@@ -99,7 +99,7 @@ class HostToolsHelper:
                 )
 
             else:
-                from openpype.tools.loader import LoaderWindow
+                from ayon_core.tools.loader import LoaderWindow
 
                 loader_window = LoaderWindow(parent=parent or self._parent)
             self._loader_tool = loader_window
@@ -128,7 +128,7 @@ class HostToolsHelper:
     def get_creator_tool(self, parent):
         """Create, cache and return creator tool window."""
         if self._creator_tool is None:
-            from openpype.tools.creator import CreatorWindow
+            from ayon_core.tools.creator import CreatorWindow
 
             creator_window = CreatorWindow(parent=parent or self._parent)
             self._creator_tool = creator_window
@@ -149,7 +149,7 @@ class HostToolsHelper:
     def get_subset_manager_tool(self, parent):
         """Create, cache and return subset manager tool window."""
         if self._subset_manager_tool is None:
-            from openpype.tools.subsetmanager import SubsetManagerWindow
+            from ayon_core.tools.subsetmanager import SubsetManagerWindow
 
             subset_manager_window = SubsetManagerWindow(
                 parent=parent or self._parent
@@ -175,7 +175,7 @@ class HostToolsHelper:
             ILoadHost.validate_load_methods(host)
 
             if AYON_SERVER_ENABLED:
-                from openpype.tools.ayon_sceneinventory.window import (
+                from ayon_core.tools.ayon_sceneinventory.window import (
                     SceneInventoryWindow)
 
                 scene_inventory_window = SceneInventoryWindow(
@@ -183,7 +183,7 @@ class HostToolsHelper:
                 )
 
             else:
-                from openpype.tools.sceneinventory import SceneInventoryWindow
+                from ayon_core.tools.sceneinventory import SceneInventoryWindow
 
                 scene_inventory_window = SceneInventoryWindow(
                     parent=parent or self._parent
@@ -210,7 +210,7 @@ class HostToolsHelper:
             return self.get_loader_tool(parent)
 
         if self._library_loader_tool is None:
-            from openpype.tools.libraryloader import LibraryLoaderWindow
+            from ayon_core.tools.libraryloader import LibraryLoaderWindow
 
             library_window = LibraryLoaderWindow(
                 parent=parent or self._parent
@@ -269,7 +269,7 @@ class HostToolsHelper:
         experimental tools.
         """
         if self._experimental_tools_dialog is None:
-            from openpype.tools.experimental_tools import (
+            from ayon_core.tools.experimental_tools import (
                 ExperimentalToolsDialog
             )
 
@@ -290,7 +290,7 @@ class HostToolsHelper:
         """Create, cache and return publisher window."""
 
         if self._publisher_tool is None:
-            from openpype.tools.publisher.window import PublisherWindow
+            from ayon_core.tools.publisher.window import PublisherWindow
 
             host = registered_host()
             ILoadHost.validate_load_methods(host)

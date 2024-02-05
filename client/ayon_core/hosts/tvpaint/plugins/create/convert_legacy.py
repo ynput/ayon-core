@@ -1,11 +1,11 @@
 import collections
 
-from openpype.pipeline.create.creator_plugins import (
+from ayon_core.pipeline.create.creator_plugins import (
     SubsetConvertorPlugin,
     cache_and_get_instances,
 )
-from openpype.hosts.tvpaint.api.plugin import SHARED_DATA_KEY
-from openpype.hosts.tvpaint.api.lib import get_groups_data
+from ayon_core.hosts.tvpaint.api.plugin import SHARED_DATA_KEY
+from ayon_core.hosts.tvpaint.api.lib import get_groups_data
 
 
 class TVPaintLegacyConverted(SubsetConvertorPlugin):

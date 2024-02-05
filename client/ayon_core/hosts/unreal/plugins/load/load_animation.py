@@ -8,13 +8,13 @@ from unreal import EditorAssetLibrary
 from unreal import MovieSceneSkeletalAnimationTrack
 from unreal import MovieSceneSkeletalAnimationSection
 
-from openpype.pipeline.context_tools import get_current_project_asset
-from openpype.pipeline import (
+from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
 )
-from openpype.hosts.unreal.api import plugin
-from openpype.hosts.unreal.api import pipeline as unreal_pipeline
+from ayon_core.hosts.unreal.api import plugin
+from ayon_core.hosts.unreal.api import pipeline as unreal_pipeline
 
 
 class AnimationFBXLoader(plugin.Loader):

@@ -2,7 +2,7 @@ from pprint import pformat
 
 import pyblish.api
 
-from openpype.client import get_assets, get_asset_name_identifier
+from ayon_core.client import get_assets, get_asset_name_identifier
 
 
 class ValidateEditorialAssetName(pyblish.api.ContextPlugin):

@@ -1,8 +1,8 @@
-from openpype.pipeline.create.creator_plugins import SubsetConvertorPlugin
-from openpype.hosts.maya.api import plugin
-from openpype.hosts.maya.api.lib import read
+from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
+from ayon_core.hosts.maya.api import plugin
+from ayon_core.hosts.maya.api.lib import read
 
-from openpype.client import get_asset_by_name
+from ayon_core.client import get_asset_by_name
 
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup

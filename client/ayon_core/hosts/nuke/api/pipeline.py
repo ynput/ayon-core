@@ -6,16 +6,15 @@ from collections import OrderedDict, defaultdict
 
 import pyblish.api
 
-import openpype
-from openpype.host import (
+from ayon_core.host import (
     HostBase,
     IWorkfileHost,
     ILoadHost,
     IPublishHost
 )
-from openpype.settings import get_current_project_settings
-from openpype.lib import register_event_callback, Logger
-from openpype.pipeline import (
+from ayon_core.settings import get_current_project_settings
+from ayon_core.lib import register_event_callback, Logger
+from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     register_inventory_action_path,
@@ -23,8 +22,9 @@ from openpype.pipeline import (
     get_current_asset_name,
     get_current_task_name,
 )
-from openpype.pipeline.workfile import BuildWorkfile
-from openpype.tools.utils import host_tools
+from ayon_core.pipeline.workfile import BuildWorkfile
+from ayon_core.tools.utils import host_tools
+from ayon_core.hosts.nuke import NUKE_ROOT_DIR
 
 from .command import viewer_update_and_undo_stop
 from .lib import (
@@ -67,8 +67,7 @@ from .constants import ASSIST
 
 log = Logger.get_logger(__name__)
 
-HOST_DIR = os.path.dirname(os.path.abspath(openpype.hosts.nuke.__file__))
-PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(NUKE_ROOT_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")

@@ -11,13 +11,13 @@ import clique
 import speedcopy
 import pyblish.api
 
-from openpype.lib import (
+from ayon_core.lib import (
     get_ffmpeg_tool_args,
     filter_profiles,
     path_to_subprocess_arg,
     run_subprocess,
 )
-from openpype.lib.transcoding import (
+from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_ffprobe_streams,
     should_convert_for_ffmpeg,
@@ -25,11 +25,11 @@ from openpype.lib.transcoding import (
     convert_input_paths_for_ffmpeg,
     get_transcode_temp_directory,
 )
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_instance_label,
 )
-from openpype.pipeline.publish.lib import add_repre_files_for_cleanup
+from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 
 
 class ExtractReview(pyblish.api.InstancePlugin):

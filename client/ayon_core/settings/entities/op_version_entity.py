@@ -1,4 +1,4 @@
-from openpype.lib.openpype_version import (
+from ayon_core.lib.openpype_version import (
     get_remote_versions,
     get_OpenPypeVersion,
     get_installed_version

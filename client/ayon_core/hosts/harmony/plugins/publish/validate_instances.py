@@ -1,8 +1,8 @@
 import pyblish.api
 
-import openpype.hosts.harmony.api as harmony
-from openpype.pipeline import get_current_asset_name
-from openpype.pipeline.publish import (
+import ayon_core.hosts.harmony.api as harmony
+from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
 )

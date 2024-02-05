@@ -1,12 +1,12 @@
 import os
-from openpype.lib import Logger
-from openpype.settings import get_project_settings
+from ayon_core.lib import Logger
+from ayon_core.settings import get_project_settings
 
 log = Logger.get_logger(__name__)
 
 
 def initialize():
-    from openpype.hosts.traypublisher.api.plugin import SettingsCreator
+    from ayon_core.hosts.traypublisher.api.plugin import SettingsCreator
 
     project_name = os.environ["AVALON_PROJECT"]
     project_settings = get_project_settings(project_name)

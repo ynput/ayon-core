@@ -1,7 +1,7 @@
 import os
 
 import pyblish.api
-import openpype.hosts.houdini.api.usd as usdlib
+import ayon_core.hosts.houdini.api.usd as usdlib
 
 import hou
 

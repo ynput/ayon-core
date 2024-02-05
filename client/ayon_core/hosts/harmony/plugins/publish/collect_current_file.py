@@ -3,7 +3,7 @@
 import os
 
 import pyblish.api
-import openpype.hosts.harmony.api as harmony
+import ayon_core.hosts.harmony.api as harmony
 
 
 class CollectCurrentFile(pyblish.api.ContextPlugin):

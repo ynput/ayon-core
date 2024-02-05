@@ -6,18 +6,18 @@ from collections import deque
 
 import pyblish.api
 
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_name,
     get_subset_by_name,
     get_last_version_by_subset_id,
     get_representation_by_name,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_representation_path,
     publish,
 )
-import openpype.hosts.houdini.api.usd as hou_usdlib
-from openpype.hosts.houdini.api.lib import render_rop
+import ayon_core.hosts.houdini.api.usd as hou_usdlib
+from ayon_core.hosts.houdini.api.lib import render_rop
 
 
 class ExitStack(object):

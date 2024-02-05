@@ -27,9 +27,9 @@ import collections
 
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import get_versions
-from openpype.client.operations import OperationsSession
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import get_versions
+from ayon_core.client.operations import OperationsSession
 
 InstanceFilterResult = collections.namedtuple(
     "InstanceFilterResult",
@@ -171,7 +171,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         version_docs_by_str_id,
         project_name
     ):
-        from openpype.client.server.operations import create_thumbnail
+        from ayon_core.client.server.operations import create_thumbnail
 
         # Make sure each entity id has defined only one thumbnail id
         thumbnail_info_by_entity_id = {}

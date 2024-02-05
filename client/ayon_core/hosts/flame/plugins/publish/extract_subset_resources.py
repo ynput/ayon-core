@@ -5,10 +5,10 @@ from copy import deepcopy
 
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.flame import api as opfapi
-from openpype.hosts.flame.api import MediaInfoFile
-from openpype.pipeline.editorial import (
+from ayon_core.pipeline import publish
+from ayon_core.hosts.flame import api as opfapi
+from ayon_core.hosts.flame.api import MediaInfoFile
+from ayon_core.pipeline.editorial import (
     get_media_range_with_retimes
 )
 

@@ -1,11 +1,11 @@
 import pyblish.api
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     publish,
     PublishValidationError
 )
 
-from openpype.pipeline.colorspace import (
+from ayon_core.pipeline.colorspace import (
     get_ocio_config_colorspaces
 )
 

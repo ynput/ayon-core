@@ -1,5 +1,5 @@
-from openpype.lib.profiles_filtering import filter_profiles
-from openpype.settings import get_project_settings
+from ayon_core.lib.profiles_filtering import filter_profiles
+from ayon_core.settings import get_project_settings
 
 
 def get_versioning_start(

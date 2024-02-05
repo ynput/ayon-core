@@ -1,6 +1,6 @@
 import pyblish.api
-from openpype.pipeline.load import any_outdated_containers
-from openpype.pipeline import (
+from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
@@ -13,7 +13,7 @@ class ShowInventory(pyblish.api.Action):
     on = "failed"
 
     def process(self, context, plugin):
-        from openpype.tools.utils import host_tools
+        from ayon_core.tools.utils import host_tools
 
         host_tools.show_scene_inventory()
 

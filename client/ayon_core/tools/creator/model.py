@@ -1,7 +1,7 @@
 import uuid
 from qtpy import QtGui, QtCore
 
-from openpype.pipeline import discover_legacy_creator_plugins
+from ayon_core.pipeline import discover_legacy_creator_plugins
 
 from . constants import (
     FAMILY_ROLE,

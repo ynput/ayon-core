@@ -1,9 +1,9 @@
 import os
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.nuke.api import plugin
-from openpype.hosts.nuke.api.lib import maintained_selection
+from ayon_core.pipeline import publish
+from ayon_core.hosts.nuke.api import plugin
+from ayon_core.hosts.nuke.api.lib import maintained_selection
 
 
 class ExtractReviewDataLut(publish.Extractor):

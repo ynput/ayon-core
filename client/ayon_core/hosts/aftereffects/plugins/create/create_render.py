@@ -1,17 +1,17 @@
 import re
 
-from openpype import resources
-from openpype.lib import BoolDef, UISeparatorDef
-from openpype.hosts.aftereffects import api
-from openpype.pipeline import (
+from ayon_core import resources
+from ayon_core.lib import BoolDef, UISeparatorDef
+from ayon_core.hosts.aftereffects import api
+from ayon_core.pipeline import (
     Creator,
     CreatedInstance,
     CreatorError
 )
-from openpype.hosts.aftereffects.api.pipeline import cache_and_get_instances
-from openpype.hosts.aftereffects.api.lib import set_settings
-from openpype.lib import prepare_template_data
-from openpype.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.hosts.aftereffects.api.pipeline import cache_and_get_instances
+from ayon_core.hosts.aftereffects.api.lib import set_settings
+from ayon_core.lib import prepare_template_data
+from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
 
 
 class RenderCreator(Creator):

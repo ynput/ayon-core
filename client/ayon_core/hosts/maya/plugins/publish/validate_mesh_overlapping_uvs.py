@@ -5,8 +5,8 @@ from maya import cmds
 import maya.api.OpenMaya as om
 import pyblish.api
 
-import openpype.hosts.maya.api.action
-from openpype.pipeline.publish import (
+import ayon_core.hosts.maya.api.action
+from ayon_core.pipeline.publish import (
     ValidateMeshOrder,
     OptionalPyblishPluginMixin,
     PublishValidationError

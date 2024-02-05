@@ -3,18 +3,18 @@ import copy
 import clique
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.lib import (
+from ayon_core.pipeline import publish
+from ayon_core.lib import (
 
     is_oiio_supported,
 )
 
-from openpype.lib.transcoding import (
+from ayon_core.lib.transcoding import (
     convert_colorspace,
     get_transcode_temp_directory,
 )
 
-from openpype.lib.profiles_filtering import filter_profiles
+from ayon_core.lib.profiles_filtering import filter_profiles
 
 
 class ExtractOIIOTranscode(publish.Extractor):

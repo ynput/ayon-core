@@ -1,9 +1,9 @@
 import platform
 import copy
 from qtpy import QtWidgets, QtCore, QtGui
-from openpype.tools.settings.settings import ProjectListWidget
-from openpype.tools.utils import PlaceholderLineEdit
-from openpype.settings.constants import (
+from ayon_core.tools.settings.settings import ProjectListWidget
+from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.settings.constants import (
     PROJECT_ANATOMY_KEY,
     DEFAULT_PROJECT_KEY
 )

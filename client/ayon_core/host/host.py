@@ -31,16 +31,16 @@ class HostBase(object):
 
     # Installation of host before (avalon concept):
     ```python
-    from openpype.pipeline import install_host
-    import openpype.hosts.maya.api as host
+    from ayon_core.pipeline import install_host
+    import ayon_core.hosts.maya.api as host
 
     install_host(host)
     ```
 
     # Installation of host now:
     ```python
-    from openpype.pipeline import install_host
-    from openpype.hosts.maya.api import MayaHost
+    from ayon_core.pipeline import install_host
+    from ayon_core.hosts.maya.api import MayaHost
 
     host = MayaHost()
     install_host(host)

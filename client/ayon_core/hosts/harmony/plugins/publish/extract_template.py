@@ -3,8 +3,8 @@
 import os
 import shutil
 
-from openpype.pipeline import publish
-import openpype.hosts.harmony.api as harmony
+from ayon_core.pipeline import publish
+import ayon_core.hosts.harmony.api as harmony
 
 
 class ExtractTemplate(publish.Extractor):

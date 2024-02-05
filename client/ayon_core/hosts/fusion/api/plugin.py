@@ -1,16 +1,16 @@
 from copy import deepcopy
 import os
 
-from openpype.hosts.fusion.api import (
+from ayon_core.hosts.fusion.api import (
     get_current_comp,
     comp_lock_and_undo_chunk,
 )
 
-from openpype.lib import (
+from ayon_core.lib import (
     BoolDef,
     EnumDef,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     legacy_io,
     Creator,
     CreatedInstance

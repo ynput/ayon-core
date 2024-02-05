@@ -4,7 +4,7 @@ import os
 import shutil
 from zipfile import ZipFile
 
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractWorkfile(publish.Extractor):

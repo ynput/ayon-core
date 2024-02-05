@@ -29,14 +29,14 @@ except ImportError:
 import six
 import appdirs
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.settings import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.settings import (
     get_local_settings,
     get_system_settings
 )
 
-from openpype.client.mongo import validate_mongo_connection
-from openpype.client import get_ayon_server_api_connection
+from ayon_core.client.mongo import validate_mongo_connection
+from ayon_core.client import get_ayon_server_api_connection
 
 _PLACEHOLDER = object()
 

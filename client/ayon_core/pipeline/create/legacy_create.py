@@ -9,7 +9,7 @@ import os
 import logging
 import collections
 
-from openpype.client import get_asset_by_id
+from ayon_core.client import get_asset_by_id
 
 from .subset_name import get_subset_name
 
@@ -191,7 +191,7 @@ def legacy_create(Creator, name, asset, options=None, data=None):
         Name of instance
 
     """
-    from openpype.pipeline import registered_host
+    from ayon_core.pipeline import registered_host
 
     host = registered_host()
     plugin = Creator(name, asset, options, data)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
-from openpype.lib import TextDef
-from openpype.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.lib import TextDef
+from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
 
 
 class CollectDeadlinePools(pyblish.api.InstancePlugin,

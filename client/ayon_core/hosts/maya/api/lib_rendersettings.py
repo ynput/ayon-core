@@ -3,12 +3,12 @@
 import six
 import sys
 
-from openpype.lib import Logger
-from openpype.settings import get_project_settings
+from ayon_core.lib import Logger
+from ayon_core.settings import get_project_settings
 
-from openpype.pipeline import CreatorError, get_current_project_name
-from openpype.pipeline.context_tools import get_current_project_asset
-from openpype.hosts.maya.api.lib import reset_frame_range
+from ayon_core.pipeline import CreatorError, get_current_project_name
+from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.hosts.maya.api.lib import reset_frame_range
 
 
 class RenderSettings(object):

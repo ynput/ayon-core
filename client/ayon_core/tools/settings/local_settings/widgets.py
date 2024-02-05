@@ -1,5 +1,5 @@
 from qtpy import QtWidgets, QtCore
-from openpype.tools.settings.settings.widgets import (
+from ayon_core.tools.settings.settings.widgets import (
     ExpandingWidget
 )
 

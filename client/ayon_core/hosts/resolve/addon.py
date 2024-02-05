@@ -1,6 +1,6 @@
 import os
 
-from openpype.modules import OpenPypeModule, IHostAddon
+from ayon_core.modules import OpenPypeModule, IHostAddon
 
 from .utils import RESOLVE_ROOT_DIR
 

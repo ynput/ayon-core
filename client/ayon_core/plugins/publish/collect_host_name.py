@@ -7,7 +7,7 @@ Provides:
 import os
 import pyblish.api
 
-from openpype.lib import ApplicationManager
+from ayon_core.lib import ApplicationManager
 
 
 class CollectHostName(pyblish.api.ContextPlugin):

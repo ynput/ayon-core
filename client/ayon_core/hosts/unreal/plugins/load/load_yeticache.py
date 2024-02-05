@@ -3,12 +3,12 @@
 import os
 import json
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
 )
-from openpype.hosts.unreal.api import plugin
-from openpype.hosts.unreal.api import pipeline as unreal_pipeline
+from ayon_core.hosts.unreal.api import plugin
+from ayon_core.hosts.unreal.api import pipeline as unreal_pipeline
 import unreal  # noqa
 
 

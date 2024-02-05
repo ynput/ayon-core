@@ -2,22 +2,22 @@ import copy
 import os
 import re
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import get_asset_name_identifier
-from openpype.lib import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import get_asset_name_identifier
+from ayon_core.lib import (
     FileDef,
     BoolDef,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     CreatedInstance,
 )
-from openpype.pipeline.create import (
+from ayon_core.pipeline.create import (
     get_subset_name,
     TaskNotSetError,
 )
 
-from openpype.hosts.traypublisher.api.plugin import TrayPublishCreator
-from openpype.hosts.traypublisher.batch_parsing import (
+from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
+from ayon_core.hosts.traypublisher.batch_parsing import (
     get_asset_doc_from_file_name
 )
 

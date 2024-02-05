@@ -6,12 +6,12 @@ from typing import Dict, List, Optional
 
 import bpy
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_representation_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.hosts.blender.api import plugin, lib
-from openpype.hosts.blender.api.pipeline import (
+from ayon_core.hosts.blender.api import plugin, lib
+from ayon_core.hosts.blender.api.pipeline import (
     AVALON_CONTAINERS,
     AVALON_PROPERTY,
 )

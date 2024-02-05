@@ -17,15 +17,15 @@ import attr
 import requests
 
 import pyblish.api
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     AbstractMetaInstancePlugin,
     KnownPublishError,
     OpenPypePyblishPluginMixin
 )
-from openpype.pipeline.publish.lib import (
+from ayon_core.pipeline.publish.lib import (
     replace_with_published_scene_path
 )
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 JSONDecodeError = getattr(json.decoder, "JSONDecodeError", ValueError)
 

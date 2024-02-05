@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """This is RR control plugin that runs on the job by user interaction.
 
-It asks user for context to publish, getting it from OpenPype. In order to
+It asks user for context to publish, getting it from ayon_core. In order to
 run it needs `OPENPYPE_ROOT` to be set to know where to execute OpenPype.
 
 """

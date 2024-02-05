@@ -4,7 +4,7 @@ import maya.cmds as cmds
 import xgenm
 
 import pyblish.api
-from openpype.pipeline.publish import PublishValidationError
+from ayon_core.pipeline.publish import PublishValidationError
 
 
 class ValidateXgen(pyblish.api.InstancePlugin):

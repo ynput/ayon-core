@@ -2,9 +2,9 @@ from maya import cmds, mel
 
 import pyblish.api
 
-from openpype.client import get_subset_by_name
-from openpype.pipeline import KnownPublishError
-from openpype.hosts.maya.api import lib
+from ayon_core.client import get_subset_by_name
+from ayon_core.pipeline import KnownPublishError
+from ayon_core.hosts.maya.api import lib
 
 
 class CollectReview(pyblish.api.InstancePlugin):

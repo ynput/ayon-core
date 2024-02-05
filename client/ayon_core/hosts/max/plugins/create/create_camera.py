@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating camera."""
-from openpype.hosts.max.api import plugin
+from ayon_core.hosts.max.api import plugin
 
 
 class CreateCamera(plugin.MaxCreator):

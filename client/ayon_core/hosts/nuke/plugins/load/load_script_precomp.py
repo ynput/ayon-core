@@ -1,16 +1,16 @@
 import nuke
 
-from openpype.client import (
+from ayon_core.client import (
     get_version_by_id,
     get_last_version_by_subset_id,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_current_project_name,
     load,
     get_representation_path,
 )
-from openpype.hosts.nuke.api.lib import get_avalon_knob_data
-from openpype.hosts.nuke.api import (
+from ayon_core.hosts.nuke.api.lib import get_avalon_knob_data
+from ayon_core.hosts.nuke.api import (
     containerise,
     update_container,
     viewer_update_and_undo_stop

@@ -2,9 +2,9 @@ import inspect
 from qtpy import QtGui
 import qtawesome
 
-from openpype.lib.attribute_definitions import AbstractAttrDef
-from openpype.tools.attribute_defs import AttributeDefinitionsDialog
-from openpype.tools.utils.widgets import (
+from ayon_core.lib.attribute_definitions import AbstractAttrDef
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
+from ayon_core.tools.utils.widgets import (
     OptionalAction,
     OptionDialog
 )

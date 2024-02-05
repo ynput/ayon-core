@@ -1,9 +1,9 @@
-# from openpype import plugins
+# from ayon_core import plugins
 import os
 import json
 import pyblish.api
 
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractClipEffects(publish.Extractor):

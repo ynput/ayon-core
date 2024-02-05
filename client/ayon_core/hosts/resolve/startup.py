@@ -10,8 +10,8 @@ This code runs in a separate process to the main Resolve process.
 
 """
 import os
-from openpype.lib import Logger
-import openpype.hosts.resolve.api
+from ayon_core.lib import Logger
+import ayon_core.hosts.resolve.api
 
 log = Logger.get_logger(__name__)
 
@@ -22,7 +22,7 @@ def ensure_installed_host():
     This function can be called multiple times without triggering an
     additional install.
     """
-    from openpype.pipeline import install_host, registered_host
+    from ayon_core.pipeline import install_host, registered_host
     host = registered_host()
     if host:
         return host
@@ -55,8 +55,8 @@ def main():
         log.info("No last workfile set to open. Skipping..")
 
     # Launch OpenPype menu
-    from openpype.settings import get_project_settings
-    from openpype.pipeline.context_tools import get_current_project_name
+    from ayon_core.settings import get_project_settings
+    from ayon_core.pipeline.context_tools import get_current_project_name
     project_name = get_current_project_name()
     log.info(f"Current project name in context: {project_name}")
 

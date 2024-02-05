@@ -2,7 +2,7 @@ import os
 
 import pyblish.api
 
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 import hou
 

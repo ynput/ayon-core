@@ -1,13 +1,13 @@
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from openpype import style, resources
-from openpype.tools.utils.delegates import VersionDelegate
-from openpype.tools.utils.lib import (
+from ayon_core import style, resources
+from ayon_core.tools.utils.delegates import VersionDelegate
+from ayon_core.tools.utils.lib import (
     preserve_expanded_rows,
     preserve_selection,
 )
-from openpype.tools.ayon_sceneinventory import SceneInventoryController
+from ayon_core.tools.ayon_sceneinventory import SceneInventoryController
 
 from .model import (
     InventoryModel,

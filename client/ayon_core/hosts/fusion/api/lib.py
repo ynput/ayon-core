@@ -3,8 +3,8 @@ import sys
 import re
 import contextlib
 
-from openpype.lib import Logger
-from openpype.client import (
+from ayon_core.lib import Logger
+from ayon_core.client import (
     get_asset_by_name,
     get_subset_by_name,
     get_last_version_by_subset_id,
@@ -12,11 +12,11 @@ from openpype.client import (
     get_representation_by_name,
     get_representation_parents,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     switch_container,
     get_current_project_name,
 )
-from openpype.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_project_asset
 
 self = sys.modules[__name__]
 self._project = None
@@ -165,8 +165,8 @@ def validate_comp_prefs(comp=None, force_repair=False):
             return
 
         from . import menu
-        from openpype.widgets import popup
-        from openpype.style import load_stylesheet
+        from ayon_core.widgets import popup
+        from ayon_core.style import load_stylesheet
         dialog = popup.Popup(parent=menu.menu)
         dialog.setWindowTitle("Fusion comp has invalid configuration")
 

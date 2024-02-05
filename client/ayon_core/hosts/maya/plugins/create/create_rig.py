@@ -1,6 +1,6 @@
 from maya import cmds
 
-from openpype.hosts.maya.api import plugin
+from ayon_core.hosts.maya.api import plugin
 
 
 class CreateRig(plugin.MayaCreator):

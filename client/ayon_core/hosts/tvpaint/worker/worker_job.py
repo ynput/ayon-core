@@ -9,8 +9,8 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 
 import six
 
-from openpype.lib import Logger
-from openpype.modules import ModulesManager
+from ayon_core.lib import Logger
+from ayon_core.modules import ModulesManager
 
 
 TMP_FILE_PREFIX = "opw_tvp_"
@@ -256,7 +256,7 @@ class CollectSceneData(BaseCommand):
     name = "collect_scene_data"
 
     def execute(self):
-        from openpype.hosts.tvpaint.api.lib import (
+        from ayon_core.hosts.tvpaint.api.lib import (
             get_layers_data,
             get_groups_data,
             get_layers_pre_post_behavior,

@@ -2,7 +2,7 @@ import bpy
 
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )

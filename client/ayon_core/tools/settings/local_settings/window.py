@@ -1,19 +1,19 @@
 from qtpy import QtWidgets, QtGui
 
-from openpype import style
+from ayon_core import style
 
-from openpype.settings import (
+from ayon_core.settings import (
     SystemSettings,
     ProjectSettings
 )
-from openpype.settings.lib import (
+from ayon_core.settings.lib import (
     get_local_settings,
     save_local_settings
 )
-from openpype.lib import Logger
-from openpype.tools.settings import CHILD_OFFSET
-from openpype.tools.utils import MessageOverlayObject
-from openpype.modules import ModulesManager
+from ayon_core.lib import Logger
+from ayon_core.tools.settings import CHILD_OFFSET
+from ayon_core.tools.utils import MessageOverlayObject
+from ayon_core.modules import ModulesManager
 
 from .widgets import (
     ExpandingWidget

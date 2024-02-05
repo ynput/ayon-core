@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 
-from openpype.hosts.maya.api.action import (
+from ayon_core.hosts.maya.api.action import (
     SelectInvalidAction,
 )
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError

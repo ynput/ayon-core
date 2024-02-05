@@ -5,8 +5,8 @@ import json
 from maya import cmds
 from maya.api import OpenMaya as om
 
-from openpype.client import get_representation_by_id
-from openpype.pipeline import publish
+from ayon_core.client import get_representation_by_id
+from ayon_core.pipeline import publish
 
 
 class ExtractLayout(publish.Extractor):

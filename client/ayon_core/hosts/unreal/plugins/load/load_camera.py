@@ -9,13 +9,13 @@ from unreal import (
     EditorLevelUtils,
     LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
 )
-from openpype.client import get_asset_by_name
-from openpype.pipeline import (
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
-from openpype.hosts.unreal.api import plugin
-from openpype.hosts.unreal.api.pipeline import (
+from ayon_core.hosts.unreal.api import plugin
+from ayon_core.hosts.unreal.api.pipeline import (
     generate_sequence,
     set_sequence_hierarchy,
     create_container,

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
-from openpype import AYON_SERVER_ENABLED
-from openpype.hosts.houdini.api import plugin
-from openpype.hosts.houdini.api.lib import read, imprint
-from openpype.hosts.houdini.api.pipeline import CONTEXT_CONTAINER
-from openpype.pipeline import CreatedInstance, AutoCreator
-from openpype.client import get_asset_by_name
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.hosts.houdini.api import plugin
+from ayon_core.hosts.houdini.api.lib import read, imprint
+from ayon_core.hosts.houdini.api.pipeline import CONTEXT_CONTAINER
+from ayon_core.pipeline import CreatedInstance, AutoCreator
+from ayon_core.client import get_asset_by_name
 import hou
 
 

@@ -1,4 +1,4 @@
-from openpype.modules import OpenPypeModule, ITrayAction
+from ayon_core.modules import OpenPypeModule, ITrayAction
 
 
 class PythonInterpreterAction(OpenPypeModule, ITrayAction):

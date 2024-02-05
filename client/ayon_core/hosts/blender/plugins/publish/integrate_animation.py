@@ -1,7 +1,7 @@
 import json
 
 import pyblish.api
-from openpype.pipeline.publish import OptionalPyblishPluginMixin
+from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 
 
 class IntegrateAnimation(

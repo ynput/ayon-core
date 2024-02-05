@@ -1,4 +1,4 @@
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 if not AYON_SERVER_ENABLED:
     from .mongo.entities import *

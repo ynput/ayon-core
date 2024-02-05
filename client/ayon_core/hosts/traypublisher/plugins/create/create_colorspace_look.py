@@ -6,17 +6,17 @@ production type `ociolook`. All files are published as representation.
 """
 from pathlib import Path
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import get_asset_by_name
-from openpype.lib.attribute_definitions import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import get_asset_by_name
+from ayon_core.lib.attribute_definitions import (
     FileDef, EnumDef, TextDef, UISeparatorDef
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     CreatedInstance,
     CreatorError
 )
-from openpype.pipeline import colorspace
-from openpype.hosts.traypublisher.api.plugin import TrayPublishCreator
+from ayon_core.pipeline import colorspace
+from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
 
 
 class CreateColorspaceLook(TrayPublishCreator):

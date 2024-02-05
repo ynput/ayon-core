@@ -1,9 +1,9 @@
 import pyblish.api
 
-import openpype.hosts.maya.api.action
-from openpype.client import get_subset_by_name
-from openpype.pipeline import legacy_io
-from openpype.pipeline.publish import PublishValidationError
+import ayon_core.hosts.maya.api.action
+from ayon_core.client import get_subset_by_name
+from ayon_core.pipeline import legacy_io
+from ayon_core.pipeline.publish import PublishValidationError
 
 
 class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):

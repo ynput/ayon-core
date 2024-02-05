@@ -21,9 +21,9 @@ from aiohttp_json_rpc.protocol import (
 )
 from aiohttp_json_rpc.exceptions import RpcError
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.lib import emit_event
-from openpype.hosts.tvpaint.tvpaint_plugin import get_plugin_files_path
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib import emit_event
+from ayon_core.hosts.tvpaint.tvpaint_plugin import get_plugin_files_path
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -301,7 +301,7 @@ class QtTVPaintRpc(BaseTVPaintRpc):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        from openpype.tools.utils import host_tools
+        from ayon_core.tools.utils import host_tools
         self.tools_helper = host_tools.HostToolsHelper()
 
         route_name = self.route_name

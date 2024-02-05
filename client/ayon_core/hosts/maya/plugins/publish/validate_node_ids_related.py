@@ -1,8 +1,8 @@
 import pyblish.api
 
-import openpype.hosts.maya.api.action
-from openpype.hosts.maya.api import lib
-from openpype.pipeline.publish import (
+import ayon_core.hosts.maya.api.action
+from ayon_core.hosts.maya.api import lib
+from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin, PublishValidationError, ValidatePipelineOrder)
 
 

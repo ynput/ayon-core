@@ -3,8 +3,8 @@ from abc import abstractmethod, abstractproperty
 
 from qtpy import QtCore
 
-from openpype.lib.events import Event
-from openpype.pipeline.create import CreatedInstance
+from ayon_core.lib.events import Event
+from ayon_core.pipeline.create import CreatedInstance
 
 from .control import (
     MainThreadItem,

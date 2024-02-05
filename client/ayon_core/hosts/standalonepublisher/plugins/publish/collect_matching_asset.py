@@ -4,7 +4,7 @@ import collections
 import pyblish.api
 from pprint import pformat
 
-from openpype.client import get_assets
+from ayon_core.client import get_assets
 
 
 class CollectMatchingAssetToInstance(pyblish.api.InstancePlugin):

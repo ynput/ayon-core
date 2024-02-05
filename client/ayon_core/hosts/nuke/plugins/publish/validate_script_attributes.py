@@ -1,11 +1,11 @@
 from copy import deepcopy
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.pipeline.publish import RepairAction
-from openpype.hosts.nuke.api.lib import (
+from ayon_core.pipeline.publish import RepairAction
+from ayon_core.hosts.nuke.api.lib import (
     WorkfileSettings
 )
 

@@ -46,7 +46,7 @@ import attr
 
 from . import lib
 from . import lib_rendersetup
-from openpype.pipeline.colorspace import get_ocio_config_views
+from ayon_core.pipeline.colorspace import get_ocio_config_views
 
 from maya import cmds, mel
 

@@ -24,8 +24,8 @@ Todos:
 """
 
 import pyblish.api
-from openpype.lib.attribute_definitions import TextDef
-from openpype.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.lib.attribute_definitions import TextDef
+from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
 
 
 class CollectInstanceCommentDef(

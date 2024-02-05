@@ -2,10 +2,10 @@ import os
 
 import unreal
 
-from openpype.settings import get_project_settings
-from openpype.pipeline import Anatomy
-from openpype.hosts.unreal.api import pipeline
-from openpype.widgets.message_window import Window
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import Anatomy
+from ayon_core.hosts.unreal.api import pipeline
+from ayon_core.widgets.message_window import Window
 
 
 queue = None

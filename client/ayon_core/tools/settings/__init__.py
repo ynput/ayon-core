@@ -1,8 +1,8 @@
 import sys
 from qtpy import QtGui
 
-from openpype import style
-from openpype.tools.utils import get_openpype_qt_app
+from ayon_core import style
+from ayon_core.tools.utils import get_openpype_qt_app
 from .lib import (
     BTN_FIXED_SIZE,
     CHILD_OFFSET

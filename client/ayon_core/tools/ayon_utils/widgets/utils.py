@@ -3,7 +3,7 @@ from functools import partial
 
 from qtpy import QtCore, QtGui
 
-from openpype.tools.utils.lib import get_qta_icon_by_name_and_color
+from ayon_core.tools.utils.lib import get_qta_icon_by_name_and_color
 
 
 class RefreshThread(QtCore.QThread):

@@ -3,7 +3,7 @@ import logging
 
 import qtpy
 from qtpy import QtCore, QtGui
-from openpype.client import get_projects
+from ayon_core.client import get_projects
 from .constants import (
     PROJECT_IS_ACTIVE_ROLE,
     PROJECT_NAME_ROLE,

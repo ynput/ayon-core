@@ -1,7 +1,7 @@
 from qtpy import QtCore, QtGui
 
-from openpype.tools.utils.tasks_widget import TasksWidget, TASK_NAME_ROLE
-from openpype.tools.utils.lib import get_default_task_icon
+from ayon_core.tools.utils.tasks_widget import TasksWidget, TASK_NAME_ROLE
+from ayon_core.tools.utils.lib import get_default_task_icon
 
 
 class TasksModel(QtGui.QStandardItemModel):

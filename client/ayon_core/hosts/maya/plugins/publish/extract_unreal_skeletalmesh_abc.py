@@ -5,8 +5,8 @@ from contextlib import contextmanager
 
 from maya import cmds  # noqa
 
-from openpype.pipeline import publish
-from openpype.hosts.maya.api.lib import (
+from ayon_core.pipeline import publish
+from ayon_core.hosts.maya.api.lib import (
     extract_alembic,
     suspended_refresh,
     maintained_selection

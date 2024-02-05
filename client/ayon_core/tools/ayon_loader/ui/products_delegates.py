@@ -1,7 +1,7 @@
 import numbers
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.tools.utils.lib import format_version
+from ayon_core.tools.utils.lib import format_version
 
 from .products_model import (
     PRODUCT_ID_ROLE,

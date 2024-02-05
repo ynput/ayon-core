@@ -10,7 +10,7 @@ import uuid
 
 from bson.objectid import ObjectId
 
-from openpype.client import (
+from ayon_core.client import (
     get_project,
     get_assets,
     get_asset_by_id,
@@ -21,7 +21,7 @@ from openpype.client import (
     get_version_by_name,
     get_representations,
 )
-from openpype.client.operations import (
+from ayon_core.client.operations import (
     OperationsSession,
     new_asset_document,
     new_subset_document,
@@ -30,21 +30,21 @@ from openpype.client.operations import (
     prepare_version_update_data,
     prepare_representation_update_data,
 )
-from openpype.modules import ModulesManager
-from openpype.lib import (
+from ayon_core.modules import ModulesManager
+from ayon_core.lib import (
     StringTemplate,
     get_openpype_username,
     get_formatted_current_time,
     source_hash,
 )
 
-from openpype.lib.file_transaction import FileTransaction
-from openpype.settings import get_project_settings
-from openpype.pipeline import Anatomy
-from openpype.pipeline.version_start import get_versioning_start
-from openpype.pipeline.template_data import get_template_data
-from openpype.pipeline.publish import get_publish_template_name
-from openpype.pipeline.create import get_subset_name
+from ayon_core.lib.file_transaction import FileTransaction
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.version_start import get_versioning_start
+from ayon_core.pipeline.template_data import get_template_data
+from ayon_core.pipeline.publish import get_publish_template_name
+from ayon_core.pipeline.create import get_subset_name
 
 UNKNOWN = object()
 

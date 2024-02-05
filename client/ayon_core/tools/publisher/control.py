@@ -13,37 +13,37 @@ import six
 import arrow
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_assets,
     get_asset_by_id,
     get_subsets,
     get_asset_name_identifier,
 )
-from openpype.lib.events import EventSystem
-from openpype.lib.attribute_definitions import (
+from ayon_core.lib.events import EventSystem
+from ayon_core.lib.attribute_definitions import (
     UIDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishValidationError,
     KnownPublishError,
     registered_host,
     get_process_id,
     OptionalPyblishPluginMixin,
 )
-from openpype.pipeline.create import (
+from ayon_core.pipeline.create import (
     CreateContext,
     AutoCreator,
     HiddenCreator,
     Creator,
 )
-from openpype.pipeline.create.context import (
+from ayon_core.pipeline.create.context import (
     CreatorsOperationFailed,
     ConvertorsOperationFailed,
 )
-from openpype.pipeline.publish import get_publish_instance_label
+from ayon_core.pipeline.publish import get_publish_instance_label
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5

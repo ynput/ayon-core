@@ -7,23 +7,23 @@ import re
 
 import pyblish.api
 
-from openpype.modules.royalrender.rr_job import (
+from ayon_core.modules.royalrender.rr_job import (
     RRJob,
     RREnvList,
     get_rr_platform
 )
-from openpype.pipeline.publish import KnownPublishError
-from openpype.pipeline import (
+from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline import (
     legacy_io,
 )
-from openpype.pipeline.farm.pyblish_functions import (
+from ayon_core.pipeline.farm.pyblish_functions import (
     create_skeleton_instance,
     create_instances_for_aov,
     attach_instances_to_subset,
     prepare_representations,
     create_metadata_path
 )
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,

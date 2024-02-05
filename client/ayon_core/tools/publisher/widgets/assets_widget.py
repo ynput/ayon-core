@@ -2,13 +2,13 @@ import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.tools.utils import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     RecursiveSortFilterProxyModel,
     get_asset_icon,
 )
-from openpype.tools.utils.assets_widget import (
+from ayon_core.tools.utils.assets_widget import (
     SingleSelectAssetsWidget,
     ASSET_ID_ROLE,
     ASSET_NAME_ROLE,

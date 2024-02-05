@@ -1,13 +1,13 @@
 import contextlib
 
-import openpype.pipeline.load as load
-from openpype.pipeline.load import get_representation_context
-from openpype.hosts.fusion.api import (
+import ayon_core.pipeline.load as load
+from ayon_core.pipeline.load import get_representation_context
+from ayon_core.hosts.fusion.api import (
     imprint_container,
     get_current_comp,
     comp_lock_and_undo_chunk,
 )
-from openpype.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 
 comp = get_current_comp()
 

@@ -15,10 +15,10 @@ from qtpy import QtWidgets, QtCore
 import bpy
 import bpy.utils.previews
 
-from openpype import style
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import get_current_asset_name, get_current_task_name
-from openpype.tools.utils import host_tools
+from ayon_core import style
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import get_current_asset_name, get_current_task_name
+from ayon_core.tools.utils import host_tools
 
 from .workio import OpenFileCacher
 from . import pipeline

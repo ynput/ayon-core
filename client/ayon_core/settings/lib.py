@@ -5,7 +5,7 @@ import logging
 import platform
 import copy
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 from .exceptions import (
     SaveWarningExc
@@ -163,7 +163,7 @@ def save_studio_settings(data):
         SaveWarningExc: If any module raises the exception.
     """
     # Notify Pype modules
-    from openpype.modules import ModulesManager, ISettingsChangeListener
+    from ayon_core.modules import ModulesManager, ISettingsChangeListener
 
     old_data = get_system_settings()
     default_values = get_default_settings()[SYSTEM_SETTINGS_KEY]
@@ -211,7 +211,7 @@ def save_project_settings(project_name, overrides):
         SaveWarningExc: If any module raises the exception.
     """
     # Notify Pype modules
-    from openpype.modules import ModulesManager, ISettingsChangeListener
+    from ayon_core.modules import ModulesManager, ISettingsChangeListener
 
     default_values = get_default_settings()[PROJECT_SETTINGS_KEY]
     if project_name:
@@ -272,7 +272,7 @@ def save_project_anatomy(project_name, anatomy_data):
         SaveWarningExc: If any module raises the exception.
     """
     # Notify Pype modules
-    from openpype.modules import ModulesManager, ISettingsChangeListener
+    from ayon_core.modules import ModulesManager, ISettingsChangeListener
 
     default_values = get_default_settings()[PROJECT_ANATOMY_KEY]
     if project_name:
@@ -542,7 +542,7 @@ def reset_default_settings():
 
 
 def _get_default_settings():
-    from openpype.modules import get_module_settings_defs
+    from ayon_core.modules import get_module_settings_defs
 
     defaults = load_openpype_default_settings()
 

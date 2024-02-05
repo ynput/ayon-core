@@ -1,8 +1,8 @@
 import os
 import nuke
 import pyblish.api
-from openpype.hosts.nuke import api as napi
-from openpype.pipeline import publish
+from ayon_core.hosts.nuke import api as napi
+from ayon_core.pipeline import publish
 
 
 class CollectNukeWrites(pyblish.api.InstancePlugin,

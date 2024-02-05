@@ -3,7 +3,7 @@ import os
 import maya.cmds as cmds
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     PublishValidationError, ValidatePipelineOrder)
 
 

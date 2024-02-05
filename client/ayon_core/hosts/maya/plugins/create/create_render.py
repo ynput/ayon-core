@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """Create ``Render`` instance in Maya."""
 
-from openpype.hosts.maya.api import (
+from ayon_core.hosts.maya.api import (
     lib_rendersettings,
     plugin
 )
-from openpype.pipeline import CreatorError
-from openpype.lib import (
+from ayon_core.pipeline import CreatorError
+from ayon_core.lib import (
     BoolDef,
     NumberDef,
 )

@@ -10,7 +10,7 @@ import os
 import clique
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     get_publish_template_name
 )
 
@@ -26,7 +26,7 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
     def process(self, instance):
         # Not all hosts can import these modules.
         import opentimelineio as otio
-        from openpype.pipeline.editorial import (
+        from ayon_core.pipeline.editorial import (
             get_media_range_with_retimes,
             range_from_frames,
             make_sequence_collection

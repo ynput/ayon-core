@@ -19,32 +19,32 @@ from abc import ABCMeta, abstractmethod
 
 import six
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_asset_by_name,
     get_linked_assets,
     get_representations,
 )
-from openpype.settings import (
+from ayon_core.settings import (
     get_project_settings,
     get_system_settings,
 )
-from openpype.host import IWorkfileHost, HostBase
-from openpype.lib import (
+from ayon_core.host import IWorkfileHost, HostBase
+from ayon_core.lib import (
     Logger,
     StringTemplate,
     filter_profiles,
     attribute_definitions,
 )
-from openpype.lib.attribute_definitions import get_attributes_keys
-from openpype.pipeline import Anatomy
-from openpype.pipeline.load import (
+from ayon_core.lib.attribute_definitions import get_attributes_keys
+from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.load import (
     get_loaders_by_name,
     get_contexts_for_repre_docs,
     load_with_repre_context,
 )
 
-from openpype.pipeline.create import (
+from ayon_core.pipeline.create import (
     discover_legacy_creator_plugins,
     CreateContext,
 )
@@ -1478,7 +1478,7 @@ class PlaceholderLoadMixin(object):
         """
 
         from ayon_api.graphql_queries import folders_graphql_query
-        from openpype.client import get_ayon_server_api_connection
+        from ayon_core.client import get_ayon_server_api_connection
 
         query = folders_graphql_query({"id"})
 

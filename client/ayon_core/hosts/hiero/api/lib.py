@@ -20,18 +20,18 @@ try:
 except ImportError:
     from PySide2 import QtXml
 
-from openpype.client import get_project
-from openpype.settings import get_project_settings
-from openpype.pipeline import Anatomy, get_current_project_name
-from openpype.pipeline.load import filter_containers
-from openpype.lib import Logger
+from ayon_core.client import get_project
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import Anatomy, get_current_project_name
+from ayon_core.pipeline.load import filter_containers
+from ayon_core.lib import Logger
 from . import tags
 from .constants import (
     OPENPYPE_TAG_NAME,
     DEFAULT_SEQUENCE_NAME,
     DEFAULT_BIN_NAME
 )
-from openpype.pipeline.colorspace import (
+from ayon_core.pipeline.colorspace import (
     get_imageio_config
 )
 
@@ -795,7 +795,7 @@ class PublishAction(QtWidgets.QAction):
 #
 #     '''
 #     import hiero.core
-#     from openpype.hosts.nuke.api.lib import (
+#     from ayon_core.hosts.nuke.api.lib import (
 #         BuildWorkfile,
 #         imprint
 #     )

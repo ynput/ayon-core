@@ -1,9 +1,9 @@
-from openpype.hosts.fusion.api import (
+from ayon_core.hosts.fusion.api import (
     get_current_comp
 )
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import get_asset_by_name
-from openpype.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import (
     AutoCreator,
     CreatedInstance,
 )

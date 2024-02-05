@@ -2,12 +2,12 @@
 """Load Static meshes form FBX."""
 import os
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
 )
-from openpype.hosts.unreal.api import plugin
-from openpype.hosts.unreal.api.pipeline import (
+from ayon_core.hosts.unreal.api import plugin
+from ayon_core.hosts.unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,

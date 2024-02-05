@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating raw max scene."""
-from openpype.hosts.max.api import plugin
+from ayon_core.hosts.max.api import plugin
 
 
 class CreateMaxScene(plugin.MaxCreator):

@@ -1,5 +1,5 @@
 import logging
-from openpype.pipeline.plugin_discover import (
+from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
     register_plugin_path,

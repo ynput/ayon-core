@@ -6,12 +6,12 @@ from pathlib import Path
 
 import clique
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from openpype.pipeline.context_tools import is_representation_from_latest
-import openpype.hosts.harmony.api as harmony
+from ayon_core.pipeline.context_tools import is_representation_from_latest
+import ayon_core.hosts.harmony.api as harmony
 
 
 class ImageSequenceLoader(load.LoaderPlugin):

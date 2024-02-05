@@ -1,20 +1,20 @@
 import os
 from copy import deepcopy
 import opentimelineio as otio
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_asset_by_name,
     get_project
 )
-from openpype.hosts.traypublisher.api.plugin import (
+from ayon_core.hosts.traypublisher.api.plugin import (
     TrayPublishCreator,
     HiddenTrayPublishCreator
 )
-from openpype.hosts.traypublisher.api.editorial import (
+from ayon_core.hosts.traypublisher.api.editorial import (
     ShotMetadataSolver
 )
-from openpype.pipeline import CreatedInstance
-from openpype.lib import (
+from ayon_core.pipeline import CreatedInstance
+from ayon_core.lib import (
     get_ffprobe_data,
     convert_ffprobe_fps_value,
 

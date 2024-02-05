@@ -6,7 +6,7 @@ import glob
 import clique
 import collections
 
-from openpype.lib import create_hard_link
+from ayon_core.lib import create_hard_link
 
 
 def _copy_file(src_path, dst_path):

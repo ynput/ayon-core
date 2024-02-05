@@ -1,7 +1,7 @@
 import os
 from qtpy import QtGui
 import qtawesome
-from openpype import resources
+from ayon_core import resources
 
 ICON_CACHE = {}
 NOT_FOUND = type("NotFound", (object, ), {})

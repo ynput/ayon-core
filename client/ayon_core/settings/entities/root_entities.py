@@ -19,15 +19,15 @@ from .exceptions import (
     SchemaError,
     InvalidKeySymbols
 )
-from openpype.settings.constants import (
+from ayon_core.settings.constants import (
     SYSTEM_SETTINGS_KEY,
     PROJECT_SETTINGS_KEY,
     PROJECT_ANATOMY_KEY,
     KEY_REGEX
 )
-from openpype.settings.exceptions import SaveWarningExc
+from ayon_core.settings.exceptions import SaveWarningExc
 
-from openpype.settings.lib import (
+from ayon_core.settings.lib import (
     DEFAULTS_DIR,
 
     get_default_settings,

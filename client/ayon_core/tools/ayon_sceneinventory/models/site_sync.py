@@ -1,5 +1,5 @@
-from openpype.client import get_representations
-from openpype.modules import ModulesManager
+from ayon_core.client import get_representations
+from ayon_core.modules import ModulesManager
 
 NOT_SET = object()
 

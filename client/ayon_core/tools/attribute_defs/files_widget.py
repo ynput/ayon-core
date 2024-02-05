@@ -5,14 +5,14 @@ import json
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from openpype.lib import FileDefItem
-from openpype.tools.utils import (
+from ayon_core.lib import FileDefItem
+from ayon_core.tools.utils import (
     paint_image_with_color,
     ClickableLabel,
 )
 # TODO change imports
-from openpype.tools.resources import get_image
-from openpype.tools.utils import (
+from ayon_core.tools.resources import get_image
+from ayon_core.tools.utils import (
     IconButton,
     PixmapLabel
 )

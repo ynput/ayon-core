@@ -1,12 +1,12 @@
 import collections
 from copy import deepcopy
 import pyblish.api
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_assets,
     get_archived_assets
 )
-from openpype.pipeline import legacy_io
+from ayon_core.pipeline import legacy_io
 
 
 class ExtractHierarchyToAvalon(pyblish.api.ContextPlugin):

@@ -1,4 +1,4 @@
-from openpype.pipeline import InventoryAction
+from ayon_core.pipeline import InventoryAction
 
 
 class FusionSelectContainers(InventoryAction):
@@ -8,7 +8,7 @@ class FusionSelectContainers(InventoryAction):
     color = "#d8d8d8"
 
     def process(self, containers):
-        from openpype.hosts.fusion.api import (
+        from ayon_core.hosts.fusion.api import (
             get_current_comp,
             comp_lock_and_undo_chunk
         )

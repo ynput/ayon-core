@@ -1,14 +1,14 @@
 from collections import defaultdict
 
 import pyblish.api
-from openpype.pipeline.publish import get_errored_instances_from_context
-from openpype.hosts.nuke.api.lib import (
+from ayon_core.pipeline.publish import get_errored_instances_from_context
+from ayon_core.hosts.nuke.api.lib import (
     get_write_node_template_attr,
     set_node_knobs_from_settings,
     color_gui_to_int
 )
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )

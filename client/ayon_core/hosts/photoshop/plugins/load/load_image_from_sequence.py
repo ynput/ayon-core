@@ -2,8 +2,8 @@ import os
 
 import qargparse
 
-from openpype.hosts.photoshop import api as photoshop
-from openpype.hosts.photoshop.api import get_unique_layer_name
+from ayon_core.hosts.photoshop import api as photoshop
+from ayon_core.hosts.photoshop.api import get_unique_layer_name
 
 
 class ImageFromSequenceLoader(photoshop.PhotoshopLoader):

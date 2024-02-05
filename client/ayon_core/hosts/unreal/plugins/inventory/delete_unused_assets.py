@@ -1,8 +1,8 @@
 import unreal
 
-from openpype.hosts.unreal.api.tools_ui import qt_app_context
-from openpype.hosts.unreal.api.pipeline import delete_asset_if_unused
-from openpype.pipeline import InventoryAction
+from ayon_core.hosts.unreal.api.tools_ui import qt_app_context
+from ayon_core.hosts.unreal.api.pipeline import delete_asset_if_unused
+from ayon_core.pipeline import InventoryAction
 
 
 class DeleteUnusedAssets(InventoryAction):
@@ -34,8 +34,8 @@ class DeleteUnusedAssets(InventoryAction):
 
     def _show_confirmation_dialog(self, containers):
         from qtpy import QtCore
-        from openpype.widgets import popup
-        from openpype.style import load_stylesheet
+        from ayon_core.widgets import popup
+        from ayon_core.style import load_stylesheet
 
         dialog = popup.Popup()
         dialog.setWindowFlags(

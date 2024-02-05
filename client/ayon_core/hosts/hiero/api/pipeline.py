@@ -7,8 +7,8 @@ import contextlib
 from collections import OrderedDict
 
 from pyblish import api as pyblish
-from openpype.lib import Logger
-from openpype.pipeline import (
+from ayon_core.lib import Logger
+from ayon_core.pipeline import (
     schema,
     register_creator_plugin_path,
     register_loader_plugin_path,
@@ -16,7 +16,7 @@ from openpype.pipeline import (
     deregister_loader_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.tools.utils import host_tools
+from ayon_core.tools.utils import host_tools
 from . import lib, menu, events
 import hiero
 
@@ -325,7 +325,7 @@ def on_pyblish_instance_toggled(instance, old_value, new_value):
     log.info("instance toggle: {}, old_value: {}, new_value:{} ".format(
         instance, old_value, new_value))
 
-    from openpype.hosts.hiero.api import (
+    from ayon_core.hosts.hiero.api import (
         get_trackitem_openpype_tag,
         set_publish_attribute
     )

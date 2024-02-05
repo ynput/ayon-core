@@ -12,10 +12,10 @@ import platform
 
 import six
 
-from openpype.lib import Logger
-from openpype.modules import ModulesManager
-from openpype.settings import get_project_settings
-from openpype.settings.lib import get_site_local_overrides
+from ayon_core.lib import Logger
+from ayon_core.modules import ModulesManager
+from ayon_core.settings import get_project_settings
+from ayon_core.settings.lib import get_site_local_overrides
 
 
 @six.add_metaclass(ABCMeta)

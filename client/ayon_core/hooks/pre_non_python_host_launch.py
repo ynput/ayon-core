@@ -1,13 +1,13 @@
 import os
 
-from openpype.lib import get_openpype_execute_args
-from openpype.lib.applications import (
+from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib.applications import (
     get_non_python_host_kwargs,
     PreLaunchHook,
     LaunchTypes,
 )
 
-from openpype import PACKAGE_DIR as OPENPYPE_DIR
+from ayon_core import AYON_CORE_ROOT
 
 
 class NonPythonHostHook(PreLaunchHook):
@@ -32,7 +32,7 @@ class NonPythonHostHook(PreLaunchHook):
             remainders.append(self.launch_context.launch_args.pop(0))
 
         script_path = os.path.join(
-            OPENPYPE_DIR,
+            AYON_CORE_ROOT,
             "scripts",
             "non_python_host_launch.py"
         )

@@ -3,8 +3,8 @@ import os
 import pyblish.api
 from pymxs import runtime as rt
 
-from openpype.hosts.max.api import maintained_selection
-from openpype.pipeline import OptionalPyblishPluginMixin, publish
+from ayon_core.hosts.max.api import maintained_selection
+from ayon_core.pipeline import OptionalPyblishPluginMixin, publish
 
 
 class ExtractModelUSD(publish.Extractor,

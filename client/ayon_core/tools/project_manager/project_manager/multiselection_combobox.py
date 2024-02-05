@@ -1,10 +1,10 @@
 from qtpy import QtCore, QtWidgets
 
-from openpype.tools.utils.lib import (
+from ayon_core.tools.utils.lib import (
     checkstate_int_to_enum,
     checkstate_enum_to_int,
 )
-from openpype.tools.utils.constants import (
+from ayon_core.tools.utils.constants import (
     CHECKED_INT,
     UNCHECKED_INT,
     ITEM_IS_USER_TRISTATE,

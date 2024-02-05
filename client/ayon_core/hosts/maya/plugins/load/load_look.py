@@ -5,16 +5,16 @@ from collections import defaultdict
 
 from qtpy import QtWidgets
 
-from openpype.client import get_representation_by_name
-from openpype.pipeline import (
+from ayon_core.client import get_representation_by_name
+from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
 )
-import openpype.hosts.maya.api.plugin
-from openpype.hosts.maya.api import lib
-from openpype.widgets.message_window import ScrollMessageBox
+import ayon_core.hosts.maya.api.plugin
+from ayon_core.hosts.maya.api import lib
+from ayon_core.widgets.message_window import ScrollMessageBox
 
-from openpype.hosts.maya.api.lib import get_reference_node
+from ayon_core.hosts.maya.api.lib import get_reference_node
 
 
 class LookLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):

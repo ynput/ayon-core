@@ -9,20 +9,20 @@ import collections
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.lib.attribute_definitions import UnknownDef
-from openpype.tools.attribute_defs import create_widget_for_attr_def
-from openpype.tools import resources
-from openpype.tools.flickcharm import FlickCharm
-from openpype.tools.utils import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib.attribute_definitions import UnknownDef
+from ayon_core.tools.attribute_defs import create_widget_for_attr_def
+from ayon_core.tools import resources
+from ayon_core.tools.flickcharm import FlickCharm
+from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     IconButton,
     PixmapLabel,
     BaseClickableFrame,
     set_style_property,
 )
-from openpype.style import get_objected_colors
-from openpype.pipeline.create import (
+from ayon_core.style import get_objected_colors
+from ayon_core.pipeline.create import (
     SUBSET_NAME_ALLOWED_SYMBOLS,
     TaskNotSetError,
 )

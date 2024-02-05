@@ -1,5 +1,5 @@
-from openpype.pipeline import LegacyCreator
-import openpype.hosts.harmony.api as harmony
+from ayon_core.pipeline import LegacyCreator
+import ayon_core.hosts.harmony.api as harmony
 
 
 class Creator(LegacyCreator):

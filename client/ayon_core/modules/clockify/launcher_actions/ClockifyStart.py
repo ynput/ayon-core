@@ -1,5 +1,5 @@
-from openpype.client import get_asset_by_name
-from openpype.pipeline import LauncherAction
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import LauncherAction
 from openpype_modules.clockify.clockify_api import ClockifyAPI
 
 

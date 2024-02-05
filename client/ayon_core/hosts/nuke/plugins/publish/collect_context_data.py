@@ -1,9 +1,9 @@
 import os
 import nuke
 import pyblish.api
-from openpype.lib import get_version_from_path
-import openpype.hosts.nuke.api as napi
-from openpype.pipeline import KnownPublishError
+from ayon_core.lib import get_version_from_path
+import ayon_core.hosts.nuke.api as napi
+from ayon_core.pipeline import KnownPublishError
 
 
 class CollectContextData(pyblish.api.ContextPlugin):

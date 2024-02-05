@@ -3,9 +3,9 @@ import copy
 from collections import OrderedDict
 from pprint import pformat
 import pyblish
-import openpype.hosts.flame.api as opfapi
-import openpype.pipeline as op_pipeline
-from openpype.pipeline.workfile import get_workdir
+import ayon_core.hosts.flame.api as opfapi
+import ayon_core.pipeline as op_pipeline
+from ayon_core.pipeline.workfile import get_workdir
 
 
 class IntegrateBatchGroup(pyblish.api.InstancePlugin):

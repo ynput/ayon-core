@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating publishable Houdini Digital Assets."""
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_name,
     get_subsets,
 )
-from openpype.hosts.houdini.api import plugin
+from ayon_core.hosts.houdini.api import plugin
 import hou
 
 

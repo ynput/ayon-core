@@ -1,6 +1,6 @@
-from openpype.lib.attribute_definitions import BoolDef
-from openpype.hosts.tvpaint.api import plugin
-from openpype.hosts.tvpaint.api.lib import execute_george_through_file
+from ayon_core.lib.attribute_definitions import BoolDef
+from ayon_core.hosts.tvpaint.api import plugin
+from ayon_core.hosts.tvpaint.api.lib import execute_george_through_file
 
 
 class ImportImage(plugin.Loader):

@@ -1,6 +1,6 @@
 import pyblish.api
-from openpype.lib import NumberDef
-from openpype.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.lib import NumberDef
+from ayon_core.pipeline import OpenPypePyblishPluginMixin
 
 
 class CollectChunkSize(pyblish.api.InstancePlugin,

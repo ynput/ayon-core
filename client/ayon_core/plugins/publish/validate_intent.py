@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype.lib import filter_profiles
-from openpype.pipeline.publish import PublishValidationError
+from ayon_core.lib import filter_profiles
+from ayon_core.pipeline.publish import PublishValidationError
 
 
 class ValidateIntent(pyblish.api.ContextPlugin):

@@ -1,9 +1,9 @@
 import os
 import pyblish.api
 
-from openpype.lib import get_version_from_path
-from openpype.tests.lib import is_in_tests
-from openpype.pipeline import KnownPublishError
+from ayon_core.lib import get_version_from_path
+from ayon_core.tests.lib import is_in_tests
+from ayon_core.pipeline import KnownPublishError
 
 
 class CollectSceneVersion(pyblish.api.ContextPlugin):

@@ -6,23 +6,23 @@ from collections import defaultdict
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from openpype.host import ILoadHost
-from openpype.client import (
+from ayon_core.host import ILoadHost
+from ayon_core.client import (
     get_asset_by_id,
     get_subset_by_id,
     get_version_by_id,
     get_last_version_by_subset_id,
     get_representation_by_id,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_current_project_name,
     schema,
     HeroVersionType,
     registered_host,
 )
-from openpype.style import get_default_entity_icon_color
-from openpype.tools.utils.models import TreeModel, Item
-from openpype.modules import ModulesManager
+from ayon_core.style import get_default_entity_icon_color
+from ayon_core.tools.utils.models import TreeModel, Item
+from ayon_core.modules import ModulesManager
 
 from .lib import walk_hierarchy
 

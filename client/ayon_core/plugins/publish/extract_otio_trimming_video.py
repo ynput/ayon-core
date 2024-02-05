@@ -10,11 +10,11 @@ from copy import deepcopy
 
 import pyblish.api
 
-from openpype.lib import (
+from ayon_core.lib import (
     get_ffmpeg_tool_args,
     run_subprocess,
 )
-from openpype.pipeline import publish
+from ayon_core.pipeline import publish
 
 
 class ExtractOTIOTrimmingVideo(publish.Extractor):
@@ -75,7 +75,7 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
 
         """
         # Not all hosts can import this module.
-        from openpype.pipeline.editorial import frames_to_seconds
+        from ayon_core.pipeline.editorial import frames_to_seconds
 
         # create path to destination
         output_path = self._get_ffmpeg_output(input_file_path)

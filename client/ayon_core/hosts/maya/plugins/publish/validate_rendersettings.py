@@ -6,13 +6,13 @@ from collections import OrderedDict
 from maya import cmds, mel
 
 import pyblish.api
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError,
 )
-from openpype.hosts.maya.api import lib
-from openpype.hosts.maya.api.lib_rendersettings import RenderSettings
+from ayon_core.hosts.maya.api import lib
+from ayon_core.hosts.maya.api.lib_rendersettings import RenderSettings
 
 
 def convert_to_int_or_float(string_value):

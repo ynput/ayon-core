@@ -6,8 +6,8 @@ import re
 
 import pyblish.api
 
-import openpype.hosts.harmony.api as harmony
-from openpype.pipeline import PublishXmlValidationError
+import ayon_core.hosts.harmony.api as harmony
+from ayon_core.pipeline import PublishXmlValidationError
 
 
 class ValidateSceneSettingsRepair(pyblish.api.Action):

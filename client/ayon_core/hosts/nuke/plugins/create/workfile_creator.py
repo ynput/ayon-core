@@ -1,10 +1,10 @@
-import openpype.hosts.nuke.api as api
-from openpype.client import get_asset_by_name
-from openpype.pipeline import (
+import ayon_core.hosts.nuke.api as api
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline import (
     AutoCreator,
     CreatedInstance,
 )
-from openpype.hosts.nuke.api import (
+from ayon_core.hosts.nuke.api import (
     INSTANCE_DATA_KNOB,
     set_node_data
 )

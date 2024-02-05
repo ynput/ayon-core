@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype.client import get_representations
-from openpype.pipeline import registered_host
+from ayon_core.client import get_representations
+from ayon_core.pipeline import registered_host
 
 
 class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):

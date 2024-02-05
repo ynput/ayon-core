@@ -1,16 +1,16 @@
 import collections
 
-from openpype.lib.attribute_definitions import BoolDef
-from openpype.pipeline import (
+from ayon_core.lib.attribute_definitions import BoolDef
+from ayon_core.pipeline import (
     get_representation_context,
     register_host,
 )
-from openpype.hosts.tvpaint.api import plugin
-from openpype.hosts.tvpaint.api.lib import (
+from ayon_core.hosts.tvpaint.api import plugin
+from ayon_core.hosts.tvpaint.api.lib import (
     get_layers_data,
     execute_george_through_file,
 )
-from openpype.hosts.tvpaint.api.pipeline import (
+from ayon_core.hosts.tvpaint.api.pipeline import (
     write_workfile_metadata,
     SECTION_NAME_CONTAINERS,
     containerise,

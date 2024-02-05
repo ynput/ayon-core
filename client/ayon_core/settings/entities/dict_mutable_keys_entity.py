@@ -12,7 +12,7 @@ from .exceptions import (
     RequiredKeyModified,
     EntitySchemaError
 )
-from openpype.settings.constants import (
+from ayon_core.settings.constants import (
     METADATA_KEYS,
     M_DYNAMIC_KEY_LABEL,
     KEY_REGEX,

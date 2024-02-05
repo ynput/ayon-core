@@ -12,14 +12,14 @@ from qtpy import QtWidgets, QtCore
 import qtawesome
 import appdirs
 
-from openpype.lib import JSONSettingRegistry
-from openpype.pipeline import install_host
-from openpype.hosts.traypublisher.api import TrayPublisherHost
-from openpype.tools.publisher.control_qt import QtPublisherController
-from openpype.tools.publisher.window import PublisherWindow
-from openpype.tools.utils import PlaceholderLineEdit, get_openpype_qt_app
-from openpype.tools.utils.constants import PROJECT_NAME_ROLE
-from openpype.tools.utils.models import (
+from ayon_core.lib import JSONSettingRegistry
+from ayon_core.pipeline import install_host
+from ayon_core.hosts.traypublisher.api import TrayPublisherHost
+from ayon_core.tools.publisher.control_qt import QtPublisherController
+from ayon_core.tools.publisher.window import PublisherWindow
+from ayon_core.tools.utils import PlaceholderLineEdit, get_openpype_qt_app
+from ayon_core.tools.utils.constants import PROJECT_NAME_ROLE
+from ayon_core.tools.utils.models import (
     ProjectModel,
     ProjectSortFilterProxy
 )

@@ -1,12 +1,12 @@
 import pyblish.api
 
-from openpype.pipeline import get_current_asset_name
-from openpype.pipeline.publish import (
+from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.hosts.photoshop import api as photoshop
+from ayon_core.hosts.photoshop import api as photoshop
 
 
 class ValidateInstanceAssetRepair(pyblish.api.Action):

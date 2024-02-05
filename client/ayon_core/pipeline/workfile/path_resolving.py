@@ -3,15 +3,15 @@ import re
 import copy
 import platform
 
-from openpype.client import get_project, get_asset_by_name
-from openpype.settings import get_project_settings
-from openpype.lib import (
+from ayon_core.client import get_project, get_asset_by_name
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import (
     filter_profiles,
     Logger,
     StringTemplate,
 )
-from openpype.pipeline import version_start, Anatomy
-from openpype.pipeline.template_data import get_template_data
+from ayon_core.pipeline import version_start, Anatomy
+from ayon_core.pipeline.template_data import get_template_data
 
 
 def get_workfile_template_key_from_context(

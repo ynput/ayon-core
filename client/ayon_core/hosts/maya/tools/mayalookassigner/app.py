@@ -4,11 +4,11 @@ import logging
 
 from qtpy import QtWidgets, QtCore
 
-from openpype import style
-from openpype.client import get_last_version_by_subset_id
-from openpype.pipeline import get_current_project_name
-from openpype.tools.utils.lib import qt_app_context
-from openpype.hosts.maya.api.lib import (
+from ayon_core import style
+from ayon_core.client import get_last_version_by_subset_id
+from ayon_core.pipeline import get_current_project_name
+from ayon_core.tools.utils.lib import qt_app_context
+from ayon_core.hosts.maya.api.lib import (
     assign_look_by_version,
     get_main_window
 )

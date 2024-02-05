@@ -13,7 +13,7 @@ from copy import deepcopy, copy
 from xml.etree import ElementTree as ET
 from pprint import pformat
 
-from openpype.lib import Logger, run_subprocess
+from ayon_core.lib import Logger, run_subprocess
 
 from .constants import (
     MARKER_COLOR,

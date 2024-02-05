@@ -1,12 +1,12 @@
 from qtpy import QtWidgets, QtGui, QtCore
 
-from openpype import style
+from ayon_core import style
 
-from openpype.lib import is_admin_password_required
-from openpype.lib.events import EventSystem
-from openpype.widgets import PasswordDialog
+from ayon_core.lib import is_admin_password_required
+from ayon_core.lib.events import EventSystem
+from ayon_core.widgets import PasswordDialog
 
-from openpype.settings.lib import (
+from ayon_core.settings.lib import (
     get_last_opened_info,
     opened_settings_ui,
     closed_settings_ui,

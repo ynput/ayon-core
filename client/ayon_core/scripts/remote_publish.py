@@ -1,6 +1,6 @@
 try:
-    from openpype.lib import Logger
-    from openpype.pipeline.publish.lib import remote_publish
+    from ayon_core.lib import Logger
+    from ayon_core.pipeline.publish.lib import remote_publish
 except ImportError as exc:
     # Ensure Deadline fails by output an error that contains "Fatal Error:"
     raise ImportError("Fatal Error: %s" % exc)

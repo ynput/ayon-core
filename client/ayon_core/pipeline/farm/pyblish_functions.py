@@ -7,18 +7,18 @@ from copy import deepcopy
 import re
 import warnings
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
     Anatomy,
 )
-from openpype.client import (
+from ayon_core.client import (
     get_last_version_by_subset_name,
     get_representations
 )
-from openpype.lib import Logger
-from openpype.pipeline.publish import KnownPublishError
-from openpype.pipeline.farm.patterning import match_aov_pattern
+from ayon_core.lib import Logger
+from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.farm.patterning import match_aov_pattern
 
 
 @attr.s

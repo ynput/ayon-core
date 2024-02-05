@@ -9,21 +9,21 @@ import contextlib
 import pyblish.api
 from qtpy import QtCore
 
-from openpype.lib import (
+from ayon_core.lib import (
     Logger,
     register_event_callback,
     emit_event
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     register_inventory_action_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.pipeline.load import any_outdated_containers
-from openpype.hosts.fusion import FUSION_HOST_DIR
-from openpype.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-from openpype.tools.utils import host_tools
+from ayon_core.pipeline.load import any_outdated_containers
+from ayon_core.hosts.fusion import FUSION_HOST_DIR
+from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
+from ayon_core.tools.utils import host_tools
 
 
 from .lib import (
@@ -189,8 +189,8 @@ def on_after_open(event):
             frame.ActivateFrame()   # raise comp window
             host_tools.show_scene_inventory()
 
-        from openpype.widgets import popup
-        from openpype.style import load_stylesheet
+        from ayon_core.widgets import popup
+        from ayon_core.style import load_stylesheet
         dialog = popup.Popup(parent=menu.menu)
         dialog.setWindowTitle("Fusion comp has outdated content")
         dialog.setMessage("There are outdated containers in "

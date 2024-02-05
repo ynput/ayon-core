@@ -10,20 +10,20 @@ from wsrpc_aiohttp import (
 
 from qtpy import QtCore
 
-from openpype.lib import Logger, StringTemplate
-from openpype.pipeline import (
+from ayon_core.lib import Logger, StringTemplate
+from ayon_core.pipeline import (
     registered_host,
     Anatomy,
 )
-from openpype.pipeline.workfile import (
+from ayon_core.pipeline.workfile import (
     get_workfile_template_key_from_context,
     get_last_workfile,
 )
-from openpype.pipeline.template_data import get_template_data_with_names
-from openpype.tools.utils import host_tools
-from openpype.tools.adobe_webserver.app import WebServerTool
-from openpype.pipeline.context_tools import change_current_context
-from openpype.client import get_asset_by_name
+from ayon_core.pipeline.template_data import get_template_data_with_names
+from ayon_core.tools.utils import host_tools
+from ayon_core.tools.adobe_webserver.app import WebServerTool
+from ayon_core.pipeline.context_tools import change_current_context
+from ayon_core.client import get_asset_by_name
 
 from .ws_stub import PhotoshopServerStub
 

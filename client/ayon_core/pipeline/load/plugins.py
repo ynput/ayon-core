@@ -1,12 +1,12 @@
 import os
 import logging
 
-from openpype.settings import get_system_settings, get_project_settings
-from openpype.pipeline import (
+from ayon_core.settings import get_system_settings, get_project_settings
+from ayon_core.pipeline import (
     schema,
     legacy_io,
 )
-from openpype.pipeline.plugin_discover import (
+from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
     register_plugin_path,
@@ -258,7 +258,7 @@ class SubsetLoaderPlugin(LoaderPlugin):
 
 
 def discover_loader_plugins(project_name=None):
-    from openpype.lib import Logger
+    from ayon_core.lib import Logger
 
     log = Logger.get_logger("LoaderDiscover")
     plugins = discover(LoaderPlugin)

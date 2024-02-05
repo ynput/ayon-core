@@ -1,11 +1,11 @@
 import os
 import shutil
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-import openpype.hosts.harmony.api as harmony
+import ayon_core.hosts.harmony.api as harmony
 
 
 class ImportPaletteLoader(load.LoaderPlugin):

@@ -19,15 +19,15 @@ from six import string_types
 from maya import cmds, mel
 from maya.api import OpenMaya
 
-from openpype.client import (
+from ayon_core.client import (
     get_project,
     get_asset_by_name,
     get_subsets,
     get_last_versions,
     get_representation_by_name
 )
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     get_current_project_name,
     get_current_asset_name,
     get_current_task_name,
@@ -37,10 +37,10 @@ from openpype.pipeline import (
     load_container,
     registered_host
 )
-from openpype.lib import NumberDef
-from openpype.pipeline.context_tools import get_current_project_asset
-from openpype.pipeline.create import CreateContext
-from openpype.lib.profiles_filtering import filter_profiles
+from ayon_core.lib import NumberDef
+from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.create import CreateContext
+from ayon_core.lib.profiles_filtering import filter_profiles
 
 
 self = sys.modules[__name__]
@@ -2671,7 +2671,7 @@ def validate_fps():
 
     fps_match = current_fps == expected_fps
     if not fps_match and not IS_HEADLESS:
-        from openpype.widgets import popup
+        from ayon_core.widgets import popup
 
         parent = get_main_window()
 
@@ -3284,7 +3284,7 @@ def update_content_on_context_change():
 
 def show_message(title, msg):
     from qtpy import QtWidgets
-    from openpype.widgets import message_window
+    from ayon_core.widgets import message_window
 
     # Find maya main window
     top_level_widgets = {w.objectName(): w for w in

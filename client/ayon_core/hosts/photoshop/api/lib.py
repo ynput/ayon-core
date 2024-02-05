@@ -3,12 +3,12 @@ import sys
 import contextlib
 import traceback
 
-from openpype.lib import env_value_to_bool, Logger
-from openpype.modules import ModulesManager
-from openpype.pipeline import install_host
-from openpype.tools.utils import host_tools
-from openpype.tools.utils import get_openpype_qt_app
-from openpype.tests.lib import is_in_tests
+from ayon_core.lib import env_value_to_bool, Logger
+from ayon_core.modules import ModulesManager
+from ayon_core.pipeline import install_host
+from ayon_core.tools.utils import host_tools
+from ayon_core.tools.utils import get_openpype_qt_app
+from ayon_core.tests.lib import is_in_tests
 
 from .launch_logic import ProcessLauncher, stub
 
@@ -20,7 +20,7 @@ def safe_excepthook(*args):
 
 
 def main(*subprocess_args):
-    from openpype.hosts.photoshop.api import PhotoshopHost
+    from ayon_core.hosts.photoshop.api import PhotoshopHost
 
     host = PhotoshopHost()
     install_host(host)

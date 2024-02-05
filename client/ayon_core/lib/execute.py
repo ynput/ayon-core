@@ -5,7 +5,7 @@ import platform
 import json
 import tempfile
 
-from openpype import AYON_SERVER_ENABLED
+from ayon_core import AYON_SERVER_ENABLED
 
 from .log import Logger
 from .vendor_bin_utils import find_executable

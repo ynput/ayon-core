@@ -2,8 +2,8 @@
 import os
 import pyblish.api
 
-from openpype.hosts.houdini.api import lib
-from openpype.pipeline import PublishValidationError
+from ayon_core.hosts.houdini.api import lib
+from ayon_core.pipeline import PublishValidationError
 
 import hou
 

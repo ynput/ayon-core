@@ -16,7 +16,7 @@ from wsrpc_aiohttp import (
     WSRPCClient
 )
 
-from openpype.pipeline import get_global_context
+from ayon_core.pipeline import get_global_context
 
 log = logging.getLogger(__name__)
 

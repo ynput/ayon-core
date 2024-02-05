@@ -2,14 +2,14 @@ import nuke
 import sys
 import six
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     CreatedInstance
 )
-from openpype.lib import (
+from ayon_core.lib import (
     BoolDef
 )
-from openpype.hosts.nuke import api as napi
-from openpype.hosts.nuke.api.plugin import exposed_write_knobs
+from ayon_core.hosts.nuke import api as napi
+from ayon_core.hosts.nuke.api.plugin import exposed_write_knobs
 
 
 class CreateWriteRender(napi.NukeWriteCreator):

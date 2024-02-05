@@ -6,12 +6,12 @@ import requests
 
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import legacy_io
-from openpype.pipeline.publish import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import legacy_io
+from ayon_core.pipeline.publish import (
     OpenPypePyblishPluginMixin
 )
-from openpype.lib import (
+from ayon_core.lib import (
     BoolDef,
     NumberDef,
     is_running_from_build
@@ -95,7 +95,7 @@ class FusionSubmitDeadline(
         else:
             context.data[key] = True
 
-        from openpype.hosts.fusion.api.lib import get_frame_path
+        from ayon_core.hosts.fusion.api.lib import get_frame_path
 
         # get default deadline webservice url from deadline module
         deadline_url = instance.context.data["defaultDeadline"]

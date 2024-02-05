@@ -3,8 +3,8 @@ import logging
 
 import pyblish.api
 
-from openpype.host import HostBase
-from openpype.hosts.webpublisher import WEBPUBLISHER_ROOT_DIR
+from ayon_core.host import HostBase
+from ayon_core.hosts.webpublisher import WEBPUBLISHER_ROOT_DIR
 
 log = logging.getLogger("openpype.hosts.webpublisher")
 

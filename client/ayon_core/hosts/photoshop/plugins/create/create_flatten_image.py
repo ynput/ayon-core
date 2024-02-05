@@ -1,12 +1,12 @@
-from openpype.pipeline import CreatedInstance
+from ayon_core.pipeline import CreatedInstance
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.lib import BoolDef
-import openpype.hosts.photoshop.api as api
-from openpype.hosts.photoshop.lib import PSAutoCreator, clean_subset_name
-from openpype.pipeline.create import get_subset_name
-from openpype.lib import prepare_template_data
-from openpype.client import get_asset_by_name
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib import BoolDef
+import ayon_core.hosts.photoshop.api as api
+from ayon_core.hosts.photoshop.lib import PSAutoCreator, clean_subset_name
+from ayon_core.pipeline.create import get_subset_name
+from ayon_core.lib import prepare_template_data
+from ayon_core.client import get_asset_by_name
 
 
 class AutoImageCreator(PSAutoCreator):

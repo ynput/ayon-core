@@ -1,8 +1,8 @@
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from openpype.hosts.fusion.api import (
+from ayon_core.hosts.fusion.api import (
     imprint_container,
     get_current_comp,
     comp_lock_and_undo_chunk

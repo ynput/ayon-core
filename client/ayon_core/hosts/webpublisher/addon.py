@@ -1,6 +1,6 @@
 import os
 
-from openpype.modules import click_wrap, OpenPypeModule, IHostAddon
+from ayon_core.modules import click_wrap, OpenPypeModule, IHostAddon
 
 WEBPUBLISHER_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 

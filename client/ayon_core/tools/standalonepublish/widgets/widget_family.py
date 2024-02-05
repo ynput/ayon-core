@@ -2,16 +2,16 @@ import re
 
 from qtpy import QtWidgets, QtCore
 
-from openpype.client import (
+from ayon_core.client import (
     get_asset_by_name,
     get_subset_by_name,
     get_subsets,
     get_last_version_by_subset_id,
 )
-from openpype.settings import get_project_settings
-from openpype.pipeline import LegacyCreator
-from openpype.pipeline.version_start import get_versioning_start
-from openpype.pipeline.create import (
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import LegacyCreator
+from ayon_core.pipeline.version_start import get_versioning_start
+from ayon_core.pipeline.create import (
     SUBSET_NAME_ALLOWED_SYMBOLS,
     TaskNotSetError,
 )

@@ -6,13 +6,13 @@ from typing import Dict, List, Optional
 
 import bpy
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.pipeline import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.pipeline import (
     Creator,
     CreatedInstance,
     LoaderPlugin,
 )
-from openpype.lib import BoolDef
+from ayon_core.lib import BoolDef
 
 from .pipeline import (
     AVALON_CONTAINERS,
@@ -497,7 +497,7 @@ class AssetLoader(LoaderPlugin):
         # Only containerise if it's not already a collection from a .blend file.
         # representation = context["representation"]["name"]
         # if representation != "blend":
-        #     from openpype.hosts.blender.api.pipeline import containerise
+        #     from ayon_core.hosts.blender.api.pipeline import containerise
         #     return containerise(
         #         name=name,
         #         namespace=namespace,

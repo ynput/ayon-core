@@ -1,6 +1,6 @@
 import pyblish.api
 
-from openpype.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import KnownPublishError
 
 
 class CollectOutputSOPPath(pyblish.api.InstancePlugin):

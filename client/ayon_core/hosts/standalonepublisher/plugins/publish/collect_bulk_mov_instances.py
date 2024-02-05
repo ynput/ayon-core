@@ -2,8 +2,8 @@ import copy
 import json
 import pyblish.api
 
-from openpype.client import get_asset_by_name
-from openpype.pipeline.create import get_subset_name
+from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline.create import get_subset_name
 
 
 class CollectBulkMovInstances(pyblish.api.InstancePlugin):

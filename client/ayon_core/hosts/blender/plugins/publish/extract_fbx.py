@@ -2,9 +2,9 @@ import os
 
 import bpy
 
-from openpype.pipeline import publish
-from openpype.hosts.blender.api import plugin
-from openpype.hosts.blender.api.pipeline import AVALON_PROPERTY
+from ayon_core.pipeline import publish
+from ayon_core.hosts.blender.api import plugin
+from ayon_core.hosts.blender.api.pipeline import AVALON_PROPERTY
 
 
 class ExtractFBX(publish.Extractor, publish.OptionalPyblishPluginMixin):

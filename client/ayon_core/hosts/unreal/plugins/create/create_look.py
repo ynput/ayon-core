@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import unreal
 
-from openpype.pipeline import CreatorError
-from openpype.hosts.unreal.api.pipeline import (
+from ayon_core.pipeline import CreatorError
+from ayon_core.hosts.unreal.api.pipeline import (
     create_folder
 )
-from openpype.hosts.unreal.api.plugin import (
+from ayon_core.hosts.unreal.api.plugin import (
     UnrealAssetCreator
 )
-from openpype.lib import UILabelDef
+from ayon_core.lib import UILabelDef
 
 
 class CreateLook(UnrealAssetCreator):

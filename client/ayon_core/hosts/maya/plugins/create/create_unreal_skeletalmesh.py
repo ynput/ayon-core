@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator for Unreal Skeletal Meshes."""
-from openpype.hosts.maya.api import plugin, lib
-from openpype.lib import (
+from ayon_core.hosts.maya.api import plugin, lib
+from ayon_core.lib import (
     BoolDef,
     TextDef
 )

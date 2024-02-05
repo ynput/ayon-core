@@ -1,8 +1,8 @@
 import os
 
-from openpype.lib import get_openpype_execute_args
-from openpype.lib.execute import run_detached_process
-from openpype.modules import (
+from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib.execute import run_detached_process
+from ayon_core.modules import (
     click_wrap,
     OpenPypeModule,
     ITrayAction,
@@ -55,6 +55,6 @@ def cli_main():
 def launch():
     """Launch TrayPublish tool UI."""
 
-    from openpype.tools import traypublisher
+    from ayon_core.tools import traypublisher
 
     traypublisher.main()

@@ -6,10 +6,10 @@ from hiero.ui import findMenuAction
 
 from qtpy import QtGui
 
-from openpype.lib import Logger
-from openpype.tools.utils import host_tools
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core.lib import Logger
+from ayon_core.tools.utils import host_tools
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     get_current_project_name,
     get_current_asset_name,
     get_current_task_name

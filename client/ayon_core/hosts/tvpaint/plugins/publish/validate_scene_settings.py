@@ -1,7 +1,7 @@
 import json
 
 import pyblish.api
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin,
 )

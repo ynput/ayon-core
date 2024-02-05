@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishValidationError,
     OptionalPyblishPluginMixin,
 )
-from openpype.client import get_subset_by_name
+from ayon_core.client import get_subset_by_name
 
 
 class ValidateOnlineFile(OptionalPyblishPluginMixin,

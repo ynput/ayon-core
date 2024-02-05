@@ -1,7 +1,7 @@
 from maya import cmds
 
 import pyblish.api
-from openpype.hosts.maya.api.lib import get_all_children
+from ayon_core.hosts.maya.api.lib import get_all_children
 
 
 class CollectNewInstances(pyblish.api.InstancePlugin):

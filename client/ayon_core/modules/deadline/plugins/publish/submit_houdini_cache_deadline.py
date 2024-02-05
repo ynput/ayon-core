@@ -4,16 +4,16 @@ from datetime import datetime
 
 import attr
 import pyblish.api
-from openpype.lib import (
+from ayon_core.lib import (
     TextDef,
     NumberDef,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     legacy_io,
     OpenPypePyblishPluginMixin
 )
-from openpype.tests.lib import is_in_tests
-from openpype.lib import is_running_from_build
+from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import is_running_from_build
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 

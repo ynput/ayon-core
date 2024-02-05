@@ -4,19 +4,19 @@ import logging
 
 import pyblish.api
 
-from openpype.lib import register_event_callback
-from openpype.pipeline import (
+from ayon_core.lib import register_event_callback
+from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     deregister_loader_plugin_path,
     deregister_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
-from openpype.pipeline.load import get_outdated_containers
-from openpype.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.load import get_outdated_containers
+from ayon_core.pipeline.context_tools import get_current_project_asset
 
-from openpype.hosts.harmony import HARMONY_HOST_DIR
-import openpype.hosts.harmony.api as harmony
+from ayon_core.hosts.harmony import HARMONY_HOST_DIR
+import ayon_core.hosts.harmony.api as harmony
 
 
 log = logging.getLogger("openpype.hosts.harmony")

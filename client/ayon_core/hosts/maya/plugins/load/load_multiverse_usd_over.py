@@ -5,15 +5,15 @@ import os
 
 import qargparse
 
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.lib import (
     maintained_selection
 )
-from openpype.hosts.maya.api.pipeline import containerise
-from openpype.client import get_representation_by_id
+from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.client import get_representation_by_id
 
 
 class MultiverseUsdOverLoader(load.LoaderPlugin):

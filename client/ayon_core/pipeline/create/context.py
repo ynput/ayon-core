@@ -11,25 +11,25 @@ from contextlib import contextmanager
 import pyblish.logic
 import pyblish.api
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.client import (
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.client import (
     get_assets,
     get_asset_by_name,
     get_asset_name_identifier,
 )
-from openpype.settings import (
+from ayon_core.settings import (
     get_system_settings,
     get_project_settings
 )
-from openpype.lib.attribute_definitions import (
+from ayon_core.lib.attribute_definitions import (
     UnknownDef,
     serialize_attr_defs,
     deserialize_attr_defs,
     get_default_values,
 )
-from openpype.host import IPublishHost, IWorkfileHost
-from openpype.pipeline import legacy_io, Anatomy
-from openpype.pipeline.plugin_discover import DiscoverResult
+from ayon_core.host import IPublishHost, IWorkfileHost
+from ayon_core.pipeline import legacy_io, Anatomy
+from ayon_core.pipeline.plugin_discover import DiscoverResult
 
 from .creator_plugins import (
     Creator,
@@ -1744,8 +1744,8 @@ class CreateContext:
         self._reset_convertor_plugins()
 
     def _reset_publish_plugins(self, discover_publish_plugins):
-        from openpype.pipeline import OpenPypePyblishPluginMixin
-        from openpype.pipeline.publish import (
+        from ayon_core.pipeline import OpenPypePyblishPluginMixin
+        from ayon_core.pipeline.publish import (
             publish_plugins_discover
         )
 

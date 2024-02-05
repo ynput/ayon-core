@@ -1,6 +1,6 @@
 import os
-from openpype import AYON_SERVER_ENABLED
-from openpype.lib.openpype_version import is_staging_enabled
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib.openpype_version import is_staging_enabled
 
 RESOURCES_DIR = os.path.dirname(os.path.abspath(__file__))
 

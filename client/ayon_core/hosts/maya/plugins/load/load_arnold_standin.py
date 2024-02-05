@@ -3,19 +3,19 @@ import clique
 
 import maya.cmds as cmds
 
-from openpype.settings import get_project_settings
-from openpype.pipeline import (
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import (
     load,
     legacy_io,
     get_representation_path
 )
-from openpype.hosts.maya.api.lib import (
+from ayon_core.hosts.maya.api.lib import (
     unique_namespace,
     get_attribute_input,
     maintained_selection,
     convert_to_maya_fps
 )
-from openpype.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.pipeline import containerise
 
 
 def is_sequence(files):

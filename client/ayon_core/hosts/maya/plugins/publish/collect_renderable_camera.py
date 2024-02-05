@@ -2,7 +2,7 @@ import pyblish.api
 
 from maya import cmds
 
-from openpype.hosts.maya.api.lib_rendersetup import get_attr_in_layer
+from ayon_core.hosts.maya.api.lib_rendersetup import get_attr_in_layer
 
 
 class CollectRenderableCamera(pyblish.api.InstancePlugin):

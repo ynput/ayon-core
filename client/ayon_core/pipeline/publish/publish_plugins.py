@@ -2,8 +2,8 @@ import inspect
 from abc import ABCMeta
 import pyblish.api
 from pyblish.plugin import MetaPlugin, ExplicitMetaPlugin
-from openpype.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
-from openpype.lib import BoolDef
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
+from ayon_core.lib import BoolDef
 
 from .lib import (
     load_help_content_from_plugin,
@@ -12,7 +12,7 @@ from .lib import (
     get_instance_staging_dir,
 )
 
-from openpype.pipeline.colorspace import (
+from ayon_core.pipeline.colorspace import (
     get_colorspace_settings_from_publish_context,
     set_colorspace_data_to_representation
 )

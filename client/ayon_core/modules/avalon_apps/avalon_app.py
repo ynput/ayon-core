@@ -1,7 +1,7 @@
 import os
 
-from openpype import AYON_SERVER_ENABLED
-from openpype.modules import OpenPypeModule, ITrayModule
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.modules import OpenPypeModule, ITrayModule
 
 
 class AvalonModule(OpenPypeModule, ITrayModule):
@@ -44,7 +44,7 @@ class AvalonModule(OpenPypeModule, ITrayModule):
         # Add library tool
         self._library_loader_imported = False
         try:
-            from openpype.tools.libraryloader import LibraryLoaderWindow
+            from ayon_core.tools.libraryloader import LibraryLoaderWindow
 
             self._library_loader_imported = True
         except Exception:
@@ -76,7 +76,7 @@ class AvalonModule(OpenPypeModule, ITrayModule):
 
     def show_library_loader(self):
         if self._library_loader_window is None:
-            from openpype.pipeline import install_openpype_plugins
+            from ayon_core.pipeline import install_openpype_plugins
             if AYON_SERVER_ENABLED:
                 self._init_ayon_loader()
             else:
@@ -101,7 +101,7 @@ class AvalonModule(OpenPypeModule, ITrayModule):
 
     def _init_library_loader(self):
         from qtpy import QtCore
-        from openpype.tools.libraryloader import LibraryLoaderWindow
+        from ayon_core.tools.libraryloader import LibraryLoaderWindow
 
         libraryloader = LibraryLoaderWindow(
             show_projects=True,
@@ -115,7 +115,7 @@ class AvalonModule(OpenPypeModule, ITrayModule):
         self._library_loader_window = libraryloader
 
     def _init_ayon_loader(self):
-        from openpype.tools.ayon_loader.ui import LoaderWindow
+        from ayon_core.tools.ayon_loader.ui import LoaderWindow
 
         libraryloader = LoaderWindow()
 
