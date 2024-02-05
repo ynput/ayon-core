@@ -74,9 +74,6 @@ package-lock.json
 package.json
 yarn.lock
 
-openpype/premiere/ppro/js/debug.log
-
-
 # IDEA
 ######
 .idea/
