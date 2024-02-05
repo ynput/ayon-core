@@ -1,6 +1,6 @@
 [project]
-name="openpype"
-description="OpenPype addon for AYON server."
+name="core"
+description="AYON core addon."
 
 [tool.poetry.dependencies]
 python = ">=3.9.1,<3.10"

@@ -33,11 +33,10 @@ Temporary Items
 .apdisk
 
 
-# CX_Freeze
+# Package dirs
 ###########
-/build
-/dist/
 /server_addon/packages/*
+/package/*
 
 /vendor/bin/*
 /vendor/python/*
