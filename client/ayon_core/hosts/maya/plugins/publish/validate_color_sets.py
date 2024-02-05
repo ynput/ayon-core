@@ -24,7 +24,7 @@ class ValidateColorSets(pyblish.api.Validator,
     families = ['model']
     label = 'Mesh ColorSets'
     actions = [
-        openpype.hosts.maya.api.action.SelectInvalidAction, RepairAction
+        ayon_core.hosts.maya.api.action.SelectInvalidAction, RepairAction
     ]
     optional = True
 

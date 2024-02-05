@@ -32,7 +32,7 @@ log = Logger.get_logger(__name__)
 
 
 HOST_DIR = os.path.dirname(
-    os.path.abspath(openpype.hosts.aftereffects.__file__)
+    os.path.abspath(ayon_core.hosts.aftereffects.__file__)
 )
 PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

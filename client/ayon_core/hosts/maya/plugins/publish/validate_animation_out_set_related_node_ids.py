@@ -25,7 +25,7 @@ class ValidateOutRelatedNodeIds(pyblish.api.InstancePlugin):
     hosts = ['maya']
     label = 'Animation Out Set Related Node Ids'
     actions = [
-        openpype.hosts.maya.api.action.SelectInvalidAction,
+        ayon_core.hosts.maya.api.action.SelectInvalidAction,
         RepairAction
     ]
 

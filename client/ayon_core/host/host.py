@@ -83,7 +83,7 @@ class HostBase(object):
         This is where should be added menu with tools, registered callbacks
         and other host integration initialization.
 
-        It is called automatically when 'openpype.pipeline.install_host' is
+        It is called automatically when 'ayon_core.pipeline.install_host' is
         triggered.
         """
 

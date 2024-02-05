@@ -20,7 +20,7 @@ class ValidateCameraContents(pyblish.api.InstancePlugin):
     families = ['camera']
     hosts = ['maya']
     label = 'Camera Contents'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     validate_shapes = True
 
     @classmethod

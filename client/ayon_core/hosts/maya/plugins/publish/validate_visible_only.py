@@ -19,7 +19,7 @@ class ValidateAlembicVisibleOnly(pyblish.api.InstancePlugin):
     label = "Alembic Visible Only"
     hosts = ["maya"]
     families = ["pointcache", "animation"]
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     def process(self, instance):
 

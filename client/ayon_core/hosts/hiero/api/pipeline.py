@@ -305,9 +305,9 @@ def reload_config():
     import importlib
 
     for module in (
-        "openpype.hosts.hiero.lib",
-        "openpype.hosts.hiero.menu",
-        "openpype.hosts.hiero.tags"
+        "ayon_core.hosts.hiero.lib",
+        "ayon_core.hosts.hiero.menu",
+        "ayon_core.hosts.hiero.tags"
     ):
         log.info("Reloading module: {}...".format(module))
         try:

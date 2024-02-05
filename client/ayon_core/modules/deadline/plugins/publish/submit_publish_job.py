@@ -663,7 +663,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                     get publish_path
 
         Args:
-            anatomy (openpype.pipeline.anatomy.Anatomy):
+            anatomy (ayon_core.pipeline.anatomy.Anatomy):
             template_data (dict): pre-calculated collected data for process
             asset (string): asset name
             subset (string): subset name (actually group name of subset)

@@ -27,7 +27,7 @@ class ValidateTransformZero(pyblish.api.InstancePlugin,
     hosts = ["blender"]
     families = ["model"]
     label = "Transform Zero"
-    actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
 
     _identity = mathutils.Matrix()
 

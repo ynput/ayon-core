@@ -25,7 +25,7 @@ class ValidateCameraZeroKeyframe(pyblish.api.InstancePlugin,
     hosts = ["blender"]
     families = ["camera"]
     label = "Zero Keyframe"
-    actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
 
     @staticmethod
     def get_invalid(instance) -> List:

@@ -24,7 +24,7 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
     hosts = ['maya']
     families = ['model']
     label = 'Mesh Has UVs'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     optional = True
 
     @classmethod

@@ -18,7 +18,7 @@ def create_custom_tempdir(project_name, anatomy=None):
 
     Args:
         project_name (str): project name
-        anatomy (openpype.pipeline.Anatomy)[optional]: Anatomy object
+        anatomy (ayon_core.pipeline.Anatomy)[optional]: Anatomy object
 
     Returns:
         str | None: formatted path or None

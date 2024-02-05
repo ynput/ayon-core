@@ -12,7 +12,7 @@ import hou
 
 from .lib import get_current_context_template_data_with_asset_data
 
-log = logging.getLogger("openpype.hosts.houdini.shelves")
+log = logging.getLogger("ayon_core.hosts.houdini.shelves")
 
 
 def generate_shelves():

@@ -17,7 +17,7 @@ class ValidateSingleShader(pyblish.api.InstancePlugin):
     families = ['look']
     hosts = ['maya']
     label = 'Look Single Shader Per Shape'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     # The default connections to check
     def process(self, instance):

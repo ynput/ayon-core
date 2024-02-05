@@ -23,8 +23,8 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
                 "rig",
                 "yetiRig"]
 
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
-               openpype.hosts.maya.api.action.GenerateUUIDsOnInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
+               ayon_core.hosts.maya.api.action.GenerateUUIDsOnInvalidAction]
 
     def process(self, instance):
         """Process all meshes"""

@@ -448,19 +448,19 @@ def get_track_openpype_data(track, container_name=None):
     )
 
 
-@deprecated("openpype.hosts.hiero.api.lib.get_trackitem_openpype_tag")
+@deprecated("ayon_core.hosts.hiero.api.lib.get_trackitem_openpype_tag")
 def get_track_item_pype_tag(track_item):
     # backward compatibility alias
     return get_trackitem_openpype_tag(track_item)
 
 
-@deprecated("openpype.hosts.hiero.api.lib.set_trackitem_openpype_tag")
+@deprecated("ayon_core.hosts.hiero.api.lib.set_trackitem_openpype_tag")
 def set_track_item_pype_tag(track_item, data=None):
     # backward compatibility alias
     return set_trackitem_openpype_tag(track_item, data)
 
 
-@deprecated("openpype.hosts.hiero.api.lib.get_trackitem_openpype_data")
+@deprecated("ayon_core.hosts.hiero.api.lib.get_trackitem_openpype_data")
 def get_track_item_pype_data(track_item):
     # backward compatibility alias
     return get_trackitem_openpype_data(track_item)

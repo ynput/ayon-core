@@ -31,7 +31,7 @@ class ValidateMeshNoNegativeScale(pyblish.api.Validator):
     hosts = ['maya']
     families = ['model']
     label = 'Mesh No Negative Scale'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     @staticmethod
     def get_invalid(instance):

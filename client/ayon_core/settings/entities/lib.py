@@ -363,7 +363,7 @@ class SchemasHub:
     def _load_types(self):
         """Prepare entity types for cretion of their objects.
 
-        Currently all classes in `openpype.settings.entities` that inherited
+        Currently all classes in `ayon_core.settings.entities` that inherited
         from `BaseEntity` are stored as loaded types. GUI types are stored to
         separated attribute to not mess up api access of entities.
 

@@ -18,7 +18,7 @@ class ValidateMvLookContents(pyblish.api.InstancePlugin,
     families = ['mvLook']
     hosts = ['maya']
     label = 'Validate mvLook Data'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     # Allow this validation step to be skipped when you just need to
     # get things pushed through.

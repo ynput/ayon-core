@@ -27,7 +27,7 @@ class ValidateAssemblyModelTransforms(pyblish.api.InstancePlugin):
     order = pyblish.api.ValidatorOrder + 0.49
     label = "Assembly Model Transforms"
     families = ["assembly"]
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
     prompt_message = ("You are about to reset the matrix to the default values."

@@ -20,7 +20,7 @@ from ayon_core.hosts.max import MAX_HOST_DIR
 
 from pymxs import runtime as rt  # noqa
 
-log = logging.getLogger("openpype.hosts.max")
+log = logging.getLogger("ayon_core.hosts.max")
 
 PLUGINS_DIR = os.path.join(MAX_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

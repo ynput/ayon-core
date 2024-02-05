@@ -34,7 +34,7 @@ class LoaderActionsModel:
     """Model for loader actions.
 
     This is probably only part of models that requires to use codebase from
-    'openpype.client' because of backwards compatibility with loaders logic
+    'ayon_core.client' because of backwards compatibility with loaders logic
     which are expecting mongo documents.
 
     TODOs:

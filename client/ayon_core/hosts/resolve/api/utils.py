@@ -17,7 +17,7 @@ def get_resolve_module():
     # dont run if already loaded
     if api.bmdvr:
         log.info(("resolve module is assigned to "
-                  f"`openpype.hosts.resolve.api.bmdvr`: {api.bmdvr}"))
+                  f"`ayon_core.hosts.resolve.api.bmdvr`: {api.bmdvr}"))
         return api.bmdvr
     try:
         """
@@ -78,6 +78,6 @@ def get_resolve_module():
     api.bmdvr = bmdvr
     api.bmdvf = bmdvf
     log.info(("Assigning resolve module to "
-              f"`openpype.hosts.resolve.api.bmdvr`: {api.bmdvr}"))
+              f"`ayon_core.hosts.resolve.api.bmdvr`: {api.bmdvr}"))
     log.info(("Assigning resolve module to "
-              f"`openpype.hosts.resolve.api.bmdvf`: {api.bmdvf}"))
+              f"`ayon_core.hosts.resolve.api.bmdvf`: {api.bmdvf}"))

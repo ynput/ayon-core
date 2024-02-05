@@ -31,7 +31,7 @@ class ValidateModelName(pyblish.api.InstancePlugin,
     hosts = ["maya"]
     families = ["model"]
     label = "Model Name"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     material_file = None
     database_file = DEFINITION_FILENAME
 

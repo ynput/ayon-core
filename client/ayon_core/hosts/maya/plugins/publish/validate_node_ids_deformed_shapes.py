@@ -22,7 +22,7 @@ class ValidateNodeIdsDeformedShape(pyblish.api.InstancePlugin):
     hosts = ['maya']
     label = 'Deformed shape ids'
     actions = [
-        openpype.hosts.maya.api.action.SelectInvalidAction,
+        ayon_core.hosts.maya.api.action.SelectInvalidAction,
         RepairAction
     ]
 

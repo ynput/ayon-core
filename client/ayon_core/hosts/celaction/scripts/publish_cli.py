@@ -13,7 +13,7 @@ from ayon_core.pipeline import install_openpype_plugins
 log = Logger.get_logger("celaction")
 
 PUBLISH_HOST = "celaction"
-HOST_DIR = os.path.dirname(os.path.abspath(openpype.hosts.celaction.__file__))
+HOST_DIR = os.path.dirname(os.path.abspath(ayon_core.hosts.celaction.__file__))
 PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 

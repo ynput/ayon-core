@@ -27,7 +27,7 @@ def ensure_installed_host():
     if host:
         return host
 
-    host = openpype.hosts.resolve.api.ResolveHost()
+    host = ayon_core.hosts.resolve.api.ResolveHost()
     install_host(host)
     return registered_host()
 
@@ -35,7 +35,7 @@ def ensure_installed_host():
 def launch_menu():
     print("Launching Resolve OpenPype menu..")
     ensure_installed_host()
-    openpype.hosts.resolve.api.launch_pype_menu()
+    ayon_core.hosts.resolve.api.launch_pype_menu()
 
 
 def open_workfile(path):

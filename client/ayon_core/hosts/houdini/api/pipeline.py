@@ -26,7 +26,7 @@ from ayon_core.lib import (
 )
 
 
-log = logging.getLogger("openpype.hosts.houdini")
+log = logging.getLogger("ayon_core.hosts.houdini")
 
 AVALON_CONTAINERS = "/obj/AVALON_CONTAINERS"
 CONTEXT_CONTAINER = "/obj/OpenPypeContext"

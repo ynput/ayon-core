@@ -193,10 +193,10 @@ def reload_config():
     """
 
     for module in (
-        "openpype.hosts.nuke.api.actions",
-        "openpype.hosts.nuke.api.menu",
-        "openpype.hosts.nuke.api.plugin",
-        "openpype.hosts.nuke.api.lib",
+        "ayon_core.hosts.nuke.api.actions",
+        "ayon_core.hosts.nuke.api.menu",
+        "ayon_core.hosts.nuke.api.plugin",
+        "ayon_core.hosts.nuke.api.lib",
     ):
         log.info("Reloading module: {}...".format(module))
 

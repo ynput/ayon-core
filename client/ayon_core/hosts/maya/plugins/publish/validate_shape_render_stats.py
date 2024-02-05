@@ -16,7 +16,7 @@ class ValidateShapeRenderStats(pyblish.api.Validator):
     hosts = ['maya']
     families = ['model']
     label = 'Shape Default Render Stats'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
     defaults = {'castsShadows': 1,

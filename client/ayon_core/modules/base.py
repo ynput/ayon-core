@@ -169,7 +169,7 @@ class _InterfacesClass(_ModuleClass):
             self.log.warning((
                 "Using deprecated import of \"{}\" from 'openpype_interfaces'."
                 " Please switch to use import"
-                " from 'openpype.modules.interfaces'"
+                " from 'ayon_core.modules.interfaces'"
                 " (will be removed after 3.16.x).{}"
             ).format(attr_name, "".join(traceback.format_list(stack))))
         return self.__attributes__[attr_name]
@@ -608,14 +608,14 @@ def _load_modules():
             try:
                 # Don't import dynamically current directory modules
                 if is_in_current_dir:
-                    import_str = "openpype.modules.{}".format(basename)
+                    import_str = "ayon_core.modules.{}".format(basename)
                     new_import_str = "{}.{}".format(modules_key, basename)
                     default_module = __import__(import_str, fromlist=("", ))
                     sys.modules[new_import_str] = default_module
                     setattr(openpype_modules, basename, default_module)
 
                 elif is_in_host_dir:
-                    import_str = "openpype.hosts.{}".format(basename)
+                    import_str = "ayon_core.hosts.{}".format(basename)
                     new_import_str = "{}.{}".format(modules_key, basename)
                     # Until all hosts are converted to be able use them as
                     #   modules is this error check needed

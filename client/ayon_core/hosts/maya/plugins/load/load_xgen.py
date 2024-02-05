@@ -17,7 +17,7 @@ from ayon_core.hosts.maya.api import current_file
 from ayon_core.pipeline import get_representation_path
 
 
-class XgenLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
+class XgenLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Load Xgen as reference"""
 
     families = ["xgen"]

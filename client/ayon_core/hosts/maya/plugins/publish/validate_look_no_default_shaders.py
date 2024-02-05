@@ -30,7 +30,7 @@ class ValidateLookNoDefaultShaders(pyblish.api.InstancePlugin):
     families = ['look']
     hosts = ['maya']
     label = 'Look No Default Shaders'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     DEFAULT_SHADERS = {"lambert1", "initialShadingGroup",
                       "initialParticleSE", "particleCloud1"}

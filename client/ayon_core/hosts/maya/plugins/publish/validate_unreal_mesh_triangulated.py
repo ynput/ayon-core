@@ -14,7 +14,7 @@ class ValidateUnrealMeshTriangulated(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["staticMesh"]
     label = "Mesh is Triangulated"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     active = False
 
     @classmethod

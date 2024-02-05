@@ -33,7 +33,7 @@ class ValidateNoUnknownNodes(pyblish.api.InstancePlugin,
     families = ['model', 'rig']
     optional = True
     label = "Unknown Nodes"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     @staticmethod
     def get_invalid(instance):

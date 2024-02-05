@@ -24,7 +24,7 @@ class ValidateLookIdReferenceEdits(pyblish.api.InstancePlugin):
     families = ['look']
     hosts = ['maya']
     label = 'Look Id Reference Edits'
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction,
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
     def process(self, instance):

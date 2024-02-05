@@ -23,7 +23,7 @@ from .python_module_tools import import_filepath
 # ----------------------------------------
 def get_openpype_version():
     """Version of pype that is currently used."""
-    return openpype.version.__version__
+    return ayon_core.version.__version__
 
 
 def get_ayon_launcher_version():

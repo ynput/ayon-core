@@ -20,7 +20,7 @@ class ValidateShadingEngine(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     label = "Look Shading Engine Naming"
     actions = [
-        openpype.hosts.maya.api.action.SelectInvalidAction, RepairAction
+        ayon_core.hosts.maya.api.action.SelectInvalidAction, RepairAction
     ]
 
     # The default connections to check

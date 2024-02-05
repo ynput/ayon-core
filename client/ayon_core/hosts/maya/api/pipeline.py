@@ -57,7 +57,7 @@ from .workio import (
     current_file
 )
 
-log = logging.getLogger("openpype.hosts.maya")
+log = logging.getLogger("ayon_core.hosts.maya")
 
 PLUGINS_DIR = os.path.join(MAYA_ROOT_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

@@ -57,7 +57,7 @@ class ResolveHost(HostBase, IWorkfileHost, ILoadHost):
 
         """
 
-        log.info("openpype.hosts.resolve installed")
+        log.info("ayon_core.hosts.resolve installed")
 
         pyblish.register_host(self.name)
         pyblish.register_plugin_path(PUBLISH_PATH)

@@ -20,7 +20,7 @@ class ValidateObjectIsInObjectMode(
     hosts = ["blender"]
     families = ["model", "rig", "layout"]
     label = "Validate Object Mode"
-    actions = [openpype.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
     optional = False
 
     @staticmethod

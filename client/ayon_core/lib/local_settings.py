@@ -225,7 +225,7 @@ class ASettingRegistry():
         """Delete item from settings.
 
         Note:
-            see :meth:`openpype.lib.user_settings.ARegistrySettings.delete_item`
+            see :meth:`ayon_core.lib.user_settings.ARegistrySettings.delete_item`
 
         """
         pass
@@ -385,7 +385,7 @@ class IniSettingRegistry(ASettingRegistry):
         """Delete item from default section.
 
         Note:
-            See :meth:`~openpype.lib.IniSettingsRegistry.delete_item_from_section`
+            See :meth:`~ayon_core.lib.IniSettingsRegistry.delete_item_from_section`
 
         """
         self.delete_item_from_section("MAIN", name)
@@ -420,7 +420,7 @@ class JSONSettingRegistry(ASettingRegistry):
         """Get item value from registry json.
 
         Note:
-            See :meth:`openpype.lib.JSONSettingRegistry.get_item`
+            See :meth:`ayon_core.lib.JSONSettingRegistry.get_item`
 
         """
         with open(self._registry_file, mode="r") as cfg:
@@ -453,7 +453,7 @@ class JSONSettingRegistry(ASettingRegistry):
         """Set item value to registry json.
 
         Note:
-            See :meth:`openpype.lib.JSONSettingRegistry.set_item`
+            See :meth:`ayon_core.lib.JSONSettingRegistry.set_item`
 
         """
         with open(self._registry_file, "r+") as cfg:

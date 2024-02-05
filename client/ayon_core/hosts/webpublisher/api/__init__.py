@@ -6,7 +6,7 @@ import pyblish.api
 from ayon_core.host import HostBase
 from ayon_core.hosts.webpublisher import WEBPUBLISHER_ROOT_DIR
 
-log = logging.getLogger("openpype.hosts.webpublisher")
+log = logging.getLogger("ayon_core.hosts.webpublisher")
 
 
 class WebpublisherHost(HostBase):

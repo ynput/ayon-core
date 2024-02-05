@@ -84,7 +84,7 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
                              animationEndTime=end)
 
 
-class ImportMayaLoader(openpype.hosts.maya.api.plugin.Loader):
+class ImportMayaLoader(ayon_core.hosts.maya.api.plugin.Loader):
     """Import action for Maya (unmanaged)
 
     Warning:

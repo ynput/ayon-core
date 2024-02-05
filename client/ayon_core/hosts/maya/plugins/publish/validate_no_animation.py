@@ -31,7 +31,7 @@ class ValidateNoAnimation(pyblish.api.Validator,
     hosts = ["maya"]
     families = ["model"]
     optional = True
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     def process(self, instance):
         if not self.is_active(instance.data):

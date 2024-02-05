@@ -21,7 +21,7 @@ class ValidateModelContent(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["model"]
     label = "Model Content"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     validate_top_group = True
 

@@ -1048,7 +1048,7 @@ class ExporterReviewMov(ExporterReview):
         self._shift_to_previous_node_and_temp(subset, node, message)
 
 
-@deprecated("openpype.hosts.nuke.api.plugin.NukeWriteCreator")
+@deprecated("ayon_core.hosts.nuke.api.plugin.NukeWriteCreator")
 class AbstractWriteRender(OpenPypeCreator):
     """Abstract creator to gather similar implementation for Write creators"""
     name = ""

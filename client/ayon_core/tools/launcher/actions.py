@@ -10,7 +10,7 @@ from ayon_core.lib import (
 from ayon_core.pipeline import LauncherAction
 
 
-# TODO move to 'openpype.pipeline.actions'
+# TODO move to 'ayon_core.pipeline.actions'
 # - remove Qt related stuff and implement exceptions to show error in launcher
 class ApplicationAction(LauncherAction):
     """Pype's application launcher

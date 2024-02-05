@@ -19,7 +19,7 @@ class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin):
     hosts = ['maya']
     families = ['fbx']
     label = "Skincluster Deformer Relationships"
-    actions = [openpype.hosts.maya.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
     def process(self, instance):
         """Process all the transform nodes in the instance"""

@@ -5,7 +5,7 @@ import ayon_core.hosts.maya.api.plugin
 from ayon_core.hosts.maya.api import lib
 
 
-class YetiRigLoader(openpype.hosts.maya.api.plugin.ReferenceLoader):
+class YetiRigLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """This loader will load Yeti rig."""
 
     families = ["yetiRig"]
