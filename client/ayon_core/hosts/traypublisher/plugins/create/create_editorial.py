@@ -1,7 +1,7 @@
 import os
 from copy import deepcopy
 import opentimelineio as otio
-from ayon_core import AYON_SERVER_ENABLED
+
 from ayon_core.client import (
     get_asset_by_name,
     get_project
@@ -102,21 +102,12 @@ class EditorialShotInstanceCreator(EditorialClipInstanceCreatorBase):
     label = "Editorial Shot"
 
     def get_instance_attr_defs(self):
-        instance_attributes = []
-        if AYON_SERVER_ENABLED:
-            instance_attributes.append(
-                TextDef(
-                    "folderPath",
-                    label="Folder path"
-                )
+        instance_attributes = [
+            TextDef(
+                "folderPath",
+                label="Folder path"
             )
-        else:
-            instance_attributes.append(
-                TextDef(
-                    "shotName",
-                    label="Shot name"
-                )
-            )
+        ]
         instance_attributes.extend(CLIP_ATTR_DEFS)
         return instance_attributes
 
@@ -224,11 +215,8 @@ or updating already created. Publishing will create OTIO file.
                 i["family"] for i in self._creator_settings["family_presets"]
             ]
         }
-        if AYON_SERVER_ENABLED:
-            asset_name = instance_data["folderPath"]
-        else:
-            asset_name = instance_data["asset"]
 
+        asset_name = instance_data["folderPath"]
         asset_doc = get_asset_by_name(self.project_name, asset_name)
 
         if pre_create_data["fps"] == "from_selection":
@@ -379,7 +367,6 @@ or updating already created. Publishing will create OTIO file.
             instance_data (dict): clip instance data
             family_presets (list): list of dict settings subset presets
         """
-        self.asset_name_check = []
 
         tracks = otio_timeline.each_child(
             descended_from_type=otio.schema.Track
@@ -608,10 +595,7 @@ or updating already created. Publishing will create OTIO file.
         Returns:
             str: label string
         """
-        if AYON_SERVER_ENABLED:
-            asset_name = instance_data["creator_attributes"]["folderPath"]
-        else:
-            asset_name = instance_data["creator_attributes"]["shotName"]
+        asset_name = instance_data["creator_attributes"]["folderPath"]
 
         variant_name = instance_data["variant"]
         family = preset["family"]
@@ -683,11 +667,6 @@ or updating already created. Publishing will create OTIO file.
             }
         )
 
-        # It should be validated only in openpype since we are supporting
-        # publishing to AYON with folder path and uniqueness is not an issue
-        if not AYON_SERVER_ENABLED:
-            self._validate_name_uniqueness(shot_name)
-
         timing_data = self._get_timing_data(
             otio_clip,
             timeline_offset,
@@ -720,18 +699,9 @@ or updating already created. Publishing will create OTIO file.
         }
         # update base instance data with context data
         # and also update creator attributes with context data
-        if AYON_SERVER_ENABLED:
-            # TODO: this is here just to be able to publish
-            #   to AYON with folder path
-            creator_attributes["folderPath"] = shot_metadata.pop("folderPath")
-            base_instance_data["folderPath"] = parent_asset_name
-        else:
-            creator_attributes.update({
-                "shotName": shot_name,
-                "Parent hierarchy path": shot_metadata["hierarchy"]
-            })
+        creator_attributes["folderPath"] = shot_metadata.pop("folderPath")
+        base_instance_data["folderPath"] = parent_asset_name
 
-            base_instance_data["asset"] = parent_asset_name
         # add creator attributes to shared instance data
         base_instance_data["creator_attributes"] = creator_attributes
         # add hierarchy shot metadata
@@ -833,22 +803,6 @@ or updating already created. Publishing will create OTIO file.
             return False
 
         return True
-
-    def _validate_name_uniqueness(self, name):
-        """ Validating name uniqueness.
-
-        In context of other clip names in sequence file.
-
-        Args:
-            name (str): shot name string
-        """
-        if name not in self.asset_name_check:
-            self.asset_name_check.append(name)
-        else:
-            self.log.warning(
-                f"Duplicate shot name: {name}! "
-                "Please check names in the input sequence files."
-            )
 
     def get_pre_create_attr_defs(self):
         """ Creating pre-create attributes at creator plugin.

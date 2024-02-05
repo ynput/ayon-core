@@ -21,7 +21,6 @@ from aiohttp_json_rpc.protocol import (
 )
 from aiohttp_json_rpc.exceptions import RpcError
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.lib import emit_event
 from ayon_core.hosts.tvpaint.tvpaint_plugin import get_plugin_files_path
 
@@ -835,9 +834,7 @@ class BaseCommunicator:
 
 
 class QtCommunicator(BaseCommunicator):
-    label = os.getenv("AVALON_LABEL")
-    if not label:
-        label = "AYON" if AYON_SERVER_ENABLED else "OpenPype"
+    label = os.getenv("AVALON_LABEL") or "AYON"
     title = "{} Tools".format(label)
     menu_definitions = {
         "title": title,

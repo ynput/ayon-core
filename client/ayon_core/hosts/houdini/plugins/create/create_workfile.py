@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.hosts.houdini.api import plugin
 from ayon_core.hosts.houdini.api.lib import read, imprint
 from ayon_core.hosts.houdini.api.pipeline import CONTEXT_CONTAINER
@@ -33,10 +32,8 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
 
         if current_instance is None:
             current_instance_asset = None
-        elif AYON_SERVER_ENABLED:
-            current_instance_asset = current_instance["folderPath"]
         else:
-            current_instance_asset = current_instance["asset"]
+            current_instance_asset = current_instance["folderPath"]
 
         if current_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
@@ -44,13 +41,10 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
                 variant, task_name, asset_doc, project_name, host_name
             )
             data = {
+                "folderPath": asset_name,
                 "task": task_name,
-                "variant": variant
+                "variant": variant,
             }
-            if AYON_SERVER_ENABLED:
-                data["folderPath"] = asset_name
-            else:
-                data["asset"] = asset_name
 
             data.update(
                 self.get_dynamic_data(
@@ -71,10 +65,7 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
             subset_name = self.get_subset_name(
                 variant, task_name, asset_doc, project_name, host_name
             )
-            if AYON_SERVER_ENABLED:
-                current_instance["folderPath"] = asset_name
-            else:
-                current_instance["asset"] = asset_name
+            current_instance["folderPath"] = asset_name
             current_instance["task"] = task_name
             current_instance["subset"] = subset_name
 

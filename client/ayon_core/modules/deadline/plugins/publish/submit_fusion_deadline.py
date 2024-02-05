@@ -6,7 +6,6 @@ import requests
 
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
     OpenPypePyblishPluginMixin
@@ -229,7 +228,8 @@ class FusionSubmitDeadline(
             "AVALON_APP_NAME",
             "OPENPYPE_DEV",
             "OPENPYPE_LOG_NO_COLORS",
-            "IS_TEST"
+            "IS_TEST",
+            "AYON_BUNDLE_NAME",
         ]
 
         # Add OpenPype version if we are running from build.
@@ -240,13 +240,7 @@ class FusionSubmitDeadline(
                             if key in os.environ}, **legacy_io.Session)
 
         # to recognize render jobs
-        if AYON_SERVER_ENABLED:
-            environment["AYON_BUNDLE_NAME"] = os.environ["AYON_BUNDLE_NAME"]
-            render_job_label = "AYON_RENDER_JOB"
-        else:
-            render_job_label = "OPENPYPE_RENDER_JOB"
-
-        environment[render_job_label] = "1"
+        environment["AYON_RENDER_JOB"] = "1"
 
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(

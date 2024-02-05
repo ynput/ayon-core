@@ -13,7 +13,6 @@ from collections import OrderedDict
 import nuke
 from qtpy import QtCore, QtWidgets
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import (
     get_project,
     get_asset_by_name,
@@ -1128,10 +1127,7 @@ def format_anatomy(data):
         file = script_name()
         data["version"] = get_version_from_path(file)
 
-    if AYON_SERVER_ENABLED:
-        asset_name = data["folderPath"]
-    else:
-        asset_name = data["asset"]
+    asset_name = data["folderPath"]
     task_name = data["task"]
     host_name = get_current_host_name()
     context_data = get_template_data_with_names(

@@ -23,9 +23,8 @@ from ayon_core.lib import (
     ToolNotFoundError,
 )
 
-from ayon_core.pipeline import legacy_io, publish, KnownPublishError
+from ayon_core.pipeline import publish, KnownPublishError
 from ayon_core.hosts.maya.api import lib
-from ayon_core import AYON_SERVER_ENABLED
 
 # Modes for transfer
 COPY = 1
@@ -58,14 +57,9 @@ def find_paths_by_hash(texture_hash):
         str: path to texture if found.
 
     """
-    if AYON_SERVER_ENABLED:
-        raise KnownPublishError(
-            "This is a bug. \"find_paths_by_hash\" is not compatible with "
-            "AYON."
-        )
-
-    key = "data.sourceHashes.{0}".format(texture_hash)
-    return legacy_io.distinct(key, {"type": "version"})
+    raise KnownPublishError(
+        "This is a bug. \"find_paths_by_hash\" is not compatible with AYON."
+    )
 
 
 @contextlib.contextmanager

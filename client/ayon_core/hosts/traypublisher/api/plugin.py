@@ -1,4 +1,3 @@
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import (
     get_assets,
     get_subsets,
@@ -116,10 +115,7 @@ class SettingsCreator(TrayPublishCreator):
 
         # Fill 'version_to_use' if version control is enabled
         if self.allow_version_control:
-            if AYON_SERVER_ENABLED:
-                asset_name = data["folderPath"]
-            else:
-                asset_name = data["asset"]
+            asset_name = data["folderPath"]
             subset_docs_by_asset_id = self._prepare_next_versions(
                 [asset_name], [subset_name])
             version = subset_docs_by_asset_id[asset_name].get(subset_name)
@@ -221,16 +217,10 @@ class SettingsCreator(TrayPublishCreator):
             ):
                 filtered_instance_data.append(instance)
 
-        if AYON_SERVER_ENABLED:
-            asset_names = {
-                instance["folderPath"]
-                for instance in filtered_instance_data
-            }
-        else:
-            asset_names = {
-                instance["asset"]
-                for instance in filtered_instance_data
-            }
+        asset_names = {
+            instance["folderPath"]
+            for instance in filtered_instance_data
+        }
         subset_names = {
             instance["subset"]
             for instance in filtered_instance_data}
@@ -238,10 +228,7 @@ class SettingsCreator(TrayPublishCreator):
             asset_names, subset_names
         )
         for instance in filtered_instance_data:
-            if AYON_SERVER_ENABLED:
-                asset_name = instance["folderPath"]
-            else:
-                asset_name = instance["asset"]
+            asset_name = instance["folderPath"]
             subset_name = instance["subset"]
             version = subset_docs_by_asset_id[asset_name][subset_name]
             instance["creator_attributes"]["version_to_use"] = version

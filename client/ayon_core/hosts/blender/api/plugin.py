@@ -6,7 +6,6 @@ from typing import Dict, List, Optional
 
 import bpy
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import (
     Creator,
     CreatedInstance,
@@ -231,10 +230,7 @@ class BaseCreator(Creator):
             bpy.context.scene.collection.children.link(instances)
 
         # Create asset group
-        if AYON_SERVER_ENABLED:
-            asset_name = instance_data["folderPath"].split("/")[-1]
-        else:
-            asset_name = instance_data["asset"]
+        asset_name = instance_data["folderPath"].split("/")[-1]
 
         name = prepare_scene_name(asset_name, subset_name)
         if self.create_as_asset_group:
@@ -295,11 +291,6 @@ class BaseCreator(Creator):
                 and their changes, as a list of tuples.
         """
 
-        if AYON_SERVER_ENABLED:
-            asset_name_key = "folderPath"
-        else:
-            asset_name_key = "asset"
-
         for created_instance, changes in update_list:
             data = created_instance.data_to_store()
             node = created_instance.transient_data["instance_node"]
@@ -316,11 +307,9 @@ class BaseCreator(Creator):
             # workfile instance is included in the AVALON_CONTAINER collection.
             if (
                 "subset" in changes.changed_keys
-                or asset_name_key in changes.changed_keys
+                or "folderPath" in changes.changed_keys
             ) and created_instance.family != "workfile":
-                asset_name = data[asset_name_key]
-                if AYON_SERVER_ENABLED:
-                    asset_name = asset_name.split("/")[-1]
+                asset_name = data["folderPath"].split("/")[-1]
                 name = prepare_scene_name(
                     asset=asset_name, subset=data["subset"]
                 )

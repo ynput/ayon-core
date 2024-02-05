@@ -1,6 +1,5 @@
 from ayon_core.pipeline import CreatedInstance
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.lib import BoolDef
 import ayon_core.hosts.photoshop.api as api
 from ayon_core.hosts.photoshop.lib import PSAutoCreator, clean_subset_name
@@ -40,10 +39,8 @@ class AutoImageCreator(PSAutoCreator):
 
         if existing_instance is None:
             existing_instance_asset = None
-        elif AYON_SERVER_ENABLED:
-            existing_instance_asset = existing_instance["folderPath"]
         else:
-            existing_instance_asset = existing_instance["asset"]
+            existing_instance_asset = existing_instance["folderPath"]
 
         if existing_instance is None:
             subset_name = self.get_subset_name(
@@ -52,12 +49,9 @@ class AutoImageCreator(PSAutoCreator):
             )
 
             data = {
+                "folderPath": asset_name,
                 "task": task_name,
             }
-            if AYON_SERVER_ENABLED:
-                data["folderPath"] = asset_name
-            else:
-                data["asset"] = asset_name
 
             if not self.active_on_create:
                 data["active"] = False
@@ -80,10 +74,7 @@ class AutoImageCreator(PSAutoCreator):
                 self.default_variant, task_name, asset_doc,
                 project_name, host_name
             )
-            if AYON_SERVER_ENABLED:
-                existing_instance["folderPath"] = asset_name
-            else:
-                existing_instance["asset"] = asset_name
+            existing_instance["folderPath"] = asset_name
             existing_instance["task"] = task_name
             existing_instance["subset"] = subset_name
 

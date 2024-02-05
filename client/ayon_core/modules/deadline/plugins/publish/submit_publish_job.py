@@ -9,7 +9,6 @@ import clique
 
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import (
     get_last_version_by_subset_name,
 )
@@ -192,23 +191,12 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "AVALON_TASK": instance.context.data["task"],
             "OPENPYPE_USERNAME": instance.context.data["user"],
             "OPENPYPE_LOG_NO_COLORS": "1",
-            "IS_TEST": str(int(is_in_tests()))
+            "IS_TEST": str(int(is_in_tests())),
+            "AYON_PUBLISH_JOB": "1",
+            "AYON_RENDER_JOB": "0",
+            "AYON_REMOTE_PUBLISH": "0",
+            "AYON_BUNDLE_NAME": os.environ["AYON_BUNDLE_NAME"],
         }
-
-        if AYON_SERVER_ENABLED:
-            environment["AYON_PUBLISH_JOB"] = "1"
-            environment["AYON_RENDER_JOB"] = "0"
-            environment["AYON_REMOTE_PUBLISH"] = "0"
-            environment["AYON_BUNDLE_NAME"] = os.environ["AYON_BUNDLE_NAME"]
-            deadline_plugin = "Ayon"
-        else:
-            environment["OPENPYPE_PUBLISH_JOB"] = "1"
-            environment["OPENPYPE_RENDER_JOB"] = "0"
-            environment["OPENPYPE_REMOTE_PUBLISH"] = "0"
-            deadline_plugin = "OpenPype"
-            # Add OpenPype version if we are running from build.
-            if is_running_from_build():
-                self.environ_keys.append("OPENPYPE_VERSION")
 
         # add environments from self.environ_keys
         for env_key in self.environ_keys:
@@ -252,7 +240,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         )
         payload = {
             "JobInfo": {
-                "Plugin": deadline_plugin,
+                "Plugin": "Ayon",
                 "BatchName": job["Props"]["Batch"],
                 "Name": job_name,
                 "UserName": job["Props"]["User"],

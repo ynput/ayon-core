@@ -1,6 +1,5 @@
 import pyblish
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline.editorial import is_overlapping_otio_ranges
 
 from ayon_core.hosts.hiero import api as phiero
@@ -233,12 +232,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 asset_name
             )
 
-        if AYON_SERVER_ENABLED:
-            asset = folder_path
-        else:
-            asset = asset_name
-
-        return asset, asset_name
+        return folder_path, asset_name
 
     def create_audio_instance(self, context, **data):
         subset = "audioMain"

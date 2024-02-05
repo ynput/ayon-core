@@ -2,7 +2,6 @@ import os
 import attr
 from datetime import datetime
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import legacy_io, PublishXmlValidationError
 from ayon_core.tests.lib import is_in_tests
 from ayon_core.lib import is_running_from_build
@@ -116,11 +115,8 @@ class MayaSubmitRemotePublishDeadline(
         environment["OPENPYPE_USERNAME"] = instance.context.data["user"]
         environment["OPENPYPE_PUBLISH_SUBSET"] = instance.data["subset"]
         environment["OPENPYPE_REMOTE_PUBLISH"] = "1"
+        environment["AYON_REMOTE_PUBLISH"] = "1"
 
-        if AYON_SERVER_ENABLED:
-            environment["AYON_REMOTE_PUBLISH"] = "1"
-        else:
-            environment["OPENPYPE_REMOTE_PUBLISH"] = "1"
         for key, value in environment.items():
             job_info.EnvironmentKeyValue[key] = value
 

@@ -1,7 +1,6 @@
 import pyblish.api
 from pprint import pformat
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import get_current_asset_name
 
 from ayon_core.hosts.resolve import api as rapi
@@ -15,10 +14,8 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder - 0.5
 
     def process(self, context):
-        current_asset_name = asset_name = get_current_asset_name()
-
-        if AYON_SERVER_ENABLED:
-            asset_name = current_asset_name.split("/")[-1]
+        current_asset_name = get_current_asset_name()
+        asset_name = current_asset_name.split("/")[-1]
 
         subset = "workfileMain"
         project = rapi.get_current_project()

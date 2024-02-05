@@ -1,5 +1,4 @@
 import pyblish.api
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin,
@@ -25,19 +24,12 @@ class FixAssetNames(pyblish.api.Action):
         old_instance_items = list_instances()
         new_instance_items = []
         for instance_item in old_instance_items:
-            if AYON_SERVER_ENABLED:
-                instance_asset_name = instance_item.get("folderPath")
-            else:
-                instance_asset_name = instance_item.get("asset")
-
+            instance_asset_name = instance_item.get("folderPath")
             if (
                 instance_asset_name
                 and instance_asset_name != context_asset_name
             ):
-                if AYON_SERVER_ENABLED:
-                    instance_item["folderPath"] = context_asset_name
-                else:
-                    instance_item["asset"] = context_asset_name
+                instance_item["folderPath"] = context_asset_name
             new_instance_items.append(instance_item)
         write_instances(new_instance_items)
 

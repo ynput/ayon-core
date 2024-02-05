@@ -16,7 +16,6 @@ import bpy
 import bpy.utils.previews
 
 from ayon_core import style
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import get_current_asset_name, get_current_task_name
 from ayon_core.tools.utils import host_tools
 
@@ -312,14 +311,6 @@ class LaunchLoader(LaunchQtApp):
     bl_label = "Load..."
     _tool_name = "loader"
 
-    def before_window_show(self):
-        if AYON_SERVER_ENABLED:
-            return
-        self._window.set_context(
-            {"asset": get_current_asset_name()},
-            refresh=True
-        )
-
 
 class LaunchPublisher(LaunchQtApp):
     """Launch Avalon Publisher."""
@@ -339,11 +330,6 @@ class LaunchManager(LaunchQtApp):
     bl_label = "Manage..."
     _tool_name = "sceneinventory"
 
-    def before_window_show(self):
-        if AYON_SERVER_ENABLED:
-            return
-        self._window.refresh()
-
 
 class LaunchLibrary(LaunchQtApp):
     """Launch Library Loader."""
@@ -351,11 +337,6 @@ class LaunchLibrary(LaunchQtApp):
     bl_idname = "wm.library_loader"
     bl_label = "Library..."
     _tool_name = "libraryloader"
-
-    def before_window_show(self):
-        if AYON_SERVER_ENABLED:
-            return
-        self._window.refresh()
 
 
 class LaunchWorkFiles(LaunchQtApp):
@@ -366,22 +347,7 @@ class LaunchWorkFiles(LaunchQtApp):
     _tool_name = "workfiles"
 
     def execute(self, context):
-        result = super().execute(context)
-        if not AYON_SERVER_ENABLED:
-            self._window.set_context({
-                "asset": get_current_asset_name(),
-                "task": get_current_task_name()
-            })
-        return result
-
-    def before_window_show(self):
-        if AYON_SERVER_ENABLED:
-            return
-        self._window.root = str(Path(
-            os.environ.get("AVALON_WORKDIR", ""),
-            os.environ.get("AVALON_SCENEDIR", ""),
-        ))
-        self._window.refresh()
+        return super().execute(context)
 
 
 class SetFrameRange(bpy.types.Operator):

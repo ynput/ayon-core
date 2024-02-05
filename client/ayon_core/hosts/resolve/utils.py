@@ -2,7 +2,6 @@ import os
 import shutil
 from ayon_core.lib import Logger, is_running_from_build
 
-from ayon_core import AYON_SERVER_ENABLED
 RESOLVE_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -46,22 +45,14 @@ def setup(env):
     for directory, scripts in scripts.items():
         for script in scripts:
             if (
-                is_running_from_build() and
-                script in ["tests", "develop"]
+                is_running_from_build()
+                and script in ["tests", "develop"]
             ):
                 # only copy those if started from build
                 continue
 
             src = os.path.join(directory, script)
             dst = os.path.join(util_scripts_dir, script)
-
-            # TODO: remove this once we have a proper solution
-            if AYON_SERVER_ENABLED:
-                if "OpenPype__Menu.py" == script:
-                    continue
-            else:
-                if "AYON__Menu.py" == script:
-                    continue
 
             # TODO: Make this a less hacky workaround
             if script == "openpype_startup.scriptlib":

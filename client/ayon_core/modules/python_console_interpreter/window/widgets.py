@@ -8,28 +8,9 @@ import appdirs
 from qtpy import QtCore, QtWidgets, QtGui
 
 from ayon_core import resources
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.style import load_stylesheet
 from ayon_core.lib import JSONSettingRegistry
 
-
-
-openpype_art = """
-             . .   ..     .    ..
-        _oOOP3OPP3Op_. .
-     .PPpo~.   ..   ~2p.  ..  ....  .  .
-    .Ppo . .pPO3Op.. . O:. . . .
-   .3Pp . oP3'. 'P33. . 4 ..   .  .   . .. .  .  .
-  .~OP    3PO.  .Op3    : . ..  _____  _____  _____
-  .P3O  . oP3oP3O3P' . . .   . /    /./    /./    /
-   O3:.   O3p~ .       .:. . ./____/./____/ /____/
-   'P .   3p3.  oP3~. ..P:. .  . ..  .   . .. .  .  .
-  . ':  . Po'  .Opo'. .3O. .  o[ by Pype Club ]]]==- - - .  .
-    . '_ ..  .    . _OP3..  .  .https://openpype.io.. .
-         ~P3.OPPPO3OP~ . ..  .
-           .  ' '. .  .. . . . ..  .
-
-"""
 
 ayon_art = r"""
 
@@ -55,12 +36,8 @@ class PythonInterpreterRegistry(JSONSettingRegistry):
     """
 
     def __init__(self):
-        if AYON_SERVER_ENABLED:
-            self.vendor = "ynput"
-            self.product = "ayon"
-        else:
-            self.vendor = "pypeclub"
-            self.product = "openpype"
+        self.vendor = "Ynput"
+        self.product = "AYON"
         name = "python_interpreter_tool"
         path = appdirs.user_data_dir(self.product, self.vendor)
         super(PythonInterpreterRegistry, self).__init__(name, path)
@@ -357,9 +334,7 @@ class PythonInterpreterWidget(QtWidgets.QWidget):
     def __init__(self, allow_save_registry=True, parent=None):
         super(PythonInterpreterWidget, self).__init__(parent)
 
-        self.setWindowTitle("{} Console".format(
-            "AYON" if AYON_SERVER_ENABLED else "OpenPype"
-        ))
+        self.setWindowTitle("AYON Console")
         self.setWindowIcon(QtGui.QIcon(resources.get_openpype_icon_filepath()))
 
         self.ansi_escape = re.compile(
@@ -407,10 +382,7 @@ class PythonInterpreterWidget(QtWidgets.QWidget):
         self._tab_widget = tab_widget
         self._line_check_timer = line_check_timer
 
-        if AYON_SERVER_ENABLED:
-            self._append_lines([ayon_art])
-        else:
-            self._append_lines([openpype_art])
+        self._append_lines([ayon_art])
 
         self._first_show = True
         self._splitter_size_ratio = None
