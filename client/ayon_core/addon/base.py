@@ -17,6 +17,7 @@ import appdirs
 
 from ayon_core.lib import Logger
 from ayon_core.client import get_ayon_server_api_connection
+from ayon_core.settings import get_system_settings
 from ayon_core.settings.ayon_settings import (
     is_dev_mode_enabled,
     get_ayon_settings,
@@ -617,6 +618,8 @@ class AddonsManager:
 
     Args:
         settings (Optional[dict[str, Any]]): AYON studio settings.
+        initialize (Optional[bool]): Initialize addons on init.
+            True by default.
     """
 
     # Helper attributes for report
@@ -625,6 +628,7 @@ class AddonsManager:
 
     def __init__(self, settings=None, initialize=True):
         self._settings = settings
+        self._system_settings = None
 
         self._addons = []
         self._addons_by_id = {}
@@ -716,6 +720,13 @@ class AddonsManager:
         if settings is None:
             settings = get_ayon_settings()
 
+        # OpenPype settings
+        system_settings = self._system_settings
+        if system_settings is None:
+            system_settings = get_system_settings()
+
+        modules_settings = system_settings["modules"]
+
         report = {}
         time_start = time.time()
         prev_start_time = time_start
@@ -767,7 +778,10 @@ class AddonsManager:
 
             try:
                 # Try initialize module
-                addon = addon_cls(self, settings)
+                if issubclass(addon_cls, OpenPypeModule):
+                    addon = addon_cls(self, modules_settings)
+                else:
+                    addon = addon_cls(self, settings)
                 # Store initialized object
                 self._addons.append(addon)
                 self._addons_by_id[addon.id] = addon
