@@ -551,18 +551,21 @@ def get_local_site_id():
     return site_id
 
 
-def get_openpype_username():
-    """OpenPype username used for templates and publishing.
+def get_ayon_username():
+    """AYON username used for templates and publishing.
 
-    May be different than machine's username.
+    Uses curet ayon api username.
 
-    Always returns "OPENPYPE_USERNAME" environment if is set then tries local
-    settings and last option is to use `getpass.getuser()` which returns
-    machine username.
+    Returns:
+        str: Username.
     """
 
     con = get_ayon_server_api_connection()
     return con.get_user()["name"]
+
+
+def get_openpype_username():
+    return get_ayon_username()
 
 
 OpenPypeSecureRegistry = AYONSecureRegistry

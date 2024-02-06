@@ -33,7 +33,7 @@ from ayon_core.client.operations import (
 from ayon_core.addon import AddonsManager
 from ayon_core.lib import (
     StringTemplate,
-    get_openpype_username,
+    get_ayon_username,
     get_formatted_current_time,
     source_hash,
 )
@@ -881,7 +881,7 @@ class ProjectPushItemProcess:
             "source": src_data.get("source"),
             "machine": socket.gethostname(),
             "comment": self._item.comment or "",
-            "author": get_openpype_username(),
+            "author": get_ayon_username(),
             "time": get_formatted_current_time(),
         }
         if version is None:

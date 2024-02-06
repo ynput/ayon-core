@@ -6,7 +6,7 @@ import socket
 from pprint import pformat
 
 from ayon_core.lib import (
-    get_openpype_username,
+    get_ayon_username,
     run_subprocess,
 )
 from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
@@ -57,7 +57,7 @@ class FlamePrelaunch(PreLaunchHook):
             colormanaged = True
 
         # get user name and host name
-        user_name = get_openpype_username()
+        user_name = get_ayon_username()
         user_name = user_name.replace(".", "_")
 
         hostname = socket.gethostname()  # not returning wiretap host name

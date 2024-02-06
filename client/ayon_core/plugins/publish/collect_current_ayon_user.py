@@ -1,9 +1,9 @@
 import pyblish.api
 
-from ayon_core.lib import get_openpype_username
+from ayon_core.lib import get_ayon_username
 
 
-class CollectCurrentUserPype(pyblish.api.ContextPlugin):
+class CollectCurrentAYONUser(pyblish.api.ContextPlugin):
     """Inject the currently logged on user into the Context"""
 
     # Order must be after default pyblish-base CollectCurrentUser
@@ -11,6 +11,6 @@ class CollectCurrentUserPype(pyblish.api.ContextPlugin):
     label = "Collect AYON User"
 
     def process(self, context):
-        user = get_openpype_username()
+        user = get_ayon_username()
         context.data["user"] = user
         self.log.debug("Collected user \"{}\"".format(user))

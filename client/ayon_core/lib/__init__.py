@@ -120,6 +120,7 @@ from .local_settings import (
     OpenPypeSecureRegistry,
     OpenPypeSettingsRegistry,
     get_local_site_id,
+    get_ayon_username,
     get_openpype_username,
 )
 
@@ -230,6 +231,7 @@ __all__ = [
     "OpenPypeSecureRegistry",
     "OpenPypeSettingsRegistry",
     "get_local_site_id",
+    "get_ayon_username",
     "get_openpype_username",
 
     "ApplicationLaunchFailed",
