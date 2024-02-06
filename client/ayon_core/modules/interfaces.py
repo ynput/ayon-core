@@ -7,6 +7,7 @@ from ayon_core.addon.interfaces import (
 )
 
 ITrayModule = ITrayAddon
+ILaunchHookPaths = object
 
 
 __all__ = (
@@ -16,4 +17,5 @@ __all__ = (
     "ITrayService",
     "IHostAddon",
     "ITrayModule",
+    "ILaunchHookPaths",
 )
