@@ -26,7 +26,7 @@ class LauncherAction(OpenPypeModule, ITrayAction):
     def tray_start(self):
         return
 
-    def connect_with_modules(self, enabled_modules):
+    def connect_with_addons(self, enabled_modules):
         # Register actions
         if not self.tray_initialized:
             return
