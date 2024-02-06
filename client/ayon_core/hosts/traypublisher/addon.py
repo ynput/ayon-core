@@ -29,7 +29,7 @@ class TrayPublishAddon(OpenPypeModule, IHostAddon, ITrayAction):
     def on_action_trigger(self):
         self.run_traypublisher()
 
-    def connect_with_modules(self, enabled_modules):
+    def connect_with_addons(self, enabled_modules):
         """Collect publish paths from other modules."""
         publish_paths = self.manager.collect_plugin_paths()["publish"]
         self.publish_paths.extend(publish_paths)

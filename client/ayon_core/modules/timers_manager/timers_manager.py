@@ -339,7 +339,7 @@ class TimersManager(
 
         self.timer_stopped(None)
 
-    def connect_with_modules(self, enabled_modules):
+    def connect_with_addons(self, enabled_modules):
         for module in enabled_modules:
             connector = getattr(module, "timers_manager_connector", None)
             if connector is None:

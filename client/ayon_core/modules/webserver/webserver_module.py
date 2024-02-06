@@ -41,7 +41,7 @@ class WebServerModule(OpenPypeModule, ITrayService):
         self.port = self.find_free_port()
         self.webserver_url = None
 
-    def connect_with_modules(self, enabled_modules):
+    def connect_with_addons(self, enabled_modules):
         if not self.server_manager:
             return
 
