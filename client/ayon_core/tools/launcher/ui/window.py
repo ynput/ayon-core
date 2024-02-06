@@ -22,7 +22,7 @@ class LauncherWindow(QtWidgets.QWidget):
         if controller is None:
             controller = BaseLauncherController()
 
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
+        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         self.setWindowTitle("Launcher")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)

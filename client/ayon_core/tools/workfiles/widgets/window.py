@@ -57,7 +57,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             controller = BaseWorkfileController()
 
         self.setWindowTitle(self.title)
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
+        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         flags = self.windowFlags() | QtCore.Qt.Window
         self.setWindowFlags(flags)

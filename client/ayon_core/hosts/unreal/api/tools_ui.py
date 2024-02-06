@@ -65,7 +65,7 @@ class ToolsDialog(QtWidgets.QDialog):
         super(ToolsDialog, self).__init__(*args, **kwargs)
 
         self.setWindowTitle("Ayon tools")
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
+        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
         self.setWindowFlags(

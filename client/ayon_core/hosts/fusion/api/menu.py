@@ -14,7 +14,7 @@ from ayon_core.hosts.fusion.api.lib import (
     set_asset_resolution,
 )
 from ayon_core.pipeline import get_current_asset_name
-from ayon_core.resources import get_openpype_icon_filepath
+from ayon_core.resources import get_ayon_icon_filepath
 
 from .pipeline import FusionEventHandler
 from .pulse import FusionPulse
@@ -33,7 +33,7 @@ class OpenPypeMenu(QtWidgets.QWidget):
 
         self.setObjectName(f"{MENU_LABEL}Menu")
 
-        icon_path = get_openpype_icon_filepath()
+        icon_path = get_ayon_icon_filepath()
         icon = QtGui.QIcon(icon_path)
         self.setWindowIcon(icon)
 

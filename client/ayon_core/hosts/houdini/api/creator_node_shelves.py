@@ -15,7 +15,7 @@ import os
 from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.create import CreateContext
-from ayon_core.resources import get_openpype_icon_filepath
+from ayon_core.resources import get_ayon_icon_filepath
 
 import hou
 import stateutils
@@ -172,7 +172,7 @@ def install():
         # and update the tools file if creator identifiers change
         os.remove(filepath)
 
-    icon = get_openpype_icon_filepath()
+    icon = get_ayon_icon_filepath()
     tab_menu_label = os.environ.get("AVALON_LABEL") or "AYON"
 
     # Create context only to get creator plugins, so we don't reset and only

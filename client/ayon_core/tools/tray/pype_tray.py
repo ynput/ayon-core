@@ -308,7 +308,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     doubleclick_time_ms = 100
 
     def __init__(self, parent):
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
+        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
 
         super(SystemTrayIcon, self).__init__(icon, parent)
 
@@ -445,7 +445,7 @@ class PypeTrayStarter(QtCore.QObject):
         return self._splash
 
     def _create_splash(self):
-        splash_pix = QtGui.QPixmap(resources.get_openpype_splash_filepath())
+        splash_pix = QtGui.QPixmap(resources.get_ayon_splash_filepath())
         splash = QtWidgets.QSplashScreen(splash_pix)
         splash.setMask(splash_pix.mask())
         splash.setEnabled(False)

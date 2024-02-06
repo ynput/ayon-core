@@ -63,7 +63,7 @@ def exec_plugin_install( engine_path: Path, env: dict = None):
     example_worker.moveToThread(q_thread)
 
     splash_screen = SplashScreen("Executing process ...",
-                                 resources.get_openpype_icon_filepath())
+                                 resources.get_ayon_icon_filepath())
 
     # set up the splash screen with necessary events
     example_worker.installing.connect(splash_screen.update_top_label_text)
