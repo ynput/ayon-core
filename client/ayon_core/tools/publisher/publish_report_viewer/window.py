@@ -37,7 +37,7 @@ def get_reports_dir():
     """
 
     report_dir = os.path.join(
-        appdirs.user_data_dir("openpype", "pypeclub"),
+        appdirs.user_data_dir("AYON", "Ynput"),
         "publish_report_viewer"
     )
     if not os.path.exists(report_dir):
