@@ -10,7 +10,7 @@ import uuid
 import pyblish.api
 from pyblish.lib import MessageHandler
 
-from ayon_core import AYON_SERVER_ENABLED, AYON_CORE_ROOT
+from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import HostBase
 from ayon_core.client import (
     get_project,
@@ -114,8 +114,7 @@ def install_host(host):
     _is_installed = True
 
     # Make sure global AYON connection has set site id and version
-    if AYON_SERVER_ENABLED:
-        get_ayon_server_api_connection()
+    get_ayon_server_api_connection()
 
     legacy_io.install()
     modules_manager = _get_modules_manager()
