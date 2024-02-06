@@ -452,6 +452,25 @@ def _load_addons():
     )
 
 
+_MARKING_ATTR = "_marking"
+def mark_func(func):
+    """Mark function to be used in report.
+
+    Args:
+        func (Callable): Function to mark.
+
+    Returns:
+        Callable: Marked function.
+    """
+
+    setattr(func, _MARKING_ATTR, True)
+    return func
+
+
+def is_func_marked(func):
+    return getattr(func, _MARKING_ATTR, False)
+
+
 @six.add_metaclass(ABCMeta)
 class AYONAddon(object):
     """Base class of AYON addon.
@@ -511,6 +530,7 @@ class AYONAddon(object):
 
         pass
 
+    @mark_func
     def connect_with_addons(self, enabled_addons):
         """Connect with other enabled addons.
 
@@ -771,7 +791,8 @@ class AddonsManager:
         for addon_cls in addon_classes:
             name = addon_cls.__name__
             if issubclass(addon_cls, OpenPypeModule):
-                self.log.warning((
+                # TODO change to warning
+                self.log.debug((
                     "Addon '{}' is inherited from 'OpenPypeModule'."
                     " Please use 'AYONAddon'."
                 ).format(name))
@@ -817,15 +838,17 @@ class AddonsManager:
         self.log.debug("Has {} enabled modules.".format(len(enabled_modules)))
         for module in enabled_modules:
             try:
-                if hasattr(module, "connect_with_modules"):
+                if not is_func_marked(module.connect_with_addons):
+                    module.connect_with_addons(enabled_modules)
+
+                elif hasattr(module, "connect_with_modules"):
                     self.log.warning((
                         "DEPRECATION WARNING: Addon '{}' still uses"
                         " 'connect_with_modules' method. Please switch to use"
                         " 'connect_with_addons' method."
                     ).format(module.name))
                     module.connect_with_modules(enabled_modules)
-                else:
-                    module.connect_with_addons(enabled_modules)
+
             except Exception:
                 self.log.error(
                     "BUG: Module failed on connection with other modules.",
