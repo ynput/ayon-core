@@ -52,6 +52,7 @@ from .publish import (
     PublishValidationError,
     PublishXmlValidationError,
     KnownPublishError,
+    AYONPyblishPluginMixin,
     OpenPypePyblishPluginMixin,
     OptionalPyblishPluginMixin,
 )
@@ -153,6 +154,7 @@ __all__ = (
     "PublishValidationError",
     "PublishXmlValidationError",
     "KnownPublishError",
+    "AYONPyblishPluginMixin",
     "OpenPypePyblishPluginMixin",
     "OptionalPyblishPluginMixin",
 
