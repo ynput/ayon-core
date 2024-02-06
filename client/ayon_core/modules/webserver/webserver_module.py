@@ -16,7 +16,7 @@ Running multiple servers in one process is not recommended and probably won't
 work as expected. It is because of few limitations connected to asyncio module.
 
 When module's `create_server_manager` is called it is also set environment
-variable "OPENPYPE_WEBSERVER_URL". Which should lead to root access point
+variable "AYON_WEBSERVER_URL". Which should lead to root access point
 of server.
 """
 

@@ -405,7 +405,7 @@ class TimersManager(
                 passed.
         """
 
-        webserver_url = os.environ.get("OPENPYPE_WEBSERVER_URL")
+        webserver_url = os.environ.get("AYON_WEBSERVER_URL")
         if not webserver_url:
             msg = "Couldn't find webserver url"
             if logger is not None:
@@ -440,7 +440,7 @@ class TimersManager(
             logger (logging.Logger): Logger used for logging messages.
         """
 
-        webserver_url = os.environ.get("OPENPYPE_WEBSERVER_URL")
+        webserver_url = os.environ.get("AYON_WEBSERVER_URL")
         if not webserver_url:
             msg = "Couldn't find webserver url"
             if logger is not None:
