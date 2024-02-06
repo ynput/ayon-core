@@ -17,7 +17,7 @@ class CollectFarmTarget(pyblish.api.InstancePlugin):
         context = instance.context
 
         farm_name = ""
-        addons_manager = context.data.get("ayonAddonsManger")
+        addons_manager = context.data.get("ayonAddonsManager")
 
         for farm_renderer in ["deadline", "royalrender"]:
             addon = addons_manager.get(farm_renderer, False)
