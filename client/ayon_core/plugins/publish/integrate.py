@@ -322,7 +322,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         self.log.debug("Retrieving Representation Site Sync information ...")
 
         # Get the accessible sites for Site Sync
-        addons_manager = instance.context.data["ayonAddonsManger"]
+        addons_manager = instance.context.data["ayonAddonsManager"]
         sync_server_addon = addons_manager.get("sync_server")
         if sync_server_addon is None:
             sites = [{

@@ -2,10 +2,10 @@
 """Collect AYON addons."""
 import pyblish.api
 
-from ayon_core.modules import AddonsManager
+from ayon_core.addon import AddonsManager
 
 
-class CollectModules(pyblish.api.ContextPlugin):
+class CollectAddons(pyblish.api.ContextPlugin):
     """Collect AYON addons."""
 
     order = pyblish.api.CollectorOrder - 0.5
@@ -13,7 +13,7 @@ class CollectModules(pyblish.api.ContextPlugin):
 
     def process(self, context):
         manager = AddonsManager()
-        context.data["ayonAddonsManger"] = manager
+        context.data["ayonAddonsManager"] = manager
         context.data["ayonAddons"] = manager.addons_by_name
         # Backwards compatibility - remove
         context.data["openPypeModules"] = manager.addons_by_name

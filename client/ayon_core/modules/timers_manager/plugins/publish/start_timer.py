@@ -1,7 +1,7 @@
 """
 Requires:
     context -> system_settings
-    context -> ayonAddonsManger
+    context -> ayonAddonsManager
 """
 
 import pyblish.api
@@ -13,7 +13,7 @@ class StartTimer(pyblish.api.ContextPlugin):
     hosts = ["*"]
 
     def process(self, context):
-        timers_manager = context.data["ayonAddonsManger"]["timers_manager"]
+        timers_manager = context.data["ayonAddonsManager"]["timers_manager"]
         if not timers_manager.enabled:
             self.log.debug("TimersManager is disabled")
             return
