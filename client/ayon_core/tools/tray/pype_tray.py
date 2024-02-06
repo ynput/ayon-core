@@ -10,13 +10,10 @@ from qtpy import QtCore, QtGui, QtWidgets
 from ayon_core import resources, style
 from ayon_core.lib import (
     Logger,
-    get_openpype_execute_args,
+    get_ayon_launcher_args,
     run_detached_process,
 )
-from ayon_core.lib.openpype_version import (
-    get_expected_version,
-    is_running_from_build,
-)
+from ayon_core.lib import is_running_from_build
 from ayon_core.addon import (
     ITrayAction,
     ITrayService,
@@ -254,7 +251,7 @@ class TrayManager:
             reset_version(bool): OpenPype version is cleaned up so igniters
                 logic will decide which version will be used.
         """
-        args = get_openpype_execute_args()
+        args = get_ayon_launcher_args()
         envs = dict(os.environ.items())
 
         # Create a copy of sys.argv
@@ -267,13 +264,7 @@ class TrayManager:
         cleanup_additional_args = False
         if use_expected_version:
             cleanup_additional_args = True
-            expected_version = get_expected_version()
-            if expected_version is not None:
-                reset_version = False
-                envs["OPENPYPE_VERSION"] = str(expected_version)
-            else:
-                # Trigger reset of version if expected version was not found
-                reset_version = True
+            reset_version = True
 
         # Pop OPENPYPE_VERSION
         if reset_version:

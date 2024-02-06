@@ -12,7 +12,7 @@ import pyblish.api
 from ayon_core import resources, AYON_CORE_ROOT
 from ayon_core.pipeline import publish
 from ayon_core.lib import (
-    run_openpype_process,
+    run_ayon_launcher_process,
 
     get_transcode_temp_directory,
     convert_input_paths_for_ffmpeg,
@@ -351,7 +351,7 @@ class ExtractBurnin(publish.Extractor):
                     "logger": self.log
                 }
 
-                run_openpype_process(*args, **process_kwargs)
+                run_ayon_launcher_process(*args, **process_kwargs)
                 # Remove the temporary json
                 os.remove(temporary_json_filepath)
 

@@ -1,6 +1,6 @@
 import os
 
-from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib import get_ayon_launcher_args
 from ayon_core.lib.execute import run_detached_process
 from ayon_core.modules import (
     click_wrap,
@@ -35,7 +35,7 @@ class TrayPublishAddon(OpenPypeModule, IHostAddon, ITrayAction):
         self.publish_paths.extend(publish_paths)
 
     def run_traypublisher(self):
-        args = get_openpype_execute_args(
+        args = get_ayon_launcher_args(
             "module", self.name, "launch"
         )
         run_detached_process(args)

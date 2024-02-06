@@ -153,15 +153,9 @@ from .path_tools import (
     get_last_version_from_path,
 )
 
-from .openpype_version import (
-    op_version_control_available,
-    get_openpype_version,
-    get_build_version,
-    get_expected_version,
+from .ayon_info import (
     is_running_from_build,
-    is_running_staging,
-    is_current_version_studio_latest,
-    is_current_version_higher_than_expected
+    is_staging_enabled,
 )
 
 
@@ -278,13 +272,8 @@ __all__ = [
 
     "Logger",
 
-    "op_version_control_available",
-    "get_openpype_version",
-    "get_build_version",
-    "get_expected_version",
     "is_running_from_build",
-    "is_running_staging",
-    "is_current_version_studio_latest",
+    "is_staging_enabled",
 
     "requests_get",
     "requests_post"

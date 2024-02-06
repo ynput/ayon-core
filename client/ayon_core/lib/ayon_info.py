@@ -6,23 +6,46 @@ import getpass
 import socket
 
 from ayon_core.settings.lib import get_local_settings
-from .execute import get_openpype_execute_args
+from .execute import get_ayon_launcher_args
 from .local_settings import get_local_site_id
-from .openpype_version import (
-    is_running_from_build,
-    get_openpype_version,
-    get_build_version
-)
+
+
+def get_ayon_launcher_version():
+    version_filepath = os.path.join(os.environ["AYON_ROOT"], "version.py")
+    if not os.path.exists(version_filepath):
+        return None
+    content = {}
+    with open(version_filepath, "r") as stream:
+        exec(stream.read(), content)
+    return content["__version__"]
+
+
+def is_running_from_build():
+    """Determine if current process is running from build or code.
+
+    Returns:
+        bool: True if running from build.
+    """
+
+    executable_path = os.environ["AYON_EXECUTABLE"]
+    executable_filename = os.path.basename(executable_path)
+    if "python" in executable_filename.lower():
+        return False
+    return True
+
+
+def is_staging_enabled():
+    return os.getenv("AYON_USE_STAGING") == "1"
 
 
 def get_ayon_info():
-    executable_args = get_openpype_execute_args()
+    executable_args = get_ayon_launcher_args()
     if is_running_from_build():
         version_type = "build"
     else:
         version_type = "code"
     return {
-        "build_verison": get_build_version(),
+        "ayon_launcher_version": get_ayon_launcher_version(),
         "version_type": version_type,
         "executable": executable_args[-1],
         "ayon_root": os.environ["AYON_ROOT"],
@@ -40,7 +63,7 @@ def get_workstation_info():
 
     return {
         "hostname": host_name,
-        "hostip": host_ip,
+        "host_ip": host_ip,
         "username": getpass.getuser(),
         "system_name": platform.system(),
         "local_id": get_local_site_id()
@@ -50,32 +73,32 @@ def get_workstation_info():
 def get_all_current_info():
     """All information about current process in one dictionary."""
 
-    output = {
+    return {
         "workstation": get_workstation_info(),
         "env": os.environ.copy(),
         "local_settings": get_local_settings(),
         "ayon": get_ayon_info(),
     }
-    return output
 
 
-def extract_pype_info_to_file(dirpath):
+def extract_ayon_info_to_file(dirpath, filename=None):
     """Extract all current info to a file.
 
-    It is possible to define onpy directory path. Filename is concatenated with
+    It is possible to define only directory path. Filename is concatenated with
     pype version, workstation site id and timestamp.
 
     Args:
         dirpath (str): Path to directory where file will be stored.
+        filename (Optional[str]): Filename. If not defined, it is generated.
 
     Returns:
         filepath (str): Full path to file where data were extracted.
     """
-    filename = "{}_{}_{}.json".format(
-        get_openpype_version(),
-        get_local_site_id(),
-        datetime.datetime.now().strftime("%y%m%d%H%M%S")
-    )
+    if not filename:
+        filename = "{}_{}.json".format(
+            get_local_site_id(),
+            datetime.datetime.now().strftime("%y%m%d%H%M%S")
+        )
     filepath = os.path.join(dirpath, filename)
     data = get_all_current_info()
     if not os.path.exists(dirpath):
