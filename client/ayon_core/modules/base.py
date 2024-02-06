@@ -4,26 +4,11 @@ from ayon_core.addon import (
     TrayAddonsManager,
     load_addons,
 )
+from ayon_core.addon.base import (
+    OpenPypeModule,
+    OpenPypeAddOn,
+)
 
 ModulesManager = AddonsManager
 TrayModulesManager = TrayAddonsManager
 load_modules = load_addons
-
-
-class OpenPypeModule(AYONAddon):
-    """Base class of OpenPype module.
-
-    Instead of 'AYONAddon' are passed in module settings.
-
-    Args:
-        manager (AddonsManager): Manager object who discovered addon.
-        settings (dict[str, Any]): Settings.
-    """
-
-    # Disable by default
-    enabled = False
-
-
-class OpenPypeAddOn(OpenPypeModule):
-    # Enable Addon by default
-    enabled = True

@@ -592,6 +592,26 @@ class AYONAddon(object):
         pass
 
 
+class OpenPypeModule(AYONAddon):
+    """Base class of OpenPype module.
+
+    Deprecated:
+        Use `AYONAddon` instead.
+
+    Args:
+        manager (AddonsManager): Manager object who discovered addon.
+        settings (dict[str, Any]): Module settings (OpenPype settings).
+    """
+
+    # Disable by default
+    enabled = False
+
+
+class OpenPypeAddOn(OpenPypeModule):
+    # Enable Addon by default
+    enabled = True
+
+
 class AddonsManager:
     """Manager of addons that helps to load and prepare them to work.
 
@@ -638,12 +658,15 @@ class AddonsManager:
 
         return self._addons_by_name.get(addon_name, default)
 
+    @property
     def addons(self):
         return list(self._addons)
 
+    @property
     def addons_by_id(self):
         return dict(self._addons_by_id)
 
+    @property
     def addons_by_name(self):
         return dict(self._addons_by_name)
 
