@@ -1,43 +1,13 @@
-import os
-
-from ayon_core.modules import OpenPypeModule, ITrayModule
+from ayon_core.modules import AYONAddon, ITrayModule
 
 
-class AvalonModule(OpenPypeModule, ITrayModule):
-    name = "avalon"
+class LibraryLoaderAddon(AYONAddon, ITrayModule):
+    name = "library_tool"
 
     def initialize(self, modules_settings):
-        # This module is always enabled
-        self.enabled = True
-
-        avalon_settings = modules_settings[self.name]
-
-        thumbnail_root = os.environ.get("AVALON_THUMBNAIL_ROOT")
-        if not thumbnail_root:
-            thumbnail_root = avalon_settings["AVALON_THUMBNAIL_ROOT"]
-
-        # Mongo timeout
-        avalon_mongo_timeout = os.environ.get("AVALON_TIMEOUT")
-        if not avalon_mongo_timeout:
-            avalon_mongo_timeout = avalon_settings["AVALON_TIMEOUT"]
-
-        self.thumbnail_root = thumbnail_root
-        self.avalon_mongo_timeout = avalon_mongo_timeout
-
         # Tray attributes
         self._library_loader_imported = None
         self._library_loader_window = None
-        self.rest_api_obj = None
-
-    def get_global_environments(self):
-        """Avalon global environments for pype implementation."""
-        return {
-            # TODO thumbnails root should be multiplafrom
-            # - thumbnails root
-            "AVALON_THUMBNAIL_ROOT": self.thumbnail_root,
-            # - mongo timeout in ms
-            "AVALON_TIMEOUT": str(self.avalon_mongo_timeout),
-        }
 
     def tray_init(self):
         # Add library tool
@@ -88,13 +58,6 @@ class AvalonModule(OpenPypeModule, ITrayModule):
         self._library_loader_window.raise_()
         # for Windows
         self._library_loader_window.activateWindow()
-
-    # Webserver module implementation
-    def webserver_initialization(self, server_manager):
-        """Add routes for webserver."""
-        if self.tray_initialized:
-            from .rest_api import AvalonRestApiResource
-            self.rest_api_obj = AvalonRestApiResource(self, server_manager)
 
     def _init_library_loader(self):
         from ayon_core.tools.loader.ui import LoaderWindow
