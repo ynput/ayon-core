@@ -1278,7 +1278,7 @@ class TrayModulesManager(ModulesManager):
         "ftrack",
         "kitsu",
         "launcher_tool",
-        "avalon",
+        "library_tool",
         "clockify",
         "standalonepublish_tool",
         "traypublish_tool",
