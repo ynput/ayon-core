@@ -17,16 +17,16 @@ class CollectFarmTarget(pyblish.api.InstancePlugin):
         context = instance.context
 
         farm_name = ""
-        op_modules = context.data.get("openPypeModules")
+        addons_manager = context.data.get("ayonAddonsManger")
 
         for farm_renderer in ["deadline", "royalrender"]:
-            op_module = op_modules.get(farm_renderer, False)
+            addon = addons_manager.get(farm_renderer, False)
 
-            if op_module and op_module.enabled:
-                farm_name = farm_renderer
-            elif not op_module:
-                self.log.error("Cannot get OpenPype {0} module.".format(
+            if not addon:
+                self.log.error("Cannot find AYON addon '{0}'.".format(
                     farm_renderer))
+            elif addon.enabled:
+                farm_name = farm_renderer
 
         if farm_name:
             self.log.debug("Collected render target: {0}".format(farm_name))

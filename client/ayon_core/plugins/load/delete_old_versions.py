@@ -9,7 +9,7 @@ from qtpy import QtWidgets, QtCore
 
 from ayon_core import style
 from ayon_core.client import get_versions, get_representations
-from ayon_core.modules import ModulesManager
+from ayon_core.addon import AddonsManager
 from ayon_core.lib import format_file_size
 from ayon_core.pipeline import load, AvalonMongoDB, Anatomy
 from ayon_core.pipeline.load import (
@@ -391,9 +391,9 @@ class DeleteOldVersions(load.SubsetLoaderPlugin):
             return
 
         # Check if ftrack module is enabled
-        modules_manager = ModulesManager()
-        ftrack_module = modules_manager.modules_by_name.get("ftrack")
-        if not ftrack_module or not ftrack_module.enabled:
+        addons_manager = AddonsManager()
+        ftrack_addon = addons_manager.get("ftrack")
+        if not ftrack_addon or not ftrack_addon.enabled:
             return
 
         import ftrack_api

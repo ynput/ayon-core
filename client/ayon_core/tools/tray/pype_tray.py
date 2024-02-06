@@ -68,7 +68,7 @@ class PixmapLabel(QtWidgets.QLabel):
 class TrayManager:
     """Cares about context of application.
 
-    Load submenus, actions, separators and modules into tray's context.
+    Load submenus, actions, separators and addons into tray's context.
     """
     def __init__(self, tray_widget, main_window):
         self.tray_widget = tray_widget
@@ -79,7 +79,6 @@ class TrayManager:
         self.log = Logger.get_logger(self.__class__.__name__)
 
         system_settings = get_system_settings()
-        self.module_settings = system_settings["modules"]
 
         version_check_interval = system_settings["general"].get(
             "version_check_interval"
@@ -132,7 +131,7 @@ class TrayManager:
 
         self._execution_in_progress = False
 
-    def initialize_modules(self):
+    def initialize_addons(self):
         """Add addons to tray."""
 
         self._addons_manager.initialize(self, self.tray_widget.menu)
@@ -154,7 +153,7 @@ class TrayManager:
         exit_action.triggered.connect(self.tray_widget.exit)
         self.tray_widget.menu.addAction(exit_action)
 
-        # Tell each module which modules were imported
+        # Tell each addon which addons were imported
         self._addons_manager.start_addons()
 
         # Print time report
@@ -321,7 +320,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self.menu = QtWidgets.QMenu()
         self.menu.setStyleSheet(style.load_stylesheet())
 
-        # Set modules
+        # Set addons
         self.tray_man = TrayManager(self, self.parent)
 
         # Add menu to Context of SystemTrayIcon
@@ -345,16 +344,16 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._doubleclick = False
         self._click_pos = None
 
-        self._initializing_modules = False
+        self._initializing_addons = False
 
     @property
-    def initializing_modules(self):
-        return self._initializing_modules
+    def initializing_addons(self):
+        return self._initializing_addons
 
-    def initialize_modules(self):
-        self._initializing_modules = True
-        self.tray_man.initialize_modules()
-        self._initializing_modules = False
+    def initialize_addons(self):
+        self._initializing_addons = True
+        self.tray_man.initialize_addons()
+        self._initializing_addons = False
 
     def _click_timer_timeout(self):
         self._click_timer.stop()
@@ -432,9 +431,9 @@ class PypeTrayStarter(QtCore.QObject):
             # Second processing of events to make sure splash is painted
             QtWidgets.QApplication.processEvents()
             self._timer_counter += 1
-            self._tray_widget.initialize_modules()
+            self._tray_widget.initialize_addons()
 
-        elif not self._tray_widget.initializing_modules:
+        elif not self._tray_widget.initializing_addons:
             splash = self._get_splash()
             splash.hide()
             self._start_timer.stop()

@@ -869,8 +869,16 @@ class LaunchHook:
         return getattr(self.application, "full_name", None)
 
     @property
+    def addons_manager(self):
+        return getattr(self.launch_context, "addons_manager", None)
+
+    @property
     def modules_manager(self):
-        return getattr(self.launch_context, "modules_manager", None)
+        """
+        Deprecated:
+            Use 'addons_wrapper' instead.
+        """
+        return self.addons_manager
 
     def validate(self):
         """Optional validation of launch hook on initialization.
@@ -950,12 +958,12 @@ class ApplicationLaunchContext:
         launch_type=None,
         **data
     ):
-        from ayon_core.modules import ModulesManager
+        from ayon_core.addon import AddonsManager
 
         # Application object
         self.application = application
 
-        self.modules_manager = ModulesManager()
+        self.addons_manager = AddonsManager()
 
         # Logger
         logger_name = "{}-{}".format(self.__class__.__name__,
@@ -1042,6 +1050,15 @@ class ApplicationLaunchContext:
             )
         self.kwargs["env"] = value
 
+    @property
+    def modules_manager(self):
+        """
+        Deprecated:
+            Use 'addons_manager' instead.
+
+        """
+        return self.addons_manager
+
     def _collect_addons_launch_hook_paths(self):
         """Helper to collect application launch hooks from addons.
 
@@ -1055,7 +1072,7 @@ class ApplicationLaunchContext:
         expected_types = (list, tuple, set)
 
         output = []
-        for module in self.modules_manager.get_enabled_modules():
+        for module in self.addons_manager.get_enabled_addons():
             # Skip module if does not have implemented 'get_launch_hook_paths'
             func = getattr(module, "get_launch_hook_paths", None)
             if func is None:
@@ -1114,7 +1131,7 @@ class ApplicationLaunchContext:
             # If host requires launch hooks and is module then launch hooks
             #   should be collected using 'collect_launch_hook_paths'
             #   - module have to implement 'get_launch_hook_paths'
-            host_module = self.modules_manager.get_host_module(self.host_name)
+            host_module = self.addons_manager.get_host_addon(self.host_name)
             if not host_module:
                 hooks_dirs.append(os.path.join(
                     AYON_CORE_ROOT, "hosts", self.host_name, "hooks"
@@ -1442,7 +1459,7 @@ def get_app_environments_for_context(
     env_group=None,
     launch_type=None,
     env=None,
-    modules_manager=None
+    addons_manager=None
 ):
     """Prepare environment variables by context.
     Args:
@@ -1457,7 +1474,7 @@ def get_app_environments_for_context(
             executed.
         env (Optional[dict[str, str]]): Initial environment variables.
             `os.environ` is used when not passed.
-        modules_manager (Optional[ModulesManager]): Initialized modules
+        addons_manager (Optional[AddonsManager]): Initialized modules
             manager.
 
     Returns:
@@ -1474,7 +1491,8 @@ def get_app_environments_for_context(
         env_group=env_group,
         launch_type=launch_type,
         env=env,
-        modules_manager=modules_manager,
+        addons_manager=addons_manager,
+        modules_manager=addons_manager,
     )
     context.run_prelaunch_hooks()
     return context.env
@@ -1492,11 +1510,11 @@ def _merge_env(env, current_env):
     return result
 
 
-def _add_python_version_paths(app, env, logger, modules_manager):
+def _add_python_version_paths(app, env, logger, addons_manager):
     """Add vendor packages specific for a Python version."""
 
-    for module in modules_manager.get_enabled_modules():
-        module.modify_application_launch_arguments(app, env)
+    for addon in addons_manager.get_enabled_addons():
+        addon.modify_application_launch_arguments(app, env)
 
     # Skip adding if host name is not set
     if not app.host_name:
@@ -1529,7 +1547,7 @@ def _add_python_version_paths(app, env, logger, modules_manager):
 
 
 def prepare_app_environments(
-    data, env_group=None, implementation_envs=True, modules_manager=None
+    data, env_group=None, implementation_envs=True, addons_manager=None
 ):
     """Modify launch environments based on launched app and context.
 
@@ -1543,12 +1561,12 @@ def prepare_app_environments(
     log = data["log"]
     source_env = data["env"].copy()
 
-    if modules_manager is None:
-        from ayon_core.modules import ModulesManager
+    if addons_manager is None:
+        from ayon_core.addon import AddonsManager
 
-        modules_manager = ModulesManager()
+        addons_manager = AddonsManager()
 
-    _add_python_version_paths(app, source_env, log, modules_manager)
+    _add_python_version_paths(app, source_env, log, addons_manager)
 
     # Use environments from local settings
     filtered_local_envs = {}
@@ -1628,14 +1646,14 @@ def prepare_app_environments(
     final_env = None
     # Add host specific environments
     if app.host_name and implementation_envs:
-        host_module = modules_manager.get_host_module(app.host_name)
-        if not host_module:
+        host_addon = addons_manager.get_host_addon(app.host_name)
+        if not host_addon:
             module = __import__("ayon_core.hosts", fromlist=[app.host_name])
             host_module = getattr(module, app.host_name, None)
         add_implementation_envs = None
-        if host_module:
+        if host_addon:
             add_implementation_envs = getattr(
-                host_module, "add_implementation_envs", None
+                host_addon, "add_implementation_envs", None
             )
         if add_implementation_envs:
             # Function may only modify passed dict without returning value
@@ -1690,7 +1708,7 @@ def apply_project_environments_value(
     return env
 
 
-def prepare_context_environments(data, env_group=None, modules_manager=None):
+def prepare_context_environments(data, env_group=None, addons_manager=None):
     """Modify launch environments with context data for launched host.
 
     Args:
@@ -1796,10 +1814,10 @@ def prepare_context_environments(data, env_group=None, modules_manager=None):
 
     data["env"]["AVALON_WORKDIR"] = workdir
 
-    _prepare_last_workfile(data, workdir, modules_manager)
+    _prepare_last_workfile(data, workdir, addons_manager)
 
 
-def _prepare_last_workfile(data, workdir, modules_manager):
+def _prepare_last_workfile(data, workdir, addons_manager):
     """last workfile workflow preparation.
 
     Function check if should care about last workfile workflow and tries
@@ -1815,11 +1833,11 @@ def _prepare_last_workfile(data, workdir, modules_manager):
         workdir (str): Path to folder where workfiles should be stored.
     """
 
-    from ayon_core.modules import ModulesManager
+    from ayon_core.addon import AddonsManager
     from ayon_core.pipeline import HOST_WORKFILE_EXTENSIONS
 
-    if not modules_manager:
-        modules_manager = ModulesManager()
+    if not addons_manager:
+        addons_manager = AddonsManager()
 
     log = data["log"]
 
@@ -1868,9 +1886,9 @@ def _prepare_last_workfile(data, workdir, modules_manager):
     # Last workfile path
     last_workfile_path = data.get("last_workfile_path") or ""
     if not last_workfile_path:
-        host_module = modules_manager.get_host_module(app.host_name)
-        if host_module:
-            extensions = host_module.get_workfile_extensions()
+        host_addon = addons_manager.get_host_addon(app.host_name)
+        if host_addon:
+            extensions = host_addon.get_workfile_extensions()
         else:
             extensions = HOST_WORKFILE_EXTENSIONS.get(app.host_name)
 

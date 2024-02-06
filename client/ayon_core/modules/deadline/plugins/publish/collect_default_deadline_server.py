@@ -25,7 +25,7 @@ class CollectDefaultDeadlineServer(pyblish.api.ContextPlugin):
 
     def process(self, context):
         try:
-            deadline_module = context.data.get("openPypeModules")["deadline"]
+            deadline_module = context.data["ayonAddonsManger"]["deadline"]
         except AttributeError:
             self.log.error("Cannot get OpenPype Deadline module.")
             raise AssertionError("OpenPype Deadline module not found.")

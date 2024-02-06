@@ -10,7 +10,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 import six
 
 from ayon_core.lib import Logger
-from ayon_core.modules import ModulesManager
+from ayon_core.addons import AddonsManger
 
 
 TMP_FILE_PREFIX = "opw_tvp_"
@@ -309,8 +309,8 @@ class TVPaintCommands:
         self._commands = []
         self._command_classes_by_name = None
         if job_queue_module is None:
-            manager = ModulesManager()
-            job_queue_module = manager.modules_by_name["job_queue"]
+            manager = AddonsManger()
+            job_queue_module = manager["job_queue"]
         self._job_queue_module = job_queue_module
 
         self._workfile = self._prepare_workfile(workfile)

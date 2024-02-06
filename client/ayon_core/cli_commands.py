@@ -24,9 +24,9 @@ class Commands:
         """Modules/Addons can add their cli commands dynamically."""
 
         from ayon_core.lib import Logger
-        from ayon_core.modules import ModulesManager
+        from ayon_core.addon import AddonsManager
 
-        manager = ModulesManager()
+        manager = AddonsManager()
         log = Logger.get_logger("CLI-AddModules")
         for addon in manager.modules:
             try:
@@ -61,7 +61,7 @@ class Commands:
             get_app_environments_for_context,
             LaunchTypes,
         )
-        from ayon_core.modules import ModulesManager
+        from ayon_core.addon import AddonsManager
         from ayon_core.pipeline import (
             install_openpype_plugins,
             get_global_context,
@@ -77,7 +77,7 @@ class Commands:
 
         install_openpype_plugins()
 
-        manager = ModulesManager()
+        manager = AddonsManager()
 
         publish_paths = manager.collect_plugin_paths()["publish"]
 

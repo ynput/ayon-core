@@ -18,7 +18,7 @@ from qtpy import QtCore
 from ayon_core.lib import Logger
 from ayon_core.tests.lib import is_in_tests
 from ayon_core.pipeline import install_host, legacy_io
-from ayon_core.modules import ModulesManager
+from ayon_core.addon import AddonsManager
 from ayon_core.tools.utils import host_tools, get_openpype_qt_app
 from ayon_core.tools.adobe_webserver.app import WebServerTool
 
@@ -50,7 +50,7 @@ def main(*subprocess_args):
     launcher.start()
 
     if os.environ.get("HEADLESS_PUBLISH"):
-        manager = ModulesManager()
+        manager = AddonsManager()
         webpublisher_addon = manager["webpublisher"]
 
         launcher.execute_in_main_thread(

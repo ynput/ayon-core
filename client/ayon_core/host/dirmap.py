@@ -13,7 +13,7 @@ import platform
 import six
 
 from ayon_core.lib import Logger
-from ayon_core.modules import ModulesManager
+from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings
 from ayon_core.settings.lib import get_site_local_overrides
 
@@ -50,7 +50,7 @@ class HostDirmap(object):
     def sync_module(self):
         if not self._sync_module_discovered:
             self._sync_module_discovered = True
-            manager = ModulesManager()
+            manager = AddonsManager()
             self._sync_module = manager.get("sync_server")
         return self._sync_module
 
