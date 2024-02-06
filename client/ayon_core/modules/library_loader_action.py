@@ -13,7 +13,7 @@ class LibraryLoaderAddon(AYONAddon, ITrayModule):
         # Add library tool
         self._library_loader_imported = False
         try:
-            from ayon_core.tools.libraryloader import LibraryLoaderWindow
+            from ayon_core.tools.loader.ui import LoaderWindow
 
             self._library_loader_imported = True
         except Exception:
