@@ -102,7 +102,7 @@ class ApplicationAction(LauncherAction):
         from ayon_core import style
 
         dialog = QtWidgets.QMessageBox()
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
+        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         dialog.setWindowIcon(icon)
         dialog.setStyleSheet(style.load_stylesheet())
         dialog.setWindowTitle(title)

@@ -55,7 +55,7 @@ class PublisherWindow(QtWidgets.QWidget):
 
         self.setWindowTitle("AYON publisher")
 
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
+        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
         if reset_on_show is None:
@@ -79,7 +79,7 @@ class PublisherWindow(QtWidgets.QWidget):
         # Header
         header_widget = QtWidgets.QWidget(self)
 
-        icon_pixmap = QtGui.QPixmap(resources.get_openpype_icon_filepath())
+        icon_pixmap = QtGui.QPixmap(resources.get_ayon_icon_filepath())
         icon_label = PixmapLabel(icon_pixmap, header_widget)
         icon_label.setObjectName("PublishContextLabel")
 

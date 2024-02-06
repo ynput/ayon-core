@@ -37,7 +37,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             controller = SceneInventoryController()
 
         project_name = controller.get_current_project_name()
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
+        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         self.setWindowTitle("Scene Inventory - {}".format(project_name))
         self.setObjectName("SceneInventory")

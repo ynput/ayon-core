@@ -208,7 +208,7 @@ def load_stylesheet():
 
 def get_app_icon_path():
     """Path to OpenPype icon."""
-    return resources.get_openpype_icon_filepath()
+    return resources.get_ayon_icon_filepath()
 
 
 def app_icon_path():

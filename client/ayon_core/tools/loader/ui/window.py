@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.resources import get_openpype_icon_filepath
+from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
 from ayon_core.tools.utils import (
     PlaceholderLineEdit,
@@ -119,7 +119,7 @@ class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
         super(LoaderWindow, self).__init__(parent)
 
-        icon = QtGui.QIcon(get_openpype_icon_filepath())
+        icon = QtGui.QIcon(get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         self.setWindowTitle("AYON Loader")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)

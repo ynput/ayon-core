@@ -37,10 +37,10 @@ class SplashScreen(QtWidgets.QDialog):
         super(SplashScreen, self).__init__()
 
         if splash_icon is None:
-            splash_icon = resources.get_openpype_icon_filepath()
+            splash_icon = resources.get_ayon_icon_filepath()
 
         if window_icon is None:
-            window_icon = resources.get_openpype_icon_filepath()
+            window_icon = resources.get_ayon_icon_filepath()
 
         self.splash_icon = splash_icon
         self.setWindowIcon(QtGui.QIcon(window_icon))

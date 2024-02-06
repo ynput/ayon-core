@@ -215,7 +215,7 @@ class PypeInfoWidget(QtWidgets.QWidget):
 
         self.setStyleSheet(style.load_stylesheet())
 
-        icon = QtGui.QIcon(resources.get_openpype_icon_filepath())
+        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         self.setWindowTitle("AYON info")
 

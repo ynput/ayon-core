@@ -8,7 +8,7 @@ import arrow
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
-from ayon_core.resources import get_openpype_icon_filepath
+from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.tools import resources
 from ayon_core.tools.utils import (
     IconButton,
@@ -600,7 +600,7 @@ class PublishReportViewerWindow(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(PublishReportViewerWindow, self).__init__(parent)
         self.setWindowTitle("Publish report viewer")
-        icon = QtGui.QIcon(get_openpype_icon_filepath())
+        icon = QtGui.QIcon(get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
         body = QtWidgets.QSplitter(self)
