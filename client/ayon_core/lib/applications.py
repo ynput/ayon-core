@@ -24,7 +24,7 @@ from ayon_core.settings.constants import (
 )
 from .log import Logger
 from .profiles_filtering import filter_profiles
-from .local_settings import get_openpype_username
+from .local_settings import get_ayon_username
 
 from .python_module_tools import (
     modules_from_path,
@@ -1912,7 +1912,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
             workdir_data.update({
                 "version": 1,
-                "user": get_openpype_username(),
+                "user": get_ayon_username(),
                 "ext": extensions[0]
             })
 
