@@ -19,7 +19,7 @@ from ayon_core.lib import Logger
 from ayon_core.tests.lib import is_in_tests
 from ayon_core.pipeline import install_host, legacy_io
 from ayon_core.addon import AddonsManager
-from ayon_core.tools.utils import host_tools, get_openpype_qt_app
+from ayon_core.tools.utils import host_tools, get_ayon_qt_app
 from ayon_core.tools.adobe_webserver.app import WebServerTool
 
 from .ws_stub import get_stub
@@ -43,7 +43,7 @@ def main(*subprocess_args):
     install_host(host)
 
     os.environ["OPENPYPE_LOG_NO_COLORS"] = "False"
-    app = get_openpype_qt_app()
+    app = get_ayon_qt_app()
     app.setQuitOnLastWindowClosed(False)
 
     launcher = ProcessLauncher(subprocess_args)
