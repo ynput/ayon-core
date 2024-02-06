@@ -7,7 +7,7 @@ from ayon_core.pipeline import (
 
 
 class ValidateColorspaceLook(pyblish.api.InstancePlugin,
-                             publish.OpenPypePyblishPluginMixin):
+                             publish.AYONPyblishPluginMixin):
     """Validate colorspace look attributes"""
 
     label = "Validate colorspace look attributes"

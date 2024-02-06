@@ -6,13 +6,13 @@ from pymxs import runtime as rt
 from ayon_core.lib import BoolDef
 from ayon_core.hosts.max.api.lib import get_max_version
 from ayon_core.pipeline.publish import (
-    OpenPypePyblishPluginMixin,
+    AYONPyblishPluginMixin,
     KnownPublishError
 )
 
 
 class CollectReview(pyblish.api.InstancePlugin,
-                    OpenPypePyblishPluginMixin):
+                    AYONPyblishPluginMixin):
     """Collect Review Data for Preview Animation"""
 
     order = pyblish.api.CollectorOrder + 0.02

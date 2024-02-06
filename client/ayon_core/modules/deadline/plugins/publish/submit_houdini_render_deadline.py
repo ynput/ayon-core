@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io, OpenPypePyblishPluginMixin
+from ayon_core.pipeline import legacy_io, AYONPyblishPluginMixin
 from ayon_core.tests.lib import is_in_tests
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
@@ -50,7 +50,7 @@ class RedshiftRenderPluginInfo():
 
 class HoudiniSubmitDeadline(
     abstract_submit_deadline.AbstractSubmitDeadline,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 ):
     """Submit Render ROPs to Deadline.
 

@@ -1,11 +1,11 @@
 import os
 
 import pyblish.api
-from ayon_core.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.pipeline import AYONPyblishPluginMixin
 
 
 class CollectMovieBatch(
-    pyblish.api.InstancePlugin, OpenPypePyblishPluginMixin
+    pyblish.api.InstancePlugin, AYONPyblishPluginMixin
 ):
     """Collect file url for batch movies and create representation.
 

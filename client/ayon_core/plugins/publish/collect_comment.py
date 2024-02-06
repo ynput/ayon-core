@@ -25,12 +25,12 @@ Todos:
 
 import pyblish.api
 from ayon_core.lib.attribute_definitions import TextDef
-from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 
 class CollectInstanceCommentDef(
     pyblish.api.InstancePlugin,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 ):
     label = "Comment per instance"
     targets = ["local"]
@@ -64,7 +64,7 @@ class CollectInstanceCommentDef(
 
 class CollectComment(
     pyblish.api.ContextPlugin,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 ):
     """Collect comment per each instance.
 

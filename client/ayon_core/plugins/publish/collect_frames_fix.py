@@ -4,7 +4,7 @@ from ayon_core.lib.attribute_definitions import (
     BoolDef
 )
 
-from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_core.client.entities import (
     get_last_version_by_subset_name,
     get_representations
@@ -13,7 +13,7 @@ from ayon_core.client.entities import (
 
 class CollectFramesFixDef(
     pyblish.api.InstancePlugin,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 ):
     """Provides text field to insert frame(s) to be rerendered.
 

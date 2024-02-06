@@ -19,14 +19,14 @@ from ayon_core.modules.royalrender.rr_job import (
     RREnvList,
     get_rr_platform,
 )
-from ayon_core.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.pipeline import AYONPyblishPluginMixin
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_core.pipeline.publish.lib import get_published_workfile_instance
 from ayon_core.tests.lib import is_in_tests
 
 
 class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
-                               OpenPypePyblishPluginMixin):
+                               AYONPyblishPluginMixin):
     """Creates separate rendering job for Royal Render"""
     label = "Create Nuke Render job in RR"
     order = pyblish.api.IntegratorOrder + 0.1

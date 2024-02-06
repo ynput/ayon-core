@@ -10,7 +10,7 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import (
     legacy_io,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 )
 from ayon_core.pipeline.publish.lib import (
     replace_with_published_scene_path
@@ -35,7 +35,7 @@ class MaxPluginInfo(object):
 
 
 class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
-                        OpenPypePyblishPluginMixin):
+                        AYONPyblishPluginMixin):
 
     label = "Submit Render to Deadline"
     hosts = ["max"]

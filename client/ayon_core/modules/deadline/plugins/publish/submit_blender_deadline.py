@@ -13,7 +13,7 @@ from ayon_core.lib import (
     TextDef,
 )
 from ayon_core.pipeline import legacy_io
-from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_core.pipeline.farm.tools import iter_expected_files
 from ayon_core.tests.lib import is_in_tests
 
@@ -29,7 +29,7 @@ class BlenderPluginInfo():
 
 
 class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
-                            OpenPypePyblishPluginMixin):
+                            AYONPyblishPluginMixin):
     label = "Submit Render to Deadline"
     hosts = ["blender"]
     families = ["render"]

@@ -17,16 +17,16 @@ Exception `PublishValidationError` 3 arguments:
 When there is a known error that can't be fixed by user (e.g. can't connect to deadline service, etc.) `KnownPublishError` should be raise. The only difference is that it's message is shown in UI to artist otherwise a neutral message without context is shown.
 
 ## Plugin extension
-Publish plugins can be extended by additional logic when inherits from `OpenPypePyblishPluginMixin` which can be used as mixin (additional inheritance of class).
+Publish plugins can be extended by additional logic when inherits from `AYONPyblishPluginMixin` which can be used as mixin (additional inheritance of class).
 
 ```python
 import pyblish.api
-from ayon_core.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.pipeline import AYONPyblishPluginMixin
 
 
 # Example context plugin
 class MyExtendedPlugin(
-    pyblish.api.ContextPlugin, OpenPypePyblishPluginMixin
+    pyblish.api.ContextPlugin, AYONPyblishPluginMixin
 ):
     pass
 

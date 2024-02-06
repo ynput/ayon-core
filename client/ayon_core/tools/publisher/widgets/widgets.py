@@ -1465,7 +1465,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
     """Widget showing publsish plugin attributes for selected instances.
 
     Attributes are defined on publish plugins. Publihs plugin may define
-    attribute definitions but must inherit `OpenPypePyblishPluginMixin`
+    attribute definitions but must inherit `AYONPyblishPluginMixin`
     (~/openpype/pipeline/publish). At the moment requires to implement
     `get_attribute_defs` and `convert_attribute_values` class methods.
 

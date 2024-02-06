@@ -5,7 +5,7 @@ from ayon_core.pipeline import publish
 
 
 class ExtractColorspaceLook(publish.Extractor,
-                            publish.OpenPypePyblishPluginMixin):
+                            publish.AYONPyblishPluginMixin):
     """Extract OCIO colorspace look from LUT file
     """
 

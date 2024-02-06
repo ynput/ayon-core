@@ -9,7 +9,7 @@ import pyblish.api
 
 from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 )
 from ayon_core.tests.lib import is_in_tests
 from ayon_core.lib import (
@@ -20,7 +20,7 @@ from ayon_core.lib import (
 
 
 class NukeSubmitDeadline(pyblish.api.InstancePlugin,
-                         OpenPypePyblishPluginMixin):
+                         AYONPyblishPluginMixin):
     """Submit write to Deadline
 
     Renders are submitted to a Deadline Web Service as
