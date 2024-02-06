@@ -7,7 +7,6 @@ import pyblish.api
 from ayon_api import slugify_string
 from ayon_api.entity_hub import EntityHub
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import get_assets, get_asset_name_identifier
 from ayon_core.pipeline.template_data import (
     get_asset_template_data,
@@ -27,9 +26,6 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
     families = ["clip", "shot"]
 
     def process(self, context):
-        if not AYON_SERVER_ENABLED:
-            return
-
         if not context.data.get("hierarchyContext"):
             self.log.debug("Skipping ExtractHierarchyToAYON")
             return

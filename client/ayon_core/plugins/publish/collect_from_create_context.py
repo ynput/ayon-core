@@ -4,7 +4,6 @@
 import os
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.host import IPublishHost
 from ayon_core.pipeline import legacy_io, registered_host
 from ayon_core.pipeline.create import CreateContext
@@ -39,8 +38,7 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
 
         for created_instance in create_context.instances:
             instance_data = created_instance.data_to_store()
-            if AYON_SERVER_ENABLED:
-                instance_data["asset"] = instance_data.pop("folderPath")
+            instance_data["asset"] = instance_data.pop("folderPath")
             if instance_data["active"]:
                 thumbnail_path = thumbnail_paths_by_instance_id.get(
                     created_instance.id

@@ -5,23 +5,30 @@
     pull into a scene.
 
     This one is used only as image describing content of published item and
-    shows up only in Loader in right column section.
+        shows up only in Loader or WebUI.
+
+    Instance must have 'published_representations' to
+        be able to integrate thumbnail.
+    Possible sources of thumbnail paths:
+    - instance.data["thumbnailPath"]
+    - representation with 'thumbnail' name in 'published_representations'
+    - context.data["thumbnailPath"]
+
+    Notes:
+        Issue with 'thumbnail' representation is that we most likely don't
+            want to integrate it as representation. Integrated representation
+            is polluting Loader and database without real usage. That's why
+            they usually have 'delete' tag to skip the integration.
+
 """
 
 import os
-import sys
-import errno
-import shutil
-import copy
 import collections
 
-import six
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import get_versions
-from ayon_core.client.operations import OperationsSession, new_thumbnail_doc
-from ayon_core.pipeline.publish import get_publish_instance_label
+from ayon_core.client.operations import OperationsSession
 
 InstanceFilterResult = collections.namedtuple(
     "InstanceFilterResult",
@@ -29,10 +36,10 @@ InstanceFilterResult = collections.namedtuple(
 )
 
 
-class IntegrateThumbnails(pyblish.api.ContextPlugin):
+class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
     """Integrate Thumbnails for Openpype use in Loaders."""
 
-    label = "Integrate Thumbnails"
+    label = "Integrate Thumbnails to AYON"
     order = pyblish.api.IntegratorOrder + 0.01
 
     required_context_keys = [
@@ -40,12 +47,6 @@ class IntegrateThumbnails(pyblish.api.ContextPlugin):
     ]
 
     def process(self, context):
-        if AYON_SERVER_ENABLED:
-            self.log.debug(
-                "AYON is enabled. Skipping v3 thumbnail integration"
-            )
-            return
-
         # Filter instances which can be used for integration
         filtered_instance_items = self._prepare_instances(context)
         if not filtered_instance_items:
@@ -54,39 +55,9 @@ class IntegrateThumbnails(pyblish.api.ContextPlugin):
             )
             return
 
-        # Initial validation of available templated and required keys
-        env_key = "AVALON_THUMBNAIL_ROOT"
-        thumbnail_root_format_key = "{thumbnail_root}"
-        thumbnail_root = os.environ.get(env_key) or ""
+        project_name = context.data["projectName"]
 
-        anatomy = context.data["anatomy"]
-        project_name = anatomy.project_name
-        if "publish" not in anatomy.templates:
-            self.log.warning(
-                "Anatomy is missing the \"publish\" key. Skipping."
-            )
-            return
-
-        if "thumbnail" not in anatomy.templates["publish"]:
-            self.log.warning((
-                "There is no \"thumbnail\" template set for the project"
-                " \"{}\". Skipping."
-            ).format(project_name))
-            return
-
-        thumbnail_template = anatomy.templates["publish"]["thumbnail"]
-        if not thumbnail_template:
-            self.log.debug("Thumbnail template is not filled. Skipping.")
-            return
-
-        if (
-            not thumbnail_root
-            and thumbnail_root_format_key in thumbnail_template
-        ):
-            self.log.warning("{} is not set. Skipping.".format(env_key))
-            return
-
-        # Collect verion ids from all filtered instance
+        # Collect version ids from all filtered instance
         version_ids = {
             instance_items.version_id
             for instance_items in filtered_instance_items
@@ -106,42 +77,19 @@ class IntegrateThumbnails(pyblish.api.ContextPlugin):
         self._integrate_thumbnails(
             filtered_instance_items,
             version_docs_by_str_id,
-            anatomy,
-            thumbnail_root
+            project_name
         )
-
-    def _get_thumbnail_from_instance(self, instance):
-        # 1. Look for thumbnail in published representations
-        published_repres = instance.data.get("published_representations")
-        path = self._get_thumbnail_path_from_published(published_repres)
-        if path and os.path.exists(path):
-            return path
-
-        if path:
-            self.log.warning(
-                "Could not find published thumbnail path {}".format(path)
-            )
-
-        # 2. Look for thumbnail in "not published" representations
-        thumbnail_path = self._get_thumbnail_path_from_unpublished(instance)
-        if thumbnail_path and os.path.exists(thumbnail_path):
-            return thumbnail_path
-
-        # 3. Look for thumbnail path on instance in 'thumbnailPath'
-        thumbnail_path = instance.data.get("thumbnailPath")
-        if thumbnail_path and os.path.exists(thumbnail_path):
-            return thumbnail_path
-        return None
 
     def _prepare_instances(self, context):
         context_thumbnail_path = context.data.get("thumbnailPath")
-        valid_context_thumbnail = False
-        if context_thumbnail_path and os.path.exists(context_thumbnail_path):
-            valid_context_thumbnail = True
+        valid_context_thumbnail = bool(
+            context_thumbnail_path
+            and os.path.exists(context_thumbnail_path)
+        )
 
         filtered_instances = []
         for instance in context:
-            instance_label = get_publish_instance_label(instance)
+            instance_label = self._get_instance_label(instance)
             # Skip instances without published representations
             # - there is no place where to put the thumbnail
             published_repres = instance.data.get("published_representations")
@@ -153,7 +101,10 @@ class IntegrateThumbnails(pyblish.api.ContextPlugin):
                 continue
 
             # Find thumbnail path on instance
-            thumbnail_path = self._get_thumbnail_from_instance(instance)
+            thumbnail_path = (
+                instance.data.get("thumbnailPath")
+                or self._get_instance_thumbnail_path(published_repres)
+            )
             if thumbnail_path:
                 self.log.debug((
                     "Found thumbnail path for instance \"{}\"."
@@ -187,14 +138,11 @@ class IntegrateThumbnails(pyblish.api.ContextPlugin):
         for repre_info in published_representations.values():
             return repre_info["representation"]["parent"]
 
-    def _get_thumbnail_path_from_published(self, published_representations):
-        if not published_representations:
-            return None
-
+    def _get_instance_thumbnail_path(self, published_representations):
         thumb_repre_doc = None
         for repre_info in published_representations.values():
             repre_doc = repre_info["representation"]
-            if repre_doc["name"].lower() == "thumbnail":
+            if "thumbnail" in repre_doc["name"].lower():
                 thumb_repre_doc = repre_doc
                 break
 
@@ -212,51 +160,19 @@ class IntegrateThumbnails(pyblish.api.ContextPlugin):
             return None
         return os.path.normpath(path)
 
-    def _get_thumbnail_path_from_unpublished(self, instance):
-        repres = instance.data.get("representations")
-        if not repres:
-            return None
-
-        thumbnail_repre = next(
-            (
-                repre
-                for repre in repres
-                if repre["name"] == "thumbnail"
-            ),
-            None
-        )
-        if not thumbnail_repre:
-            return None
-
-        staging_dir = thumbnail_repre.get("stagingDir")
-        if not staging_dir:
-            staging_dir = instance.data.get("stagingDir")
-
-        filename = thumbnail_repre.get("files")
-        if not staging_dir or not filename:
-            return None
-
-        if isinstance(filename, (list, tuple, set)):
-            filename = filename[0]
-
-        thumbnail_path = os.path.join(staging_dir, filename)
-        if os.path.exists(thumbnail_path):
-            return thumbnail_path
-        return None
-
     def _integrate_thumbnails(
         self,
         filtered_instance_items,
         version_docs_by_str_id,
-        anatomy,
-        thumbnail_root
+        project_name
     ):
-        op_session = OperationsSession()
-        project_name = anatomy.project_name
+        from ayon_core.client.operations import create_thumbnail
 
+        # Make sure each entity id has defined only one thumbnail id
+        thumbnail_info_by_entity_id = {}
         for instance_item in filtered_instance_items:
             instance, thumbnail_path, version_id = instance_item
-            instance_label = get_publish_instance_label(instance)
+            instance_label = self._get_instance_label(instance)
             version_doc = version_docs_by_str_id.get(version_id)
             if not version_doc:
                 self.log.warning((
@@ -264,69 +180,13 @@ class IntegrateThumbnails(pyblish.api.ContextPlugin):
                 ).format(instance_label))
                 continue
 
-            filename, file_extension = os.path.splitext(thumbnail_path)
-            # Create id for mongo entity now to fill anatomy template
-            thumbnail_doc = new_thumbnail_doc()
-            thumbnail_id = thumbnail_doc["_id"]
-
-            # Prepare anatomy template fill data
-            template_data = copy.deepcopy(instance.data["anatomyData"])
-            template_data.update({
-                "_id": str(thumbnail_id),
-                "ext": file_extension[1:],
-                "name": "thumbnail",
-                "thumbnail_root": thumbnail_root,
-                "thumbnail_type": "thumbnail"
-            })
-
-            template_obj = anatomy.templates_obj["publish"]["thumbnail"]
-            template_filled = template_obj.format_strict(template_data)
-            thumbnail_template = template_filled.template
-
-            dst_full_path = os.path.normpath(str(template_filled))
-            self.log.debug("Copying file .. {} -> {}".format(
-                thumbnail_path, dst_full_path
-            ))
-            dirname = os.path.dirname(dst_full_path)
-            try:
-                os.makedirs(dirname)
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    tp, value, tb = sys.exc_info()
-                    six.reraise(tp, value, tb)
-
-            shutil.copy(thumbnail_path, dst_full_path)
-
-            # Clean template data from keys that are dynamic
-            for key in ("_id", "thumbnail_root"):
-                template_data.pop(key, None)
-
-            repre_context = template_filled.used_values
-            for key in self.required_context_keys:
-                value = template_data.get(key)
-                if not value:
-                    continue
-                repre_context[key] = template_data[key]
-
-            thumbnail_doc["data"] = {
-                "template": thumbnail_template,
-                "template_data": repre_context
-            }
-            op_session.create_entity(
-                project_name, thumbnail_doc["type"], thumbnail_doc
-            )
-            # Create thumbnail entity
-            self.log.debug(
-                "Creating entity in database {}".format(str(thumbnail_doc))
-            )
+            thumbnail_id = create_thumbnail(project_name, thumbnail_path)
 
             # Set thumbnail id for version
-            op_session.update_entity(
-                project_name,
-                version_doc["type"],
-                version_doc["_id"],
-                {"data.thumbnail_id": thumbnail_id}
-            )
+            thumbnail_info_by_entity_id[version_id] = {
+                "thumbnail_id": thumbnail_id,
+                "entity_type": version_doc["type"],
+            }
             if version_doc["type"] == "hero_version":
                 version_name = "Hero"
             else:
@@ -336,14 +196,28 @@ class IntegrateThumbnails(pyblish.api.ContextPlugin):
             ))
 
             asset_entity = instance.data["assetEntity"]
-            op_session.update_entity(
-                project_name,
-                asset_entity["type"],
-                asset_entity["_id"],
-                {"data.thumbnail_id": thumbnail_id}
-            )
+            thumbnail_info_by_entity_id[asset_entity["_id"]] = {
+                "thumbnail_id": thumbnail_id,
+                "entity_type": "asset",
+            }
             self.log.debug("Setting thumbnail for asset \"{}\" <{}>".format(
                 asset_entity["name"], version_id
             ))
 
+        op_session = OperationsSession()
+        for entity_id, thumbnail_info in thumbnail_info_by_entity_id.items():
+            thumbnail_id = thumbnail_info["thumbnail_id"]
+            op_session.update_entity(
+                project_name,
+                thumbnail_info["entity_type"],
+                entity_id,
+                {"data.thumbnail_id": thumbnail_id}
+            )
         op_session.commit()
+
+    def _get_instance_label(self, instance):
+        return (
+            instance.data.get("label")
+            or instance.data.get("name")
+            or "N/A"
+        )
