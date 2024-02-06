@@ -7,7 +7,7 @@ import pyblish.util
 import ayon_core.hosts.celaction
 from ayon_core.lib import Logger
 from ayon_core.tools.utils import host_tools
-from ayon_core.pipeline import install_openpype_plugins
+from ayon_core.pipeline import install_ayon_plugins
 
 
 log = Logger.get_logger("celaction")
@@ -20,7 +20,7 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 
 def main():
     # Registers pype's Global pyblish plugins
-    install_openpype_plugins()
+    install_ayon_plugins()
 
     if os.path.exists(PUBLISH_PATH):
         log.info(f"Registering path: {PUBLISH_PATH}")
