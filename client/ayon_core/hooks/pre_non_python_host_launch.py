@@ -1,6 +1,6 @@
 import os
 
-from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib import get_ayon_launcher_args
 from ayon_core.lib.applications import (
     get_non_python_host_kwargs,
     PreLaunchHook,
@@ -37,7 +37,7 @@ class NonPythonHostHook(PreLaunchHook):
             "non_python_host_launch.py"
         )
 
-        new_launch_args = get_openpype_execute_args(
+        new_launch_args = get_ayon_launcher_args(
             "run", script_path, executable_path
         )
         # Add workfile path if exists

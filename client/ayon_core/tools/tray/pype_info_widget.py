@@ -8,11 +8,11 @@ from qtpy import QtCore, QtGui, QtWidgets
 from ayon_core import style
 import ayon_core.version
 from ayon_core import resources
-from ayon_core.lib import get_openpype_execute_args
-from ayon_core.lib.pype_info import (
+from ayon_core.lib import get_ayon_launcher_args
+from ayon_core.lib.ayon_info import (
     get_all_current_info,
     get_workstation_info,
-    extract_pype_info_to_file
+    extract_ayon_info_to_file,
 )
 
 IS_MAIN_ROLE = QtCore.Qt.UserRole
@@ -292,7 +292,7 @@ class PypeInfoWidget(QtWidgets.QWidget):
         if not dst_dir_path or not os.path.exists(dst_dir_path):
             return
 
-        filepath = extract_pype_info_to_file(dst_dir_path)
+        filepath = extract_ayon_info_to_file(dst_dir_path)
         title = "Extraction done"
         message = "Extraction is done. Destination filepath is \"{}\"".format(
             filepath.replace("\\", "/")
@@ -411,7 +411,7 @@ class PypeInfoSubWidget(QtWidgets.QWidget):
     def _create_openpype_info_widget(self):
         """Create widget with information about OpenPype application."""
 
-        executable_args = get_openpype_execute_args()
+        executable_args = get_ayon_launcher_args()
         username = "N/A"
         user_info = ayon_api.get_user()
         if user_info:

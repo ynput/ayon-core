@@ -8,17 +8,11 @@ import tempfile
 from .log import Logger
 from .vendor_bin_utils import find_executable
 
-from .openpype_version import is_running_from_build
-
 # MSDN process creation flag (Windows only)
 CREATE_NO_WINDOW = 0x08000000
 
 
-def execute(args,
-            silent=False,
-            cwd=None,
-            env=None,
-            shell=None):
+def execute(args, silent=False, cwd=None, env=None, shell=None):
     """Execute command as process.
 
     This will execute given command as process, monitor its output
@@ -39,9 +33,9 @@ def execute(args,
         int: return code of process
 
     """
-    log_levels = ['DEBUG:', 'INFO:', 'ERROR:', 'WARNING:', 'CRITICAL:']
+    log_levels = ["DEBUG:", "INFO:", "ERROR:", "WARNING:", "CRITICAL:"]
 
-    log = Logger.get_logger('execute')
+    log = Logger.get_logger("execute")
     log.info("Executing ({})".format(" ".join(args)))
     popen = subprocess.Popen(
         args,
@@ -57,7 +51,7 @@ def execute(args,
     # Blocks until finished
     while True:
         line = popen.stdout.readline()
-        if line == '':
+        if line == "":
             break
         if silent:
             continue
@@ -97,6 +91,7 @@ def run_subprocess(*args, **kwargs):
     Raises:
         RuntimeError: Exception is raised if process finished with nonzero
             return code.
+
     """
     # Modify creation flags on windows to hide console window if in UI mode
     if (
@@ -171,6 +166,7 @@ def clean_envs_for_ayon_process(env=None):
 
     Returns:
         dict[str, str]: Environment variables for ayon process.
+
     """
     if env is None:
         env = os.environ
@@ -181,15 +177,6 @@ def clean_envs_for_ayon_process(env=None):
         env.pop(key, None)
 
     return env
-
-
-def clean_envs_for_openpype_process(env=None):
-    """Modify environments that may affect OpenPype process.
-
-    Main reason to implement this function is to pop PYTHONPATH which may be
-    affected by in-host environments.
-    """
-    return clean_envs_for_ayon_process(env=env)
 
 
 def run_ayon_launcher_process(*args, **kwargs):
@@ -212,6 +199,7 @@ def run_ayon_launcher_process(*args, **kwargs):
 
     Returns:
         str: Full output of subprocess concatenated stdout and stderr.
+
     """
     args = get_ayon_launcher_args(*args)
     env = kwargs.pop("env", None)
@@ -220,10 +208,6 @@ def run_ayon_launcher_process(*args, **kwargs):
         # Skip envs that can affect OpenPype process
         # - fill more if you find more
         env = clean_envs_for_ayon_process(os.environ)
-
-    # Only keep OpenPype version if we are running from build.
-    if not is_running_from_build():
-        env.pop("OPENPYPE_VERSION", None)
 
     return run_subprocess(args, env=env, **kwargs)
 
@@ -243,6 +227,7 @@ def run_openpype_process(*args, **kwargs):
     Args:
         *args (tuple): OpenPype cli arguments.
         **kwargs (dict): Keyword arguments for subprocess.Popen.
+
     """
     return run_ayon_launcher_process(*args, **kwargs)
 
@@ -261,6 +246,7 @@ def run_detached_process(args, **kwargs):
     Returns:
         subprocess.Popen: Pointer to launched process but it is possible that
             launched process is already killed (on linux).
+
     """
     env = kwargs.pop("env", None)
     # Keep env untouched if are passed and not empty
@@ -321,6 +307,12 @@ def path_to_subprocess_arg(path):
     """Prepare path for subprocess arguments.
 
     Returned path can be wrapped with quotes or kept as is.
+
+    Args:
+        path (str): Path to be converted.
+
+    Returns:
+        str: Converted path.
     """
     return subprocess.list2cmdline([path])
 
@@ -355,24 +347,6 @@ def get_ayon_launcher_args(*args):
         launch_args.extend(args)
 
     return launch_args
-
-
-def get_openpype_execute_args(*args):
-    """Arguments to run pype command.
-
-    Arguments for subprocess when need to spawn new pype process. Which may be
-    needed when new python process for pype scripts must be executed in build
-    pype.
-
-    ## Why is this needed?
-    Pype executed from code has different executable set to virtual env python
-    and must have path to script as first argument which is not needed for
-    build pype.
-
-    It is possible to pass any arguments that will be added after pype
-    executables.
-    """
-    return get_ayon_launcher_args(*args)
 
 
 def get_linux_launcher_args(*args):
@@ -417,3 +391,21 @@ def get_linux_launcher_args(*args):
         launch_args.extend(args)
 
     return launch_args
+
+
+def get_openpype_execute_args(*args):
+    """Arguments to run pype command.
+
+    Arguments for subprocess when need to spawn new pype process. Which may be
+    needed when new python process for pype scripts must be executed in build
+    pype.
+
+    ## Why is this needed?
+    Pype executed from code has different executable set to virtual env python
+    and must have path to script as first argument which is not needed for
+    build pype.
+
+    It is possible to pass any arguments that will be added after pype
+    executables.
+    """
+    return get_ayon_launcher_args(*args)

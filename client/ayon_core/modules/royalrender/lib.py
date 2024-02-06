@@ -11,7 +11,7 @@ from datetime import datetime
 import pyblish.api
 
 from ayon_core.lib import BoolDef, NumberDef, is_running_from_build
-from ayon_core.lib.execute import run_openpype_process
+from ayon_core.lib.execute import run_ayon_launcher_process
 from ayon_core.modules.royalrender.api import Api as rrApi
 from ayon_core.modules.royalrender.rr_job import (
     CustomAttribute,
@@ -364,7 +364,7 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
         for key, value in add_kwargs.items():
             args.extend([f"--{key}", value])
         self.log.debug("Executing: {}".format(" ".join(args)))
-        run_openpype_process(*args, logger=self.log)
+        run_ayon_launcher_process(*args, logger=self.log)
 
         self.log.debug("Loading file ...")
         with open(export_url) as fp:

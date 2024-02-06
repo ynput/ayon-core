@@ -2,7 +2,7 @@ import os
 import shutil
 import winreg
 import subprocess
-from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib import get_ayon_launcher_args
 from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 from ayon_core.hosts.celaction import CELACTION_ROOT_DIR
 
@@ -38,7 +38,7 @@ class CelactionPrelaunchHook(PreLaunchHook):
         path_to_cli = os.path.join(
             CELACTION_ROOT_DIR, "scripts", "publish_cli.py"
         )
-        subprocess_args = get_openpype_execute_args("run", path_to_cli)
+        subprocess_args = get_ayon_launcher_args("run", path_to_cli)
         openpype_executable = subprocess_args.pop(0)
         workfile_settings = self.get_workfile_settings()
 

@@ -1,7 +1,7 @@
 import os
 import json
 from ayon_core.lib import Logger, filter_profiles
-from ayon_core.lib.pype_info import get_workstation_info
+from ayon_core.lib.ayon_info import get_workstation_info
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_process_id
 

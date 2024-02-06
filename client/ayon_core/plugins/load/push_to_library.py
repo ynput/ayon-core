@@ -1,7 +1,7 @@
 import os
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.lib import get_openpype_execute_args, run_detached_process
+from ayon_core.lib import get_ayon_launcher_args, run_detached_process
 from ayon_core.pipeline import load
 from ayon_core.pipeline.load import LoadError
 
@@ -45,7 +45,7 @@ class PushToLibraryProject(load.SubsetLoaderPlugin):
         project_name = project_doc["name"]
         version_id = str(version_doc["_id"])
 
-        args = get_openpype_execute_args(
+        args = get_ayon_launcher_args(
             "run",
             push_tool_script_path,
             "--project", project_name,

@@ -12,7 +12,7 @@ from ayon_core import AYON_CORE_ROOT
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import (
     StringTemplate,
-    run_openpype_process,
+    run_ayon_launcher_process,
     Logger
 )
 from ayon_core.pipeline import Anatomy
@@ -448,7 +448,7 @@ def _get_wrapped_with_subprocess(command_group, command, **kwargs):
 
         log.info("Executing: {}".format(" ".join(args)))
 
-        run_openpype_process(*args, logger=log)
+        run_ayon_launcher_process(*args, logger=log)
 
         # return all colorspaces
         with open(tmp_json_path, "r") as f_:
@@ -1187,7 +1187,7 @@ def get_display_view_colorspace_subprocess(config_path, display, view):
         ]
         log.debug("Executing: {}".format(" ".join(args)))
 
-        run_openpype_process(*args, logger=log)
+        run_ayon_launcher_process(*args, logger=log)
 
         # return default view colorspace name
         with open(tmp_json_path, "r") as f:
