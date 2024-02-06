@@ -1,4 +1,4 @@
-""" Integrate Thumbnails for Openpype use in Loaders.
+""" Integrate Thumbnails for use in Loaders.
 
     This thumbnail is different from 'thumbnail' representation which could
     be uploaded to Ftrack, or used as any other representation in Loaders to
@@ -37,7 +37,7 @@ InstanceFilterResult = collections.namedtuple(
 
 
 class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
-    """Integrate Thumbnails for Openpype use in Loaders."""
+    """Integrate Thumbnails for use in Loaders."""
 
     label = "Integrate Thumbnails to AYON"
     order = pyblish.api.IntegratorOrder + 0.01

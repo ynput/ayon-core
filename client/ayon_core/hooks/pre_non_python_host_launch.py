@@ -15,7 +15,7 @@ class NonPythonHostHook(PreLaunchHook):
 
     Non python host implementation do not launch host directly but use
     python script which launch the host. For these cases it is necessary to
-    prepend python (or openpype) executable and script path before application's.
+    prepend python (or ayon) executable and script path before application's.
     """
     app_groups = {"harmony", "photoshop", "aftereffects"}
 

@@ -635,7 +635,7 @@ class BaseWorkfileController(
             folder = self.get_folder_entity(project_name, folder_id)
         if task is None:
             task = self.get_task_entity(project_name, task_id)
-        # NOTE keys should be OpenPype compatible
+        # NOTE keys should are OpenPype compatible
         return {
             "project_name": project_name,
             "folder_id": folder_id,

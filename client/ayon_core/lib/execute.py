@@ -180,9 +180,9 @@ def clean_envs_for_ayon_process(env=None):
 
 
 def run_ayon_launcher_process(*args, **kwargs):
-    """Execute OpenPype process with passed arguments and wait.
+    """Execute AYON process with passed arguments and wait.
 
-    Wrapper for 'run_process' which prepends OpenPype executable arguments
+    Wrapper for 'run_process' which prepends AYON executable arguments
     before passed arguments and define environments if are not passed.
 
     Values from 'os.environ' are used for environments if are not passed.
@@ -205,7 +205,7 @@ def run_ayon_launcher_process(*args, **kwargs):
     env = kwargs.pop("env", None)
     # Keep env untouched if are passed and not empty
     if not env:
-        # Skip envs that can affect OpenPype process
+        # Skip envs that can affect AYON launcher process
         # - fill more if you find more
         env = clean_envs_for_ayon_process(os.environ)
 
@@ -213,19 +213,19 @@ def run_ayon_launcher_process(*args, **kwargs):
 
 
 def run_openpype_process(*args, **kwargs):
-    """Execute OpenPype process with passed arguments and wait.
+    """Execute AYON process with passed arguments and wait.
 
-    Wrapper for 'run_process' which prepends OpenPype executable arguments
+    Wrapper for 'run_process' which prepends AYON executable arguments
     before passed arguments and define environments if are not passed.
 
     Values from 'os.environ' are used for environments if are not passed.
-    They are cleaned using 'clean_envs_for_openpype_process' function.
+    They are cleaned using 'clean_envs_for_ayon_process' function.
 
     Example:
         >>> run_openpype_process("version")
 
     Args:
-        *args (tuple): OpenPype cli arguments.
+        *args (tuple): AYON cli arguments.
         **kwargs (dict): Keyword arguments for subprocess.Popen.
 
     """
@@ -240,7 +240,7 @@ def run_detached_process(args, **kwargs):
 
 
     Args:
-        *args (tuple): OpenPype cli arguments.
+        *args (tuple): AYON cli arguments.
         **kwargs (dict): Keyword arguments for subprocess.Popen.
 
     Returns:
@@ -355,7 +355,7 @@ def get_linux_launcher_args(*args):
     This function should be able as arguments are different when used
     from code and build.
 
-    It is possible that this function is used in OpenPype build which does
+    It is possible that this function is used in AYON build which does
     not have yet the new executable. In that case 'None' is returned.
 
     Todos:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa E402
-"""OpenPype lib functions."""
+"""AYON lib functions."""
 # add vendor to sys path based on Python version
 import sys
 import os

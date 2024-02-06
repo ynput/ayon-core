@@ -8,5 +8,5 @@ This webserver is started in spawned Python process that opens DCC during
 its launch, waits for connection from DCC and handles communication going
 forward. Server is closed before Python process is killed.
 
-(Different from `openpype/modules/webserver` as that one is running in Tray,
+(Different from `ayon_core/modules/webserver` as that one is running in Tray,
 this one is running in spawn Python process.)

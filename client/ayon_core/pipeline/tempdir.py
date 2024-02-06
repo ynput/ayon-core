@@ -23,12 +23,12 @@ def create_custom_tempdir(project_name, anatomy=None):
     Returns:
         str | None: formatted path or None
     """
-    openpype_tempdir = os.getenv("OPENPYPE_TMPDIR")
-    if not openpype_tempdir:
+    env_tmpdir = os.getenv("OPENPYPE_TMPDIR")
+    if not env_tmpdir:
         return
 
     custom_tempdir = None
-    if "{" in openpype_tempdir:
+    if "{" in env_tmpdir:
         if anatomy is None:
             anatomy = Anatomy(project_name)
         # create base formate data
@@ -41,11 +41,11 @@ def create_custom_tempdir(project_name, anatomy=None):
         }
         # path is anatomy template
         custom_tempdir = StringTemplate.format_template(
-            openpype_tempdir, data).normalized()
+            env_tmpdir, data).normalized()
 
     else:
         # path is absolute
-        custom_tempdir = openpype_tempdir
+        custom_tempdir = env_tmpdir
 
     # create the dir path if it doesn't exists
     if not os.path.exists(custom_tempdir):

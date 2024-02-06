@@ -787,11 +787,7 @@ def get_repre_icons():
     try:
         from openpype_modules import sync_server
     except Exception:
-        # Backwards compatibility
-        try:
-            from ayon_core.modules import sync_server
-        except Exception:
-            return icons
+        return icons
 
     resource_path = os.path.join(
         os.path.dirname(sync_server.sync_server_module.__file__),

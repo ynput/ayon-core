@@ -249,8 +249,8 @@ class Logger:
     def get_process_name(cls):
         """Process name that is like "label" of a process.
 
-        OpenPype's logging can be used from OpenPyppe itself of from hosts.
-        Even in OpenPype process it's good to know if logs are from tray or
+        AYON logging can be used from OpenPyppe itself of from hosts.
+        Even in AYON process it's good to know if logs are from tray or
         from other cli commands. This should help to identify that information.
         """
         if cls._process_name is not None:

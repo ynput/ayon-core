@@ -419,7 +419,7 @@ def apply_plugin_settings_automatically(plugin, settings, logger=None):
 
 
 def filter_pyblish_plugins(plugins):
-    """Pyblish plugin filter which applies OpenPype settings.
+    """Pyblish plugin filter which applies AYON settings.
 
     Apply OpenPype settings on discovered plugins. On plugin with implemented
     class method 'def apply_settings(cls, project_settings, system_settings)'

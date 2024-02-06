@@ -32,4 +32,4 @@ class CollectFarmTarget(pyblish.api.InstancePlugin):
             self.log.debug("Collected render target: {0}".format(farm_name))
             instance.data["toBeRenderedOn"] = farm_name
         else:
-            AssertionError("No OpenPype renderer module found")
+            AssertionError("No AYON renderer addon found")
