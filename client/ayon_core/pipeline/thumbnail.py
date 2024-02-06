@@ -2,7 +2,6 @@ import os
 import copy
 import logging
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.lib import Logger
 from ayon_core.client import get_project, get_ayon_server_api_connection
 from . import legacy_io
@@ -145,8 +144,6 @@ class ServerThumbnailResolver(ThumbnailResolver):
         return cls._cache
 
     def process(self, thumbnail_entity, thumbnail_type):
-        if not AYON_SERVER_ENABLED:
-            return None
         data = thumbnail_entity["data"]
         entity_type = data.get("entity_type")
         entity_id = data.get("entity_id")

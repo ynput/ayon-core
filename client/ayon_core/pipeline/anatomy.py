@@ -8,12 +8,8 @@ import numbers
 import six
 import time
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.settings.lib import (
     get_local_settings,
-)
-from ayon_core.settings.constants import (
-    DEFAULT_PROJECT_KEY
 )
 from ayon_core.client import get_project, get_ayon_server_api_connection
 from ayon_core.lib import Logger, get_local_site_id
@@ -474,40 +470,12 @@ class Anatomy(BaseAnatomy):
         Returns:
             Union[Dict[str, str], None]): Local root overrides.
         """
-
-        if AYON_SERVER_ENABLED:
-            if not project_name:
-                return
-            con = get_ayon_server_api_connection()
-            return con.get_project_roots_for_site(
-                project_name, get_local_site_id()
-            )
-
-        if local_settings is None:
-            local_settings = get_local_settings()
-
-        local_project_settings = local_settings.get("projects") or {}
-        if not local_project_settings:
-            return None
-
-        # Check for roots existence in local settings first
-        roots_project_locals = (
-            local_project_settings
-            .get(project_name, {})
-        )
-        roots_default_locals = (
-            local_project_settings
-            .get(DEFAULT_PROJECT_KEY, {})
-        )
-
-        # Skip rest of processing if roots are not set
-        if not roots_project_locals and not roots_default_locals:
+        if not project_name:
             return
-
-        # Combine roots from local settings
-        roots_locals = roots_default_locals.get("studio") or {}
-        roots_locals.update(roots_project_locals.get("studio") or {})
-        return roots_locals
+        con = get_ayon_server_api_connection()
+        return con.get_project_roots_for_site(
+            project_name, get_local_site_id()
+        )
 
     @classmethod
     def _get_site_root_overrides(cls, project_name, site_name):
