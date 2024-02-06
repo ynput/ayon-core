@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from . import click_wrap
 from .interfaces import (
     IPluginPaths,
     ITrayAddon,
@@ -16,6 +17,8 @@ from .base import (
 
 
 __all__ = (
+    "click_wrap",
+
     "IPluginPaths",
     "ITrayAddon",
     "ITrayAction",

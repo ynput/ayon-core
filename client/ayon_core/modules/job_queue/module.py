@@ -41,7 +41,8 @@ import json
 import copy
 import platform
 
-from ayon_core.modules import OpenPypeModule, click_wrap
+from ayon_core.addon import click_wrap
+from ayon_core.modules import OpenPypeModule
 from ayon_core.settings import get_system_settings
 
 
