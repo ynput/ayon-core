@@ -428,7 +428,7 @@ class ExtractBurnin(publish.Extractor):
             if not os.path.exists(font_filepath):
                 font_filepath = None
 
-        # Use OpenPype default font
+        # Use default AYON font
         if not font_filepath:
             font_filepath = resources.get_liberation_font_path()
 

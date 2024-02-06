@@ -34,7 +34,7 @@ from .interfaces import (
 IGNORED_FILENAMES = (
     "__pycache__",
 )
-# Files ignored on addons import from "./openpype/modules"
+# Files ignored on addons import from "./ayon_core/modules"
 IGNORED_DEFAULT_FILENAMES = (
     "__init__.py",
     "base.py",

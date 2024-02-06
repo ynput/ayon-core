@@ -30,7 +30,7 @@ class IntegrateSubsetGroup(pyblish.api.InstancePlugin):
     def process(self, instance):
         """Look into subset group profiles set by settings.
 
-        Attribute 'subset_grouping_profiles' is defined by OpenPype settings.
+        Attribute 'subset_grouping_profiles' is defined by settings.
         """
 
         # Skip if 'subset_grouping_profiles' is empty

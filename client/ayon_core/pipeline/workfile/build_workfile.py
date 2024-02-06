@@ -5,7 +5,7 @@ it need only access to settings. Disadvantage is that it is hard to focus
 build per context and being explicit about loaded content.
 
 For more explicit workfile build is recommended 'AbstractTemplateBuilder'
-from '~/openpype/pipeline/workfile/workfile_template_builder'. Which gives
+from '~/ayon_core/pipeline/workfile/workfile_template_builder'. Which gives
 more abilities to define how build happens but require more code to achive it.
 """
 

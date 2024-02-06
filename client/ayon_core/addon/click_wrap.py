@@ -1,10 +1,10 @@
 """Simplified wrapper for 'click' python module.
 
-Module 'click' is used as main cli handler in AYON/OpenPype. Addons can
+Module 'click' is used as main cli handler in AYON. Addons can
 register their own subcommands with options. This wrapper allows to define
 commands and options as with 'click', but without any dependency.
 
-Why not to use 'click' directly? Version of 'click' used in AYON/OpenPype
+Why not to use 'click' directly? Version of 'click' used in AYON
 is not compatible with 'click' version used in some DCCs (e.g. Houdini 20+).
 And updating 'click' would break other DCCs.
 
@@ -15,10 +15,10 @@ method to convert 'click_wrap' object to 'click' object.
 Before
 ```python
 import click
-from ayon_core.modules import OpenPypeModule
+from ayon_core.modules import AYONAddon
 
 
-class ExampleAddon(OpenPypeModule):
+class ExampleAddon(AYONAddon):
     name = "example"
 
     def cli(self, click_group):
@@ -40,10 +40,10 @@ def mycommand(arg1, arg2):
 Now
 ```
 from ayon_core import click_wrap
-from ayon_core.modules import OpenPypeModule
+from ayon_core.modules import AYONAddon
 
 
-class ExampleAddon(OpenPypeModule):
+class ExampleAddon(AYONAddon):
     name = "example"
 
     def cli(self, click_group):
@@ -72,10 +72,10 @@ Added small enhancements:
 Example:
     ```python
     from ayon_core import click_wrap
-    from ayon_core.modules import OpenPypeModule
+    from ayon_core.modules import AYONAddon
 
 
-    class ExampleAddon(OpenPypeModule):
+    class ExampleAddon(AYONAddon):
         name = "example"
 
         def cli(self, click_group):
@@ -106,7 +106,7 @@ Example:
     ```
 
     ```shell
-    openpype_console addon example mycommand --arg1 value1 --arg2
+    ayon addon example mycommand --arg1 value1 --arg2
     ```
 """
 

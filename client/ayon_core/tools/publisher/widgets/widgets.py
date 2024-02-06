@@ -1332,7 +1332,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
     Attributes are defined on creator so are dynamic. Their look and type is
     based on attribute definitions that are defined in
-    `~/openpype/pipeline/lib/attribute_definitions.py` and their widget
+    `~/ayon_core/lib/attribute_definitions.py` and their widget
     representation in `~/openpype/tools/attribute_defs/*`.
 
     Widgets are disabled if context of instance is not valid.
@@ -1466,12 +1466,12 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
     Attributes are defined on publish plugins. Publihs plugin may define
     attribute definitions but must inherit `AYONPyblishPluginMixin`
-    (~/openpype/pipeline/publish). At the moment requires to implement
+    (~/ayon_core/pipeline/publish). At the moment requires to implement
     `get_attribute_defs` and `convert_attribute_values` class methods.
 
     Look and type of attributes is based on attribute definitions that are
-    defined in `~/openpype/pipeline/lib/attribute_definitions.py` and their
-    widget representation in `~/openpype/tools/attribute_defs/*`.
+    defined in `~/ayon_core/lib/attribute_definitions.py` and their
+    widget representation in `~/ayon_core/tools/attribute_defs/*`.
 
     Widgets are disabled if context of instance is not valid.
 

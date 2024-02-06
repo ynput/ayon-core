@@ -47,7 +47,7 @@ class ApplicationAction(LauncherAction):
 
     Handling of applications in launcher is not ideal and should be completely
     redone from scratch. This is just a temporary solution to keep backwards
-    compatibility with OpenPype launcher.
+    compatibility with AYON launcher.
 
     Todos:
         Move handling of errors to frontend.

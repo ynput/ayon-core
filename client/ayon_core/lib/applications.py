@@ -1262,7 +1262,7 @@ class ApplicationLaunchContext:
 
         # Linux uses mid process
         # - it is possible that the mid process executable is not
-        #   available for this version of OpenPype in that case use standard
+        #   available for this version of AYON in that case use standard
         #   launch
         launch_args = get_linux_launcher_args()
         if launch_args is None:
@@ -2037,8 +2037,8 @@ def get_non_python_host_kwargs(kwargs, allow_console=True):
     """Explicit setting of kwargs for Popen for AE/PS/Harmony.
 
     Expected behavior
-    - openpype_console opens window with logs
-    - openpype_gui has stdout/stderr available for capturing
+    - ayon_console opens window with logs
+    - ayon has stdout/stderr available for capturing
 
     Args:
         kwargs (dict) or None

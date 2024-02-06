@@ -249,7 +249,7 @@ class LoaderActionsModel:
     def _filter_loaders_by_tool_name(self, project_name, loaders):
         """Filter loaders by tool name.
 
-        Tool names are based on OpenPype tools loader tool and library
+        Tool names are based on AYON tools loader tool and library
         loader tool. The new tool merged both into one tool and the difference
         is based only on current project name.
 
@@ -263,7 +263,7 @@ class LoaderActionsModel:
 
         # Keep filtering by tool name
         # - if current context project name is same as project name we do
-        #   expect the tool is used as OpenPype loader tool, otherwise
+        #   expect the tool is used as AYON loader tool, otherwise
         #   as library loader tool.
         if project_name == self._get_current_context_project():
             tool_name = "loader"
