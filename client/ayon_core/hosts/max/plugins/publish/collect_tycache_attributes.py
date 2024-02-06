@@ -1,11 +1,11 @@
 import pyblish.api
 
 from ayon_core.lib import EnumDef, TextDef
-from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 
 class CollectTyCacheData(pyblish.api.InstancePlugin,
-                         OpenPypePyblishPluginMixin):
+                         AYONPyblishPluginMixin):
     """Collect Channel Attributes for TyCache Export"""
 
     order = pyblish.api.CollectorOrder + 0.02

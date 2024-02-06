@@ -78,7 +78,7 @@ class KnownPublishError(Exception):
     pass
 
 
-class OpenPypePyblishPluginMixin:
+class AYONPyblishPluginMixin:
     # TODO
     # executable_in_thread = False
     #
@@ -166,7 +166,10 @@ class OpenPypePyblishPluginMixin:
         return self.get_attr_values_from_data_for_plugin(self.__class__, data)
 
 
-class OptionalPyblishPluginMixin(OpenPypePyblishPluginMixin):
+OpenPypePyblishPluginMixin = AYONPyblishPluginMixin
+
+
+class OptionalPyblishPluginMixin(AYONPyblishPluginMixin):
     """Prepare mixin for optional plugins.
 
     Defined active attribute definition prepared for published and

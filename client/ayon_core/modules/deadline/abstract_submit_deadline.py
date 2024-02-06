@@ -20,7 +20,7 @@ import pyblish.api
 from ayon_core.pipeline.publish import (
     AbstractMetaInstancePlugin,
     KnownPublishError,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 )
 from ayon_core.pipeline.publish.lib import (
     replace_with_published_scene_path
@@ -406,7 +406,7 @@ class DeadlineJobInfo(object):
 
 @six.add_metaclass(AbstractMetaInstancePlugin)
 class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
-                             OpenPypePyblishPluginMixin):
+                             AYONPyblishPluginMixin):
     """Class abstracting access to Deadline."""
 
     label = "Submit to Deadline"

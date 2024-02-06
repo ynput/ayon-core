@@ -26,7 +26,7 @@ from ayon_core.pipeline.farm.pyblish_functions import (
 
 
 class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
-                                     publish.OpenPypePyblishPluginMixin,
+                                     publish.AYONPyblishPluginMixin,
                                      publish.ColormanagedPyblishPluginMixin):
     """Process Cache Job submitted on farm
     This is replicated version of submit publish job

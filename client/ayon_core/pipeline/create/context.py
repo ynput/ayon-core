@@ -1200,7 +1200,7 @@ class CreatedInstance:
 
         Args:
             attr_plugins (List[pyblish.api.Plugin]): Pyblish plugins which
-                inherit from 'OpenPypePyblishPluginMixin' and may contain
+                inherit from 'AYONPyblishPluginMixin' and may contain
                 attribute definitions.
         """
 
@@ -1735,7 +1735,7 @@ class CreateContext:
         self._reset_convertor_plugins()
 
     def _reset_publish_plugins(self, discover_publish_plugins):
-        from ayon_core.pipeline import OpenPypePyblishPluginMixin
+        from ayon_core.pipeline import AYONPyblishPluginMixin
         from ayon_core.pipeline.publish import (
             publish_plugins_discover
         )
@@ -1759,7 +1759,7 @@ class CreateContext:
 
             # Collect plugins that can have attribute definitions
             for plugin in publish_plugins:
-                if OpenPypePyblishPluginMixin in inspect.getmro(plugin):
+                if AYONPyblishPluginMixin in inspect.getmro(plugin):
                     plugins_with_defs.append(plugin)
 
             plugins_mismatch_targets = [

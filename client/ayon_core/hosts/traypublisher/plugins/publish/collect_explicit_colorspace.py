@@ -9,7 +9,7 @@ from ayon_core.pipeline.publish import KnownPublishError
 
 
 class CollectColorspace(pyblish.api.InstancePlugin,
-                        publish.OpenPypePyblishPluginMixin,
+                        publish.AYONPyblishPluginMixin,
                         publish.ColormanagedPyblishPluginMixin):
     """Collect explicit user defined representation colorspaces"""
 

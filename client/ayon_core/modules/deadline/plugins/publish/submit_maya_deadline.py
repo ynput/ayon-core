@@ -30,7 +30,7 @@ import attr
 
 from ayon_core.pipeline import (
     legacy_io,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 )
 from ayon_core.lib import (
     BoolDef,
@@ -100,7 +100,7 @@ class ArnoldPluginInfo(object):
 
 
 class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
-                         OpenPypePyblishPluginMixin):
+                         AYONPyblishPluginMixin):
 
     label = "Submit Render to Deadline"
     hosts = ["maya"]

@@ -8,7 +8,7 @@ import pyblish.api
 
 from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 )
 from ayon_core.lib import (
     BoolDef,
@@ -19,7 +19,7 @@ from ayon_core.lib import (
 
 class FusionSubmitDeadline(
     pyblish.api.InstancePlugin,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 ):
     """Submit current Comp to Deadline
 

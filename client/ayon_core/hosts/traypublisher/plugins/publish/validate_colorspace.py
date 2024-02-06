@@ -11,7 +11,7 @@ from ayon_core.pipeline.colorspace import (
 
 
 class ValidateColorspace(pyblish.api.InstancePlugin,
-                         publish.OpenPypePyblishPluginMixin,
+                         publish.AYONPyblishPluginMixin,
                          publish.ColormanagedPyblishPluginMixin):
     """Validate representation colorspaces"""
 

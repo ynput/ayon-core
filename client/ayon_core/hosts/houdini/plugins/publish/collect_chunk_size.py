@@ -1,10 +1,10 @@
 import pyblish.api
 from ayon_core.lib import NumberDef
-from ayon_core.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.pipeline import AYONPyblishPluginMixin
 
 
 class CollectChunkSize(pyblish.api.InstancePlugin,
-                       OpenPypePyblishPluginMixin):
+                       AYONPyblishPluginMixin):
     """Collect chunk size for cache submission to Deadline."""
 
     order = pyblish.api.CollectorOrder + 0.05

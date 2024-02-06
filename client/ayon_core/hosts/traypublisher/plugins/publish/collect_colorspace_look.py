@@ -6,7 +6,7 @@ from ayon_core.pipeline import colorspace
 
 
 class CollectColorspaceLook(pyblish.api.InstancePlugin,
-                            publish.OpenPypePyblishPluginMixin):
+                            publish.AYONPyblishPluginMixin):
     """Collect OCIO colorspace look from LUT file
     """
 

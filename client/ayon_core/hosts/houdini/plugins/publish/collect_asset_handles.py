@@ -3,11 +3,11 @@
 import hou  # noqa
 import pyblish.api
 from ayon_core.lib import BoolDef
-from ayon_core.pipeline import OpenPypePyblishPluginMixin
+from ayon_core.pipeline import AYONPyblishPluginMixin
 
 
 class CollectAssetHandles(pyblish.api.InstancePlugin,
-                          OpenPypePyblishPluginMixin):
+                          AYONPyblishPluginMixin):
     """Apply asset handles.
 
     If instance does not have:

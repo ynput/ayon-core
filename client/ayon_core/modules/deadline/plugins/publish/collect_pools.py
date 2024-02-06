@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 from ayon_core.lib import TextDef
-from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 
 class CollectDeadlinePools(pyblish.api.InstancePlugin,
-                           OpenPypePyblishPluginMixin):
+                           AYONPyblishPluginMixin):
     """Collect pools from instance or Publisher attributes, from Setting
     otherwise.
 

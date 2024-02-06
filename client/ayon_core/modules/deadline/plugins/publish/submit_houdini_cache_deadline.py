@@ -10,7 +10,7 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import (
     legacy_io,
-    OpenPypePyblishPluginMixin
+    AYONPyblishPluginMixin
 )
 from ayon_core.tests.lib import is_in_tests
 from ayon_core.lib import is_running_from_build
@@ -32,7 +32,7 @@ class HoudiniPluginInfo(object):
 
 
 class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,   # noqa
-                                 OpenPypePyblishPluginMixin):
+                                 AYONPyblishPluginMixin):
     """Submit Houdini scene to perform a local publish in Deadline.
 
     Publishing in Deadline can be helpful for scenes that publish very slow.
