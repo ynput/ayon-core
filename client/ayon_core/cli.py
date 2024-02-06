@@ -3,7 +3,14 @@
 import os
 import sys
 import code
+import traceback
+
 import click
+import acre
+
+from ayon_core import AYON_CORE_ROOT
+from ayon_core.addon import AddonsManager
+from ayon_core.settings import get_general_environments
 
 from .cli_commands import Commands
 
@@ -38,7 +45,7 @@ class AliasedGroup(click.Group):
               help=("Change AYON log level (debug - critical or 0-50)"))
 @click.option("--automatic-tests", is_flag=True, expose_value=False,
               help=("Run in automatic tests mode"))
-def main(ctx):
+def main_cli(ctx):
     """Pype is main command serving as entry point to pipeline system.
 
     It wraps different commands together.
@@ -53,7 +60,7 @@ def main(ctx):
             ctx.invoke(tray)
 
 
-@main.command()
+@main_cli.command()
 def tray():
     """Launch pype tray.
 
@@ -64,7 +71,7 @@ def tray():
 
 
 @Commands.add_addons
-@main.group(help="Run command line arguments of AYON addons")
+@main_cli.group(help="Run command line arguments of AYON addons")
 @click.pass_context
 def addon(ctx):
     """Addon specific commands created dynamically.
@@ -75,10 +82,10 @@ def addon(ctx):
 
 
 # Add 'addon' as alias for module
-main.set_alias("addon", "module")
+main_cli.set_alias("addon", "module")
 
 
-@main.command()
+@main_cli.command()
 @click.argument("output_json_path")
 @click.option("--project", help="Project name", default=None)
 @click.option("--asset", help="Asset name", default=None)
@@ -102,7 +109,7 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
     )
 
 
-@main.command()
+@main_cli.command()
 @click.argument("paths", nargs=-1)
 @click.option("-t", "--targets", help="Targets module", default=None,
               multiple=True)
@@ -118,14 +125,14 @@ def publish(paths, targets, gui):
     Commands.publish(list(paths), targets, gui)
 
 
-@main.command(context_settings={"ignore_unknown_options": True})
+@main_cli.command(context_settings={"ignore_unknown_options": True})
 def publish_report_viewer():
     from ayon_core.tools.publisher.publish_report_viewer import main
 
     sys.exit(main())
 
 
-@main.command()
+@main_cli.command()
 @click.argument("output_path")
 @click.option("--project", help="Define project context")
 @click.option("--asset", help="Define asset in project (project must be set)")
@@ -153,7 +160,7 @@ def contextselection(
     )
 
 
-@main.command(
+@main_cli.command(
     context_settings=dict(
         ignore_unknown_options=True,
         allow_extra_args=True))
@@ -175,7 +182,7 @@ def run(script):
         runpy.run_path(script, run_name="__main__", )
 
 
-@main.command()
+@main_cli.command()
 @click.argument("folder", nargs=-1)
 @click.option("-m",
               "--mark",
@@ -222,7 +229,7 @@ def runtests(folder, mark, pyargs, test_data_folder, persist, app_variant,
                              mongo_url, app_group, dump_databases)
 
 
-@main.command()
+@main_cli.command()
 def interactive():
     """Interactive (Python like) console.
 
@@ -239,7 +246,7 @@ def interactive():
     code.interact(banner)
 
 
-@main.command()
+@main_cli.command()
 @click.option("--build", help="Print only build version",
               is_flag=True, default=False)
 def version(build):
@@ -249,3 +256,77 @@ def version(build):
         This function has questionable usage.
     """
     print(os.environ["AYON_VERSION"])
+
+
+def _set_global_environments() -> None:
+    """Set global AYON environments."""
+    general_env = get_general_environments()
+
+    # first resolve general environment because merge doesn't expect
+    # values to be list.
+    # TODO: switch to OpenPype environment functions
+    merged_env = acre.merge(
+        acre.compute(acre.parse(general_env), cleanup=False),
+        dict(os.environ)
+    )
+    env = acre.compute(
+        merged_env,
+        cleanup=False
+    )
+    os.environ.clear()
+    os.environ.update(env)
+
+    # Hardcoded default values
+    os.environ["PYBLISH_GUI"] = "pyblish_pype"
+    # Change scale factor only if is not set
+    if "QT_AUTO_SCREEN_SCALE_FACTOR" not in os.environ:
+        os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+
+
+def _set_addons_environments():
+    """Set global environments for OpenPype modules.
+
+    This requires to have OpenPype in `sys.path`.
+    """
+
+    addons_manager = AddonsManager()
+
+    # Merge environments with current environments and update values
+    if module_envs := addons_manager.collect_global_environments():
+        parsed_envs = acre.parse(module_envs)
+        env = acre.merge(parsed_envs, dict(os.environ))
+        os.environ.clear()
+        os.environ.update(env)
+
+
+def main(*args, **kwargs):
+    python_path = os.getenv("PYTHONPATH", "")
+    split_paths = python_path.split(os.pathsep)
+
+    additional_paths = [
+        # add OpenPype tools
+        os.path.join(AYON_CORE_ROOT, "tools"),
+        # add common OpenPype vendor
+        # (common for multiple Python interpreter versions)
+        os.path.join(AYON_CORE_ROOT, "vendor", "python", "common")
+    ]
+    for path in additional_paths:
+        if path not in split_paths:
+            split_paths.insert(0, path)
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    os.environ["PYTHONPATH"] = os.pathsep.join(split_paths)
+
+    print(">>> loading environments ...")
+    print("  - global AYON ...")
+    _set_global_environments()
+    print("  - for addons ...")
+    _set_addons_environments()
+
+    try:
+        main_cli(obj={}, prog_name="ayon")
+    except Exception:  # noqa
+        exc_info = sys.exc_info()
+        print("!!! AYON crashed:")
+        traceback.print_exception(*exc_info)
+        sys.exit(1)
