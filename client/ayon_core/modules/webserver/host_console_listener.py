@@ -1,11 +1,13 @@
-import aiohttp
-from aiohttp import web
 import json
 import logging
 from concurrent.futures import CancelledError
+
+import aiohttp
+from aiohttp import web
 from qtpy import QtWidgets
 
-from ayon_core.modules import ITrayService
+from ayon_core.addon import ITrayService
+from ayon_core.tools.stdout_broker.window import ConsoleDialog
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +36,6 @@ class HostListener:
         webserver.add_route('*', "/ws/host_listener", self.websocket_handler)
 
     def _host_is_connecting(self, host_name, label):
-        from ayon_core.tools.stdout_broker.window import ConsoleDialog
         """ Initialize dialog, adds to submenu. """
         services_submenu = self.module._services_submenu
         action = QtWidgets.QAction(label, services_submenu)

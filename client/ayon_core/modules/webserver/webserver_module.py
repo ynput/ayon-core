@@ -1,4 +1,4 @@
-"""WebServerModule spawns aiohttp server in asyncio loop.
+"""WebServerAddon spawns aiohttp server in asyncio loop.
 
 Main usage of the module is in OpenPype tray where make sense to add ability
 of other modules to add theirs routes. Module which would want use that
@@ -24,25 +24,54 @@ import os
 import socket
 
 from ayon_core import resources
-from ayon_core.modules import OpenPypeModule, ITrayService
+from ayon_core.addon import AYONAddon, ITrayService
 
 
-class WebServerModule(OpenPypeModule, ITrayService):
+class WebServerAddon(AYONAddon, ITrayService):
     name = "webserver"
     label = "WebServer"
 
-    webserver_url_env = "OPENPYPE_WEBSERVER_URL"
+    webserver_url_env = "AYON_WEBSERVER_URL"
 
-    def initialize(self, _module_settings):
-        self.enabled = True
-        self.server_manager = None
+    def initialize(self, settings):
+        self._server_manager = None
         self._host_listener = None
 
-        self.port = self.find_free_port()
-        self.webserver_url = None
+        self._port = self.find_free_port()
+        self._webserver_url = None
+
+    @property
+    def server_manager(self):
+        """
+
+        Returns:
+            Union[WebServerManager, None]: Server manager instance.
+
+        """
+        return self._server_manager
+
+    @property
+    def port(self):
+        """
+
+        Returns:
+            int: Port on which is webserver running.
+
+        """
+        return self._port
+
+    @property
+    def webserver_url(self):
+        """
+
+        Returns:
+            str: URL to webserver.
+
+        """
+        return self._webserver_url
 
     def connect_with_addons(self, enabled_modules):
-        if not self.server_manager:
+        if not self._server_manager:
             return
 
         for module in enabled_modules:
@@ -50,7 +79,7 @@ class WebServerModule(OpenPypeModule, ITrayService):
                 continue
 
             try:
-                module.webserver_initialization(self.server_manager)
+                module.webserver_initialization(self._server_manager)
             except Exception:
                 self.log.warning(
                     (
@@ -70,28 +99,13 @@ class WebServerModule(OpenPypeModule, ITrayService):
     def tray_exit(self):
         self.stop_server()
 
-    def _add_resources_statics(self):
-        static_prefix = "/res"
-        self.server_manager.add_static(static_prefix, resources.RESOURCES_DIR)
-
-        os.environ["OPENPYPE_STATICS_SERVER"] = "{}{}".format(
-            self.webserver_url, static_prefix
-        )
-
-    def _add_listeners(self):
-        from openpype_modules.webserver import host_console_listener
-
-        self._host_listener = host_console_listener.HostListener(
-            self.server_manager, self
-        )
-
     def start_server(self):
-        if self.server_manager:
-            self.server_manager.start_server()
+        if self._server_manager is not None:
+            self._server_manager.start_server()
 
     def stop_server(self):
-        if self.server_manager:
-            self.server_manager.stop_server()
+        if self._server_manager is not None:
+            self._server_manager.stop_server()
 
     @staticmethod
     def create_new_server_manager(port=None, host=None):
@@ -109,17 +123,18 @@ class WebServerModule(OpenPypeModule, ITrayService):
         return WebServerManager(port, host)
 
     def create_server_manager(self):
-        if self.server_manager:
+        if self._server_manager is not None:
             return
 
-        self.server_manager = self.create_new_server_manager(self.port)
-        self.server_manager.on_stop_callbacks.append(
+        self._server_manager = self.create_new_server_manager(self._port)
+        self._server_manager.on_stop_callbacks.append(
             self.set_service_failed_icon
         )
 
-        webserver_url = self.server_manager.url
+        webserver_url = self._server_manager.url
+        os.environ["OPENPYPE_WEBSERVER_URL"] = str(webserver_url)
         os.environ[self.webserver_url_env] = str(webserver_url)
-        self.webserver_url = webserver_url
+        self._webserver_url = webserver_url
 
     @staticmethod
     def find_free_port(
@@ -175,3 +190,20 @@ class WebServerModule(OpenPypeModule, ITrayService):
                 break
 
         return found_port
+
+    def _add_resources_statics(self):
+        static_prefix = "/res"
+        self._server_manager.add_static(static_prefix, resources.RESOURCES_DIR)
+        statisc_url = "{}{}".format(
+            self._webserver_url, static_prefix
+        )
+
+        os.environ["AYON_STATICS_SERVER"] = statisc_url
+        os.environ["OPENPYPE_STATICS_SERVER"] = statisc_url
+
+    def _add_listeners(self):
+        from . import host_console_listener
+
+        self._host_listener = host_console_listener.HostListener(
+            self._server_manager, self
+        )

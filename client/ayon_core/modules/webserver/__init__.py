@@ -1,8 +1,8 @@
 from .webserver_module import (
-    WebServerModule
+    WebServerAddon
 )
 
 
 __all__ = (
-    "WebServerModule",
+    "WebServerAddon",
 )
