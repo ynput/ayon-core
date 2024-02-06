@@ -63,7 +63,7 @@ class Commands:
         )
         from ayon_core.addon import AddonsManager
         from ayon_core.pipeline import (
-            install_openpype_plugins,
+            install_ayon_plugins,
             get_global_context,
         )
         from ayon_core.tools.utils.host_tools import show_publish
@@ -75,7 +75,7 @@ class Commands:
 
         log = Logger.get_logger("CLI-publish")
 
-        install_openpype_plugins()
+        install_ayon_plugins()
 
         manager = AddonsManager()
 

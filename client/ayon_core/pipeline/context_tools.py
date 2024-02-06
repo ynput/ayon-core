@@ -168,7 +168,7 @@ def install_host(host):
     install_openpype_plugins(project_name, host_name)
 
 
-def install_openpype_plugins(project_name=None, host_name=None):
+def install_ayon_plugins(project_name=None, host_name=None):
     # Make sure modules are loaded
     load_addons()
 
@@ -232,6 +232,10 @@ def install_openpype_plugins(project_name=None, host_name=None):
             register_loader_plugin_path(path)
             register_creator_plugin_path(path)
             register_inventory_action_path(path)
+
+
+def install_openpype_plugins(project_name=None, host_name=None):
+    install_ayon_plugins(project_name, host_name)
 
 
 def uninstall_host():

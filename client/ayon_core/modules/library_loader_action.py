@@ -45,11 +45,11 @@ class LibraryLoaderAddon(AYONAddon, ITrayModule):
 
     def show_library_loader(self):
         if self._library_loader_window is None:
-            from ayon_core.pipeline import install_openpype_plugins
+            from ayon_core.pipeline import install_ayon_plugins
 
             self._init_library_loader()
 
-            install_openpype_plugins()
+            install_ayon_plugins()
 
         self._library_loader_window.show()
 

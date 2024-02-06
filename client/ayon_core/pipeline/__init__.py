@@ -73,6 +73,7 @@ from .actions import (
 )
 
 from .context_tools import (
+    install_ayon_plugins,
     install_openpype_plugins,
     install_host,
     uninstall_host,
@@ -170,6 +171,7 @@ __all__ = (
     "deregister_inventory_action_path",
 
     # --- Process context ---
+    "install_ayon_plugins",
     "install_openpype_plugins",
     "install_host",
     "uninstall_host",
