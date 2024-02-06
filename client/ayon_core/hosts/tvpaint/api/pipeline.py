@@ -205,7 +205,7 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             return
 
         # Stop application timer.
-        webserver_url = os.environ.get("OPENPYPE_WEBSERVER_URL")
+        webserver_url = os.environ.get("AYON_WEBSERVER_URL")
         rest_api_url = "{}/timers_manager/stop_timer".format(webserver_url)
         requests.post(rest_api_url)
 
