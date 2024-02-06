@@ -489,7 +489,7 @@ class AYONSettingsRegistry(JSONSettingRegistry):
         if not name:
             name = "AYON_settings"
         path = appdirs.user_data_dir(self.product, self.vendor)
-        super(OpenPypeSettingsRegistry, self).__init__(name, path)
+        super(AYONSettingsRegistry, self).__init__(name, path)
 
 
 def _create_local_site_id(registry=None):
@@ -497,7 +497,7 @@ def _create_local_site_id(registry=None):
     from coolname import generate_slug
 
     if registry is None:
-        registry = OpenPypeSettingsRegistry()
+        registry = AYONSettingsRegistry()
 
     new_id = generate_slug(3)
 
