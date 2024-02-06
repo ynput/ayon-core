@@ -382,7 +382,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     plugin_kind = split_path[-2]
 
     # TODO: change after all plugins are moved one level up
-    if category_from_file == "openpype":
+    if category_from_file in ("ayon_core", "openpype"):
         category_from_file = "global"
 
     try:
