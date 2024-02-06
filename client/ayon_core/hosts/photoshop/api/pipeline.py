@@ -20,7 +20,7 @@ from ayon_core.host import (
 
 from ayon_core.pipeline.load import any_outdated_containers
 from ayon_core.hosts.photoshop import PHOTOSHOP_HOST_DIR
-from ayon_core.tools.utils import get_openpype_qt_app
+from ayon_core.tools.utils import get_ayon_qt_app
 
 from . import lib
 
@@ -159,7 +159,7 @@ def check_inventory():
         return
 
     # Warn about outdated containers.
-    _app = get_openpype_qt_app()
+    _app = get_ayon_qt_app()
 
     message_box = QtWidgets.QMessageBox()
     message_box.setIcon(QtWidgets.QMessageBox.Warning)

@@ -7,7 +7,7 @@ from ayon_core.lib import env_value_to_bool, Logger
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import install_host
 from ayon_core.tools.utils import host_tools
-from ayon_core.tools.utils import get_openpype_qt_app
+from ayon_core.tools.utils import get_ayon_qt_app
 from ayon_core.tests.lib import is_in_tests
 
 from .launch_logic import ProcessLauncher, stub
@@ -29,7 +29,7 @@ def main(*subprocess_args):
 
     # coloring in StdOutBroker
     os.environ["OPENPYPE_LOG_NO_COLORS"] = "False"
-    app = get_openpype_qt_app()
+    app = get_ayon_qt_app()
     app.setQuitOnLastWindowClosed(False)
 
     launcher = ProcessLauncher(subprocess_args)

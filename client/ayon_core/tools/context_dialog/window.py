@@ -17,7 +17,7 @@ from ayon_core.tools.ayon_utils.widgets import (
 )
 from ayon_core.tools.utils.lib import (
     center_window,
-    get_openpype_qt_app,
+    get_ayon_qt_app,
 )
 
 
@@ -788,7 +788,7 @@ def main(
     strict=True
 ):
     # Run Qt application
-    app = get_openpype_qt_app()
+    app = get_ayon_qt_app()
     controller = ContextDialogController()
     controller.set_strict(strict)
     controller.set_initial_context(project_name, asset_name)

@@ -1,11 +1,11 @@
 import click
 
-from ayon_core.tools.utils import get_openpype_qt_app
+from ayon_core.tools.utils import get_ayon_qt_app
 from ayon_core.tools.push_to_project.ui import PushToContextSelectWindow
 
 
 def main_show(project_name, version_id):
-    app = get_openpype_qt_app()
+    app = get_ayon_qt_app()
 
     window = PushToContextSelectWindow()
     window.show()

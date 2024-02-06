@@ -22,7 +22,7 @@ from ayon_core.addon import (
 from ayon_core.settings import get_system_settings
 from ayon_core.tools.utils import (
     WrappedCallbackItem,
-    get_openpype_qt_app,
+    get_ayon_qt_app,
 )
 
 from .pype_info_widget import PypeInfoWidget
@@ -455,7 +455,7 @@ class PypeTrayStarter(QtCore.QObject):
 
 
 def main():
-    app = get_openpype_qt_app()
+    app = get_ayon_qt_app()
 
     starter = PypeTrayStarter(app)
 

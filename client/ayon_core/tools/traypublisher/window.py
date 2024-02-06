@@ -17,7 +17,7 @@ from ayon_core.pipeline import install_host
 from ayon_core.hosts.traypublisher.api import TrayPublisherHost
 from ayon_core.tools.publisher.control_qt import QtPublisherController
 from ayon_core.tools.publisher.window import PublisherWindow
-from ayon_core.tools.utils import PlaceholderLineEdit, get_openpype_qt_app
+from ayon_core.tools.utils import PlaceholderLineEdit, get_ayon_qt_app
 from ayon_core.tools.utils.constants import PROJECT_NAME_ROLE
 from ayon_core.tools.utils.models import (
     ProjectModel,
@@ -263,7 +263,7 @@ def main():
     host = TrayPublisherHost()
     install_host(host)
 
-    app_instance = get_openpype_qt_app()
+    app_instance = get_ayon_qt_app()
 
     if platform.system().lower() == "windows":
         import ctypes
