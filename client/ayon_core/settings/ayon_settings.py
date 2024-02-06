@@ -1454,7 +1454,7 @@ class _AyonSettingsCache:
     @classmethod
     def _get_variant(cls):
         if _AyonSettingsCache.variant is None:
-            from ayon_core.lib.openpype_version import is_staging_enabled
+            from ayon_core.lib import is_staging_enabled
 
             variant = "production"
             if is_dev_mode_enabled():
