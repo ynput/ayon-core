@@ -6,7 +6,6 @@ import shutil
 
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client import (
     get_version_by_id,
     get_hero_version_by_subset_id,
@@ -141,7 +140,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
             ))
             return
 
-        if AYON_SERVER_ENABLED and src_version_entity["name"] == 0:
+        if src_version_entity["name"] == 0:
             self.log.debug(
                 "Version 0 cannot have hero version. Skipping."
             )
@@ -202,19 +201,12 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         if old_version:
             entity_id = old_version["_id"]
 
-        if AYON_SERVER_ENABLED:
-            new_hero_version = new_hero_version_doc(
-                src_version_entity["parent"],
-                copy.deepcopy(src_version_entity["data"]),
-                src_version_entity["name"],
-                entity_id=entity_id
-            )
-        else:
-            new_hero_version = new_hero_version_doc(
-                src_version_entity["_id"],
-                src_version_entity["parent"],
-                entity_id=entity_id
-            )
+        new_hero_version = new_hero_version_doc(
+            src_version_entity["parent"],
+            copy.deepcopy(src_version_entity["data"]),
+            src_version_entity["name"],
+            entity_id=entity_id
+        )
 
         if old_version:
             self.log.debug("Replacing old hero version.")

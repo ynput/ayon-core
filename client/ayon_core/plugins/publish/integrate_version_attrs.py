@@ -1,7 +1,6 @@
 import pyblish.api
 import ayon_api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.client.operations import OperationsSession
 
 
@@ -86,8 +85,3 @@ class IntegrateVersionAttributes(pyblish.api.ContextPlugin):
             or instance.data.get("subset")
             or str(instance)
         )
-
-
-# Discover the plugin only in AYON mode
-if not AYON_SERVER_ENABLED:
-    del IntegrateVersionAttributes

@@ -1,6 +1,5 @@
 import pyblish.api
 
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.lib import get_openpype_username
 
 
@@ -9,11 +8,7 @@ class CollectCurrentUserPype(pyblish.api.ContextPlugin):
 
     # Order must be after default pyblish-base CollectCurrentUser
     order = pyblish.api.CollectorOrder + 0.001
-    label = (
-        "Collect AYON User"
-        if AYON_SERVER_ENABLED
-        else "Collect OpenPype User"
-    )
+    label = "Collect AYON User"
 
     def process(self, context):
         user = get_openpype_username()
