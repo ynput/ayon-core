@@ -1,5 +1,5 @@
 from ayon_core.client import get_representations
-from ayon_core.modules import ModulesManager
+from ayon_core.addon import AddonsManager
 
 NOT_SET = object()
 
@@ -123,8 +123,8 @@ class SiteSyncModel:
     def _cache_sync_server_module(self):
         if self._sync_server_module is not NOT_SET:
             return self._sync_server_module
-        manager = ModulesManager()
-        site_sync = manager.modules_by_name.get("sync_server")
+        manager = AddonsManager()
+        site_sync = manager.get("sync_server")
         sync_enabled = site_sync is not None and site_sync.enabled
         self._sync_server_module = site_sync
         self._sync_server_enabled = sync_enabled

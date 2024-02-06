@@ -1184,26 +1184,54 @@ class AddonsManager:
     # DEPRECATED - Module compatibility
     @property
     def modules(self):
+        self.log.warning(
+            "DEPRECATION WARNING: Used deprecated property"
+            " 'modules' please use 'addons' instead."
+        )
         return self.addons
 
     @property
     def modules_by_id(self):
+        self.log.warning(
+            "DEPRECATION WARNING: Used deprecated property"
+            " 'modules_by_id' please use 'addons_by_id' instead."
+        )
         return self.addons_by_id
 
     @property
     def modules_by_name(self):
+        self.log.warning(
+            "DEPRECATION WARNING: Used deprecated property"
+            " 'modules_by_name' please use 'addons_by_name' instead."
+        )
         return self.addons_by_name
 
     def get_enabled_module(self, *args, **kwargs):
+        self.log.warning(
+            "DEPRECATION WARNING: Used deprecated method"
+            " 'get_enabled_module' please use 'get_enabled_addon' instead."
+        )
         return self.get_enabled_addon(*args, **kwargs)
 
     def initialize_modules(self):
+        self.log.warning(
+            "DEPRECATION WARNING: Used deprecated method"
+            " 'initialize_modules' please use 'initialize_addons' instead."
+        )
         self.initialize_addons()
 
     def get_enabled_modules(self):
+        self.log.warning(
+            "DEPRECATION WARNING: Used deprecated method"
+            " 'get_enabled_modules' please use 'get_enabled_addons' instead."
+        )
         return self.get_enabled_addons()
 
     def get_host_module(self, host_name):
+        self.log.warning(
+            "DEPRECATION WARNING: Used deprecated method"
+            " 'get_host_module' please use 'get_host_addon' instead."
+        )
         return self.get_host_addon(host_name)
 
 

@@ -37,7 +37,7 @@ from ayon_core.settings import (
     get_project_settings,
     get_current_project_settings,
 )
-from ayon_core.modules import ModulesManager
+from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline import (
     discover_legacy_creator_plugins,
@@ -3217,8 +3217,7 @@ class DirmapCache:
     def sync_module(cls):
         if not cls._sync_module_discovered:
             cls._sync_module_discovered = True
-            cls._sync_module = ModulesManager().modules_by_name.get(
-                "sync_server")
+            cls._sync_module = AddonsManager().get("sync_server")
         return cls._sync_module
 
     @classmethod

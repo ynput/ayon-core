@@ -21,7 +21,7 @@ from ayon_core.client import (
     get_ayon_server_api_connection,
 )
 from ayon_core.lib.events import emit_event
-from ayon_core.modules import load_modules, ModulesManager
+from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 from ayon_core.tests.lib import is_in_tests
 
@@ -48,7 +48,7 @@ _registered_root = {"_": {}}
 _registered_host = {"_": None}
 # Keep modules manager (and it's modules) in memory
 # - that gives option to register modules' callbacks
-_modules_manager = None
+_addons_manager = None
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 
-def _get_modules_manager():
+def _get_addons_manager():
     """Get or create modules manager for host installation.
 
     This is not meant for public usage. Reason is to keep modules
@@ -68,13 +68,13 @@ def _get_modules_manager():
     need any.
 
     Returns:
-        ModulesManager: Manager wrapping discovered modules.
+        AddonsManager: Manager wrapping discovered modules.
     """
 
-    global _modules_manager
-    if _modules_manager is None:
-        _modules_manager = ModulesManager()
-    return _modules_manager
+    global _addons_manager
+    if _addons_manager is None:
+        _addons_manager = AddonsManager()
+    return _addons_manager
 
 
 def register_root(path):
@@ -117,7 +117,7 @@ def install_host(host):
     get_ayon_server_api_connection()
 
     legacy_io.install()
-    modules_manager = _get_modules_manager()
+    addons_manager = _get_addons_manager()
 
     missing = list()
     for key in ("AVALON_PROJECT", "AVALON_ASSET"):
@@ -162,15 +162,15 @@ def install_host(host):
     host_name = os.environ.get("AVALON_APP")
 
     # Give option to handle host installation
-    for module in modules_manager.get_enabled_modules():
-        module.on_host_install(host, host_name, project_name)
+    for addon in addons_manager.get_enabled_addons():
+        addon.on_host_install(host, host_name, project_name)
 
     install_openpype_plugins(project_name, host_name)
 
 
 def install_openpype_plugins(project_name=None, host_name=None):
     # Make sure modules are loaded
-    load_modules()
+    load_addons()
 
     log.info("Registering global plug-ins..")
     pyblish.api.register_plugin_path(PUBLISH_PATH)
@@ -181,23 +181,23 @@ def install_openpype_plugins(project_name=None, host_name=None):
     if host_name is None:
         host_name = os.environ.get("AVALON_APP")
 
-    modules_manager = _get_modules_manager()
-    publish_plugin_dirs = modules_manager.collect_publish_plugin_paths(
+    addons_manager = _get_addons_manager()
+    publish_plugin_dirs = addons_manager.collect_publish_plugin_paths(
         host_name)
     for path in publish_plugin_dirs:
         pyblish.api.register_plugin_path(path)
 
-    create_plugin_paths = modules_manager.collect_create_plugin_paths(
+    create_plugin_paths = addons_manager.collect_create_plugin_paths(
         host_name)
     for path in create_plugin_paths:
         register_creator_plugin_path(path)
 
-    load_plugin_paths = modules_manager.collect_load_plugin_paths(
+    load_plugin_paths = addons_manager.collect_load_plugin_paths(
         host_name)
     for path in load_plugin_paths:
         register_loader_plugin_path(path)
 
-    inventory_action_paths = modules_manager.collect_inventory_action_paths(
+    inventory_action_paths = addons_manager.collect_inventory_action_paths(
         host_name)
     for path in inventory_action_paths:
         register_inventory_action_path(path)

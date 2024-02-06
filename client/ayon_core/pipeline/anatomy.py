@@ -20,7 +20,7 @@ from ayon_core.lib.path_templates import (
     TemplatesDict,
     FormatObject,
 )
-from ayon_core.modules import ModulesManager
+from ayon_core.addon import AddonsManager
 
 log = Logger.get_logger(__name__)
 
@@ -446,9 +446,9 @@ class Anatomy(BaseAnatomy):
     @classmethod
     def get_sync_server_addon(cls):
         if cls._sync_server_addon_cache.is_outdated:
-            manager = ModulesManager()
+            manager = AddonsManager()
             cls._sync_server_addon_cache.update_data(
-                manager.get_enabled_module("sync_server")
+                manager.get_enabled_addon("sync_server")
             )
         return cls._sync_server_addon_cache.data
 

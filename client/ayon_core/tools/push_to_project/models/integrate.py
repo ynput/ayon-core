@@ -30,7 +30,7 @@ from ayon_core.client.operations import (
     prepare_version_update_data,
     prepare_representation_update_data,
 )
-from ayon_core.modules import ModulesManager
+from ayon_core.addon import AddonsManager
 from ayon_core.lib import (
     StringTemplate,
     get_openpype_username,
@@ -1056,8 +1056,8 @@ class ProjectPushItemProcess:
         path_template,
         existing_repres_by_low_name
     ):
-        modules_manager = ModulesManager()
-        sync_server_module = modules_manager.get("sync_server")
+        addons_manager = AddonsManager()
+        sync_server_module = addons_manager.get("sync_server")
         if sync_server_module is None or not sync_server_module.enabled:
             sites = [{
                 "name": "studio",

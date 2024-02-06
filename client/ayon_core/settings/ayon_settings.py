@@ -269,7 +269,7 @@ def _convert_modules_system(
             output[key] = value
 
         # Make sure addons have access to settings in initialization
-        # - ModulesManager passes only modules settings into initialization
+        # - AddonsManager passes only modules settings into initialization
         if key not in modules_settings:
             modules_settings[key] = value
 

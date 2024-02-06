@@ -4,7 +4,7 @@ import contextlib
 import traceback
 
 from ayon_core.lib import env_value_to_bool, Logger
-from ayon_core.modules import ModulesManager
+from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import install_host
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.utils import get_openpype_qt_app
@@ -36,7 +36,7 @@ def main(*subprocess_args):
     launcher.start()
 
     if env_value_to_bool("HEADLESS_PUBLISH"):
-        manager = ModulesManager()
+        manager = AddonsManager()
         webpublisher_addon = manager["webpublisher"]
         launcher.execute_in_main_thread(
             webpublisher_addon.headless_publish,

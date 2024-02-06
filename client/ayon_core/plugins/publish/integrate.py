@@ -322,15 +322,15 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         self.log.debug("Retrieving Representation Site Sync information ...")
 
         # Get the accessible sites for Site Sync
-        modules_by_name = instance.context.data["openPypeModules"]
-        sync_server_module = modules_by_name.get("sync_server")
-        if sync_server_module is None:
+        addons_manager = instance.context.data["ayonAddonsManger"]
+        sync_server_addon = addons_manager.get("sync_server")
+        if sync_server_addon is None:
             sites = [{
                 "name": "studio",
                 "created_dt": datetime.datetime.now()
             }]
         else:
-            sites = sync_server_module.compute_resource_sync_sites(
+            sites = sync_server_addon.compute_resource_sync_sites(
                 project_name=instance.data["projectEntity"]["name"]
             )
         self.log.debug("Sync Server Sites: {}".format(sites))

@@ -19,7 +19,7 @@ class RoyalRenderModule(OpenPypeModule, IPluginPaths):
         return self._api
 
     def __init__(self, manager, settings):
-        # type: (ayon_core.modules.base.ModulesManager, dict) -> None
+        # type: (ayon_core.addon.AddonsManager, dict) -> None
         self.rr_paths = {}
         self._api = None
         self.settings = settings

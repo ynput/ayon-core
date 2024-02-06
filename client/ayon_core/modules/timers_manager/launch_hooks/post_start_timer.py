@@ -31,9 +31,7 @@ class PostStartTimerHook(PostLaunchHook):
             ))
             return
 
-        timers_manager = self.modules_manager.modules_by_name.get(
-            "timers_manager"
-        )
+        timers_manager = self.addons_manager.get("timers_manager")
         if not timers_manager or not timers_manager.enabled:
             self.log.info((
                 "Skipping starting timer because"
