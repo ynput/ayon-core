@@ -35,10 +35,10 @@ class BlenderAddon(OpenPypeModule, IHostAddon):
         #   loops - will be removed at the end
         previous_user_scripts.add(implementation_user_script_path)
 
-        openpype_blender_user_scripts = (
-            env.get("OPENPYPE_BLENDER_USER_SCRIPTS") or ""
+        ayon_blender_user_scripts = (
+            env.get("AYON_BLENDER_USER_SCRIPTS") or ""
         )
-        for path in openpype_blender_user_scripts.split(os.pathsep):
+        for path in ayon_blender_user_scripts.split(os.pathsep):
             if path:
                 previous_user_scripts.add(os.path.normpath(path))
 
@@ -53,7 +53,7 @@ class BlenderAddon(OpenPypeModule, IHostAddon):
         env["BLENDER_USER_SCRIPTS"] = implementation_user_script_path
 
         # Set custom user scripts env
-        env["OPENPYPE_BLENDER_USER_SCRIPTS"] = os.pathsep.join(
+        env["AYON_BLENDER_USER_SCRIPTS"] = os.pathsep.join(
             previous_user_scripts
         )
 
