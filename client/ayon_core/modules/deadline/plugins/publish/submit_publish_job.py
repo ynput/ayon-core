@@ -106,10 +106,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                   "celaction": [r".*"],
                   "max": [r".*"]}
 
-    environ_job_filter = [
-        "OPENPYPE_METADATA_FILE"
-    ]
-
     environ_keys = [
         "FTRACK_API_USER",
         "FTRACK_API_KEY",
@@ -202,12 +198,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         for env_key in self.environ_keys:
             if os.getenv(env_key):
                 environment[env_key] = os.environ[env_key]
-
-        # pass environment keys from self.environ_job_filter
-        job_environ = job["Props"].get("Env", {})
-        for env_j_key in self.environ_job_filter:
-            if job_environ.get(env_j_key):
-                environment[env_j_key] = job_environ[env_j_key]
 
         priority = self.deadline_priority or instance.data.get("priority", 50)
 
