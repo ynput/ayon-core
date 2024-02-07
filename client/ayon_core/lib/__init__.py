@@ -157,6 +157,7 @@ from .path_tools import (
 from .ayon_info import (
     is_running_from_build,
     is_staging_enabled,
+    is_dev_mode_enabled,
 )
 
 
@@ -276,6 +277,7 @@ __all__ = [
 
     "is_running_from_build",
     "is_staging_enabled",
+    "is_dev_mode_enabled",
 
     "requests_get",
     "requests_post"
