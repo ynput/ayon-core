@@ -2890,7 +2890,7 @@ def launch_workfiles_app():
 
     # get all imortant settings
     open_at_start = env_value_to_bool(
-        env_key="OPENPYPE_WORKFILE_TOOL_ON_START",
+        env_key="AYON_WORKFILE_TOOL_ON_START",
         default=None)
 
     # return if none is defined
