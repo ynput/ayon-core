@@ -21,7 +21,7 @@ from ayon_core.tools.utils import (
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
 )
-from ayon_core.widgets.nice_checkbox import NiceCheckbox
+from ayon_core.tools.utils import NiceCheckbox
 
 from .files_widget import FilesWidget
 

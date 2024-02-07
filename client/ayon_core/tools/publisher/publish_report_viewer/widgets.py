@@ -1,7 +1,7 @@
 from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.widgets.nice_checkbox import NiceCheckbox
+from ayon_core.tools.utils import NiceCheckbox
 
 # from ayon_core.tools.utils import DeselectableTreeView
 from .constants import (

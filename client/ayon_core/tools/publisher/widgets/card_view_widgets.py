@@ -25,7 +25,7 @@ import collections
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.widgets.nice_checkbox import NiceCheckbox
+from ayon_core.tools.utils import NiceCheckbox
 
 from ayon_core.tools.utils import BaseClickableFrame
 from ayon_core.tools.utils.lib import html_escape
