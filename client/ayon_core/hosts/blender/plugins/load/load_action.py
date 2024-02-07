@@ -13,7 +13,7 @@ from ayon_core.hosts.blender.api.pipeline import (
     AVALON_PROPERTY,
 )
 
-logger = logging.getLogger("openpype").getChild("blender").getChild("load_action")
+logger = logging.getLogger("ayon").getChild("blender").getChild("load_action")
 
 
 class BlendActionLoader(plugin.AssetLoader):
