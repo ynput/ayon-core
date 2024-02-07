@@ -198,13 +198,12 @@ def uninstall():
 
 
 def show_message(title, message):
-    from ayon_core.widgets.message_window import Window
+    from ayon_core.tools.utils import show_message_dialog
     from .ops import BlenderApplication
 
     BlenderApplication.get_app()
 
-    Window(
-        parent=None,
+    show_message_dialog(
         title=title,
         message=message,
         level="warning")

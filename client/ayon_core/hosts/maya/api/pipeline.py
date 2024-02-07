@@ -583,7 +583,7 @@ def on_save():
 def on_open():
     """On scene open let's assume the containers have changed."""
 
-    from ayon_core.widgets import popup
+    from ayon_core.tools.utils import SimplePopup
 
     # Validate FPS after update_task_from_path to
     # ensure it is using correct FPS for the asset
@@ -604,7 +604,7 @@ def on_open():
             def _on_show_inventory():
                 host_tools.show_scene_inventory(parent=parent)
 
-            dialog = popup.Popup(parent=parent)
+            dialog = SimplePopup(parent=parent)
             dialog.setWindowTitle("Maya scene has outdated content")
             dialog.setMessage("There are outdated containers in "
                               "your Maya scene.")

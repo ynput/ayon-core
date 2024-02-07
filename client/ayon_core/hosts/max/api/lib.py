@@ -405,8 +405,8 @@ def check_colorspace():
             project_name, "max", project_settings)
         if max_config_data and color_mgr.Mode != rt.Name("OCIO_Custom"):
             if not is_headless():
-                from ayon_core.widgets import popup
-                dialog = popup.Popup(parent=parent)
+                from ayon_core.tools.utils import SimplePopup
+                dialog = SimplePopup(parent=parent)
                 dialog.setWindowTitle("Warning: Wrong OCIO Mode")
                 dialog.setMessage("This scene has wrong OCIO "
                                   "Mode setting.")
