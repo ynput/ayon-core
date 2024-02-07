@@ -3,7 +3,7 @@ Locked = true,
 Global = {
   Paths = {
     Map = {
-      ["AYON:"] = "$(OPENPYPE_FUSION)/deploy/ayon",
+      ["AYON:"] = "$(AYON_FUSION_ROOT)/deploy/ayon",
       ["Config:"] = "UserPaths:Config;AYON:Config",
       ["Scripts:"] = "UserPaths:Scripts;Reactor:System/Scripts",
     },
