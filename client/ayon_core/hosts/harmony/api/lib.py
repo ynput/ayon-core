@@ -81,7 +81,7 @@ class _ZipFile(zipfile.ZipFile):
 
 def main(*subprocess_args):
     # coloring in StdOutBroker
-    os.environ["OPENPYPE_LOG_NO_COLORS"] = "False"
+    os.environ["AYON_LOG_NO_COLORS"] = "0"
     app = QtWidgets.QApplication([])
     app.setQuitOnLastWindowClosed(False)
     icon = QtGui.QIcon(style.get_app_icon_path())
