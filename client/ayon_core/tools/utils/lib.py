@@ -1,29 +1,17 @@
 import os
 import sys
 import contextlib
-import collections
-import traceback
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
-from ayon_core.client import (
-    get_project,
-    get_asset_by_name,
-)
 from ayon_core.style import (
     get_default_entity_icon_color,
     get_objected_colors,
     get_app_icon_path,
 )
 from ayon_core.resources import get_image_path
-from ayon_core.lib import filter_profiles, Logger
-from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import (
-    registered_host,
-    get_current_context,
-    get_current_host_name,
-)
+from ayon_core.lib import Logger
 
 from .constants import CHECKED_INT, UNCHECKED_INT
 
