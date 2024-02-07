@@ -245,6 +245,7 @@ def get_representation_context(representation):
     Returns:
         dict: The full representation context.
     """
+    from ayon_core.pipeline import get_current_project_name
 
     assert representation is not None, "This is a bug"
 
