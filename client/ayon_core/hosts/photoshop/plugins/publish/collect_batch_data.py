@@ -26,7 +26,7 @@ from ayon_core.tests.lib import is_in_tests
 
 
 class CollectBatchData(pyblish.api.ContextPlugin):
-    """Collect batch data from json stored in 'OPENPYPE_PUBLISH_DATA' env dir.
+    """Collect batch data from json stored in 'AYON_PUBLISH_DATA' env dir.
 
     The directory must contain 'manifest.json' file where batch data should be
     stored.
@@ -39,13 +39,16 @@ class CollectBatchData(pyblish.api.ContextPlugin):
 
     def process(self, context):
         self.log.info("CollectBatchData")
-        batch_dir = os.environ.get("OPENPYPE_PUBLISH_DATA")
+        batch_dir = (
+            os.environ.get("AYON_PUBLISH_DATA")
+            or os.environ.get("OPENPYPE_PUBLISH_DATA")
+        )
         if is_in_tests():
             self.log.debug("Automatic testing, no batch data, skipping")
             return
 
         assert batch_dir, (
-            "Missing `OPENPYPE_PUBLISH_DATA`")
+            "Missing `AYON_PUBLISH_DATA`")
 
         assert os.path.exists(batch_dir), \
             "Folder {} doesn't exist".format(batch_dir)
