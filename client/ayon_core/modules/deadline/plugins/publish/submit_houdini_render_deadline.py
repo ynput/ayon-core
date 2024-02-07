@@ -208,7 +208,6 @@ class HoudiniSubmitDeadline(
             "AVALON_ASSET",
             "AVALON_TASK",
             "AVALON_APP_NAME",
-            "OPENPYPE_DEV",
             "AYON_LOG_NO_COLORS",
         ]
 
