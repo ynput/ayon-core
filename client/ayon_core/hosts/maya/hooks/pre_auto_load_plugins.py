@@ -23,7 +23,7 @@ class MayaPreAutoLoadPlugins(PreLaunchHook):
 
             # Force post initialization so our dedicated plug-in load can run
             # prior to Maya opening a scene file.
-            key = "OPENPYPE_OPEN_WORKFILE_POST_INITIALIZATION"
+            key = "AYON_OPEN_WORKFILE_POST_INITIALIZATION"
             self.launch_context.env[key] = "1"
 
             self.log.debug("Explicit plugins loading.")

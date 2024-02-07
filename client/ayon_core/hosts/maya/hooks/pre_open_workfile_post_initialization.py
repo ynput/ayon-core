@@ -22,5 +22,5 @@ class MayaPreOpenWorkfilePostInitialization(PreLaunchHook):
             self.data.pop("start_last_workfile")
 
             self.log.debug("Opening workfile post initialization.")
-            key = "OPENPYPE_OPEN_WORKFILE_POST_INITIALIZATION"
+            key = "AYON_OPEN_WORKFILE_POST_INITIALIZATION"
             self.launch_context.env[key] = "1"
