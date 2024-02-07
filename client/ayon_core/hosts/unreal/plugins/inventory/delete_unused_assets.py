@@ -44,11 +44,11 @@ class DeleteUnusedAssets(InventoryAction):
         )
         dialog.setFocusPolicy(QtCore.Qt.StrongFocus)
         dialog.setWindowTitle("Delete all unused assets")
-        dialog.setMessage(
+        dialog.set_message(
             "You are about to delete all the assets in the project that \n"
             "are not used in any level. Are you sure you want to continue?"
         )
-        dialog.setButtonText("Delete")
+        dialog.set_button_text("Delete")
 
         dialog.on_clicked.connect(
             lambda: self._delete_unused_assets(containers)

@@ -408,9 +408,9 @@ def check_colorspace():
                 from ayon_core.tools.utils import SimplePopup
                 dialog = SimplePopup(parent=parent)
                 dialog.setWindowTitle("Warning: Wrong OCIO Mode")
-                dialog.setMessage("This scene has wrong OCIO "
+                dialog.set_message("This scene has wrong OCIO "
                                   "Mode setting.")
-                dialog.setButtonText("Fix")
+                dialog.set_button_text("Fix")
                 dialog.setStyleSheet(load_stylesheet())
                 dialog.on_clicked.connect(reset_colorspace)
                 dialog.show()
