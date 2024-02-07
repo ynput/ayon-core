@@ -2227,7 +2227,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
 
         # include all project root related env vars
         for env_var in os.environ:
-            if env_var.startswith("OPENPYPE_PROJECT_ROOT_"):
+            if env_var.startswith("AYON_PROJECT_ROOT_"):
                 included_vars.append(env_var)
 
         # use regex to find env var in template with format {ENV_VAR}
