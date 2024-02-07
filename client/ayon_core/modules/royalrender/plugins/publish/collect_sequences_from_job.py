@@ -70,7 +70,7 @@ def collect(root,
 class CollectSequencesFromJob(pyblish.api.ContextPlugin):
     """Gather file sequences from job directory.
 
-    When "OPENPYPE_PUBLISH_DATA" environment variable is set these paths
+    When "AYON_PUBLISH_DATA" environment variable is set these paths
     (folders or .json files) are parsed for image sequences. Otherwise, the
     current working directory is searched for file sequences.
 
@@ -91,9 +91,13 @@ class CollectSequencesFromJob(pyblish.api.ContextPlugin):
             ["review"]
         )
 
-        if os.environ.get("OPENPYPE_PUBLISH_DATA"):
-            self.log.debug(os.environ.get("OPENPYPE_PUBLISH_DATA"))
-            paths = os.environ["OPENPYPE_PUBLISH_DATA"].split(os.pathsep)
+        publish_data_paths = (
+            os.environ.get("AYON_PUBLISH_DATA")
+            or os.environ.get("OPENPYPE_PUBLISH_DATA")
+        )
+        if publish_data_paths:
+            self.log.debug(publish_data_paths)
+            paths = publish_data_paths.split(os.pathsep)
             self.log.info("Collecting paths: {}".format(paths))
         else:
             cwd = context.get("workspaceDir", os.getcwd())

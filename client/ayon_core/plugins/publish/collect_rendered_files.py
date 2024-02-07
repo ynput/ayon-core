@@ -19,7 +19,7 @@ from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 class CollectRenderedFiles(pyblish.api.ContextPlugin):
     """
     This collector will try to find json files in provided
-    `OPENPYPE_PUBLISH_DATA`. Those files _MUST_ share same context.
+    `AYON_PUBLISH_DATA`. Those files _MUST_ share same context.
 
     Note:
         We should split this collector and move the part which handle reading
@@ -140,13 +140,17 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
     def process(self, context):
         self._context = context
 
-        if not os.environ.get("OPENPYPE_PUBLISH_DATA"):
-            raise KnownPublishError("Missing `OPENPYPE_PUBLISH_DATA`")
+        publish_data_paths = (
+            os.environ.get("AYON_PUBLISH_DATA")
+            or os.environ.get("OPENPYPE_PUBLISH_DATA")
+        )
+        if publish_data_paths:
+            raise KnownPublishError("Missing `AYON_PUBLISH_DATA`")
 
         # QUESTION
         #   Do we support (or want support) multiple files in the variable?
         #   - what if they have different context?
-        paths = os.environ["OPENPYPE_PUBLISH_DATA"].split(os.pathsep)
+        paths = publish_data_paths.split(os.pathsep)
 
         # Using already collected Anatomy
         anatomy = context.data["anatomy"]
