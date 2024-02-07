@@ -25,7 +25,7 @@ Available deadline pools:
 This error is shown when a configured pool is not available on Deadline. It
 can happen when publishing old workfiles which were created with previous
 deadline pools, or someone changed the available pools in Deadline,
-but didn't modify Openpype Settings to match the changes.
+but didn't modify AYON Settings to match the changes.
         </detail>
     </error>
 </root>
