@@ -24,7 +24,7 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.context_tools import get_current_project_asset
-from ayon_core.widgets import popup
+from ayon_core.tools.utils import PopupUpdateKeys
 from ayon_core.tools.utils.host_tools import get_tool_by_name
 
 import hou
@@ -209,7 +209,7 @@ def validate_fps():
         if parent is None:
             pass
         else:
-            dialog = popup.PopupUpdateKeys(parent=parent)
+            dialog = PopupUpdateKeys(parent=parent)
             dialog.setModal(True)
             dialog.setWindowTitle("Houdini scene does not match project FPS")
             dialog.setMessage("Scene %i FPS does not match project %i FPS" %

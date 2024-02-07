@@ -285,7 +285,7 @@ def on_open():
     log.info("Running callback on open..")
 
     if any_outdated_containers():
-        from ayon_core.widgets import popup
+        from ayon_core.tools.utils import SimplePopup
 
         log.warning("Scene has outdated content.")
 
@@ -301,7 +301,7 @@ def on_open():
                 from ayon_core.tools.utils import host_tools
                 host_tools.show_scene_inventory(parent=parent)
 
-            dialog = popup.Popup(parent=parent)
+            dialog = SimplePopup(parent=parent)
             dialog.setWindowTitle("Substance scene has outdated content")
             dialog.setMessage("There are outdated containers in "
                               "your Substance scene.")

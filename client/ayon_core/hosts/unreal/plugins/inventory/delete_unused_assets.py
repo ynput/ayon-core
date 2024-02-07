@@ -34,10 +34,10 @@ class DeleteUnusedAssets(InventoryAction):
 
     def _show_confirmation_dialog(self, containers):
         from qtpy import QtCore
-        from ayon_core.widgets import popup
+        from ayon_core.tools.utils import SimplePopup
         from ayon_core.style import load_stylesheet
 
-        dialog = popup.Popup()
+        dialog = SimplePopup()
         dialog.setWindowFlags(
             QtCore.Qt.Window
             | QtCore.Qt.WindowStaysOnTopHint

@@ -189,9 +189,9 @@ def on_after_open(event):
             frame.ActivateFrame()   # raise comp window
             host_tools.show_scene_inventory()
 
-        from ayon_core.widgets import popup
+        from ayon_core.tools.utils import SimplePopup
         from ayon_core.style import load_stylesheet
-        dialog = popup.Popup(parent=menu.menu)
+        dialog = SimplePopup(parent=menu.menu)
         dialog.setWindowTitle("Fusion comp has outdated content")
         dialog.setMessage("There are outdated containers in "
                           "your Fusion comp.")

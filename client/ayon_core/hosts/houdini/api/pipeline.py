@@ -305,20 +305,21 @@ def _show_outdated_content_popup():
     if parent is None:
         log.info("Skipping outdated content pop-up "
                  "because Houdini window can't be found.")
-    else:
-        from ayon_core.widgets import popup
+        return
 
-        # Show outdated pop-up
-        def _on_show_inventory():
-            from ayon_core.tools.utils import host_tools
-            host_tools.show_scene_inventory(parent=parent)
+    from ayon_core.tools.utils import SimplePopup
 
-        dialog = popup.Popup(parent=parent)
-        dialog.setWindowTitle("Houdini scene has outdated content")
-        dialog.setMessage("There are outdated containers in "
-                          "your Houdini scene.")
-        dialog.on_clicked.connect(_on_show_inventory)
-        dialog.show()
+    # Show outdated pop-up
+    def _on_show_inventory():
+        from ayon_core.tools.utils import host_tools
+        host_tools.show_scene_inventory(parent=parent)
+
+    dialog = SimplePopup(parent=parent)
+    dialog.setWindowTitle("Houdini scene has outdated content")
+    dialog.setMessage("There are outdated containers in "
+                      "your Houdini scene.")
+    dialog.on_clicked.connect(_on_show_inventory)
+    dialog.show()
 
 
 def on_open():
