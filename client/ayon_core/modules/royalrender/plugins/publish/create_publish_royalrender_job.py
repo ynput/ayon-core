@@ -73,7 +73,6 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
         "AVALON_APP_NAME",
         "OPENPYPE_USERNAME",
         "OPENPYPE_SG_USER",
-        "OPENPYPE_MONGO"
     ]
     priority = 50
 
