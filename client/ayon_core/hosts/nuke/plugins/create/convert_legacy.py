@@ -3,7 +3,7 @@ from ayon_core.hosts.nuke.api.lib import (
     INSTANCE_DATA_KNOB,
     get_node_data,
     get_avalon_knob_data,
-    AVALON_TAB,
+    NODE_TAB_NAME,
 )
 from ayon_core.hosts.nuke.api.plugin import convert_to_valid_instaces
 
@@ -24,7 +24,7 @@ class LegacyConverted(SubsetConvertorPlugin):
             if get_node_data(node, INSTANCE_DATA_KNOB):
                 continue
 
-            if AVALON_TAB not in node.knobs():
+            if NODE_TAB_NAME not in node.knobs():
                 continue
 
             # get data from avalon knob

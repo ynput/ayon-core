@@ -374,7 +374,7 @@ class TOPBAR_MT_avalon(bpy.types.Menu):
     """Avalon menu."""
 
     bl_idname = "TOPBAR_MT_avalon"
-    bl_label = os.environ.get("AVALON_LABEL")
+    bl_label = os.environ.get("AYON_MENU_LABEL")
 
     def draw(self, context):
         """Draw the menu in the UI."""
