@@ -1,7 +1,6 @@
 import time
 import collections
 
-import qtpy
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
@@ -10,7 +9,6 @@ from ayon_core.client import (
     get_assets,
 )
 from ayon_core.style import (
-    get_objected_colors,
     get_default_tools_icon_color,
 )
 from ayon_core.tools.flickcharm import FlickCharm
@@ -25,11 +23,6 @@ from .lib import (
     DynamicQThread,
     get_asset_icon
 )
-
-if qtpy.API == "pyside":
-    from PySide.QtGui import QStyleOptionViewItemV4
-elif qtpy.API == "pyqt4":
-    from PyQt4.QtGui import QStyleOptionViewItemV4
 
 ASSET_ID_ROLE = QtCore.Qt.UserRole + 1
 ASSET_NAME_ROLE = QtCore.Qt.UserRole + 2
@@ -102,172 +95,6 @@ class AssetsView(TreeViewSpinner, DeselectableTreeView):
 
         self.is_loading = loading
         self.is_empty = empty
-
-
-class UnderlinesAssetDelegate(QtWidgets.QItemDelegate):
-    """Item delegate drawing bars under asset name.
-
-    This is used in loader and library loader tools. Multiselection of assets
-    may group subsets by name under colored groups. Selected color groups are
-    then propagated back to selected assets as underlines.
-    """
-    bar_height = 3
-
-    def __init__(self, *args, **kwargs):
-        super(UnderlinesAssetDelegate, self).__init__(*args, **kwargs)
-        asset_view_colors = get_objected_colors("loader", "asset-view")
-        self._selected_color = (
-            asset_view_colors["selected"].get_qcolor()
-        )
-        self._hover_color = (
-            asset_view_colors["hover"].get_qcolor()
-        )
-        self._selected_hover_color = (
-            asset_view_colors["selected-hover"].get_qcolor()
-        )
-
-    def sizeHint(self, option, index):
-        """Add bar height to size hint."""
-        result = super(UnderlinesAssetDelegate, self).sizeHint(option, index)
-        height = result.height()
-        result.setHeight(height + self.bar_height)
-
-        return result
-
-    def paint(self, painter, option, index):
-        """Replicate painting of an item and draw color bars if needed."""
-        # Qt4 compat
-        if qtpy.API in ("pyside", "pyqt4"):
-            option = QStyleOptionViewItemV4(option)
-
-        painter.save()
-
-        item_rect = QtCore.QRect(option.rect)
-        item_rect.setHeight(option.rect.height() - self.bar_height)
-
-        subset_colors = index.data(ASSET_UNDERLINE_COLORS_ROLE) or []
-        subset_colors_width = 0
-        if subset_colors:
-            subset_colors_width = option.rect.width() / len(subset_colors)
-
-        subset_rects = []
-        counter = 0
-        for subset_c in subset_colors:
-            new_color = None
-            new_rect = None
-            if subset_c:
-                new_color = QtGui.QColor(*subset_c)
-
-                new_rect = QtCore.QRect(
-                    option.rect.left() + (counter * subset_colors_width),
-                    option.rect.top() + (
-                        option.rect.height() - self.bar_height
-                    ),
-                    subset_colors_width,
-                    self.bar_height
-                )
-            subset_rects.append((new_color, new_rect))
-            counter += 1
-
-        # Background
-        if option.state & QtWidgets.QStyle.State_Selected:
-            if len(subset_colors) == 0:
-                item_rect.setTop(item_rect.top() + (self.bar_height / 2))
-
-            if option.state & QtWidgets.QStyle.State_MouseOver:
-                bg_color = self._selected_hover_color
-            else:
-                bg_color = self._selected_color
-        else:
-            item_rect.setTop(item_rect.top() + (self.bar_height / 2))
-            if option.state & QtWidgets.QStyle.State_MouseOver:
-                bg_color = self._hover_color
-            else:
-                bg_color = QtGui.QColor()
-                bg_color.setAlpha(0)
-
-        # When not needed to do a rounded corners (easier and without
-        #   painter restore):
-        painter.fillRect(
-            option.rect,
-            QtGui.QBrush(bg_color)
-        )
-
-        if option.state & QtWidgets.QStyle.State_Selected:
-            for color, subset_rect in subset_rects:
-                if not color or not subset_rect:
-                    continue
-                painter.fillRect(subset_rect, QtGui.QBrush(color))
-
-        # Icon
-        icon_index = index.model().index(
-            index.row(), index.column(), index.parent()
-        )
-        # - Default icon_rect if not icon
-        icon_rect = QtCore.QRect(
-            item_rect.left(),
-            item_rect.top(),
-            # To make sure it's same size all the time
-            option.rect.height() - self.bar_height,
-            option.rect.height() - self.bar_height
-        )
-        icon = index.model().data(icon_index, QtCore.Qt.DecorationRole)
-
-        if icon:
-            mode = QtGui.QIcon.Normal
-            if not (option.state & QtWidgets.QStyle.State_Enabled):
-                mode = QtGui.QIcon.Disabled
-            elif option.state & QtWidgets.QStyle.State_Selected:
-                mode = QtGui.QIcon.Selected
-
-            if isinstance(icon, QtGui.QPixmap):
-                icon = QtGui.QIcon(icon)
-                option.decorationSize = icon.size() / icon.devicePixelRatio()
-
-            elif isinstance(icon, QtGui.QColor):
-                pixmap = QtGui.QPixmap(option.decorationSize)
-                pixmap.fill(icon)
-                icon = QtGui.QIcon(pixmap)
-
-            elif isinstance(icon, QtGui.QImage):
-                icon = QtGui.QIcon(QtGui.QPixmap.fromImage(icon))
-                option.decorationSize = icon.size() / icon.devicePixelRatio()
-
-            elif isinstance(icon, QtGui.QIcon):
-                state = QtGui.QIcon.Off
-                if option.state & QtWidgets.QStyle.State_Open:
-                    state = QtGui.QIcon.On
-                actual_size = option.icon.actualSize(
-                    option.decorationSize, mode, state
-                )
-                option.decorationSize = QtCore.QSize(
-                    min(option.decorationSize.width(), actual_size.width()),
-                    min(option.decorationSize.height(), actual_size.height())
-                )
-
-            state = QtGui.QIcon.Off
-            if option.state & QtWidgets.QStyle.State_Open:
-                state = QtGui.QIcon.On
-
-            icon.paint(
-                painter, icon_rect,
-                QtCore.Qt.AlignLeft, mode, state
-            )
-
-        # Text
-        text_rect = QtCore.QRect(
-            icon_rect.left() + icon_rect.width() + 2,
-            item_rect.top(),
-            item_rect.width(),
-            item_rect.height()
-        )
-
-        painter.drawText(
-            text_rect, QtCore.Qt.AlignVCenter,
-            index.data(QtCore.Qt.DisplayRole)
-        )
-
-        painter.restore()
 
 
 class AssetModel(QtGui.QStandardItemModel):
@@ -811,82 +638,3 @@ class SingleSelectAssetsWidget(AssetsWidget):
         for index in indexes:
             return index.data(ASSET_NAME_ROLE)
         return None
-
-
-class MultiSelectAssetsWidget(AssetsWidget):
-    """Multiselection asset widget.
-
-    Main purpose is for loader and library loader. If another tool would use
-    multiselection assets this widget should be split and loader's logic
-    separated.
-    """
-    def __init__(self, *args, **kwargs):
-        super(MultiSelectAssetsWidget, self).__init__(*args, **kwargs)
-        self._view.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection
-        )
-
-        delegate = UnderlinesAssetDelegate()
-        self._view.setItemDelegate(delegate)
-        self._delegate = delegate
-
-    def get_selected_asset_ids(self):
-        """Currently selected asset ids."""
-        selection_model = self._view.selectionModel()
-        indexes = selection_model.selectedRows()
-        return [
-            index.data(ASSET_ID_ROLE)
-            for index in indexes
-        ]
-
-    def get_selected_asset_names(self):
-        """Currently selected asset names."""
-        selection_model = self._view.selectionModel()
-        indexes = selection_model.selectedRows()
-        return [
-            index.data(ASSET_NAME_ROLE)
-            for index in indexes
-        ]
-
-    def select_assets(self, asset_ids):
-        """Select assets by their ids.
-
-        Args:
-            asset_ids (list): List of asset ids.
-        """
-        indexes = self._model.get_indexes_by_asset_ids(asset_ids)
-        new_indexes = [
-            self._proxy.mapFromSource(index)
-            for index in indexes
-        ]
-        self._select_indexes(new_indexes)
-
-    def select_assets_by_name(self, asset_names):
-        """Select assets by their names.
-
-        Args:
-            asset_names (list): List of asset names.
-        """
-        indexes = self._model.get_indexes_by_asset_names(asset_names)
-        new_indexes = [
-            self._proxy.mapFromSource(index)
-            for index in indexes
-        ]
-        self._select_indexes(new_indexes)
-
-    def clear_underlines(self):
-        """Clear underlines in asset items."""
-        self._model.clear_underlines()
-
-        self._view.updateGeometries()
-
-    def set_underline_colors(self, colors_by_asset_id):
-        """Change underline colors for passed assets.
-
-        Args:
-            colors_by_asset_id (dict): Key is asset id and value is list
-                of underline colors.
-        """
-        self._model.set_underline_colors(colors_by_asset_id)
-        # Trigger repaint
-        self._view.updateGeometries()
