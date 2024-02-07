@@ -62,10 +62,6 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
     # list of family names to transfer to new family if present
     families_transfer = ["render3d", "render2d", "ftrack", "slate"]
 
-    environ_job_filter = [
-        "OPENPYPE_METADATA_FILE"
-    ]
-
     environ_keys = [
         "FTRACK_API_USER",
         "FTRACK_API_KEY",
@@ -200,21 +196,9 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         # pass environment keys from self.environ_job_filter
         # and collect all pre_ids to wait for
-        job_environ = {}
         jobs_pre_ids = []
         for job in instance.data["rrJobs"]:  # type: RRJob
-            if job.rrEnvList:
-                if len(job.rrEnvList) > 2000:
-                    self.log.warning(("Job environment is too long "
-                                      f"{len(job.rrEnvList)} > 2000"))
-                job_environ.update(
-                    dict(RREnvList.parse(job.rrEnvList))
-                )
             jobs_pre_ids.append(job.PreID)
-
-        for env_j_key in self.environ_job_filter:
-            if job_environ.get(env_j_key):
-                environment[env_j_key] = job_environ[env_j_key]
 
         priority = self.priority or instance.data.get("priority", 50)
 
