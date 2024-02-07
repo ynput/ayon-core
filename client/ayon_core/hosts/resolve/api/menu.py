@@ -7,7 +7,7 @@ from ayon_core.tools.utils import host_tools
 from ayon_core.pipeline import registered_host
 
 
-MENU_LABEL = os.environ["AVALON_LABEL"]
+MENU_LABEL = os.environ["AYON_MENU_LABEL"]
 
 
 def load_stylesheet():

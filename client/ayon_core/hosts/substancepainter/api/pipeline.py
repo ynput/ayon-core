@@ -170,7 +170,7 @@ class SubstanceHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         parent = substance_painter.ui.get_main_window()
 
-        tab_menu_label = os.environ.get("AVALON_LABEL") or "AYON"
+        tab_menu_label = os.environ.get("AYON_MENU_LABEL") or "AYON"
         menu = QtWidgets.QMenu(tab_menu_label)
 
         action = menu.addAction("Create...")

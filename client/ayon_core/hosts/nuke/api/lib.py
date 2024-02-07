@@ -59,10 +59,9 @@ from .utils import get_node_outputs
 
 log = Logger.get_logger(__name__)
 
-_NODE_TAB_NAME = "{}".format(os.getenv("AVALON_LABEL") or "Avalon")
-AVALON_LABEL = os.getenv("AVALON_LABEL") or "Avalon"
-AVALON_TAB = "{}".format(AVALON_LABEL)
-AVALON_DATA_GROUP = "{}DataGroup".format(AVALON_LABEL.capitalize())
+MENU_LABEL = os.getenv("AYON_MENU_LABEL") or "AYON"
+NODE_TAB_NAME = MENU_LABEL
+DATA_GROUP_KEY = "{}DataGroup".format(MENU_LABEL.capitalize())
 EXCLUDED_KNOB_TYPE_ON_READ = (
     20,  # Tab Knob
     26,  # Text Knob (But for backward compatibility, still be read
@@ -443,7 +442,7 @@ def set_avalon_knob_data(node, data=None, prefix="avalon:"):
     data = data or dict()
     create = OrderedDict()
 
-    tab_name = AVALON_TAB
+    tab_name = NODE_TAB_NAME
     editable = ["asset", "subset", "name", "namespace"]
 
     existed_knobs = node.knobs()
@@ -477,7 +476,7 @@ def set_avalon_knob_data(node, data=None, prefix="avalon:"):
             (("warn", ""), warn),
             (("divd", ""), divd),
         ]
-        tab[AVALON_DATA_GROUP] = OrderedDict(head + list(create.items()))
+        tab[DATA_GROUP_KEY] = OrderedDict(head + list(create.items()))
         create = tab
 
     imprint(node, create, tab=tab_name)
@@ -500,7 +499,7 @@ def get_avalon_knob_data(node, prefix="avalon:", create=True):
     """
 
     data = {}
-    if AVALON_TAB not in node.knobs():
+    if NODE_TAB_NAME not in node.knobs():
         return data
 
     # check if lists
@@ -512,7 +511,7 @@ def get_avalon_knob_data(node, prefix="avalon:", create=True):
         # check if the node is avalon tracked
         try:
             # check if data available on the node
-            test = node[AVALON_DATA_GROUP].value()
+            test = node[DATA_GROUP_KEY].value()
             log.debug("Only testing if data available: `{}`".format(test))
         except NameError as e:
             # if it doesn't then create it

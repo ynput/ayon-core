@@ -21,7 +21,7 @@ from .pipeline import FusionEventHandler
 from .pulse import FusionPulse
 
 
-MENU_LABEL = os.environ["AVALON_LABEL"]
+MENU_LABEL = os.environ["AYON_MENU_LABEL"]
 
 
 self = sys.modules[__name__]
