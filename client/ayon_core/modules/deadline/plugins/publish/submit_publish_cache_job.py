@@ -153,12 +153,6 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
             if job_environ.get(env_j_key):
                 environment[env_j_key] = job_environ[env_j_key]
 
-        # Add mongo url if it's enabled
-        if instance.context.data.get("deadlinePassMongoUrl"):
-            mongo_url = os.environ.get("OPENPYPE_MONGO")
-            if mongo_url:
-                environment["OPENPYPE_MONGO"] = mongo_url
-
         priority = self.deadline_priority or instance.data.get("priority", 50)
 
         instance_settings = self.get_attr_values_from_data(instance.data)

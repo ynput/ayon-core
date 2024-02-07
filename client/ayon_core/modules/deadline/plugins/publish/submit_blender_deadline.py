@@ -7,7 +7,6 @@ import attr
 from datetime import datetime
 
 from ayon_core.lib import (
-    is_running_from_build,
     BoolDef,
     NumberDef,
     TextDef,
@@ -111,14 +110,6 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "OPENPYPE_DEV"
             "IS_TEST"
         ]
-
-        # Add OpenPype version if we are running from build.
-        if is_running_from_build():
-            keys.append("OPENPYPE_VERSION")
-
-        # Add mongo url if it's enabled
-        if self._instance.context.data.get("deadlinePassMongoUrl"):
-            keys.append("OPENPYPE_MONGO")
 
         environment = dict({key: os.environ[key] for key in keys
                             if key in os.environ}, **legacy_io.Session)
