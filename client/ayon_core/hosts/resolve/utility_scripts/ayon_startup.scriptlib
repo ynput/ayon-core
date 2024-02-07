@@ -5,7 +5,7 @@ function file_exists(name)
 end
 
 
-ayon_startup_script = os.getenv("OPENPYPE_RESOLVE_STARTUP_SCRIPT")
+ayon_startup_script = os.getenv("AYON_RESOLVE_STARTUP_SCRIPT")
 if ayon_startup_script ~= nil then
     script = fusion:MapPath(ayon_startup_script)
 
