@@ -1874,7 +1874,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
     data["env"]["AVALON_OPEN_LAST_WORKFILE"] = (
         str(int(bool(start_last_workfile)))
     )
-    data["env"]["OPENPYPE_WORKFILE_TOOL_ON_START"] = (
+    data["env"]["AYON_WORKFILE_TOOL_ON_START"] = (
         str(int(bool(workfile_startup)))
     )
 
@@ -1989,7 +1989,7 @@ def should_workfile_tool_start(
     """Define if host should start workfile tool at host launch.
 
     Default output is `False`. Can be overridden with environment variable
-    `OPENPYPE_WORKFILE_TOOL_ON_START`, valid values without case sensitivity are
+    `AYON_WORKFILE_TOOL_ON_START`, valid values without case sensitivity are
     `"0", "1", "true", "false", "yes", "no"`.
 
     Args:
