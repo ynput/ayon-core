@@ -782,6 +782,41 @@ class SeparatorWidget(QtWidgets.QFrame):
         self._set_size(self._size)
 
 
+class PressHoverButton(QtWidgets.QPushButton):
+    _mouse_pressed = False
+    _mouse_hovered = False
+    change_state = QtCore.Signal(bool)
+
+    @property
+    def mouse_pressed(self):
+        return self._mouse_pressed
+
+    @property
+    def mouse_hovered(self):
+        return self._mouse_hovered
+
+    def mousePressEvent(self, event):
+        self._mouse_pressed = True
+        self._mouse_hovered = True
+        self.change_state.emit(self._mouse_hovered)
+        super(PressHoverButton, self).mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._mouse_pressed = False
+        self._mouse_hovered = False
+        self.change_state.emit(self._mouse_hovered)
+        super(PressHoverButton, self).mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event):
+        mouse_pos = self.mapFromGlobal(QtGui.QCursor.pos())
+        under_mouse = self.rect().contains(mouse_pos)
+        if under_mouse != self._mouse_hovered:
+            self._mouse_hovered = under_mouse
+            self.change_state.emit(self._mouse_hovered)
+
+        super(PressHoverButton, self).mouseMoveEvent(event)
+
+
 def get_refresh_icon():
     return get_qta_icon_by_name_and_color(
         "fa.refresh", get_default_tools_icon_color()
