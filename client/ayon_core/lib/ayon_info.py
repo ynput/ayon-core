@@ -38,6 +38,16 @@ def is_staging_enabled():
     return os.getenv("AYON_USE_STAGING") == "1"
 
 
+def is_dev_mode_enabled():
+    """Dev mode is enabled in AYON.
+
+    Returns:
+        bool: True if dev mode is enabled.
+    """
+
+    return os.getenv("AYON_USE_DEV") == "1"
+
+
 def get_ayon_info():
     executable_args = get_ayon_launcher_args()
     if is_running_from_build():
