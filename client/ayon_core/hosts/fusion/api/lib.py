@@ -172,8 +172,8 @@ def validate_comp_prefs(comp=None, force_repair=False):
 
         msg = "Comp preferences mismatches '{}'".format(asset_doc["name"])
         msg += "\n" + "\n".join(invalid)
-        dialog.setMessage(msg)
-        dialog.setButtonText("Repair")
+        dialog.set_message(msg)
+        dialog.set_button_text("Repair")
         dialog.on_clicked.connect(_on_repair)
         dialog.show()
         dialog.raise_()

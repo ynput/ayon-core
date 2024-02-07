@@ -606,7 +606,7 @@ def on_open():
 
             dialog = SimplePopup(parent=parent)
             dialog.setWindowTitle("Maya scene has outdated content")
-            dialog.setMessage("There are outdated containers in "
+            dialog.set_message("There are outdated containers in "
                               "your Maya scene.")
             dialog.on_clicked.connect(_on_show_inventory)
             dialog.show()

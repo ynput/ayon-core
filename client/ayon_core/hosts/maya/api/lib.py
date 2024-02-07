@@ -2678,12 +2678,12 @@ def validate_fps():
         dialog = PopupUpdateKeys(parent=parent)
         dialog.setModal(True)
         dialog.setWindowTitle("Maya scene does not match project FPS")
-        dialog.setMessage(
+        dialog.set_message(
             "Scene {} FPS does not match project {} FPS".format(
                 current_fps, expected_fps
             )
         )
-        dialog.setButtonText("Fix")
+        dialog.set_button_text("Fix")
 
         # Set new text for button (add optional argument for the popup?)
         def on_click(update):
