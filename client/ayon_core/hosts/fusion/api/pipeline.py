@@ -308,7 +308,7 @@ class FusionEventThread(QtCore.QThread):
         # getattr of UIManager.GetEvent tries to resolve the Remote Function
         # through the PyRemoteObject
         get_event = app.UIManager.GetEvent
-        delay = int(os.environ.get("OPENPYPE_FUSION_CALLBACK_INTERVAL", 1000))
+        delay = int(os.environ.get("AYON_FUSION_CALLBACK_INTERVAL", 1000))
         while True:
             if self.isInterruptionRequested():
                 return
