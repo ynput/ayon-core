@@ -245,22 +245,19 @@ class RecursiveSortFilterProxyModel(QtCore.QSortFilterProxyModel):
         )
 
 
+# TODO remove 'ProjectModel' and 'ProjectSortFilterProxy' classes
+#   - replace their usage with current 'ayon_utils' models
 class ProjectModel(QtGui.QStandardItemModel):
     def __init__(
-        self, dbcon=None, only_active=True, add_default_project=False,
-        *args, **kwargs
+        self, only_active=True, add_default_project=False, *args, **kwargs
     ):
         super(ProjectModel, self).__init__(*args, **kwargs)
-
-        self.dbcon = dbcon
 
         self._only_active = only_active
         self._add_default_project = add_default_project
 
         self._default_item = None
         self._items_by_name = {}
-        # Model was at least once refreshed
-        # - for `set_dbcon` method
         self._refreshed = False
 
     def set_default_project_available(self, available=True):
@@ -285,13 +282,6 @@ class ProjectModel(QtGui.QStandardItemModel):
 
         self._only_active = only_active
 
-        if self._refreshed:
-            self.refresh()
-
-    def set_dbcon(self, dbcon):
-        """Change mongo connection."""
-        self.dbcon = dbcon
-        # Trigger refresh if was already refreshed
         if self._refreshed:
             self.refresh()
 
