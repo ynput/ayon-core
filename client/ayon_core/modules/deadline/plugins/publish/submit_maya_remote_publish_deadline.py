@@ -109,7 +109,6 @@ class MayaSubmitRemotePublishDeadline(
         environment["OPENPYPE_LOG_NO_COLORS"] = "1"
         environment["OPENPYPE_USERNAME"] = instance.context.data["user"]
         environment["OPENPYPE_PUBLISH_SUBSET"] = instance.data["subset"]
-        environment["OPENPYPE_REMOTE_PUBLISH"] = "1"
         environment["AYON_REMOTE_PUBLISH"] = "1"
 
         for key, value in environment.items():
