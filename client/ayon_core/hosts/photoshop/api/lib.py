@@ -28,7 +28,7 @@ def main(*subprocess_args):
     sys.excepthook = safe_excepthook
 
     # coloring in StdOutBroker
-    os.environ["OPENPYPE_LOG_NO_COLORS"] = "False"
+    os.environ["AYON_LOG_NO_COLORS"] = "0"
     app = get_ayon_qt_app()
     app.setQuitOnLastWindowClosed(False)
 

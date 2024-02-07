@@ -42,7 +42,7 @@ def main(*subprocess_args):
     host = AfterEffectsHost()
     install_host(host)
 
-    os.environ["OPENPYPE_LOG_NO_COLORS"] = "False"
+    os.environ["AYON_LOG_NO_COLORS"] = "0"
     app = get_ayon_qt_app()
     app.setQuitOnLastWindowClosed(False)
 

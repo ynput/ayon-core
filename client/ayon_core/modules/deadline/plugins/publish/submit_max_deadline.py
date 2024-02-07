@@ -126,7 +126,7 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
         # to recognize render jobs
         job_info.add_render_job_env_var()
-        job_info.EnvironmentKeyValue["OPENPYPE_LOG_NO_COLORS"] = "1"
+        job_info.EnvironmentKeyValue["AYON_LOG_NO_COLORS"] = "1"
 
         # Add list of expected files to job
         # ---------------------------------

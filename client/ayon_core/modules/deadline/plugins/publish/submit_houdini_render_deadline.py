@@ -209,7 +209,7 @@ class HoudiniSubmitDeadline(
             "AVALON_TASK",
             "AVALON_APP_NAME",
             "OPENPYPE_DEV",
-            "OPENPYPE_LOG_NO_COLORS",
+            "AYON_LOG_NO_COLORS",
         ]
 
         environment = dict({key: os.environ[key] for key in keys

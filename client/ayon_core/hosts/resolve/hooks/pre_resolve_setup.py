@@ -25,7 +25,7 @@ class PreLaunchResolveSetup(PreLaunchHook):
     It also defines:
     - `RESOLVE_UTILITY_SCRIPTS_DIR`: Destination directory for OpenPype
         Fusion scripts to be copied to for Resolve to pick them up.
-    - `OPENPYPE_LOG_NO_COLORS` to True to ensure OP doesn't try to
+    - `AYON_LOG_NO_COLORS` to True to ensure OP doesn't try to
         use logging with terminal colors as it fails in Resolve.
 
     """
@@ -132,7 +132,7 @@ class PreLaunchResolveSetup(PreLaunchHook):
         ] = resolve_utility_scripts_dir.as_posix()
 
         # remove terminal coloring tags
-        self.launch_context.env["OPENPYPE_LOG_NO_COLORS"] = "True"
+        self.launch_context.env["AYON_LOG_NO_COLORS"] = "1"
 
         # Resolve Setup integration
         setup(self.launch_context.env)
