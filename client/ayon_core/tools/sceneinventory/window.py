@@ -2,29 +2,18 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
-from ayon_core.tools.utils.delegates import VersionDelegate
 from ayon_core.tools.utils.lib import (
     preserve_expanded_rows,
     preserve_selection,
 )
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
+from .delegates import VersionDelegate
 from .model import (
     InventoryModel,
     FilterProxyModel
 )
 from .view import SceneInventoryView
-
-
-class ControllerVersionDelegate(VersionDelegate):
-    """Version delegate that uses controller to get project.
-
-    Original VersionDelegate is using 'AvalonMongoDB' object instead. Don't
-    worry about the variable name, object is stored to '_dbcon' attribute.
-    """
-
-    def get_project_name(self):
-        self._dbcon.get_current_project_name()
 
 
 class SceneInventoryWindow(QtWidgets.QDialog):
@@ -94,7 +83,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         view.setColumnWidth(5, 150)  # loader
 
         # apply delegates
-        version_delegate = ControllerVersionDelegate(controller, self)
+        version_delegate = VersionDelegate(controller, self)
         column = model.Columns.index("version")
         view.setItemDelegateForColumn(column, version_delegate)
 
