@@ -44,7 +44,7 @@ class WireTapCom(object):
         self.group_name = group_name or "staff"
 
         # wiretap tools dir path
-        self.wiretap_tools_dir = os.getenv("OPENPYPE_WIRETAP_TOOLS")
+        self.wiretap_tools_dir = os.getenv("AYON_WIRETAP_TOOLS")
 
         # initialize WireTap client
         WireTapClientInit()
