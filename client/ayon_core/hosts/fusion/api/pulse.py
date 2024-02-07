@@ -14,7 +14,7 @@ class PulseThread(QtCore.QThread):
         app = getattr(sys.modules["__main__"], "app", None)
 
         # Interval in milliseconds
-        interval = os.environ.get("OPENPYPE_FUSION_PULSE_INTERVAL", 1000)
+        interval = os.environ.get("AYON_FUSION_PULSE_INTERVAL", 1000)
 
         while True:
             if self.isInterruptionRequested():
