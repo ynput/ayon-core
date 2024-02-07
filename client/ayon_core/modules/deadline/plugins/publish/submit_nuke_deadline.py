@@ -13,7 +13,6 @@ from ayon_core.pipeline.publish import (
 )
 from ayon_core.tests.lib import is_in_tests
 from ayon_core.lib import (
-    is_running_from_build,
     BoolDef,
     NumberDef
 )
@@ -389,14 +388,6 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
             "OPENPYPE_SG_USER",
             "AYON_BUNDLE_NAME",
         ]
-
-        # Add OpenPype version if we are running from build.
-        if is_running_from_build():
-            keys.append("OPENPYPE_VERSION")
-
-        # Add mongo url if it's enabled
-        if instance.context.data.get("deadlinePassMongoUrl"):
-            keys.append("OPENPYPE_MONGO")
 
         # add allowed keys from preset if any
         if self.env_allowed_keys:

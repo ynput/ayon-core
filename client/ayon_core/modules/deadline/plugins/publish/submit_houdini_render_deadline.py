@@ -10,7 +10,6 @@ from ayon_core.tests.lib import is_in_tests
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 from ayon_core.lib import (
-    is_running_from_build,
     BoolDef,
     NumberDef
 )
@@ -212,14 +211,6 @@ class HoudiniSubmitDeadline(
             "OPENPYPE_DEV",
             "OPENPYPE_LOG_NO_COLORS",
         ]
-
-        # Add OpenPype version if we are running from build.
-        if is_running_from_build():
-            keys.append("OPENPYPE_VERSION")
-
-        # Add mongo url if it's enabled
-        if self._instance.context.data.get("deadlinePassMongoUrl"):
-            keys.append("OPENPYPE_MONGO")
 
         environment = dict({key: os.environ[key] for key in keys
                             if key in os.environ}, **legacy_io.Session)

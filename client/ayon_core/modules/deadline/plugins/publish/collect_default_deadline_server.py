@@ -27,8 +27,8 @@ class CollectDefaultDeadlineServer(pyblish.api.ContextPlugin):
         try:
             deadline_module = context.data["ayonAddonsManager"]["deadline"]
         except AttributeError:
-            self.log.error("Cannot get OpenPype Deadline module.")
-            raise AssertionError("OpenPype Deadline module not found.")
+            self.log.error("Cannot get AYON Deadline addon.")
+            raise AssertionError("AYON Deadline addon not found.")
 
         deadline_settings = context.data["project_settings"]["deadline"]
         deadline_server_name = deadline_settings["deadline_server"]

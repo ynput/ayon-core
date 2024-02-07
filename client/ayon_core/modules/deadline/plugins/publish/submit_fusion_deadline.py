@@ -13,7 +13,6 @@ from ayon_core.pipeline.publish import (
 from ayon_core.lib import (
     BoolDef,
     NumberDef,
-    is_running_from_build
 )
 
 
@@ -231,10 +230,6 @@ class FusionSubmitDeadline(
             "IS_TEST",
             "AYON_BUNDLE_NAME",
         ]
-
-        # Add OpenPype version if we are running from build.
-        if is_running_from_build():
-            keys.append("OPENPYPE_VERSION")
 
         environment = dict({key: os.environ[key] for key in keys
                             if key in os.environ}, **legacy_io.Session)

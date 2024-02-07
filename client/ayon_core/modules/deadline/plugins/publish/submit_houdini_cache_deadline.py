@@ -13,7 +13,6 @@ from ayon_core.pipeline import (
     AYONPyblishPluginMixin
 )
 from ayon_core.tests.lib import is_in_tests
-from ayon_core.lib import is_running_from_build
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 
@@ -38,10 +37,6 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
     Publishing in Deadline can be helpful for scenes that publish very slow.
     This way it can process in the background on another machine without the
     Artist having to wait for the publish to finish on their local machine.
-
-    Submission is done through the Deadline Web Service as
-    supplied via the environment variable AVALON_DEADLINE.
-
     """
 
     label = "Submit Scene to Deadline"
@@ -64,12 +59,6 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
         assert all(
             result["success"] for result in context.data["results"]
         ), "Errors found, aborting integration.."
-
-        # Deadline connection
-        AVALON_DEADLINE = legacy_io.Session.get(
-            "AVALON_DEADLINE", "http://localhost:8082"
-        )
-        assert AVALON_DEADLINE, "Requires AVALON_DEADLINE"
 
         project_name = instance.context.data["projectName"]
         filepath = context.data["currentFile"]
@@ -117,13 +106,6 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
             "OPENPYPE_DEV",
             "OPENPYPE_LOG_NO_COLORS",
         ]
-
-        # Add OpenPype version if we are running from build.
-        if is_running_from_build():
-            keys.append("OPENPYPE_VERSION")
-        # Add mongo url if it's enabled
-        if self._instance.context.data.get("deadlinePassMongoUrl"):
-            keys.append("OPENPYPE_MONGO")
 
         environment = dict({key: os.environ[key] for key in keys
                             if key in os.environ}, **legacy_io.Session)

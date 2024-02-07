@@ -8,7 +8,6 @@ import pyblish.api
 
 from ayon_core.pipeline import legacy_io
 from ayon_core.tests.lib import is_in_tests
-from ayon_core.lib import is_running_from_build
 
 
 class HoudiniSubmitPublishDeadline(pyblish.api.ContextPlugin):
@@ -137,14 +136,6 @@ class HoudiniSubmitPublishDeadline(pyblish.api.ContextPlugin):
             # similar environment using it, e.g. "houdini17.5;pluginx2.3"
             "AVALON_TOOLS"
         ]
-
-        # Add OpenPype version if we are running from build.
-        if is_running_from_build():
-            keys.append("OPENPYPE_VERSION")
-
-        # Add mongo url if it's enabled
-        if context.data.get("deadlinePassMongoUrl"):
-            keys.append("OPENPYPE_MONGO")
 
         environment = dict(
             {key: os.environ[key] for key in keys if key in os.environ},
