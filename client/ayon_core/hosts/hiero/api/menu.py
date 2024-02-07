@@ -6,7 +6,7 @@ from hiero.ui import findMenuAction
 
 from qtpy import QtGui
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, is_dev_mode_enabled
 from ayon_core.tools.utils import host_tools
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
@@ -125,7 +125,7 @@ def menu_install():
         lambda: host_tools.show_library_loader(parent=main_window)
     )
 
-    if os.getenv("OPENPYPE_DEVELOP"):
+    if is_dev_mode_enabled():
         menu.addSeparator()
         reload_action = menu.addAction("Reload pipeline")
         reload_action.setIcon(QtGui.QIcon("icons:ColorAdd.png"))
