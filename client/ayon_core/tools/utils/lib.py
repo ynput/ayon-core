@@ -206,8 +206,8 @@ def get_ayon_qt_app():
 def get_openpype_qt_app():
     return get_ayon_qt_app()
 
-class SharedObjects:
-    jobs = {}
+
+class _Cache:
     icons = {}
 
 
@@ -216,8 +216,8 @@ def get_qta_icon_by_name_and_color(icon_name, icon_color):
         return None
 
     full_icon_name = "{0}-{1}".format(icon_name, icon_color)
-    if full_icon_name in SharedObjects.icons:
-        return SharedObjects.icons[full_icon_name]
+    if full_icon_name in _Cache.icons:
+        return _Cache.icons[full_icon_name]
 
     variants = [icon_name]
     qta_instance = qtawesome._instance()
@@ -242,20 +242,8 @@ def get_qta_icon_by_name_and_color(icon_name, icon_color):
             icon_name, used_variant
         ))
 
-    SharedObjects.icons[full_icon_name] = icon
+    _Cache.icons[full_icon_name] = icon
     return icon
-
-
-def get_project_icon(project_doc):
-    if project_doc:
-        icon_name = project_doc.get("data", {}).get("icon")
-        icon = get_qta_icon_by_name_and_color(icon_name, "white")
-        if icon:
-            return icon
-
-    return get_qta_icon_by_name_and_color(
-        "fa.map", get_default_entity_icon_color()
-    )
 
 
 def get_asset_icon_name(asset_doc, has_children=True):
@@ -346,29 +334,6 @@ def get_task_icon(project_doc, asset_doc, task_name):
         if icon is not None:
             return icon
     return get_default_task_icon(color)
-
-
-def schedule(func, time, channel="default"):
-    """Run `func` at a later `time` in a dedicated `channel`
-
-    Given an arbitrary function, call this function after a given
-    timeout. It will ensure that only one "job" is running within
-    the given channel at any one time and cancel any currently
-    running job if a new job is submitted before the timeout.
-
-    """
-
-    try:
-        SharedObjects.jobs[channel].stop()
-    except (AttributeError, KeyError, RuntimeError):
-        pass
-
-    timer = QtCore.QTimer()
-    timer.setSingleShot(True)
-    timer.timeout.connect(func)
-    timer.start(time)
-
-    SharedObjects.jobs[channel] = timer
 
 
 def iter_model_rows(model, column, include_root=False):
@@ -488,264 +453,6 @@ def preserve_selection(tree_view, column=0, role=None, current_index=True):
                 )
 
 
-class FamilyConfigCache:
-    default_color = "#0091B2"
-    _default_icon = None
-
-    def __init__(self, dbcon):
-        self.dbcon = dbcon
-        self.family_configs = {}
-        self._family_filters_set = False
-        self._family_filters_is_include = True
-        self._require_refresh = True
-
-    @classmethod
-    def default_icon(cls):
-        if cls._default_icon is None:
-            cls._default_icon = qtawesome.icon(
-                "fa.folder", color=cls.default_color
-            )
-        return cls._default_icon
-
-    def family_config(self, family_name):
-        """Get value from config with fallback to default"""
-        if self._require_refresh:
-            self._refresh()
-
-        item = self.family_configs.get(family_name)
-        if not item:
-            item = {
-                "icon": self.default_icon()
-            }
-            if self._family_filters_set:
-                item["state"] = not self._family_filters_is_include
-        return item
-
-    def refresh(self, force=False):
-        self._require_refresh = True
-
-        if force:
-            self._refresh()
-
-    def _refresh(self):
-        """Get the family configurations from the database
-
-        The configuration must be stored on the project under `config`.
-        For example:
-
-        {"config": {
-            "families": [
-                {"name": "avalon.camera", label: "Camera", "icon": "photo"},
-                {"name": "avalon.anim", label: "Animation", "icon": "male"},
-            ]
-        }}
-
-        It is possible to override the default behavior and set specific
-        families checked. For example we only want the families imagesequence
-        and camera to be visible in the Loader.
-        """
-        self._require_refresh = False
-        self._family_filters_set = False
-
-        self.family_configs.clear()
-        # Skip if we're not in host context
-        if not registered_host():
-            return
-
-        # Update the icons from the project configuration
-        context = get_current_context()
-        project_name = context["project_name"]
-        asset_name = context["asset_name"]
-        task_name = context["task_name"]
-        host_name = get_current_host_name()
-        if not all((project_name, asset_name, task_name)):
-            return
-
-        matching_item = None
-        project_settings = get_project_settings(project_name)
-        profiles = (
-            project_settings
-            ["global"]
-            ["tools"]
-            ["loader"]
-            ["family_filter_profiles"]
-        )
-        if profiles:
-            # Make sure connection is installed
-            # - accessing attribute which does not have auto-install
-            asset_doc = get_asset_by_name(
-                project_name, asset_name, fields=["data.tasks"]
-            ) or {}
-            tasks_info = asset_doc.get("data", {}).get("tasks") or {}
-            task_type = tasks_info.get(task_name, {}).get("type")
-            profiles_filter = {
-                "task_types": task_type,
-                "hosts": host_name
-            }
-            matching_item = filter_profiles(profiles, profiles_filter)
-
-        families = []
-        is_include = True
-        if matching_item:
-            families = matching_item["filter_families"]
-            is_include = matching_item["is_include"]
-
-        if not families:
-            return
-
-        self._family_filters_set = True
-        self._family_filters_is_include = is_include
-
-        # Replace icons with a Qt icon we can use in the user interfaces
-        for family in families:
-            family_info = {
-                "name": family,
-                "icon": self.default_icon(),
-                "state": is_include
-            }
-
-            self.family_configs[family] = family_info
-
-
-class GroupsConfig:
-    # Subset group item's default icon and order
-    _default_group_config = None
-
-    def __init__(self, dbcon):
-        self.dbcon = dbcon
-        self.groups = {}
-        self._default_group_color = get_default_entity_icon_color()
-
-    @classmethod
-    def default_group_config(cls):
-        if cls._default_group_config is None:
-            cls._default_group_config = {
-                "icon": qtawesome.icon(
-                    "fa.object-group",
-                    color=get_default_entity_icon_color()
-                ),
-                "order": 0
-            }
-        return cls._default_group_config
-
-    def refresh(self):
-        """Get subset group configurations from the database
-
-        The 'group' configuration must be stored in the project `config` field.
-        See schema `config-1.0.json`
-
-        """
-        # Clear cached groups
-        self.groups.clear()
-
-        group_configs = []
-        project_name = self.dbcon.Session.get("AVALON_PROJECT")
-        if project_name:
-            # Get pre-defined group name and appearance from project config
-            project_doc = get_project(project_name, fields=["config.groups"])
-
-            if project_doc:
-                group_configs = project_doc["config"].get("groups") or []
-            else:
-                print("Project not found! \"{}\"".format(project_name))
-
-        # Build pre-defined group configs
-        for config in group_configs:
-            name = config["name"]
-            icon = "fa." + config.get("icon", "object-group")
-            color = config.get("color", self._default_group_color)
-            order = float(config.get("order", 0))
-
-            self.groups[name] = {
-                "icon": qtawesome.icon(icon, color=color),
-                "order": order
-            }
-
-        return self.groups
-
-    def ordered_groups(self, group_names):
-        # default order zero included
-        _orders = set([0])
-        for config in self.groups.values():
-            _orders.add(config["order"])
-
-        # Remap order to list index
-        orders = sorted(_orders)
-
-        _groups = list()
-        for name in group_names:
-            # Get group config
-            config = self.groups.get(name) or self.default_group_config()
-            # Base order
-            remapped_order = orders.index(config["order"])
-
-            data = {
-                "name": name,
-                "icon": config["icon"],
-                "_order": remapped_order,
-            }
-
-            _groups.append(data)
-
-        # Sort by tuple (base_order, name)
-        # If there are multiple groups in same order, will sorted by name.
-        ordered_groups = sorted(
-            _groups, key=lambda _group: (_group.pop("_order"), _group["name"])
-        )
-
-        total = len(ordered_groups)
-        order_temp = "%0{}d".format(len(str(total)))
-
-        # Update sorted order to config
-        for index, group_data in enumerate(ordered_groups):
-            order = index
-            inverse_order = total - index
-
-            # Format orders into fixed length string for groups sorting
-            group_data["order"] = order_temp % order
-            group_data["inverseOrder"] = order_temp % inverse_order
-
-        return ordered_groups
-
-    def active_groups(self, asset_ids, include_predefined=True):
-        """Collect all active groups from each subset"""
-        # Collect groups from subsets
-        group_names = set(
-            self.dbcon.distinct(
-                "data.subsetGroup",
-                {"type": "subset", "parent": {"$in": asset_ids}}
-            )
-        )
-        if include_predefined:
-            # Ensure all predefined group configs will be included
-            group_names.update(self.groups.keys())
-
-        return self.ordered_groups(group_names)
-
-    def split_subsets_for_groups(self, subset_docs, grouping):
-        """Collect all active groups from each subset"""
-        subset_docs_without_group = collections.defaultdict(list)
-        subset_docs_by_group = collections.defaultdict(dict)
-        for subset_doc in subset_docs:
-            subset_name = subset_doc["name"]
-            if grouping:
-                group_name = subset_doc["data"].get("subsetGroup")
-                if group_name:
-                    if subset_name not in subset_docs_by_group[group_name]:
-                        subset_docs_by_group[group_name][subset_name] = []
-
-                    subset_docs_by_group[group_name][subset_name].append(
-                        subset_doc
-                    )
-                    continue
-
-            subset_docs_without_group[subset_name].append(subset_doc)
-
-        ordered_groups = self.ordered_groups(subset_docs_by_group.keys())
-
-        return ordered_groups, subset_docs_without_group, subset_docs_by_group
-
-
 class DynamicQThread(QtCore.QThread):
     """QThread which can run any function with argument and kwargs.
 
@@ -768,57 +475,6 @@ class DynamicQThread(QtCore.QThread):
     def run(self):
         """Execute the function with arguments."""
         self._func(*self._args, **self._kwargs)
-
-
-def create_qthread(func, *args, **kwargs):
-    class Thread(QtCore.QThread):
-        def run(self):
-            try:
-                func(*args, **kwargs)
-            except BaseException:
-                traceback.print_exception(*sys.exc_info())
-                raise
-    return Thread()
-
-
-def get_repre_icons():
-    """Returns a dict {'provider_name': QIcon}"""
-    icons = {}
-    try:
-        from openpype_modules import sync_server
-    except Exception:
-        return icons
-
-    resource_path = os.path.join(
-        os.path.dirname(sync_server.sync_server_module.__file__),
-        "providers", "resources"
-    )
-    if not os.path.exists(resource_path):
-        print("No icons for Site Sync found")
-        return icons
-
-    for file_name in os.listdir(resource_path):
-        if file_name and not file_name.endswith("png"):
-            continue
-
-        provider, _ = os.path.splitext(file_name)
-
-        pix_url = os.path.join(resource_path, file_name)
-        icons[provider] = QtGui.QIcon(pix_url)
-
-    return icons
-
-
-def is_sync_loader(loader):
-    return is_remove_site_loader(loader) or is_add_site_loader(loader)
-
-
-def is_remove_site_loader(loader):
-    return hasattr(loader, "is_remove_site_loader")
-
-
-def is_add_site_loader(loader):
-    return hasattr(loader, "is_add_site_loader")
 
 
 class WrappedCallbackItem:

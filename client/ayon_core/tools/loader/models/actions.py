@@ -583,10 +583,6 @@ class LoaderActionsModel:
             repre_contexts_by_name[repre_name].append(repre_context)
 
         for loader in repre_loaders:
-            # # do not allow download whole repre, select specific repre
-            # if tools_lib.is_sync_loader(loader):
-            #     continue
-
             for repre_name, repre_contexts in repre_contexts_by_name.items():
                 filtered_repre_contexts = filter_repre_contexts_by_loader(
                     repre_contexts, loader)
