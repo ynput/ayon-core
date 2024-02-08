@@ -106,16 +106,12 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                   "celaction": [r".*"],
                   "max": [r".*"]}
 
-    environ_job_filter = [
-        "OPENPYPE_METADATA_FILE"
-    ]
-
     environ_keys = [
         "FTRACK_API_USER",
         "FTRACK_API_KEY",
         "FTRACK_SERVER",
         "AVALON_APP_NAME",
-        "OPENPYPE_USERNAME",
+        "AYON_USERNAME",
         "OPENPYPE_SG_USER",
         "KITSU_LOGIN",
         "KITSU_PWD"
@@ -189,8 +185,8 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "AVALON_PROJECT": instance.context.data["projectName"],
             "AVALON_ASSET": instance.context.data["asset"],
             "AVALON_TASK": instance.context.data["task"],
-            "OPENPYPE_USERNAME": instance.context.data["user"],
-            "OPENPYPE_LOG_NO_COLORS": "1",
+            "AYON_USERNAME": instance.context.data["user"],
+            "AYON_LOG_NO_COLORS": "1",
             "IS_TEST": str(int(is_in_tests())),
             "AYON_PUBLISH_JOB": "1",
             "AYON_RENDER_JOB": "0",
@@ -202,12 +198,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         for env_key in self.environ_keys:
             if os.getenv(env_key):
                 environment[env_key] = os.environ[env_key]
-
-        # pass environment keys from self.environ_job_filter
-        job_environ = job["Props"].get("Env", {})
-        for env_j_key in self.environ_job_filter:
-            if job_environ.get(env_j_key):
-                environment[env_j_key] = job_environ[env_j_key]
 
         priority = self.deadline_priority or instance.data.get("priority", 50)
 

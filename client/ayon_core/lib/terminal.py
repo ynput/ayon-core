@@ -21,7 +21,7 @@ class Terminal:
     If :mod:`Colorama` is not found, it will still work, but without colors.
 
     Depends on :mod:`Colorama`
-    Using **OPENPYPE_LOG_NO_COLORS** environment variable.
+    Using **AYON_LOG_NO_COLORS** environment variable.
     """
 
     # Is Terminal initialized
@@ -38,7 +38,7 @@ class Terminal:
         """Initialize Terminal class as object.
 
         First check if colorized output is disabled by environment variable
-        `OPENPYPE_LOG_NO_COLORS` value. By default is colorized output turned
+        `AYON_LOG_NO_COLORS` value. By default is colorized output turned
         on.
 
         Then tries to import python module that do the colors magic and create
@@ -50,7 +50,7 @@ class Terminal:
 
         from ayon_core.lib import env_value_to_bool
         log_no_colors = env_value_to_bool(
-            "OPENPYPE_LOG_NO_COLORS", default=None
+            "AYON_LOG_NO_COLORS", default=None
         )
         if log_no_colors is not None:
             Terminal.use_colors = not log_no_colors
@@ -169,7 +169,7 @@ class Terminal:
     def log(message):
         """Return color formatted message.
 
-        If environment variable `OPENPYPE_LOG_NO_COLORS` is set to
+        If environment variable `AYON_LOG_NO_COLORS` is set to
         whatever value, message will be formatted but not colorized.
 
         Args:

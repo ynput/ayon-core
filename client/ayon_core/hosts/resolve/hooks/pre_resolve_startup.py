@@ -17,9 +17,9 @@ class PreLaunchResolveStartup(PreLaunchHook):
         # in the LUA .scriptlib code
         op_resolve_root = os.path.dirname(ayon_core.hosts.resolve.__file__)
         script_path = os.path.join(op_resolve_root, "startup.py")
-        key = "OPENPYPE_RESOLVE_STARTUP_SCRIPT"
+        key = "AYON_RESOLVE_STARTUP_SCRIPT"
         self.launch_context.env[key] = script_path
 
         self.log.info(
-            f"Setting OPENPYPE_RESOLVE_STARTUP_SCRIPT to: {script_path}"
+            f"Setting AYON_RESOLVE_STARTUP_SCRIPT to: {script_path}"
         )

@@ -59,7 +59,7 @@ class UnrealAddon(OpenPypeModule, IHostAddon):
 
         # Set default environments if are not set via settings
         defaults = {
-            "OPENPYPE_LOG_NO_COLORS": "True",
+            "AYON_LOG_NO_COLORS": "1",
             "UE_PYTHONPATH": os.environ.get("PYTHONPATH", ""),
         }
         for key, value in defaults.items():

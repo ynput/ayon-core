@@ -623,7 +623,7 @@ def get_instance_staging_dir(instance):
     First check if 'stagingDir' is already set in instance data.
     In case there already is new tempdir will not be created.
 
-    It also supports `OPENPYPE_TMPDIR`, so studio can define own temp
+    It also supports `AYON_TMPDIR`, so studio can define own temp
     shared repository per project or even per more granular context.
     Template formatting is supported also with optional keys. Folder is
     created in case it doesn't exists.
@@ -649,7 +649,7 @@ def get_instance_staging_dir(instance):
 
     anatomy = instance.context.data.get("anatomy")
 
-    # get customized tempdir path from `OPENPYPE_TMPDIR` env var
+    # get customized tempdir path from `AYON_TMPDIR` env var
     custom_temp_dir = tempdir.create_custom_tempdir(
         anatomy.project_name, anatomy)
 

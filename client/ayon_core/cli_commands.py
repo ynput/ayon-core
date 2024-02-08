@@ -108,7 +108,7 @@ class Commands:
         else:
             pyblish.api.register_target("farm")
 
-        os.environ["OPENPYPE_PUBLISH_DATA"] = os.pathsep.join(paths)
+        os.environ["AYON_PUBLISH_DATA"] = os.pathsep.join(paths)
         os.environ["HEADLESS_PUBLISH"] = 'true'  # to use in app lib
 
         log.info("Running publish ...")

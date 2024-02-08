@@ -134,7 +134,7 @@ class Logger:
     initialized = False
     _init_lock = threading.Lock()
 
-    # Logging level - OPENPYPE_LOG_LEVEL
+    # Logging level - AYON_LOG_LEVEL
     log_level = None
 
     # Data same for all record documents
@@ -194,10 +194,10 @@ class Logger:
         cls.initialized = False
 
         # Define what is logging level
-        log_level = os.getenv("OPENPYPE_LOG_LEVEL")
+        log_level = os.getenv("AYON_LOG_LEVEL")
         if not log_level:
-            # Check OPENPYPE_DEBUG for backwards compatibility
-            op_debug = os.getenv("OPENPYPE_DEBUG")
+            # Check AYON_DEBUG for debug level
+            op_debug = os.getenv("AYON_DEBUG")
             if op_debug and int(op_debug) > 0:
                 log_level = 10
             else:

@@ -103,8 +103,7 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
             "AVALON_ASSET",
             "AVALON_TASK",
             "AVALON_APP_NAME",
-            "OPENPYPE_DEV",
-            "OPENPYPE_LOG_NO_COLORS",
+            "AYON_LOG_NO_COLORS",
         ]
 
         environment = dict({key: os.environ[key] for key in keys
