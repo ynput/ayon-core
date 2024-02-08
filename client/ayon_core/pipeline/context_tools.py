@@ -119,10 +119,12 @@ def install_host(host):
     addons_manager = _get_addons_manager()
 
     project_name = os.getenv("AVALON_PROJECT")
-    if not project_name:
-        raise ValueError(
-            "AVALON_PROJECT is missing in environment variables."
-        )
+    # WARNING: This might be an issue
+    #   - commented out because 'traypublisher' does not have set project
+    # if not project_name:
+    #     raise ValueError(
+    #         "AVALON_PROJECT is missing in environment variables."
+    #     )
 
     log.info("Activating {}..".format(project_name))
 
