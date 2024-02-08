@@ -28,7 +28,7 @@ class Commands:
 
         manager = AddonsManager()
         log = Logger.get_logger("CLI-AddModules")
-        for addon in manager.modules:
+        for addon in manager.addons:
             try:
                 addon.cli(click_func)
 
