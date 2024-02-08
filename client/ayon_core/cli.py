@@ -31,20 +31,12 @@ class AliasedGroup(click.Group):
 
 @click.group(cls=AliasedGroup, invoke_without_command=True)
 @click.pass_context
-@click.option("--use-version",
-              expose_value=False, help="use specified version")
 @click.option("--use-staging", is_flag=True,
               expose_value=False, help="use staging variants")
-@click.option("--list-versions", is_flag=True, expose_value=False,
-              help="list all detected versions.")
-@click.option("--validate-version", expose_value=False,
-              help="validate given version integrity")
 @click.option("--debug", is_flag=True, expose_value=False,
               help="Enable debug")
 @click.option("--verbose", expose_value=False,
               help=("Change AYON log level (debug - critical or 0-50)"))
-@click.option("--automatic-tests", is_flag=True, expose_value=False,
-              help=("Run in automatic tests mode"))
 def main_cli(ctx):
     """AYON is main command serving as entry point to pipeline system.
 
