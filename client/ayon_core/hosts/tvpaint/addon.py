@@ -23,7 +23,7 @@ class TVPaintAddon(OpenPypeModule, IHostAddon):
         """Modify environments to contain all required for implementation."""
 
         defaults = {
-            "OPENPYPE_LOG_NO_COLORS": "True"
+            "AYON_LOG_NO_COLORS": "1"
         }
         for key, value in defaults.items():
             if not env.get(key):

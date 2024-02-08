@@ -24,7 +24,7 @@ TerminalFilters = {
 }
 
 # Allow animations in GUI
-Animated = env_variable_to_bool("OPENPYPE_PYBLISH_ANIMATED", True)
+Animated = env_variable_to_bool("AYON_PYBLISH_ANIMATED", True)
 
 # Print UI info message to console
-PrintInfo = env_variable_to_bool("OPENPYPE_PYBLISH_PRINT_INFO", True)
+PrintInfo = env_variable_to_bool("AYON_PYBLISH_PRINT_INFO", True)

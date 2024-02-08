@@ -14,7 +14,7 @@ class PhotoshopAddon(OpenPypeModule, IHostAddon):
     def add_implementation_envs(self, env, _app):
         """Modify environments to contain all required for implementation."""
         defaults = {
-            "OPENPYPE_LOG_NO_COLORS": "True",
+            "AYON_LOG_NO_COLORS": "1",
             "WEBSOCKET_URL": "ws://localhost:8099/ws/"
         }
         for key, value in defaults.items():

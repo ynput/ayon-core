@@ -126,7 +126,7 @@ def check_inventory():
 
 def application_launch(event):
     """Event that is executed after Harmony is launched."""
-    # fills OPENPYPE_HARMONY_JS
+    # fills AYON_HARMONY_JS
     pype_harmony_path = Path(__file__).parent.parent / "js" / "PypeHarmony.js"
     pype_harmony_js = pype_harmony_path.read_text()
 

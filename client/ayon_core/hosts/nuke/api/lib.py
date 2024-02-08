@@ -2226,7 +2226,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
 
         # include all project root related env vars
         for env_var in os.environ:
-            if env_var.startswith("OPENPYPE_PROJECT_ROOT_"):
+            if env_var.startswith("AYON_PROJECT_ROOT_"):
                 included_vars.append(env_var)
 
         # use regex to find env var in template with format {ENV_VAR}
@@ -2889,7 +2889,7 @@ def launch_workfiles_app():
 
     # get all imortant settings
     open_at_start = env_value_to_bool(
-        env_key="OPENPYPE_WORKFILE_TOOL_ON_START",
+        env_key="AYON_WORKFILE_TOOL_ON_START",
         default=None)
 
     # return if none is defined

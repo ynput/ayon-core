@@ -6,8 +6,8 @@
 
 // check if PypeHarmony is defined and if not, load it.
 if (typeof PypeHarmony === 'undefined') {
-    var OPENPYPE_HARMONY_JS = System.getenv('OPENPYPE_HARMONY_JS') + '/PypeHarmony.js';
-    include(OPENPYPE_HARMONY_JS.replace(/\\/g, "/"));
+    var AYON_HARMONY_JS = System.getenv('AYON_HARMONY_JS') + '/PypeHarmony.js';
+    include(AYON_HARMONY_JS.replace(/\\/g, "/"));
 }
 
 if (typeof $ === 'undefined'){
