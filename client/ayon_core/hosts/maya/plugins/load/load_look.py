@@ -12,9 +12,9 @@ from ayon_core.pipeline import (
 )
 import ayon_core.hosts.maya.api.plugin
 from ayon_core.hosts.maya.api import lib
-from ayon_core.widgets.message_window import ScrollMessageBox
-
 from ayon_core.hosts.maya.api.lib import get_reference_node
+
+from ayon_core.tools.utils import ScrollMessageBox
 
 
 class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):

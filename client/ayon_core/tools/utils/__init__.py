@@ -53,6 +53,12 @@ from .multiselection_combobox import MultiSelectionComboBox
 from .thumbnail_paint_widget import ThumbnailPainterWidget
 from .sliders import NiceSlider
 from .nice_checkbox import NiceCheckbox
+from .dialogs import (
+    show_message_dialog,
+    ScrollMessageBox,
+    SimplePopup,
+    PopupUpdateKeys,
+)
 
 
 __all__ = (
@@ -110,4 +116,9 @@ __all__ = (
     "NiceSlider",
 
     "NiceCheckbox",
+
+    "show_message_dialog",
+    "ScrollMessageBox",
+    "SimplePopup",
+    "PopupUpdateKeys",
 )
