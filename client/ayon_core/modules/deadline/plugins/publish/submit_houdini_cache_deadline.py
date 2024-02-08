@@ -50,7 +50,6 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
     group = None
     jobInfo = {}
     pluginInfo = {}
-    group = None
 
     @classmethod
     def apply_settings(cls, project_settings, system_settings):
