@@ -184,53 +184,6 @@ def run(script):
 
 
 @main_cli.command()
-@click.argument("folder", nargs=-1)
-@click.option("-m",
-              "--mark",
-              help="Run tests marked by",
-              default=None)
-@click.option("-p",
-              "--pyargs",
-              help="Run tests from package",
-              default=None)
-@click.option("-t",
-              "--test_data_folder",
-              help="Unzipped directory path of test file",
-              default=None)
-@click.option("-s",
-              "--persist",
-              help="Persist test DB and published files after test end",
-              default=None)
-@click.option("-a",
-              "--app_variant",
-              help="Provide specific app variant for test, empty for latest",
-              default=None)
-@click.option("--app_group",
-              help="Provide specific app group for test, empty for default",
-              default=None)
-@click.option("-t",
-              "--timeout",
-              help="Provide specific timeout value for test case",
-              default=None)
-@click.option("-so",
-              "--setup_only",
-              help="Only create dbs, do not run tests",
-              default=None)
-@click.option("--mongo_url",
-              help="MongoDB for testing.",
-              default=None)
-@click.option("--dump_databases",
-              help="Dump all databases to data folder.",
-              default=None)
-def runtests(folder, mark, pyargs, test_data_folder, persist, app_variant,
-             timeout, setup_only, mongo_url, app_group, dump_databases):
-    """Run all automatic tests after proper initialization via start.py"""
-    Commands.run_tests(folder, mark, pyargs, test_data_folder,
-                             persist, app_variant, timeout, setup_only,
-                             mongo_url, app_group, dump_databases)
-
-
-@main_cli.command()
 def interactive():
     """Interactive (Python like) console.
 
