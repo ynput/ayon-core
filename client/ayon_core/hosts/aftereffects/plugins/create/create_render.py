@@ -29,6 +29,7 @@ class RenderCreator(Creator):
 
     # Settings
     mark_for_review = True
+    force_setting_values = True
 
     def create(self, subset_name_from_ui, data, pre_create_data):
         stub = api.get_stub()  # only after After Effects is up
@@ -96,7 +97,8 @@ class RenderCreator(Creator):
             self._add_instance_to_context(new_instance)
 
             stub.rename_item(comp.id, subset_name)
-            set_settings(True, True, [comp.id], print_msg=False)
+            if self.force_setting_values:
+                set_settings(True, True, [comp.id], print_msg=False)
 
     def get_pre_create_attr_defs(self):
         output = [
