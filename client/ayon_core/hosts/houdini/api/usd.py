@@ -7,7 +7,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.client import get_asset_by_name
-from ayon_core.pipeline import legacy_io, get_current_project_name
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.tools.utils.assets_widget import SingleSelectAssetsWidget
 
 from pxr import Sdf
@@ -27,7 +27,8 @@ class SelectAssetDialog(QtWidgets.QWidget):
         self.setWindowTitle("Pick Asset")
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.Popup)
 
-        assets_widget = SingleSelectAssetsWidget(legacy_io, parent=self)
+        assets_widget = SingleSelectAssetsWidget(self)
+        assets_widget.set_project_name(get_current_project_name(), False)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.addWidget(assets_widget)
