@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Package for handling pype command line arguments."""
+"""Package for handling AYON command line arguments."""
 import os
 import sys
 import code
@@ -46,7 +46,7 @@ class AliasedGroup(click.Group):
 @click.option("--automatic-tests", is_flag=True, expose_value=False,
               help=("Run in automatic tests mode"))
 def main_cli(ctx):
-    """Pype is main command serving as entry point to pipeline system.
+    """AYON is main command serving as entry point to pipeline system.
 
     It wraps different commands together.
     """
@@ -62,10 +62,10 @@ def main_cli(ctx):
 
 @main_cli.command()
 def tray():
-    """Launch pype tray.
+    """Launch AYON tray.
 
-    Default action of pype command is to launch tray widget to control basic
-    aspects of pype. See documentation for more information.
+    Default action of AYON command is to launch tray widget to control basic
+    aspects of AYON. See documentation for more information.
     """
     Commands.launch_tray()
 
@@ -99,7 +99,7 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
 
     Entered output filepath will be created if does not exists.
 
-    All context options must be passed otherwise only pype's global
+    All context options must be passed otherwise only AYON's global
     environments will be extracted.
 
     Context options are "project", "asset", "task", "app"
@@ -166,7 +166,7 @@ def contextselection(
         allow_extra_args=True))
 @click.argument("script", required=True, type=click.Path(exists=True))
 def run(script):
-    """Run python script in Pype context."""
+    """Run python script in AYON context."""
     import runpy
 
     if not script:
@@ -177,6 +177,7 @@ def run(script):
         args.remove("run")
         args.remove(script)
         sys.argv = args
+
         args_string = " ".join(args[1:])
         print(f"... running: {script} {args_string}")
         runpy.run_path(script, run_name="__main__", )
@@ -264,7 +265,7 @@ def _set_global_environments() -> None:
 
     # first resolve general environment because merge doesn't expect
     # values to be list.
-    # TODO: switch to OpenPype environment functions
+    # TODO: switch to AYON environment functions
     merged_env = acre.merge(
         acre.compute(acre.parse(general_env), cleanup=False),
         dict(os.environ)
@@ -284,10 +285,7 @@ def _set_global_environments() -> None:
 
 
 def _set_addons_environments():
-    """Set global environments for OpenPype modules.
-
-    This requires to have OpenPype in `sys.path`.
-    """
+    """Set global environments for AYON addons."""
 
     addons_manager = AddonsManager()
 
@@ -304,9 +302,9 @@ def main(*args, **kwargs):
     split_paths = python_path.split(os.pathsep)
 
     additional_paths = [
-        # add OpenPype tools
+        # add AYON tools for 'pyblish_pype'
         os.path.join(AYON_CORE_ROOT, "tools"),
-        # add common OpenPype vendor
+        # add common AYON vendor
         # (common for multiple Python interpreter versions)
         os.path.join(AYON_CORE_ROOT, "vendor", "python", "common")
     ]
