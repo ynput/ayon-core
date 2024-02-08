@@ -17,11 +17,11 @@ TASK_ORDER_ROLE = QtCore.Qt.UserRole + 3
 TASK_ASSIGNEE_ROLE = QtCore.Qt.UserRole + 4
 
 
-class TasksModel(QtGui.QStandardItemModel):
+class _TasksModel(QtGui.QStandardItemModel):
     """A model listing the tasks combined for a list of assets"""
 
     def __init__(self, dbcon, parent=None):
-        super(TasksModel, self).__init__(parent=parent)
+        super(_TasksModel, self).__init__(parent=parent)
         self.dbcon = dbcon
         self.setHeaderData(
             0, QtCore.Qt.Horizontal, "Tasks", QtCore.Qt.DisplayRole
@@ -68,7 +68,7 @@ class TasksModel(QtGui.QStandardItemModel):
             ):
                 return "Tasks"
 
-        return super(TasksModel, self).headerData(section, orientation, role)
+        return super(_TasksModel, self).headerData(section, orientation, role)
 
     def _get_current_project(self):
         return self.dbcon.Session.get("AVALON_PROJECT")
@@ -141,7 +141,7 @@ class TasksModel(QtGui.QStandardItemModel):
         root_item.appendRows(items)
 
 
-class TasksProxyModel(QtCore.QSortFilterProxyModel):
+class _TasksProxyModel(QtCore.QSortFilterProxyModel):
     def lessThan(self, x_index, y_index):
         x_order = x_index.data(TASK_ORDER_ROLE)
         y_order = y_index.data(TASK_ORDER_ROLE)
@@ -168,7 +168,11 @@ class TasksProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class TasksWidget(QtWidgets.QWidget):
-    """Widget showing active Tasks"""
+    """Widget showing active Tasks
+
+    Deprecated:
+        This widget will be removed soon. Please do not use it in new code.
+    """
 
     task_changed = QtCore.Signal()
 
@@ -208,10 +212,10 @@ class TasksWidget(QtWidgets.QWidget):
         Model must have available 'refresh' method and 'set_asset_id' to change
         context of asset.
         """
-        return TasksModel(self._dbcon)
+        return _TasksModel(self._dbcon)
 
     def _create_proxy_model(self, source_model):
-        proxy = TasksProxyModel()
+        proxy = _TasksProxyModel()
         proxy.setSourceModel(source_model)
         return proxy
 

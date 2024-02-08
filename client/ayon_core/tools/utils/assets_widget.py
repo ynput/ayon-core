@@ -31,7 +31,7 @@ ASSET_UNDERLINE_COLORS_ROLE = QtCore.Qt.UserRole + 4
 ASSET_PATH_ROLE = QtCore.Qt.UserRole + 5
 
 
-class AssetsView(TreeViewSpinner, DeselectableTreeView):
+class _AssetsView(TreeViewSpinner, DeselectableTreeView):
     """Asset items view.
 
     Adds abilities to deselect, show loading spinner and add flick charm
@@ -39,7 +39,7 @@ class AssetsView(TreeViewSpinner, DeselectableTreeView):
     """
 
     def __init__(self, parent=None):
-        super(AssetsView, self).__init__(parent)
+        super(_AssetsView, self).__init__(parent)
         self.setIndentation(15)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.setHeaderHidden(True)
@@ -73,7 +73,7 @@ class AssetsView(TreeViewSpinner, DeselectableTreeView):
             elif modifiers == QtCore.Qt.ControlModifier:
                 return
 
-        super(AssetsView, self).mousePressEvent(event)
+        super(_AssetsView, self).mousePressEvent(event)
 
     def set_loading_state(self, loading, empty):
         """Change loading state.
@@ -97,7 +97,7 @@ class AssetsView(TreeViewSpinner, DeselectableTreeView):
         self.is_empty = empty
 
 
-class AssetModel(QtGui.QStandardItemModel):
+class _AssetModel(QtGui.QStandardItemModel):
     """A model listing assets in the active project.
 
     The assets are displayed in a treeview, they are visually parented by
@@ -129,7 +129,7 @@ class AssetModel(QtGui.QStandardItemModel):
     }
 
     def __init__(self, dbcon, parent=None):
-        super(AssetModel, self).__init__(parent=parent)
+        super(_AssetModel, self).__init__(parent=parent)
         self.dbcon = dbcon
 
         self._refreshing = False
@@ -378,7 +378,7 @@ class AssetModel(QtGui.QStandardItemModel):
             self._doc_fetching_thread = None
 
 
-class AssetsWidget(QtWidgets.QWidget):
+class _AssetsWidget(QtWidgets.QWidget):
     """Base widget to display a tree of assets with filter.
 
     Assets have only one column and are sorted by name.
@@ -405,7 +405,7 @@ class AssetsWidget(QtWidgets.QWidget):
     double_clicked = QtCore.Signal()
 
     def __init__(self, dbcon, parent=None):
-        super(AssetsWidget, self).__init__(parent=parent)
+        super(_AssetsWidget, self).__init__(parent=parent)
 
         self.dbcon = dbcon
 
@@ -413,7 +413,7 @@ class AssetsWidget(QtWidgets.QWidget):
         model = self._create_source_model()
         proxy = self._create_proxy_model(model)
 
-        view = AssetsView(self)
+        view = _AssetsView(self)
         view.setModel(proxy)
 
         header_widget = QtWidgets.QWidget(self)
@@ -488,7 +488,7 @@ class AssetsWidget(QtWidgets.QWidget):
         return self._header_widget
 
     def _create_source_model(self):
-        model = AssetModel(dbcon=self.dbcon, parent=self)
+        model = _AssetModel(dbcon=self.dbcon, parent=self)
         model.refreshed.connect(self._on_model_refresh)
         return model
 
@@ -617,10 +617,13 @@ class AssetsWidget(QtWidgets.QWidget):
         self._view.setCurrentIndex(valid_indexes[0])
 
 
-class SingleSelectAssetsWidget(AssetsWidget):
+class SingleSelectAssetsWidget(_AssetsWidget):
     """Single selection asset widget.
 
     Contain single selection specific api methods.
+
+    Deprecated:
+        This widget will be removed soon. Please do not use it in new code.
     """
 
     def get_selected_asset_id(self):
