@@ -11,6 +11,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
     label = "Mantra ROP"
     family = "mantra_rop"
     icon = "magic"
+    staging_dir = "$HIP/ayon"
 
     # Default to split export and render jobs
     export_job = True
@@ -33,11 +34,11 @@ class CreateMantraROP(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         ext = pre_create_data.get("image_format")
-
-        filepath = "{renders_dir}{subset_name}/{subset_name}.$F4.{ext}".format(
-            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            subset_name=subset_name,
-            ext=ext,
+        
+        filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name,
+            ext=ext
         )
 
         parms = {
@@ -48,11 +49,11 @@ class CreateMantraROP(plugin.HoudiniCreator):
         }
 
         if pre_create_data.get("export_job"):
-            ifd_filepath = \
-                "{export_dir}{subset_name}/{subset_name}.$F4.ifd".format(
-                    export_dir=hou.text.expandString("$HIP/pyblish/ifd/"),
-                    subset_name=subset_name,
-                )
+            ifd_filepath = "{root}/{subset}/ifd/{subset}.$F4.ifd".format(
+                root=hou.text.expandString(self.staging_dir),
+                subset=subset_name
+            )
+            
             parms["soho_outputmode"] = 1
             parms["soho_diskfile"] = ifd_filepath
 

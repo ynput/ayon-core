@@ -15,6 +15,7 @@ class CreateStaticMesh(plugin.HoudiniCreator):
     icon = "fa5s.cubes"
 
     default_variants = ["Main"]
+    staging_dir = "$HIP/ayon"
 
     def create(self, subset_name, instance_data, pre_create_data):
 
@@ -29,13 +30,14 @@ class CreateStaticMesh(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         # prepare parms
-        output_path = hou.text.expandString(
-            "$HIP/pyblish/{}.fbx".format(subset_name)
+        filepath = "{root}/{subset}/{subset}.fbx".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name
         )
 
         parms = {
             "startnode": self.get_selection(),
-            "sopoutput": output_path,
+            "sopoutput": filepath,
             # vertex cache format
             "vcformat": pre_create_data.get("vcformat"),
             "convertunits": pre_create_data.get("convertunits"),

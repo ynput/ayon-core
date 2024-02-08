@@ -16,6 +16,7 @@ class CreateHDA(plugin.HoudiniCreator):
     family = "hda"
     icon = "gears"
     maintain_selection = False
+    staging_dir = "$HIP/ayon"
 
     def _check_existing(self, asset_name, subset_name):
         # type: (str) -> bool
@@ -56,10 +57,17 @@ class CreateHDA(plugin.HoudiniCreator):
             if not to_hda.canCreateDigitalAsset():
                 raise plugin.OpenPypeCreatorError(
                     "cannot create hda from node {}".format(to_hda))
-
+            
+            # for consistency I'm using {subset} as it's
+            # the same key used in other creators
+            filepath = "{root}/{subset}/{subset}.hda".format(
+                root=hou.text.expandString(self.staging_dir),
+                subset=node_name
+            )
+            
             hda_node = to_hda.createDigitalAsset(
                 name=node_name,
-                hda_file_name="$HIP/{}.hda".format(node_name)
+                hda_file_name=filepath
             )
             hda_node.layoutChildren()
         elif self._check_existing(asset_name, node_name):

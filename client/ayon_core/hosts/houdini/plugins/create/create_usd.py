@@ -13,6 +13,7 @@ class CreateUSD(plugin.HoudiniCreator):
     family = "usd"
     icon = "gears"
     enabled = False
+    staging_dir = "$HIP/ayon"
 
     def create(self, subset_name, instance_data, pre_create_data):
 
@@ -26,8 +27,13 @@ class CreateUSD(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
+        filepath = "{root}/{subset}/{subset}.usd".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name
+        )
+
         parms = {
-            "lopoutput": "$HIP/pyblish/{}.usd".format(subset_name),
+            "lopoutput": filepath,
             "enableoutputprocessor_simplerelativepaths": False,
         }
 

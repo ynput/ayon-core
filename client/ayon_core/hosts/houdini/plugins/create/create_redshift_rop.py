@@ -14,6 +14,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
     family = "redshift_rop"
     icon = "magic"
     ext = "exr"
+    staging_dir = "$HIP/ayon"
 
     # Default to split export and render jobs
     split_render = True
@@ -56,10 +57,12 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         ipr_rop.parm("linked_rop").set(instance_node.path())
 
         ext = pre_create_data.get("image_format")
-        filepath = "{renders_dir}{subset_name}/{subset_name}.{fmt}".format(
-            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            subset_name=subset_name,
-            fmt="${aov}.$F4.{ext}".format(aov="AOV", ext=ext)
+
+        filepath = "{root}/{subset}/{subset}.${aov}.$F4.{ext}".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name,
+            aov="AOV",
+            ext=ext
         )
 
         ext_format_index = {"exr": 0, "tif": 1, "jpg": 2, "png": 3}
@@ -82,8 +85,11 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                     camera = node.path()
             parms["RS_renderCamera"] = camera or ""
 
-        export_dir = hou.text.expandString("$HIP/pyblish/rs/")
-        rs_filepath = f"{export_dir}{subset_name}/{subset_name}.$F4.rs"
+        rs_filepath = "{root}/{subset}/rs/{subset}.$F4.rs".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name
+        )
+
         parms["RS_archive_file"] = rs_filepath
 
         if pre_create_data.get("split_render", self.split_render):

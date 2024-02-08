@@ -14,6 +14,7 @@ class CreateVDBCache(plugin.HoudiniCreator):
     label = "VDB Cache"
     family = "vdbcache"
     icon = "cloud"
+    staging_dir = "$HIP/ayon"
 
     def create(self, subset_name, instance_data, pre_create_data):
         import hou
@@ -29,11 +30,14 @@ class CreateVDBCache(plugin.HoudiniCreator):
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
-        file_path = "{}{}".format(
-            hou.text.expandString("$HIP/pyblish/"),
-            "{}.$F4.vdb".format(subset_name))
+
+        filepath = "{root}/{subset}/{subset}.$F4.vdb".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name
+        )
+
         parms = {
-            "sopoutput": file_path,
+            "sopoutput": filepath,
             "initsim": True,
             "trange": 1
         }

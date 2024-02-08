@@ -13,7 +13,7 @@ class CreateCompositeSequence(plugin.HoudiniCreator):
     label = "Composite (Image Sequence)"
     family = "imagesequence"
     icon = "gears"
-
+    staging_dir = "$HIP/ayon"
     ext = ".exr"
 
     def create(self, subset_name, instance_data, pre_create_data):
@@ -28,10 +28,13 @@ class CreateCompositeSequence(plugin.HoudiniCreator):
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
-        filepath = "{}{}".format(
-            hou.text.expandString("$HIP/pyblish/"),
-            "{}.$F4{}".format(subset_name, self.ext)
+        
+        filepath = "{root}/{subset}/{subset}.$F4{ext}".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name,
+            ext=self.ext
         )
+        
         parms = {
             "trange": 1,
             "copoutput": filepath
