@@ -246,8 +246,8 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
         addon_name = addon_info["name"]
         addon_version = addon_info["version"]
 
-        # ayon_core addon does not have any addon object
-        if addon_name in ("openpype", "ayon_core"):
+        # core addon does not have any addon object
+        if addon_name in ("openpype", "core"):
             continue
 
         dev_addon_info = dev_addons_info.get(addon_name, {})
