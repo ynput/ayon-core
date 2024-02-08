@@ -488,9 +488,9 @@ static char* GetLocalString( PIFilter* iFilter, int iNum, char* iDefault )
 std::string label_from_evn()
 {
     std::string _plugin_label = "OpenPype";
-    if (std::getenv("AVALON_LABEL") && std::getenv("AVALON_LABEL") != "")
+    if (std::getenv("AYON_MENU_LABEL") && std::getenv("AYON_MENU_LABEL") != "")
     {
-        _plugin_label = std::getenv("AVALON_LABEL");
+        _plugin_label = std::getenv("AYON_MENU_LABEL");
     }
     return _plugin_label;
 }

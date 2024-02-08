@@ -834,7 +834,7 @@ class BaseCommunicator:
 
 
 class QtCommunicator(BaseCommunicator):
-    label = os.getenv("AVALON_LABEL") or "AYON"
+    label = os.getenv("AYON_MENU_LABEL") or "AYON"
     title = "{} Tools".format(label)
     menu_definitions = {
         "title": title,

@@ -46,7 +46,8 @@ from .lib import (
     add_scripts_menu,
     add_scripts_gizmo,
     get_node_data,
-    set_node_data
+    set_node_data,
+    MENU_LABEL,
 )
 from .workfile_template_builder import (
     NukePlaceholderLoadPlugin,
@@ -72,8 +73,6 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
-
-MENU_LABEL = os.environ["AVALON_LABEL"]
 
 # registering pyblish gui regarding settings in presets
 if os.getenv("PYBLISH_GUI", None):
@@ -497,9 +496,6 @@ def ls():
     This function is used by the Container Manager in Nuke. You'll
     need to implement a for-loop that then *yields* one Container at
     a time.
-
-    See the `container.json` schema for details on how it should look,
-    and the Maya equivalent, which is in `avalon.maya.pipeline`
     """
     all_nodes = nuke.allNodes(recurseGroups=False)
 
