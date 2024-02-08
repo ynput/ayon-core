@@ -8,6 +8,7 @@ class CreatorModel(BaseSettingsModel):
         title="Default Products",
         default_factory=list,
     )
+    staging_dir: str = SettingsField(title="Staging Dir")
 
 
 class CreateArnoldAssModel(BaseSettingsModel):
@@ -17,6 +18,7 @@ class CreateArnoldAssModel(BaseSettingsModel):
         default_factory=list,
     )
     ext: str = SettingsField(Title="Extension")
+    staging_dir: str = SettingsField(title="Staging Dir")
 
 
 class CreateStaticMeshModel(BaseSettingsModel):
@@ -30,6 +32,7 @@ class CreateStaticMeshModel(BaseSettingsModel):
         default_factory=list,
         title="Collision Prefixes"
     )
+    staging_dir: str = SettingsField(title="Staging Dir")
 
 
 class CreatePluginsModel(BaseSettingsModel):
@@ -93,56 +96,69 @@ class CreatePluginsModel(BaseSettingsModel):
 DEFAULT_HOUDINI_CREATE_SETTINGS = {
     "CreateAlembicCamera": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateArnoldAss": {
         "enabled": True,
         "default_variants": ["Main"],
-        "ext": ".ass"
+        "ext": ".ass",
+        "staging_dir": "$HIP/ayon"
     },
     "CreateArnoldRop": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateCompositeSequence": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateHDA": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateKarmaROP": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateMantraIFD": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateMantraROP": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreatePointCache": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateBGEO": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateRedshiftProxy": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateRedshiftROP": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateReview": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateStaticMesh": {
         "enabled": True,
@@ -155,22 +171,27 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
             "UCP",
             "USP",
             "UCX"
-        ]
+        ],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateUSD": {
         "enabled": False,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateUSDRender": {
         "enabled": False,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateVDBCache": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
     "CreateVrayROP": {
         "enabled": True,
-        "default_variants": ["Main"]
+        "default_variants": ["Main"],
+        "staging_dir": "$HIP/ayon"
     },
 }
