@@ -159,7 +159,7 @@ def install_host(host):
     for addon in addons_manager.get_enabled_addons():
         addon.on_host_install(host, host_name, project_name)
 
-    install_openpype_plugins(project_name, host_name)
+    install_ayon_plugins(project_name, host_name)
 
 
 def install_ayon_plugins(project_name=None, host_name=None):
