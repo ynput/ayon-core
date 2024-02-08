@@ -11,6 +11,7 @@ class CreateKarmaROP(plugin.HoudiniCreator):
     label = "Karma ROP"
     family = "karma_rop"
     icon = "magic"
+    staging_dir = "$HIP/ayon"
 
     def create(self, subset_name, instance_data, pre_create_data):
         import hou  # noqa
@@ -31,19 +32,20 @@ class CreateKarmaROP(plugin.HoudiniCreator):
 
         ext = pre_create_data.get("image_format")
 
-        filepath = "{renders_dir}{subset_name}/{subset_name}.$F4.{ext}".format(
-            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            subset_name=subset_name,
-            ext=ext,
-        )
-        checkpoint = "{cp_dir}{subset_name}.$F4.checkpoint".format(
-            cp_dir=hou.text.expandString("$HIP/pyblish/"),
-            subset_name=subset_name
+        filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name,
+            ext=ext
         )
 
-        usd_directory = "{usd_dir}{subset_name}_$RENDERID".format(
-            usd_dir=hou.text.expandString("$HIP/pyblish/renders/usd_renders/"),     # noqa
-            subset_name=subset_name
+        checkpoint = "{root}/{subset}/checkpoint/{subset}.$F4.checkpoint".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name
+        )
+
+        usd_directory = "{root}/{subset}/usd_render/{subset}_$RENDERID".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name
         )
 
         parms = {

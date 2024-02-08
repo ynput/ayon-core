@@ -11,6 +11,7 @@ class CreateRedshiftProxy(plugin.HoudiniCreator):
     label = "Redshift Proxy"
     family = "redshiftproxy"
     icon = "magic"
+    staging_dir = "$HIP/ayon"
 
     def create(self, subset_name, instance_data, pre_create_data):
 
@@ -36,8 +37,13 @@ class CreateRedshiftProxy(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
+        filepath = "{root}/{subset}/{subset}.$F4.rs".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name
+        )
+
         parms = {
-            "RS_archive_file": '$HIP/pyblish/{}.$F4.rs'.format(subset_name),
+            "RS_archive_file": filepath,
         }
 
         if self.selected_nodes:

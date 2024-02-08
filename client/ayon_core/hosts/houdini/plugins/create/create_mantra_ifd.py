@@ -11,6 +11,7 @@ class CreateMantraIFD(plugin.HoudiniCreator):
     label = "Mantra IFD"
     family = "mantraifd"
     icon = "gears"
+    staging_dir = "$HIP/ayon"
 
     def create(self, subset_name, instance_data, pre_create_data):
         import hou
@@ -25,10 +26,12 @@ class CreateMantraIFD(plugin.HoudiniCreator):
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
+        
+        filepath = "{root}/{subset}/{subset}.$F4.ifd".format(
+            root=hou.text.expandString(self.staging_dir),
+            subset=subset_name
+        )
 
-        filepath = "{}{}".format(
-            hou.text.expandString("$HIP/pyblish/"),
-            "{}.$F4.ifd".format(subset_name))
         parms = {
             # Render frame range
             "trange": 1,

@@ -14,6 +14,7 @@ class CreateReview(plugin.HoudiniCreator):
     label = "Review"
     family = "review"
     icon = "video-camera"
+    staging_dir = "$HIP/ayon"
 
     def create(self, subset_name, instance_data, pre_create_data):
 
@@ -32,9 +33,9 @@ class CreateReview(plugin.HoudiniCreator):
         frame_range = hou.playbar.frameRange()
 
         filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
-            root=hou.text.expandString("$HIP/pyblish"),
+            root=hou.text.expandString(self.staging_dir),
             subset="`chs(\"subset\")`",  # keep dynamic link to subset
-            ext=pre_create_data.get("image_format") or "png"
+            ext=pre_create_data.get("image_format", "png") 
         )
 
         parms = {
@@ -134,7 +135,7 @@ class CreateReview(plugin.HoudiniCreator):
     def set_colorcorrect_to_default_view_space(self,
                                                instance_node):
         """Set ociocolorspace to the default output space."""
-        from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
+        from openpype.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
 
         # set Color Correction parameter to OpenColorIO
         instance_node.setParms({"colorcorrect": 2})
