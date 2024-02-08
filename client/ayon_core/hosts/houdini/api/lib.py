@@ -5,7 +5,6 @@ import errno
 import re
 import uuid
 import logging
-from contextlib import contextmanager
 import json
 
 import six
@@ -24,7 +23,7 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.context_tools import get_current_project_asset
-from ayon_core.widgets import popup
+from ayon_core.tools.utils import PopupUpdateKeys, SimplePopup
 from ayon_core.tools.utils.host_tools import get_tool_by_name
 
 import hou
@@ -209,12 +208,12 @@ def validate_fps():
         if parent is None:
             pass
         else:
-            dialog = popup.PopupUpdateKeys(parent=parent)
+            dialog = PopupUpdateKeys(parent=parent)
             dialog.setModal(True)
             dialog.setWindowTitle("Houdini scene does not match project FPS")
-            dialog.setMessage("Scene %i FPS does not match project %i FPS" %
+            dialog.set_message("Scene %i FPS does not match project %i FPS" %
                               (current_fps, fps))
-            dialog.setButtonText("Fix")
+            dialog.set_button_text("Fix")
 
             # on_show is the Fix button clicked callback
             dialog.on_clicked_state.connect(lambda: set_scene_fps(fps))
@@ -950,11 +949,11 @@ def update_houdini_vars_context_dialog():
 
     # TODO: Use better UI!
     parent = hou.ui.mainQtWindow()
-    dialog = popup.Popup(parent=parent)
+    dialog = SimplePopup(parent=parent)
     dialog.setModal(True)
     dialog.setWindowTitle("Houdini scene has outdated asset variables")
-    dialog.setMessage(message)
-    dialog.setButtonText("Fix")
+    dialog.set_message(message)
+    dialog.set_button_text("Fix")
 
     # on_show is the Fix button clicked callback
     dialog.on_clicked.connect(update_houdini_vars_context)

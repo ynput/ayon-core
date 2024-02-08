@@ -2667,31 +2667,29 @@ def validate_fps():
     """
 
     expected_fps = get_fps_for_current_context()
-    current_fps = mel.eval('currentTimeUnitToFPS()')
+    current_fps = mel.eval("currentTimeUnitToFPS()")
 
     fps_match = current_fps == expected_fps
     if not fps_match and not IS_HEADLESS:
-        from ayon_core.widgets import popup
+        from ayon_core.tools.utils import PopupUpdateKeys
 
         parent = get_main_window()
 
-        dialog = popup.PopupUpdateKeys(parent=parent)
+        dialog = PopupUpdateKeys(parent=parent)
         dialog.setModal(True)
         dialog.setWindowTitle("Maya scene does not match project FPS")
-        dialog.setMessage(
+        dialog.set_message(
             "Scene {} FPS does not match project {} FPS".format(
                 current_fps, expected_fps
             )
         )
-        dialog.setButtonText("Fix")
+        dialog.set_button_text("Fix")
 
         # Set new text for button (add optional argument for the popup?)
-        toggle = dialog.widgets["toggle"]
-        update = toggle.isChecked()
-        dialog.on_clicked_state.connect(
-            lambda: set_scene_fps(expected_fps, update)
-        )
+        def on_click(update):
+            set_scene_fps(expected_fps, update)
 
+        dialog.on_clicked_state.connect(on_click)
         dialog.show()
 
         return False
@@ -3284,17 +3282,15 @@ def update_content_on_context_change():
 
 def show_message(title, msg):
     from qtpy import QtWidgets
-    from ayon_core.widgets import message_window
+    from ayon_core.tools.utils import show_message_dialog
 
     # Find maya main window
     top_level_widgets = {w.objectName(): w for w in
                          QtWidgets.QApplication.topLevelWidgets()}
 
     parent = top_level_widgets.get("MayaWindow", None)
-    if parent is None:
-        pass
-    else:
-        message_window.message(title=title, message=msg, parent=parent)
+    if parent is not None:
+        show_message_dialog(title=title, message=msg, parent=parent)
 
 
 def iter_shader_edits(relationships, shader_nodes, nodes_by_id, label=None):

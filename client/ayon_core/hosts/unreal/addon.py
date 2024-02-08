@@ -25,7 +25,7 @@ class UnrealAddon(OpenPypeModule, IHostAddon):
 
         from .lib import get_compatible_integration
 
-        from ayon_core.widgets.message_window import Window
+        from ayon_core.tools.utils import show_message_dialog
 
         pattern = re.compile(r'^\d+-\d+$')
 
@@ -34,7 +34,7 @@ class UnrealAddon(OpenPypeModule, IHostAddon):
                 "Unreal application key in the settings must be in format"
                 "'5-0' or '5-1'"
             )
-            Window(
+            show_message_dialog(
                 parent=None,
                 title="Unreal application name format",
                 message=msg,

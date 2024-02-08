@@ -165,15 +165,15 @@ def validate_comp_prefs(comp=None, force_repair=False):
             return
 
         from . import menu
-        from ayon_core.widgets import popup
+        from ayon_core.tools.utils import SimplePopup
         from ayon_core.style import load_stylesheet
-        dialog = popup.Popup(parent=menu.menu)
+        dialog = SimplePopup(parent=menu.menu)
         dialog.setWindowTitle("Fusion comp has invalid configuration")
 
         msg = "Comp preferences mismatches '{}'".format(asset_doc["name"])
         msg += "\n" + "\n".join(invalid)
-        dialog.setMessage(msg)
-        dialog.setButtonText("Repair")
+        dialog.set_message(msg)
+        dialog.set_button_text("Repair")
         dialog.on_clicked.connect(_on_repair)
         dialog.show()
         dialog.raise_()

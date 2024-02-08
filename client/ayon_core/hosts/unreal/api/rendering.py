@@ -5,7 +5,7 @@ import unreal
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.hosts.unreal.api import pipeline
-from ayon_core.widgets.message_window import Window
+from ayon_core.tools.utils import show_message_dialog
 
 
 queue = None
@@ -40,8 +40,7 @@ def start_rendering():
     assets = unreal.EditorUtilityLibrary.get_selected_assets()
 
     if not assets:
-        Window(
-            parent=None,
+        show_message_dialog(
             title="No assets selected",
             message="No assets selected. Select a render instance.",
             level="warning")
