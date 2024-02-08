@@ -8,12 +8,12 @@ from Deadline.Plugins import *
 from Deadline.Scripting import *
 
 def GetDeadlinePlugin():
-    return HarmonyOpenPypePlugin()
+    return HarmonyAYONPlugin()
 
-def CleanupDeadlinePlugin( deadlinePlugin ):
+def CleanupDeadlinePlugin(deadlinePlugin):
     deadlinePlugin.Cleanup()
 
-class HarmonyOpenPypePlugin( DeadlinePlugin ):
+class HarmonyAYONPlugin(DeadlinePlugin):
 
     def __init__( self ):
         super().__init__()
