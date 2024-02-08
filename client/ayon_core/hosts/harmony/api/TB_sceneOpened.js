@@ -370,7 +370,7 @@ function start() {
     app.avalonMenu = null;
 
     for (var i = 0 ; i < actions.length; i++) {
-        label = System.getenv('AVALON_LABEL');
+        label = System.getenv('AYON_MENU_LABEL');
         if (actions[i].text == label) {
             app.avalonMenu = true;
         }
@@ -378,7 +378,7 @@ function start() {
 
     var menu = null;
     if (app.avalonMenu == null) {
-        menu = menuBar.addMenu(System.getenv('AVALON_LABEL'));
+        menu = menuBar.addMenu(System.getenv('AYON_MENU_LABEL'));
     }
     // menu = menuBar.addMenu('Avalon');
 

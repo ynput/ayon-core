@@ -55,7 +55,7 @@ def install(project_settings):
         parent_widget = get_main_window()
         cmds.menu(
             MENU_NAME,
-            label=os.environ.get("AVALON_LABEL") or "OpenPype",
+            label=os.environ.get("AYON_MENU_LABEL") or "AYON",
             tearOff=True,
             parent="MayaWindow"
         )

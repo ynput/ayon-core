@@ -1939,7 +1939,7 @@ def should_start_last_workfile(
     """Define if host should start last version workfile if possible.
 
     Default output is `False`. Can be overridden with environment variable
-    `AVALON_OPEN_LAST_WORKFILE`, valid values without case sensitivity are
+    `AYON_OPEN_LAST_WORKFILE`, valid values without case sensitivity are
     `"0", "1", "true", "false", "yes", "no"`.
 
     Args:

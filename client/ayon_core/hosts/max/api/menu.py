@@ -78,7 +78,7 @@ class OpenPypeMenu(object):
 
             if before in item.title():
                 help_action = item.menuAction()
-        tab_menu_label = os.environ.get("AVALON_LABEL") or "AYON"
+        tab_menu_label = os.environ.get("AYON_MENU_LABEL") or "AYON"
         op_menu = QtWidgets.QMenu("&{}".format(tab_menu_label))
         menu_bar.insertMenu(help_action, op_menu)
 
