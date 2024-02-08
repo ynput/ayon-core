@@ -46,9 +46,18 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
     targets = ["local"]
 
     priority = 50
+    ChunkSize = 999999
+    group = None
     jobInfo = {}
     pluginInfo = {}
     group = None
+
+    @classmethod
+    def apply_settings(cls, project_settings, system_settings):
+        settings = project_settings["deadline"]["publish"]["HoudiniSubmitDeadline"]["HoudiniSubmitCacheDeadline"]  # noqa
+        cls.priority = settings.get("priority", cls.priority)
+        cls.ChunkSize = settings.get("chunk_size", cls.ChunkSize)
+        cls.group = settings.get("group", cls.group)
 
     def get_job_info(self):
         job_info = DeadlineJobInfo(Plugin="Houdini")
@@ -89,7 +98,7 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
 
         attr_values = self.get_attr_values_from_data(instance.data)
 
-        job_info.ChunkSize = instance.data["chunkSize"]
+        job_info.ChunkSize = instance.data.get("chunkSize", self.ChunkSize)
         job_info.Comment = context.data.get("comment")
         job_info.Priority = attr_values.get("priority", self.priority)
         job_info.Group = attr_values.get("group", self.group)
