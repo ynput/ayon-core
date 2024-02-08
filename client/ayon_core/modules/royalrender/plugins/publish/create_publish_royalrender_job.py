@@ -13,9 +13,6 @@ from ayon_core.modules.royalrender.rr_job import (
     get_rr_platform
 )
 from ayon_core.pipeline.publish import KnownPublishError
-from ayon_core.pipeline import (
-    legacy_io,
-)
 from ayon_core.pipeline.farm.pyblish_functions import (
     create_skeleton_instance,
     create_instances_for_aov,
@@ -145,7 +142,6 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
             "intent": instance.context.data.get("intent"),
             "comment": instance.context.data.get("comment"),
             "job": attr.asdict(rr_job),
-            "session": legacy_io.Session.copy(),
             "instances": instances
         }
 

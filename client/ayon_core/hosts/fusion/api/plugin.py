@@ -11,7 +11,6 @@ from ayon_core.lib import (
     EnumDef,
 )
 from ayon_core.pipeline import (
-    legacy_io,
     Creator,
     CreatedInstance
 )
@@ -136,7 +135,7 @@ class GenericCreateSaver(Creator):
         ext = data["creator_attributes"]["image_format"]
 
         # Subset change detected
-        workdir = os.path.normpath(legacy_io.Session["AVALON_WORKDIR"])
+        workdir = os.path.normpath(os.getenv("AVALON_WORKDIR"))
         formatting_data.update({
             "workdir": workdir,
             "frame": "0" * frame_padding,
