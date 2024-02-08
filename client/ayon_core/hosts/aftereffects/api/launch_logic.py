@@ -17,7 +17,7 @@ from qtpy import QtCore
 
 from ayon_core.lib import Logger
 from ayon_core.tests.lib import is_in_tests
-from ayon_core.pipeline import install_host, legacy_io
+from ayon_core.pipeline import install_host
 from ayon_core.addon import AddonsManager
 from ayon_core.tools.utils import host_tools, get_ayon_qt_app
 from ayon_core.tools.adobe_webserver.app import WebServerTool
@@ -298,13 +298,10 @@ class AfterEffectsRoute(WebSocketRoute):
         log.info("Setting context change")
         log.info("project {} asset {} ".format(project, asset))
         if project:
-            legacy_io.Session["AVALON_PROJECT"] = project
             os.environ["AVALON_PROJECT"] = project
         if asset:
-            legacy_io.Session["AVALON_ASSET"] = asset
             os.environ["AVALON_ASSET"] = asset
         if task:
-            legacy_io.Session["AVALON_TASK"] = task
             os.environ["AVALON_TASK"] = task
 
     async def read(self):
