@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Implementation of Pype commands."""
+"""Implementation of AYON commands."""
 import os
 import sys
 import json
 
 
 class Commands:
-    """Class implementing commands used by Pype.
+    """Class implementing commands used by AYON.
 
     Most of its methods are called by :mod:`cli` module.
     """
