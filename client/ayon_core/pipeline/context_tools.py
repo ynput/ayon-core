@@ -1,7 +1,6 @@
 """Core pipeline functionality"""
 
 import os
-import json
 import types
 import logging
 import platform
