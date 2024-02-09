@@ -823,30 +823,9 @@ def _convert_substancepainter_project_settings(ayon_settings, output):
 def _convert_tvpaint_project_settings(ayon_settings, output):
     if "tvpaint" not in ayon_settings:
         return
+
     ayon_tvpaint = ayon_settings["tvpaint"]
-
     _convert_host_imageio(ayon_tvpaint)
-
-    ayon_publish_settings = ayon_tvpaint["publish"]
-    for plugin_name in (
-        "ValidateProjectSettings",
-        "ValidateMarks",
-        "ValidateStartFrame",
-        "ValidateAssetName",
-    ):
-        ayon_value = ayon_publish_settings[plugin_name]
-        for src_key, dst_key in (
-            ("action_enabled", "optional"),
-            ("action_enable", "active"),
-        ):
-            if src_key in ayon_value:
-                ayon_value[dst_key] = ayon_value.pop(src_key)
-
-    extract_sequence_setting = ayon_publish_settings["ExtractSequence"]
-    extract_sequence_setting["review_bg"] = _convert_color(
-        extract_sequence_setting["review_bg"]
-    )
-
     output["tvpaint"] = ayon_tvpaint
 
 
