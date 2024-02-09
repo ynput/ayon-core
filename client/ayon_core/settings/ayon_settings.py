@@ -1080,11 +1080,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
     # Publish conversion
     ayon_publish = ayon_core["publish"]
 
-    ayon_collect_audio = ayon_publish["CollectAudio"]
-    if "audio_product_name" in ayon_collect_audio:
-        ayon_collect_audio["audio_subset_name"] = (
-            ayon_collect_audio.pop("audio_product_name"))
-
     for profile in ayon_publish["ExtractReview"]["profiles"]:
         if "product_types" in profile:
             profile["families"] = profile.pop("product_types")
