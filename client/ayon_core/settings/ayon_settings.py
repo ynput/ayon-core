@@ -336,45 +336,6 @@ def _convert_maya_project_settings(ayon_settings, output):
     # --- Publish (START) ---
     ayon_publish = ayon_maya["publish"]
 
-    ayon_capture_preset = ayon_publish["ExtractPlayblast"]["capture_preset"]
-    display_options = ayon_capture_preset["DisplayOptions"]
-    for key in ("background", "backgroundBottom", "backgroundTop"):
-        display_options[key] = _convert_color(display_options[key])
-
-    for src_key, dst_key in (
-        ("DisplayOptions", "Display Options"),
-        ("ViewportOptions", "Viewport Options"),
-        ("CameraOptions", "Camera Options"),
-    ):
-        ayon_capture_preset[dst_key] = ayon_capture_preset.pop(src_key)
-
-    viewport_options = ayon_capture_preset["Viewport Options"]
-    viewport_options["pluginObjects"] = {
-        item["name"]: item["value"]
-        for item in viewport_options["pluginObjects"]
-    }
-
-    ayon_playblast_settings = ayon_publish["ExtractPlayblast"]["profiles"]
-    if ayon_playblast_settings:
-        for setting in ayon_playblast_settings:
-            capture_preset = setting["capture_preset"]
-            display_options = capture_preset["DisplayOptions"]
-            for key in ("background", "backgroundBottom", "backgroundTop"):
-                display_options[key] = _convert_color(display_options[key])
-
-            for src_key, dst_key in (
-                ("DisplayOptions", "Display Options"),
-                ("ViewportOptions", "Viewport Options"),
-                ("CameraOptions", "Camera Options"),
-            ):
-                capture_preset[dst_key] = capture_preset.pop(src_key)
-
-            viewport_options = capture_preset["Viewport Options"]
-            viewport_options["pluginObjects"] = {
-                item["name"]: item["value"]
-                for item in viewport_options["pluginObjects"]
-            }
-
     # Extract Camera Alembic bake attributes
     try:
         bake_attributes = json.loads(

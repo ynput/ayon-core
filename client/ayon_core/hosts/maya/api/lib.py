@@ -329,7 +329,7 @@ def generate_capture_preset(instance, camera, path,
 
     # Update preset with current panel setting
     # if override_viewport_options is turned off
-    if not capture_preset["Viewport Options"]["override_viewport_options"]:
+    if not capture_preset["ViewportOptions"]["override_viewport_options"]:
         panel_preset = capture.parse_view(preset["panel"])
         panel_preset.pop("camera")
         preset.update(panel_preset)
@@ -2937,14 +2937,15 @@ def load_capture_preset(data):
     options.update(data["Generic"])
     options.update(data["Resolution"])
 
-    camera_options.update(data['Camera Options'])
+    camera_options.update(data["CameraOptions"])
     viewport_options.update(data["Renderer"])
 
     # DISPLAY OPTIONS
     disp_options = {}
-    for key, value in data['Display Options'].items():
-        if key.startswith('background'):
+    for key, value in data["DisplayOptions"].items():
+        if key.startswith("background"):
             # Convert background, backgroundTop, backgroundBottom colors
+
             if len(value) == 4:
                 # Ignore alpha + convert RGB to float
                 value = [
@@ -2956,7 +2957,7 @@ def load_capture_preset(data):
         elif key == "displayGradient":
             disp_options[key] = value
 
-    options['display_options'] = disp_options
+    options["display_options"] = disp_options
 
     # Viewport Options has a mixture of Viewport2 Options and Viewport Options
     # to pass along to capture. So we'll need to differentiate between the two
@@ -2981,7 +2982,7 @@ def load_capture_preset(data):
         "motionBlurShutterOpenFraction",
         "lineAAEnable"
     }
-    for key, value in data['Viewport Options'].items():
+    for key, value in data["ViewportOptions"].items():
 
         # There are some keys we want to ignore
         if key in {"override_viewport_options", "high_quality"}:
@@ -4059,10 +4060,10 @@ def get_capture_preset(task_name, task_type, subset, project_settings, log):
 
     Args:
         task_name (str): Task name.
-        take_type (str): Task type.
+        task_type (str): Task type.
         subset (str): Subset name.
         project_settings (dict): Project settings.
-        log (object): Logging object.
+        log (logging.Logger): Logging object.
     """
     capture_preset = None
     filtering_criteria = {
@@ -4091,8 +4092,18 @@ def get_capture_preset(task_name, task_type, subset, project_settings, log):
             "Falling back to deprecated Extract Playblast capture preset "
             "because no new style playblast profiles are defined."
         )
-        capture_preset = plugin_settings["capture_preset"]
+        capture_preset = plugin_settings.get("capture_preset")
 
+    if capture_preset:
+        # Create deepcopy of preset as we'll change the values
+        capture_preset = copy.deepcopy(capture_preset)
+
+        viewport_options = capture_preset["ViewportOptions"]
+        # Change 'list' to 'dict' for 'capture.py'
+        viewport_options["pluginObjects"] = {
+            item["name"]: item["value"]
+            for item in viewport_options["pluginObjects"]
+        }
     return capture_preset or {}
 
 
