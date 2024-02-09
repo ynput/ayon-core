@@ -24,7 +24,7 @@ from .workfile_template_builder import (
     build_workfile_template,
     update_workfile_template
 )
-from openpype.tools.workfile_template_build import open_template_ui
+from ayon_core.tools.workfile_template_build import open_template_ui
 from .workfile_template_builder import MayaTemplateBuilder
 
 log = logging.getLogger(__name__)
