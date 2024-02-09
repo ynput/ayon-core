@@ -336,21 +336,6 @@ def _convert_maya_project_settings(ayon_settings, output):
     # --- Publish (START) ---
     ayon_publish = ayon_maya["publish"]
 
-    # Extract playblast capture settings
-    validate_rendern_settings = ayon_publish["ValidateRenderSettings"]
-    for key in (
-        "arnold_render_attributes",
-        "vray_render_attributes",
-        "redshift_render_attributes",
-        "renderman_render_attributes",
-    ):
-        if key not in validate_rendern_settings:
-            continue
-        validate_rendern_settings[key] = [
-            [item["type"], item["value"]]
-            for item in validate_rendern_settings[key]
-        ]
-
     plugin_path_attributes = ayon_publish["ValidatePluginPathAttributes"]
     plugin_path_attributes["attribute"] = {
         item["name"]: item["value"]
