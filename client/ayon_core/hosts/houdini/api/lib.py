@@ -6,7 +6,7 @@ import re
 import uuid
 import logging
 import json
-
+import contextlib
 import six
 
 from ayon_core.lib import StringTemplate
@@ -500,7 +500,7 @@ def read(node):
     return data
 
 
-@contextmanager
+@contextlib.contextmanager
 def maintained_selection():
     """Maintain selection during context
     Example:
