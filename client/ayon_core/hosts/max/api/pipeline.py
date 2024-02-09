@@ -61,6 +61,7 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
                                lib.check_colorspace)
 
     def has_unsaved_changes(self):
+    def workfile_has_unsaved_changes(self):
         return rt.getSaveRequired()
 
     def get_workfile_extensions(self):
