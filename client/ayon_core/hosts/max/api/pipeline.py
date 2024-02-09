@@ -61,8 +61,7 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
                                lib.check_colorspace)
 
     def has_unsaved_changes(self):
-        # TODO: how to get it from 3dsmax?
-        return True
+        return rt.getSaveRequired()
 
     def get_workfile_extensions(self):
         return [".max"]
