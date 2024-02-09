@@ -15,8 +15,7 @@
             "default_variants": [
                 "Main"
             ],
-            "mark_for_review": true,
-            "force_setting_values": true
+            "mark_for_review": true
         }
     },
     "publish": {
