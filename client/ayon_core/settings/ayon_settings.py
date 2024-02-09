@@ -817,14 +817,6 @@ def _convert_substancepainter_project_settings(ayon_settings, output):
 
     ayon_substance_painter = ayon_settings["substancepainter"]
     _convert_host_imageio(ayon_substance_painter)
-    if "shelves" in ayon_substance_painter:
-        shelves_items = ayon_substance_painter["shelves"]
-        new_shelves_items = {
-            item["name"]: item["value"]
-            for item in shelves_items
-        }
-        ayon_substance_painter["shelves"] = new_shelves_items
-
     output["substancepainter"] = ayon_substance_painter
 
 
