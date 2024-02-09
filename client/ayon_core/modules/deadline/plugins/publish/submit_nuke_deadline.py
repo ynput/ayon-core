@@ -40,10 +40,10 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
     concurrent_tasks = 1
     group = ""
     department = ""
-    limit_groups = {}
+    limit_groups = []
     use_gpu = False
     env_allowed_keys = []
-    env_search_replace_values = {}
+    env_search_replace_values = []
     workfile_dependency = True
     use_published_workfile = True
 
@@ -402,8 +402,10 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         # finally search replace in values of any key
         if self.env_search_replace_values:
             for key, value in environment.items():
-                for _k, _v in self.env_search_replace_values.items():
-                    environment[key] = value.replace(_k, _v)
+                for item in self.env_search_replace_values:
+                    environment[key] = value.replace(
+                        item["name"], item["value"]
+                    )
 
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
@@ -539,8 +541,10 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         import nuke
 
         captured_groups = []
-        for lg_name, list_node_class in self.limit_groups.items():
-            for node_class in list_node_class:
+        for limit_group in self.limit_groups:
+            lg_name = limit_group["name"]
+
+            for node_class in limit_group["value"]:
                 for node in nuke.allNodes(recurseGroups=True):
                     # ignore all nodes not member of defined class
                     if node.Class() not in node_class:
