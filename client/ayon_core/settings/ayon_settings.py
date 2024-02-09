@@ -324,39 +324,6 @@ def _convert_fusion_project_settings(ayon_settings, output):
     ayon_fusion = ayon_settings["fusion"]
     _convert_host_imageio(ayon_fusion)
 
-    ayon_imageio_fusion = ayon_fusion["imageio"]
-
-    if "ocioSettings" in ayon_imageio_fusion:
-        ayon_ocio_setting = ayon_imageio_fusion.pop("ocioSettings")
-        paths = ayon_ocio_setting.pop("ocioPathModel")
-        for key, value in tuple(paths.items()):
-            new_value = []
-            if value:
-                new_value.append(value)
-            paths[key] = new_value
-
-        ayon_ocio_setting["configFilePath"] = paths
-        ayon_imageio_fusion["ocio"] = ayon_ocio_setting
-    elif "ocio" in ayon_imageio_fusion:
-        paths = ayon_imageio_fusion["ocio"].pop("configFilePath")
-        for key, value in tuple(paths.items()):
-            new_value = []
-            if value:
-                new_value.append(value)
-            paths[key] = new_value
-        ayon_imageio_fusion["ocio"]["configFilePath"] = paths
-
-    _convert_host_imageio(ayon_imageio_fusion)
-
-    ayon_create_saver = ayon_fusion["create"]["CreateSaver"]
-    ayon_create_saver["temp_rendering_path_template"] = (
-        ayon_create_saver["temp_rendering_path_template"]
-        .replace("{product[name]}", "{subset}")
-        .replace("{product[type]}", "{family}")
-        .replace("{folder[name]}", "{asset}")
-        .replace("{task[name]}", "{task}")
-    )
-
     output["fusion"] = ayon_fusion
 
 
