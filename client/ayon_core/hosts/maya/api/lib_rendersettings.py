@@ -390,7 +390,8 @@ class RenderSettings(object):
         import maya.mel as mel  # noqa: F401
 
         for item in additional_attribs:
-            attribute, value = item
+            attribute = item["attribute"]
+            value = item["value"]
             attribute = str(attribute)  # ensure str conversion from settings
             attribute_type = cmds.getAttr(attribute, type=True)
             if attribute_type in {"long", "bool"}:
