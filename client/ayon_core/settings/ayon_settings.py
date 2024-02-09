@@ -333,9 +333,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    # Change key of render settings
-    ayon_maya["RenderSettings"] = ayon_maya.pop("render_settings")
-
     # Convert extensions mapping
     ayon_maya["ext_mapping"] = {
         item["name"]: item["value"]
