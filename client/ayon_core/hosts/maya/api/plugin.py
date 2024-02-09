@@ -22,6 +22,7 @@ from ayon_core.pipeline import (
     LegacyCreator,
     LoaderPlugin,
     get_representation_path,
+    get_current_project_name,
 )
 from ayon_core.pipeline.load import LoadError
 from ayon_core.client import get_asset_by_name
@@ -583,6 +584,39 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
                                task_name,
                                asset_doc,
                                project_name)
+
+
+def get_load_color_for_family(family, settings=None):
+    """Get color for family from settings.
+
+    Args:
+        family (str): Family name.
+        settings (Optional[dict]): Settings dictionary.
+
+    Returns:
+        Union[tuple[float, float, float], None]: RGB color.
+
+    """
+    if settings is None:
+        settings = get_project_settings(get_current_project_name())
+
+    colors = settings["maya"]["load"]["colors"]
+    color = colors.get(family)
+    if not color:
+        return None
+
+    if len(color) == 3:
+        red, green, blue = color
+    elif len(color) == 4:
+        red, green, blue, _ = color
+    else:
+        raise ValueError("Invalid color definition {}".format(str(color)))
+
+    if type(red, int):
+        red = red / 255.0
+        green = green / 255.0
+        blue = blue / 255.0
+    return red, green, blue
 
 
 class Loader(LoaderPlugin):
