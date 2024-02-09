@@ -267,34 +267,7 @@ def _convert_flame_project_settings(ayon_settings, output):
 
     ayon_flame = ayon_settings["flame"]
 
-    ayon_publish_flame = ayon_flame["publish"]
-
-    # 'imageio' changed model
-    # - missing subkey 'project' which is in root of 'imageio' model
     _convert_host_imageio(ayon_flame)
-    ayon_imageio_flame = ayon_flame["imageio"]
-    if "project" not in ayon_imageio_flame:
-        profile_mapping = ayon_imageio_flame.pop("profilesMapping")
-        ayon_flame["imageio"] = {
-            "project": ayon_imageio_flame,
-            "profilesMapping": profile_mapping
-        }
-
-    ayon_load_flame = ayon_flame["load"]
-    for plugin_name in ("LoadClip", "LoadClipBatch"):
-        plugin_settings = ayon_load_flame[plugin_name]
-        plugin_settings["families"] = plugin_settings.pop("product_types")
-        plugin_settings["clip_name_template"] = (
-            plugin_settings["clip_name_template"]
-            .replace("{folder[name]}", "{asset}")
-            .replace("{product[name]}", "{subset}")
-        )
-        plugin_settings["layer_rename_template"] = (
-            plugin_settings["layer_rename_template"]
-            .replace("{folder[name]}", "{asset}")
-            .replace("{product[name]}", "{subset}")
-        )
-
     output["flame"] = ayon_flame
 
 
