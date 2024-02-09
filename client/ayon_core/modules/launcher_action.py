@@ -1,19 +1,14 @@
 import os
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.modules import (
-    OpenPypeModule,
-    ITrayAction,
-)
+from ayon_core.addon import AYONAddon, ITrayAction
 
 
-class LauncherAction(OpenPypeModule, ITrayAction):
+class LauncherAction(AYONAddon, ITrayAction):
     label = "Launcher"
     name = "launcher_tool"
 
-    def initialize(self, _modules_settings):
-        # This module is always enabled
-        self.enabled = True
+    def initialize(self, settings):
 
         # Tray attributes
         self._window = None
