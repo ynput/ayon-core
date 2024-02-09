@@ -333,14 +333,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    # Create plugins
-    ayon_create = ayon_maya["create"]
-    ayon_create_static_mesh = ayon_create["CreateUnrealStaticMesh"]
-    if "static_mesh_prefixes" in ayon_create_static_mesh:
-        ayon_create_static_mesh["static_mesh_prefix"] = (
-            ayon_create_static_mesh.pop("static_mesh_prefixes")
-        )
-
     # --- Publish (START) ---
     ayon_publish = ayon_maya["publish"]
 
