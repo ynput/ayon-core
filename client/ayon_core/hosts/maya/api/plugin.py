@@ -611,33 +611,38 @@ class Loader(LoaderPlugin):
         options["attach_to_root"] = True
         custom_naming = self.load_settings[loader_key]
 
-        if not custom_naming['namespace']:
+        if not custom_naming["namespace"]:
             raise LoadError("No namespace specified in "
                             "Maya ReferenceLoader settings")
-        elif not custom_naming['group_name']:
+        elif not custom_naming["group_name"]:
             self.log.debug("No custom group_name, no group will be created.")
             options["attach_to_root"] = False
 
-        asset = context['asset']
-        subset = context['subset']
+        asset = context["asset"]
+        subset = context["subset"]
+        family = (
+            subset["data"].get("family")
+            or subset["data"]["families"][0]
+        )
         formatting_data = {
-            "asset_name": asset['name'],
-            "asset_type": asset['type'],
+            "asset_name": asset["name"],
+            "asset_type": asset["type"],
             "folder": {
                 "name": asset["name"],
             },
-            "subset": subset['name'],
-            "family": (
-                subset['data'].get('family') or
-                subset['data']['families'][0]
-            )
+            "subset": subset["name"],
+            "product": {
+                "name": subset["name"],
+                "type": family,
+            },
+            "family": family
         }
 
-        custom_namespace = custom_naming['namespace'].format(
+        custom_namespace = custom_naming["namespace"].format(
             **formatting_data
         )
 
-        custom_group_name = custom_naming['group_name'].format(
+        custom_group_name = custom_naming["group_name"].format(
             **formatting_data
         )
 
