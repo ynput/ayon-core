@@ -31,7 +31,7 @@ AYON addons should contain separated logic of specific kind of implementation, s
 - addon must implement `get_plugin_paths` which must return dictionary with possible keys `"publish"`, `"load"`, `"create"` or `"actions"`
  - each key may contain list or string with a path to directory with plugins
 
-## ITrayModule
+## ITrayAddon
 - addon has more logic when used in a tray
  - it is possible that addon can be used only in the tray
 - abstract methods
@@ -46,7 +46,7 @@ AYON addons should contain separated logic of specific kind of implementation, s
  - if addon has logic only in tray or for both then should be checking for `tray_initialized` attribute to decide how should handle situations
 
 ### ITrayService
-- inherits from `ITrayModule` and implements `tray_menu` method for you
+- inherits from `ITrayAddon` and implements `tray_menu` method for you
  - adds action to submenu "Services" in tray widget menu with icon and label
 - abstract attribute `label`
  - label shown in menu
@@ -57,7 +57,7 @@ AYON addons should contain separated logic of specific kind of implementation, s
  - these states must be set by addon itself `set_service_running` is default state on initialization
 
 ### ITrayAction
-- inherits from `ITrayModule` and implements `tray_menu` method for you
+- inherits from `ITrayAddon` and implements `tray_menu` method for you
  - adds action to tray widget menu with label
 - abstract attribute `label`
  - label shown in menu
@@ -89,4 +89,4 @@ AYON addons should contain separated logic of specific kind of implementation, s
 
 ### TrayAddonsManager
 - inherits from `AddonsManager`
-- has specific implementation for Pype Tray tool and handle `ITrayModule` methods
+- has specific implementation for Pype Tray tool and handle `ITrayAddon` methods
