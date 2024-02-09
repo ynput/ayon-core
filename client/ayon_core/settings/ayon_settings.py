@@ -808,18 +808,6 @@ def _convert_photoshop_project_settings(ayon_settings, output):
 
     ayon_photoshop = ayon_settings["photoshop"]
     _convert_host_imageio(ayon_photoshop)
-
-    ayon_publish_photoshop = ayon_photoshop["publish"]
-
-    ayon_colorcoded = ayon_publish_photoshop["CollectColorCodedInstances"]
-    if "flatten_product_type_template" in ayon_colorcoded:
-        ayon_colorcoded["flatten_subset_template"] = (
-            ayon_colorcoded.pop("flatten_product_type_template"))
-
-    collect_review = ayon_publish_photoshop["CollectReview"]
-    if "active" in collect_review:
-        collect_review["publish"] = collect_review.pop("active")
-
     output["photoshop"] = ayon_photoshop
 
 
