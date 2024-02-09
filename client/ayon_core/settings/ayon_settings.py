@@ -343,13 +343,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     # --- Publish (START) ---
     ayon_publish = ayon_maya["publish"]
-    try:
-        attributes = json.loads(
-            ayon_publish["ValidateAttributes"]["attributes"]
-        )
-    except ValueError:
-        attributes = {}
-    ayon_publish["ValidateAttributes"]["attributes"] = attributes
 
     try:
         SUFFIX_NAMING_TABLE = json.loads(
