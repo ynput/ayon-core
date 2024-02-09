@@ -1,6 +1,8 @@
 import traceback
 
-from openpype.widgets import message_window
+from qtpy import QtWidgets
+
+from ayon_core.tools.utils.dialogs import show_message_dialog
 
 
 def open_template_ui(builder, main_window):
@@ -8,20 +10,17 @@ def open_template_ui(builder, main_window):
 
     Asks user about overwriting current scene and feedsback exceptions.
     """
-
-    result = message_window.message(
-        title="Opening template",
-        message="Caution! You will loose unsaved changes.\n"
-        "Do you want to continue?",
-        parent=main_window,
-        level="question",
+    result = QtWidgets.QMessageBox.question(
+        main_window,
+        "Opening template",
+        "Caution! You will loose unsaved changes.\nDo you want to continue?",
+        QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
     )
-
-    if result:
+    if result == QtWidgets.QMessageBox.Yes:
         try:
             builder.open_template()
         except Exception:
-            message_window.message(
+            show_message_dialog(
                 title="Template Load Failed",
                 message="".join(traceback.format_exc()),
                 parent=main_window,
