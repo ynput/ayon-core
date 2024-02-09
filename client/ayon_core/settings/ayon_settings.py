@@ -72,77 +72,6 @@ def _convert_host_imageio(host_settings):
     imageio_file_rules["rules"] = new_rules
 
 
-def _convert_applications_groups(groups, clear_metadata):
-    environment_key = "environment"
-    if isinstance(groups, dict):
-        new_groups = []
-        for name, item in groups.items():
-            item["name"] = name
-            new_groups.append(item)
-        groups = new_groups
-
-    output = {}
-    group_dynamic_labels = {}
-    for group in groups:
-        group_name = group.pop("name")
-        if "label" in group:
-            group_dynamic_labels[group_name] = group["label"]
-
-        tool_group_envs = group[environment_key]
-        if isinstance(tool_group_envs, six.string_types):
-            group[environment_key] = json.loads(tool_group_envs)
-
-        variants = {}
-        variant_dynamic_labels = {}
-        for variant in group.pop("variants"):
-            variant_name = variant.pop("name")
-            label = variant.get("label")
-            if label and label != variant_name:
-                variant_dynamic_labels[variant_name] = label
-            variant_envs = variant[environment_key]
-            if isinstance(variant_envs, six.string_types):
-                variant[environment_key] = json.loads(variant_envs)
-            variants[variant_name] = variant
-        group["variants"] = variants
-
-        if not clear_metadata:
-            variants["__dynamic_keys_labels__"] = variant_dynamic_labels
-        output[group_name] = group
-
-    if not clear_metadata:
-        output["__dynamic_keys_labels__"] = group_dynamic_labels
-    return output
-
-
-def _convert_applications_system_settings(
-    ayon_settings, output, clear_metadata
-):
-    # Addon settings
-    addon_settings = ayon_settings["applications"]
-
-    # Remove project settings
-    addon_settings.pop("only_available", None)
-
-    # Applications settings
-    ayon_apps = addon_settings["applications"]
-
-    additional_apps = ayon_apps.pop("additional_apps")
-    applications = _convert_applications_groups(
-        ayon_apps, clear_metadata
-    )
-    applications["additional_apps"] = _convert_applications_groups(
-        additional_apps, clear_metadata
-    )
-
-    # Tools settings
-    tools = _convert_applications_groups(
-        addon_settings["tool_groups"], clear_metadata
-    )
-
-    output["applications"] = applications
-    output["tools"] = {"tool_groups": tools}
-
-
 def _convert_general(ayon_settings, output, default_settings):
     # TODO get studio name/code
     core_settings = ayon_settings["core"]
@@ -290,7 +219,7 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
         "modules": {}
     }
     if "applications" in ayon_settings:
-        _convert_applications_system_settings(ayon_settings, output, False)
+        output["applications"] = ayon_settings["applications"]
 
     if "core" in ayon_settings:
         _convert_general(ayon_settings, output, default_settings)
@@ -313,15 +242,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_applications_project_settings(ayon_settings, output):
-    if "applications" not in ayon_settings:
-        return
-
-    output["applications"] = {
-        "only_available": ayon_settings["applications"]["only_available"]
-    }
-
-
 def _convert_blender_project_settings(ayon_settings, output):
     if "blender" not in ayon_settings:
         return
@@ -1373,7 +1293,8 @@ def convert_project_settings(ayon_settings, default_settings):
             output[key] = ayon_settings[key]
             _convert_host_imageio(output[key])
 
-    _convert_applications_project_settings(ayon_settings, output)
+    if "applications" in ayon_settings:
+        output["applications"] = ayon_settings["applications"]
     _convert_blender_project_settings(ayon_settings, output)
     _convert_celaction_project_settings(ayon_settings, output)
     _convert_flame_project_settings(ayon_settings, output)
