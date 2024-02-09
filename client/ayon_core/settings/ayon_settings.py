@@ -344,13 +344,6 @@ def _convert_maya_project_settings(ayon_settings, output):
                 subitem["subset_name_filters"] = subitem.pop(
                     "product_name_filters")
 
-    _convert_host_imageio(ayon_maya)
-
-    ayon_maya_load = ayon_maya["load"]
-    load_colors = ayon_maya_load["colors"]
-    for key, color in tuple(load_colors.items()):
-        load_colors[key] = _convert_color(color)
-
     output["maya"] = ayon_maya
 
 

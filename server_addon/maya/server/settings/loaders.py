@@ -1,40 +1,136 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
-from ayon_server.types import ColorRGBA_uint8
+from ayon_server.types import ColorRGB_float
 
 
 class ColorsSetting(BaseSettingsModel):
-    model: ColorRGBA_uint8 = SettingsField(
-        (209, 132, 30, 1.0), title="Model:")
-    rig: ColorRGBA_uint8 = SettingsField(
-        (59, 226, 235, 1.0), title="Rig:")
-    pointcache: ColorRGBA_uint8 = SettingsField(
-        (94, 209, 30, 1.0), title="Pointcache:")
-    animation: ColorRGBA_uint8 = SettingsField(
-        (94, 209, 30, 1.0), title="Animation:")
-    ass: ColorRGBA_uint8 = SettingsField(
-        (249, 135, 53, 1.0), title="Arnold StandIn:")
-    camera: ColorRGBA_uint8 = SettingsField(
-        (136, 114, 244, 1.0), title="Camera:")
-    fbx: ColorRGBA_uint8 = SettingsField(
-        (215, 166, 255, 1.0), title="FBX:")
-    mayaAscii: ColorRGBA_uint8 = SettingsField(
-        (67, 174, 255, 1.0), title="Maya Ascii:")
-    mayaScene: ColorRGBA_uint8 = SettingsField(
-        (67, 174, 255, 1.0), title="Maya Scene:")
-    setdress: ColorRGBA_uint8 = SettingsField(
-        (255, 250, 90, 1.0), title="Set Dress:")
-    layout: ColorRGBA_uint8 = SettingsField((
-        255, 250, 90, 1.0), title="Layout:")
-    vdbcache: ColorRGBA_uint8 = SettingsField(
-        (249, 54, 0, 1.0), title="VDB Cache:")
-    vrayproxy: ColorRGBA_uint8 = SettingsField(
-        (255, 150, 12, 1.0), title="VRay Proxy:")
-    vrayscene_layer: ColorRGBA_uint8 = SettingsField(
-        (255, 150, 12, 1.0), title="VRay Scene:")
-    yeticache: ColorRGBA_uint8 = SettingsField(
-        (99, 206, 220, 1.0), title="Yeti Cache:")
-    yetiRig: ColorRGBA_uint8 = SettingsField(
-        (0, 205, 125, 1.0), title="Yeti Rig:")
+    model: ColorRGB_float = SettingsField(
+        (
+            0.8196078431372549,
+            0.5176470588235295,
+            0.11764705882352941
+        ),
+        title="Model:"
+    )
+    rig: ColorRGB_float = SettingsField(
+        (
+            0.23137254901960785,
+            0.8862745098039215,
+            0.9215686274509803
+        ),
+        title="Rig:"
+    )
+    pointcache: ColorRGB_float = SettingsField(
+        (
+            0.3686274509803922,
+            0.8196078431372549,
+            0.11764705882352941
+        ),
+        title="Pointcache:"
+    )
+    animation: ColorRGB_float = SettingsField(
+        (
+            0.3686274509803922,
+            0.8196078431372549,
+            0.11764705882352941
+        ),
+        title="Animation:"
+    )
+    ass: ColorRGB_float = SettingsField(
+        (
+            0.9764705882352941,
+            0.5294117647058824,
+            0.20784313725490197
+        ),
+        title="Arnold StandIn:"
+    )
+    camera: ColorRGB_float = SettingsField(
+        (
+            0.5333333333333333,
+            0.4470588235294118,
+            0.9568627450980393
+        ),
+        title="Camera:"
+    )
+    fbx: ColorRGB_float = SettingsField(
+        (
+            0.8431372549019608,
+            0.6509803921568628,
+            1.0
+        ),
+        title="FBX:"
+    )
+    mayaAscii: ColorRGB_float = SettingsField(
+        (
+            0.2627450980392157,
+            0.6823529411764706,
+            1.0
+        ),
+        title="Maya Ascii:"
+    )
+    mayaScene: ColorRGB_float = SettingsField(
+        (
+            0.2627450980392157,
+            0.6823529411764706,
+            1.0
+        ),
+        title="Maya Scene:"
+    )
+    setdress: ColorRGB_float = SettingsField(
+        (
+            1.0,
+            0.9803921568627451,
+            0.35294117647058826
+        ),
+        title="Set Dress:"
+    )
+    layout: ColorRGB_float = SettingsField(
+        (
+            1.0,
+            0.9803921568627451,
+            0.35294117647058826
+        ),
+        title="Layout:"
+    )
+    vdbcache: ColorRGB_float = SettingsField(
+        (
+            0.9764705882352941,
+            0.21176470588235294,
+            0.0
+        ),
+        title="VDB Cache:"
+    )
+    vrayproxy: ColorRGB_float = SettingsField(
+        (
+            1.0,
+            0.5882352941176471,
+            0.047058823529411764
+        ),
+        title="VRay Proxy:"
+    )
+    vrayscene_layer: ColorRGB_float = SettingsField(
+        (
+            1.0,
+            0.5882352941176471,
+            0.047058823529411764
+        ),
+        title="VRay Scene:"
+    )
+    yeticache: ColorRGB_float = SettingsField(
+        (
+            0.38823529411764707,
+            0.807843137254902,
+            0.8627450980392157
+        ),
+        title="Yeti Cache:"
+    )
+    yetiRig: ColorRGB_float = SettingsField(
+        (
+            0.0,
+            0.803921568627451,
+            0.49019607843137253
+        ),
+        title="Yeti Rig:"
+    )
 
 
 class ReferenceLoaderModel(BaseSettingsModel):
@@ -68,52 +164,84 @@ class LoadersModel(BaseSettingsModel):
 DEFAULT_LOADERS_SETTING = {
     "colors": {
         "model": [
-            209, 132, 30, 1.0
+            0.8196078431372549,
+            0.5176470588235295,
+            0.11764705882352941
         ],
         "rig": [
-            59, 226, 235, 1.0
+            0.23137254901960785,
+            0.8862745098039215,
+            0.9215686274509803
         ],
         "pointcache": [
-            94, 209, 30, 1.0
+            0.3686274509803922,
+            0.8196078431372549,
+            0.11764705882352941
         ],
         "animation": [
-            94, 209, 30, 1.0
+            0.3686274509803922,
+            0.8196078431372549,
+            0.11764705882352941
         ],
         "ass": [
-            249, 135, 53, 1.0
+            0.9764705882352941,
+            0.5294117647058824,
+            0.20784313725490197
         ],
         "camera": [
-            136, 114, 244, 1.0
+            0.5333333333333333,
+            0.4470588235294118,
+            0.9568627450980393
         ],
         "fbx": [
-            215, 166, 255, 1.0
+            0.8431372549019608,
+            0.6509803921568628,
+            1.0
         ],
         "mayaAscii": [
-            67, 174, 255, 1.0
+            0.2627450980392157,
+            0.6823529411764706,
+            1.0
         ],
         "mayaScene": [
-            67, 174, 255, 1.0
+            0.2627450980392157,
+            0.6823529411764706,
+            1.0
         ],
         "setdress": [
-            255, 250, 90, 1.0
+            1.0,
+            0.9803921568627451,
+            0.35294117647058826
         ],
         "layout": [
-            255, 250, 90, 1.0
+            1.0,
+            0.9803921568627451,
+            0.35294117647058826
         ],
         "vdbcache": [
-            249, 54, 0, 1.0
+            0.9764705882352941,
+            0.21176470588235294,
+            0.0
         ],
         "vrayproxy": [
-            255, 150, 12, 1.0
+            1.0,
+            0.5882352941176471,
+            0.047058823529411764
         ],
         "vrayscene_layer": [
-            255, 150, 12, 1.0
+            1.0,
+            0.5882352941176471,
+            0.047058823529411764
         ],
         "yeticache": [
-            99, 206, 220, 1.0
+            0.38823529411764707,
+            0.807843137254902,
+            0.8627450980392157
         ],
         "yetiRig": [
-            0, 205, 125, 1.0
+            0.0,
+            0.803921568627451,
+            0.49019607843137253
         ]
     },
     "reference_loader": {
