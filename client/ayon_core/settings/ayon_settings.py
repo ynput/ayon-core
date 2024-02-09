@@ -1211,6 +1211,7 @@ def convert_project_settings(ayon_settings, default_settings):
         "houdini",
         "resolve",
         "unreal",
+        "applications",
         "deadline",
     }
     for key in exact_match:
@@ -1218,8 +1219,6 @@ def convert_project_settings(ayon_settings, default_settings):
             output[key] = ayon_settings[key]
             _convert_host_imageio(output[key])
 
-    if "applications" in ayon_settings:
-        output["applications"] = ayon_settings["applications"]
     _convert_blender_project_settings(ayon_settings, output)
     _convert_celaction_project_settings(ayon_settings, output)
     _convert_flame_project_settings(ayon_settings, output)
