@@ -1,15 +1,12 @@
 import os
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 CELACTION_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class CelactionAddon(OpenPypeModule, IHostAddon):
+class CelactionAddon(AYONAddon, IHostAddon):
     name = "celaction"
     host_name = "celaction"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def get_launch_hook_paths(self, app):
         if app.host_name != self.host_name:
