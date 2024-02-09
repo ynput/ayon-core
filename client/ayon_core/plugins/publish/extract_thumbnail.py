@@ -119,7 +119,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             if not result:
                 self.log.debug(
-                    "Subset \"{}\" did not match any valid subsets: {}".format(
+                    "Product name \"{}\" did not match settings filters: {}".format(
                         instance.data["subset"], product_names
                     )
                 )
