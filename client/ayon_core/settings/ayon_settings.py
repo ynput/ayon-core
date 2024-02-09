@@ -336,12 +336,6 @@ def _convert_maya_project_settings(ayon_settings, output):
     # --- Publish (START) ---
     ayon_publish = ayon_maya["publish"]
 
-    plugin_path_attributes = ayon_publish["ValidatePluginPathAttributes"]
-    plugin_path_attributes["attribute"] = {
-        item["name"]: item["value"]
-        for item in plugin_path_attributes["attribute"]
-    }
-
     ayon_capture_preset = ayon_publish["ExtractPlayblast"]["capture_preset"]
     display_options = ayon_capture_preset["DisplayOptions"]
     for key in ("background", "backgroundBottom", "backgroundTop"):
