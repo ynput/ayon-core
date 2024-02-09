@@ -1080,34 +1080,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
     # Publish conversion
     ayon_publish = ayon_core["publish"]
 
-    for profile in ayon_publish["ExtractReview"]["profiles"]:
-        if "product_types" in profile:
-            profile["families"] = profile.pop("product_types")
-        new_outputs = {}
-        for output_def in profile.pop("outputs"):
-            name = output_def.pop("name")
-            new_outputs[name] = output_def
-
-            output_def_filter = output_def["filter"]
-            if "product_names" in output_def_filter:
-                output_def_filter["subsets"] = (
-                    output_def_filter.pop("product_names"))
-
-            for color_key in ("overscan_color", "bg_color"):
-                output_def[color_key] = _convert_color(output_def[color_key])
-
-            letter_box = output_def["letter_box"]
-            for color_key in ("fill_color", "line_color"):
-                letter_box[color_key] = _convert_color(letter_box[color_key])
-
-            if "output_width" in output_def:
-                output_def["width"] = output_def.pop("output_width")
-
-            if "output_height" in output_def:
-                output_def["height"] = output_def.pop("output_height")
-
-        profile["outputs"] = new_outputs
-
     # ExtractThumbnail plugin
     ayon_extract_thumbnail = ayon_publish["ExtractThumbnail"]
     # fix display and view at oiio defaults
