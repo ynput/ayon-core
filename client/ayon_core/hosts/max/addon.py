@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 MAX_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class MaxAddon(OpenPypeModule, IHostAddon):
+class MaxAddon(AYONAddon, IHostAddon):
     name = "max"
     host_name = "max"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def add_implementation_envs(self, env, _app):
         # Remove auto screen scale factor for Qt
