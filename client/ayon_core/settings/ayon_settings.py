@@ -73,31 +73,13 @@ def _convert_host_imageio(host_settings):
 
 
 def _convert_general(ayon_settings, output, default_settings):
-    # TODO get studio name/code
-    core_settings = ayon_settings["core"]
-    environments = core_settings["environments"]
-    if isinstance(environments, six.string_types):
-        environments = json.loads(environments)
-
-    general = default_settings["general"]
-    general.update({
-        "log_to_server": False,
-        "studio_name": core_settings["studio_name"],
-        "studio_code": core_settings["studio_code"],
-        "environment": environments
-    })
-    output["general"] = general
-
-
-def _convert_kitsu_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("kitsu") is not None
-    kitsu_settings = default_settings["modules"]["kitsu"]
-    kitsu_settings["enabled"] = enabled
-    if enabled:
-        kitsu_settings["server"] = ayon_settings["kitsu"]["server"]
-    output["modules"]["kitsu"] = kitsu_settings
+    output["core"] = ayon_settings["core"]
+    version_check_interval = (
+        default_settings["general"]["version_check_interval"]
+    )
+    output["general"] = {
+        "version_check_interval": version_check_interval
+    }
 
 
 def _convert_timers_manager_system_settings(
@@ -701,14 +683,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
     ayon_core = ayon_settings["core"]
 
     _convert_host_imageio(ayon_core)
-
-    for key in (
-        "environments",
-        "studio_name",
-        "studio_code",
-    ):
-        ayon_core.pop(key, None)
-
     # Publish conversion
     ayon_publish = ayon_core["publish"]
 

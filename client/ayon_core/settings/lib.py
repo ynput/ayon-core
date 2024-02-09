@@ -15,7 +15,8 @@ from .constants import (
 
 from .ayon_settings import (
     get_ayon_project_settings,
-    get_ayon_system_settings
+    get_ayon_system_settings,
+    get_ayon_settings,
 )
 
 log = logging.getLogger(__name__)
@@ -253,14 +254,9 @@ def get_current_project_settings():
     return get_project_settings(project_name)
 
 
-def get_global_settings():
-    default_settings = load_openpype_default_settings()
-    return default_settings["system_settings"]["general"]
-
-
 def get_general_environments():
-    value = get_system_settings()
-    return value["general"]["environment"]
+    settings = get_ayon_settings()
+    return json.loads(settings["core"]["environments"])
 
 
 def get_system_settings(*args, **kwargs):
