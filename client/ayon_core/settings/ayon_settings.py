@@ -333,17 +333,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    for renderer_settings in ayon_maya["RenderSettings"].values():
-        if (
-            not isinstance(renderer_settings, dict)
-            or "additional_options" not in renderer_settings
-        ):
-            continue
-        renderer_settings["additional_options"] = [
-            [item["attribute"], item["value"]]
-            for item in renderer_settings["additional_options"]
-        ]
-
     # Workfile build
     ayon_workfile_build = ayon_maya["workfile_build"]
     for item in ayon_workfile_build["profiles"]:
