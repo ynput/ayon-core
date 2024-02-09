@@ -333,19 +333,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    # --- Publish (START) ---
-    ayon_publish = ayon_maya["publish"]
-
-    # Extract Camera Alembic bake attributes
-    try:
-        bake_attributes = json.loads(
-            ayon_publish["ExtractCameraAlembic"]["bake_attributes"]
-        )
-    except ValueError:
-        bake_attributes = []
-    ayon_publish["ExtractCameraAlembic"]["bake_attributes"] = bake_attributes
-
-    # --- Publish (END) ---
     for renderer_settings in ayon_maya["RenderSettings"].values():
         if (
             not isinstance(renderer_settings, dict)
