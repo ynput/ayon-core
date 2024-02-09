@@ -60,7 +60,6 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         rt.callbacks.addScript(rt.Name('filePostOpen'),
                                lib.check_colorspace)
 
-    def has_unsaved_changes(self):
     def workfile_has_unsaved_changes(self):
         return rt.getSaveRequired()
 
