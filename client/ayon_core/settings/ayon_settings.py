@@ -333,16 +333,7 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    # Workfile build
-    ayon_workfile_build = ayon_maya["workfile_build"]
-    for item in ayon_workfile_build["profiles"]:
-        for key in ("current_context", "linked_assets"):
-            for subitem in item[key]:
-                if "families" in subitem:
-                    break
-                subitem["families"] = subitem.pop("product_types")
-                subitem["subset_name_filters"] = subitem.pop(
-                    "product_name_filters")
+    _convert_host_imageio(ayon_maya)
 
     output["maya"] = ayon_maya
 
