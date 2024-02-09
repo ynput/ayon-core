@@ -333,17 +333,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    # Maya dirmap
-    ayon_maya_dirmap = ayon_maya.pop("maya_dirmap")
-    ayon_maya_dirmap_path = ayon_maya_dirmap["paths"]
-    ayon_maya_dirmap_path["source-path"] = (
-        ayon_maya_dirmap_path.pop("source_path")
-    )
-    ayon_maya_dirmap_path["destination-path"] = (
-        ayon_maya_dirmap_path.pop("destination_path")
-    )
-    ayon_maya["maya-dirmap"] = ayon_maya_dirmap
-
     # Create plugins
     ayon_create = ayon_maya["create"]
     ayon_create_static_mesh = ayon_create["CreateUnrealStaticMesh"]
@@ -579,15 +568,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
         return
 
     ayon_nuke = ayon_settings["nuke"]
-
-    # --- Dirmap ---
-    dirmap = ayon_nuke.pop("dirmap")
-    for src_key, dst_key in (
-        ("source_path", "source-path"),
-        ("destination_path", "destination-path"),
-    ):
-        dirmap["paths"][dst_key] = dirmap["paths"].pop(src_key)
-    ayon_nuke["nuke-dirmap"] = dirmap
 
     # --- Load ---
     ayon_load = ayon_nuke["load"]

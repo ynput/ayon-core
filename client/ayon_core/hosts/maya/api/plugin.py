@@ -937,7 +937,7 @@ class ReferenceLoader(Loader):
         """
         settings = get_project_settings(project_name)
         use_env_var_as_root = (settings["maya"]
-                                       ["maya-dirmap"]
+                                       ["maya_dirmap"]
                                        ["use_env_var_as_root"])
         if use_env_var_as_root:
             anatomy = Anatomy(project_name)

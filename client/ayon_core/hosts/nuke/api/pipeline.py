@@ -176,7 +176,7 @@ def add_nuke_callbacks():
     nuke.addOnScriptLoad(WorkfileSettings().set_context_settings)
 
 
-    if nuke_settings["nuke-dirmap"]["enabled"]:
+    if nuke_settings["nuke_dirmap"]["enabled"]:
         log.info("Added Nuke's dir-mapping callback ...")
         # Add dirmap for file paths.
         nuke.addFilenameFilter(dirmap_file_name_filter)
