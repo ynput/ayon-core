@@ -83,19 +83,7 @@ class HoudiniSubmitDeadline(
     priority = 50
     chunk_size = 1
     group = ""
-
-    @classmethod
-    def apply_settings(cls, project_settings, system_settings):
-        export_settings = project_settings["deadline"]["publish"]["HoudiniSubmitDeadline"]["HoudiniSubmitExportDeadline"]  # noqa
-        cls.export_priority = export_settings.get("priority", cls.export_priority)
-        cls.export_chunk_size = export_settings.get("chunk_size", cls.export_chunk_size)
-        cls.export_group = export_settings.get("group", cls.export_group)
-
-        render_settings = project_settings["deadline"]["publish"]["HoudiniSubmitDeadline"]["HoudiniSubmitRenderDeadline"]  # noqa
-        cls.priority = render_settings.get("priority", cls.priority)
-        cls.chunk_size = render_settings.get("chunk_size", cls.chunk_size)
-        cls.group = render_settings.get("group", cls.group)
-        
+    
     @classmethod
     def get_attribute_defs(cls):
         return [

@@ -211,47 +211,30 @@ class HarmonySubmitDeadlineModel(BaseSettingsModel):
     department: str = SettingsField(title="Department")
 
 
-class HoudiniSubmitCacheDeadlineModel(BaseSettingsModel):
-    priority: int = SettingsField(title="Priority")
-    chunk_size: int = SettingsField(title="Chunk Size")
-    group: str = SettingsField(title="Group")
-
-
-class HoudiniSubmitExportDeadlineModel(BaseSettingsModel):
-    priority: int = SettingsField(title="Priority")
-    chunk_size: int = SettingsField(title="Chunk Size")
-    group: str = SettingsField(title="Group")
-
-
-class HoudiniSubmitRenderDeadlineModel(BaseSettingsModel):
-    priority: int = SettingsField(title="Priority")
-    chunk_size: int = SettingsField(title="Chunk Size")
-    group: str = SettingsField(title="Group")
-
-
 class HoudiniSubmitDeadlineModel(BaseSettingsModel):
-    """Houdini deadline submitter settings."""
+    """Houdini deadline render submitter settings."""
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
-    HoudiniSubmitCacheDeadline: HoudiniSubmitCacheDeadlineModel = (
-        SettingsField(
-            default_factory=HoudiniSubmitCacheDeadlineModel,
-            title="Submit Cache"
-        )
-    )
-    HoudiniSubmitExportDeadline: HoudiniSubmitExportDeadlineModel = (
-        SettingsField(
-            default_factory=HoudiniSubmitExportDeadlineModel,
-            title="Submit Export Job"
-        )
-    )
-    HoudiniSubmitRenderDeadline: HoudiniSubmitRenderDeadlineModel = (
-        SettingsField(
-            default_factory=HoudiniSubmitRenderDeadlineModel,
-            title="Submit Render"
-        )
-    )
+    
+    priority: int = SettingsField(title="Priority")
+    chunk_size: int = SettingsField(title="Chunk Size")
+    group: str = SettingsField(title="Group")
+
+    export_priority: int = SettingsField(title="Export Priority")
+    export_chunk_size: int = SettingsField(title="Export Chunk Size")
+    export_group: str = SettingsField(title="Export Group")
+
+
+class HoudiniCacheSubmitDeadlineModel(BaseSettingsModel):
+    """Houdini deadline cache submitter settings."""
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    
+    priority: int = SettingsField(title="Priority")
+    chunk_size: int = SettingsField(title="Chunk Size")
+    group: str = SettingsField(title="Group")
 
 
 class AfterEffectsSubmitDeadlineModel(BaseSettingsModel):
@@ -357,7 +340,10 @@ class PublishPluginsModel(BaseSettingsModel):
         title="Max Submit to deadline")
     HoudiniSubmitDeadline: HoudiniSubmitDeadlineModel = SettingsField(
         default_factory=HoudiniSubmitDeadlineModel,
-        title="Houdini Submit to deadline")
+        title="Houdini Submit render to deadline")
+    HoudiniCacheSubmitDeadline: HoudiniCacheSubmitDeadlineModel = SettingsField(
+        default_factory=HoudiniCacheSubmitDeadlineModel,
+        title="Houdini Submit cache to deadline")
     FusionSubmitDeadline: FusionSubmitDeadlineModel = SettingsField(
         default_factory=FusionSubmitDeadlineModel,
         title="Fusion submit to Deadline")
@@ -435,21 +421,20 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "enabled": True,
         "optional": False,
         "active": True,
-        "HoudiniSubmitCacheDeadline":{
-            "priority": 50,
-            "chunk_size":999999,
-            "group": ""
-        },
-        "HoudiniSubmitExportDeadline":{
-            "priority": 50,
-            "chunk_size":10,
-            "group": ""
-        },
-        "HoudiniSubmitRenderDeadline":{
-            "priority": 50,
-            "chunk_size":1,
-            "group": ""
-        }
+        "priority": 50,
+        "chunk_size":1,
+        "group": "",
+        "export_priority": 50,
+        "export_chunk_size":10,
+        "export_group": ""
+    },
+    "HoudiniCacheSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "priority": 50,
+        "chunk_size":999999,
+        "group": ""
     },
     "FusionSubmitDeadline": {
         "enabled": True,
