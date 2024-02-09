@@ -1,5 +1,5 @@
 import pyblish.api
-
+import os
 from ayon_core.pipeline import AYONPyblishPluginMixin
 
 
@@ -85,6 +85,6 @@ class CollectStagingDirsForCleaningUp(pyblish.api.InstancePlugin,
         if not filepath:
             self.log.warning("No filepath value to collect.")
             return
-
+        filepath = os.path.dirname(filepath)
         self.log.debug("Add to clean up list: {}".format(filepath))
-        instance.context.data["cleanupFullPaths"] = filepath
+        instance.context.data["cleanupFullPaths"].append(filepath)
