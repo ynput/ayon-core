@@ -336,11 +336,6 @@ def _convert_maya_project_settings(ayon_settings, output):
     # --- Publish (START) ---
     ayon_publish = ayon_maya["publish"]
 
-    validate_frame_range = ayon_publish["ValidateFrameRange"]
-    if "exclude_product_types" in validate_frame_range:
-        validate_frame_range["exclude_families"] = (
-            validate_frame_range.pop("exclude_product_types"))
-
     # Extract playblast capture settings
     validate_rendern_settings = ayon_publish["ValidateRenderSettings"]
     for key in (
