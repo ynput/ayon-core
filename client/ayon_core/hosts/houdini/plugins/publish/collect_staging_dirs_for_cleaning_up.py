@@ -22,6 +22,18 @@ class CollectStagingDirsForCleaningUp(pyblish.api.InstancePlugin,
     order = pyblish.api.CollectorOrder
 
     hosts = ["houdini"]
+    families = [
+        "camera",
+        "ass",
+        "pointcache",
+        "imagesequence",
+        "mantraifd",
+        "redshiftproxy",
+        "review",
+        "staticMesh",
+        "usd",
+        "vdbcache",    
+    ]
     label = "Collect Staging Directories For Cleaning Up"
 
     def process(self, instance):
