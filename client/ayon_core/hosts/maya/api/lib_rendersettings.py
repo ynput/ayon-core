@@ -46,7 +46,7 @@ class RenderSettings(object):
             project_settings = get_project_settings(
                 get_current_project_name()
             )
-        render_settings = project_settings["maya"]["RenderSettings"]
+        render_settings = project_settings["maya"]["render_settings"]
         image_prefixes = {
             "vray": render_settings["vray_renderer"]["image_prefix"],
             "arnold": render_settings["arnold_renderer"]["image_prefix"],
@@ -82,12 +82,12 @@ class RenderSettings(object):
         try:
             aov_separator = self._aov_chars[(
                 self._project_settings["maya"]
-                                      ["RenderSettings"]
+                                      ["render_settings"]
                                       ["aov_separator"]
             )]
         except KeyError:
             aov_separator = "_"
-        reset_frame = self._project_settings["maya"]["RenderSettings"]["reset_current_frame"] # noqa
+        reset_frame = self._project_settings["maya"]["render_settings"]["reset_current_frame"] # noqa
 
         if reset_frame:
             start_frame = cmds.getAttr("defaultRenderGlobals.startFrame")
@@ -131,7 +131,7 @@ class RenderSettings(object):
         import maya.mel as mel  # noqa: F401
 
         createOptions()
-        render_settings = self._project_settings["maya"]["RenderSettings"]
+        render_settings = self._project_settings["maya"]["render_settings"]
         arnold_render_presets = render_settings["arnold_renderer"] # noqa
         # Force resetting settings and AOV list to avoid having to deal with
         # AOV checking logic, for now.
@@ -180,7 +180,7 @@ class RenderSettings(object):
         from maya import cmds  # noqa: F401
         import maya.mel as mel  # noqa: F401
 
-        render_settings = self._project_settings["maya"]["RenderSettings"]
+        render_settings = self._project_settings["maya"]["render_settings"]
         redshift_render_presets = render_settings["redshift_renderer"]
 
         remove_aovs = render_settings["remove_aovs"]
@@ -239,7 +239,7 @@ class RenderSettings(object):
         rman_render_presets = (
             self._project_settings
             ["maya"]
-            ["RenderSettings"]
+            ["render_settings"]
             ["renderman_renderer"]
         )
         display_filters = rman_render_presets["display_filters"]
@@ -304,7 +304,7 @@ class RenderSettings(object):
 
         settings = cmds.ls(type="VRaySettingsNode")
         node = settings[0] if settings else cmds.createNode("VRaySettingsNode")
-        render_settings = self._project_settings["maya"]["RenderSettings"]
+        render_settings = self._project_settings["maya"]["render_settings"]
         vray_render_presets = render_settings["vray_renderer"]
         # vrayRenderElement
         remove_aovs = render_settings["remove_aovs"]

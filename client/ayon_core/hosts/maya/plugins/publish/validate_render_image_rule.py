@@ -55,7 +55,7 @@ class ValidateRenderImageRule(pyblish.api.InstancePlugin):
         if staging_dir:
             cls.log.debug(
                 "Staging dir found: \"{}\". Ignoring setting from "
-                "`project_settings/maya/RenderSettings/"
+                "`project_settings/maya/render_settings/"
                 "default_render_image_folder`.".format(staging_dir)
             )
             return staging_dir
