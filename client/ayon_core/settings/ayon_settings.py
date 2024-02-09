@@ -333,12 +333,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    # Convert extensions mapping
-    ayon_maya["ext_mapping"] = {
-        item["name"]: item["value"]
-        for item in ayon_maya["ext_mapping"]
-    }
-
     # Maya dirmap
     ayon_maya_dirmap = ayon_maya.pop("maya_dirmap")
     ayon_maya_dirmap_path = ayon_maya_dirmap["paths"]
