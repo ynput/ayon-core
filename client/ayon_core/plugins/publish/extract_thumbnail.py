@@ -113,7 +113,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     return True
             return False
 
-        product_names = self.subsets + self.product_names
+        product_names = self.product_names
         if product_names:
             result = validate_string_against_patterns(
                 instance.data["subset"], product_names
