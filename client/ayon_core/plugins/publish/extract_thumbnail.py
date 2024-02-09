@@ -50,7 +50,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     # attribute presets from settings
     oiiotool_defaults = None
     ffmpeg_args = None
-    subsets = []
     product_names = []
 
     def process(self, instance):
