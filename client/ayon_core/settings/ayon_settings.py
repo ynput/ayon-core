@@ -298,13 +298,6 @@ def _convert_3dsmax_project_settings(ayon_settings, output):
 
     ayon_max = ayon_settings["max"]
     _convert_host_imageio(ayon_max)
-    if "PointCloud" in ayon_max:
-        point_cloud_attribute = ayon_max["PointCloud"]["attribute"]
-        new_point_cloud_attribute = {
-            item["name"]: item["value"]
-            for item in point_cloud_attribute
-        }
-        ayon_max["PointCloud"]["attribute"] = new_point_cloud_attribute
     # --- Publish (START) ---
     ayon_publish = ayon_max["publish"]
     if "ValidateAttributes" in ayon_publish:
