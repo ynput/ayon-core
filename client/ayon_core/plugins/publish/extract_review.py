@@ -74,7 +74,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
     alpha_exts = ["exr", "png", "dpx"]
 
     # Preset attributes
-    profiles = None
+    profiles = []
 
     def process(self, instance):
         self.log.debug(str(instance.data["representations"]))
@@ -112,7 +112,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             self.profiles,
             {
                 "hosts": host_name,
-                "families": family,
+                "product_types": family,
             },
             logger=self.log)
         if not profile:
@@ -719,12 +719,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
         lut_filters = self.lut_filters(new_repre, instance, ffmpeg_input_args)
         ffmpeg_video_filters.extend(lut_filters)
 
-        bg_alpha = 0
+        bg_alpha = 0.0
         bg_color = output_def.get("bg_color")
         if bg_color:
             bg_red, bg_green, bg_blue, bg_alpha = bg_color
 
-        if bg_alpha > 0:
+        if bg_alpha > 0.0:
             if not temp_data["input_allow_bg"]:
                 self.log.info((
                     "Output definition has defined BG color input was"
@@ -734,8 +734,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 bg_color_hex = "#{0:0>2X}{1:0>2X}{2:0>2X}".format(
                     bg_red, bg_green, bg_blue
                 )
-                bg_color_alpha = float(bg_alpha) / 255
-                bg_color_str = "{}@{}".format(bg_color_hex, bg_color_alpha)
+                bg_color_str = "{}@{}".format(bg_color_hex, bg_alpha)
 
                 self.log.info("Applying BG color {}".format(bg_color_str))
                 color_args = [
@@ -1060,8 +1059,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # NOTE: value in "-ac" was hardcoded to 2, changed to audio inputs len.
         # Need to merge audio if there are more than 1 input.
         if len(audio_inputs) > 1:
-            audio_out_args.append("-filter_complex amerge")
-            audio_out_args.append("-ac {}".format(len(audio_inputs)))
+            audio_out_args.extend([
+                "-filter_complex", "amerge",
+                "-ac", str(len(audio_inputs))
+            ])
 
         return audio_in_args, audio_filters, audio_out_args
 
@@ -1079,7 +1080,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         fill_color_hex = "{0:0>2X}{1:0>2X}{2:0>2X}".format(
             f_red, f_green, f_blue
         )
-        fill_color_alpha = float(f_alpha) / 255
+        fill_color_alpha = f_alpha
 
         line_thickness = letter_box_def["line_thickness"]
         line_color = letter_box_def["line_color"]
@@ -1087,7 +1088,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         line_color_hex = "{0:0>2X}{1:0>2X}{2:0>2X}".format(
             l_red, l_green, l_blue
         )
-        line_color_alpha = float(l_alpha) / 255
+        line_color_alpha = l_alpha
 
         # test ratios and define if pillar or letter boxes
         output_ratio = float(output_width) / float(output_height)
@@ -1283,8 +1284,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         # NOTE Setting only one of `width` or `heigth` is not allowed
         # - settings value can't have None but has value of 0
-        output_width = output_def.get("width") or output_width or None
-        output_height = output_def.get("height") or output_height or None
+        output_width = (
+            output_def.get("output_width") or output_width or None
+        )
+        output_height = (
+            output_def.get("output_height") or output_height or None
+        )
         # Force to use input resolution if output resolution was not defined
         #   in settings. Resolution from instance is not used when
         #   'use_input_res' is set to 'True'.
@@ -1294,7 +1299,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
         overscan_color_value = "black"
         overscan_color = output_def.get("overscan_color")
         if overscan_color:
-            bg_red, bg_green, bg_blue, _ = overscan_color
+            if len(overscan_color) == 3:
+                bg_red, bg_green, bg_blue = overscan_color
+            else:
+                # Backwards compatibility
+                bg_red, bg_green, bg_blue, _  = overscan_color
+
             overscan_color_value = "#{0:0>2X}{1:0>2X}{2:0>2X}".format(
                 bg_red, bg_green, bg_blue
             )
@@ -1505,12 +1515,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
         Returns:
             list: Containg all output definitions matching entered families.
         """
-        outputs = profile.get("outputs") or {}
+        outputs = profile.get("outputs")
         if not outputs:
-            return outputs
+            return []
 
         filtered_outputs = {}
-        for filename_suffix, output_def in outputs.items():
+        for output_def in outputs:
+            filename_suffix = output_def["name"]
             output_filters = output_def.get("filter")
             # If no filter on output preset, skip filtering and add output
             # profile for farther processing
@@ -1523,16 +1534,16 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 continue
 
             # Subsets name filters
-            subset_filters = [
-                subset_filter
-                for subset_filter in output_filters.get("subsets", [])
+            product_name_filters = [
+                name_filter
+                for name_filter in output_filters.get("product_names", [])
                 # Skip empty strings
-                if subset_filter
+                if name_filter
             ]
-            if subset_name and subset_filters:
+            if subset_name and product_name_filters:
                 match = False
-                for subset_filter in subset_filters:
-                    compiled = re.compile(subset_filter)
+                for product_name_filter in product_name_filters:
+                    compiled = re.compile(product_name_filter)
                     if compiled.search(subset_name):
                         match = True
                         break
