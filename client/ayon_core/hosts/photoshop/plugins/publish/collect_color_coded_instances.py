@@ -42,7 +42,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
     # flattened template cannot
     subset_template_name = ""
     create_flatten_image = "no"
-    flatten_subset_template = ""
+    flatten_product_name_template = ""
 
     def process(self, context):
         self.log.info("CollectColorCodedInstances")
@@ -124,12 +124,12 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
 
         if self.create_flatten_image != "no" and publishable_layers:
             self.log.debug("create_flatten_image")
-            if not self.flatten_subset_template:
+            if not self.flatten_product_name_template:
                 self.log.warning("No template for flatten image")
                 return
 
             fill_pairs.pop("layer")
-            subset = self.flatten_subset_template.format(
+            subset = self.flatten_product_name_template.format(
                 **prepare_template_data(fill_pairs))
 
             first_layer = publishable_layers[0]  # dummy layer

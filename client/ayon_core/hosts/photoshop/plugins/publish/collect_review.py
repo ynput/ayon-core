@@ -22,8 +22,6 @@ class CollectReview(pyblish.api.ContextPlugin):
     hosts = ["photoshop"]
     order = pyblish.api.CollectorOrder + 0.1
 
-    publish = True
-
     def process(self, context):
         for instance in context:
             creator_attributes = instance.data["creator_attributes"]
