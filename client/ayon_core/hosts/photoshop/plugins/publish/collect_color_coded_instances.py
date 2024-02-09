@@ -29,9 +29,8 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
     Identifier:
         id (str): "pyblish.avalon.instance"
     """
-    order = pyblish.api.CollectorOrder + 0.100
 
-    label = "Instances"
+    label = "Collect Color-coded Instances"
     order = pyblish.api.CollectorOrder
     hosts = ["photoshop"]
     targets = ["automated"]

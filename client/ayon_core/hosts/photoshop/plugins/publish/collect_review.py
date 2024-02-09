@@ -6,19 +6,14 @@ Provides:
     instance     -> family ("review")
 """
 
-import os
-
 import pyblish.api
-
-from ayon_core.pipeline.create import get_subset_name
 
 
 class CollectReview(pyblish.api.ContextPlugin):
     """Adds review to families for instances marked to be reviewable.
     """
 
-    label = "Collect Review"
-    label = "Review"
+    label = "Collect Review Family"
     hosts = ["photoshop"]
     order = pyblish.api.CollectorOrder + 0.1
 
