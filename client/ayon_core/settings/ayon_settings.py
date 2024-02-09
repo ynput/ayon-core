@@ -297,16 +297,6 @@ def _convert_3dsmax_project_settings(ayon_settings, output):
         return
 
     ayon_max = ayon_settings["max"]
-    _convert_host_imageio(ayon_max)
-    # --- Publish (START) ---
-    ayon_publish = ayon_max["publish"]
-
-    if "ValidateLoadedPlugin" in ayon_publish:
-        loaded_plugin = (
-            ayon_publish["ValidateLoadedPlugin"]["family_plugins_mapping"]
-        )
-        for item in loaded_plugin:
-            item["families"] = item.pop("product_types")
 
     output["max"] = ayon_max
 
