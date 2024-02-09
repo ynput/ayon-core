@@ -72,7 +72,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         # validate basic necessary data
         data_err = "invalid json file - missing data"
         required = ["asset", "user", "comment",
-                    "job", "instances", "session", "version"]
+                    "job", "instances", "version"]
         assert all(elem in data.keys() for elem in required), data_err
 
         # set context by first json file
