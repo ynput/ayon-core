@@ -268,25 +268,6 @@ def _convert_flame_project_settings(ayon_settings, output):
     ayon_flame = ayon_settings["flame"]
 
     ayon_publish_flame = ayon_flame["publish"]
-    # Plugin 'ExtractSubsetResources' renamed to 'ExtractProductResources'
-    if "ExtractSubsetResources" in ayon_publish_flame:
-        ayon_product_resources = ayon_publish_flame["ExtractSubsetResources"]
-    else:
-        ayon_product_resources = (
-            ayon_publish_flame.pop("ExtractProductResources"))
-        ayon_publish_flame["ExtractSubsetResources"] = ayon_product_resources
-
-    # 'ExtractSubsetResources' changed model of 'export_presets_mapping'
-    # - some keys were moved under 'other_parameters'
-    new_subset_resources = {}
-    for item in ayon_product_resources.pop("export_presets_mapping"):
-        name = item.pop("name")
-        if "other_parameters" in item:
-            other_parameters = item.pop("other_parameters")
-            item.update(other_parameters)
-        new_subset_resources[name] = item
-
-    ayon_product_resources["export_presets_mapping"] = new_subset_resources
 
     # 'imageio' changed model
     # - missing subkey 'project' which is in root of 'imageio' model
