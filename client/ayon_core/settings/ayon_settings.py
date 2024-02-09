@@ -300,14 +300,6 @@ def _convert_3dsmax_project_settings(ayon_settings, output):
     _convert_host_imageio(ayon_max)
     # --- Publish (START) ---
     ayon_publish = ayon_max["publish"]
-    if "ValidateAttributes" in ayon_publish:
-        try:
-            attributes = json.loads(
-                ayon_publish["ValidateAttributes"]["attributes"]
-            )
-        except ValueError:
-            attributes = {}
-        ayon_publish["ValidateAttributes"]["attributes"] = attributes
 
     if "ValidateLoadedPlugin" in ayon_publish:
         loaded_plugin = (
