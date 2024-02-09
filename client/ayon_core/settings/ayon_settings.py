@@ -248,12 +248,6 @@ def _convert_blender_project_settings(ayon_settings, output):
     ayon_blender = ayon_settings["blender"]
     _convert_host_imageio(ayon_blender)
 
-    ayon_publish = ayon_blender["publish"]
-
-    for plugin in ("ExtractThumbnail", "ExtractPlayblast"):
-        plugin_settings = ayon_publish[plugin]
-        plugin_settings["presets"] = json.loads(plugin_settings["presets"])
-
     output["blender"] = ayon_blender
 
 
