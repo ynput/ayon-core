@@ -35,7 +35,7 @@ class TrayPublisherController(QtPublisherController):
 
 
 class TrayPublisherRegistry(JSONSettingRegistry):
-    """Class handling OpenPype general settings registry.
+    """Class handling AYON general settings registry.
 
     Attributes:
         vendor (str): Name used for path construction.
