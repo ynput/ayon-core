@@ -38,8 +38,8 @@ class AYONSecureRegistry:
     Registry should be used for private data that should be available only for
     user.
 
-    All passed registry names will have added prefix `OpenPype/` to easier
-    identify which data were created by OpenPype.
+    All passed registry names will have added prefix `AYON/` to easier
+    identify which data were created by AYON.
 
     Args:
         name(str): Name of registry used as identifier for data.

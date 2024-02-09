@@ -1,4 +1,4 @@
-"""Job queue OpenPype module was created for remote execution of commands.
+"""Job queue AYON addon was created for remote execution of commands.
 
 ## Why is needed
 Primarily created for hosts which are not easilly controlled from command line
@@ -30,7 +30,7 @@ workstations know where to send or receive jobs.
 
 ### start_worker
 - start worker which will process jobs
-- has required possitional argument which is application name from OpenPype
+- has required possitional argument which is application name from AYON
     settings e.g. 'tvpaint/11-5' ('tvpaint' is group '11-5' is variant)
 - it is possible to specify server url but url from settings is used when not
     passed (this is added mainly for developing purposes)

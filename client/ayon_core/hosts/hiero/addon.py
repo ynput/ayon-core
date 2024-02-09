@@ -1,16 +1,13 @@
 import os
 import platform
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 HIERO_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class HieroAddon(OpenPypeModule, IHostAddon):
+class HieroAddon(AYONAddon, IHostAddon):
     name = "hiero"
     host_name = "hiero"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def add_implementation_envs(self, env, _app):
         # Add requirements to HIERO_PLUGIN_PATH
