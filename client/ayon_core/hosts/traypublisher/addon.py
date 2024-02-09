@@ -2,9 +2,9 @@ import os
 
 from ayon_core.lib import get_ayon_launcher_args
 from ayon_core.lib.execute import run_detached_process
-from ayon_core.modules import (
+from ayon_core.addon import (
     click_wrap,
-    OpenPypeModule,
+    AYONAddon,
     ITrayAction,
     IHostAddon,
 )
@@ -12,13 +12,12 @@ from ayon_core.modules import (
 TRAYPUBLISH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class TrayPublishAddon(OpenPypeModule, IHostAddon, ITrayAction):
+class TrayPublishAddon(AYONAddon, IHostAddon, ITrayAction):
     label = "Publisher"
     name = "traypublisher"
     host_name = "traypublisher"
 
-    def initialize(self, modules_settings):
-        self.enabled = True
+    def initialize(self, settings):
         self.publish_paths = [
             os.path.join(TRAYPUBLISH_ROOT_DIR, "plugins", "publish")
         ]
@@ -36,7 +35,7 @@ class TrayPublishAddon(OpenPypeModule, IHostAddon, ITrayAction):
 
     def run_traypublisher(self):
         args = get_ayon_launcher_args(
-            "module", self.name, "launch"
+            "addon", self.name, "launch"
         )
         run_detached_process(args)
 

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Implementation of Pype commands."""
+"""Implementation of AYON commands."""
 import os
 import sys
 import json
 
 
 class Commands:
-    """Class implementing commands used by Pype.
+    """Class implementing commands used by AYON.
 
     Most of its methods are called by :mod:`cli` module.
     """
@@ -171,78 +171,3 @@ class Commands:
         from ayon_core.tools.context_dialog import main
 
         main(output_path, project_name, asset_name, strict)
-
-    @staticmethod
-    def run_tests(folder, mark, pyargs,
-                  test_data_folder, persist, app_variant, timeout, setup_only,
-                  mongo_url, app_group, dump_databases):
-        """
-            Runs tests from 'folder'
-
-            Args:
-                 folder (str): relative path to folder with tests
-                 mark (str): label to run tests marked by it (slow etc)
-                 pyargs (str): package path to test
-                 test_data_folder (str): url to unzipped folder of test data
-                 persist (bool): True if keep test db and published after test
-                    end
-                app_variant (str): variant (eg 2020 for AE), empty if use
-                    latest installed version
-                timeout (int): explicit timeout for single test
-                setup_only (bool): if only preparation steps should be
-                    triggered, no tests (useful for debugging/development)
-                mongo_url (str): url to Openpype Mongo database
-        """
-        print("run_tests")
-        if folder:
-            folder = " ".join(list(folder))
-        else:
-            folder = "../tests"
-
-        # disable warnings and show captured stdout even if success
-        args = [
-            "--disable-pytest-warnings",
-            "--capture=sys",
-            "--print",
-            "-W ignore::DeprecationWarning",
-            "-rP",
-            folder
-        ]
-
-        if mark:
-            args.extend(["-m", mark])
-
-        if pyargs:
-            args.extend(["--pyargs", pyargs])
-
-        if test_data_folder:
-            args.extend(["--test_data_folder", test_data_folder])
-
-        if persist:
-            args.extend(["--persist", persist])
-
-        if app_group:
-            args.extend(["--app_group", app_group])
-
-        if app_variant:
-            args.extend(["--app_variant", app_variant])
-
-        if timeout:
-            args.extend(["--timeout", timeout])
-
-        if setup_only:
-            args.extend(["--setup_only", setup_only])
-
-        if mongo_url:
-            args.extend(["--mongo_url", mongo_url])
-
-        if dump_databases:
-            msg = "dump_databases format is not recognized: {}".format(
-                dump_databases
-            )
-            assert dump_databases in ["bson", "json"], msg
-            args.extend(["--dump_databases", dump_databases])
-
-        print("run_tests args: {}".format(args))
-        import pytest
-        pytest.main(args)
