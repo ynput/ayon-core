@@ -336,18 +336,6 @@ def _convert_maya_project_settings(ayon_settings, output):
     # --- Publish (START) ---
     ayon_publish = ayon_maya["publish"]
 
-    try:
-        SUFFIX_NAMING_TABLE = json.loads(
-            ayon_publish
-            ["ValidateTransformNamingSuffix"]
-            ["SUFFIX_NAMING_TABLE"]
-        )
-    except ValueError:
-        SUFFIX_NAMING_TABLE = {}
-    ayon_publish["ValidateTransformNamingSuffix"]["SUFFIX_NAMING_TABLE"] = (
-        SUFFIX_NAMING_TABLE
-    )
-
     validate_frame_range = ayon_publish["ValidateFrameRange"]
     if "exclude_product_types" in validate_frame_range:
         validate_frame_range["exclude_families"] = (
