@@ -951,49 +951,6 @@ def _convert_webpublisher_project_settings(ayon_settings, output):
     output["webpublisher"] = ayon_webpublisher
 
 
-def _convert_deadline_project_settings(ayon_settings, output):
-    if "deadline" not in ayon_settings:
-        return
-
-    ayon_deadline = ayon_settings["deadline"]
-
-    for key in ("deadline_urls",):
-        ayon_deadline.pop(key)
-
-    ayon_deadline_publish = ayon_deadline["publish"]
-    limit_groups = {
-        item["name"]: item["value"]
-        for item in ayon_deadline_publish["NukeSubmitDeadline"]["limit_groups"]
-    }
-    ayon_deadline_publish["NukeSubmitDeadline"]["limit_groups"] = limit_groups
-
-    maya_submit = ayon_deadline_publish["MayaSubmitDeadline"]
-    for json_key in ("jobInfo", "pluginInfo"):
-        src_text = maya_submit.pop(json_key)
-        try:
-            value = json.loads(src_text)
-        except ValueError:
-            value = {}
-        maya_submit[json_key] = value
-
-    nuke_submit = ayon_deadline_publish["NukeSubmitDeadline"]
-    nuke_submit["env_search_replace_values"] = {
-        item["name"]: item["value"]
-        for item in nuke_submit.pop("env_search_replace_values")
-    }
-    nuke_submit["limit_groups"] = {
-        item["name"]: item["value"] for item in nuke_submit.pop("limit_groups")
-    }
-
-    process_subsetted_job = ayon_deadline_publish["ProcessSubmittedJobOnFarm"]
-    process_subsetted_job["aov_filter"] = {
-        item["name"]: item["value"]
-        for item in process_subsetted_job.pop("aov_filter")
-    }
-
-    output["deadline"] = ayon_deadline
-
-
 def _convert_royalrender_project_settings(ayon_settings, output):
     if "royalrender" not in ayon_settings:
         return
@@ -1254,6 +1211,7 @@ def convert_project_settings(ayon_settings, default_settings):
         "houdini",
         "resolve",
         "unreal",
+        "deadline",
     }
     for key in exact_match:
         if key in ayon_settings:
@@ -1276,7 +1234,6 @@ def convert_project_settings(ayon_settings, default_settings):
     _convert_traypublisher_project_settings(ayon_settings, output)
     _convert_webpublisher_project_settings(ayon_settings, output)
 
-    _convert_deadline_project_settings(ayon_settings, output)
     _convert_royalrender_project_settings(ayon_settings, output)
     _convert_kitsu_project_settings(ayon_settings, output)
     _convert_shotgrid_project_settings(ayon_settings, output)
