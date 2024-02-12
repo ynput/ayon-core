@@ -1059,10 +1059,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # NOTE: value in "-ac" was hardcoded to 2, changed to audio inputs len.
         # Need to merge audio if there are more than 1 input.
         if len(audio_inputs) > 1:
-            audio_out_args.extend([
-                "-filter_complex", "amerge",
-                "-ac", str(len(audio_inputs))
-            ])
+            audio_out_args.append("-filter_complex amerge")
+            audio_out_args.append("-ac {}".format(len(audio_inputs)))
 
         return audio_in_args, audio_filters, audio_out_args
 
