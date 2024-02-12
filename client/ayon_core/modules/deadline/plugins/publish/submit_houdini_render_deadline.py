@@ -44,7 +44,10 @@ class VrayRenderPluginInfo():
 @attr.s
 class RedshiftRenderPluginInfo():
     SceneFile = attr.ib(default=None)
-    Version = attr.ib(default=None)
+    # Use "1" as the default Redshift version just because it
+    # default fallback version in Deadline's Redshift plugin
+    # if no version was specified
+    Version = attr.ib(default="1")
 
 
 class HoudiniSubmitDeadline(
