@@ -474,12 +474,12 @@ def inject_ayon_environment(deadlinePlugin):
             "envgroup": "farm",
         }
         # Support backwards compatible keys
-        for key, env_keys in {
-            "project": ["AYON_PROJECT_NAME", "AVALON_PROJECT"],
-            "asset": ["AYON_FOLDER_PATH", "AVALON_ASSET"],
-            "task": ["AYON_TASK_NAME", "AVALON_TASK"],
-            "app": ["AYON_APP_NAME", "AVALON_APP_NAME"],
-        }:
+        for key, env_keys in (
+            ("project", ["AYON_PROJECT_NAME", "AVALON_PROJECT"]),
+            ("asset", ["AYON_FOLDER_PATH", "AVALON_ASSET"],
+            ("task", ["AYON_TASK_NAME", "AVALON_TASK"]),
+            ("app", ["AYON_APP_NAME", "AVALON_APP_NAME"]),
+        ):
             value = ""
             for env_key in env_keys:
                 value = job.GetJobEnvironmentKeyValue(env_key)
