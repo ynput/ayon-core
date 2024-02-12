@@ -8,12 +8,11 @@ publishing on farm.
 Requires:
     instance    -> families
     instance    -> setMembers
+    instance    -> asset
 
     context     -> currentFile
     context     -> workspaceDir
     context     -> user
-
-    session     -> AYON_FOLDER_PATH
 
 Optional:
 
