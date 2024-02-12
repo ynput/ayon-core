@@ -946,7 +946,7 @@ DEFAULT_PUBLISH_VALUES = {
                             "single_frame_filter": "multi_frame"
                         },
                         "overscan_crop": "",
-                        "overscan_color": [0, 0, 0, 1.0],
+                        "overscan_color": [0, 0, 0],
                         "width": 0,
                         "height": 0,
                         "scale_pixel_aspect": True,
