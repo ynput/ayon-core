@@ -100,7 +100,7 @@ def set_render_format(ext, multilayer):
 
 
 def set_render_passes(settings, renderer):
-    aov_list = settings["blender"]["RenderSettings"]["aov_list"]
+    aov_list = set(settings["blender"]["RenderSettings"]["aov_list"])
     custom_passes = settings["blender"]["RenderSettings"]["custom_passes"]
 
     # Common passes for both renderers
@@ -173,7 +173,7 @@ def set_render_passes(settings, renderer):
             aov = vl.aovs[cp_name]
         aov.type = cp["value"]
 
-    return aov_list, custom_passes
+    return list(aov_list), custom_passes
 
 
 def _create_aov_slot(name, aov_sep, slots, rpass_name, multi_exr, output_path):
