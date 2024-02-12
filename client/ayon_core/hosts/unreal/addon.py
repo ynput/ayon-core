@@ -1,16 +1,13 @@
 import os
 import re
-from ayon_core.modules import IHostAddon, OpenPypeModule
+from ayon_core.addon import AYONAddon, IHostAddon
 
 UNREAL_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class UnrealAddon(OpenPypeModule, IHostAddon):
+class UnrealAddon(AYONAddon, IHostAddon):
     name = "unreal"
     host_name = "unreal"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def get_global_environments(self):
         return {

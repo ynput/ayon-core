@@ -1,12 +1,9 @@
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 
-class AfterEffectsAddon(OpenPypeModule, IHostAddon):
+class AfterEffectsAddon(AYONAddon, IHostAddon):
     name = "aftereffects"
     host_name = "aftereffects"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def add_implementation_envs(self, env, _app):
         """Modify environments to contain all required for implementation."""
