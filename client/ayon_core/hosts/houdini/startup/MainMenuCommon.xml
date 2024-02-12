@@ -113,7 +113,7 @@ host_tools.show_experimental_tools_dialog(parent)
         </scriptItem>
 
         <subMenu id="ayon_help">
-            <label>Help...</label>
+            <label>Help</label>
 
             <scriptItem id="ayon_artist_docs">
                 <label>Houdini Artist Docs</label>
@@ -126,7 +126,7 @@ host_tools.show_experimental_tools_dialog(parent)
             </scriptItem>
 
             <scriptItem id="community_forums">
-                <label>Community Forums</label>
+                <label>AYON Community Forum</label>
                 <scriptCode><![CDATA[__import__("webbrowser").open("https://community.ynput.io/")]]></scriptCode>
             </scriptItem>
 
