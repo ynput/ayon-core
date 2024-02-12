@@ -332,42 +332,44 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=ValidateExpectedFilesModel,
         title="Validate Expected Files"
     )
-    MayaSubmitDeadline: MayaSubmitDeadlineModel = SettingsField(
-        default_factory=MayaSubmitDeadlineModel,
-        title="Maya Submit to deadline")
-    MaxSubmitDeadline: MaxSubmitDeadlineModel = SettingsField(
-        default_factory=MaxSubmitDeadlineModel,
-        title="Max Submit to deadline")
-    HoudiniSubmitDeadline: HoudiniSubmitDeadlineModel = SettingsField(
-        default_factory=HoudiniSubmitDeadlineModel,
-        title="Houdini Submit render to deadline")
-    HoudiniCacheSubmitDeadline: HoudiniCacheSubmitDeadlineModel = SettingsField(
-        default_factory=HoudiniCacheSubmitDeadlineModel,
-        title="Houdini Submit cache to deadline")
-    FusionSubmitDeadline: FusionSubmitDeadlineModel = SettingsField(
-        default_factory=FusionSubmitDeadlineModel,
-        title="Fusion submit to Deadline")
-    NukeSubmitDeadline: NukeSubmitDeadlineModel = SettingsField(
-        default_factory=NukeSubmitDeadlineModel,
-        title="Nuke Submit to deadline")
-    HarmonySubmitDeadline: HarmonySubmitDeadlineModel = SettingsField(
-        default_factory=HarmonySubmitDeadlineModel,
-        title="Harmony Submit to deadline")
     AfterEffectsSubmitDeadline: AfterEffectsSubmitDeadlineModel = (
         SettingsField(
             default_factory=AfterEffectsSubmitDeadlineModel,
-            title="After Effects to deadline"
+            title="After Effects to deadline",
+            section="Hosts"
         )
     )
-    CelactionSubmitDeadline: CelactionSubmitDeadlineModel = SettingsField(
-        default_factory=CelactionSubmitDeadlineModel,
-        title="Celaction Submit Deadline")
     BlenderSubmitDeadline: BlenderSubmitDeadlineModel = SettingsField(
         default_factory=BlenderSubmitDeadlineModel,
         title="Blender Submit Deadline")
+    CelactionSubmitDeadline: CelactionSubmitDeadlineModel = SettingsField(
+        default_factory=CelactionSubmitDeadlineModel,
+        title="Celaction Submit Deadline")
+    FusionSubmitDeadline: FusionSubmitDeadlineModel = SettingsField(
+        default_factory=FusionSubmitDeadlineModel,
+        title="Fusion submit to Deadline")
+    HarmonySubmitDeadline: HarmonySubmitDeadlineModel = SettingsField(
+        default_factory=HarmonySubmitDeadlineModel,
+        title="Harmony Submit to deadline")
+    HoudiniCacheSubmitDeadline: HoudiniCacheSubmitDeadlineModel = SettingsField(
+        default_factory=HoudiniCacheSubmitDeadlineModel,
+        title="Houdini Submit cache to deadline")
+    HoudiniSubmitDeadline: HoudiniSubmitDeadlineModel = SettingsField(
+        default_factory=HoudiniSubmitDeadlineModel,
+        title="Houdini Submit render to deadline")
+    MaxSubmitDeadline: MaxSubmitDeadlineModel = SettingsField(
+        default_factory=MaxSubmitDeadlineModel,
+        title="Max Submit to deadline")
+    MayaSubmitDeadline: MayaSubmitDeadlineModel = SettingsField(
+        default_factory=MayaSubmitDeadlineModel,
+        title="Maya Submit to deadline")
+    NukeSubmitDeadline: NukeSubmitDeadlineModel = SettingsField(
+        default_factory=NukeSubmitDeadlineModel,
+        title="Nuke Submit to deadline")
     ProcessSubmittedCacheJobOnFarm: ProcessCacheJobFarmModel = SettingsField(
         default_factory=ProcessCacheJobFarmModel,
-        title="Process submitted cache Job on farm.")
+        title="Process submitted cache Job on farm.",
+            section="Publish Jobs")
     ProcessSubmittedJobOnFarm: ProcessSubmittedJobOnFarmModel = SettingsField(
         default_factory=ProcessSubmittedJobOnFarmModel,
         title="Process submitted job on farm.")
@@ -389,6 +391,84 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
             "deadline"
         ]
     },
+    "AfterEffectsSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "use_published": True,
+        "priority": 50,
+        "chunk_size": 10000,
+        "group": "",
+        "department": "",
+        "multiprocess": True
+    },
+    "BlenderSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "use_published": True,
+        "priority": 50,
+        "chunk_size": 10,
+        "group": "none",
+        "job_delay": "00:00:00:00"
+    },
+    "CelactionSubmitDeadline": {
+        "enabled": True,
+        "deadline_department": "",
+        "deadline_priority": 50,
+        "deadline_pool": "",
+        "deadline_pool_secondary": "",
+        "deadline_group": "",
+        "deadline_chunk_size": 10,
+        "deadline_job_delay": "00:00:00:00"
+    },
+    "FusionSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "priority": 50,
+        "chunk_size": 10,
+        "concurrent_tasks": 1,
+        "group": ""
+    },
+    "HarmonySubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "use_published": True,
+        "priority": 50,
+        "chunk_size": 10000,
+        "group": "",
+        "department": ""
+    },
+    "HoudiniCacheSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "priority": 50,
+        "chunk_size":999999,
+        "group": ""
+    },
+    "HoudiniSubmitDeadline":{
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "priority": 50,
+        "chunk_size":1,
+        "group": "",
+        "export_priority": 50,
+        "export_chunk_size":10,
+        "export_group": ""
+    },
+    "MaxSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "use_published": True,
+        "priority": 50,
+        "chunk_size": 10,
+        "group": "none"
+    },
     "MayaSubmitDeadline": {
         "enabled": True,
         "optional": False,
@@ -408,43 +488,6 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "pluginInfo": "",
         "scene_patches": []
     },
-    "MaxSubmitDeadline": {
-        "enabled": True,
-        "optional": False,
-        "active": True,
-        "use_published": True,
-        "priority": 50,
-        "chunk_size": 10,
-        "group": "none"
-    },
-    "HoudiniSubmitDeadline":{
-        "enabled": True,
-        "optional": False,
-        "active": True,
-        "priority": 50,
-        "chunk_size":1,
-        "group": "",
-        "export_priority": 50,
-        "export_chunk_size":10,
-        "export_group": ""
-    },
-    "HoudiniCacheSubmitDeadline": {
-        "enabled": True,
-        "optional": False,
-        "active": True,
-        "priority": 50,
-        "chunk_size":999999,
-        "group": ""
-    },
-    "FusionSubmitDeadline": {
-        "enabled": True,
-        "optional": False,
-        "active": True,
-        "priority": 50,
-        "chunk_size": 10,
-        "concurrent_tasks": 1,
-        "group": ""
-    },
     "NukeSubmitDeadline": {
         "enabled": True,
         "optional": False,
@@ -460,47 +503,6 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "env_allowed_keys": [],
         "env_search_replace_values": [],
         "limit_groups": []
-    },
-    "HarmonySubmitDeadline": {
-        "enabled": True,
-        "optional": False,
-        "active": True,
-        "use_published": True,
-        "priority": 50,
-        "chunk_size": 10000,
-        "group": "",
-        "department": ""
-    },
-    "AfterEffectsSubmitDeadline": {
-        "enabled": True,
-        "optional": False,
-        "active": True,
-        "use_published": True,
-        "priority": 50,
-        "chunk_size": 10000,
-        "group": "",
-        "department": "",
-        "multiprocess": True
-    },
-    "CelactionSubmitDeadline": {
-        "enabled": True,
-        "deadline_department": "",
-        "deadline_priority": 50,
-        "deadline_pool": "",
-        "deadline_pool_secondary": "",
-        "deadline_group": "",
-        "deadline_chunk_size": 10,
-        "deadline_job_delay": "00:00:00:00"
-    },
-    "BlenderSubmitDeadline": {
-        "enabled": True,
-        "optional": False,
-        "active": True,
-        "use_published": True,
-        "priority": 50,
-        "chunk_size": 10,
-        "group": "none",
-        "job_delay": "00:00:00:00"
     },
     "ProcessSubmittedCacheJobOnFarm": {
         "enabled": True,
