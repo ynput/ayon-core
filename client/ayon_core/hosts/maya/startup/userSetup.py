@@ -38,7 +38,7 @@ if explicit_plugins_loading["enabled"]:
 key = "AYON_OPEN_WORKFILE_POST_INITIALIZATION"
 if bool(int(os.environ.get(key, "0"))):
     def _log_and_open():
-        path = os.environ["AVALON_LAST_WORKFILE"]
+        path = os.environ["AYON_LAST_WORKFILE"]
         print("Opening \"{}\"".format(path))
         cmds.file(path, open=True, force=True)
     cmds.evalDeferred(
