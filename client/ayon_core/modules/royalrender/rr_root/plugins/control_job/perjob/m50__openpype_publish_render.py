@@ -182,12 +182,12 @@ print("running selector")
 selector = OpenPypeContextSelector()
 
 # try to set context from environment
-for key, env_keys in {
-    "project": ["AYON_PROJECT_NAME", "AVALON_PROJECT"],
-    "asset": ["AYON_FOLDER_PATH", "AVALON_ASSET"],
-    "task": ["AYON_TASK_NAME", "AVALON_TASK"],
-    # "app_name": ["AYON_APP_NAME", "AVALON_APP_NAME"]
-}:
+for key, env_keys in (
+    ("project", ["AYON_PROJECT_NAME", "AVALON_PROJECT"]),
+    ("asset", ["AYON_FOLDER_PATH", "AVALON_ASSET"]),
+    ("task", ["AYON_TASK_NAME", "AVALON_TASK"]),
+    # ("app_name", ["AYON_APP_NAME", "AVALON_APP_NAME"])
+):
     value = ""
     for env_key in env_keys:
         value = os.getenv(env_key)
