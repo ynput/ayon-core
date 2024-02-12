@@ -321,7 +321,10 @@ def render_rop(ropnode):
     try:
         ropnode.render(verbose=verbose,
                        # Allow Deadline to capture completion percentage
-                       output_progress=verbose)
+                       output_progress=verbose,
+                       # Render only this node
+                       # (do not render any of its dependencies)
+                       ignore_inputs=True)
     except hou.Error as exc:
         # The hou.Error is not inherited from a Python Exception class,
         # so we explicitly capture the houdini error, otherwise pyblish
@@ -977,36 +980,51 @@ def publisher_show_and_publish(comment=None):
     publisher_window.show_and_publish(comment)
 
 
-def find_rop_input_dependencies(input_tuple):
-    """Self publish from ROP nodes.
+def find_rop_inputs_chain(node):
+    """Find rop inputs chain.
+
+    This function retrieves input nodes and their inputs recursively
+    in the correct execution order as if we were calling
+    rop.inputDependencies() method.
+
+    This function works in different contexts not only ROPs.
+
+    FYI, rop.inputDependencies() failed with
+    - HDA instance (because it has no inputDependencies)
+    - Karma instance (because it's a subnetwork, the method returns its )
 
     Arguments:
-        tuple (hou.RopNode.inputDependencies) which can be a nested tuples
-        represents the input dependencies of the ROP node, consisting of ROPs,
-        and the frames that need to be be rendered prior to rendering the ROP.
+        node (hou.Node) The node at which the find function starts.
 
     Returns:
-        list of the RopNode.path() that can be found inside
-        the input tuple.
+        list[hou.Node]: sorted list of all input nodes following
+            the dependency graph execution order.
+
+    TODO:
+        Take 'Fetch nodes' and 'Switch nodes' into consideration.
+        Better Filter as using lists for faster lookups.
+
     """
 
-    out_list = []
-    if isinstance(input_tuple[0], hou.RopNode):
-        return input_tuple[0].path()
+    all_input_nodes = []
+    input_nodes = node.inputs()
+    for input_node in input_nodes:
+        nodes = find_rop_inputs_chain(input_node)
+        # Filter existed nodes while keeping the order
+        # It's a solution for cyclic dependencies
+        nodes = [n for n in nodes if n not in all_input_nodes]
+        all_input_nodes += nodes
+        all_input_nodes.append(input_node)
 
-    if isinstance(input_tuple[0], tuple):
-        for item in input_tuple:
-            out_list.append(find_rop_input_dependencies(item))
-
-    return out_list
+    return all_input_nodes
 
 
 def self_publish():
     """Self publish from ROP nodes.
 
-    Firstly, it gets the node and its dependencies.
+    Firstly, it gets the node and its input nodes chain.
     Then, it deactivates all other ROPs
-    And finaly, it triggers the publishing action.
+    And finally, it triggers the publishing action.
     """
 
     result, comment = hou.ui.readInput(
@@ -1020,17 +1038,17 @@ def self_publish():
         return
 
     current_node = hou.node(".")
-    inputs_paths = find_rop_input_dependencies(
-        current_node.inputDependencies()
-    )
-    inputs_paths.append(current_node.path())
+    all_input_nodes = find_rop_inputs_chain(current_node)
+    all_input_nodes.append(current_node)
+
+    all_input_nodes = [n.path() for n in all_input_nodes]
 
     host = registered_host()
     context = CreateContext(host, reset=True)
 
     for instance in context.instances:
         node_path = instance.data.get("instance_node")
-        instance["active"] = node_path and node_path in inputs_paths
+        instance["active"] = node_path and node_path in all_input_nodes
 
     context.save_changes()
 
