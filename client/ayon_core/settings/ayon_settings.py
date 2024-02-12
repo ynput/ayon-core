@@ -82,6 +82,20 @@ def _convert_general(ayon_settings, output, default_settings):
     }
 
 
+def _convert_kitsu_system_settings(
+    ayon_settings, output, addon_versions, default_settings
+):
+    if "kitsu" in ayon_settings:
+        output["kitsu"] = ayon_settings["kitsu"]
+
+    enabled = addon_versions.get("kitsu") is not None
+    kitsu_settings = default_settings["modules"]["kitsu"]
+    kitsu_settings["enabled"] = enabled
+    if enabled:
+        kitsu_settings["server"] = ayon_settings["kitsu"]["server"]
+    output["modules"]["kitsu"] = kitsu_settings
+
+
 def _convert_timers_manager_system_settings(
     ayon_settings, output, addon_versions, default_settings
 ):
