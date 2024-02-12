@@ -104,10 +104,10 @@ class MayaSubmitRemotePublishDeadline(
             if key in os.environ
         }
 
-        environment["AVALON_PROJECT"] = project_name
-        environment["AVALON_ASSET"] = instance.context.data["asset"]
-        environment["AVALON_TASK"] = instance.context.data["task"]
-        environment["AVALON_APP_NAME"] = os.environ.get("AVALON_APP_NAME")
+        environment["AYON_PROJECT_NAME"] = project_name
+        environment["AYON_FOLDER_PATH"] = instance.context.data["asset"]
+        environment["AYON_TASK_NAME"] = instance.context.data["task"]
+        environment["AYON_APP_NAME"] = os.environ.get("AYON_APP_NAME")
         environment["OPENPYPE_PUBLISH_SUBSET"] = instance.data["subset"]
         environment["AYON_LOG_NO_COLORS"] = "1"
         environment["AYON_USERNAME"] = instance.context.data["user"]

@@ -60,7 +60,7 @@ def start_rendering():
             inst_data.append(data)
 
     try:
-        project = os.environ.get("AVALON_PROJECT")
+        project = os.environ.get("AYON_PROJECT_NAME")
         anatomy = Anatomy(project)
         root = anatomy.roots['renders']
     except Exception as e:

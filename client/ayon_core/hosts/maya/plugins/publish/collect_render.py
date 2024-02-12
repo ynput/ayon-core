@@ -13,7 +13,7 @@ Requires:
     context     -> workspaceDir
     context     -> user
 
-    session     -> AVALON_ASSET
+    session     -> AYON_FOLDER_PATH
 
 Optional:
 

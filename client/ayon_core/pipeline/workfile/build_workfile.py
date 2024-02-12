@@ -229,8 +229,8 @@ class BuildWorkfile:
     def get_build_presets(self, task_name, asset_doc):
         """ Returns presets to build workfile for task name.
 
-        Presets are loaded for current project set in
-        io.Session["AVALON_PROJECT"], filtered by registered host
+        Presets are loaded for current project received by
+        'get_current_project_name', filtered by registered host
         and entered task name.
 
         Args:

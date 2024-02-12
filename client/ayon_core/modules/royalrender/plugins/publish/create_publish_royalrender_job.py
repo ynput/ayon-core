@@ -63,7 +63,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
         "FTRACK_API_USER",
         "FTRACK_API_KEY",
         "FTRACK_SERVER",
-        "AVALON_APP_NAME",
+        "AYON_APP_NAME",
         "AYON_USERNAME",
         "OPENPYPE_SG_USER",
     ]
@@ -179,9 +179,9 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
         anatomy_data = instance.context.data["anatomyData"]
 
         environment = RREnvList({
-            "AVALON_PROJECT": anatomy_data["project"]["name"],
-            "AVALON_ASSET": instance.context.data["asset"],
-            "AVALON_TASK": anatomy_data["task"]["name"],
+            "AYON_PROJECT_NAME": anatomy_data["project"]["name"],
+            "AYON_FOLDER_PATH": instance.context.data["asset"],
+            "AYON_TASK_NAME": anatomy_data["task"]["name"],
             "AYON_USERNAME": anatomy_data["user"]
         })
 
