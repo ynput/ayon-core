@@ -1513,11 +1513,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
         Returns:
             list: Containg all output definitions matching entered families.
         """
+        filtered_outputs = {}
         outputs = profile.get("outputs")
         if not outputs:
-            return []
+            return filtered_outputs
 
-        filtered_outputs = {}
         for output_def in outputs:
             filename_suffix = output_def["name"]
             output_filters = output_def.get("filter")
