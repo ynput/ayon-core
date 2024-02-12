@@ -1,16 +1,13 @@
 import os
 import platform
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 NUKE_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class NukeAddon(OpenPypeModule, IHostAddon):
+class NukeAddon(AYONAddon, IHostAddon):
     name = "nuke"
     host_name = "nuke"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def add_implementation_envs(self, env, _app):
         # Add requirements to NUKE_PATH

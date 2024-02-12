@@ -12,7 +12,7 @@ from qtpy import QtWidgets, QtCore
 import qtawesome
 import appdirs
 
-from ayon_core.lib import JSONSettingRegistry
+from ayon_core.lib import JSONSettingRegistry, is_running_from_build
 from ayon_core.pipeline import install_host
 from ayon_core.hosts.traypublisher.api import TrayPublisherHost
 from ayon_core.tools.publisher.control_qt import QtPublisherController
@@ -35,7 +35,7 @@ class TrayPublisherController(QtPublisherController):
 
 
 class TrayPublisherRegistry(JSONSettingRegistry):
-    """Class handling OpenPype general settings registry.
+    """Class handling AYON general settings registry.
 
     Attributes:
         vendor (str): Name used for path construction.
@@ -265,7 +265,7 @@ def main():
 
     app_instance = get_ayon_qt_app()
 
-    if platform.system().lower() == "windows":
+    if not is_running_from_build() and platform.system().lower() == "windows":
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
             u"traypublisher"

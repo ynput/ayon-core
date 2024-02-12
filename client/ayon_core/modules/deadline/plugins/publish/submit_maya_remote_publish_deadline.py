@@ -2,7 +2,7 @@ import os
 import attr
 from datetime import datetime
 
-from ayon_core.pipeline import legacy_io, PublishXmlValidationError
+from ayon_core.pipeline import PublishXmlValidationError
 from ayon_core.tests.lib import is_in_tests
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
@@ -98,10 +98,12 @@ class MayaSubmitRemotePublishDeadline(
             "FTRACK_SERVER"
         ]
 
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **legacy_io.Session)
+        environment = {
+            key: os.environ[key]
+            for key in keys
+            if key in os.environ
+        }
 
-        # TODO replace legacy_io with context.data
         environment["AVALON_PROJECT"] = project_name
         environment["AVALON_ASSET"] = instance.context.data["asset"]
         environment["AVALON_TASK"] = instance.context.data["task"]
