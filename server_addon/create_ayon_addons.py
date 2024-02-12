@@ -38,14 +38,7 @@ IGNORED_HOSTS = [
     "harmony",
 ]
 
-IGNORED_MODULES = [
-    "ftrack",
-    "shotgrid",
-    "sync_server",
-    "example_addons",
-    "slack",
-    "kitsu",
-]
+IGNORED_MODULES = []
 
 
 class ZipFileLongPaths(zipfile.ZipFile):
@@ -183,66 +176,6 @@ def create_addon_zip(
         shutil.rmtree(str(output_dir / addon_name))
 
 
-def create_openpype_package(
-    addon_dir: Path,
-    output_dir: Path,
-    root_dir: Path,
-    create_zip: bool,
-    keep_source: bool
-):
-    server_dir = addon_dir / "server"
-    pyproject_path = addon_dir / "client" / "pyproject.toml"
-
-    openpype_dir = root_dir / "openpype"
-    version_path = openpype_dir / "version.py"
-    addon_version = read_addon_version(version_path)
-
-    addon_output_dir = output_dir / "openpype" / addon_version
-    private_dir = addon_output_dir / "private"
-    if addon_output_dir.exists():
-        shutil.rmtree(str(addon_output_dir))
-
-    # Make sure dir exists
-    addon_output_dir.mkdir(parents=True, exist_ok=True)
-    private_dir.mkdir(parents=True, exist_ok=True)
-
-    # Copy version
-    shutil.copy(str(version_path), str(addon_output_dir))
-    for subitem in server_dir.iterdir():
-        shutil.copy(str(subitem), str(addon_output_dir / subitem.name))
-
-    # Copy pyproject.toml
-    shutil.copy(
-        str(pyproject_path),
-        (private_dir / pyproject_path.name)
-    )
-    # Subdirs that won't be added to output zip file
-    ignored_subpaths = [
-        ["addons"],
-        ["vendor", "common", "ayon_api"],
-    ]
-    ignored_subpaths.extend(
-        ["hosts", host_name]
-        for host_name in IGNORED_HOSTS
-    )
-    ignored_subpaths.extend(
-        ["modules", module_name]
-        for module_name in IGNORED_MODULES
-    )
-
-    # Zip client
-    zip_filepath = private_dir / "client.zip"
-    with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
-        # Add client code content to zip
-        for path, sub_path in find_files_in_subdir(
-            str(openpype_dir), ignore_subdirs=ignored_subpaths
-        ):
-            zipf.write(path, f"{openpype_dir.name}/{sub_path}")
-
-    if create_zip:
-        create_addon_zip(output_dir, "openpype", addon_version, keep_source)
-
-
 def create_addon_package(
     addon_dir: Path,
     output_dir: Path,
@@ -316,15 +249,9 @@ def main(
         if not server_dir.exists():
             continue
 
-        if addon_dir.name == "openpype":
-            create_openpype_package(
-                addon_dir, output_dir, root_dir, create_zip, keep_source
-            )
-
-        else:
-            create_addon_package(
-                addon_dir, output_dir, create_zip, keep_source
-            )
+        create_addon_package(
+            addon_dir, output_dir, create_zip, keep_source
+        )
 
         print(f"- package '{addon_dir.name}' created")
     print(f"Package creation finished. Output directory: {output_dir}")
