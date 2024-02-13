@@ -600,33 +600,6 @@ def _convert_kitsu_project_settings(ayon_settings, output):
     output["kitsu"] = ayon_kitsu_settings
 
 
-def _convert_shotgrid_project_settings(ayon_settings, output):
-    if "shotgrid" not in ayon_settings:
-        return
-
-    ayon_shotgrid = ayon_settings["shotgrid"]
-    # This means that a different variant of addon is used
-    if "leecher_backend_url" not in ayon_shotgrid:
-        return
-
-    for key in {
-        "leecher_backend_url",
-        "filter_projects_by_login",
-        "shotgrid_settings",
-        "leecher_manager_url",
-    }:
-        ayon_shotgrid.pop(key)
-
-    asset_field = ayon_shotgrid["fields"]["asset"]
-    asset_field["type"] = asset_field.pop("asset_type")
-
-    task_field = ayon_shotgrid["fields"]["task"]
-    if "task" in task_field:
-        task_field["step"] = task_field.pop("task")
-
-    output["shotgrid"] = ayon_settings["shotgrid"]
-
-
 def _convert_slack_project_settings(ayon_settings, output):
     if "slack" not in ayon_settings:
         return
@@ -848,7 +821,6 @@ def convert_project_settings(ayon_settings, default_settings):
 
     _convert_royalrender_project_settings(ayon_settings, output)
     _convert_kitsu_project_settings(ayon_settings, output)
-    _convert_shotgrid_project_settings(ayon_settings, output)
     _convert_slack_project_settings(ayon_settings, output)
 
     _convert_global_project_settings(ayon_settings, output, default_settings)
