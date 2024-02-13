@@ -837,13 +837,13 @@ def get_imageio_config(
 
     if override_global_config:
         config_data = _get_config_data(
-            host_ocio_config["ocio_config"], formatting_data, env
+            host_ocio_config["filepath"], formatting_data, env
         )
     else:
         # get config path from global
         config_global = imageio_global["ocio_config"]
         config_data = _get_config_data(
-            config_global["ocio_config"], formatting_data, env
+            config_global["filepath"], formatting_data, env
         )
 
     if not config_data:
