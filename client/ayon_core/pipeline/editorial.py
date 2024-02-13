@@ -281,3 +281,32 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
         returning_dict.update(version_data)
 
     return returning_dict
+
+
+def create_clip(path, name, frames, framerate):
+    range = otio.opentime.TimeRange(
+        start_time=otio.opentime.RationalTime(0, framerate),
+        duration=otio.opentime.RationalTime(frames, framerate)
+    )
+
+    media_reference = otio.schema.ExternalReference(
+        available_range=range,
+        target_url=f"file://{path}"
+    )
+
+    return otio.schema.Clip(
+        name=name,
+        media_reference=media_reference,
+        source_range=range
+    )
+
+
+def export_otio(clips_data, output_path):
+    clips = []
+    for name, data in clips_data.items():
+        clips.append(
+            create_clip(data["path"], name, data["frames"], data["framerate"])
+        )
+
+    timeline = otio.schema.timeline_from_clips(clips)
+    otio.adapters.write_to_file(timeline, output_path)
