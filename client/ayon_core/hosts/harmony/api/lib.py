@@ -189,14 +189,14 @@ def launch(application_path, *args):
     install_host(harmony)
 
     ProcessContext.port = random.randrange(49152, 65535)
-    os.environ["AVALON_HARMONY_PORT"] = str(ProcessContext.port)
+    os.environ["AYON_HARMONY_PORT"] = str(ProcessContext.port)
     ProcessContext.application_path = application_path
 
     # Launch Harmony.
     setup_startup_scripts()
     check_libs()
 
-    if not os.environ.get("AVALON_HARMONY_WORKFILES_ON_LAUNCH", False):
+    if not os.environ.get("AYON_HARMONY_WORKFILES_ON_LAUNCH", False):
         open_empty_workfile()
         return
 

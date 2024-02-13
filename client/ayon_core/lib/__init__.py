@@ -158,6 +158,7 @@ from .ayon_info import (
     is_running_from_build,
     is_staging_enabled,
     is_dev_mode_enabled,
+    is_in_tests,
 )
 
 
@@ -229,6 +230,8 @@ __all__ = [
 
     "IniSettingRegistry",
     "JSONSettingRegistry",
+    "AYONSecureRegistry",
+    "AYONSettingsRegistry",
     "OpenPypeSecureRegistry",
     "OpenPypeSettingsRegistry",
     "get_local_site_id",
@@ -271,6 +274,7 @@ __all__ = [
     "terminal",
 
     "get_datetime_data",
+    "get_timestamp",
     "get_formatted_current_time",
 
     "Logger",
@@ -278,6 +282,7 @@ __all__ = [
     "is_running_from_build",
     "is_staging_enabled",
     "is_dev_mode_enabled",
+    "is_in_tests",
 
     "requests_get",
     "requests_post"

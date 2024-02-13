@@ -1,4 +1,5 @@
 import os
+import json
 
 from maya import cmds
 
@@ -21,7 +22,7 @@ class ExtractCameraAlembic(publish.Extractor,
     label = "Extract Camera (Alembic)"
     hosts = ["maya"]
     families = ["camera", "matchmove"]
-    bake_attributes = []
+    bake_attributes = "[]"
 
     def process(self, instance):
 
@@ -95,11 +96,12 @@ class ExtractCameraAlembic(publish.Extractor,
 
             job_str += ' -file "{0}"'.format(path)
 
+            bake_attributes = json.loads(self.bake_attributes)
             # bake specified attributes in preset
-            assert isinstance(self.bake_attributes, (list, tuple)), (
+            assert isinstance(bake_attributes, list), (
                 "Attributes to bake must be specified as a list"
             )
-            for attr in self.bake_attributes:
+            for attr in bake_attributes:
                 self.log.debug("Adding {} attribute".format(attr))
                 job_str += " -attr {0}".format(attr)
 
