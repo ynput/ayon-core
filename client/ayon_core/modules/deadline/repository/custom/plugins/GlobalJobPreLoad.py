@@ -476,7 +476,7 @@ def inject_ayon_environment(deadlinePlugin):
         # Support backwards compatible keys
         for key, env_keys in (
             ("project", ["AYON_PROJECT_NAME", "AVALON_PROJECT"]),
-            ("asset", ["AYON_FOLDER_PATH", "AVALON_ASSET"],
+            ("asset", ["AYON_FOLDER_PATH", "AVALON_ASSET"]),
             ("task", ["AYON_TASK_NAME", "AVALON_TASK"]),
             ("app", ["AYON_APP_NAME", "AVALON_APP_NAME"]),
         ):
