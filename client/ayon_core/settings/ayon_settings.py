@@ -82,20 +82,6 @@ def _convert_general(ayon_settings, output, default_settings):
     }
 
 
-def _convert_kitsu_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    if "kitsu" in ayon_settings:
-        output["kitsu"] = ayon_settings["kitsu"]
-
-    enabled = addon_versions.get("kitsu") is not None
-    kitsu_settings = default_settings["modules"]["kitsu"]
-    kitsu_settings["enabled"] = enabled
-    if enabled:
-        kitsu_settings["server"] = ayon_settings["kitsu"]["server"]
-    output["modules"]["kitsu"] = kitsu_settings
-
-
 def _convert_timers_manager_system_settings(
     ayon_settings, output, addon_versions, default_settings
 ):
@@ -166,7 +152,6 @@ def _convert_modules_system(
     # TODO add all modules
     # TODO add 'enabled' values
     for func in (
-        _convert_kitsu_system_settings,
         _convert_timers_manager_system_settings,
         _convert_clockify_system_settings,
         _convert_deadline_system_settings,
@@ -575,22 +560,6 @@ def _convert_royalrender_project_settings(ayon_settings, output):
     }
 
 
-def _convert_kitsu_project_settings(ayon_settings, output):
-    if "kitsu" not in ayon_settings:
-        return
-
-    ayon_kitsu_settings = ayon_settings["kitsu"]
-    ayon_kitsu_settings.pop("server")
-
-    integrate_note = ayon_kitsu_settings["publish"]["IntegrateKitsuNote"]
-    status_change_conditions = integrate_note["status_change_conditions"]
-    if "product_type_requirements" in status_change_conditions:
-        status_change_conditions["family_requirements"] = (
-            status_change_conditions.pop("product_type_requirements"))
-
-    output["kitsu"] = ayon_kitsu_settings
-
-
 def _convert_slack_project_settings(ayon_settings, output):
     if "slack" not in ayon_settings:
         return
@@ -811,7 +780,6 @@ def convert_project_settings(ayon_settings, default_settings):
     _convert_webpublisher_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
-    _convert_kitsu_project_settings(ayon_settings, output)
     _convert_slack_project_settings(ayon_settings, output)
 
     _convert_global_project_settings(ayon_settings, output, default_settings)
