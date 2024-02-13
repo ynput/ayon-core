@@ -98,19 +98,17 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         all_representation_names = sorted(set(x["name"] for x in repre_docs))
 
         input_layout.addWidget(QtWidgets.QLabel("Representations:"), 0, 0)
-        toggle_all_checkboxes = {}
         for count, name in enumerate(all_representation_names):
-            checkbox = QtWidgets.QCheckBox(name)
+            widget = QtWidgets.QPushButton(name)
             input_layout.addWidget(
-                checkbox,
+                widget,
                 0,
                 count + 1,
                 alignment=QtCore.Qt.AlignCenter
             )
-            toggle_all_checkboxes[name] = checkbox
-            checkbox.stateChanged.connect(self.toggle_all)
+            widget.clicked.connect(self.toggle_all)
 
-        self._representation_checkboxes = defaultdict(list)
+        self._representation_widgets = defaultdict(list)
         row = 1
         items = representations_by_version_id.items()
         for version_id, representations in items:
@@ -118,22 +116,26 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             input_layout.addWidget(QtWidgets.QLabel(version_path), row, 0)
 
             representations_by_name = {x["name"]: x for x in representations}
+            group_box = QtWidgets.QGroupBox()
+            layout = QtWidgets.QHBoxLayout()
+            group_box.setLayout(layout)
             for count, name in enumerate(all_representation_names):
-                checkbox = QtWidgets.QCheckBox()
-                checkbox.setChecked(False)
                 if name in representations_by_name.keys():
-                    self._representation_checkboxes[name].append(
+                    widget = QtWidgets.QRadioButton()
+                    self._representation_widgets[name].append(
                         {
-                            "checkbox": checkbox,
+                            "widget": widget,
                             "representation": representations_by_name[name]
                         }
                     )
                 else:
-                    checkbox.setEnabled(False)
+                    widget = QtWidgets.QLabel("x")
 
-                input_layout.addWidget(
-                    checkbox, row, count + 1, alignment=QtCore.Qt.AlignCenter
-                )
+                layout.addWidget(widget)
+
+            input_layout.addWidget(
+                group_box, row, 1, 1, len(all_representation_names)
+            )
 
             row += 1
 
@@ -161,25 +163,26 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         self.btn_export.clicked.connect(self.export)
 
-    def toggle_all(self, state):
+    def toggle_all(self):
         representation_name = self.sender().text()
-        state = self.sender().checkState()
-        for item in self._representation_checkboxes[representation_name]:
-            item["checkbox"].setCheckState(state)
+        for item in self._representation_widgets[representation_name]:
+            item["widget"].setChecked(True)
 
     def export(self):
         representations = []
-        for name, items in self._representation_checkboxes.items():
+        for name, items in self._representation_widgets.items():
             for item in items:
-                check_state = item["checkbox"].checkState()
-                if check_state == QtCore.Qt.CheckState.Checked:
+                if item["widget"].isChecked():
                     representations.append(item["representation"])
 
         anatomy = Anatomy(self._project_name)
         clips_data = {}
         for representation in representations:
             version = self._version_by_representation_id[representation["_id"]]
-            name = self._version_path_by_id[version["_id"]]
+            name = "{}/{}".format(
+                self._version_path_by_id[version["_id"]],
+                representation["name"]
+            )
             clips_data[name] = {
                 "path": get_representation_path_with_anatomy(
                     representation, anatomy
