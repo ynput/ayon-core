@@ -560,15 +560,6 @@ def _convert_webpublisher_project_settings(ayon_settings, output):
 
     ayon_webpublisher = ayon_settings["webpublisher"]
     _convert_host_imageio(ayon_webpublisher)
-
-    ayon_publish = ayon_webpublisher["publish"]
-
-    ayon_collect_files = ayon_publish["CollectPublishedFiles"]
-    ayon_collect_files["task_type_to_family"] = {
-        item["name"]: item["value"]
-        for item in ayon_collect_files["task_type_to_family"]
-    }
-
     output["webpublisher"] = ayon_webpublisher
 
 
