@@ -35,14 +35,14 @@ from ayon_core.lib import (
     BoolDef,
     NumberDef,
     TextDef,
-    EnumDef
+    EnumDef,
+    is_in_tests,
 )
 from ayon_core.hosts.maya.api.lib_rendersettings import RenderSettings
 from ayon_core.hosts.maya.api.lib import get_attr_in_layer
 
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
-from ayon_core.tests.lib import is_in_tests
 from ayon_core.pipeline.farm.tools import iter_expected_files
 
 
