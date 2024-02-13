@@ -265,7 +265,7 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
         # load validation definitions from settings
         settings_lights_flag = instance.context.data["project_settings"].get(
             "maya", {}).get(
-            "RenderSettings", {}).get(
+            "render_settings", {}).get(
             "enable_all_lights", False)
 
         instance_lights_flag = instance.data.get("renderSetupIncludeLights")
@@ -281,6 +281,8 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
         # if so, compare its value from the one required.
         for data in cls.get_nodes(instance, renderer):
             for node in data["nodes"]:
+                # Why is captured 'PublishValidationError'? How it can be
+                #   raised by 'cmds.getAttr(...)'?
                 try:
                     render_value = cmds.getAttr(
                         "{}.{}".format(node, data["attribute"])
@@ -310,11 +312,16 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
     @classmethod
     def get_nodes(cls, instance, renderer):
         maya_settings = instance.context.data["project_settings"]["maya"]
+        renderer_key = "{}_render_attributes".format(renderer)
         validation_settings = (
             maya_settings["publish"]["ValidateRenderSettings"].get(
-                "{}_render_attributes".format(renderer)
-            ) or []
-        )
+                renderer_key
+            )
+        ) or []
+        validation_settings = [
+            (item["type"], item["value"])
+            for item in validation_settings
+        ]
         result = []
         for attr, values in OrderedDict(validation_settings).items():
             values = [convert_to_int_or_float(v) for v in values if v]
