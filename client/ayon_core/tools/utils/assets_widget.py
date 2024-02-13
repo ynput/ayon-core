@@ -65,6 +65,20 @@ def _get_asset_icon_name(asset_doc, has_children=True):
 
 
 def get_asset_icon(asset_doc, has_children=False):
+    """Get asset icon.
+
+    Deprecated:
+        This function will be removed in future releases. Use on your own
+            risk.
+
+    Args:
+        asset_doc (dict): Asset document.
+        has_children (Optional[bool]): Asset has children assets.
+
+    Returns:
+        QIcon: Asset icon.
+
+    """
     icon_name = _get_asset_icon_name(asset_doc, has_children)
     icon_color = _get_asset_icon_color(asset_doc)
 
