@@ -9,7 +9,8 @@ from ayon_core.client import (
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
-from ayon_core.lib import run_subprocess
+from ayon_core.lib import run_detached_process
+from ayon_core.tools.utils import show_message_dialog
 
 
 class ExportOTIO(load.SubsetLoaderPlugin):
@@ -144,7 +145,8 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(widget)
-        layout.addWidget(QtWidgets.QLabel("Output Path:"))
+        self.button_output_path = QtWidgets.QPushButton("Output Path:")
+        layout.addWidget(self.button_output_path)
         self.lineedit_output_path = QtWidgets.QLineEdit()
         layout.addWidget(self.lineedit_output_path)
         export_layout.addWidget(widget)
@@ -154,21 +156,59 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         )
         export_layout.addWidget(self.checkbox_inspect_otio_view)
 
-        self.btn_export = QtWidgets.QPushButton("Export")
-        export_layout.addWidget(self.btn_export)
+        self.button_export = QtWidgets.QPushButton("Export")
+        export_layout.addWidget(self.button_export)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(input_widget)
         layout.addWidget(export_widget)
 
-        self.btn_export.clicked.connect(self.export)
+        self.button_export.clicked.connect(self.export)
+        self.button_output_path.clicked.connect(self.set_output_path)
 
     def toggle_all(self):
         representation_name = self.sender().text()
         for item in self._representation_widgets[representation_name]:
             item["widget"].setChecked(True)
 
+    def set_output_path(self):
+        file_dialog = QtWidgets.QFileDialog()
+        file_dialog.setNameFilter("OTIO Files (*.otio)")
+        file_dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
+        if file_dialog.exec_():
+            selected_files = file_dialog.selectedFiles()
+            output_path = selected_files[0] if selected_files else None
+            if output_path:
+                self.lineedit_output_path.setText(output_path)
+
     def export(self):
+        output_path = self.lineedit_output_path.text()
+
+        # Validate output path is not empty.
+        if not output_path:
+            show_message_dialog(
+                "Missing output path",
+                (
+                    "Output path is empty. Please enter a path to export the "
+                    "OTIO file to."
+                ),
+                level="critical",
+                parent=self
+            )
+            return
+
+        # Validate output path ends with .otio.
+        if not output_path.endswith(".otio"):
+            show_message_dialog(
+                "Wrong extension.",
+                (
+                    "Output path needs to end with .otio."
+                ),
+                level="critical",
+                parent=self
+            )
+            return
+
         representations = []
         for name, items in self._representation_widgets.items():
             for item in items:
@@ -194,12 +234,21 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
                 "framerate": version["data"]["fps"]
             }
 
-        output_path = self.lineedit_output_path.text()
         self.export_otio(clips_data, output_path)
 
         check_state = self.checkbox_inspect_otio_view.checkState()
         if check_state == QtCore.Qt.CheckState.Checked:
-            run_subprocess(["otioview", output_path])
+            run_detached_process(["otioview", output_path])
+
+        # Feedback about success.
+        show_message_dialog(
+            "Success!",
+            "Export was successfull.",
+            level="info",
+            parent=self
+        )
+
+        self.close()
 
     def create_clip(self, path, name, frames, framerate):
         range = self.otio.opentime.TimeRange(
