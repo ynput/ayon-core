@@ -7,11 +7,11 @@ import pyblish.api
 from ayon_core.lib import (
     TextDef,
     NumberDef,
+    is_in_tests,
 )
 from ayon_core.pipeline import (
     AYONPyblishPluginMixin
 )
-from ayon_core.tests.lib import is_in_tests
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 
