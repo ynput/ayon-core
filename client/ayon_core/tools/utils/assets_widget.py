@@ -10,6 +10,7 @@ from ayon_core.client import (
 )
 from ayon_core.style import (
     get_default_tools_icon_color,
+    get_default_entity_icon_color,
 )
 from ayon_core.tools.flickcharm import FlickCharm
 
@@ -21,7 +22,7 @@ from .widgets import PlaceholderLineEdit
 from .models import RecursiveSortFilterProxyModel
 from .lib import (
     DynamicQThread,
-    get_asset_icon
+    get_qta_icon_by_name_and_color
 )
 
 ASSET_ID_ROLE = QtCore.Qt.UserRole + 1
@@ -29,6 +30,62 @@ ASSET_NAME_ROLE = QtCore.Qt.UserRole + 2
 ASSET_LABEL_ROLE = QtCore.Qt.UserRole + 3
 ASSET_UNDERLINE_COLORS_ROLE = QtCore.Qt.UserRole + 4
 ASSET_PATH_ROLE = QtCore.Qt.UserRole + 5
+
+
+def get_default_asset_icon_name(has_children):
+    if has_children:
+        return "fa.folder"
+    return "fa.folder-o"
+
+
+def get_asset_icon_color_from_doc(asset_doc):
+    if asset_doc:
+        return asset_doc["data"].get("color")
+    return None
+
+
+def get_asset_icon_name_from_doc(asset_doc):
+    if asset_doc:
+        return asset_doc["data"].get("icon")
+    return None
+
+
+def get_asset_icon_color(asset_doc):
+    icon_color = get_asset_icon_color_from_doc(asset_doc)
+    if icon_color:
+        return icon_color
+    return get_default_entity_icon_color()
+
+
+def get_asset_icon_by_name(icon_name, icon_color, has_children=False):
+    if not icon_name:
+        icon_name = get_default_asset_icon_name(has_children)
+
+    if icon_color:
+        icon_color = QtGui.QColor(icon_color)
+    else:
+        icon_color = get_default_entity_icon_color()
+    icon = get_qta_icon_by_name_and_color(icon_name, icon_color)
+    if icon is not None:
+        return icon
+    return get_qta_icon_by_name_and_color(
+        get_default_asset_icon_name(has_children),
+        icon_color
+    )
+
+
+def get_asset_icon_name(asset_doc, has_children=True):
+    icon_name = get_asset_icon_name_from_doc(asset_doc)
+    if icon_name:
+        return icon_name
+    return get_default_asset_icon_name(has_children)
+
+
+def get_asset_icon(asset_doc, has_children=False):
+    icon_name = get_asset_icon_name(asset_doc, has_children)
+    icon_color = get_asset_icon_color(asset_doc)
+
+    return get_qta_icon_by_name_and_color(icon_name, icon_color)
 
 
 class _AssetsView(TreeViewSpinner, DeselectableTreeView):
