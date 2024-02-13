@@ -7,10 +7,10 @@ from datetime import datetime
 from ayon_core.lib import (
     env_value_to_bool,
     collect_frames,
+    is_in_tests,
 )
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
-from ayon_core.tests.lib import is_in_tests
 
 
 @attr.s
