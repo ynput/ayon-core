@@ -349,7 +349,7 @@ function start() {
     /** hostname or ip of server - should be localhost */
     var host = '127.0.0.1';
     /** port of the server */
-    var port = parseInt(System.getenv('AVALON_HARMONY_PORT'));
+    var port = parseInt(System.getenv('AYON_HARMONY_PORT'));
 
     // Attach the client to the QApplication to preserve.
     var app = QCoreApplication.instance();
