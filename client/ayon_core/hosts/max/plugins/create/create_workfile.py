@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
-from ayon_core import AYON_SERVER_ENABLED
 from ayon_core.pipeline import CreatedInstance, AutoCreator
 from ayon_core.client import get_asset_by_name, get_asset_name_identifier
 from ayon_core.hosts.max.api import plugin
@@ -31,10 +30,8 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
 
         if current_instance is None:
             current_instance_asset = None
-        elif AYON_SERVER_ENABLED:
-            current_instance_asset = current_instance["folderPath"]
-        else:
-            current_instance_asset = current_instance["asset"]
+
+        current_instance_asset = current_instance["folderPath"]
 
         if current_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
@@ -45,10 +42,8 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
                 "task": task_name,
                 "variant": variant
             }
-            if AYON_SERVER_ENABLED:
-                data["folderPath"] = asset_name
-            else:
-                data["asset"] = asset_name
+
+            data["folderPath"] = asset_name
 
             data.update(
                 self.get_dynamic_data(
@@ -74,10 +69,7 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
             )
             asset_name = get_asset_name_identifier(asset_doc)
 
-            if AYON_SERVER_ENABLED:
-                current_instance["folderPath"] = asset_name
-            else:
-                current_instance["asset"] = asset_name
+            current_instance["folderPath"] = asset_name
             current_instance["task"] = task_name
             current_instance["subset"] = subset_name
 
