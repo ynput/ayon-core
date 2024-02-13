@@ -29,15 +29,8 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
         data = {}
 
         # create instance
-        subset = instance.data["subset"]
 
         data.update({
-            "subset": subset,
-            "asset": context.data["asset"],
-            "label": subset,
-            "publish": True,
-            "family": 'workfile',
-            "families": ['workfile'],
             "setMembers": [current_file],
             "frameStart": context.data['frameStart'],
             "frameEnd": context.data['frameEnd'],
@@ -46,15 +39,14 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
         })
 
         data['representations'] = [{
-            'name': ext.lstrip("."),
-            'ext': ext.lstrip("."),
+            'name': ext,
+            'ext': ext,
             'files': file,
             "stagingDir": folder,
         }]
 
         instance.data.update(data)
-        self.log.info('Collected data: {}'.format(data))
-        self.log.info('Collected instance: {}'.format(file))
-        self.log.info('Scene path: {}'.format(current_file))
-        self.log.info('staging Dir: {}'.format(folder))
-        self.log.info('subset: {}'.format(subset))
+        self.log.debug('Collected data: {}'.format(data))
+        self.log.debug('Collected instance: {}'.format(file))
+        self.log.debug('Scene path: {}'.format(current_file))
+        self.log.debug('staging Dir: {}'.format(folder))

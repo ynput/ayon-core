@@ -13,8 +13,7 @@ class CollectMembers(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         if instance.data["family"] == "workfile":
-            self.log.debug("Skipping Actions for workfile family.")
-            self.log.debug("{}".format(instance.data["subset"]))
+            self.log.debug("Skipping Collecting Members for workfile family.")
             return
         if instance.data.get("instance_node"):
             container = rt.GetNodeByName(instance.data["instance_node"])
