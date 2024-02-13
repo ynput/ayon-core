@@ -3,10 +3,9 @@ import re
 
 import pyblish.api
 
-from ayon_core.lib import prepare_template_data
+from ayon_core.lib import prepare_template_data, is_in_tests
 from ayon_core.hosts.photoshop import api as photoshop
 from ayon_core.settings import get_project_settings
-from ayon_core.tests.lib import is_in_tests
 
 
 class CollectColorCodedInstances(pyblish.api.ContextPlugin):
