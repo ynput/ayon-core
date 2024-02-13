@@ -84,6 +84,8 @@ class Commands:
         ):
             if src_key in os.environ and dst_key not in os.environ:
                 os.environ[dst_key] = os.environ[src_key]
+            # Remove old keys, so we're sure they're not used
+            os.environ.pop(src_key, None)
 
         log = Logger.get_logger("CLI-publish")
 
