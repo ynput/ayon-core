@@ -158,6 +158,7 @@ from .ayon_info import (
     is_running_from_build,
     is_staging_enabled,
     is_dev_mode_enabled,
+    is_in_tests,
 )
 
 
@@ -278,6 +279,7 @@ __all__ = [
     "is_running_from_build",
     "is_staging_enabled",
     "is_dev_mode_enabled",
+    "is_in_tests",
 
     "requests_get",
     "requests_post"
