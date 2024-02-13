@@ -14,7 +14,7 @@ from Deadline.Scripting import (
     DirectoryUtils,
     ProcessUtils,
 )
-
+__version__ = "1.0.0"
 VERSION_REGEX = re.compile(
     r"(?P<major>0|[1-9]\d*)"
     r"\.(?P<minor>0|[1-9]\d*)"
@@ -602,7 +602,7 @@ def inject_render_job_id(deadlinePlugin):
 
 
 def __main__(deadlinePlugin):
-    print("*** GlobalJobPreload start ...")
+    print("*** GlobalJobPreload {} start ...".format(__version__))
     print(">>> Getting job ...")
     job = deadlinePlugin.GetJob()
 
