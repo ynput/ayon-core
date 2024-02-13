@@ -147,7 +147,16 @@ class GenericCreateSaver(Creator):
         })
 
         # build file path to render
-        filepath = self.temp_rendering_path_template.format(**formatting_data)
+        # TODO make sure the keys are available in 'formatting_data'
+        temp_rendering_path_template = (
+            self.temp_rendering_path_template
+            .replace("{product[name]}", "{subset}")
+            .replace("{product[type]}", "{family}")
+            .replace("{folder[name]}", "{asset}")
+            .replace("{task[name]}", "{task}")
+        )
+
+        filepath = temp_rendering_path_template.format(**formatting_data)
 
         comp = get_current_comp()
         tool["Clip"] = comp.ReverseMapPath(os.path.normpath(filepath))

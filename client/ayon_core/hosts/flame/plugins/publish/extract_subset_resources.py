@@ -1,6 +1,5 @@
 import os
 import re
-import tempfile
 from copy import deepcopy
 
 import pyblish.api
@@ -15,12 +14,12 @@ from ayon_core.pipeline.editorial import (
 import flame
 
 
-class ExtractSubsetResources(publish.Extractor):
+class ExtractProductResources(publish.Extractor):
     """
     Extractor for transcoding files from Flame clip
     """
 
-    label = "Extract subset resources"
+    label = "Extract product resources"
     order = pyblish.api.ExtractorOrder
     families = ["clip"]
     hosts = ["flame"]
@@ -47,7 +46,7 @@ class ExtractSubsetResources(publish.Extractor):
     hide_ui_on_process = True
 
     # settings
-    export_presets_mapping = {}
+    export_presets_mapping = []
 
     def process(self, instance):
         if not self.keep_original_representation:
@@ -146,15 +145,21 @@ class ExtractSubsetResources(publish.Extractor):
         # append staging dir for later cleanup
         instance.context.data["cleanupFullPaths"].append(staging_dir)
 
+        export_presets_mapping = {}
+        for preset_mapping in deepcopy(self.export_presets_mapping):
+            name = preset_mapping.pop("name")
+            export_presets_mapping[name] = preset_mapping
+
         # add default preset type for thumbnail and reviewable video
         # update them with settings and override in case the same
         # are found in there
-        _preset_keys = [k.split('_')[0] for k in self.export_presets_mapping]
+        _preset_keys = [k.split('_')[0] for k in export_presets_mapping]
         export_presets = {
-            k: v for k, v in deepcopy(self.default_presets).items()
+            k: v
+            for k, v in deepcopy(self.default_presets).items()
             if k not in _preset_keys
         }
-        export_presets.update(self.export_presets_mapping)
+        export_presets.update(export_presets_mapping)
 
         if not instance.data.get("versionData"):
             instance.data["versionData"] = {}
