@@ -12,9 +12,8 @@ import pyblish.api
 from ayon_core.client import (
     get_last_version_by_subset_name,
 )
-from ayon_core.pipeline import publish, legacy_io
-from ayon_core.lib import EnumDef, is_running_from_build
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.pipeline import publish
+from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
 
 from ayon_core.pipeline.farm.pyblish_functions import (
@@ -631,7 +630,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "intent": instance.context.data.get("intent"),
             "comment": instance.context.data.get("comment"),
             "job": render_job or None,
-            "session": legacy_io.Session.copy(),
             "instances": instances
         }
 

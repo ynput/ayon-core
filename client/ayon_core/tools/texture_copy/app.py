@@ -6,7 +6,7 @@ import speedcopy
 
 from ayon_core.client import get_project, get_asset_by_name
 from ayon_core.lib import Terminal
-from ayon_core.pipeline import legacy_io, Anatomy
+from ayon_core.pipeline import Anatomy
 
 
 t = Terminal()
@@ -16,11 +16,6 @@ texture_extensions = ['.tif', '.tiff', '.jpg', '.jpeg', '.tx', '.png', '.tga',
 
 
 class TextureCopy:
-
-    def __init__(self):
-        if not legacy_io.Session:
-            legacy_io.install()
-
     def _get_textures(self, path):
         textures = []
         for dir, subdir, files in os.walk(path):

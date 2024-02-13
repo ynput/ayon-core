@@ -5,8 +5,6 @@ import re
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.pipeline import legacy_io
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
