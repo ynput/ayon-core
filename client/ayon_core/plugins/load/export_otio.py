@@ -8,7 +8,6 @@ from ayon_core.client import (
 )
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
-from ayon_core.pipeline.editorial import export_otio
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.lib import run_subprocess
 
@@ -40,6 +39,10 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
     """Dialog to select template where to deliver selected representations."""
 
     def __init__(self, contexts, log=None, parent=None):
+        # Not all hosts have OpenTimelineIO available.
+        import opentimelineio as otio
+        self.otio = otio
+
         super(ExportOTIOOptionsDialog, self).__init__(parent=parent)
 
         self.setWindowTitle("AYON - Export OTIO")
@@ -180,8 +183,37 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             }
 
         output_path = self.lineedit_output_path.text()
-        export_otio(clips_data, output_path)
+        self.export_otio(clips_data, output_path)
 
         check_state = self.checkbox_inspect_otio_view.checkState()
         if check_state == QtCore.Qt.CheckState.Checked:
             run_subprocess(["otioview", output_path])
+
+    def create_clip(self, path, name, frames, framerate):
+        range = self.otio.opentime.TimeRange(
+            start_time=self.otio.opentime.RationalTime(0, framerate),
+            duration=self.otio.opentime.RationalTime(frames, framerate)
+        )
+
+        media_reference = self.otio.schema.ExternalReference(
+            available_range=range,
+            target_url=f"file://{path}"
+        )
+
+        return self.otio.schema.Clip(
+            name=name,
+            media_reference=media_reference,
+            source_range=range
+        )
+
+    def export_otio(self, clips_data, output_path):
+        clips = []
+        for name, data in clips_data.items():
+            clips.append(
+                self.create_clip(
+                    data["path"], name, data["frames"], data["framerate"]
+                )
+            )
+
+        timeline = self.otio.schema.timeline_from_clips(clips)
+        self.otio.adapters.write_to_file(timeline, output_path)
