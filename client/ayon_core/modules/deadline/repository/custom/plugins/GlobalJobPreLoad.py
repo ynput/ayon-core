@@ -14,7 +14,7 @@ from Deadline.Scripting import (
     DirectoryUtils,
     ProcessUtils,
 )
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 VERSION_REGEX = re.compile(
     r"(?P<major>0|[1-9]\d*)"
     r"\.(?P<minor>0|[1-9]\d*)"
