@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 
 import pyblish.api
@@ -23,19 +24,19 @@ class ValidateAttributes(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    label = "Attributes"
+    label = "Validate Attributes"
     hosts = ["maya"]
     actions = [RepairAction]
     optional = True
 
-    attributes = None
+    attributes = "{}"
 
     def process(self, instance):
         if not self.is_active(instance.data):
             return
 
         # Check for preset existence.
-        if not self.attributes:
+        if not self.get_attributes_data():
             return
 
         invalid = self.get_invalid(instance, compute=True)
@@ -43,6 +44,10 @@ class ValidateAttributes(pyblish.api.InstancePlugin,
             raise PublishValidationError(
                 "Found attributes with invalid values: {}".format(invalid)
             )
+
+    @classmethod
+    def get_attributes_data(cls):
+        return json.loads(cls.attributes)
 
     @classmethod
     def get_invalid(cls, instance, compute=False):
@@ -55,21 +60,22 @@ class ValidateAttributes(pyblish.api.InstancePlugin,
     def get_invalid_attributes(cls, instance):
         invalid_attributes = []
 
+        attributes_data = cls.get_attributes_data()
         # Filter families.
         families = [instance.data["family"]]
         families += instance.data.get("families", [])
-        families = set(families) & set(cls.attributes.keys())
+        families = set(families) & set(attributes_data.keys())
         if not families:
             return []
 
         # Get all attributes to validate.
         attributes = defaultdict(dict)
         for family in families:
-            if family not in cls.attributes:
+            if family not in attributes_data:
                 # No attributes to validate for family
                 continue
 
-            for preset_attr, preset_value in cls.attributes[family].items():
+            for preset_attr, preset_value in attributes_data[family].items():
                 node_name, attribute_name = preset_attr.split(".", 1)
                 attributes[node_name][attribute_name] = preset_value
 
