@@ -294,6 +294,8 @@ def _convert_3dsmax_project_settings(ayon_settings, output):
 
     ayon_max = ayon_settings["max"]
 
+    _convert_host_imageio(ayon_max)
+
     output["max"] = ayon_max
 
 
