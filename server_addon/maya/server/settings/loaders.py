@@ -4,131 +4,67 @@ from ayon_server.types import ColorRGB_float
 
 class ColorsSetting(BaseSettingsModel):
     model: ColorRGB_float = SettingsField(
-        (
-            0.8196078431372549,
-            0.5176470588235295,
-            0.11764705882352941
-        ),
+        (0.82, 0.52, 0.12),
         title="Model:"
     )
     rig: ColorRGB_float = SettingsField(
-        (
-            0.23137254901960785,
-            0.8862745098039215,
-            0.9215686274509803
-        ),
+        (0.23, 0.89, 0.92),
         title="Rig:"
     )
     pointcache: ColorRGB_float = SettingsField(
-        (
-            0.3686274509803922,
-            0.8196078431372549,
-            0.11764705882352941
-        ),
+        (0.37, 0.82, 0.12),
         title="Pointcache:"
     )
     animation: ColorRGB_float = SettingsField(
-        (
-            0.3686274509803922,
-            0.8196078431372549,
-            0.11764705882352941
-        ),
+        (0.37, 0.82, 0.12),
         title="Animation:"
     )
     ass: ColorRGB_float = SettingsField(
-        (
-            0.9764705882352941,
-            0.5294117647058824,
-            0.20784313725490197
-        ),
+        (0.98, 0.53, 0.21),
         title="Arnold StandIn:"
     )
     camera: ColorRGB_float = SettingsField(
-        (
-            0.5333333333333333,
-            0.4470588235294118,
-            0.9568627450980393
-        ),
+        (0.53, 0.45, 0.96),
         title="Camera:"
     )
     fbx: ColorRGB_float = SettingsField(
-        (
-            0.8431372549019608,
-            0.6509803921568628,
-            1.0
-        ),
+        (0.84, 0.65, 1.0),
         title="FBX:"
     )
     mayaAscii: ColorRGB_float = SettingsField(
-        (
-            0.2627450980392157,
-            0.6823529411764706,
-            1.0
-        ),
+        (0.26, 0.68, 1.0),
         title="Maya Ascii:"
     )
     mayaScene: ColorRGB_float = SettingsField(
-        (
-            0.2627450980392157,
-            0.6823529411764706,
-            1.0
-        ),
+        (0.26, 0.68, 1.0),
         title="Maya Scene:"
     )
     setdress: ColorRGB_float = SettingsField(
-        (
-            1.0,
-            0.9803921568627451,
-            0.35294117647058826
-        ),
+        (1.0, 0.98, 0.35),
         title="Set Dress:"
     )
     layout: ColorRGB_float = SettingsField(
-        (
-            1.0,
-            0.9803921568627451,
-            0.35294117647058826
-        ),
+        (1.0, 0.98, 0.35),
         title="Layout:"
     )
     vdbcache: ColorRGB_float = SettingsField(
-        (
-            0.9764705882352941,
-            0.21176470588235294,
-            0.0
-        ),
+        (0.98, 0.21, 0.0),
         title="VDB Cache:"
     )
     vrayproxy: ColorRGB_float = SettingsField(
-        (
-            1.0,
-            0.5882352941176471,
-            0.047058823529411764
-        ),
+        (1.0, 0.59, 0.05),
         title="VRay Proxy:"
     )
     vrayscene_layer: ColorRGB_float = SettingsField(
-        (
-            1.0,
-            0.5882352941176471,
-            0.047058823529411764
-        ),
+        (1.0, 0.59, 0.05),
         title="VRay Scene:"
     )
     yeticache: ColorRGB_float = SettingsField(
-        (
-            0.38823529411764707,
-            0.807843137254902,
-            0.8627450980392157
-        ),
+        (0.39, 0.81, 0.86),
         title="Yeti Cache:"
     )
     yetiRig: ColorRGB_float = SettingsField(
-        (
-            0.0,
-            0.803921568627451,
-            0.49019607843137253
-        ),
+        (0.0, 0.80, 0.49),
         title="Yeti Rig:"
     )
 
@@ -163,86 +99,22 @@ class LoadersModel(BaseSettingsModel):
 
 DEFAULT_LOADERS_SETTING = {
     "colors": {
-        "model": [
-            0.8196078431372549,
-            0.5176470588235295,
-            0.11764705882352941
-        ],
-        "rig": [
-            0.23137254901960785,
-            0.8862745098039215,
-            0.9215686274509803
-        ],
-        "pointcache": [
-            0.3686274509803922,
-            0.8196078431372549,
-            0.11764705882352941
-        ],
-        "animation": [
-            0.3686274509803922,
-            0.8196078431372549,
-            0.11764705882352941
-        ],
-        "ass": [
-            0.9764705882352941,
-            0.5294117647058824,
-            0.20784313725490197
-        ],
-        "camera": [
-            0.5333333333333333,
-            0.4470588235294118,
-            0.9568627450980393
-        ],
-        "fbx": [
-            0.8431372549019608,
-            0.6509803921568628,
-            1.0
-        ],
-        "mayaAscii": [
-            0.2627450980392157,
-            0.6823529411764706,
-            1.0
-        ],
-        "mayaScene": [
-            0.2627450980392157,
-            0.6823529411764706,
-            1.0
-        ],
-        "setdress": [
-            1.0,
-            0.9803921568627451,
-            0.35294117647058826
-        ],
-        "layout": [
-            1.0,
-            0.9803921568627451,
-            0.35294117647058826
-        ],
-        "vdbcache": [
-            0.9764705882352941,
-            0.21176470588235294,
-            0.0
-        ],
-        "vrayproxy": [
-            1.0,
-            0.5882352941176471,
-            0.047058823529411764
-        ],
-        "vrayscene_layer": [
-            1.0,
-            0.5882352941176471,
-            0.047058823529411764
-        ],
-        "yeticache": [
-            0.38823529411764707,
-            0.807843137254902,
-            0.8627450980392157
-        ],
-        "yetiRig": [
-            0.0,
-            0.803921568627451,
-            0.49019607843137253
-        ]
+        "model": [0.82, 0.52, 0.12],
+        "rig": [0.23, 0.89, 0.92],
+        "pointcache": [0.37, 0.82, 0.12],
+        "animation": [0.37, 0.82, 0.12],
+        "ass": [0.98, 0.53, 0.21],
+        "camera":[0.53, 0.45, 0.96],
+        "fbx": [0.84, 0.65, 1.0],
+        "mayaAscii": [0.26, 0.68, 1.0],
+        "mayaScene": [0.26, 0.68, 1.0],
+        "setdress": [1.0, 0.98, 0.35],
+        "layout": [1.0, 0.98, 0.35],
+        "vdbcache": [0.98, 0.21, 0.0],
+        "vrayproxy": [1.0, 0.59, 0.05],
+        "vrayscene_layer": [1.0, 0.59, 0.05],
+        "yeticache": [0.39, 0.81, 0.86],
+        "yetiRig": [0.0, 0.80, 0.49],
     },
     "reference_loader": {
         "namespace": "{folder[name]}_{product[name]}_##_",
