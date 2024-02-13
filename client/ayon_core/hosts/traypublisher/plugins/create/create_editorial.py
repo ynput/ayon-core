@@ -174,35 +174,28 @@ Supporting publishing new shots to project
 or updating already created. Publishing will create OTIO file.
 """
     icon = "fa.file"
+    product_type_presets = []
 
-    def __init__(
-        self, project_settings, *args, **kwargs
-    ):
-        super(EditorialSimpleCreator, self).__init__(
-            project_settings, *args, **kwargs
-        )
+    def __init__(self, *args, **kwargs):
+        self._shot_metadata_solver = ShotMetadataSolver(self.log)
+        super(EditorialSimpleCreator, self).__init__(*args, **kwargs)
+
+    def apply_settings(self, project_settings):
         editorial_creators = deepcopy(
             project_settings["traypublisher"]["editorial_creators"]
         )
-        # get this creator settings by identifier
-        self._creator_settings = editorial_creators.get(self.identifier)
+        creator_settings = editorial_creators.get(self.identifier)
 
-        clip_name_tokenizer = self._creator_settings["clip_name_tokenizer"]
-        shot_rename = self._creator_settings["shot_rename"]
-        shot_hierarchy = self._creator_settings["shot_hierarchy"]
-        shot_add_tasks = self._creator_settings["shot_add_tasks"]
-
-        self._shot_metadata_solver = ShotMetadataSolver(
-            clip_name_tokenizer,
-            shot_rename,
-            shot_hierarchy,
-            shot_add_tasks,
-            self.log
+        self._shot_metadata_solver.update_data(
+            creator_settings["clip_name_tokenizer"],
+            creator_settings["shot_rename"],
+            creator_settings["shot_hierarchy"],
+            creator_settings["shot_add_tasks"]
         )
-
-        # try to set main attributes from settings
-        if self._creator_settings.get("default_variants"):
-            self.default_variants = self._creator_settings["default_variants"]
+        self.product_type_presets = creator_settings["product_type_presets"]
+        default_variants = creator_settings.get("default_variants")
+        if default_variants:
+            self.default_variants = default_variants
 
     def create(self, subset_name, instance_data, pre_create_data):
         allowed_family_presets = self._get_allowed_family_presets(

@@ -16,25 +16,31 @@ class ShotMetadataSolver:
 
     NO_DECOR_PATERN = re.compile(r"\{([a-z]*?)\}")
 
-    # presets
-    clip_name_tokenizer = None
-    shot_rename = True
-    shot_hierarchy = None
-    shot_add_tasks = None
+    def __init__(self, logger):
+        self.clip_name_tokenizer = []
+        self.shot_rename = {
+            "enabled": False,
+            "shot_rename_template": "",
+        }
+        self.shot_hierarchy = {
+            "enabled": False,
+            "parents": [],
+            "parents_path": "",
+        }
+        self.shot_add_tasks = []
+        self.log = logger
 
-    def __init__(
+    def update_data(
         self,
         clip_name_tokenizer,
         shot_rename,
         shot_hierarchy,
-        shot_add_tasks,
-        logger
+        shot_add_tasks
     ):
         self.clip_name_tokenizer = clip_name_tokenizer
         self.shot_rename = shot_rename
         self.shot_hierarchy = shot_hierarchy
         self.shot_add_tasks = shot_add_tasks
-        self.log = logger
 
     def _rename_template(self, data):
         """Shot renaming function
