@@ -13,7 +13,7 @@ class CollectReview(pyblish.api.ContextPlugin):
     """Adds review to families for instances marked to be reviewable.
     """
 
-    label = "Collect Review Family"
+    label = "Collect Review"
     hosts = ["photoshop"]
     order = pyblish.api.CollectorOrder + 0.1
 
