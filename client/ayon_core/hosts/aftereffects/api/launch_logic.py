@@ -15,8 +15,7 @@ from wsrpc_aiohttp import (
 
 from qtpy import QtCore
 
-from ayon_core.lib import Logger
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import Logger, is_in_tests
 from ayon_core.pipeline import install_host
 from ayon_core.addon import AddonsManager
 from ayon_core.tools.utils import host_tools, get_ayon_qt_app

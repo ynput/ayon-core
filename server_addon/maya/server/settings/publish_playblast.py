@@ -6,7 +6,7 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
-from ayon_server.types import ColorRGBA_uint8
+from ayon_server.types import ColorRGB_float
 
 
 def hardware_falloff_enum():
@@ -54,17 +54,17 @@ class DisplayOptionsSetting(BaseSettingsModel):
     override_display: bool = SettingsField(
         True, title="Override display options"
     )
-    background: ColorRGBA_uint8 = SettingsField(
-        (125, 125, 125, 1.0), title="Background Color"
+    background: ColorRGB_float = SettingsField(
+        (0.5, 0.5, 0.5), title="Background Color"
     )
     displayGradient: bool = SettingsField(
         True, title="Display background gradient"
     )
-    backgroundTop: ColorRGBA_uint8 = SettingsField(
-        (125, 125, 125, 1.0), title="Background Top"
+    backgroundTop: ColorRGB_float = SettingsField(
+        (0.5, 0.5, 0.5), title="Background Top"
     )
-    backgroundBottom: ColorRGBA_uint8 = SettingsField(
-        (125, 125, 125, 1.0), title="Background Bottom"
+    backgroundBottom: ColorRGB_float = SettingsField(
+        (0.5, 0.5, 0.5), title="Background Bottom"
     )
 
 
@@ -283,22 +283,19 @@ DEFAULT_PLAYBLAST_SETTING = {
         "DisplayOptions": {
             "override_display": True,
             "background": [
-                125,
-                125,
-                125,
-                1.0
+                0.5,
+                0.5,
+                0.5
             ],
             "backgroundBottom": [
-                125,
-                125,
-                125,
-                1.0
+                0.5,
+                0.5,
+                0.5
             ],
             "backgroundTop": [
-                125,
-                125,
-                125,
-                1.0
+                0.5,
+                0.5,
+                0.5
             ],
             "displayGradient": True
         },
