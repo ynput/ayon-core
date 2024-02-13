@@ -61,7 +61,10 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
             ("AVALON_ASSET", asset_name),
             ("AVALON_TASK", task_name)
         ):
-            os.environ[key] = value
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
     def create_instance(
         self,
