@@ -10,8 +10,8 @@ import pyblish.api
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
-from ayon_core.tests.lib import is_in_tests
 from ayon_core.lib import (
+    is_in_tests,
     BoolDef,
     NumberDef
 )
