@@ -16,6 +16,7 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
 
 
 class RedshiftProxyLoader(load.LoaderPlugin):
@@ -59,12 +60,13 @@ class RedshiftProxyLoader(load.LoaderPlugin):
         # colour the group node
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-        c = colors.get(family)
-        if c is not None:
+        color = get_load_color_for_family(family, settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(group_node), 1)
-            cmds.setAttr("{0}.outlinerColor".format(group_node),
-                         c[0], c[1], c[2])
+            cmds.setAttr(
+                "{0}.outlinerColor".format(group_node), red, green, blue
+            )
 
         return containerise(
             name=name,

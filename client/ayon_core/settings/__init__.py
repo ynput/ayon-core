@@ -4,7 +4,6 @@ from .constants import (
 )
 from .lib import (
     get_general_environments,
-    get_global_settings,
     get_system_settings,
     get_project_settings,
     get_current_project_settings,
@@ -17,7 +16,6 @@ __all__ = (
     "PROJECT_SETTINGS_KEY",
 
     "get_general_environments",
-    "get_global_settings",
     "get_system_settings",
     "get_project_settings",
     "get_current_project_settings",
