@@ -230,6 +230,8 @@ __all__ = [
 
     "IniSettingRegistry",
     "JSONSettingRegistry",
+    "AYONSecureRegistry",
+    "AYONSettingsRegistry",
     "OpenPypeSecureRegistry",
     "OpenPypeSettingsRegistry",
     "get_local_site_id",
@@ -272,6 +274,7 @@ __all__ = [
     "terminal",
 
     "get_datetime_data",
+    "get_timestamp",
     "get_formatted_current_time",
 
     "Logger",
