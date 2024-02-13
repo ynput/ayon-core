@@ -551,58 +551,6 @@ def _convert_traypublisher_project_settings(ayon_settings, output):
 
     _convert_host_imageio(ayon_traypublisher)
 
-    ayon_editorial_simple = (
-        ayon_traypublisher["editorial_creators"]["editorial_simple"]
-    )
-    # Subset -> Product type conversion
-    if "product_type_presets" in ayon_editorial_simple:
-        family_presets = ayon_editorial_simple.pop("product_type_presets")
-        for item in family_presets:
-            item["family"] = item.pop("product_type")
-        ayon_editorial_simple["family_presets"] = family_presets
-
-    if "shot_metadata_creator" in ayon_editorial_simple:
-        shot_metadata_creator = ayon_editorial_simple.pop(
-            "shot_metadata_creator"
-        )
-        if isinstance(shot_metadata_creator["clip_name_tokenizer"], dict):
-            shot_metadata_creator["clip_name_tokenizer"] = [
-                {"name": "_sequence_", "regex": "(sc\\d{3})"},
-                {"name": "_shot_", "regex": "(sh\\d{3})"},
-            ]
-        ayon_editorial_simple.update(shot_metadata_creator)
-
-    ayon_editorial_simple["clip_name_tokenizer"] = {
-        item["name"]: item["regex"]
-        for item in ayon_editorial_simple["clip_name_tokenizer"]
-    }
-
-    if "shot_subset_creator" in ayon_editorial_simple:
-        ayon_editorial_simple.update(
-            ayon_editorial_simple.pop("shot_subset_creator"))
-    for item in ayon_editorial_simple["shot_hierarchy"]["parents"]:
-        item["type"] = item.pop("parent_type")
-
-    # Simple creators
-    ayon_simple_creators = ayon_traypublisher["simple_creators"]
-    for item in ayon_simple_creators:
-        if "product_type" not in item:
-            break
-        item["family"] = item.pop("product_type")
-
-    shot_add_tasks = ayon_editorial_simple["shot_add_tasks"]
-
-    # TODO: backward compatibility and remove in future
-    if isinstance(shot_add_tasks, dict):
-        shot_add_tasks = []
-
-    # aggregate shot_add_tasks items
-    new_shot_add_tasks = {
-        item["name"]: {"type": item["task_type"]}
-        for item in shot_add_tasks
-    }
-    ayon_editorial_simple["shot_add_tasks"] = new_shot_add_tasks
-
     output["traypublisher"] = ayon_traypublisher
 
 
