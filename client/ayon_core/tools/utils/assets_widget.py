@@ -111,7 +111,6 @@ class _AssetModel(QtGui.QStandardItemModel):
     'refreshed' signal.
 
     Args:
-        dbcon (AvalonMongoDB): Ready to use connection to mongo with.
         parent (QObject): Parent Qt object.
     """
 
@@ -128,9 +127,8 @@ class _AssetModel(QtGui.QStandardItemModel):
         "data.color": 1
     }
 
-    def __init__(self, dbcon, parent=None):
+    def __init__(self, parent=None):
         super(_AssetModel, self).__init__(parent=parent)
-        self.dbcon = dbcon
 
         self._refreshing = False
         self._doc_fetching_thread = None
@@ -142,6 +140,7 @@ class _AssetModel(QtGui.QStandardItemModel):
         self._item_ids_with_color = set()
         self._items_by_asset_id = {}
 
+        self._project_name = None
         self._last_project_name = None
 
     @property
@@ -185,6 +184,16 @@ class _AssetModel(QtGui.QStandardItemModel):
 
         return self.get_indexes_by_asset_ids(asset_ids)
 
+    def get_project_name(self):
+        return self._project_name
+
+    def set_project_name(self, project_name, refresh):
+        if self._project_name == project_name:
+            return
+        self._project_name = project_name
+        if refresh:
+            self.refresh()
+
     def refresh(self, force=False):
         """Refresh the data for the model.
 
@@ -197,7 +206,7 @@ class _AssetModel(QtGui.QStandardItemModel):
                 return
             self.stop_refresh()
 
-        project_name = self.dbcon.Session.get("AVALON_PROJECT")
+        project_name = self._project_name
         clear_model = False
         if project_name != self._last_project_name:
             clear_model = True
@@ -215,23 +224,6 @@ class _AssetModel(QtGui.QStandardItemModel):
 
     def stop_refresh(self):
         self._stop_fetch_thread()
-
-    def clear_underlines(self):
-        for asset_id in set(self._item_ids_with_color):
-            self._item_ids_with_color.remove(asset_id)
-            item = self._items_by_asset_id.get(asset_id)
-            if item is not None:
-                item.setData(None, ASSET_UNDERLINE_COLORS_ROLE)
-
-    def set_underline_colors(self, colors_by_asset_id):
-        self.clear_underlines()
-
-        for asset_id, colors in colors_by_asset_id.items():
-            item = self._items_by_asset_id.get(asset_id)
-            if item is None:
-                continue
-            item.setData(colors, ASSET_UNDERLINE_COLORS_ROLE)
-            self._item_ids_with_color.add(asset_id)
 
     def _clear_items(self):
         root_item = self.invisibleRootItem()
@@ -357,7 +349,7 @@ class _AssetModel(QtGui.QStandardItemModel):
         self._doc_fetched.emit()
 
     def _fetch_asset_docs(self):
-        project_name = self.dbcon.current_project()
+        project_name = self.get_project_name()
         if not project_name:
             return []
 
@@ -392,7 +384,6 @@ class _AssetsWidget(QtWidgets.QWidget):
     inheritance changes.
 
     Args:
-        dbcon (AvalonMongoDB): Connection to avalon mongo db.
         parent (QWidget): Parent Qt widget.
     """
 
@@ -404,10 +395,8 @@ class _AssetsWidget(QtWidgets.QWidget):
     # It was double clicked on view
     double_clicked = QtCore.Signal()
 
-    def __init__(self, dbcon, parent=None):
+    def __init__(self, parent=None):
         super(_AssetsWidget, self).__init__(parent=parent)
-
-        self.dbcon = dbcon
 
         # Tree View
         model = self._create_source_model()
@@ -477,9 +466,10 @@ class _AssetsWidget(QtWidgets.QWidget):
         self._model = model
         self._proxy = proxy
         self._view = view
-        self._last_project_name = None
 
         self._last_btns_height = None
+
+        self._current_asset_name = None
 
         self.model_selection = {}
 
@@ -487,8 +477,17 @@ class _AssetsWidget(QtWidgets.QWidget):
     def header_widget(self):
         return self._header_widget
 
+    def get_project_name(self):
+        self._model.get_project_name()
+
+    def set_project_name(self, project_name, refresh=True):
+        self._model.set_project_name(project_name, refresh)
+
+    def set_current_asset_name(self, asset_name):
+        self._current_asset_name = asset_name
+
     def _create_source_model(self):
-        model = _AssetModel(dbcon=self.dbcon, parent=self)
+        model = _AssetModel(parent=self)
         model.refreshed.connect(self._on_model_refresh)
         return model
 
@@ -509,8 +508,8 @@ class _AssetsWidget(QtWidgets.QWidget):
     def stop_refresh(self):
         self._model.stop_refresh()
 
-    def _get_current_session_asset(self):
-        return self.dbcon.Session.get("AVALON_ASSET")
+    def _get_current_asset_name(self):
+        return self._current_asset_name
 
     def _on_current_asset_click(self):
         """Trigger change of asset to current context asset.
@@ -518,10 +517,10 @@ class _AssetsWidget(QtWidgets.QWidget):
         in differnt way.
         """
 
-        self.set_current_session_asset()
+        self.select_current_asset()
 
-    def set_current_session_asset(self):
-        asset_name = self._get_current_session_asset()
+    def select_current_asset(self):
+        asset_name = self._get_current_asset_name()
         if asset_name:
             self.select_asset_by_name(asset_name)
 

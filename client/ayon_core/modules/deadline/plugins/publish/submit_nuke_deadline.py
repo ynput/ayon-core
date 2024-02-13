@@ -7,12 +7,11 @@ from datetime import datetime
 import requests
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
-from ayon_core.tests.lib import is_in_tests
 from ayon_core.lib import (
+    is_in_tests,
     BoolDef,
     NumberDef
 )
@@ -393,8 +392,11 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         if self.env_allowed_keys:
             keys += self.env_allowed_keys
 
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **legacy_io.Session)
+        environment = {
+            key: os.environ[key]
+            for key in keys
+            if key in os.environ
+        }
 
         # to recognize render jobs
         environment["AYON_RENDER_JOB"] = "1"

@@ -2,7 +2,6 @@ import os
 
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import filter_profiles, prepare_template_data
-from ayon_core.pipeline import legacy_io
 
 from .constants import DEFAULT_SUBSET_TEMPLATE
 
@@ -135,7 +134,7 @@ def get_subset_name(
     family = family.rsplit(".", 1)[-1]
 
     if project_name is None:
-        project_name = legacy_io.Session["AVALON_PROJECT"]
+        project_name = os.environ.get("AVALON_PROJECT")
 
     asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
     task_info = asset_tasks.get(task_name) or {}

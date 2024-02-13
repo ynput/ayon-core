@@ -3,7 +3,6 @@ import pyblish.api
 import ayon_core.hosts.maya.api.action
 from ayon_core.client import get_assets
 from ayon_core.hosts.maya.api import lib
-from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
     PublishValidationError, ValidatePipelineOrder)
 
