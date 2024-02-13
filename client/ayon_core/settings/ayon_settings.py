@@ -560,19 +560,6 @@ def _convert_royalrender_project_settings(ayon_settings, output):
     }
 
 
-def _convert_slack_project_settings(ayon_settings, output):
-    if "slack" not in ayon_settings:
-        return
-
-    ayon_slack = ayon_settings["slack"]
-    ayon_slack.pop("enabled", None)
-    for profile in ayon_slack["publish"]["CollectSlackFamilies"]["profiles"]:
-        profile["tasks"] = profile.pop("task_names")
-        profile["subsets"] = profile.pop("subset_names")
-
-    output["slack"] = ayon_slack
-
-
 def _convert_global_project_settings(ayon_settings, output, default_settings):
     if "core" not in ayon_settings:
         return
@@ -780,7 +767,6 @@ def convert_project_settings(ayon_settings, default_settings):
     _convert_webpublisher_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
-    _convert_slack_project_settings(ayon_settings, output)
 
     _convert_global_project_settings(ayon_settings, output, default_settings)
 
