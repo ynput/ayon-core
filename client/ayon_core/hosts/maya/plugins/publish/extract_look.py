@@ -431,9 +431,11 @@ class ExtractLook(publish.Extractor):
                 project settings.
 
         """
-        ext_mapping = (
-            instance.context.data["project_settings"]["maya"]["ext_mapping"]
-        )
+        maya_settings = instance.context.data["project_settings"]["maya"]
+        ext_mapping = {
+            item["name"]: item["value"]
+            for item in maya_settings["ext_mapping"]
+        }
         if ext_mapping:
             self.log.debug("Looking in settings for scene type ...")
             # use extension mapping for first family found

@@ -6,11 +6,7 @@ Provides:
     instance     -> family ("review")
 """
 
-import os
-
 import pyblish.api
-
-from ayon_core.pipeline.create import get_subset_name
 
 
 class CollectReview(pyblish.api.ContextPlugin):
@@ -18,11 +14,8 @@ class CollectReview(pyblish.api.ContextPlugin):
     """
 
     label = "Collect Review"
-    label = "Review"
     hosts = ["photoshop"]
     order = pyblish.api.CollectorOrder + 0.1
-
-    publish = True
 
     def process(self, context):
         for instance in context:

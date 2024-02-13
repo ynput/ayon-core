@@ -38,6 +38,16 @@ def is_staging_enabled():
     return os.getenv("AYON_USE_STAGING") == "1"
 
 
+def is_in_tests():
+    """Process is running in automatic tests mode.
+
+    Returns:
+        bool: True if running in tests.
+
+    """
+    return os.environ.get("AYON_IN_TESTS") == "1"
+
+
 def is_dev_mode_enabled():
     """Dev mode is enabled in AYON.
 
