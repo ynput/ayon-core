@@ -265,7 +265,7 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
         # load validation definitions from settings
         settings_lights_flag = instance.context.data["project_settings"].get(
             "maya", {}).get(
-            "RenderSettings", {}).get(
+            "render_settings", {}).get(
             "enable_all_lights", False)
 
         instance_lights_flag = instance.data.get("renderSetupIncludeLights")

@@ -60,7 +60,10 @@ class ValidateRenderImageRule(pyblish.api.InstancePlugin):
             )
             return staging_dir
 
-        return instance.context.data.get('project_settings')\
-            .get('maya') \
-            .get('RenderSettings') \
-            .get('default_render_image_folder')
+        return (
+            instance.context.data
+            ["project_settings"]
+            ["maya"]
+            ["render_settings"]
+            ["default_render_image_folder"]
+        )
