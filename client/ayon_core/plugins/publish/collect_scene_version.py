@@ -1,8 +1,7 @@
 import os
 import pyblish.api
 
-from ayon_core.lib import get_version_from_path
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import get_version_from_path, is_in_tests
 from ayon_core.pipeline import KnownPublishError
 
 
