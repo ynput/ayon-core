@@ -98,12 +98,33 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                 "karma_rop", "vray_rop",
                 "redshift_rop"]
 
-    aov_filter = {"maya": [r".*([Bb]eauty).*"],
-                  "blender": [r".*([Bb]eauty).*"],
-                  "aftereffects": [r".*"],  # for everything from AE
-                  "harmony": [r".*"],  # for everything from AE
-                  "celaction": [r".*"],
-                  "max": [r".*"]}
+    aov_filter = [
+        {
+            "name": "maya",
+            "value": [r".*([Bb]eauty).*"]
+        },
+        {
+            "name": "blender",
+            "value": [r".*([Bb]eauty).*"]
+        },
+        {
+            # for everything from AE
+            "name": "aftereffects",
+            "value": [r".*"]
+        },
+        {
+            "name": "harmony",
+            "value": [r".*"]
+        },
+        {
+            "name": "celaction",
+            "value": [r".*"]
+        },
+        {
+            "name": "max",
+            "value": [r".*"]
+        },
+    ]
 
     environ_keys = [
         "FTRACK_API_USER",
@@ -505,17 +526,23 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             self.log.debug("Instance has review explicitly disabled.")
             do_not_add_review = True
 
+        aov_filter = {
+            item["name"]: item["value"]
+            for item in self.aov_filter
+        }
         if isinstance(instance.data.get("expectedFiles")[0], dict):
             instances = create_instances_for_aov(
                 instance, instance_skeleton_data,
-                self.aov_filter, self.skip_integration_repre_list,
-                do_not_add_review)
+                aov_filter,
+                self.skip_integration_repre_list,
+                do_not_add_review
+            )
         else:
             representations = prepare_representations(
                 instance_skeleton_data,
                 instance.data.get("expectedFiles"),
                 anatomy,
-                self.aov_filter,
+                aov_filter,
                 self.skip_integration_repre_list,
                 do_not_add_review,
                 instance.context,

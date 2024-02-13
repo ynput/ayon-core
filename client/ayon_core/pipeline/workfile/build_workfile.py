@@ -321,7 +321,7 @@ class BuildWorkfile:
                 continue
 
             # Check families
-            profile_families = profile.get("families")
+            profile_families = profile.get("product_types")
             if not profile_families:
                 self.log.warning((
                     "Build profile is missing families configuration: {0}"
@@ -338,7 +338,7 @@ class BuildWorkfile:
                 continue
 
             # Prepare lowered families and representation names
-            profile["families_lowered"] = [
+            profile["product_types_lowered"] = [
                 fam.lower() for fam in profile_families
             ]
             profile["repre_names_lowered"] = [
@@ -375,11 +375,11 @@ class BuildWorkfile:
             family_low = family.lower()
             for profile in profiles:
                 # Skip profile if does not contain family
-                if family_low not in profile["families_lowered"]:
+                if family_low not in profile["product_types_lowered"]:
                     continue
 
                 # Precompile name filters as regexes
-                profile_regexes = profile.get("subset_name_filters")
+                profile_regexes = profile.get("product_name_filters")
                 if profile_regexes:
                     _profile_regexes = []
                     for regex in profile_regexes:
@@ -538,7 +538,7 @@ class BuildWorkfile:
         build_presets += self.build_presets.get("linked_assets", [])
         subset_ids_ordered = []
         for preset in build_presets:
-            for preset_family in preset["families"]:
+            for preset_family in preset["product_types"]:
                 for id, subset in subsets_by_id.items():
                     if preset_family not in subset["data"].get("families", []):
                         continue
