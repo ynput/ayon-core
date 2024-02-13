@@ -4,7 +4,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.client import (
     get_representations,
-    get_version_by_id
+    get_asset_name_identifier
 )
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
@@ -62,7 +62,6 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         self._project_name = contexts[0]["project"]["name"]
 
-        representations_by_version_id = defaultdict(list)
         self._version_by_representation_id = {}
         all_representation_names = set()
         self._version_path_by_id = {}
@@ -73,10 +72,6 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         repre_docs = list(get_representations(
             self._project_name, version_ids=set(version_docs_by_id)
         ))
-        repre_docs_by_id = {
-            repre_doc["_id"]: repre_doc
-            for repre_doc in repre_docs
-        }
         self._version_by_representation_id = {
             repre_doc["_id"]: version_docs_by_id[repre_doc["parent"]]
             for repre_doc in repre_docs
@@ -90,23 +85,17 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             asset_doc = context["asset"]
             folder_path = get_asset_name_identifier(asset_doc)
             subset_name = context["subset"]["name"]
-            self._version_path_by_id[version_id] = "{}/{}/{}/v{:03d}".format(
+            self._version_path_by_id[version_id] = "{}/{}/v{:03d}".format(
                 folder_path, subset_name, version_doc["name"]
-            representations_by_version_id[version_id] = representations
-
-            for representation in representations:
-                all_representation_names.add(representation["name"])
-                id = representation["_id"]
-                self._version_by_representation_id[id] = version
-
-            self._version_path_by_id[version_id] = "{}/{}/{}/v{:03d}".format(
-                representations[0]["context"]["hierarchy"],
-                representations[0]["context"]["asset"],
-                representations[0]["context"]["subset"],
-                representations[0]["context"]["version"]
             )
 
-        all_representation_names = sorted(all_representation_names)
+        representations_by_version_id = defaultdict(list)
+        for repre_doc in repre_docs:
+            representations_by_version_id[repre_doc["parent"]].append(
+                repre_doc
+            )
+
+        all_representation_names = sorted(set(x["name"] for x in repre_docs))
 
         input_layout.addWidget(QtWidgets.QLabel("Representations:"), 0, 0)
         toggle_all_checkboxes = {}
