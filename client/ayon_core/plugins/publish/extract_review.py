@@ -1511,7 +1511,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             subset_name (str): name of subset
 
         Returns:
-            list: Containg all output definitions matching entered families.
+            dict[str, Any]: Containg all output definitions matching entered
+                families.
         """
         filtered_outputs = {}
         outputs = profile.get("outputs")
