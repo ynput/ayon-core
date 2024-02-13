@@ -259,7 +259,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         default_rs_include_lights = (
             instance.context.data['project_settings']
                                  ['maya']
-                                 ['RenderSettings']
+                                 ['render_settings']
                                  ['enable_all_lights']
         )
 
