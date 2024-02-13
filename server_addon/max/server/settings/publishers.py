@@ -39,9 +39,9 @@ class ValidateCameraAttributesModel(BaseSettingsModel):
 
 
 class FamilyMappingItemModel(BaseSettingsModel):
-    product_types: list[str] = SettingsField(
+    families: list[str] = SettingsField(
         default_factory=list,
-        title="Product Types"
+        title="Families"
     )
     plugins: list[str] = SettingsField(
         default_factory=list,

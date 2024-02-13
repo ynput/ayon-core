@@ -12,7 +12,7 @@ import pyblish.api
 
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import is_in_tests
 
 
 class _ZipFile(ZipFile):

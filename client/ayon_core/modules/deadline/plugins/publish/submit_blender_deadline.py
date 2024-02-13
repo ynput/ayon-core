@@ -10,10 +10,10 @@ from ayon_core.lib import (
     BoolDef,
     NumberDef,
     TextDef,
+    is_in_tests,
 )
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_core.pipeline.farm.tools import iter_expected_files
-from ayon_core.tests.lib import is_in_tests
 
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo

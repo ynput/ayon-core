@@ -7,7 +7,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     LoadPlaceholderItem,
     CreatePlaceholderItem,
     PlaceholderLoadMixin,
-    PlaceholderCreateMixin
+    PlaceholderCreateMixin,
 )
 from ayon_core.tools.workfile_template_build import (
     WorkfileBuildPlaceholderDialog,
