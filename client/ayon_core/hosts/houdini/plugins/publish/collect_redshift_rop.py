@@ -70,6 +70,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
                                               beauty_product)}
 
         num_aovs = rop.evalParm("RS_aov")
+        full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
         for index in range(num_aovs):
             i = index + 1
 
@@ -82,11 +83,12 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             if not aov_prefix:
                 aov_prefix = default_prefix
 
-            aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
-            render_products.append(aov_product)
+            if not full_exr_mode:
+                aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
+                render_products.append(aov_product)
 
-            files_by_aov[aov_suffix] = self.generate_expected_files(instance,
-                                                                    aov_product)    # noqa
+                files_by_aov[aov_suffix] = self.generate_expected_files(instance,
+                                                                        aov_product)    # noqa
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)
