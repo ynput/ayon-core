@@ -66,12 +66,32 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         self._version_by_representation_id = {}
         all_representation_names = set()
         self._version_path_by_id = {}
+        version_docs_by_id = {
+            context["version"]["_id"]: context["version"]
+            for context in contexts
+        }
+        repre_docs = list(get_representations(
+            self._project_name, version_ids=set(version_docs_by_id)
+        ))
+        repre_docs_by_id = {
+            repre_doc["_id"]: repre_doc
+            for repre_doc in repre_docs
+        }
+        self._version_by_representation_id = {
+            repre_doc["_id"]: version_docs_by_id[repre_doc["parent"]]
+            for repre_doc in repre_docs
+        }
+        self._version_path_by_id = {}
         for context in contexts:
-            version_id = context["version"]["_id"]
-            version = get_version_by_id(self._project_name, version_id)
-            representations = list(get_representations(
-                self._project_name, version_ids=[version_id]
-            ))
+            version_doc = context["version"]
+            version_id = version_doc["_id"]
+            if version_id in self._version_path_by_id:
+                continue
+            asset_doc = context["asset"]
+            folder_path = get_asset_name_identifier(asset_doc)
+            subset_name = context["subset"]["name"]
+            self._version_path_by_id[version_id] = "{}/{}/{}/v{:03d}".format(
+                folder_path, subset_name, version_doc["name"]
             representations_by_version_id[version_id] = representations
 
             for representation in representations:
