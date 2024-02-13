@@ -19,10 +19,10 @@ from ayon_core.client import (
     get_asset_name_identifier,
     get_ayon_server_api_connection,
 )
+from ayon_core.lib import is_in_tests
 from ayon_core.lib.events import emit_event
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
-from ayon_core.tests.lib import is_in_tests
 
 from .publish.lib import filter_pyblish_plugins
 from .anatomy import Anatomy

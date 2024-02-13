@@ -21,7 +21,7 @@ from openpype_modules.webpublisher.lib import (
     get_batch_asset_task_info,
     parse_json
 )
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import is_in_tests
 
 
 class CollectBatchData(pyblish.api.ContextPlugin):

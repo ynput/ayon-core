@@ -61,7 +61,10 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
             ("AYON_FOLDER_PATH", asset_name),
             ("AYON_TASK_NAME", task_name)
         ):
-            os.environ[key] = value
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
     def create_instance(
         self,

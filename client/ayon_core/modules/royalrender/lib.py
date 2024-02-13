@@ -10,7 +10,12 @@ from datetime import datetime
 
 import pyblish.api
 
-from ayon_core.lib import BoolDef, NumberDef, is_running_from_build
+from ayon_core.lib import (
+    BoolDef,
+    NumberDef,
+    is_running_from_build,
+    is_in_tests,
+)
 from ayon_core.lib.execute import run_ayon_launcher_process
 from ayon_core.modules.royalrender.api import Api as rrApi
 from ayon_core.modules.royalrender.rr_job import (
@@ -22,7 +27,6 @@ from ayon_core.modules.royalrender.rr_job import (
 from ayon_core.pipeline import AYONPyblishPluginMixin
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_core.pipeline.publish.lib import get_published_workfile_instance
-from ayon_core.tests.lib import is_in_tests
 
 
 class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
