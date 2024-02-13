@@ -57,23 +57,6 @@ def _get_asset_icon_color(asset_doc):
     return get_default_entity_icon_color()
 
 
-def get_asset_icon_by_name(icon_name, icon_color, has_children=False):
-    if not icon_name:
-        icon_name = get_default_asset_icon_name(has_children)
-
-    if icon_color:
-        icon_color = QtGui.QColor(icon_color)
-    else:
-        icon_color = get_default_entity_icon_color()
-    icon = get_qta_icon_by_name_and_color(icon_name, icon_color)
-    if icon is not None:
-        return icon
-    return get_qta_icon_by_name_and_color(
-        get_default_asset_icon_name(has_children),
-        icon_color
-    )
-
-
 def _get_asset_icon_name(asset_doc, has_children=True):
     icon_name = _get_asset_icon_name_from_doc(asset_doc)
     if icon_name:
