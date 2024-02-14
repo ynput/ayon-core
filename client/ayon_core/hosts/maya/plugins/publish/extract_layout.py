@@ -81,8 +81,6 @@ class ExtractLayout(publish.Extractor):
             rot = cmds.xform(asset, query=True, rotation=True, euler=True)
             scl = cmds.xform(asset, query=True, relative=True, scale=True)
 
-            shift_back_to_frame_start = instance.data.get("shift_back_to_frame_start", False)
-
             json_element["transform"] = {
                 "translation": {
                     "x": loc[0],
@@ -146,6 +144,11 @@ class ExtractLayout(publish.Extractor):
                 json_element["basis"].append(list(row))
 
             json_data.append(json_element)
+
+        shift_back_to_frame_start = instance.data.get("shift_back_to_frame_start", False)
+        if shift_back_to_frame_start:
+            shot_node = instance.data.get("shot_node")
+            # cmds.setAttr(shot_node + ".sequenceStartFrame", instance.data.get("frameStart"))
 
         json_filename = "{}.json".format(instance.name)
         json_path = os.path.join(stagingdir, json_filename)

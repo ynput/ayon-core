@@ -34,6 +34,7 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
     ]
 
     def process(self, instance):
+        return
         if not self.is_active(instance.data):
             return
 
