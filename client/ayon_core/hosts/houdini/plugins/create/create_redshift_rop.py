@@ -83,11 +83,12 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             "trange": 1,
             # Redshift ROP settings
             "RS_outputFileNamePrefix": filepath,
-            "RS_outputMultilayerMode": multilayer_mode_index[multi_layered_mode],
-            "RS_aovMultipart" : multipart,
             "RS_outputBeautyAOVSuffix": "beauty",
             "RS_outputFileFormat": ext_format_index[ext],
         }
+        if ext == "exr":
+            parms["RS_outputMultilayerMode"] = multilayer_mode_index[multi_layered_mode]
+            parms["RS_aovMultipart"] = multipart
 
         if self.selected_nodes:
             # set up the render camera from the selected node
