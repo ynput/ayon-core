@@ -3,8 +3,8 @@ import platform
 
 
 from ayon_core.client import get_asset_by_name
-from ayon_core.modules import (
-    OpenPypeModule,
+from ayon_core.addon import (
+    AYONAddon,
     ITrayService,
     IPluginPaths
 )
@@ -76,7 +76,7 @@ class ExampleTimersManagerConnector:
 
 
 class TimersManager(
-    OpenPypeModule,
+    AYONAddon,
     ITrayService,
     IPluginPaths
 ):
@@ -99,23 +99,27 @@ class TimersManager(
         "start_timer"
     )
 
-    def initialize(self, modules_settings):
-        timers_settings = modules_settings[self.name]
+    def initialize(self, studio_settings):
+        timers_settings = studio_settings.get(self.name)
+        enabled = timers_settings is not None
 
-        self.enabled = timers_settings["enabled"]
+        auto_stop = False
+        full_time = 0
+        message_time = 0
+        if enabled:
+            # When timer will stop if idle manager is running (minutes)
+            full_time = int(timers_settings["full_time"] * 60)
+            # How many minutes before the timer is stopped will popup the message
+            message_time = int(timers_settings["message_time"] * 60)
 
-        # When timer will stop if idle manager is running (minutes)
-        full_time = int(timers_settings["full_time"] * 60)
-        # How many minutes before the timer is stopped will popup the message
-        message_time = int(timers_settings["message_time"] * 60)
+            auto_stop = timers_settings["auto_stop"]
+            platform_name = platform.system().lower()
+            # Turn of auto stop on MacOs because pynput requires root permissions
+            #    and on linux can cause thread locks on application close
+            if full_time <= 0 or platform_name in ("darwin", "linux"):
+                auto_stop = False
 
-        auto_stop = timers_settings["auto_stop"]
-        platform_name = platform.system().lower()
-        # Turn of auto stop on MacOs because pynput requires root permissions
-        #    and on linux can cause thread locks on application close
-        if full_time <= 0 or platform_name in ("darwin", "linux"):
-            auto_stop = False
-
+        self.enabled = enabled
         self.auto_stop = auto_stop
         self.time_show_message = full_time - message_time
         self.time_stop_timer = full_time

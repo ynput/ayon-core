@@ -15,7 +15,7 @@ method to convert 'click_wrap' object to 'click' object.
 Before
 ```python
 import click
-from ayon_core.modules import AYONAddon
+from ayon_core.addon import AYONAddon
 
 
 class ExampleAddon(AYONAddon):
@@ -40,7 +40,7 @@ def mycommand(arg1, arg2):
 Now
 ```
 from ayon_core import click_wrap
-from ayon_core.modules import AYONAddon
+from ayon_core.addon import AYONAddon
 
 
 class ExampleAddon(AYONAddon):
@@ -72,7 +72,7 @@ Added small enhancements:
 Example:
     ```python
     from ayon_core import click_wrap
-    from ayon_core.modules import AYONAddon
+    from ayon_core.addon import AYONAddon
 
 
     class ExampleAddon(AYONAddon):

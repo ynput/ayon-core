@@ -6,6 +6,7 @@ import re
 import uuid
 import logging
 import json
+from contextlib import contextmanager
 
 import six
 

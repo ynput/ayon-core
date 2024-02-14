@@ -1,6 +1,6 @@
 """WebServerAddon spawns aiohttp server in asyncio loop.
 
-Main usage of the module is in OpenPype tray where make sense to add ability
+Main usage of the module is in AYON tray where make sense to add ability
 of other modules to add theirs routes. Module which would want use that
 option must have implemented method `webserver_initialization` which must
 expect `WebServerManager` object where is possible to add routes or paths

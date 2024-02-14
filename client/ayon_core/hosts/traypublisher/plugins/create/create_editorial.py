@@ -174,46 +174,42 @@ Supporting publishing new shots to project
 or updating already created. Publishing will create OTIO file.
 """
     icon = "fa.file"
+    product_type_presets = []
 
-    def __init__(
-        self, project_settings, *args, **kwargs
-    ):
-        super(EditorialSimpleCreator, self).__init__(
-            project_settings, *args, **kwargs
-        )
+    def __init__(self, *args, **kwargs):
+        self._shot_metadata_solver = ShotMetadataSolver(self.log)
+        super(EditorialSimpleCreator, self).__init__(*args, **kwargs)
+
+    def apply_settings(self, project_settings):
         editorial_creators = deepcopy(
             project_settings["traypublisher"]["editorial_creators"]
         )
-        # get this creator settings by identifier
-        self._creator_settings = editorial_creators.get(self.identifier)
+        creator_settings = editorial_creators.get(self.identifier)
 
-        clip_name_tokenizer = self._creator_settings["clip_name_tokenizer"]
-        shot_rename = self._creator_settings["shot_rename"]
-        shot_hierarchy = self._creator_settings["shot_hierarchy"]
-        shot_add_tasks = self._creator_settings["shot_add_tasks"]
-
-        self._shot_metadata_solver = ShotMetadataSolver(
-            clip_name_tokenizer,
-            shot_rename,
-            shot_hierarchy,
-            shot_add_tasks,
-            self.log
+        self._shot_metadata_solver.update_data(
+            creator_settings["clip_name_tokenizer"],
+            creator_settings["shot_rename"],
+            creator_settings["shot_hierarchy"],
+            creator_settings["shot_add_tasks"]
         )
-
-        # try to set main attributes from settings
-        if self._creator_settings.get("default_variants"):
-            self.default_variants = self._creator_settings["default_variants"]
+        self.product_type_presets = creator_settings["product_type_presets"]
+        default_variants = creator_settings.get("default_variants")
+        if default_variants:
+            self.default_variants = default_variants
 
     def create(self, subset_name, instance_data, pre_create_data):
-        allowed_family_presets = self._get_allowed_family_presets(
+        allowed_product_type_presets = self._get_allowed_product_type_presets(
             pre_create_data)
 
+        product_types = {
+            item["product_type"]
+            for item in self.product_type_presets
+        }
         clip_instance_properties = {
-            k: v for k, v in pre_create_data.items()
+            k: v
+            for k, v in pre_create_data.items()
             if k != "sequence_filepath_data"
-            if k not in [
-                i["family"] for i in self._creator_settings["family_presets"]
-            ]
+            if k not in product_types
         }
 
         asset_name = instance_data["folderPath"]
@@ -255,7 +251,7 @@ or updating already created. Publishing will create OTIO file.
                 otio_timeline,
                 media_path,
                 clip_instance_properties,
-                allowed_family_presets,
+                allowed_product_type_presets,
                 os.path.basename(seq_path),
                 first_otio_timeline
             )
@@ -355,7 +351,7 @@ or updating already created. Publishing will create OTIO file.
         otio_timeline,
         media_path,
         instance_data,
-        family_presets,
+        product_type_presets,
         sequence_file_name,
         first_otio_timeline=None
     ):
@@ -365,7 +361,7 @@ or updating already created. Publishing will create OTIO file.
             otio_timeline (otio.Timeline): otio timeline object
             media_path (str): media file path string
             instance_data (dict): clip instance data
-            family_presets (list): list of dict settings subset presets
+            product_type_presets (list): list of dict settings subset presets
         """
 
         tracks = [
@@ -411,17 +407,17 @@ or updating already created. Publishing will create OTIO file.
                     "instance_id": None
                 }
 
-                for _fpreset in family_presets:
+                for product_type_preset in product_type_presets:
                     # exclude audio family if no audio stream
                     if (
-                        _fpreset["family"] == "audio"
+                        product_type_preset["product_type"] == "audio"
                         and not media_data.get("audio")
                     ):
                         continue
 
                     instance = self._make_subset_instance(
                         otio_clip,
-                        _fpreset,
+                        product_type_preset,
                         deepcopy(base_instance_data),
                         parenting_data
                     )
@@ -533,7 +529,7 @@ or updating already created. Publishing will create OTIO file.
     def _make_subset_instance(
         self,
         otio_clip,
-        preset,
+        product_type_preset,
         instance_data,
         parenting_data
     ):
@@ -541,16 +537,16 @@ or updating already created. Publishing will create OTIO file.
 
         Args:
             otio_clip (otio.Clip): otio clip object
-            preset (dict): single family preset
+            product_type_preset (dict): single family preset
             instance_data (dict): instance data
             parenting_data (dict): shot instance parent data
 
         Returns:
             CreatedInstance: creator instance object
         """
-        family = preset["family"]
+        family = product_type_preset["product_type"]
         label = self._make_subset_naming(
-            preset,
+            product_type_preset,
             instance_data
         )
         instance_data["label"] = label
@@ -569,11 +565,11 @@ or updating already created. Publishing will create OTIO file.
         else:
             # add review family if defined
             instance_data.update({
-                "outputFileType": preset["output_file_type"],
+                "outputFileType": product_type_preset["output_file_type"],
                 "parent_instance_id": parenting_data["instance_id"],
                 "creator_attributes": {
                     "parent_instance": parenting_data["instance_label"],
-                    "add_review_family": preset.get("review")
+                    "add_review_family": product_type_preset.get("review")
                 }
             })
 
@@ -585,15 +581,11 @@ or updating already created. Publishing will create OTIO file.
 
         return c_instance
 
-    def _make_subset_naming(
-        self,
-        preset,
-        instance_data
-    ):
+    def _make_subset_naming(self, product_type_preset, instance_data):
         """ Subset name maker
 
         Args:
-            preset (dict): single preset item
+            product_type_preset (dict): single preset item
             instance_data (dict): instance data
 
         Returns:
@@ -602,10 +594,10 @@ or updating already created. Publishing will create OTIO file.
         asset_name = instance_data["creator_attributes"]["folderPath"]
 
         variant_name = instance_data["variant"]
-        family = preset["family"]
+        family = product_type_preset["product_type"]
 
         # get variant name from preset or from inheritance
-        _variant_name = preset.get("variant") or variant_name
+        _variant_name = product_type_preset.get("variant") or variant_name
 
         # subset name
         subset_name = "{}{}".format(
@@ -763,7 +755,7 @@ or updating already created. Publishing will create OTIO file.
             "sourceOut": int(source_out)
         }
 
-    def _get_allowed_family_presets(self, pre_create_data):
+    def _get_allowed_product_type_presets(self, pre_create_data):
         """ Filter out allowed family presets.
 
         Args:
@@ -773,10 +765,11 @@ or updating already created. Publishing will create OTIO file.
             list: lit of dict with preset items
         """
         return [
-            {"family": "shot"},
+            {"product_type": "shot"},
             *[
-                preset for preset in self._creator_settings["family_presets"]
-                if pre_create_data[preset["family"]]
+                preset
+                for preset in self.product_type_presets
+                if pre_create_data[preset["product_type"]]
             ]
         ]
 
@@ -853,8 +846,8 @@ or updating already created. Publishing will create OTIO file.
         ]
         # add variants swithers
         attr_defs.extend(
-            BoolDef(_var["family"], label=_var["family"])
-            for _var in self._creator_settings["family_presets"]
+            BoolDef(item["product_type"], label=item["product_type"])
+            for item in self.product_type_presets
         )
         attr_defs.append(UISeparatorDef())
 

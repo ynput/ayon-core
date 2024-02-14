@@ -9,7 +9,6 @@ from ayon_core.lib import (
     NumberDef,
 )
 from ayon_core.pipeline import (
-    legacy_io,
     AYONPyblishPluginMixin
 )
 from ayon_core.pipeline.publish.lib import (
@@ -110,12 +109,16 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "AVALON_PROJECT",
             "AVALON_ASSET",
             "AVALON_TASK",
+            "AVALON_WORKDIR",
             "AVALON_APP_NAME",
             "IS_TEST"
         ]
 
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **legacy_io.Session)
+        environment = {
+            key: os.environ[key]
+            for key in keys
+            if key in os.environ
+        }
 
         for key in keys:
             value = environment.get(key)

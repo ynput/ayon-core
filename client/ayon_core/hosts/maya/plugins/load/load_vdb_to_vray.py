@@ -5,6 +5,7 @@ from ayon_core.pipeline import (
     load,
     get_representation_path
 )
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
 
 from maya import cmds
 
@@ -129,15 +130,11 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-
-        c = colors.get(family)
-        if c is not None:
+        color = get_load_color_for_family(family, settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
-            cmds.setAttr(root + ".outlinerColor",
-                         float(c[0]) / 255,
-                         float(c[1]) / 255,
-                         float(c[2]) / 255)
+            cmds.setAttr(root + ".outlinerColor", red, green, blue)
 
         # Create VRayVolumeGrid
         grid_node = cmds.createNode("VRayVolumeGrid",
