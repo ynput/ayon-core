@@ -44,6 +44,7 @@ class CollectStagingDirsForCleaningUp(pyblish.api.InstancePlugin,
 
         # Get sop path
         node_type = node.type().name()
+        filepath = None
         if node_type == "geometry":
             filepath = node.evalParm("sopoutput")
 
@@ -93,6 +94,7 @@ class CollectStagingDirsForCleaningUp(pyblish.api.InstancePlugin,
                 "ROP node type '{}' is not supported for cleaning up."
                 .format(node_type)
             )
+            return
 
         if not filepath:
             self.log.warning("No filepath value to collect.")
