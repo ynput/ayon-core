@@ -1,5 +1,5 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
-from ayon_server.types import ColorRGBA_uint8
+from ayon_server.types import ColorRGB_uint8
 
 
 class CollectRenderInstancesModel(BaseSettingsModel):
@@ -11,8 +11,8 @@ class CollectRenderInstancesModel(BaseSettingsModel):
 class ExtractSequenceModel(BaseSettingsModel):
     """Review BG color is used for whole scene review and for thumbnails."""
     # TODO Use alpha color
-    review_bg: ColorRGBA_uint8 = SettingsField(
-        (255, 255, 255, 1.0),
+    review_bg: ColorRGB_uint8 = SettingsField(
+        (255, 255, 255),
         title="Review BG color")
 
 
@@ -100,7 +100,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "ignore_render_pass_transparency": False
     },
     "ExtractSequence": {
-        "review_bg": [255, 255, 255, 1.0]
+        "review_bg": [255, 255, 255]
     },
     "ValidateProjectSettings": {
         "enabled": True,

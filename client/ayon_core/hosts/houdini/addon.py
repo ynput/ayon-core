@@ -1,15 +1,12 @@
 import os
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 HOUDINI_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class HoudiniAddon(OpenPypeModule, IHostAddon):
+class HoudiniAddon(AYONAddon, IHostAddon):
     name = "houdini"
     host_name = "houdini"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def add_implementation_envs(self, env, _app):
         # Add requirements to HOUDINI_PATH and HOUDINI_MENU_PATH

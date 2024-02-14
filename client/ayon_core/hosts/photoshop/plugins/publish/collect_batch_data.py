@@ -17,12 +17,11 @@ import os
 
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io
 from openpype_modules.webpublisher.lib import (
     get_batch_asset_task_info,
     parse_json
 )
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import is_in_tests
 
 
 class CollectBatchData(pyblish.api.ContextPlugin):
@@ -71,8 +70,6 @@ class CollectBatchData(pyblish.api.ContextPlugin):
 
         os.environ["AVALON_ASSET"] = asset_name
         os.environ["AVALON_TASK"] = task_name
-        legacy_io.Session["AVALON_ASSET"] = asset_name
-        legacy_io.Session["AVALON_TASK"] = task_name
 
         context.data["asset"] = asset_name
         context.data["task"] = task_name

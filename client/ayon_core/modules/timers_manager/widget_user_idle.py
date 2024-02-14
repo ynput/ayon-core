@@ -9,7 +9,7 @@ class WidgetUserIdle(QtWidgets.QWidget):
     def __init__(self, module):
         super(WidgetUserIdle, self).__init__()
 
-        self.setWindowTitle("OpenPype - Stop timers")
+        self.setWindowTitle("AYON - Stop timers")
 
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)

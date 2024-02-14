@@ -49,7 +49,6 @@ class HostBase(object):
     Todo:
         - move content of 'install_host' as method of this class
             - register host object
-            - install legacy_io
             - install global plugin paths
         - store registered plugin paths to this object
         - handle current context (project, asset, task)
@@ -132,8 +131,6 @@ class HostBase(object):
         this method can be crucial for host implementations in DCCs where
         can be opened multiple workfiles at one moment and change of context
         can't be caught properly.
-
-        Default implementation returns values from 'legacy_io.Session'.
 
         Returns:
             Dict[str, Union[str, None]]: Context with 3 keys 'project_name',

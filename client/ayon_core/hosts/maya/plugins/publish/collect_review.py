@@ -39,7 +39,7 @@ class CollectReview(pyblish.api.InstancePlugin):
         if display_lights == "project_settings":
             settings = instance.context.data["project_settings"]
             settings = settings["maya"]["publish"]["ExtractPlayblast"]
-            settings = settings["capture_preset"]["Viewport Options"]
+            settings = settings["capture_preset"]["ViewportOptions"]
             display_lights = settings["displayLights"]
 
         # Collect camera focal length.

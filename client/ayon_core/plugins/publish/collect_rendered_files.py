@@ -12,7 +12,7 @@ import json
 
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io, KnownPublishError
+from ayon_core.pipeline import KnownPublishError
 from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 
 
@@ -72,7 +72,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         # validate basic necessary data
         data_err = "invalid json file - missing data"
         required = ["asset", "user", "comment",
-                    "job", "instances", "session", "version"]
+                    "job", "instances", "version"]
         assert all(elem in data.keys() for elem in required), data_err
 
         # set context by first json file
@@ -144,7 +144,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
             os.environ.get("AYON_PUBLISH_DATA")
             or os.environ.get("OPENPYPE_PUBLISH_DATA")
         )
-        if publish_data_paths:
+        if not publish_data_paths:
             raise KnownPublishError("Missing `AYON_PUBLISH_DATA`")
 
         # QUESTION
@@ -165,24 +165,28 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
                 path = anatomy.fill_root(path)
                 data = self._load_json(path)
                 assert data, "failed to load json file"
-                if not session_is_set:
-                    session_data = data["session"]
-                    remapped = anatomy.roots_obj.path_remapper(
-                        session_data["AVALON_WORKDIR"]
-                    )
-                    if remapped:
-                        session_data["AVALON_WORKDIR"] = remapped
-
-                    self.log.debug("Setting session using data from file")
-                    legacy_io.Session.update(session_data)
-                    os.environ.update(session_data)
+                session_data = data.get("session")
+                if not session_is_set and session_data:
                     session_is_set = True
+                    self.log.debug("Setting session using data from file")
+                    os.environ.update(session_data)
+
                 staging_dir_persistent = self._process_path(data, anatomy)
                 if not staging_dir_persistent:
                     context.data["cleanupFullPaths"].append(path)
                     context.data["cleanupEmptyDirs"].append(
                         os.path.dirname(path)
                     )
+
+            # Remap workdir if it's set
+            workdir = os.getenv("AVALON_WORKDIR")
+            remapped_workdir = None
+            if workdir:
+                remapped_workdir = anatomy.roots_obj.path_remapper(
+                    os.getenv("AVALON_WORKDIR")
+                )
+            if remapped_workdir:
+                os.environ["AVALON_WORKDIR"] = remapped_workdir
         except Exception as e:
             self.log.error(e, exc_info=True)
             raise Exception("Error") from e

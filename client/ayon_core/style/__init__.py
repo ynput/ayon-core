@@ -198,7 +198,7 @@ def _load_font():
 
 
 def load_stylesheet():
-    """Load and return OpenPype Qt stylesheet."""
+    """Load and return AYON Qt stylesheet."""
 
     if _Cache.stylesheet is None:
         _Cache.stylesheet = _load_stylesheet()
@@ -207,7 +207,7 @@ def load_stylesheet():
 
 
 def get_app_icon_path():
-    """Path to OpenPype icon."""
+    """Path to AYON icon."""
     return resources.get_ayon_icon_filepath()
 
 

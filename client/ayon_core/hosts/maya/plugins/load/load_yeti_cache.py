@@ -13,6 +13,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.hosts.maya.api import lib
 from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
 
 
 # Do not reset these values on update but only apply on first load
@@ -81,16 +82,11 @@ class YetiCacheLoader(load.LoaderPlugin):
         project_name = context["project"]["name"]
 
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-
-        c = colors.get(family)
-        if c is not None:
+        color = get_load_color_for_family(family, settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr(group_node + ".useOutlinerColor", 1)
-            cmds.setAttr(group_node + ".outlinerColor",
-                (float(c[0])/255),
-                (float(c[1])/255),
-                (float(c[2])/255)
-            )
+            cmds.setAttr(group_node + ".outlinerColor", red, green, blue)
 
         nodes.append(group_node)
 
