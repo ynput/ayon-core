@@ -7,6 +7,8 @@ from ayon_core.hosts.unreal.api.pipeline import (
     set_sequence_hierarchy,
 )
 
+import unreal
+
 
 def get_default_sequence_path(settings):
     """Get default render folder from blender settings."""
@@ -76,3 +78,11 @@ def build_sequence_hierarchy():
 
     # Start creating sequences from the root element
     _create_sequence(sequence_root, sequence_path)
+
+    # List all the assets in the sequence path and save them
+    asset_content = unreal.EditorAssetLibrary.list_assets(
+        sequence_path, recursive=True, include_folder=False
+    )
+
+    for a in asset_content:
+        unreal.EditorAssetLibrary.save_asset(a)
