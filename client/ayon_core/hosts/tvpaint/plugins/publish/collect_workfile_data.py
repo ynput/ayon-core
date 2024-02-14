@@ -4,7 +4,6 @@ import tempfile
 
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io
 from ayon_core.hosts.tvpaint.api.lib import (
     execute_george,
     execute_george_through_file,
@@ -90,7 +89,6 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
                 ("AVALON_TASK", "task_name")
             )
             for env_key, key in key_map:
-                legacy_io.Session[env_key] = workfile_context[key]
                 os.environ[env_key] = workfile_context[key]
             self.log.info("Context changed to: {}".format(workfile_context))
 

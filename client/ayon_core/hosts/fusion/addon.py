@@ -1,6 +1,6 @@
 import os
 import re
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 from ayon_core.lib import Logger
 
 FUSION_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -48,12 +48,9 @@ def get_fusion_version(app_name):
             )
 
 
-class FusionAddon(OpenPypeModule, IHostAddon):
+class FusionAddon(AYONAddon, IHostAddon):
     name = "fusion"
     host_name = "fusion"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def get_launch_hook_paths(self, app):
         if app.host_name != self.host_name:

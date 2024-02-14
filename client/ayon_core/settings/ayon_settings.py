@@ -52,156 +52,28 @@ def _convert_color(color_value):
     return color_value
 
 
-def _convert_host_imageio(host_settings):
-    if "imageio" not in host_settings:
-        return
-
-    # --- imageio ---
-    ayon_imageio = host_settings["imageio"]
-    # TODO remove when fixed on server
-    if "ocio_config" in ayon_imageio["ocio_config"]:
-        ayon_imageio["ocio_config"]["filepath"] = (
-            ayon_imageio["ocio_config"].pop("ocio_config")
-        )
-    # Convert file rules
-    imageio_file_rules = ayon_imageio["file_rules"]
-    new_rules = {}
-    for rule in imageio_file_rules["rules"]:
-        name = rule.pop("name")
-        new_rules[name] = rule
-    imageio_file_rules["rules"] = new_rules
-
-
-def _convert_applications_groups(groups, clear_metadata):
-    environment_key = "environment"
-    if isinstance(groups, dict):
-        new_groups = []
-        for name, item in groups.items():
-            item["name"] = name
-            new_groups.append(item)
-        groups = new_groups
-
-    output = {}
-    group_dynamic_labels = {}
-    for group in groups:
-        group_name = group.pop("name")
-        if "label" in group:
-            group_dynamic_labels[group_name] = group["label"]
-
-        tool_group_envs = group[environment_key]
-        if isinstance(tool_group_envs, six.string_types):
-            group[environment_key] = json.loads(tool_group_envs)
-
-        variants = {}
-        variant_dynamic_labels = {}
-        for variant in group.pop("variants"):
-            variant_name = variant.pop("name")
-            label = variant.get("label")
-            if label and label != variant_name:
-                variant_dynamic_labels[variant_name] = label
-            variant_envs = variant[environment_key]
-            if isinstance(variant_envs, six.string_types):
-                variant[environment_key] = json.loads(variant_envs)
-            variants[variant_name] = variant
-        group["variants"] = variants
-
-        if not clear_metadata:
-            variants["__dynamic_keys_labels__"] = variant_dynamic_labels
-        output[group_name] = group
-
-    if not clear_metadata:
-        output["__dynamic_keys_labels__"] = group_dynamic_labels
-    return output
-
-
-def _convert_applications_system_settings(
-    ayon_settings, output, clear_metadata
-):
-    # Addon settings
-    addon_settings = ayon_settings["applications"]
-
-    # Remove project settings
-    addon_settings.pop("only_available", None)
-
-    # Applications settings
-    ayon_apps = addon_settings["applications"]
-
-    additional_apps = ayon_apps.pop("additional_apps")
-    applications = _convert_applications_groups(
-        ayon_apps, clear_metadata
-    )
-    applications["additional_apps"] = _convert_applications_groups(
-        additional_apps, clear_metadata
-    )
-
-    # Tools settings
-    tools = _convert_applications_groups(
-        addon_settings["tool_groups"], clear_metadata
-    )
-
-    output["applications"] = applications
-    output["tools"] = {"tool_groups": tools}
-
-
 def _convert_general(ayon_settings, output, default_settings):
-    # TODO get studio name/code
-    core_settings = ayon_settings["core"]
-    environments = core_settings["environments"]
-    if isinstance(environments, six.string_types):
-        environments = json.loads(environments)
-
-    general = default_settings["general"]
-    general.update({
-        "log_to_server": False,
-        "studio_name": core_settings["studio_name"],
-        "studio_code": core_settings["studio_code"],
-        "environment": environments
-    })
-    output["general"] = general
+    output["core"] = ayon_settings["core"]
+    version_check_interval = (
+        default_settings["general"]["version_check_interval"]
+    )
+    output["general"] = {
+        "version_check_interval": version_check_interval
+    }
 
 
 def _convert_kitsu_system_settings(
     ayon_settings, output, addon_versions, default_settings
 ):
+    if "kitsu" in ayon_settings:
+        output["kitsu"] = ayon_settings["kitsu"]
+
     enabled = addon_versions.get("kitsu") is not None
     kitsu_settings = default_settings["modules"]["kitsu"]
     kitsu_settings["enabled"] = enabled
     if enabled:
         kitsu_settings["server"] = ayon_settings["kitsu"]["server"]
     output["modules"]["kitsu"] = kitsu_settings
-
-
-def _convert_timers_manager_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("timers_manager") is not None
-    manager_settings = default_settings["modules"]["timers_manager"]
-    manager_settings["enabled"] = enabled
-    if enabled:
-        ayon_manager = ayon_settings["timers_manager"]
-        manager_settings.update({
-            key: ayon_manager[key]
-            for key in {
-                "auto_stop",
-                "full_time",
-                "message_time",
-                "disregard_publishing"
-            }
-        })
-    output["modules"]["timers_manager"] = manager_settings
-
-
-def _convert_clockify_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("clockify") is not None
-    clockify_settings = default_settings["modules"]["clockify"]
-    clockify_settings["enabled"] = enabled
-    if enabled:
-        clockify_settings["workspace_name"] = (
-            ayon_settings["clockify"]["workspace_name"]
-        )
-    output["modules"]["clockify"] = clockify_settings
 
 
 def _convert_deadline_system_settings(
@@ -242,21 +114,24 @@ def _convert_modules_system(
     # TODO add 'enabled' values
     for func in (
         _convert_kitsu_system_settings,
-        _convert_timers_manager_system_settings,
-        _convert_clockify_system_settings,
         _convert_deadline_system_settings,
         _convert_royalrender_system_settings,
     ):
         func(ayon_settings, output, addon_versions, default_settings)
 
+    for key in {
+        "timers_manager",
+        "clockify",
+    }:
+        if addon_versions.get(key):
+            output[key] = ayon_settings
+        else:
+            output.pop(key, None)
+
     modules_settings = output["modules"]
     for module_name in (
         "sync_server",
-        "log_viewer",
-        "standalonepublish_tool",
-        "project_manager",
         "job_queue",
-        "avalon",
         "addon_paths",
     ):
         settings = default_settings["modules"][module_name]
@@ -290,7 +165,7 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
         "modules": {}
     }
     if "applications" in ayon_settings:
-        _convert_applications_system_settings(ayon_settings, output, False)
+        output["applications"] = ayon_settings["applications"]
 
     if "core" in ayon_settings:
         _convert_general(ayon_settings, output, default_settings)
@@ -313,26 +188,10 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_applications_project_settings(ayon_settings, output):
-    if "applications" not in ayon_settings:
-        return
-
-    output["applications"] = {
-        "only_available": ayon_settings["applications"]["only_available"]
-    }
-
-
 def _convert_blender_project_settings(ayon_settings, output):
     if "blender" not in ayon_settings:
         return
     ayon_blender = ayon_settings["blender"]
-    _convert_host_imageio(ayon_blender)
-
-    ayon_publish = ayon_blender["publish"]
-
-    for plugin in ("ExtractThumbnail", "ExtractPlayblast"):
-        plugin_settings = ayon_publish[plugin]
-        plugin_settings["presets"] = json.loads(plugin_settings["presets"])
 
     output["blender"] = ayon_blender
 
@@ -342,7 +201,6 @@ def _convert_celaction_project_settings(ayon_settings, output):
         return
 
     ayon_celaction = ayon_settings["celaction"]
-    _convert_host_imageio(ayon_celaction)
 
     output["celaction"] = ayon_celaction
 
@@ -353,53 +211,6 @@ def _convert_flame_project_settings(ayon_settings, output):
 
     ayon_flame = ayon_settings["flame"]
 
-    ayon_publish_flame = ayon_flame["publish"]
-    # Plugin 'ExtractSubsetResources' renamed to 'ExtractProductResources'
-    if "ExtractSubsetResources" in ayon_publish_flame:
-        ayon_product_resources = ayon_publish_flame["ExtractSubsetResources"]
-    else:
-        ayon_product_resources = (
-            ayon_publish_flame.pop("ExtractProductResources"))
-        ayon_publish_flame["ExtractSubsetResources"] = ayon_product_resources
-
-    # 'ExtractSubsetResources' changed model of 'export_presets_mapping'
-    # - some keys were moved under 'other_parameters'
-    new_subset_resources = {}
-    for item in ayon_product_resources.pop("export_presets_mapping"):
-        name = item.pop("name")
-        if "other_parameters" in item:
-            other_parameters = item.pop("other_parameters")
-            item.update(other_parameters)
-        new_subset_resources[name] = item
-
-    ayon_product_resources["export_presets_mapping"] = new_subset_resources
-
-    # 'imageio' changed model
-    # - missing subkey 'project' which is in root of 'imageio' model
-    _convert_host_imageio(ayon_flame)
-    ayon_imageio_flame = ayon_flame["imageio"]
-    if "project" not in ayon_imageio_flame:
-        profile_mapping = ayon_imageio_flame.pop("profilesMapping")
-        ayon_flame["imageio"] = {
-            "project": ayon_imageio_flame,
-            "profilesMapping": profile_mapping
-        }
-
-    ayon_load_flame = ayon_flame["load"]
-    for plugin_name in ("LoadClip", "LoadClipBatch"):
-        plugin_settings = ayon_load_flame[plugin_name]
-        plugin_settings["families"] = plugin_settings.pop("product_types")
-        plugin_settings["clip_name_template"] = (
-            plugin_settings["clip_name_template"]
-            .replace("{folder[name]}", "{asset}")
-            .replace("{product[name]}", "{subset}")
-        )
-        plugin_settings["layer_rename_template"] = (
-            plugin_settings["layer_rename_template"]
-            .replace("{folder[name]}", "{asset}")
-            .replace("{product[name]}", "{subset}")
-        )
-
     output["flame"] = ayon_flame
 
 
@@ -408,40 +219,6 @@ def _convert_fusion_project_settings(ayon_settings, output):
         return
 
     ayon_fusion = ayon_settings["fusion"]
-    _convert_host_imageio(ayon_fusion)
-
-    ayon_imageio_fusion = ayon_fusion["imageio"]
-
-    if "ocioSettings" in ayon_imageio_fusion:
-        ayon_ocio_setting = ayon_imageio_fusion.pop("ocioSettings")
-        paths = ayon_ocio_setting.pop("ocioPathModel")
-        for key, value in tuple(paths.items()):
-            new_value = []
-            if value:
-                new_value.append(value)
-            paths[key] = new_value
-
-        ayon_ocio_setting["configFilePath"] = paths
-        ayon_imageio_fusion["ocio"] = ayon_ocio_setting
-    elif "ocio" in ayon_imageio_fusion:
-        paths = ayon_imageio_fusion["ocio"].pop("configFilePath")
-        for key, value in tuple(paths.items()):
-            new_value = []
-            if value:
-                new_value.append(value)
-            paths[key] = new_value
-        ayon_imageio_fusion["ocio"]["configFilePath"] = paths
-
-    _convert_host_imageio(ayon_imageio_fusion)
-
-    ayon_create_saver = ayon_fusion["create"]["CreateSaver"]
-    ayon_create_saver["temp_rendering_path_template"] = (
-        ayon_create_saver["temp_rendering_path_template"]
-        .replace("{product[name]}", "{subset}")
-        .replace("{product[type]}", "{family}")
-        .replace("{folder[name]}", "{asset}")
-        .replace("{task[name]}", "{task}")
-    )
 
     output["fusion"] = ayon_fusion
 
@@ -452,173 +229,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    # Change key of render settings
-    ayon_maya["RenderSettings"] = ayon_maya.pop("render_settings")
-
-    # Convert extensions mapping
-    ayon_maya["ext_mapping"] = {
-        item["name"]: item["value"]
-        for item in ayon_maya["ext_mapping"]
-    }
-
-    # Maya dirmap
-    ayon_maya_dirmap = ayon_maya.pop("maya_dirmap")
-    ayon_maya_dirmap_path = ayon_maya_dirmap["paths"]
-    ayon_maya_dirmap_path["source-path"] = (
-        ayon_maya_dirmap_path.pop("source_path")
-    )
-    ayon_maya_dirmap_path["destination-path"] = (
-        ayon_maya_dirmap_path.pop("destination_path")
-    )
-    ayon_maya["maya-dirmap"] = ayon_maya_dirmap
-
-    # Create plugins
-    ayon_create = ayon_maya["create"]
-    ayon_create_static_mesh = ayon_create["CreateUnrealStaticMesh"]
-    if "static_mesh_prefixes" in ayon_create_static_mesh:
-        ayon_create_static_mesh["static_mesh_prefix"] = (
-            ayon_create_static_mesh.pop("static_mesh_prefixes")
-        )
-
-    # --- Publish (START) ---
-    ayon_publish = ayon_maya["publish"]
-    try:
-        attributes = json.loads(
-            ayon_publish["ValidateAttributes"]["attributes"]
-        )
-    except ValueError:
-        attributes = {}
-    ayon_publish["ValidateAttributes"]["attributes"] = attributes
-
-    try:
-        SUFFIX_NAMING_TABLE = json.loads(
-            ayon_publish
-            ["ValidateTransformNamingSuffix"]
-            ["SUFFIX_NAMING_TABLE"]
-        )
-    except ValueError:
-        SUFFIX_NAMING_TABLE = {}
-    ayon_publish["ValidateTransformNamingSuffix"]["SUFFIX_NAMING_TABLE"] = (
-        SUFFIX_NAMING_TABLE
-    )
-
-    validate_frame_range = ayon_publish["ValidateFrameRange"]
-    if "exclude_product_types" in validate_frame_range:
-        validate_frame_range["exclude_families"] = (
-            validate_frame_range.pop("exclude_product_types"))
-
-    # Extract playblast capture settings
-    validate_rendern_settings = ayon_publish["ValidateRenderSettings"]
-    for key in (
-        "arnold_render_attributes",
-        "vray_render_attributes",
-        "redshift_render_attributes",
-        "renderman_render_attributes",
-    ):
-        if key not in validate_rendern_settings:
-            continue
-        validate_rendern_settings[key] = [
-            [item["type"], item["value"]]
-            for item in validate_rendern_settings[key]
-        ]
-
-    plugin_path_attributes = ayon_publish["ValidatePluginPathAttributes"]
-    plugin_path_attributes["attribute"] = {
-        item["name"]: item["value"]
-        for item in plugin_path_attributes["attribute"]
-    }
-
-    ayon_capture_preset = ayon_publish["ExtractPlayblast"]["capture_preset"]
-    display_options = ayon_capture_preset["DisplayOptions"]
-    for key in ("background", "backgroundBottom", "backgroundTop"):
-        display_options[key] = _convert_color(display_options[key])
-
-    for src_key, dst_key in (
-        ("DisplayOptions", "Display Options"),
-        ("ViewportOptions", "Viewport Options"),
-        ("CameraOptions", "Camera Options"),
-    ):
-        ayon_capture_preset[dst_key] = ayon_capture_preset.pop(src_key)
-
-    viewport_options = ayon_capture_preset["Viewport Options"]
-    viewport_options["pluginObjects"] = {
-        item["name"]: item["value"]
-        for item in viewport_options["pluginObjects"]
-    }
-
-    ayon_playblast_settings = ayon_publish["ExtractPlayblast"]["profiles"]
-    if ayon_playblast_settings:
-        for setting in ayon_playblast_settings:
-            capture_preset = setting["capture_preset"]
-            display_options = capture_preset["DisplayOptions"]
-            for key in ("background", "backgroundBottom", "backgroundTop"):
-                display_options[key] = _convert_color(display_options[key])
-
-            for src_key, dst_key in (
-                ("DisplayOptions", "Display Options"),
-                ("ViewportOptions", "Viewport Options"),
-                ("CameraOptions", "Camera Options"),
-            ):
-                capture_preset[dst_key] = capture_preset.pop(src_key)
-
-            viewport_options = capture_preset["Viewport Options"]
-            viewport_options["pluginObjects"] = {
-                item["name"]: item["value"]
-                for item in viewport_options["pluginObjects"]
-            }
-
-    # Extract Camera Alembic bake attributes
-    try:
-        bake_attributes = json.loads(
-            ayon_publish["ExtractCameraAlembic"]["bake_attributes"]
-        )
-    except ValueError:
-        bake_attributes = []
-    ayon_publish["ExtractCameraAlembic"]["bake_attributes"] = bake_attributes
-
-    # --- Publish (END) ---
-    for renderer_settings in ayon_maya["RenderSettings"].values():
-        if (
-            not isinstance(renderer_settings, dict)
-            or "additional_options" not in renderer_settings
-        ):
-            continue
-        renderer_settings["additional_options"] = [
-            [item["attribute"], item["value"]]
-            for item in renderer_settings["additional_options"]
-        ]
-
-    # Workfile build
-    ayon_workfile_build = ayon_maya["workfile_build"]
-    for item in ayon_workfile_build["profiles"]:
-        for key in ("current_context", "linked_assets"):
-            for subitem in item[key]:
-                if "families" in subitem:
-                    break
-                subitem["families"] = subitem.pop("product_types")
-                subitem["subset_name_filters"] = subitem.pop(
-                    "product_name_filters")
-
-    _convert_host_imageio(ayon_maya)
-
-    ayon_maya_load = ayon_maya["load"]
-    load_colors = ayon_maya_load["colors"]
-    for key, color in tuple(load_colors.items()):
-        load_colors[key] = _convert_color(color)
-
-    reference_loader = ayon_maya_load["reference_loader"]
-    reference_loader["namespace"] = (
-        reference_loader["namespace"]
-        .replace("{product[name]}", "{subset}")
-    )
-
-    if ayon_maya_load.get("import_loader"):
-        import_loader = ayon_maya_load["import_loader"]
-        import_loader["namespace"] = (
-            import_loader["namespace"]
-            .replace("{product[name]}", "{subset}")
-        )
-
     output["maya"] = ayon_maya
 
 
@@ -627,31 +237,6 @@ def _convert_3dsmax_project_settings(ayon_settings, output):
         return
 
     ayon_max = ayon_settings["max"]
-    _convert_host_imageio(ayon_max)
-    if "PointCloud" in ayon_max:
-        point_cloud_attribute = ayon_max["PointCloud"]["attribute"]
-        new_point_cloud_attribute = {
-            item["name"]: item["value"]
-            for item in point_cloud_attribute
-        }
-        ayon_max["PointCloud"]["attribute"] = new_point_cloud_attribute
-    # --- Publish (START) ---
-    ayon_publish = ayon_max["publish"]
-    if "ValidateAttributes" in ayon_publish:
-        try:
-            attributes = json.loads(
-                ayon_publish["ValidateAttributes"]["attributes"]
-            )
-        except ValueError:
-            attributes = {}
-        ayon_publish["ValidateAttributes"]["attributes"] = attributes
-
-    if "ValidateLoadedPlugin" in ayon_publish:
-        loaded_plugin = (
-            ayon_publish["ValidateLoadedPlugin"]["family_plugins_mapping"]
-        )
-        for item in loaded_plugin:
-            item["families"] = item.pop("product_types")
 
     output["max"] = ayon_max
 
@@ -707,15 +292,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
         return
 
     ayon_nuke = ayon_settings["nuke"]
-
-    # --- Dirmap ---
-    dirmap = ayon_nuke.pop("dirmap")
-    for src_key, dst_key in (
-        ("source_path", "source-path"),
-        ("destination_path", "destination-path"),
-    ):
-        dirmap["paths"][dst_key] = dirmap["paths"].pop(src_key)
-    ayon_nuke["nuke-dirmap"] = dirmap
 
     # --- Load ---
     ayon_load = ayon_nuke["load"]
@@ -808,7 +384,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
 
     # --- ImageIO ---
     # NOTE 'monitorOutLut' is maybe not yet in v3 (ut should be)
-    _convert_host_imageio(ayon_nuke)
     ayon_imageio = ayon_nuke["imageio"]
 
     # workfile
@@ -857,7 +432,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
         return
 
     ayon_hiero = ayon_settings["hiero"]
-    _convert_host_imageio(ayon_hiero)
 
     new_gui_filters = {}
     for item in ayon_hiero.pop("filters", []):
@@ -887,19 +461,6 @@ def _convert_photoshop_project_settings(ayon_settings, output):
         return
 
     ayon_photoshop = ayon_settings["photoshop"]
-    _convert_host_imageio(ayon_photoshop)
-
-    ayon_publish_photoshop = ayon_photoshop["publish"]
-
-    ayon_colorcoded = ayon_publish_photoshop["CollectColorCodedInstances"]
-    if "flatten_product_type_template" in ayon_colorcoded:
-        ayon_colorcoded["flatten_subset_template"] = (
-            ayon_colorcoded.pop("flatten_product_type_template"))
-
-    collect_review = ayon_publish_photoshop["CollectReview"]
-    if "active" in collect_review:
-        collect_review["publish"] = collect_review.pop("active")
-
     output["photoshop"] = ayon_photoshop
 
 
@@ -908,45 +469,14 @@ def _convert_substancepainter_project_settings(ayon_settings, output):
         return
 
     ayon_substance_painter = ayon_settings["substancepainter"]
-    _convert_host_imageio(ayon_substance_painter)
-    if "shelves" in ayon_substance_painter:
-        shelves_items = ayon_substance_painter["shelves"]
-        new_shelves_items = {
-            item["name"]: item["value"]
-            for item in shelves_items
-        }
-        ayon_substance_painter["shelves"] = new_shelves_items
-
     output["substancepainter"] = ayon_substance_painter
 
 
 def _convert_tvpaint_project_settings(ayon_settings, output):
     if "tvpaint" not in ayon_settings:
         return
+
     ayon_tvpaint = ayon_settings["tvpaint"]
-
-    _convert_host_imageio(ayon_tvpaint)
-
-    ayon_publish_settings = ayon_tvpaint["publish"]
-    for plugin_name in (
-        "ValidateProjectSettings",
-        "ValidateMarks",
-        "ValidateStartFrame",
-        "ValidateAssetName",
-    ):
-        ayon_value = ayon_publish_settings[plugin_name]
-        for src_key, dst_key in (
-            ("action_enabled", "optional"),
-            ("action_enable", "active"),
-        ):
-            if src_key in ayon_value:
-                ayon_value[dst_key] = ayon_value.pop(src_key)
-
-    extract_sequence_setting = ayon_publish_settings["ExtractSequence"]
-    extract_sequence_setting["review_bg"] = _convert_color(
-        extract_sequence_setting["review_bg"]
-    )
-
     output["tvpaint"] = ayon_tvpaint
 
 
@@ -956,60 +486,6 @@ def _convert_traypublisher_project_settings(ayon_settings, output):
 
     ayon_traypublisher = ayon_settings["traypublisher"]
 
-    _convert_host_imageio(ayon_traypublisher)
-
-    ayon_editorial_simple = (
-        ayon_traypublisher["editorial_creators"]["editorial_simple"]
-    )
-    # Subset -> Product type conversion
-    if "product_type_presets" in ayon_editorial_simple:
-        family_presets = ayon_editorial_simple.pop("product_type_presets")
-        for item in family_presets:
-            item["family"] = item.pop("product_type")
-        ayon_editorial_simple["family_presets"] = family_presets
-
-    if "shot_metadata_creator" in ayon_editorial_simple:
-        shot_metadata_creator = ayon_editorial_simple.pop(
-            "shot_metadata_creator"
-        )
-        if isinstance(shot_metadata_creator["clip_name_tokenizer"], dict):
-            shot_metadata_creator["clip_name_tokenizer"] = [
-                {"name": "_sequence_", "regex": "(sc\\d{3})"},
-                {"name": "_shot_", "regex": "(sh\\d{3})"},
-            ]
-        ayon_editorial_simple.update(shot_metadata_creator)
-
-    ayon_editorial_simple["clip_name_tokenizer"] = {
-        item["name"]: item["regex"]
-        for item in ayon_editorial_simple["clip_name_tokenizer"]
-    }
-
-    if "shot_subset_creator" in ayon_editorial_simple:
-        ayon_editorial_simple.update(
-            ayon_editorial_simple.pop("shot_subset_creator"))
-    for item in ayon_editorial_simple["shot_hierarchy"]["parents"]:
-        item["type"] = item.pop("parent_type")
-
-    # Simple creators
-    ayon_simple_creators = ayon_traypublisher["simple_creators"]
-    for item in ayon_simple_creators:
-        if "product_type" not in item:
-            break
-        item["family"] = item.pop("product_type")
-
-    shot_add_tasks = ayon_editorial_simple["shot_add_tasks"]
-
-    # TODO: backward compatibility and remove in future
-    if isinstance(shot_add_tasks, dict):
-        shot_add_tasks = []
-
-    # aggregate shot_add_tasks items
-    new_shot_add_tasks = {
-        item["name"]: {"type": item["task_type"]}
-        for item in shot_add_tasks
-    }
-    ayon_editorial_simple["shot_add_tasks"] = new_shot_add_tasks
-
     output["traypublisher"] = ayon_traypublisher
 
 
@@ -1018,7 +494,6 @@ def _convert_webpublisher_project_settings(ayon_settings, output):
         return
 
     ayon_webpublisher = ayon_settings["webpublisher"]
-    _convert_host_imageio(ayon_webpublisher)
 
     ayon_publish = ayon_webpublisher["publish"]
 
@@ -1029,49 +504,6 @@ def _convert_webpublisher_project_settings(ayon_settings, output):
     }
 
     output["webpublisher"] = ayon_webpublisher
-
-
-def _convert_deadline_project_settings(ayon_settings, output):
-    if "deadline" not in ayon_settings:
-        return
-
-    ayon_deadline = ayon_settings["deadline"]
-
-    for key in ("deadline_urls",):
-        ayon_deadline.pop(key)
-
-    ayon_deadline_publish = ayon_deadline["publish"]
-    limit_groups = {
-        item["name"]: item["value"]
-        for item in ayon_deadline_publish["NukeSubmitDeadline"]["limit_groups"]
-    }
-    ayon_deadline_publish["NukeSubmitDeadline"]["limit_groups"] = limit_groups
-
-    maya_submit = ayon_deadline_publish["MayaSubmitDeadline"]
-    for json_key in ("jobInfo", "pluginInfo"):
-        src_text = maya_submit.pop(json_key)
-        try:
-            value = json.loads(src_text)
-        except ValueError:
-            value = {}
-        maya_submit[json_key] = value
-
-    nuke_submit = ayon_deadline_publish["NukeSubmitDeadline"]
-    nuke_submit["env_search_replace_values"] = {
-        item["name"]: item["value"]
-        for item in nuke_submit.pop("env_search_replace_values")
-    }
-    nuke_submit["limit_groups"] = {
-        item["name"]: item["value"] for item in nuke_submit.pop("limit_groups")
-    }
-
-    process_subsetted_job = ayon_deadline_publish["ProcessSubmittedJobOnFarm"]
-    process_subsetted_job["aov_filter"] = {
-        item["name"]: item["value"]
-        for item in process_subsetted_job.pop("aov_filter")
-    }
-
-    output["deadline"] = ayon_deadline
 
 
 def _convert_royalrender_project_settings(ayon_settings, output):
@@ -1148,50 +580,8 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
 
     ayon_core = ayon_settings["core"]
 
-    _convert_host_imageio(ayon_core)
-
-    for key in (
-        "environments",
-        "studio_name",
-        "studio_code",
-    ):
-        ayon_core.pop(key, None)
-
     # Publish conversion
     ayon_publish = ayon_core["publish"]
-
-    ayon_collect_audio = ayon_publish["CollectAudio"]
-    if "audio_product_name" in ayon_collect_audio:
-        ayon_collect_audio["audio_subset_name"] = (
-            ayon_collect_audio.pop("audio_product_name"))
-
-    for profile in ayon_publish["ExtractReview"]["profiles"]:
-        if "product_types" in profile:
-            profile["families"] = profile.pop("product_types")
-        new_outputs = {}
-        for output_def in profile.pop("outputs"):
-            name = output_def.pop("name")
-            new_outputs[name] = output_def
-
-            output_def_filter = output_def["filter"]
-            if "product_names" in output_def_filter:
-                output_def_filter["subsets"] = (
-                    output_def_filter.pop("product_names"))
-
-            for color_key in ("overscan_color", "bg_color"):
-                output_def[color_key] = _convert_color(output_def[color_key])
-
-            letter_box = output_def["letter_box"]
-            for color_key in ("fill_color", "line_color"):
-                letter_box[color_key] = _convert_color(letter_box[color_key])
-
-            if "output_width" in output_def:
-                output_def["width"] = output_def.pop("output_width")
-
-            if "output_height" in output_def:
-                output_def["height"] = output_def.pop("output_height")
-
-        profile["outputs"] = new_outputs
 
     # ExtractThumbnail plugin
     ayon_extract_thumbnail = ayon_publish["ExtractThumbnail"]
@@ -1367,13 +757,13 @@ def convert_project_settings(ayon_settings, default_settings):
         "houdini",
         "resolve",
         "unreal",
+        "applications",
+        "deadline",
     }
     for key in exact_match:
         if key in ayon_settings:
             output[key] = ayon_settings[key]
-            _convert_host_imageio(output[key])
 
-    _convert_applications_project_settings(ayon_settings, output)
     _convert_blender_project_settings(ayon_settings, output)
     _convert_celaction_project_settings(ayon_settings, output)
     _convert_flame_project_settings(ayon_settings, output)
@@ -1388,7 +778,6 @@ def convert_project_settings(ayon_settings, default_settings):
     _convert_traypublisher_project_settings(ayon_settings, output)
     _convert_webpublisher_project_settings(ayon_settings, output)
 
-    _convert_deadline_project_settings(ayon_settings, output)
     _convert_royalrender_project_settings(ayon_settings, output)
     _convert_kitsu_project_settings(ayon_settings, output)
     _convert_shotgrid_project_settings(ayon_settings, output)

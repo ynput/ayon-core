@@ -7,7 +7,6 @@ import pyblish.api
 
 from ayon_core.pipeline import (
     register_creator_plugin_path,
-    legacy_io,
 )
 from ayon_core.host import HostBase, IPublishHost
 
@@ -24,7 +23,6 @@ class TrayPublisherHost(HostBase, IPublishHost):
 
     def install(self):
         os.environ["AVALON_APP"] = self.name
-        legacy_io.Session["AVALON_APP"] = self.name
 
         pyblish.api.register_host("traypublisher")
         pyblish.api.register_plugin_path(PUBLISH_PATH)
@@ -43,8 +41,6 @@ class TrayPublisherHost(HostBase, IPublishHost):
         # TODO Deregister project specific plugins and register new project
         #   plugins
         os.environ["AVALON_PROJECT"] = project_name
-        legacy_io.Session["AVALON_PROJECT"] = project_name
-        legacy_io.install()
         HostContext.set_project_name(project_name)
 
 

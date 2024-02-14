@@ -1,15 +1,12 @@
 import os
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 SUBSTANCE_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class SubstanceAddon(OpenPypeModule, IHostAddon):
+class SubstanceAddon(AYONAddon, IHostAddon):
     name = "substancepainter"
     host_name = "substancepainter"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def add_implementation_envs(self, env, _app):
         # Add requirements to SUBSTANCE_PAINTER_PLUGINS_PATH

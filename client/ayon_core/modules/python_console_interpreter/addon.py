@@ -1,13 +1,12 @@
-from ayon_core.modules import OpenPypeModule, ITrayAction
+from ayon_core.addon import AYONAddon, ITrayAction
 
 
-class PythonInterpreterAction(OpenPypeModule, ITrayAction):
+class PythonInterpreterAction(AYONAddon, ITrayAction):
     label = "Console"
     name = "python_interpreter"
     admin_action = True
 
-    def initialize(self, modules_settings):
-        self.enabled = True
+    def initialize(self, settings):
         self._interpreter_window = None
 
     def tray_init(self):
@@ -22,7 +21,7 @@ class PythonInterpreterAction(OpenPypeModule, ITrayAction):
         if self._interpreter_window:
             return
 
-        from openpype_modules.python_console_interpreter.window import (
+        from ayon_core.modules.python_console_interpreter.window import (
             PythonInterpreterWidget
         )
 

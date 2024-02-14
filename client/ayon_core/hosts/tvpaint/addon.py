@@ -1,5 +1,5 @@
 import os
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 TVPAINT_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -12,12 +12,9 @@ def get_launch_script_path():
     )
 
 
-class TVPaintAddon(OpenPypeModule, IHostAddon):
+class TVPaintAddon(AYONAddon, IHostAddon):
     name = "tvpaint"
     host_name = "tvpaint"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def add_implementation_envs(self, env, _app):
         """Modify environments to contain all required for implementation."""

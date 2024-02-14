@@ -565,7 +565,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._last_thumbnail_path = None
 
     def _on_current_session_context_request(self):
-        self._assets_widget.set_current_session_asset()
+        self._assets_widget.select_current_asset()
         task_name = self.current_task_name
         if task_name:
             self._tasks_widget.select_task_name(task_name)

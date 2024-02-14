@@ -12,7 +12,6 @@ import ayon_core.hosts.maya.api.action
 from ayon_core.client.mongo import OpenPypeMongoConnection
 from ayon_core.hosts.maya.api.shader_definition_editor import (
     DEFINITION_FILENAME)
-from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin, PublishValidationError, ValidateContentsOrder)
 
