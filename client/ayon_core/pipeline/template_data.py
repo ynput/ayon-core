@@ -17,12 +17,11 @@ def get_general_template_data(system_settings=None):
 
     if not system_settings:
         system_settings = get_system_settings()
-    studio_name = system_settings["general"]["studio_name"]
-    studio_code = system_settings["general"]["studio_code"]
+    core_settings = system_settings["core"]
     return {
         "studio": {
-            "name": studio_name,
-            "code": studio_code
+            "name": core_settings["studio_name"],
+            "code": core_settings["studio_code"]
         },
         "user": get_ayon_username()
     }

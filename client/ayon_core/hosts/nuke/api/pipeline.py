@@ -21,10 +21,12 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     get_current_asset_name,
     get_current_task_name,
+    registered_host,
 )
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
 from ayon_core.hosts.nuke import NUKE_ROOT_DIR
+from ayon_core.tools.workfile_template_build import open_template_ui
 
 from .command import viewer_update_and_undo_stop
 from .lib import (
@@ -55,6 +57,7 @@ from .workfile_template_builder import (
     build_workfile_template,
     create_placeholder,
     update_placeholder,
+    NukeTemplateBuilder,
 )
 from .workio import (
     open_file,
@@ -176,7 +179,7 @@ def add_nuke_callbacks():
     nuke.addOnScriptLoad(WorkfileSettings().set_context_settings)
 
 
-    if nuke_settings["nuke-dirmap"]["enabled"]:
+    if nuke_settings["nuke_dirmap"]["enabled"]:
         log.info("Added Nuke's dir-mapping callback ...")
         # Add dirmap for file paths.
         nuke.addFilenameFilter(dirmap_file_name_filter)
@@ -313,7 +316,7 @@ def _install_menu():
         lambda: BuildWorkfile().process()
     )
 
-    menu_template = menu.addMenu("Template Builder")  # creating template menu
+    menu_template = menu.addMenu("Template Builder")
     menu_template.addCommand(
         "Build Workfile from template",
         lambda: build_workfile_template()
@@ -321,6 +324,12 @@ def _install_menu():
 
     if not ASSIST:
         menu_template.addSeparator()
+        menu_template.addCommand(
+            "Open template",
+            lambda: open_template_ui(
+                NukeTemplateBuilder(registered_host()), get_main_window()
+            )
+        )
         menu_template.addCommand(
             "Create Place Holder",
             lambda: create_placeholder()
