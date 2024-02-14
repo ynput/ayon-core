@@ -30,8 +30,8 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
 
         if current_instance is None:
             current_instance_asset = None
-
-        current_instance_asset = current_instance["folderPath"]
+        else:
+            current_instance_asset = current_instance["folderPath"]
 
         if current_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
@@ -39,11 +39,10 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
                 variant, task_name, asset_doc, project_name, host_name
             )
             data = {
+                "folderPath": asset_name,
                 "task": task_name,
                 "variant": variant
             }
-
-            data["folderPath"] = asset_name
 
             data.update(
                 self.get_dynamic_data(
