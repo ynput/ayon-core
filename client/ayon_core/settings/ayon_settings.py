@@ -76,26 +76,6 @@ def _convert_kitsu_system_settings(
     output["modules"]["kitsu"] = kitsu_settings
 
 
-def _convert_timers_manager_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("timers_manager") is not None
-    manager_settings = default_settings["modules"]["timers_manager"]
-    manager_settings["enabled"] = enabled
-    if enabled:
-        ayon_manager = ayon_settings["timers_manager"]
-        manager_settings.update({
-            key: ayon_manager[key]
-            for key in {
-                "auto_stop",
-                "full_time",
-                "message_time",
-                "disregard_publishing"
-            }
-        })
-    output["modules"]["timers_manager"] = manager_settings
-
-
 def _convert_clockify_system_settings(
     ayon_settings, output, addon_versions, default_settings
 ):
@@ -147,21 +127,24 @@ def _convert_modules_system(
     # TODO add 'enabled' values
     for func in (
         _convert_kitsu_system_settings,
-        _convert_timers_manager_system_settings,
         _convert_clockify_system_settings,
         _convert_deadline_system_settings,
         _convert_royalrender_system_settings,
     ):
         func(ayon_settings, output, addon_versions, default_settings)
 
+    for key in {
+        "timers_manager",
+    }:
+        if addon_versions.get(key):
+            output[key] = ayon_settings
+        else:
+            output.pop(key, None)
+
     modules_settings = output["modules"]
     for module_name in (
         "sync_server",
-        "log_viewer",
-        "standalonepublish_tool",
-        "project_manager",
         "job_queue",
-        "avalon",
         "addon_paths",
     ):
         settings = default_settings["modules"][module_name]
