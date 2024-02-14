@@ -43,6 +43,4 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
         instance.data.update(data)
         self.log.debug("Collected data: {}".format(data))
         self.log.debug("Collected instance: {}".format(file))
-        self.log.debug("Scene path: {}".format(
-            context.data["currentFile"]))
         self.log.debug("staging Dir: {}".format(folder))
