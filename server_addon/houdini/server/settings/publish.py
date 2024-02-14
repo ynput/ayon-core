@@ -84,7 +84,7 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "chunk_size": 999999
     },
     "CollectStagingDirsForCleaningUp": {
-        "enabled": True,
+        "enabled": False,
         "optional": True,
         "active": True
     },
