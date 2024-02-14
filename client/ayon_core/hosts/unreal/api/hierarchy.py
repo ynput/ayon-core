@@ -12,15 +12,14 @@ def get_default_sequence_path(settings):
     """Get default render folder from blender settings."""
 
     sequence_path = settings['unreal']['sequence_path']
-    if sequence_path.endswith("/"):
-        sequence_path = sequence_path.rstrip("/")
+    sequence_path = sequence_path.rstrip("/")
 
     return f"/Game/{sequence_path}"
 
 
 def _create_sequence(
-        element, sequence_path, parent_path="", parent_seq=None,
-        parent_fr=None
+    element, sequence_path, parent_path="", parent_sequence=None,
+    parent_frame_range=None
 ):
     path = f"{parent_path}/{element['name']}"
     hierarchy_dir = f"{sequence_path}{path}"
@@ -29,10 +28,10 @@ def _create_sequence(
     sequence, frame_range = generate_sequence(element["name"], hierarchy_dir)
 
     # Add the sequence to the parent element if provided
-    if parent_seq:
+    if parent_sequence:
         set_sequence_hierarchy(
-            parent_seq, sequence,
-            parent_fr[1],
+            parent_sequence, sequence,
+            parent_frame_range[1],
             frame_range[0], frame_range[1],
             [])
 
@@ -43,7 +42,7 @@ def _create_sequence(
     for child in element["children"]:
         _create_sequence(
             child, sequence_path, parent_path=path,
-            parent_seq=sequence, parent_fr=frame_range)
+            parent_sequence=sequence, parent_frame_range=frame_range)
 
 
 def build_sequence_hierarchy():
