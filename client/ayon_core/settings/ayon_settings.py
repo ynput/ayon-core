@@ -76,19 +76,6 @@ def _convert_kitsu_system_settings(
     output["modules"]["kitsu"] = kitsu_settings
 
 
-def _convert_clockify_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("clockify") is not None
-    clockify_settings = default_settings["modules"]["clockify"]
-    clockify_settings["enabled"] = enabled
-    if enabled:
-        clockify_settings["workspace_name"] = (
-            ayon_settings["clockify"]["workspace_name"]
-        )
-    output["modules"]["clockify"] = clockify_settings
-
-
 def _convert_deadline_system_settings(
     ayon_settings, output, addon_versions, default_settings
 ):
@@ -127,7 +114,6 @@ def _convert_modules_system(
     # TODO add 'enabled' values
     for func in (
         _convert_kitsu_system_settings,
-        _convert_clockify_system_settings,
         _convert_deadline_system_settings,
         _convert_royalrender_system_settings,
     ):
@@ -135,6 +121,7 @@ def _convert_modules_system(
 
     for key in {
         "timers_manager",
+        "clockify",
     }:
         if addon_versions.get(key):
             output[key] = ayon_settings
