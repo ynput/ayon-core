@@ -522,6 +522,18 @@ def get_subsequences(sequence: unreal.LevelSequence):
 def set_sequence_hierarchy(
     seq_i, seq_j, max_frame_i, min_frame_j, max_frame_j, map_paths
 ):
+    """
+    Sets the sequence hierarchy by creating or retrieving sequencer tracks and
+    adding subscene and visibility sections.
+
+    Args:
+        seq_i (unreal.MovieSceneSequence): The parent sequence.
+        seq_j (unreal.MovieSceneSequence): The sub-sequence to be added.
+        max_frame_i (int): The maximum frame of the parent sequence.
+        min_frame_j (int): The minimum frame of the sub-sequence.
+        max_frame_j (int): The maximum frame of the sub-sequence.
+        map_paths (list): List of map paths.
+    """
     # Get existing sequencer tracks or create them if they don't exist
     tracks = seq_i.get_master_tracks()
     subscene_track = None
@@ -591,6 +603,18 @@ def set_sequence_hierarchy(
 
 
 def generate_sequence(name, hierarchy_dir):
+    """
+    Creates a new sequence for the given hierarchy. The sequence is created
+    with the specified name and is saved in the specified directory.
+
+    Args:
+        name (str): The name of the sequence.
+        hierarchy_dir (str): The directory where the sequence will be created.
+
+    Returns:
+        tuple: A tuple containing the generated sequence object and the range
+        of frames (min_frame, max_frame).
+    """
     tools = unreal.AssetToolsHelpers().get_asset_tools()
 
     sequence = tools.create_asset(
@@ -600,6 +624,7 @@ def generate_sequence(name, hierarchy_dir):
         factory=unreal.LevelSequenceFactoryNew()
     )
 
+    # Get frame range and fps data to apply to the sequence
     project_name = get_current_project_name()
     asset_data = get_asset_by_name(
         project_name,
@@ -644,6 +669,7 @@ def generate_sequence(name, hierarchy_dir):
     sequence.set_view_range_start(min_frame / fps)
     sequence.set_view_range_end(max_frame / fps)
 
+    # Check if the sequence has a camera cut track and if not, create one
     tracks = sequence.get_master_tracks()
     track = None
     for t in tracks:
