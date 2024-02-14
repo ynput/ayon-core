@@ -40,6 +40,11 @@ IGNORED_HOSTS = [
 
 IGNORED_MODULES = []
 
+PACKAGE_PY_TEMPLATE = """name = "{addon_name}"
+version = "{addon_version}"
+plugin_for = ["ayon_server"]
+"""
+
 
 class ZipFileLongPaths(zipfile.ZipFile):
     """Allows longer paths in zip files.
@@ -145,24 +150,11 @@ def create_addon_zip(
     addon_name: str,
     addon_version: str,
     keep_source: bool,
-    rez_package: bool,
 ):
     zip_filepath = output_dir / f"{addon_name}-{addon_version}.zip"
 
-    if rez_package:
-        zip_filepath = output_dir / f"{addon_name}-{addon_version}-rez.zip"
-
     addon_output_dir = output_dir / addon_name / addon_version
     with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
-        # TODO: Decide if we want to keep this for first pass checking without
-        # executing any python. Otherwiseh we can be removed
-        zipf.writestr(
-            "manifest.json",
-            json.dumps({
-                "addon_name": addon_name,
-                "addon_version": addon_version
-            })
-        )
         # Add client code content to zip
         src_root = os.path.normpath(str(addon_output_dir.absolute()))
         src_root_offset = len(src_root) + 1
@@ -174,14 +166,9 @@ def create_addon_zip(
             for filename in filenames:
                 src_path = os.path.join(root, filename)
                 if rel_root:
-                    dst_path = os.path.join("addon", rel_root, filename)
-                    if rez_package:
-                        dst_path = os.path.join(rel_root, filename)
+                    dst_path = os.path.join(rel_root, filename)
                 else:
-                    dst_path = os.path.join("addon", filename)
-
-                    if rez_package:
-                        dst_path = filename
+                    dst_path = filename
 
                 zipf.write(src_path, dst_path)
 
@@ -194,9 +181,7 @@ def create_addon_package(
     output_dir: Path,
     create_zip: bool,
     keep_source: bool,
-    rez_package: bool,
 ):
-    server_dir = addon_dir / "server"
     addon_version = get_addon_version(addon_dir)
 
     addon_output_dir = output_dir / addon_dir.name / addon_version
@@ -205,37 +190,22 @@ def create_addon_package(
     addon_output_dir.mkdir(parents=True)
 
     # Copy server content
-    if not rez_package:
-        src_root = os.path.normpath(str(server_dir.absolute()))
-        src_root_offset = len(src_root) + 1
-        for root, _, filenames in os.walk(str(server_dir)):
-            dst_root = addon_output_dir
-            if root != src_root:
-                rel_root = root[src_root_offset:]
-                dst_root = dst_root / rel_root
+    package_py = addon_output_dir / "package.py"
+    package_py_content = PACKAGE_PY_TEMPLATE.format(
+        addon_name=addon_dir.name, addon_version=addon_version
+    )
 
-            dst_root.mkdir(parents=True, exist_ok=True)
-            for filename in filenames:
-                src_path = os.path.join(root, filename)
-                shutil.copy(src_path, str(dst_root))
-    else:
-        package_py = addon_output_dir / "package.py"
+    with open(package_py, "w+") as pkg_py:
+        pkg_py.write(package_py_content)
 
-        with open(package_py, "w+") as pkg_py:
-            pkg_py.write(
-                f"""name = "{addon_dir.name}"
-version = "{addon_version}"
-plugin_for = ["ayon_server"]
-build_command = "python {{root}}/rezbuild.py"
-"""
-            )
-        shutil.copytree(
-            server_dir, addon_output_dir / "server", dirs_exist_ok=True
-        )
+    server_dir = addon_dir / "server"
+    shutil.copytree(
+        server_dir, addon_output_dir / "server", dirs_exist_ok=True
+    )
 
     if create_zip:
         create_addon_zip(
-            output_dir, addon_dir.name, addon_version, keep_source, rez_package
+            output_dir, addon_dir.name, addon_version, keep_source
         )
 
 
@@ -245,7 +215,6 @@ def main(
     keep_source=False,
     clear_output_dir=False,
     addons=None,
-    rez_package=False,
 ):
     current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
     root_dir = current_dir.parent
@@ -280,7 +249,7 @@ def main(
             continue
 
         create_addon_package(
-            addon_dir, output_dir, create_zip, keep_source, rez_package
+            addon_dir, output_dir, create_zip, keep_source
         )
 
         print(f"- package '{addon_dir.name}' created")
@@ -330,13 +299,6 @@ if __name__ == "__main__":
         action="append",
         help="Limit addon creation to given addon name",
     )
-    parser.add_argument(
-        "-r",
-        "--rez",
-        dest="rez_package",
-        action="store_true",
-        help="Make it a Rez-compatible package",
-    )
 
     args = parser.parse_args(sys.argv[1:])
     main(
@@ -345,5 +307,4 @@ if __name__ == "__main__":
         args.keep_sources,
         args.clear_output_dir,
         args.addons,
-        args.rez_package,
     )
