@@ -68,6 +68,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                 subset_name=subset_name,
                 fmt="${aov}.$F4.{ext}".format(aov="AOV", ext=ext)
             )
+            multipart = False
 
         elif multilayer_mode_index[multi_layered_mode] == "2":
             filepath = "{renders_dir}{subset_name}/{subset_name}.$F4.{ext}".format(
@@ -75,6 +76,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                 subset_name=subset_name,
                 ext=ext
             )
+            multipart = True
 
         parms = {
             # Render frame range
@@ -82,6 +84,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             # Redshift ROP settings
             "RS_outputFileNamePrefix": filepath,
             "RS_outputMultilayerMode": multilayer_mode_index[multi_layered_mode],
+            "RS_aovMultipart" : multipart,
             "RS_outputBeautyAOVSuffix": "beauty",
             "RS_outputFileFormat": ext_format_index[ext],
         }
