@@ -19,15 +19,40 @@ def get_default_sequence_path(settings):
     return f"/Game/{sequence_path}"
 
 
+def _create_level(path, name, master_level):
+    # Create the level
+    level_path = f"{path}/{name}_map"
+    level_package = f"{level_path}.{name}_map"
+    unreal.EditorLevelLibrary.new_level(level_path)
+
+    # Add the level to the master level as sublevel
+    unreal.EditorLevelLibrary.load_level(master_level)
+    unreal.EditorLevelUtils.add_level_to_world(
+        unreal.EditorLevelLibrary.get_editor_world(),
+        level_package,
+        unreal.LevelStreamingDynamic
+    )
+    unreal.EditorLevelLibrary.save_all_dirty_levels()
+
+    return level_package
+
+
 def _create_sequence(
-    element, sequence_path, parent_path="", parent_sequence=None,
-    parent_frame_range=None
+    element, sequence_path, master_level,
+    parent_path="", parent_sequence=None, parent_frame_range=None
 ):
-    path = f"{parent_path}/{element['name']}"
+    name = element["name"]
+    path = f"{parent_path}/{name}"
     hierarchy_dir = f"{sequence_path}{path}"
+    children = element["children"]
+
+    levels = []
+    if not children:
+        level = _create_level(hierarchy_dir, name, master_level)
+        levels.append(level)
 
     # Create sequence for the current element
-    sequence, frame_range = generate_sequence(element["name"], hierarchy_dir)
+    sequence, frame_range = generate_sequence(name, hierarchy_dir)
 
     # Add the sequence to the parent element if provided
     if parent_sequence:
@@ -35,16 +60,14 @@ def _create_sequence(
             parent_sequence, sequence,
             parent_frame_range[1],
             frame_range[0], frame_range[1],
-            [])
+            levels)
 
-    if not element["children"]:
-        return
-
-    # Traverse the children and create sequences recursively
-    for child in element["children"]:
-        _create_sequence(
-            child, sequence_path, parent_path=path,
-            parent_sequence=sequence, parent_frame_range=frame_range)
+    if children:
+        # Traverse the children and create sequences recursively
+        for child in children:
+            _create_sequence(
+                child, sequence_path, master_level, parent_path=path,
+                parent_sequence=sequence, parent_frame_range=frame_range)
 
 
 def build_sequence_hierarchy():
@@ -76,8 +99,14 @@ def build_sequence_hierarchy():
     if not sequence_root:
         raise ValueError(f"Could not find {sequence_root_name} in hierarchy")
 
+    # Create the master level
+    master_level_path = (
+        f"{sequence_path}/{sequence_root_name}/{sequence_root_name}_map")
+    master_level_package = f"{master_level_path}.{sequence_root_name}_map"
+    unreal.EditorLevelLibrary.new_level(master_level_path)
+
     # Start creating sequences from the root element
-    _create_sequence(sequence_root, sequence_path)
+    _create_sequence(sequence_root, sequence_path, master_level_package)
 
     # List all the assets in the sequence path and save them
     asset_content = unreal.EditorAssetLibrary.list_assets(
@@ -86,3 +115,6 @@ def build_sequence_hierarchy():
 
     for a in asset_content:
         unreal.EditorAssetLibrary.save_asset(a)
+
+    # Load the master level
+    unreal.EditorLevelLibrary.load_level(master_level_package)
