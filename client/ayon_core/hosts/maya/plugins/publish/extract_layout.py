@@ -81,6 +81,8 @@ class ExtractLayout(publish.Extractor):
             rot = cmds.xform(asset, query=True, rotation=True, euler=True)
             scl = cmds.xform(asset, query=True, relative=True, scale=True)
 
+            shift_back_to_frame_start = instance.data.get("shift_back_to_frame_start", False)
+
             json_element["transform"] = {
                 "translation": {
                     "x": loc[0],

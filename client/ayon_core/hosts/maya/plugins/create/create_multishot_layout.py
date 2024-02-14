@@ -163,6 +163,8 @@ class CreateMultishotLayout(plugin.MayaCreator):
             if layout_task:
                 instance_data["task"] = layout_task
 
+            instance_data["shift_back_to_frame_start"] = True
+
             layout_creator.create(
                 subset_name=layout_creator.get_subset_name(
                     layout_creator.get_default_variant(),
