@@ -164,9 +164,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
     output = {
         "modules": {}
     }
-    if "applications" in ayon_settings:
-        output["applications"] = ayon_settings["applications"]
-
     if "core" in ayon_settings:
         _convert_general(ayon_settings, output, default_settings)
 
