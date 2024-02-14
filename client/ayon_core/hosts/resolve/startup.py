@@ -33,7 +33,7 @@ def ensure_installed_host():
 
 
 def launch_menu():
-    print("Launching Resolve OpenPype menu..")
+    print("Launching Resolve AYON menu..")
     ensure_installed_host()
     ayon_core.hosts.resolve.api.launch_pype_menu()
 
@@ -54,7 +54,7 @@ def main():
     else:
         log.info("No last workfile set to open. Skipping..")
 
-    # Launch OpenPype menu
+    # Launch AYON menu
     from ayon_core.settings import get_project_settings
     from ayon_core.pipeline.context_tools import get_current_project_name
     project_name = get_current_project_name()
@@ -62,7 +62,7 @@ def main():
 
     settings = get_project_settings(project_name)
     if settings.get("resolve", {}).get("launch_openpype_menu_on_start", True):
-        log.info("Launching OpenPype menu..")
+        log.info("Launching AYON menu..")
         launch_menu()
 
 

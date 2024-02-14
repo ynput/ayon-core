@@ -2,6 +2,7 @@ import copy
 import os
 import subprocess
 import tempfile
+import re
 
 import pyblish.api
 from ayon_core.lib import (
@@ -35,6 +36,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "traypublisher",
         "substancepainter",
         "nuke",
+        "aftereffects"
     ]
     enabled = False
 
@@ -49,6 +51,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     # attribute presets from settings
     oiiotool_defaults = None
     ffmpeg_args = None
+    product_names = []
 
     def process(self, instance):
         # run main process
@@ -102,6 +105,26 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         if "crypto" in subset_name.lower():
             self.log.debug("Skipping crypto passes.")
             return
+
+        # We only want to process the subsets needed from settings.
+        def validate_string_against_patterns(input_str, patterns):
+            for pattern in patterns:
+                if re.match(pattern, input_str):
+                    return True
+            return False
+
+        product_names = self.product_names
+        if product_names:
+            result = validate_string_against_patterns(
+                instance.data["subset"], product_names
+            )
+            if not result:
+                self.log.debug(
+                    "Product name \"{}\" did not match settings filters: {}".format(
+                        instance.data["subset"], product_names
+                    )
+                )
+                return
 
         # first check for any explicitly marked representations for thumbnail
         explicit_repres = self._get_explicit_repres_for_thumbnail(instance)
