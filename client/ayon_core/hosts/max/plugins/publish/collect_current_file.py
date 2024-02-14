@@ -20,3 +20,4 @@ class CollectCurrentFile(pyblish.api.ContextPlugin):
         current_file = os.path.join(folder, file)
 
         context.data["currentFile"] = current_file
+        self.log.debug("Scene path: {}".format(current_file))
