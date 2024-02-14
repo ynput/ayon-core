@@ -13,6 +13,10 @@ from ayon_core.lib import Logger
 from ayon_core.pipeline import LoaderPlugin, LegacyCreator
 from ayon_core.pipeline.load import get_representation_path_from_context
 from . import lib
+from openpype.pipeline import (
+    Creator as NewCreator
+)
+from openpype.lib import BoolDef
 
 log = Logger.get_logger(__name__)
 
@@ -604,31 +608,42 @@ class ClipLoader:
         return track_item
 
 
-class Creator(LegacyCreator):
+class Creator(NewCreator):
     """Creator class wrapper
     """
     clip_color = "Purple"
     rename_index = None
 
-    def __init__(self, *args, **kwargs):
-        super(Creator, self).__init__(*args, **kwargs)
-        import ayon_core.hosts.hiero.api as phiero
-        self.presets = get_current_project_settings()[
-            "hiero"]["create"].get(self.__class__.__name__, {})
 
+    def apply_settings(self, project_settings):
+        resolve_create_settings = (
+            project_settings.get("hiero", {}).get("create")
+        )
+        self.presets = resolve_create_settings.get(
+            self.__class__.__name__, {}
+        )
+
+    def create(self, subset_name, instance_data, pre_create_data):
         # adding basic current context resolve objects
-        self.project = phiero.get_current_project()
-        self.sequence = phiero.get_current_sequence()
+        self.project = lib.get_current_project()
+        self.sequence = lib.get_current_sequence()
 
-        if (self.options or {}).get("useSelection"):
-            timeline_selection = phiero.get_timeline_selection()
-            self.selected = phiero.get_track_items(
+        if pre_create_data.get("use_selection", False):
+            timeline_selection = lib.get_timeline_selection()
+            self.selected = lib.get_track_items(
                 selection=timeline_selection
             )
         else:
-            self.selected = phiero.get_track_items()
+            self.selected = lib.get_track_items()
 
-        self.widget = CreatorWidget
+        # TODO: Add a way to store/imprint data
+
+    def get_pre_create_attr_defs(self):
+        return [
+            BoolDef("use_selection",
+                    label="Use selection",
+                    default=True)
+        ]
 
 
 class PublishClip:
@@ -666,6 +681,18 @@ class PublishClip:
     count_steps_default = 10
     vertical_sync_default = False
     driving_layer_default = ""
+
+    # Define which keys of the pre create data should also be 'tag data'
+    tag_keys = {
+        # renameHierarchy
+        "hierarchy",
+        # hierarchyData
+        "folder", "episode", "sequence", "track", "shot",
+        # publish settings
+        "audio", "sourceResolution",
+        # shot attributes
+        "workfileFrameStart", "handleStart", "handleEnd"
+    }
 
     def __init__(self, cls, track_item, **kwargs):
         # populate input cls attribute onto self.[attr]
