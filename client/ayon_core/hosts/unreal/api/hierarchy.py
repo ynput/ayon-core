@@ -39,35 +39,42 @@ def _create_level(path, name, master_level):
 
 def _create_sequence(
     element, sequence_path, master_level,
-    parent_path="", parent_sequence=None, parent_frame_range=None
+    parent_path="", parents_sequence=[], parents_frame_range=[]
 ):
     name = element["name"]
     path = f"{parent_path}/{name}"
     hierarchy_dir = f"{sequence_path}{path}"
     children = element["children"]
 
-    levels = []
-    if not children:
-        level = _create_level(hierarchy_dir, name, master_level)
-        levels.append(level)
-
     # Create sequence for the current element
     sequence, frame_range = generate_sequence(name, hierarchy_dir)
 
-    # Add the sequence to the parent element if provided
-    if parent_sequence:
-        set_sequence_hierarchy(
-            parent_sequence, sequence,
-            parent_frame_range[1],
-            frame_range[0], frame_range[1],
-            levels)
+    sequences = parents_sequence.copy() + [sequence]
+    frame_ranges = parents_frame_range.copy() + [frame_range]
 
     if children:
         # Traverse the children and create sequences recursively
         for child in children:
             _create_sequence(
                 child, sequence_path, master_level, parent_path=path,
-                parent_sequence=sequence, parent_frame_range=frame_range)
+                parents_sequence=sequences, parents_frame_range=frame_ranges)
+    else:
+        level = _create_level(hierarchy_dir, name, master_level)
+
+        # Create the sequence hierarchy. Add each child to its parent
+        for i in range(len(parents_sequence) - 1):
+            set_sequence_hierarchy(
+                parents_sequence[i], parents_sequence[i + 1],
+                parents_frame_range[i][1],
+                parents_frame_range[i + 1][0], parents_frame_range[i + 1][1],
+                [level])
+
+        # Add the newly created sequence to its parent
+        set_sequence_hierarchy(
+            parents_sequence[-1], sequence,
+            parents_frame_range[-1][1],
+            frame_range[0], frame_range[1],
+            [level])
 
 
 def build_sequence_hierarchy():
