@@ -15,8 +15,8 @@ class CreateVrayROP(plugin.HoudiniCreator):
     family = "vray_rop"
     icon = "magic"
     ext = "exr"
-    render_staging_dir = "$HIP/ayon/{product_name}/render/{product_name}.$AOV.$F4.{ext}",
-    vrscene_dir = "$HIP/ayon/{product_name}/vrscene/{product_name}.$F4.vrscene"
+    render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$AOV.$F4.{ext}",
+    vrscene_dir = "$HIP/ayon/{product[name]}/vrscene/{product[name]}.$F4.vrscene"
 
     # Default to split export and render jobs
     export_job = True
@@ -60,7 +60,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         if pre_create_data.get("export_job"):
 
             scene_filepath = self.vrscene_dir.format(
-                product_name="`chs(\"subset\")`"  # keep dynamic link to subset
+                product={"name": subset_name}
             )
             # Setting render_export_mode to "2" because that's for
             # "Export only" ("1" is for "Export & Render")
@@ -83,7 +83,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         if pre_create_data.get("render_element_enabled", True):
             # Vray has its own tag for AOV file output
             filepath = self.render_staging_dir.format(
-                product_name="`chs(\"subset\")`",  # keep dynamic link to subset
+                product={"name": subset_name},
                 ext=ext
             )
 
@@ -102,7 +102,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
         else:
             filepath = self.render_staging_dir.format(
-                product_name="`chs(\"subset\")`",  # keep dynamic link to subset
+                product={"name": subset_name},
                 ext=ext
             ).replace(".$AOV", "")
         

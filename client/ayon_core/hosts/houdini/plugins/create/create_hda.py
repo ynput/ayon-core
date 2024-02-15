@@ -16,7 +16,7 @@ class CreateHDA(plugin.HoudiniCreator):
     family = "hda"
     icon = "gears"
     maintain_selection = False
-    staging_dir = "$HIP/ayon/{product_name}/{product_name}.{ext}"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
     ext = "hda"
 
     def _check_existing(self, asset_name, subset_name):
@@ -62,7 +62,7 @@ class CreateHDA(plugin.HoudiniCreator):
             # for consistency I'm using {subset} as it's
             # the same key used in other creators
             filepath = self.staging_dir.format(
-                product_name=node_name,
+                product={"name": node_name},
                 ext=self.ext
             )
             

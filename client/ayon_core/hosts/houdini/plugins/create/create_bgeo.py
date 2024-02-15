@@ -12,7 +12,7 @@ class CreateBGEO(plugin.HoudiniCreator):
     label = "PointCache (Bgeo)"
     family = "pointcache"
     icon = "gears"
-    staging_dir = "$HIP/ayon/{product_name}/{product_name}.$F4.{ext}"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
 
     def create(self, subset_name, instance_data, pre_create_data):
 
@@ -31,7 +31,7 @@ class CreateBGEO(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = self.staging_dir.format(
-            product_name="`chs(\"subset\")`",  # keep dynamic link to subset
+            product={"name": subset_name},
             ext=pre_create_data.get("bgeo_type") or "bgeo.sc"
         )
 
