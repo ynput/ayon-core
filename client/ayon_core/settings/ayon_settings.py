@@ -176,52 +176,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
 
     ayon_nuke = ayon_settings["nuke"]
 
-    # --- Publish ---
-    ayon_publish = ayon_nuke["publish"]
-    slate_mapping = ayon_publish["ExtractSlateFrame"]["key_value_mapping"]
-    for key in tuple(slate_mapping.keys()):
-        value = slate_mapping[key]
-        slate_mapping[key] = [value["enabled"], value["template"]]
-
-    ayon_publish["ValidateKnobs"]["knobs"] = json.loads(
-        ayon_publish["ValidateKnobs"]["knobs"]
-    )
-
-    new_review_data_outputs = {}
-    outputs_settings = []
-    # Check deprecated ExtractReviewDataMov
-    # settings for backwards compatibility
-    deprecrated_review_settings = ayon_publish["ExtractReviewDataMov"]
-    current_review_settings = (
-        ayon_publish.get("ExtractReviewIntermediates")
-    )
-    if deprecrated_review_settings["enabled"]:
-        outputs_settings = deprecrated_review_settings["outputs"]
-    elif current_review_settings is None:
-        pass
-    elif current_review_settings["enabled"]:
-        outputs_settings = current_review_settings["outputs"]
-
-    for item in outputs_settings:
-        item_filter = item["filter"]
-        if "product_names" in item_filter:
-            item_filter["subsets"] = item_filter.pop("product_names")
-            item_filter["families"] = item_filter.pop("product_types")
-
-        name = item.pop("name")
-        new_review_data_outputs[name] = item
-
-    if deprecrated_review_settings["enabled"]:
-        deprecrated_review_settings["outputs"] = new_review_data_outputs
-    elif current_review_settings["enabled"]:
-        current_review_settings["outputs"] = new_review_data_outputs
-
-    collect_instance_data = ayon_publish["CollectInstanceData"]
-    if "sync_workfile_version_on_product_types" in collect_instance_data:
-        collect_instance_data["sync_workfile_version_on_families"] = (
-            collect_instance_data.pop(
-                "sync_workfile_version_on_product_types"))
-
     # --- ImageIO ---
     # NOTE 'monitorOutLut' is maybe not yet in v3 (ut should be)
     ayon_imageio = ayon_nuke["imageio"]
