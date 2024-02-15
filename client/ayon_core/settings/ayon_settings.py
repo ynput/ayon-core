@@ -170,23 +170,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_nuke_project_settings(ayon_settings, output):
-    if "nuke" not in ayon_settings:
-        return
-
-    ayon_nuke = ayon_settings["nuke"]
-
-    # --- ImageIO ---
-    # NOTE 'monitorOutLut' is maybe not yet in v3 (ut should be)
-    ayon_imageio = ayon_nuke["imageio"]
-
-    # regex inputs
-    if "regex_inputs" in ayon_imageio:
-        ayon_imageio["regexInputs"] = ayon_imageio.pop("regex_inputs")
-
-    output["nuke"] = ayon_nuke
-
-
 def _convert_hiero_project_settings(ayon_settings, output):
     if "hiero" not in ayon_settings:
         return

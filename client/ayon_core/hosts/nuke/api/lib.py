@@ -900,7 +900,7 @@ def get_imageio_input_colorspace(filename):
     ''' Get input file colorspace based on regex in settings.
     '''
     imageio_regex_inputs = (
-        get_nuke_imageio_settings()["regexInputs"]["inputs"])
+        get_nuke_imageio_settings()["regex_inputs"]["inputs"])
 
     preset_clrsp = None
     for regexInput in imageio_regex_inputs:
@@ -2442,7 +2442,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
             log.error(_error)
 
         log.info("Setting colorspace to read nodes...")
-        read_clrs_inputs = nuke_colorspace["regexInputs"].get("inputs", [])
+        read_clrs_inputs = nuke_colorspace["regex_inputs"].get("inputs", [])
         if read_clrs_inputs:
             self.set_reads_colorspace(read_clrs_inputs)
 
