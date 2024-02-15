@@ -40,6 +40,11 @@ IGNORED_HOSTS = [
 
 IGNORED_MODULES = []
 
+PACKAGE_PY_TEMPLATE = """name = "{addon_name}"
+version = "{addon_version}"
+plugin_for = ["ayon_server"]
+"""
+
 
 class ZipFileLongPaths(zipfile.ZipFile):
     """Allows longer paths in zip files.
@@ -144,18 +149,12 @@ def create_addon_zip(
     output_dir: Path,
     addon_name: str,
     addon_version: str,
-    keep_source: bool
+    keep_source: bool,
 ):
     zip_filepath = output_dir / f"{addon_name}-{addon_version}.zip"
+
     addon_output_dir = output_dir / addon_name / addon_version
     with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
-        zipf.writestr(
-            "manifest.json",
-            json.dumps({
-                "addon_name": addon_name,
-                "addon_version": addon_version
-            })
-        )
         # Add client code content to zip
         src_root = os.path.normpath(str(addon_output_dir.absolute()))
         src_root_offset = len(src_root) + 1
@@ -167,9 +166,10 @@ def create_addon_zip(
             for filename in filenames:
                 src_path = os.path.join(root, filename)
                 if rel_root:
-                    dst_path = os.path.join("addon", rel_root, filename)
+                    dst_path = os.path.join(rel_root, filename)
                 else:
-                    dst_path = os.path.join("addon", filename)
+                    dst_path = filename
+
                 zipf.write(src_path, dst_path)
 
     if not keep_source:
@@ -180,9 +180,8 @@ def create_addon_package(
     addon_dir: Path,
     output_dir: Path,
     create_zip: bool,
-    keep_source: bool
+    keep_source: bool,
 ):
-    server_dir = addon_dir / "server"
     addon_version = get_addon_version(addon_dir)
 
     addon_output_dir = output_dir / addon_dir.name / addon_version
@@ -191,18 +190,18 @@ def create_addon_package(
     addon_output_dir.mkdir(parents=True)
 
     # Copy server content
-    src_root = os.path.normpath(str(server_dir.absolute()))
-    src_root_offset = len(src_root) + 1
-    for root, _, filenames in os.walk(str(server_dir)):
-        dst_root = addon_output_dir
-        if root != src_root:
-            rel_root = root[src_root_offset:]
-            dst_root = dst_root / rel_root
+    package_py = addon_output_dir / "package.py"
+    package_py_content = PACKAGE_PY_TEMPLATE.format(
+        addon_name=addon_dir.name, addon_version=addon_version
+    )
 
-        dst_root.mkdir(parents=True, exist_ok=True)
-        for filename in filenames:
-            src_path = os.path.join(root, filename)
-            shutil.copy(src_path, str(dst_root))
+    with open(package_py, "w+") as pkg_py:
+        pkg_py.write(package_py_content)
+
+    server_dir = addon_dir / "server"
+    shutil.copytree(
+        server_dir, addon_output_dir / "server", dirs_exist_ok=True
+    )
 
     if create_zip:
         create_addon_zip(
