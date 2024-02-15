@@ -1,10 +1,12 @@
-from copy import deepcopy
+import copy
+
 from ayon_core.hosts.hiero.api import plugin, lib
 # from ayon_core.hosts.hiero.api import plugin, lib
 # reload(lib)
 # reload(plugin)
 # reload(phiero)
 
+from openpype.pipeline.create import CreatorError, CreatedInstance
 from openpype.lib import BoolDef, EnumDef, TextDef, UILabelDef, NumberDef
 
 
@@ -208,42 +210,24 @@ class CreateShotClip(plugin.Creator):
     presets = None
     rename_index = 0
 
-    def process(self):
-        # Creator copy of object attributes that are modified during `process`
-        presets = deepcopy(self.presets)
-        gui_inputs = deepcopy(self.gui_inputs)
-
-        # get key pares from presets and match it on ui inputs
-        for k, v in gui_inputs.items():
-            if v["type"] in ("dict", "section"):
-                # nested dictionary (only one level allowed
-                # for sections and dict)
-                for _k, _v in v["value"].items():
-                    if presets.get(_k):
-                        gui_inputs[k][
-                            "value"][_k]["value"] = presets[_k]
-            if presets.get(k):
-                gui_inputs[k]["value"] = presets[k]
-
-        # open widget for plugins inputs
-        widget = self.widget(self.gui_name, self.gui_info, gui_inputs)
-        widget.exec_()
+    def create(self, subset_name, instance_data, pre_create_data):
+        super(CreateShotClip, self).create(subset_name,
+                                           instance_data,
+                                           pre_create_data)
 
         if len(self.selected) < 1:
             return
 
-        if not widget.result:
-            print("Operation aborted")
-            return
+        self.log.info(self.selected)
 
-        self.rename_add = 0
+        self.log.debug(f"Selected: {self.selected}")
 
         # get ui output for track name for vertical sync
-        v_sync_track = widget.result["vSyncTrack"]["value"]
 
         # sort selected trackItems by
         sorted_selected_track_items = list()
         unsorted_selected_track_items = list()
+        v_sync_track = pre_create_data.get("vSyncTrack", "")
         for _ti in self.selected:
             if _ti.parent().name() in v_sync_track:
                 sorted_selected_track_items.append(_ti)
@@ -252,13 +236,39 @@ class CreateShotClip(plugin.Creator):
 
         sorted_selected_track_items.extend(unsorted_selected_track_items)
 
-        kwargs = {
-            "ui_inputs": widget.result,
-            "avalon": self.data
-        }
-
         for i, track_item in enumerate(sorted_selected_track_items):
-            self.rename_index = i
 
             # convert track item to timeline media pool item
-            plugin.PublishClip(self, track_item, **kwargs).convert()
+            publish_clip = plugin.PublishClip(
+                track_item,
+                pre_create_data=pre_create_data,
+                rename_index=i,
+                avalon=instance_data)
+
+            track_item = publish_clip.convert()
+            # if track_item is None:
+            #     # Ignore input clips that do not convert into a track item
+            #     # from `PublishClip.convert`
+            #     continue
+
+            # instance_data = copy.deepcopy(instance_data)
+            # # TODO: set 'task', 'family' and 'variant' correctly
+            # #  and build its subset name correctly
+            # # TODO: We can't set the asset because the asset does not exist
+            # #   and the new publisher doesn't like non-existing assets
+            # # instance_data["asset"] = publish_clip.tag_data["asset"]
+            # # instance_data["variant"] = publish_clip.subset_name
+
+            # # Create the Publisher instance
+            # instance = CreatedInstance(
+            #     family=self.family,
+            #     subset_name=publish_clip.subset_name,
+            #     data=instance_data,
+            #     creator=self
+            # )
+            # instance.transient_data["track_item"] = track_item
+            # self._add_instance_to_context(instance)
+
+            # # self.imprint_instance_node(instance_node,
+            # #                            data=instance.data_to_store())
+            # instances.append(instance)

@@ -657,8 +657,6 @@ class PublishClip:
     Returns:
         hiero.core.TrackItem: hiero track item object with pype tag
     """
-    vertical_clip_match = {}
-    tag_data = {}
     types = {
         "shot": "shot",
         "folder": "folder",
@@ -694,9 +692,17 @@ class PublishClip:
         "workfileFrameStart", "handleStart", "handleEnd"
     }
 
-    def __init__(self, cls, track_item, **kwargs):
-        # populate input cls attribute onto self.[attr]
-        self.__dict__.update(cls.__dict__)
+    def __init__(
+            self,
+            track_item,
+            pre_create_data=None,
+            avalon=None,
+            rename_index=0,
+            **kwargs):
+
+        self.rename_index = rename_index
+        self.vertical_clip_match = dict()
+        self.tag_data = dict()
 
         # get main parent objects
         self.track_item = track_item
@@ -713,8 +719,11 @@ class PublishClip:
         self.track_index = int(track_item.parent().trackIndex())
 
         # adding tag.family into tag
-        if kwargs.get("avalon"):
-            self.tag_data.update(kwargs["avalon"])
+        if avalon):
+            self.tag_data.update(avalon)
+
+        # adding ui inputs if any
+        self.pre_create_data = pre_create_data or {}
 
         # add publish attribute to tag data
         self.tag_data.update({"publish": True})
@@ -798,32 +807,30 @@ class PublishClip:
         log.debug(
             "____ self.shot_num: {}".format(self.shot_num))
 
+       # publisher ui attribute inputs or default values if gui was not used
+        def get(key):
+            """Shorthand access for code readability"""
+            return self.pre_create_data.get(key)
+
         # ui_inputs data or default values if gui was not used
-        self.rename = self.ui_inputs.get(
-            "clipRename", {}).get("value") or self.rename_default
-        self.clip_name = self.ui_inputs.get(
-            "clipName", {}).get("value") or self.clip_name_default
-        self.hierarchy = self.ui_inputs.get(
-            "hierarchy", {}).get("value") or self.hierarchy_default
-        self.hierarchy_data = self.ui_inputs.get(
-            "hierarchyData", {}).get("value") or \
+        self.rename = get("clipRename") or self.rename_default
+        self.clip_name = get("clipName") or self.clip_name_default
+        self.hierarchy = get("hierarchy") or self.hierarchy_default
+        self.hierarchy_data = get("hierarchyData") or \
             self.track_item_default_data.copy()
-        self.count_from = self.ui_inputs.get(
-            "countFrom", {}).get("value") or self.count_from_default
-        self.count_steps = self.ui_inputs.get(
-            "countSteps", {}).get("value") or self.count_steps_default
-        self.subset_name = self.ui_inputs.get(
-            "subsetName", {}).get("value") or self.subset_name_default
-        self.subset_family = self.ui_inputs.get(
-            "subsetFamily", {}).get("value") or self.subset_family_default
-        self.vertical_sync = self.ui_inputs.get(
-            "vSyncOn", {}).get("value") or self.vertical_sync_default
-        self.driving_layer = self.ui_inputs.get(
-            "vSyncTrack", {}).get("value") or self.driving_layer_default
-        self.review_track = self.ui_inputs.get(
-            "reviewTrack", {}).get("value") or self.review_track_default
-        self.audio = self.ui_inputs.get(
-            "audio", {}).get("value") or False
+        self.count_from = get("countFrom") or self.count_from_default
+        self.count_steps = get("countSteps") or self.count_steps_default
+        self.subset_name = get("subsetName") or self.subset_name_default
+        self.subset_family = get("subsetFamily") or self.subset_family_default
+        self.vertical_sync = get("vSyncOn") or self.vertical_sync_default
+        self.driving_layer = get("vSyncTrack") or self.driving_layer_default
+        self.review_track = get("reviewTrack") or self.review_track_default
+        self.audio = get("audio") or False
+
+        self.hierarchy_data = {
+            key: get(key) or self.timeline_item_default_data[key]
+            for key in ["folder", "episode", "sequence", "track", "shot"]
+        }
 
         # build subset name from layer name
         if self.subset_name == "<track_name>":
@@ -837,8 +844,8 @@ class PublishClip:
         _spl = text.split("#")
         _len = (len(_spl) - 1)
         _repl = "{{{0}:0>{1}}}".format(name, _len)
-        return text.replace(("#" * _len), _repl)
-
+        new_text = text.replace(("#" * _len), _repl)
+        return new_text
 
     def _convert_to_tag_data(self):
         """ Convert internal data to tag data.
@@ -857,14 +864,14 @@ class PublishClip:
         # increasing steps by index of rename iteration
         self.count_steps *= self.rename_index
 
-        hierarchy_formatting_data = {}
-        hierarchy_data = deepcopy(self.hierarchy_data)
-        _data = self.track_item_default_data.copy()
-        if self.ui_inputs:
+        hierarchy_formatting_data = dict()
+        _data = self.timeline_item_default_data.copy()
+        if self.pre_create_data:
+
             # adding tag metadata from ui
-            for _k, _v in self.ui_inputs.items():
-                if _v["target"] == "tag":
-                    self.tag_data[_k] = _v["value"]
+            for _key, _value in self.pre_create_data.items():
+                if _key in self.tag_keys:
+                    self.tag_data[_key] = _value
 
             # driving layer is set as positive match
             if hero_track or self.vertical_sync:
@@ -883,19 +890,19 @@ class PublishClip:
             _data.update({"shot": self.shot_num})
 
             # solve # in test to pythonic expression
-            for _k, _v in hierarchy_data.items():
-                if "#" not in _v["value"]:
+            for _key, _value in self.hierarchy_data.items():
+                if "#" not in _value:
                     continue
-                hierarchy_data[
-                    _k]["value"] = self._replace_hash_to_expression(
-                        _k, _v["value"])
+                self.hierarchy_data[_key] = self._replace_hash_to_expression(
+                    _key, _value
+                )
 
             # fill up pythonic expresisons in hierarchy data
-            for k, _v in hierarchy_data.items():
-                hierarchy_formatting_data[k] = _v["value"].format(**_data)
+            for _key, _value in self.hierarchy_data.items():
+                hierarchy_formatting_data[_key] = _value.format(**_data)
         else:
             # if no gui mode then just pass default data
-            hierarchy_formatting_data = hierarchy_data
+            hierarchy_formatting_data = self.hierarchy_data
 
         tag_hierarchy_data = self._solve_tag_hierarchy_data(
             hierarchy_formatting_data
@@ -924,7 +931,16 @@ class PublishClip:
                     tag_hierarchy_data = hero_data
 
         # add data to return data dict
-        return tag_hierarchy_data
+        self.tag_data.update(tag_hierarchy_data)
+
+        # add uuid to tag data
+        self.tag_data["uuid"] = str(uuid.uuid4())
+
+        # add review track only to hero track
+        if hero_track and self.review_layer:
+            self.tag_data.update({"reviewTrack": self.review_layer})
+        else:
+            self.tag_data.update({"reviewTrack": None})
 
     def _solve_tag_hierarchy_data(self, hierarchy_formatting_data):
         """ Solve tag data from hierarchy data and templates. """
@@ -942,10 +958,10 @@ class PublishClip:
             "hierarchyData": hierarchy_formatting_data,
             "subset": self.subset,
             "family": self.subset_family,
-            "families": [self.data["family"]]
+            "families": ["clip"]
         }
 
-    def _convert_to_entity(self, type, template):
+    def _convert_to_entity(self, key):
         """ Converting input key to key with type. """
         # convert to entity type
         entity_type = self.types.get(type, None)
@@ -954,17 +970,10 @@ class PublishClip:
             type
         )
 
-        # first collect formatting data to use for formatting template
-        formatting_data = {}
-        for _k, _v in self.hierarchy_data.items():
-            value = _v["value"].format(
-                **self.track_item_default_data)
-            formatting_data[_k] = value
-
         return {
             "entity_type": entity_type,
-            "entity_name": template.format(
-                **formatting_data
+            "entity_name": self.hierarchy_data[key].format(
+                **self.timeline_item_default_data
             )
         }
 
@@ -973,10 +982,9 @@ class PublishClip:
         self.parents = []
 
         pattern = re.compile(self.parents_search_pattern)
-
-        par_split = [(pattern.findall(t).pop(), t)
+        par_split = [pattern.findall(t).pop()
                      for t in self.hierarchy.split("/")]
 
-        for type, template in par_split:
-            parent = self._convert_to_entity(type, template)
+        for key in par_split:
+            parent = self._convert_to_entity(key)
             self.parents.append(parent)
