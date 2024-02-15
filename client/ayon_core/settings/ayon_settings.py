@@ -426,11 +426,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
         ayon_extract_thumbnail["background_color"]
     )
 
-    # Cleanup plugin
-    ayon_cleanup = ayon_publish["CleanUp"]
-    if "patterns" in ayon_cleanup:
-        ayon_cleanup["paterns"] = ayon_cleanup.pop("patterns")
-
     # Project root settings - json string to dict
     ayon_core["project_environments"] = json.loads(
         ayon_core["project_environments"]
