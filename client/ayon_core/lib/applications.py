@@ -419,7 +419,14 @@ class ApplicationManager:
         # Prepare known applications
         app_defs = applications_addon_settings["applications"]
         additional_apps = app_defs.pop("additional_apps")
-        app_defs.update(additional_apps)
+        for additional_app in additional_apps:
+            app_name = additional_app.pop("name")
+            if app_name in app_defs:
+                self.log.warning((
+                    "Additional application '{}' is already"
+                    " in built-in applications."
+                ).format(app_name))
+            app_defs[app_name] = additional_app
 
         for group_name, variant_defs in app_defs.items():
             group = ApplicationGroup(group_name, variant_defs, self)
