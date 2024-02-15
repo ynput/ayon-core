@@ -15,7 +15,8 @@ class CreateVrayROP(plugin.HoudiniCreator):
     family = "vray_rop"
     icon = "magic"
     ext = "exr"
-    staging_dir = "$HIP/ayon"
+    render_staging_dir = "$HIP/ayon/{product_name}/render/{product_name}.$AOV.$F4.{ext}",
+    vrscene_dir = "$HIP/ayon/{product_name}/vrscene/{product_name}.$F4.vrscene"
 
     # Default to split export and render jobs
     export_job = True
@@ -58,9 +59,8 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
 
-            scene_filepath = "{root}/{subset}/vrscene/{subset}.$F4.vrscene".format(
-                root=hou.text.expandString(self.staging_dir),
-                subset=subset_name
+            scene_filepath = self.vrscene_dir.format(
+                product_name="`chs(\"subset\")`"  # keep dynamic link to subset
             )
             # Setting render_export_mode to "2" because that's for
             # "Export only" ("1" is for "Export & Render")
@@ -82,10 +82,8 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance_data["RenderElement"] = pre_create_data.get("render_element_enabled")         # noqa
         if pre_create_data.get("render_element_enabled", True):
             # Vray has its own tag for AOV file output
-            filepath = "{root}/{subset}/{subset}.${aov}.$F4.{ext}".format(
-                root=hou.text.expandString(self.staging_dir),
-                subset=subset_name,
-                aov="AOV",
+            filepath = self.render_staging_dir.format(
+                product_name="`chs(\"subset\")`",  # keep dynamic link to subset
                 ext=ext
             )
 
@@ -103,11 +101,10 @@ class CreateVrayROP(plugin.HoudiniCreator):
             })
 
         else:
-            filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
-                root=hou.text.expandString(self.staging_dir),
-                subset=subset_name,
+            filepath = self.render_staging_dir.format(
+                product_name="`chs(\"subset\")`",  # keep dynamic link to subset
                 ext=ext
-            )
+            ).replace(".$AOV", "")
         
             parms.update({
                 "use_render_channels": 0,

@@ -13,7 +13,7 @@ class CreateUSD(plugin.HoudiniCreator):
     family = "usd"
     icon = "gears"
     enabled = False
-    staging_dir = "$HIP/ayon"
+    staging_dir = "$HIP/ayon/{product_name}/{product_name}.usd"
 
     def create(self, subset_name, instance_data, pre_create_data):
 
@@ -27,9 +27,8 @@ class CreateUSD(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
-        filepath = "{root}/{subset}/{subset}.usd".format(
-            root=hou.text.expandString(self.staging_dir),
-            subset=subset_name
+        filepath = self.staging_dir.format(
+            product_name="`chs(\"subset\")`"  # keep dynamic link to subset
         )
 
         parms = {

@@ -13,7 +13,7 @@ class CreateAlembicCamera(plugin.HoudiniCreator):
     label = "Camera (Abc)"
     family = "camera"
     icon = "camera"
-    staging_dir = "$HIP/ayon"
+    staging_dir = "$HIP/ayon/{product_name}/{product_name}.abc"
 
     def create(self, subset_name, instance_data, pre_create_data):
         import hou
@@ -28,9 +28,8 @@ class CreateAlembicCamera(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
-        filepath = "{root}/{subset}/{subset}.abc".format(
-            root=hou.text.expandString(self.staging_dir),
-            subset=subset_name
+        filepath = self.staging_dir.format(
+            product_name="`chs(\"subset\")`"  # keep dynamic link to subset
         )
 
         parms = {

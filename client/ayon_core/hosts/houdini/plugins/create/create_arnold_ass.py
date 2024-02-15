@@ -16,7 +16,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
     # however calling HoudiniCreator.create()
     # will override it by the value in the project settings
     ext = ".ass"
-    staging_dir = "$HIP/ayon"
+    staging_dir = "$HIP/ayon/{product_name}/{product_name}.{ext}"
 
     def create(self, subset_name, instance_data, pre_create_data):
         import hou
@@ -40,10 +40,9 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         parm_template_group.hideFolder("Properties", True)
         instance_node.setParmTemplateGroup(parm_template_group)
         
-        filepath = "{root}/{subset}/{subset}.$F4{ext}".format(
-            root=hou.text.expandString(self.staging_dir),
-            subset=subset_name,
-            ext=self.ext
+        filepath = self.staging_dir.format(
+            product_name="`chs(\"subset\")`",  # keep dynamic link to subset
+            ext=self.ext.lstrip(".")
         )
         
         parms = {

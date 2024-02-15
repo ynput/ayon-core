@@ -11,7 +11,8 @@ class CreateMantraROP(plugin.HoudiniCreator):
     label = "Mantra ROP"
     family = "mantra_rop"
     icon = "magic"
-    staging_dir = "$HIP/ayon"
+    render_staging_dir = "$HIP/ayon/{product_name}/render/{product_name}.$F4.{ext}",
+    ifd_dir = "$HIP/ayon/{product_name}/ifd/{product_name}.$F4.ifd"
 
     # Default to split export and render jobs
     export_job = True
@@ -35,9 +36,8 @@ class CreateMantraROP(plugin.HoudiniCreator):
 
         ext = pre_create_data.get("image_format")
         
-        filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
-            root=hou.text.expandString(self.staging_dir),
-            subset=subset_name,
+        filepath = self.render_staging_dir.format(
+            product_name="`chs(\"subset\")`",  # keep dynamic link to subset
             ext=ext
         )
 
@@ -49,9 +49,8 @@ class CreateMantraROP(plugin.HoudiniCreator):
         }
 
         if pre_create_data.get("export_job"):
-            ifd_filepath = "{root}/{subset}/ifd/{subset}.$F4.ifd".format(
-                root=hou.text.expandString(self.staging_dir),
-                subset=subset_name
+            ifd_filepath = self.ifd_dir.format(
+                product_name="`chs(\"subset\")`"  # keep dynamic link to subset
             )
             
             parms["soho_outputmode"] = 1
