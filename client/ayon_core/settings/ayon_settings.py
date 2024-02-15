@@ -362,15 +362,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
 
     ayon_hiero = ayon_settings["hiero"]
 
-    new_gui_filters = {}
-    for item in ayon_hiero.pop("filters", []):
-        subvalue = {}
-        key = item["name"]
-        for subitem in item["value"]:
-            subvalue[subitem["name"]] = subitem["value"]
-        new_gui_filters[key] = subvalue
-    ayon_hiero["filters"] = new_gui_filters
-
     output["hiero"] = ayon_hiero
 
 
