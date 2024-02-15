@@ -2031,41 +2031,21 @@ class WorkfileSettings(object):
             host_name="nuke"
         )
 
-        workfile_settings = imageio_host["workfile"]
         viewer_process_settings = imageio_host["viewer"]["viewerProcess"]
+        workfile_settings = imageio_host["workfile"]
+        color_management = workfile_settings["color_management"]
+        native_ocio_config = workfile_settings["native_ocio_config"]
 
         if not config_data:
-            # TODO: backward compatibility for old projects - remove later
-            # perhaps old project overrides is having it set to older version
-            # with use of `customOCIOConfigPath`
-            resolved_path = None
-            if workfile_settings.get("customOCIOConfigPath"):
-                unresolved_path = workfile_settings["customOCIOConfigPath"]
-                ocio_paths = unresolved_path[platform.system().lower()]
+            # no ocio config found and no custom path used
+            if self._root_node["colorManagement"].value() \
+                    not in color_management:
+                self._root_node["colorManagement"].setValue(color_management)
 
-                for ocio_p in ocio_paths:
-                    resolved_path = str(ocio_p).format(**os.environ)
-                    if not os.path.exists(resolved_path):
-                        continue
-
-            if resolved_path:
-                # set values to root
-                self._root_node["colorManagement"].setValue("OCIO")
-                self._root_node["OCIO_config"].setValue("custom")
-                self._root_node["customOCIOConfigPath"].setValue(
-                    resolved_path)
-            else:
-                # no ocio config found and no custom path used
-                if self._root_node["colorManagement"].value() \
-                        not in str(workfile_settings["colorManagement"]):
-                    self._root_node["colorManagement"].setValue(
-                        str(workfile_settings["colorManagement"]))
-
-                # second set ocio version
-                if self._root_node["OCIO_config"].value() \
-                        not in str(workfile_settings["OCIO_config"]):
-                    self._root_node["OCIO_config"].setValue(
-                        str(workfile_settings["OCIO_config"]))
+            # second set ocio version
+            if self._root_node["OCIO_config"].value() \
+                    not in native_ocio_config:
+                self._root_node["OCIO_config"].setValue(native_ocio_config)
 
         else:
             # OCIO config path is defined from prelaunch hook
@@ -2078,22 +2058,17 @@ class WorkfileSettings(object):
                     residual_path
                 ))
 
-        # we dont need the key anymore
-        workfile_settings.pop("customOCIOConfigPath", None)
-        workfile_settings.pop("colorManagement", None)
-        workfile_settings.pop("OCIO_config", None)
-
         # get monitor lut from settings respecting Nuke version differences
-        monitor_lut = workfile_settings.pop("monitorLut", None)
+        monitor_lut = workfile_settings["thumbnail_space"]
         monitor_lut_data = self._get_monitor_settings(
-            viewer_process_settings, monitor_lut)
-
-        # set monitor related knobs luts (MonitorOut, Thumbnails)
-        for knob, value_ in monitor_lut_data.items():
-            workfile_settings[knob] = value_
+            viewer_process_settings, monitor_lut
+        )
+        monitor_lut_data["workingSpaceLUT"] = (
+            workfile_settings["working_space"]
+        )
 
         # then set the rest
-        for knob, value_ in workfile_settings.items():
+        for knob, value_ in monitor_lut_data.items():
             # skip unfilled ocio config path
             # it will be dict in value
             if isinstance(value_, dict):

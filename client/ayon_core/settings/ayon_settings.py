@@ -180,21 +180,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
     # NOTE 'monitorOutLut' is maybe not yet in v3 (ut should be)
     ayon_imageio = ayon_nuke["imageio"]
 
-    # workfile
-    imageio_workfile = ayon_imageio["workfile"]
-    workfile_keys_mapping = (
-        ("color_management", "colorManagement"),
-        ("native_ocio_config", "OCIO_config"),
-        ("working_space", "workingSpaceLUT"),
-        ("thumbnail_space", "monitorLut"),
-    )
-    for src, dst in workfile_keys_mapping:
-        if (
-            src in imageio_workfile
-            and dst not in imageio_workfile
-        ):
-            imageio_workfile[dst] = imageio_workfile.pop(src)
-
     # regex inputs
     if "regex_inputs" in ayon_imageio:
         ayon_imageio["regexInputs"] = ayon_imageio.pop("regex_inputs")
