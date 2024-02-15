@@ -138,7 +138,7 @@ def get_publish_template_name(
     template = None
     filter_criteria = {
         "hosts": host_name,
-        "families": family,
+        "product_types": family,
         "task_names": task_name,
         "task_types": task_type,
     }
