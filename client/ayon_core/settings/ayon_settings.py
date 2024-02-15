@@ -164,9 +164,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
     output = {
         "modules": {}
     }
-    if "applications" in ayon_settings:
-        output["applications"] = ayon_settings["applications"]
-
     if "core" in ayon_settings:
         _convert_general(ayon_settings, output, default_settings)
 
@@ -188,59 +185,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_blender_project_settings(ayon_settings, output):
-    if "blender" not in ayon_settings:
-        return
-    ayon_blender = ayon_settings["blender"]
-
-    output["blender"] = ayon_blender
-
-
-def _convert_celaction_project_settings(ayon_settings, output):
-    if "celaction" not in ayon_settings:
-        return
-
-    ayon_celaction = ayon_settings["celaction"]
-
-    output["celaction"] = ayon_celaction
-
-
-def _convert_flame_project_settings(ayon_settings, output):
-    if "flame" not in ayon_settings:
-        return
-
-    ayon_flame = ayon_settings["flame"]
-
-    output["flame"] = ayon_flame
-
-
-def _convert_fusion_project_settings(ayon_settings, output):
-    if "fusion" not in ayon_settings:
-        return
-
-    ayon_fusion = ayon_settings["fusion"]
-
-    output["fusion"] = ayon_fusion
-
-
-def _convert_maya_project_settings(ayon_settings, output):
-    if "maya" not in ayon_settings:
-        return
-
-    ayon_maya = ayon_settings["maya"]
-
-    output["maya"] = ayon_maya
-
-
-def _convert_3dsmax_project_settings(ayon_settings, output):
-    if "max" not in ayon_settings:
-        return
-
-    ayon_max = ayon_settings["max"]
-
-    output["max"] = ayon_max
-
-
 def _convert_nuke_knobs(knobs):
     new_knobs = []
     for knob in knobs:
@@ -454,39 +398,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
     )
 
     output["hiero"] = ayon_hiero
-
-
-def _convert_photoshop_project_settings(ayon_settings, output):
-    if "photoshop" not in ayon_settings:
-        return
-
-    ayon_photoshop = ayon_settings["photoshop"]
-    output["photoshop"] = ayon_photoshop
-
-
-def _convert_substancepainter_project_settings(ayon_settings, output):
-    if "substancepainter" not in ayon_settings:
-        return
-
-    ayon_substance_painter = ayon_settings["substancepainter"]
-    output["substancepainter"] = ayon_substance_painter
-
-
-def _convert_tvpaint_project_settings(ayon_settings, output):
-    if "tvpaint" not in ayon_settings:
-        return
-
-    ayon_tvpaint = ayon_settings["tvpaint"]
-    output["tvpaint"] = ayon_tvpaint
-
-
-def _convert_traypublisher_project_settings(ayon_settings, output):
-    if "traypublisher" not in ayon_settings:
-        return
-
-    ayon_traypublisher = ayon_settings["traypublisher"]
-
-    output["traypublisher"] = ayon_traypublisher
 
 
 def _convert_webpublisher_project_settings(ayon_settings, output):
@@ -747,35 +658,11 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
 
 
 def convert_project_settings(ayon_settings, default_settings):
-    # Missing settings
-    # - standalonepublisher
     default_settings = copy.deepcopy(default_settings)
     output = {}
-    exact_match = {
-        "aftereffects",
-        "harmony",
-        "houdini",
-        "resolve",
-        "unreal",
-        "applications",
-        "deadline",
-    }
-    for key in exact_match:
-        if key in ayon_settings:
-            output[key] = ayon_settings[key]
 
-    _convert_blender_project_settings(ayon_settings, output)
-    _convert_celaction_project_settings(ayon_settings, output)
-    _convert_flame_project_settings(ayon_settings, output)
-    _convert_fusion_project_settings(ayon_settings, output)
-    _convert_maya_project_settings(ayon_settings, output)
-    _convert_3dsmax_project_settings(ayon_settings, output)
     _convert_nuke_project_settings(ayon_settings, output)
     _convert_hiero_project_settings(ayon_settings, output)
-    _convert_photoshop_project_settings(ayon_settings, output)
-    _convert_substancepainter_project_settings(ayon_settings, output)
-    _convert_tvpaint_project_settings(ayon_settings, output)
-    _convert_traypublisher_project_settings(ayon_settings, output)
     _convert_webpublisher_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
