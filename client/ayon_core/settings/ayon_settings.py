@@ -426,14 +426,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
         ayon_extract_thumbnail["background_color"]
     )
 
-    if "IntegrateProductGroup" in ayon_publish:
-        subset_group = ayon_publish.pop("IntegrateProductGroup")
-        subset_group_profiles = subset_group.pop("product_grouping_profiles")
-        for profile in subset_group_profiles:
-            profile["families"] = profile.pop("product_types")
-        subset_group["subset_grouping_profiles"] = subset_group_profiles
-        ayon_publish["IntegrateSubsetGroup"] = subset_group
-
     # Cleanup plugin
     ayon_cleanup = ayon_publish["CleanUp"]
     if "patterns" in ayon_cleanup:
