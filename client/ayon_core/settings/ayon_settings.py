@@ -52,26 +52,6 @@ def _convert_color(color_value):
     return color_value
 
 
-def _convert_host_imageio(host_settings):
-    if "imageio" not in host_settings:
-        return
-
-    # --- imageio ---
-    ayon_imageio = host_settings["imageio"]
-    # TODO remove when fixed on server
-    if "ocio_config" in ayon_imageio["ocio_config"]:
-        ayon_imageio["ocio_config"]["filepath"] = (
-            ayon_imageio["ocio_config"].pop("ocio_config")
-        )
-    # Convert file rules
-    imageio_file_rules = ayon_imageio["file_rules"]
-    new_rules = {}
-    for rule in imageio_file_rules["rules"]:
-        name = rule.pop("name")
-        new_rules[name] = rule
-    imageio_file_rules["rules"] = new_rules
-
-
 def _convert_general(ayon_settings, output, default_settings):
     output["core"] = ayon_settings["core"]
     version_check_interval = (
@@ -94,39 +74,6 @@ def _convert_kitsu_system_settings(
     if enabled:
         kitsu_settings["server"] = ayon_settings["kitsu"]["server"]
     output["modules"]["kitsu"] = kitsu_settings
-
-
-def _convert_timers_manager_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("timers_manager") is not None
-    manager_settings = default_settings["modules"]["timers_manager"]
-    manager_settings["enabled"] = enabled
-    if enabled:
-        ayon_manager = ayon_settings["timers_manager"]
-        manager_settings.update({
-            key: ayon_manager[key]
-            for key in {
-                "auto_stop",
-                "full_time",
-                "message_time",
-                "disregard_publishing"
-            }
-        })
-    output["modules"]["timers_manager"] = manager_settings
-
-
-def _convert_clockify_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("clockify") is not None
-    clockify_settings = default_settings["modules"]["clockify"]
-    clockify_settings["enabled"] = enabled
-    if enabled:
-        clockify_settings["workspace_name"] = (
-            ayon_settings["clockify"]["workspace_name"]
-        )
-    output["modules"]["clockify"] = clockify_settings
 
 
 def _convert_deadline_system_settings(
@@ -167,21 +114,24 @@ def _convert_modules_system(
     # TODO add 'enabled' values
     for func in (
         _convert_kitsu_system_settings,
-        _convert_timers_manager_system_settings,
-        _convert_clockify_system_settings,
         _convert_deadline_system_settings,
         _convert_royalrender_system_settings,
     ):
         func(ayon_settings, output, addon_versions, default_settings)
 
+    for key in {
+        "timers_manager",
+        "clockify",
+    }:
+        if addon_versions.get(key):
+            output[key] = ayon_settings
+        else:
+            output.pop(key, None)
+
     modules_settings = output["modules"]
     for module_name in (
         "sync_server",
-        "log_viewer",
-        "standalonepublish_tool",
-        "project_manager",
         "job_queue",
-        "avalon",
         "addon_paths",
     ):
         settings = default_settings["modules"][module_name]
@@ -242,7 +192,6 @@ def _convert_blender_project_settings(ayon_settings, output):
     if "blender" not in ayon_settings:
         return
     ayon_blender = ayon_settings["blender"]
-    _convert_host_imageio(ayon_blender)
 
     output["blender"] = ayon_blender
 
@@ -252,7 +201,6 @@ def _convert_celaction_project_settings(ayon_settings, output):
         return
 
     ayon_celaction = ayon_settings["celaction"]
-    _convert_host_imageio(ayon_celaction)
 
     output["celaction"] = ayon_celaction
 
@@ -263,7 +211,6 @@ def _convert_flame_project_settings(ayon_settings, output):
 
     ayon_flame = ayon_settings["flame"]
 
-    _convert_host_imageio(ayon_flame)
     output["flame"] = ayon_flame
 
 
@@ -272,7 +219,6 @@ def _convert_fusion_project_settings(ayon_settings, output):
         return
 
     ayon_fusion = ayon_settings["fusion"]
-    _convert_host_imageio(ayon_fusion)
 
     output["fusion"] = ayon_fusion
 
@@ -283,8 +229,6 @@ def _convert_maya_project_settings(ayon_settings, output):
 
     ayon_maya = ayon_settings["maya"]
 
-    _convert_host_imageio(ayon_maya)
-
     output["maya"] = ayon_maya
 
 
@@ -293,8 +237,6 @@ def _convert_3dsmax_project_settings(ayon_settings, output):
         return
 
     ayon_max = ayon_settings["max"]
-
-    _convert_host_imageio(ayon_max)
 
     output["max"] = ayon_max
 
@@ -442,7 +384,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
 
     # --- ImageIO ---
     # NOTE 'monitorOutLut' is maybe not yet in v3 (ut should be)
-    _convert_host_imageio(ayon_nuke)
     ayon_imageio = ayon_nuke["imageio"]
 
     # workfile
@@ -491,7 +432,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
         return
 
     ayon_hiero = ayon_settings["hiero"]
-    _convert_host_imageio(ayon_hiero)
 
     new_gui_filters = {}
     for item in ayon_hiero.pop("filters", []):
@@ -521,7 +461,6 @@ def _convert_photoshop_project_settings(ayon_settings, output):
         return
 
     ayon_photoshop = ayon_settings["photoshop"]
-    _convert_host_imageio(ayon_photoshop)
     output["photoshop"] = ayon_photoshop
 
 
@@ -530,7 +469,6 @@ def _convert_substancepainter_project_settings(ayon_settings, output):
         return
 
     ayon_substance_painter = ayon_settings["substancepainter"]
-    _convert_host_imageio(ayon_substance_painter)
     output["substancepainter"] = ayon_substance_painter
 
 
@@ -539,7 +477,6 @@ def _convert_tvpaint_project_settings(ayon_settings, output):
         return
 
     ayon_tvpaint = ayon_settings["tvpaint"]
-    _convert_host_imageio(ayon_tvpaint)
     output["tvpaint"] = ayon_tvpaint
 
 
@@ -549,8 +486,6 @@ def _convert_traypublisher_project_settings(ayon_settings, output):
 
     ayon_traypublisher = ayon_settings["traypublisher"]
 
-    _convert_host_imageio(ayon_traypublisher)
-
     output["traypublisher"] = ayon_traypublisher
 
 
@@ -559,7 +494,6 @@ def _convert_webpublisher_project_settings(ayon_settings, output):
         return
 
     ayon_webpublisher = ayon_settings["webpublisher"]
-    _convert_host_imageio(ayon_webpublisher)
 
     ayon_publish = ayon_webpublisher["publish"]
 
@@ -646,7 +580,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
 
     ayon_core = ayon_settings["core"]
 
-    _convert_host_imageio(ayon_core)
     # Publish conversion
     ayon_publish = ayon_core["publish"]
 
@@ -830,7 +763,6 @@ def convert_project_settings(ayon_settings, default_settings):
     for key in exact_match:
         if key in ayon_settings:
             output[key] = ayon_settings[key]
-            _convert_host_imageio(output[key])
 
     _convert_blender_project_settings(ayon_settings, output)
     _convert_celaction_project_settings(ayon_settings, output)
