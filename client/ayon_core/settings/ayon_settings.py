@@ -440,22 +440,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
     ))
 
     # Tools settings
-    ayon_tools = ayon_core["tools"]
-    ayon_create_tool = ayon_tools["creator"]
-
-
-
-
-    ayon_loader_tool = ayon_tools["loader"]
-    if "product_type_filter_profiles" in ayon_loader_tool:
-        product_type_filter_profiles = (
-            ayon_loader_tool.pop("product_type_filter_profiles"))
-        for profile in product_type_filter_profiles:
-            profile["filter_families"] = profile.pop("filter_product_types")
-
-        ayon_loader_tool["family_filter_profiles"] = (
-            product_type_filter_profiles)
-
     ayon_core["sync_server"] = (
         default_settings["global"]["sync_server"]
     )
