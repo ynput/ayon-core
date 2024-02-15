@@ -274,3 +274,42 @@ class CreateShotClip(plugin.Creator):
             #                            data=instance.data_to_store())
             instances.append(instance)
         return instances
+
+    def collect_instances(self):
+        """Collect all created instances from current timeline."""
+
+        instances = []
+        # # TODO: Collect instances somehow from host app?
+
+        return instances
+
+    def update_instances(self, update_list):
+        """Store changes of existing instances so they can be recollected.
+
+        Args:
+            update_list(List[UpdateData]): Gets list of tuples. Each item
+                contain changed instance and it's changes.
+        """
+        for created_inst, _changes in update_list:
+            track_item = created_inst.transient_data["track_item"]
+            data = created_inst.data_to_store()
+            self.log.info(f"Storing data: {data}")
+
+            lib.imprint(track_item, data)
+
+    def remove_instances(self, instances):
+        """Remove instance marker from track item.
+
+        Args:
+            instance(List[CreatedInstance]): Instance objects which should be
+                removed.
+        """
+        for instance in instances:
+            track_item = instance.transient_data["track_item"]
+
+            # removing instance by marker color
+            print(f"Removing instance: {track_item.GetName()}")
+            # TODO: Do something in host app?
+            # track_item.DeleteMarkersByColor(lib.pype_marker_color)
+
+            self._remove_instance_from_context(instance)
