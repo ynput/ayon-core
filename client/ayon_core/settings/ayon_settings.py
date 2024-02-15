@@ -356,15 +356,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
     output["nuke"] = ayon_nuke
 
 
-def _convert_hiero_project_settings(ayon_settings, output):
-    if "hiero" not in ayon_settings:
-        return
-
-    ayon_hiero = ayon_settings["hiero"]
-
-    output["hiero"] = ayon_hiero
-
-
 def _convert_royalrender_project_settings(ayon_settings, output):
     if "royalrender" not in ayon_settings:
         return
@@ -554,7 +545,6 @@ def convert_project_settings(ayon_settings, default_settings):
     output = {}
 
     _convert_nuke_project_settings(ayon_settings, output)
-    _convert_hiero_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
 
