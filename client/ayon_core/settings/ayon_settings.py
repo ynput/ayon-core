@@ -442,26 +442,7 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
     # Tools settings
     ayon_tools = ayon_core["tools"]
     ayon_create_tool = ayon_tools["creator"]
-    if "product_name_profiles" in ayon_create_tool:
-        product_name_profiles = ayon_create_tool.pop("product_name_profiles")
-        for profile in product_name_profiles:
-            profile["families"] = profile.pop("product_types")
-        ayon_create_tool["subset_name_profiles"] = product_name_profiles
 
-    for profile in ayon_create_tool["subset_name_profiles"]:
-        template = profile["template"]
-        profile["template"] = (
-            template
-            .replace("{task[name]}", "{task}")
-            .replace("{Task[name]}", "{Task}")
-            .replace("{TASK[NAME]}", "{TASK}")
-            .replace("{product[type]}", "{family}")
-            .replace("{Product[type]}", "{Family}")
-            .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-            .replace("{folder[name]}", "{asset}")
-            .replace("{Folder[name]}", "{Asset}")
-            .replace("{FOLDER[NAME]}", "{ASSET}")
-        )
 
     product_smart_select_key = "families_smart_select"
     if "product_types_smart_select" in ayon_create_tool:
