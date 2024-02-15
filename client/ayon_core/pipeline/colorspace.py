@@ -1018,7 +1018,7 @@ def _get_imageio_settings(project_settings, host_name):
         tuple[dict, dict]: image io settings for global and host
     """
     # get image io from global and host_name
-    imageio_global = project_settings["global"]["imageio"]
+    imageio_global = project_settings["core"]["imageio"]
     # host is optional, some might not have any settings
     imageio_host = project_settings.get(host_name, {}).get("imageio", {})
 

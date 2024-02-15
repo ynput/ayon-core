@@ -72,7 +72,7 @@ def get_workfile_template_key(
     try:
         profiles = (
             project_settings
-            ["global"]
+            ["core"]
             ["tools"]
             ["Workfiles"]
             ["workfile_template_profiles"]
@@ -507,7 +507,7 @@ def create_workdir_extra_folders(
 
     # Load extra folders profiles
     extra_folders_profiles = (
-        project_settings["global"]["tools"]["Workfiles"]["extra_folders"]
+        project_settings["core"]["tools"]["Workfiles"]["extra_folders"]
     )
     # Skip if are empty
     if not extra_folders_profiles:

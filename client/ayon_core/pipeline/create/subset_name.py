@@ -47,7 +47,7 @@ def get_subset_name_template(
 
     if project_settings is None:
         project_settings = get_project_settings(project_name)
-    tools_settings = project_settings["global"]["tools"]
+    tools_settings = project_settings["core"]["tools"]
     profiles = tools_settings["creator"]["product_name_profiles"]
     filtering_criteria = {
         "product_types": family,
