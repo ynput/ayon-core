@@ -230,29 +230,25 @@ class ApplicationGroup:
         self.manager = manager
         self._data = data
 
-        self.enabled = data.get("enabled", True)
-        self.label = data.get("label") or None
-        self.icon = data.get("icon") or None
-        self._environment = data.get("environment") or {}
+        self.enabled = data["enabled"]
+        self.label = data["label"] or None
+        self.icon = data["icon"] or None
+        env = {}
+        try:
+            env = json.loads(data["environment"])
+        except Exception:
+            pass
+        self._environment = env
 
-        host_name = data.get("host_name", None)
+        host_name = data["host_name"] or None
         self.is_host = host_name is not None
         self.host_name = host_name
 
-        variants = data.get("variants") or {}
-        key_label_mapping = variants.pop(M_DYNAMIC_KEY_LABEL, {})
-        for variant_name, variant_data in variants.items():
-            if variant_name in METADATA_KEYS:
-                continue
-
-            if "variant_label" not in variant_data:
-                variant_label = key_label_mapping.get(variant_name)
-                if variant_label:
-                    variant_data["variant_label"] = variant_label
-
-            variants[variant_name] = Application(
-                variant_name, variant_data, self
-            )
+        settings_variants = data["variants"]
+        variants = {}
+        for variant_data in settings_variants:
+            app_variant = Application(variant_data, self)
+            variants[app_variant.name] = app_variant
 
         self.variants = variants
 
@@ -274,62 +270,56 @@ class Application:
     Object by itself does nothing special.
 
     Args:
-        name (str): Specific version (or variant) of application.
-            e.g. "maya2020", "nuke11.3", etc.
         data (dict): Data for the version containing information about
             executables, variant label or if is enabled.
             Only required key is `executables`.
         group (ApplicationGroup): App group object that created the application
             and under which application belongs.
+
     """
-
-    def __init__(self, name, data, group):
-        self.name = name
-        self.group = group
+    def __init__(self, data, group):
         self._data = data
-
+        name = data["name"]
+        label = data["label"] or name
         enabled = False
         if group.enabled:
             enabled = data.get("enabled", True)
-        self.enabled = enabled
-        self.use_python_2 = data.get("use_python_2", False)
-
-        self.label = data.get("variant_label") or name
-        self.full_name = "/".join((group.name, name))
 
         if group.label:
-            full_label = " ".join((group.label, self.label))
+            full_label = " ".join((group.label, label))
         else:
-            full_label = self.label
-        self.full_label = full_label
-        self._environment = data.get("environment") or {}
+            full_label = label
+        env = {}
+        try:
+            env = json.loads(data["environment"])
+        except Exception:
+            pass
 
-        arguments = data.get("arguments")
+        arguments = data["arguments"]
         if isinstance(arguments, dict):
             arguments = arguments.get(platform.system().lower())
 
         if not arguments:
             arguments = []
+
+        _executables = data["executables"].get(platform.system().lower(), [])
+        executables = [
+            ApplicationExecutable(executable)
+            for executable in _executables
+        ]
+
+        self.group = group
+
+        self.name = name
+        self.label = label
+        self.enabled = enabled
+        self.use_python_2 = data.get("use_python_2", False)
+
+        self.full_name = "/".join((group.name, name))
+        self.full_label = full_label
         self.arguments = arguments
-
-        if "executables" not in data:
-            self.executables = [
-                UndefinedApplicationExecutable()
-            ]
-            return
-
-        _executables = data["executables"]
-        if isinstance(_executables, dict):
-            _executables = _executables.get(platform.system().lower())
-
-        if not _executables:
-            _executables = []
-
-        executables = []
-        for executable in _executables:
-            executables.append(ApplicationExecutable(executable))
-
         self.executables = executables
+        self._environment = env
 
     def __repr__(self):
         return "<{}> - {}".format(self.__class__.__name__, self.full_name)
@@ -384,12 +374,12 @@ class ApplicationManager:
     """Load applications and tools and store them by their full name.
 
     Args:
-        system_settings (dict): Preloaded system settings. When passed manager
+        studio_settings (dict): Preloaded studio settings. When passed manager
             will always use these values. Gives ability to create manager
             using different settings.
     """
 
-    def __init__(self, system_settings=None):
+    def __init__(self, studio_settings=None):
         self.log = Logger.get_logger(self.__class__.__name__)
 
         self.app_groups = {}
@@ -397,16 +387,16 @@ class ApplicationManager:
         self.tool_groups = {}
         self.tools = {}
 
-        self._system_settings = system_settings
+        self._studio_settings = studio_settings
 
         self.refresh()
 
-    def set_system_settings(self, system_settings):
+    def set_studio_settings(self, studio_settings):
         """Ability to change init system settings.
 
         This will trigger refresh of manager.
         """
-        self._system_settings = system_settings
+        self._studio_settings = studio_settings
 
         self.refresh()
 
@@ -417,72 +407,37 @@ class ApplicationManager:
         self.tool_groups.clear()
         self.tools.clear()
 
-        if self._system_settings is not None:
-            settings = copy.deepcopy(self._system_settings)
+        if self._studio_settings is not None:
+            settings = copy.deepcopy(self._studio_settings)
         else:
             settings = get_system_settings(
                 clear_metadata=False, exclude_locals=False
             )
 
-        all_app_defs = {}
+        applications_addon_settings = settings["applications"]
+
         # Prepare known applications
-        app_defs = settings["applications"]
-        additional_apps = {}
+        app_defs = applications_addon_settings["applications"]
+        additional_apps = app_defs.pop("additional_apps")
+        for additional_app in additional_apps:
+            app_name = additional_app.pop("name")
+            if app_name in app_defs:
+                self.log.warning((
+                    "Additional application '{}' is already"
+                    " in built-in applications."
+                ).format(app_name))
+            app_defs[app_name] = additional_app
+
         for group_name, variant_defs in app_defs.items():
-            if group_name in METADATA_KEYS:
-                continue
-
-            if group_name == "additional_apps":
-                additional_apps = variant_defs
-            else:
-                all_app_defs[group_name] = variant_defs
-
-        # Prepare additional applications
-        # - First find dynamic keys that can be used as labels of group
-        dynamic_keys = {}
-        for group_name, variant_defs in additional_apps.items():
-            if group_name == M_DYNAMIC_KEY_LABEL:
-                dynamic_keys = variant_defs
-                break
-
-        # Add additional apps to known applications
-        for group_name, variant_defs in additional_apps.items():
-            if group_name in METADATA_KEYS:
-                continue
-
-            # Determine group label
-            label = variant_defs.get("label")
-            if not label:
-                # Look for label set in dynamic labels
-                label = dynamic_keys.get(group_name)
-                if not label:
-                    label = group_name
-                variant_defs["label"] = label
-
-            all_app_defs[group_name] = variant_defs
-
-        for group_name, variant_defs in all_app_defs.items():
-            if group_name in METADATA_KEYS:
-                continue
-
             group = ApplicationGroup(group_name, variant_defs, self)
             self.app_groups[group_name] = group
             for app in group:
                 self.applications[app.full_name] = app
 
-        tools_definitions = settings["tools"]["tool_groups"]
-        tool_label_mapping = tools_definitions.pop(M_DYNAMIC_KEY_LABEL, {})
-        for tool_group_name, tool_group_data in tools_definitions.items():
-            if not tool_group_name or tool_group_name in METADATA_KEYS:
-                continue
-
-            tool_group_label = (
-                tool_label_mapping.get(tool_group_name) or tool_group_name
-            )
-            group = EnvironmentToolGroup(
-                tool_group_name, tool_group_label, tool_group_data, self
-            )
-            self.tool_groups[tool_group_name] = group
+        tools_definitions = applications_addon_settings["tool_groups"]
+        for tool_group_data in tools_definitions:
+            group = EnvironmentToolGroup(tool_group_data, self)
+            self.tool_groups[group.name] = group
             for tool in group:
                 self.tools[tool.full_name] = tool
 
@@ -571,30 +526,31 @@ class EnvironmentToolGroup:
         are same.
 
     Args:
-        name (str): Name of the tool group.
-        data (dict): Group's information with it's variants.
+        data (dict): Group information with variants.
         manager (ApplicationManager): Manager that creates the group.
     """
 
-    def __init__(self, name, label, data, manager):
+    def __init__(self, data, manager):
+        name = data["name"]
+        label = data["label"]
+
         self.name = name
         self.label = label
         self._data = data
         self.manager = manager
-        self._environment = data["environment"]
 
-        variants = data.get("variants") or {}
-        label_by_key = variants.pop(M_DYNAMIC_KEY_LABEL, {})
+        environment = {}
+        try:
+            environment = json.loads(data["environment"])
+        except Exception:
+            pass
+        self._environment = environment
+
+        variants = data.get("variants") or []
         variants_by_name = {}
-        for variant_name, variant_data in variants.items():
-            if variant_name in METADATA_KEYS:
-                continue
-
-            variant_label = label_by_key.get(variant_name) or variant_name
-            tool = EnvironmentTool(
-                variant_name, variant_label, variant_data, self
-            )
-            variants_by_name[variant_name] = tool
+        for variant_data in variants:
+            tool = EnvironmentTool(variant_data, self)
+            variants_by_name[tool.name] = tool
         self.variants = variants_by_name
 
     def __repr__(self):
@@ -615,23 +571,25 @@ class EnvironmentTool:
     Structure of tool information.
 
     Args:
-        name (str): Name of the tool.
         variant_data (dict): Variant data with environments and
             host and app variant filters.
-        group (str): Name of group which wraps tool.
+        group (EnvironmentToolGroup): Name of group which wraps tool.
     """
 
-    def __init__(self, name, label, variant_data, group):
+    def __init__(self, variant_data, group):
         # Backwards compatibility 3.9.1 - 3.9.2
         # - 'variant_data' contained only environments but contain also host
         #   and application variant filters
-        host_names = variant_data.get("host_names", [])
-        app_variants = variant_data.get("app_variants", [])
+        name = variant_data["name"]
+        label = variant_data["label"]
+        host_names = variant_data["host_names"]
+        app_variants = variant_data["app_variants"]
 
-        if "environment" in variant_data:
-            environment = variant_data["environment"]
-        else:
-            environment = variant_data
+        environment = {}
+        try:
+            environment = json.loads(variant_data["environment"])
+        except Exception:
+            pass
 
         self.host_names = host_names
         self.app_variants = app_variants

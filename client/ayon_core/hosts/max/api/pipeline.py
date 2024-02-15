@@ -63,9 +63,8 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         rt.callbacks.addScript(rt.Name('postWorkspaceChange'),
                                self._deferred_menu_creation)
 
-    def has_unsaved_changes(self):
-        # TODO: how to get it from 3dsmax?
-        return True
+    def workfile_has_unsaved_changes(self):
+        return rt.getSaveRequired()
 
     def get_workfile_extensions(self):
         return [".max"]
@@ -243,3 +242,20 @@ def get_previous_loaded_object(container: str):
         if str(obj) in sel_list:
             node_list.append(obj)
     return node_list
+
+
+def remove_container_data(container: str):
+    """Function to remove container data after updating, switching or deleting it.
+
+    Args:
+        container (str): container
+    """
+    if container.modifiers[0].name == "OP Data":
+        all_set_members_names = [
+            member.node for member
+            in container.modifiers[0].openPypeData.all_handles]
+        for current_set_member in all_set_members_names:
+            rt.Delete(current_set_member)
+        rt.deleteModifier(container, container.modifiers[0])
+
+    rt.Delete(container)

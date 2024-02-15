@@ -6,7 +6,6 @@ import maya.cmds as cmds
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     load,
-    legacy_io,
     get_representation_path
 )
 from ayon_core.hosts.maya.api.lib import (
@@ -16,6 +15,7 @@ from ayon_core.hosts.maya.api.lib import (
     convert_to_maya_fps
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
 
 
 def is_sequence(files):
@@ -24,11 +24,6 @@ def is_sequence(files):
     if collections:
         sequence = True
     return sequence
-
-
-def get_current_session_fps():
-    session_fps = float(legacy_io.Session.get('AVALON_FPS', 25))
-    return convert_to_maya_fps(session_fps)
 
 
 class ArnoldStandinLoader(load.LoaderPlugin):
@@ -72,11 +67,12 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         # Set color.
         settings = get_project_settings(context["project"]["name"])
-        color = settings['maya']['load']['colors'].get('ass')
+        color = get_load_color_for_family("ass", settings)
         if color is not None:
+            red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", True)
             cmds.setAttr(
-                root + ".outlinerColor", color[0], color[1], color[2]
+                root + ".outlinerColor", red, green, blue
             )
 
         with maintained_selection():
@@ -99,7 +95,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
 
-            fps = float(version["data"].get("fps"))or get_current_session_fps()
+            fps = float(version["data"].get("fps")) or 25
             cmds.setAttr(standin_shape + ".abcFPS", fps)
 
         nodes = [root, standin, standin_shape]

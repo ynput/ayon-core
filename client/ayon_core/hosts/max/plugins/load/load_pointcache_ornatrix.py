@@ -4,7 +4,8 @@ from ayon_core.pipeline.load import LoadError
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
-    update_custom_attribute_data
+    update_custom_attribute_data,
+    remove_container_data
 )
 
 from ayon_core.hosts.max.api.lib import (
@@ -105,4 +106,4 @@ class OxAbcLoader(load.LoaderPlugin):
 
     def remove(self, container):
         node = rt.GetNodeByName(container["instance_node"])
-        rt.Delete(node)
+        remove_container_data(node)
