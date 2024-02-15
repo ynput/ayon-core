@@ -1,6 +1,7 @@
 import os
 
 from ayon_api import get_folders_hierarchy
+from ayon_core.tools.utils import show_message_dialog
 from ayon_core.settings import get_project_settings
 from ayon_core.hosts.unreal.api.pipeline import (
     generate_sequence,
@@ -93,6 +94,22 @@ def build_sequence_hierarchy():
 
     sequence_root_name = "shots"
 
+    sequence_root = f"{sequence_path}/{sequence_root_name}"
+    asset_content = unreal.EditorAssetLibrary.list_assets(
+        sequence_root, recursive=False, include_folder=True)
+
+    if asset_content:
+        msg = (
+            "The sequence folder is not empty. Please delete the contents "
+            "before building the sequence hierarchy.")
+        show_message_dialog(
+            parent=None,
+            title="Sequence Folder not empty",
+            message=msg,
+            level="critical")
+
+        return
+
     hierarchy = get_folders_hierarchy(project_name=project)["hierarchy"]
 
     # Find the sequence root element in the hierarchy
@@ -107,8 +124,7 @@ def build_sequence_hierarchy():
         raise ValueError(f"Could not find {sequence_root_name} in hierarchy")
 
     # Create the master level
-    master_level_path = (
-        f"{sequence_path}/{sequence_root_name}/{sequence_root_name}_map")
+    master_level_path = f"{sequence_root}/{sequence_root_name}_map"
     master_level_package = f"{master_level_path}.{sequence_root_name}_map"
     unreal.EditorLevelLibrary.new_level(master_level_path)
 
