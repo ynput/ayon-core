@@ -62,20 +62,16 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         multilayer_mode_index = {"No Multi-Layered EXR File": "1",
                                  "Full Multi-Layered EXR File": "2" }
 
-        if multilayer_mode_index[multi_layered_mode] == "1": 
-            filepath = "{renders_dir}{subset_name}/{subset_name}.{fmt}".format(
+        filepath = "{renders_dir}{subset_name}/{subset_name}.{fmt}".format(
                 renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
                 subset_name=subset_name,
                 fmt="${aov}.$F4.{ext}".format(aov="AOV", ext=ext)
             )
+        
+        if multilayer_mode_index[multi_layered_mode] == "1": 
             multipart = False
 
         elif multilayer_mode_index[multi_layered_mode] == "2":
-            filepath = "{renders_dir}{subset_name}/{subset_name}.$F4.{ext}".format(
-                renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-                subset_name=subset_name,
-                ext=ext
-            )
             multipart = True
 
         parms = {
