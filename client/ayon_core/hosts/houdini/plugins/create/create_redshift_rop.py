@@ -14,8 +14,8 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
     family = "redshift_rop"
     icon = "magic"
     ext = "exr"
-    render_staging_dir = "$HIP/ayon/{product_name}/render/{product_name}.$AOV.$F4.{ext}"
-    rs_dir = "$HIP/ayon/{product_name}/rs/{product_name}.$F4.rs"
+    render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$AOV.$F4.{ext}"
+    rs_dir = "$HIP/ayon/{product[name]}/rs/{product[name]}.$F4.rs"
 
     # Default to split export and render jobs
     split_render = True
@@ -60,7 +60,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
 
         filepath = self.render_staging_dir.format(
-            product_name="`chs(\"subset\")`",  # keep dynamic link to subset
+            product={"name": subset_name},
             ext=ext
         )
 
@@ -85,7 +85,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             parms["RS_renderCamera"] = camera or ""
 
         rs_filepath = self.rs_dir.format(
-            product_name="`chs(\"subset\")`"  # keep dynamic link to subset
+            product={"name": subset_name}
         )
 
         parms["RS_archive_file"] = rs_filepath

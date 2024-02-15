@@ -9,8 +9,8 @@ class CreateArnoldRop(plugin.HoudiniCreator):
     label = "Arnold ROP"
     family = "arnold_rop"
     icon = "magic"
-    render_staging_dir = "$HIP/ayon/{product_name}/render/{product_name}.$F4.{ext}"
-    ass_dir = "$HIP/ayon/{product_name}/ass/{product_name}.$F4.{ext}"
+    render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}"
+    ass_dir = "$HIP/ayon/{product[name]}/ass/{product[name]}.$F4.{ext}"
 
     # Default extension
     ext = "exr"
@@ -40,7 +40,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
         
         filepath = self.render_staging_dir.format(
-            product_name="`chs(\"subset\")`",  # keep dynamic link to subset
+            product={"name": subset_name},
             ext=ext
         )
 
@@ -55,7 +55,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             ass_filepath = self.ass_dir.format(
-                product_name="`chs(\"subset\")`",  # keep dynamic link to subset
+                product={"name": subset_name},
                 ext="ass"
             )
             
