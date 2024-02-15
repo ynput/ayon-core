@@ -6,8 +6,8 @@ from ayon_core.hosts.hiero.api import plugin, lib
 # reload(plugin)
 # reload(phiero)
 
-from openpype.pipeline.create import CreatorError, CreatedInstance
-from openpype.lib import BoolDef, EnumDef, TextDef, UILabelDef, NumberDef
+from ayon_core.pipeline.create import CreatorError, CreatedInstance
+from ayon_core.lib import BoolDef, EnumDef, TextDef, UILabelDef, NumberDef
 
 
 class CreateShotClip(plugin.Creator):

@@ -2,6 +2,7 @@ import os
 from pprint import pformat
 import re
 from copy import deepcopy
+import uuid
 
 import hiero
 
@@ -13,10 +14,10 @@ from ayon_core.lib import Logger
 from ayon_core.pipeline import LoaderPlugin, LegacyCreator
 from ayon_core.pipeline.load import get_representation_path_from_context
 from . import lib
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     Creator as NewCreator
 )
-from openpype.lib import BoolDef
+from ayon_core.lib import BoolDef
 
 log = Logger.get_logger(__name__)
 
@@ -727,9 +728,6 @@ class PublishClip:
 
         # add publish attribute to tag data
         self.tag_data.update({"publish": True})
-
-        # adding ui inputs if any
-        self.ui_inputs = kwargs.get("ui_inputs", {})
 
         # populate default data before we get other attributes
         self._populate_track_item_default_data()
