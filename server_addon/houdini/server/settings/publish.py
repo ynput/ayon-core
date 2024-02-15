@@ -49,9 +49,9 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=CollectChunkSizeModel,
         title="Collect Chunk Size."
     )
-    CollectStagingDirsForCleaningUp:BasicValidateModel = SettingsField(
+    CollectFilesForCleaningUp:BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Collect Staging Directories For Cleaning Up."
+        title="Collect Files For Cleaning Up."
     )
     ValidateContainers: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -83,7 +83,7 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "optional": True,
         "chunk_size": 999999
     },
-    "CollectStagingDirsForCleaningUp": {
+    "CollectFilesForCleaningUp": {
         "enabled": False,
         "optional": True,
         "active": True
