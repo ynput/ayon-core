@@ -120,7 +120,7 @@ class ExtractBurnin(publish.Extractor):
             # Filter output definition by `burnin` represetation key
             repre_linked_burnins = [
                 burnin_def
-                for burnin_def in burnin_defs.items()
+                for burnin_def in burnin_defs
                 if burnin_def["name"] in repre_burnin_links
             ]
             self.log.debug(
