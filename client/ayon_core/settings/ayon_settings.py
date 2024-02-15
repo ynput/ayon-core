@@ -449,46 +449,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
             new_outputs[name] = profile_output
         profile["outputs"] = new_outputs
 
-    # Extract Burnin plugin
-    extract_burnin = ayon_publish["ExtractBurnin"]
-    extract_burnin_options = extract_burnin["options"]
-    for color_key in ("font_color", "bg_color"):
-        extract_burnin_options[color_key] = _convert_color(
-            extract_burnin_options[color_key]
-        )
-
-    for profile in extract_burnin["profiles"]:
-        extract_burnin_defs = profile["burnins"]
-        if "product_names" in profile:
-            profile["subsets"] = profile.pop("product_names")
-            profile["families"] = profile.pop("product_types")
-
-        for burnin_def in extract_burnin_defs:
-            for key in (
-                "TOP_LEFT",
-                "TOP_CENTERED",
-                "TOP_RIGHT",
-                "BOTTOM_LEFT",
-                "BOTTOM_CENTERED",
-                "BOTTOM_RIGHT",
-            ):
-                burnin_def[key] = (
-                    burnin_def[key]
-                    .replace("{product[name]}", "{subset}")
-                    .replace("{Product[name]}", "{Subset}")
-                    .replace("{PRODUCT[NAME]}", "{SUBSET}")
-                    .replace("{product[type]}", "{family}")
-                    .replace("{Product[type]}", "{Family}")
-                    .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-                    .replace("{folder[name]}", "{asset}")
-                    .replace("{Folder[name]}", "{Asset}")
-                    .replace("{FOLDER[NAME]}", "{ASSET}")
-                )
-        profile["burnins"] = {
-            extract_burnin_def.pop("name"): extract_burnin_def
-            for extract_burnin_def in extract_burnin_defs
-        }
-
     if "IntegrateProductGroup" in ayon_publish:
         subset_group = ayon_publish.pop("IntegrateProductGroup")
         subset_group_profiles = subset_group.pop("product_grouping_profiles")
