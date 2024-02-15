@@ -395,6 +395,15 @@ class FoldersWidget(QtWidgets.QWidget):
 
         return self._get_selected_item_id()
 
+    def get_selected_folder_path(self):
+        """Get selected folder id.
+
+        Returns:
+            Union[str, None]: Folder path which is selected.
+        """
+
+        return self._get_selected_item_value(FOLDER_PATH_ROLE)
+
     def get_selected_folder_label(self):
         """Selected folder label.
 
@@ -478,9 +487,12 @@ class FoldersWidget(QtWidgets.QWidget):
         self.refreshed.emit()
 
     def _get_selected_item_id(self):
+        return self._get_selected_item_value(FOLDER_ID_ROLE)
+
+    def _get_selected_item_value(self, role):
         selection_model = self._folders_view.selectionModel()
         for index in selection_model.selectedIndexes():
-            item_id = index.data(FOLDER_ID_ROLE)
+            item_id = index.data(role)
             if item_id is not None:
                 return item_id
         return None
