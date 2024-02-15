@@ -1656,7 +1656,7 @@ def apply_project_environments_value(
     if project_settings is None:
         project_settings = get_project_settings(project_name)
 
-    env_value = project_settings["global"]["project_environments"]
+    env_value = project_settings["core"]["project_environments"]
     if env_value:
         env_value = json.loads(env_value)
         parsed_value = parse_environments(env_value, env_group)
@@ -1917,7 +1917,7 @@ def should_start_last_workfile(
     project_settings = get_project_settings(project_name)
     profiles = (
         project_settings
-        ["global"]
+        ["core"]
         ["tools"]
         ["Workfiles"]
         ["last_workfile_on_startup"]
@@ -1967,7 +1967,7 @@ def should_workfile_tool_start(
     project_settings = get_project_settings(project_name)
     profiles = (
         project_settings
-        ["global"]
+        ["core"]
         ["tools"]
         ["Workfiles"]
         ["open_workfile_tool_on_startup"]

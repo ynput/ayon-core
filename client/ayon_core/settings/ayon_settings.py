@@ -397,22 +397,6 @@ def _convert_royalrender_project_settings(ayon_settings, output):
     }
 
 
-def _convert_global_project_settings(ayon_settings, output, default_settings):
-    if "core" not in ayon_settings:
-        return
-
-    ayon_core = ayon_settings["core"]
-
-    # Publish conversion
-    ayon_publish = ayon_core["publish"]
-
-    # Tools settings
-    ayon_core["sync_server"] = (
-        default_settings["global"]["sync_server"]
-    )
-    output["global"] = ayon_core
-
-
 def convert_project_settings(ayon_settings, default_settings):
     default_settings = copy.deepcopy(default_settings)
     output = {}
@@ -421,8 +405,6 @@ def convert_project_settings(ayon_settings, default_settings):
     _convert_hiero_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
-
-    _convert_global_project_settings(ayon_settings, output, default_settings)
 
     for key, value in ayon_settings.items():
         if key not in output:
