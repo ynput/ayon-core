@@ -139,7 +139,7 @@ class ExperimentalTools:
 
     def get_tools_for_host(self, host_name=None):
         if not host_name:
-            host_name = os.environ.get("AVALON_APP")
+            host_name = os.environ.get("AYON_HOST_NAME")
         tools = []
         for tool in self.tools:
             if (

@@ -437,7 +437,7 @@ def filter_pyblish_plugins(plugins):
     #   - kept becau on farm is probably used host 'shell' which propably
     #       affect how settings are applied there
     host_name = pyblish.api.current_host()
-    project_name = os.environ.get("AVALON_PROJECT")
+    project_name = os.environ.get("AYON_PROJECT_NAME")
 
     project_settings = get_project_settings(project_name)
     system_settings = get_system_settings()

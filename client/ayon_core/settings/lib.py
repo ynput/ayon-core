@@ -241,15 +241,15 @@ def get_site_local_overrides(project_name, site_name, local_settings=None):
 def get_current_project_settings():
     """Project settings for current context project.
 
-    Project name should be stored in environment variable `AVALON_PROJECT`.
+    Project name should be stored in environment variable `AYON_PROJECT_NAME`.
     This function should be used only in host context where environment
     variable must be set and should not happen that any part of process will
     change the value of the enviornment variable.
     """
-    project_name = os.environ.get("AVALON_PROJECT")
+    project_name = os.environ.get("AYON_PROJECT_NAME")
     if not project_name:
         raise ValueError(
-            "Missing context project in environemt variable `AVALON_PROJECT`."
+            "Missing context project in environemt variable `AYON_PROJECT_NAME`."
         )
     return get_project_settings(project_name)
 

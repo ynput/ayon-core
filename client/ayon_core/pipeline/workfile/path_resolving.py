@@ -157,7 +157,7 @@ def get_workdir(
         task_name (str): Task name for which are workdir data preapred.
         host_name (str): Host which is used to workdir. This is required
             because workdir template may contain `{app}` key. In `Session`
-            is stored under `AVALON_APP` key.
+            is stored under `AYON_HOST_NAME` key.
         anatomy (Anatomy): Optional argument. Anatomy object is created using
             project name from `project_doc`. It is preferred to pass this
             argument as initialization of a new Anatomy object may be time
