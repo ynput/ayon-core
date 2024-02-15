@@ -79,7 +79,7 @@ def main(argv):
     if after_script_idx is not None:
         launch_args = sys_args[after_script_idx:]
 
-    host_name = os.environ["AVALON_APP"].lower()
+    host_name = os.environ["AYON_HOST_NAME"].lower()
     if host_name == "photoshop":
         # TODO refactor launch logic according to AE
         from ayon_core.hosts.photoshop.api.lib import main
@@ -90,7 +90,7 @@ def main(argv):
     else:
         title = "Unknown host name"
         message = (
-            "BUG: Environment variable AVALON_APP contains unknown"
+            "BUG: Environment variable AYON_HOST_NAME contains unknown"
             " host name \"{}\""
         ).format(host_name)
         show_error_messagebox(title, message)

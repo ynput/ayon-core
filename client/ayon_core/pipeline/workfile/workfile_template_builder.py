@@ -103,7 +103,7 @@ class AbstractTemplateBuilder(object):
         if isinstance(host, HostBase):
             host_name = host.name
         else:
-            host_name = os.environ.get("AVALON_APP")
+            host_name = os.environ.get("AYON_HOST_NAME")
 
         self._host = host
         self._host_name = host_name
@@ -129,19 +129,19 @@ class AbstractTemplateBuilder(object):
     def project_name(self):
         if isinstance(self._host, HostBase):
             return self._host.get_current_project_name()
-        return os.getenv("AVALON_PROJECT")
+        return os.getenv("AYON_PROJECT_NAME")
 
     @property
     def current_asset_name(self):
         if isinstance(self._host, HostBase):
             return self._host.get_current_asset_name()
-        return os.getenv("AVALON_ASSET")
+        return os.getenv("AYON_FOLDER_PATH")
 
     @property
     def current_task_name(self):
         if isinstance(self._host, HostBase):
             return self._host.get_current_task_name()
-        return os.getenv("AVALON_TASK")
+        return os.getenv("AYON_TASK_NAME")
 
     def get_current_context(self):
         if isinstance(self._host, HostBase):
@@ -585,7 +585,7 @@ class AbstractTemplateBuilder(object):
             template_path (str): Fullpath for current task and
                 host's template file.
         """
-        last_workfile_path = os.environ.get("AVALON_LAST_WORKFILE")
+        last_workfile_path = os.environ.get("AYON_LAST_WORKFILE")
         self.log.info("__ last_workfile_path: {}".format(last_workfile_path))
         if os.path.exists(last_workfile_path):
             # ignore in case workfile existence
