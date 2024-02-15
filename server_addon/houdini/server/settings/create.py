@@ -120,8 +120,8 @@ class CreatePluginsModel(BaseSettingsModel):
     CreateRedshiftProxy: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create Redshift Proxy")
-    CreateRedshiftROP: CreatorModel = SettingsField(
-        default_factory=CreatorModel,
+    CreateRedshiftROP: CreateRedshiftROPModel = SettingsField(
+        default_factory=CreateRedshiftROPModel,
         title="Create Redshift ROP")
     CreateReview: CreatorModel = SettingsField(
         default_factory=CreatorModel,
