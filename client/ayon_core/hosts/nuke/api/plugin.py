@@ -398,6 +398,7 @@ class NukeWriteCreator(NukeCreator):
             plugin_settings.get("temp_rendering_path_template")
             or self.temp_rendering_path_template
         )
+        # TODO remove template key replacements
         temp_rendering_path_template = (
             temp_rendering_path_template
             .replace("{product[name]}", "{subset}")
@@ -1172,7 +1173,7 @@ class AbstractWriteRender(OpenPypeCreator):
             bool: True if legacy
         """
         imageio_nodes = get_nuke_imageio_settings()["nodes"]
-        node = imageio_nodes["requiredNodes"][0]
+        node = imageio_nodes["required_nodes"][0]
         if "type" not in node["knobs"][0]:
             # if type is not yet in project anatomy
             return True

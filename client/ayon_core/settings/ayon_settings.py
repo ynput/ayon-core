@@ -170,52 +170,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_nuke_knobs(knobs):
-    new_knobs = []
-    for knob in knobs:
-        knob_type = knob["type"]
-
-        if knob_type == "boolean":
-            knob_type = "bool"
-
-        if knob_type != "bool":
-            value = knob[knob_type]
-        elif knob_type in knob:
-            value = knob[knob_type]
-        else:
-            value = knob["boolean"]
-
-        new_knob = {
-            "type": knob_type,
-            "name": knob["name"],
-        }
-        new_knobs.append(new_knob)
-
-        if knob_type == "formatable":
-            new_knob["template"] = value["template"]
-            new_knob["to_type"] = value["to_type"]
-            continue
-
-        value_key = "value"
-        if knob_type == "expression":
-            value_key = "expression"
-
-        elif knob_type == "color_gui":
-            value = _convert_color(value)
-
-        elif knob_type == "vector_2d":
-            value = [value["x"], value["y"]]
-
-        elif knob_type == "vector_3d":
-            value = [value["x"], value["y"], value["z"]]
-
-        elif knob_type == "box":
-            value = [value["x"], value["y"], value["r"], value["t"]]
-
-        new_knob[value_key] = value
-    return new_knobs
-
-
 def _convert_nuke_project_settings(ayon_settings, output):
     if "nuke" not in ayon_settings:
         return
@@ -254,17 +208,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
             item_filter["subsets"] = item_filter.pop("product_names")
             item_filter["families"] = item_filter.pop("product_types")
 
-        reformat_nodes_config = item.get("reformat_nodes_config") or {}
-        reposition_nodes = reformat_nodes_config.get(
-            "reposition_nodes") or []
-
-        for reposition_node in reposition_nodes:
-            if "knobs" not in reposition_node:
-                continue
-            reposition_node["knobs"] = _convert_nuke_knobs(
-                reposition_node["knobs"]
-            )
-
         name = item.pop("name")
         new_review_data_outputs[name] = item
 
@@ -301,25 +244,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
     # regex inputs
     if "regex_inputs" in ayon_imageio:
         ayon_imageio["regexInputs"] = ayon_imageio.pop("regex_inputs")
-
-    # nodes
-    ayon_imageio_nodes = ayon_imageio["nodes"]
-    if "required_nodes" in ayon_imageio_nodes:
-        ayon_imageio_nodes["requiredNodes"] = (
-            ayon_imageio_nodes.pop("required_nodes"))
-    if "override_nodes" in ayon_imageio_nodes:
-        ayon_imageio_nodes["overrideNodes"] = (
-            ayon_imageio_nodes.pop("override_nodes"))
-
-    for item in ayon_imageio_nodes["requiredNodes"]:
-        if "nuke_node_class" in item:
-            item["nukeNodeClass"] = item.pop("nuke_node_class")
-        item["knobs"] = _convert_nuke_knobs(item["knobs"])
-
-    for item in ayon_imageio_nodes["overrideNodes"]:
-        if "nuke_node_class" in item:
-            item["nukeNodeClass"] = item.pop("nuke_node_class")
-        item["knobs"] = _convert_nuke_knobs(item["knobs"])
 
     output["nuke"] = ayon_nuke
 
