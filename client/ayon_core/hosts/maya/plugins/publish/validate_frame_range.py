@@ -235,7 +235,7 @@ def get_instance_task_frame_range(instance):
     # Get frame information from task entity
     # NOTE: If there is no task override then the asset
     # value is automatically returned instead
-    attrib = instance.context.data["taskEntity"]["attrib"]
+    attrib = instance.data["taskEntity"]["attrib"]
     return FrameRange(
         frame_start=attrib["frameStart"],
         frame_end=attrib["frameEnd"],

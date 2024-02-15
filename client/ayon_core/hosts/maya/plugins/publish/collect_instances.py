@@ -3,6 +3,8 @@ from maya import cmds
 import pyblish.api
 from ayon_core.hosts.maya.api.lib import get_all_children
 
+from ayon_api import get_task_by_name
+
 
 class CollectNewInstances(pyblish.api.InstancePlugin):
     """Gather members for instances and pre-defined attribute
@@ -90,6 +92,13 @@ class CollectNewInstances(pyblish.api.InstancePlugin):
             instance.data["frameEndHandle"] = int(
                 instance.data["frameEnd"] + instance.data["handleEnd"]
             )
+
+        project_name = instance.context.data["projectName"]
+        asset_entity = instance.context.data["assetEntity"]
+        task_name = instance.data["task"]
+        task_entity = get_task_by_name(
+            project_name, asset_entity["_id"], task_name)
+        instance.data["taskEntity"] = task_entity
 
     def get_all_parents(self, nodes):
         """Get all parents by using string operations (optimization)
