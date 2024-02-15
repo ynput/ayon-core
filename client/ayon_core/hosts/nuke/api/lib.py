@@ -718,17 +718,17 @@ def get_created_node_imageio_setting_legacy(nodeclass, creator, subset):
         "`{}`: Missing mandatory kwargs `host`, `cls`".format(__file__))
 
     imageio_nodes = get_nuke_imageio_settings()["nodes"]
-    required_nodes = imageio_nodes["requiredNodes"]
+    required_nodes = imageio_nodes["required_nodes"]
 
     # HACK: for backward compatibility this needs to be optional
-    override_nodes = imageio_nodes.get("overrideNodes", [])
+    override_nodes = imageio_nodes.get("override_nodes", [])
 
     imageio_node = None
     for node in required_nodes:
         log.info(node)
         if (
-                nodeclass in node["nukeNodeClass"]
-                and creator in node["plugins"]
+            nodeclass in node["nuke_node_class"]
+            and creator in node["plugins"]
         ):
             imageio_node = node
             break
@@ -739,10 +739,10 @@ def get_created_node_imageio_setting_legacy(nodeclass, creator, subset):
     override_imageio_node = None
     for onode in override_nodes:
         log.info(onode)
-        if nodeclass not in node["nukeNodeClass"]:
+        if nodeclass not in onode["nuke_node_class"]:
             continue
 
-        if creator not in node["plugins"]:
+        if creator not in onode["plugins"]:
             continue
 
         if (
@@ -764,26 +764,33 @@ def get_created_node_imageio_setting_legacy(nodeclass, creator, subset):
         knob_names = [k["name"] for k in imageio_node["knobs"]]
 
         for oknob in override_imageio_node["knobs"]:
+            oknob_name = oknob["name"]
+            oknob_type = oknob["type"]
+            oknob_value = oknob[oknob_type]
             for knob in imageio_node["knobs"]:
-                # override matching knob name
-                if oknob["name"] == knob["name"]:
-                    log.debug(
-                        "_ overriding knob: `{}` > `{}`".format(
-                            knob, oknob
-                        ))
-                    if not oknob["value"]:
-                        # remove original knob if no value found in oknob
-                        imageio_node["knobs"].remove(knob)
-                    else:
-                        # override knob value with oknob's
-                        knob["value"] = oknob["value"]
-
+                knob_name = knob["name"]
                 # add missing knobs into imageio_node
-                if oknob["name"] not in knob_names:
+                if oknob_name not in knob_names:
                     log.debug(
                         "_ adding knob: `{}`".format(oknob))
                     imageio_node["knobs"].append(oknob)
-                    knob_names.append(oknob["name"])
+                    knob_names.append(oknob_name)
+                    continue
+
+                # override matching knob name
+                if oknob_name != knob_name:
+                    continue
+
+                knob_type = knob["type"]
+                log.debug(
+                    "_ overriding knob: `{}` > `{}`".format(knob, oknob)
+                )
+                if not oknob_value:
+                    # remove original knob if no value found in oknob
+                    imageio_node["knobs"].remove(knob)
+                else:
+                    # override knob value with oknob's
+                    knob[knob_type] = oknob_value
 
     log.info("ImageIO node: {}".format(imageio_node))
     return imageio_node
@@ -793,14 +800,14 @@ def get_imageio_node_setting(node_class, plugin_name, subset):
     ''' Get preset data for dataflow (fileType, compression, bitDepth)
     '''
     imageio_nodes = get_nuke_imageio_settings()["nodes"]
-    required_nodes = imageio_nodes["requiredNodes"]
+    required_nodes = imageio_nodes["required_nodes"]
 
     imageio_node = None
     for node in required_nodes:
         log.info(node)
         if (
-                node_class in node["nukeNodeClass"]
-                and plugin_name in node["plugins"]
+            node_class in node["nuke_node_class"]
+            and plugin_name in node["plugins"]
         ):
             imageio_node = node
             break
@@ -828,14 +835,14 @@ def get_imageio_node_override_setting(
     ''' Get imageio node overrides from settings
     '''
     imageio_nodes = get_nuke_imageio_settings()["nodes"]
-    override_nodes = imageio_nodes["overrideNodes"]
+    override_nodes = imageio_nodes["override_nodes"]
 
     # find matching override node
     override_imageio_node = None
     for onode in override_nodes:
         log.debug("__ onode: {}".format(onode))
         log.debug("__ subset: {}".format(subset))
-        if node_class not in onode["nukeNodeClass"]:
+        if node_class not in onode["nuke_node_class"]:
             continue
 
         if plugin_name not in onode["plugins"]:
@@ -860,26 +867,31 @@ def get_imageio_node_override_setting(
         knob_names = [k["name"] for k in knobs_settings]
 
         for oknob in override_imageio_node["knobs"]:
+            oknob_name = oknob["name"]
+            oknob_type = oknob["type"]
+            oknob_value = oknob[oknob_type]
             for knob in knobs_settings:
-                # override matching knob name
-                if oknob["name"] == knob["name"]:
-                    log.debug(
-                        "_ overriding knob: `{}` > `{}`".format(
-                            knob, oknob
-                        ))
-                    if not oknob["value"]:
-                        # remove original knob if no value found in oknob
-                        knobs_settings.remove(knob)
-                    else:
-                        # override knob value with oknob's
-                        knob["value"] = oknob["value"]
-
                 # add missing knobs into imageio_node
-                if oknob["name"] not in knob_names:
-                    log.debug(
-                        "_ adding knob: `{}`".format(oknob))
+                if oknob_name not in knob_names:
+                    log.debug("_ adding knob: `{}`".format(oknob))
                     knobs_settings.append(oknob)
-                    knob_names.append(oknob["name"])
+                    knob_names.append(oknob_name)
+                    continue
+
+                if oknob_name != knob["name"]:
+                    continue
+
+                knob_type = knob["type"]
+                # override matching knob name
+                log.debug(
+                    "_ overriding knob: `{}` > `{}`".format(knob, oknob)
+                )
+                if not oknob_value:
+                    # remove original knob if no value found in oknob
+                    knobs_settings.remove(knob)
+                else:
+                    # override knob value with oknob's
+                    knob[knob_type] = oknob_value
 
     return knobs_settings
 
@@ -1700,41 +1712,31 @@ def set_node_knobs_from_settings(node, knob_settings, **kwargs):
     """
     for knob in knob_settings:
         log.debug("__ knob: {}".format(pformat(knob)))
-        knob_type = knob["type"]
         knob_name = knob["name"]
-
         if knob_name not in node.knobs():
             continue
 
+        knob_type = knob["type"]
+        knob_value = knob[knob_type]
         if knob_type == "expression":
-            knob_expression = knob["expression"]
-            node[knob_name].setExpression(
-                knob_expression
-            )
+            node[knob_name].setExpression(knob_value)
             continue
 
         # first deal with formattable knob settings
         if knob_type == "formatable":
-            template = knob["template"]
-            to_type = knob["to_type"]
+            template = knob_value["template"]
+            to_type = knob_value["to_type"]
             try:
-                _knob_value = template.format(
-                    **kwargs
-                )
+                knob_value = template.format(**kwargs)
             except KeyError as msg:
                 raise KeyError(
                     "Not able to format expression: {}".format(msg))
 
             # convert value to correct type
             if to_type == "2d_vector":
-                knob_value = _knob_value.split(";").split(",")
-            else:
-                knob_value = _knob_value
+                knob_value = knob_value.split(";").split(",")
 
             knob_type = to_type
-
-        else:
-            knob_value = knob["value"]
 
         if not knob_value:
             continue
@@ -1746,24 +1748,38 @@ def set_node_knobs_from_settings(node, knob_settings, **kwargs):
 
 
 def convert_knob_value_to_correct_type(knob_type, knob_value):
-    # first convert string types to string
-    # just to ditch unicode
-    if isinstance(knob_value, six.text_type):
-        knob_value = str(knob_value)
+    # Convert 'text' to string to avoid unicode
+    if knob_type == "text":
+        return str(knob_value)
 
-    # set correctly knob types
-    if knob_type == "bool":
-        knob_value = bool(knob_value)
-    elif knob_type == "decimal_number":
-        knob_value = float(knob_value)
-    elif knob_type == "number":
-        knob_value = int(knob_value)
-    elif knob_type == "text":
-        knob_value = knob_value
-    elif knob_type == "color_gui":
-        knob_value = color_gui_to_int(knob_value)
-    elif knob_type in ["2d_vector", "3d_vector", "color", "box"]:
-        knob_value = [float(val_) for val_ in knob_value]
+    if knob_type == "boolean":
+        return bool(knob_value)
+
+    if knob_type == "decimal_number":
+        return float(knob_value)
+
+    if knob_type == "number":
+        return int(knob_value)
+
+    if knob_type == "color_gui":
+        new_color = []
+        for value in knob_value:
+            if isinstance(value, float):
+                value = int(value * 255)
+            new_color.append(value)
+        return color_gui_to_int(new_color)
+
+    if knob_type == "box":
+        return [
+            knob_value["x"], knob_value["y"],
+            knob_value["r"], knob_value["t"]
+        ]
+
+    if knob_type == "vector_2d":
+        return [knob_value["x"], knob_value["y"]]
+
+    if knob_type == "vector_3d":
+        return [knob_value["x"], knob_value["y"], knob_value["z"]]
 
     return knob_value
 

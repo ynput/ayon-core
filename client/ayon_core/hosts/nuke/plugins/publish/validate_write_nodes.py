@@ -97,7 +97,7 @@ class ValidateNukeWriteNode(
                 raise PublishXmlValidationError(
                     self, (
                         "Please update data in settings 'project_settings"
-                        "/nuke/imageio/nodes/requiredNodes'"
+                        "/nuke/imageio/nodes/required_nodes'"
                     ),
                     key="legacy"
                 )
