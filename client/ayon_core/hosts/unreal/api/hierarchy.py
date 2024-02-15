@@ -1,6 +1,7 @@
 import os
 
 from ayon_api import get_folders_hierarchy
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.tools.utils import show_message_dialog
 from ayon_core.settings import get_project_settings
 from ayon_core.hosts.unreal.api.pipeline import (
@@ -87,7 +88,7 @@ def build_sequence_hierarchy():
     """
     print("Building sequence hierarchy...")
 
-    project = os.environ.get("AVALON_PROJECT")
+    project = get_current_project_name()
 
     settings = get_project_settings(project)
     sequence_path = get_default_sequence_path(settings)
