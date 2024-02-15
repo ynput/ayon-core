@@ -11,7 +11,9 @@ class CreateKarmaROP(plugin.HoudiniCreator):
     label = "Karma ROP"
     family = "karma_rop"
     icon = "magic"
-    staging_dir = "$HIP/ayon"
+    render_staging_dir = "$HIP/ayon/{product_name}/render/{product_name}.$F4.{ext}"
+    checkpoint_dir = "$HIP/ayon/{product_name}/checkpoint/{product_name}.$F4.checkpoint"
+    usd_dir = "$HIP/ayon/{product_name}/usd/{product_name}_$RENDERID"
 
     def create(self, subset_name, instance_data, pre_create_data):
         import hou  # noqa
@@ -32,20 +34,17 @@ class CreateKarmaROP(plugin.HoudiniCreator):
 
         ext = pre_create_data.get("image_format")
 
-        filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
-            root=hou.text.expandString(self.staging_dir),
-            subset=subset_name,
+        filepath = self.render_staging_dir.format(
+            product_name="`chs(\"subset\")`",  # keep dynamic link to subset
             ext=ext
         )
 
-        checkpoint = "{root}/{subset}/checkpoint/{subset}.$F4.checkpoint".format(
-            root=hou.text.expandString(self.staging_dir),
-            subset=subset_name
+        checkpoint = self.checkpoint_dir.format(
+            product_name="`chs(\"subset\")`"  # keep dynamic link to subset
         )
 
-        usd_directory = "{root}/{subset}/usd_render/{subset}_$RENDERID".format(
-            root=hou.text.expandString(self.staging_dir),
-            subset=subset_name
+        usd_directory = self.usd_dir.format(
+            product_name="`chs(\"subset\")`"  # keep dynamic link to subset
         )
 
         parms = {

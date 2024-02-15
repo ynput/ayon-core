@@ -14,7 +14,7 @@ class CreateReview(plugin.HoudiniCreator):
     label = "Review"
     family = "review"
     icon = "video-camera"
-    staging_dir = "$HIP/ayon"
+    staging_dir = "$HIP/ayon/{product_name}/{product_name}.$F4.{ext}"
 
     def create(self, subset_name, instance_data, pre_create_data):
 
@@ -32,9 +32,8 @@ class CreateReview(plugin.HoudiniCreator):
 
         frame_range = hou.playbar.frameRange()
 
-        filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
-            root=hou.text.expandString(self.staging_dir),
-            subset="`chs(\"subset\")`",  # keep dynamic link to subset
+        filepath = self.staging_dir.format(
+            product_name="`chs(\"subset\")`",  # keep dynamic link to subset
             ext=pre_create_data.get("image_format", "png") 
         )
 

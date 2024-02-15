@@ -8,7 +8,7 @@ class CreatorModel(BaseSettingsModel):
         title="Default Products",
         default_factory=list,
     )
-    staging_dir: str = SettingsField(title="Staging Dir")
+    staging_dir: str = SettingsField(title="Staging Directory")
 
 
 class CreateArnoldAssModel(BaseSettingsModel):
@@ -18,7 +18,58 @@ class CreateArnoldAssModel(BaseSettingsModel):
         default_factory=list,
     )
     ext: str = SettingsField(Title="Extension")
-    staging_dir: str = SettingsField(title="Staging Dir")
+    staging_dir: str = SettingsField(title="Staging Directory")
+
+
+class CreateArnoldRopModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    default_variants: list[str] = SettingsField(
+        title="Default Products",
+        default_factory=list,
+    )
+    render_staging_dir: str = SettingsField(title="Render Staging Directory")
+    ass_dir: str = SettingsField(title="Ass Directory")
+
+
+class CreateKarmaROPModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    default_variants: list[str] = SettingsField(
+        title="Default Products",
+        default_factory=list,
+    )
+    render_staging_dir: str = SettingsField(title="Render Staging Directory")
+    checkpoint_dir: str = SettingsField(title="Checkpoint Directory")
+    usd_dir: str = SettingsField(title="USD Directory")
+
+
+class CreateMantraROPModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    default_variants: list[str] = SettingsField(
+        title="Default Products",
+        default_factory=list,
+    )
+    render_staging_dir: str = SettingsField(title="Render Staging Directory")
+    ifd_dir: str = SettingsField(title="IFD Directory")
+
+
+class CreateRedshiftROPModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    default_variants: list[str] = SettingsField(
+        title="Default Products",
+        default_factory=list,
+    )
+    render_staging_dir: str = SettingsField(title="Render Staging Directory")
+    rs_dir: str = SettingsField(title="RS Directory")
+
+
+class CreateVrayROPModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    default_variants: list[str] = SettingsField(
+        title="Default Products",
+        default_factory=list,
+    )
+    render_staging_dir: str = SettingsField(title="Render Staging Directory")
+    vrscene_dir: str = SettingsField(title="VRay scene Directory")
 
 
 class CreateStaticMeshModel(BaseSettingsModel):
@@ -32,7 +83,7 @@ class CreateStaticMeshModel(BaseSettingsModel):
         default_factory=list,
         title="Collision Prefixes"
     )
-    staging_dir: str = SettingsField(title="Staging Dir")
+    staging_dir: str = SettingsField(title="Staging Directory")
 
 
 class CreatePluginsModel(BaseSettingsModel):
@@ -42,8 +93,8 @@ class CreatePluginsModel(BaseSettingsModel):
     CreateArnoldAss: CreateArnoldAssModel = SettingsField(
         default_factory=CreateArnoldAssModel,
         title="Create Arnold Ass")
-    CreateArnoldRop: CreatorModel = SettingsField(
-        default_factory=CreatorModel,
+    CreateArnoldRop: CreateArnoldRopModel = SettingsField(
+        default_factory=CreateArnoldRopModel,
         title="Create Arnold ROP")
     CreateCompositeSequence: CreatorModel = SettingsField(
         default_factory=CreatorModel,
@@ -51,14 +102,14 @@ class CreatePluginsModel(BaseSettingsModel):
     CreateHDA: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create Houdini Digital Asset")
-    CreateKarmaROP: CreatorModel = SettingsField(
-        default_factory=CreatorModel,
+    CreateKarmaROP: CreateKarmaROPModel = SettingsField(
+        default_factory=CreateKarmaROPModel,
         title="Create Karma ROP")
     CreateMantraIFD: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create Mantra IFD")
-    CreateMantraROP: CreatorModel = SettingsField(
-        default_factory=CreatorModel,
+    CreateMantraROP: CreateMantraROPModel = SettingsField(
+        default_factory=CreateMantraROPModel,
         title="Create Mantra ROP")
     CreatePointCache: CreatorModel = SettingsField(
         default_factory=CreatorModel,
@@ -88,8 +139,8 @@ class CreatePluginsModel(BaseSettingsModel):
     CreateVDBCache: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create VDB Cache")
-    CreateVrayROP: CreatorModel = SettingsField(
-        default_factory=CreatorModel,
+    CreateVrayROP: CreateVrayROPModel = SettingsField(
+        default_factory=CreateVrayROPModel,
         title="Create VRay ROP")
 
 
@@ -97,68 +148,73 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
     "CreateAlembicCamera": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.abc"
     },
     "CreateArnoldAss": {
         "enabled": True,
         "default_variants": ["Main"],
         "ext": ".ass",
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.$F4.{ext}"
     },
     "CreateArnoldRop": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "render_staging_dir": "$HIP/ayon/{product_name}/render/{product_name}.$F4.{ext}",
+        "ass_dir": "$HIP/ayon/{product_name}/ass/{product_name}.$F4.{ext}"
     },
     "CreateCompositeSequence": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.$F4.{ext}"
     },
     "CreateHDA": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir":  "$HIP/ayon/{product_name}/{product_name}.{ext}"
     },
     "CreateKarmaROP": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "render_staging_dir": "$HIP/ayon/{product_name}/render/{product_name}.$F4.{ext}",
+        "checkpoint_dir": "$HIP/ayon/{product_name}/checkpoint/{product_name}.$F4.checkpoint",
+        "usd_dir": "$HIP/ayon/{product_name}/usd/{product_name}_$RENDERID"
     },
     "CreateMantraIFD": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.$F4.ifd"
     },
     "CreateMantraROP": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "render_staging_dir": "$HIP/ayon/{product_name}/render/{product_name}.$F4.{ext}",
+        "ifd_dir": "$HIP/ayon/{product_name}/ifd/{product_name}.$F4.ifd"
     },
     "CreatePointCache": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.abc"
     },
     "CreateBGEO": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.$F4.{ext}"
     },
     "CreateRedshiftProxy": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.$F4.rs"
     },
     "CreateRedshiftROP": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "render_staging_dir": "$HIP/ayon/{product_name}/render/{product_name}.$AOV.$F4.{ext}",
+        "rs_dir": "$HIP/ayon/{product_name}/rs/{product_name}.$F4.rs"
     },
     "CreateReview": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.$F4.{ext}"
     },
     "CreateStaticMesh": {
         "enabled": True,
@@ -172,12 +228,12 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
             "USP",
             "UCX"
         ],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.fbx"
     },
     "CreateUSD": {
         "enabled": False,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.usd"
     },
     "CreateUSDRender": {
         "enabled": False,
@@ -187,11 +243,12 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
     "CreateVDBCache": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "staging_dir": "$HIP/ayon/{product_name}/{product_name}.$F4.vdb"
     },
     "CreateVrayROP": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon"
+        "render_staging_dir": "$HIP/ayon/{product_name}/render/{product_name}.$AOV.$F4.{ext}",
+        "vrscene_dir": "$HIP/ayon/{product_name}/vrscene/{product_name}.$F4.vrscene"
     },
 }
