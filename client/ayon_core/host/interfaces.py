@@ -234,7 +234,7 @@ class IWorkfileHost:
             str: Path to new workdir.
         """
 
-        return session["AVALON_WORKDIR"]
+        return session["AYON_WORKDIR"]
 
     # --- Deprecated method names ---
     def file_extensions(self):
