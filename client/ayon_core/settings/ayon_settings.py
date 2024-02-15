@@ -444,15 +444,7 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
     ayon_create_tool = ayon_tools["creator"]
 
 
-    product_smart_select_key = "families_smart_select"
-    if "product_types_smart_select" in ayon_create_tool:
-        product_smart_select_key = "product_types_smart_select"
 
-    new_smart_select_families = {
-        item["name"]: item["task_names"]
-        for item in ayon_create_tool.pop(product_smart_select_key)
-    }
-    ayon_create_tool["families_smart_select"] = new_smart_select_families
 
     ayon_loader_tool = ayon_tools["loader"]
     if "product_type_filter_profiles" in ayon_loader_tool:
