@@ -371,17 +371,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
         new_gui_filters[key] = subvalue
     ayon_hiero["filters"] = new_gui_filters
 
-    ayon_load_clip = ayon_hiero["load"]["LoadClip"]
-    if "product_types" in ayon_load_clip:
-        ayon_load_clip["families"] = ayon_load_clip.pop("product_types")
-
-    ayon_load_clip = ayon_hiero["load"]["LoadClip"]
-    ayon_load_clip["clip_name_template"] = (
-        ayon_load_clip["clip_name_template"]
-        .replace("{folder[name]}", "{asset}")
-        .replace("{product[name]}", "{subset}")
-    )
-
     output["hiero"] = ayon_hiero
 
 
