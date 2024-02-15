@@ -53,7 +53,7 @@ class LoadClip(plugin.NukeLoader):
     color = "white"
 
     # Loaded from settings
-    _representations = []
+    representations_include = []
 
     script_start = int(nuke.root()["first_frame"].value())
 
@@ -82,7 +82,7 @@ class LoadClip(plugin.NukeLoader):
 
     @classmethod
     def get_representations(cls):
-        return cls._representations or cls.representations
+        return cls.representations_include or cls.representations
 
     def load(self, context, name, namespace, options):
         """Load asset via database

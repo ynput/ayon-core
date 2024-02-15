@@ -222,15 +222,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
 
     ayon_nuke = ayon_settings["nuke"]
 
-    # --- Load ---
-    ayon_load = ayon_nuke["load"]
-    ayon_load["LoadClip"]["_representations"] = (
-        ayon_load["LoadClip"].pop("representations_include")
-    )
-    ayon_load["LoadImage"]["_representations"] = (
-        ayon_load["LoadImage"].pop("representations_include")
-    )
-
     # --- Create ---
     ayon_create = ayon_nuke["create"]
     for creator_name in (
