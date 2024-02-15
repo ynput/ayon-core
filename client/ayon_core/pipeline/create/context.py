@@ -27,7 +27,7 @@ from ayon_core.lib.attribute_definitions import (
     get_default_values,
 )
 from ayon_core.host import IPublishHost, IWorkfileHost
-from ayon_core.pipeline import legacy_io, Anatomy
+from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 
 from .creator_plugins import (
@@ -1684,25 +1684,16 @@ class CreateContext:
         if isinstance(self.host, IWorkfileHost):
             workfile_path = self.host.get_current_workfile()
 
-        # --- TODO remove these conditions ---
-        if not project_name:
-            project_name = legacy_io.Session.get("AVALON_PROJECT")
-        if not asset_name:
-            asset_name = legacy_io.Session.get("AVALON_ASSET")
-        if not task_name:
-            task_name = legacy_io.Session.get("AVALON_TASK")
-        # ---
         return project_name, asset_name, task_name, workfile_path
 
     def reset_current_context(self):
         """Refresh current context.
 
         Reset is based on optional host implementation of `get_current_context`
-        function or using `legacy_io.Session`.
+        function.
 
         Some hosts have ability to change context file without using workfiles
-        tool but that change is not propagated to 'legacy_io.Session'
-        nor 'os.environ'.
+        tool but that change is not propagated to 'os.environ'.
 
         Todos:
             UI: Current context should be also checked on save - compare
