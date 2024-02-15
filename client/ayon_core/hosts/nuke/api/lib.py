@@ -1175,8 +1175,9 @@ def create_prenodes(
 ):
     last_node = None
     for_dependency = {}
-    for name, node in nodes_setting.items():
+    for node in nodes_setting:
         # get attributes
+        name = node["name"]
         nodeclass = node["nodeclass"]
         knobs = node["knobs"]
 
@@ -1238,8 +1239,8 @@ def create_write_node(
         name (str): name of node
         data (dict): creator write instance data
         input (node)[optional]: selected node to connect to
-        prenodes (dict)[optional]:
-            nodes to be created before write with dependency
+        prenodes (Optional[list[dict]]): nodes to be created before write
+            with dependency
         review (bool)[optional]: adding review knob
         farm (bool)[optional]: rendering workflow target
         kwargs (dict)[optional]: additional key arguments for formatting
@@ -1268,7 +1269,7 @@ def create_write_node(
     Return:
         node (obj): group node with avalon data as Knobs
     '''
-    prenodes = prenodes or {}
+    prenodes = prenodes or []
 
     # filtering variables
     plugin_name = data["creator"]

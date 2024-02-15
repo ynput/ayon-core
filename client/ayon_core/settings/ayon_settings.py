@@ -222,29 +222,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
 
     ayon_nuke = ayon_settings["nuke"]
 
-    # --- Create ---
-    ayon_create = ayon_nuke["create"]
-    for creator_name in (
-        "CreateWritePrerender",
-        "CreateWriteImage",
-        "CreateWriteRender",
-    ):
-        create_plugin_settings = ayon_create[creator_name]
-        create_plugin_settings["temp_rendering_path_template"] = (
-            create_plugin_settings["temp_rendering_path_template"]
-            .replace("{product[name]}", "{subset}")
-            .replace("{product[type]}", "{family}")
-            .replace("{task[name]}", "{task}")
-            .replace("{folder[name]}", "{asset}")
-        )
-        new_prenodes = {}
-        for prenode in create_plugin_settings["prenodes"]:
-            name = prenode.pop("name")
-            prenode["knobs"] = _convert_nuke_knobs(prenode["knobs"])
-            new_prenodes[name] = prenode
-
-        create_plugin_settings["prenodes"] = new_prenodes
-
     # --- Publish ---
     ayon_publish = ayon_nuke["publish"]
     slate_mapping = ayon_publish["ExtractSlateFrame"]["key_value_mapping"]
@@ -564,7 +541,6 @@ def convert_project_settings(ayon_settings, default_settings):
     default_settings = copy.deepcopy(default_settings)
     output = {}
 
-    _convert_nuke_project_settings(ayon_settings, output)
     _convert_hiero_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
