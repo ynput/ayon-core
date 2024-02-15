@@ -406,14 +406,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
     # Publish conversion
     ayon_publish = ayon_core["publish"]
 
-    # Project root settings - json string to dict
-    ayon_core["project_environments"] = json.loads(
-        ayon_core["project_environments"]
-    )
-    ayon_core["project_folder_structure"] = json.dumps(json.loads(
-        ayon_core["project_folder_structure"]
-    ))
-
     # Tools settings
     ayon_core["sync_server"] = (
         default_settings["global"]["sync_server"]
