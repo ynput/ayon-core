@@ -246,7 +246,7 @@ def _set_project():
         None
 
     """
-    workdir = os.getenv("AVALON_WORKDIR")
+    workdir = os.getenv("AYON_WORKDIR")
 
     try:
         os.makedirs(workdir)
@@ -628,7 +628,7 @@ def on_task_changed():
     # Run
     menu.update_menu_task_label()
 
-    workdir = os.getenv("AVALON_WORKDIR")
+    workdir = os.getenv("AYON_WORKDIR")
     if os.path.exists(workdir):
         log.info("Updating Maya workspace for task change to %s", workdir)
         _set_project()
@@ -677,7 +677,7 @@ def workfile_save_before_xgen(event):
 
     import xgenm
 
-    current_work_dir = os.getenv("AVALON_WORKDIR").replace("\\", "/")
+    current_work_dir = os.getenv("AYON_WORKDIR").replace("\\", "/")
     expected_work_dir = event.data["workdir_path"].replace("\\", "/")
     if current_work_dir == expected_work_dir:
         return

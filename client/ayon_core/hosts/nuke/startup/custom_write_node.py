@@ -112,7 +112,7 @@ class WriteNodeKnobSettingPanel(nukescripts.PythonPanel):
         for write_node in write_selected_nodes:
             # data for mapping the path
             data = {
-                "work": os.getenv("AVALON_WORKDIR"),
+                "work": os.getenv("AYON_WORKDIR"),
                 "subset": write_node["name"].value(),
                 "frame": "#" * frame_padding,
                 "ext": ext
