@@ -236,6 +236,7 @@ class CreateShotClip(plugin.Creator):
 
         sorted_selected_track_items.extend(unsorted_selected_track_items)
 
+        instances = []
         for i, track_item in enumerate(sorted_selected_track_items):
 
             # convert track item to timeline media pool item
@@ -246,29 +247,30 @@ class CreateShotClip(plugin.Creator):
                 avalon=instance_data)
 
             track_item = publish_clip.convert()
-            # if track_item is None:
-            #     # Ignore input clips that do not convert into a track item
-            #     # from `PublishClip.convert`
-            #     continue
+            if track_item is None:
+                # Ignore input clips that do not convert into a track item
+                # from `PublishClip.convert`
+                continue
 
-            # instance_data = copy.deepcopy(instance_data)
-            # # TODO: set 'task', 'family' and 'variant' correctly
-            # #  and build its subset name correctly
-            # # TODO: We can't set the asset because the asset does not exist
-            # #   and the new publisher doesn't like non-existing assets
-            # # instance_data["asset"] = publish_clip.tag_data["asset"]
-            # # instance_data["variant"] = publish_clip.subset_name
+            instance_data = copy.deepcopy(instance_data)
+            # TODO: set 'task', 'family' and 'variant' correctly
+            #  and build its subset name correctly
+            # TODO: We can't set the asset because the asset does not exist
+            #   and the new publisher doesn't like non-existing assets
+            # instance_data["asset"] = publish_clip.tag_data["asset"]
+            # instance_data["variant"] = publish_clip.subset_name
 
-            # # Create the Publisher instance
-            # instance = CreatedInstance(
-            #     family=self.family,
-            #     subset_name=publish_clip.subset_name,
-            #     data=instance_data,
-            #     creator=self
-            # )
-            # instance.transient_data["track_item"] = track_item
-            # self._add_instance_to_context(instance)
+            # Create the Publisher instance
+            instance = CreatedInstance(
+                family=self.family,
+                subset_name=publish_clip.subset_name,
+                data=instance_data,
+                creator=self
+            )
+            instance.transient_data["track_item"] = track_item
+            self._add_instance_to_context(instance)
 
-            # # self.imprint_instance_node(instance_node,
-            # #                            data=instance.data_to_store())
-            # instances.append(instance)
+            # self.imprint_instance_node(instance_node,
+            #                            data=instance.data_to_store())
+            instances.append(instance)
+        return instances
