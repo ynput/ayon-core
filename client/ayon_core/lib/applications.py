@@ -1658,6 +1658,7 @@ def apply_project_environments_value(
 
     env_value = project_settings["global"]["project_environments"]
     if env_value:
+        env_value = json.loads(env_value)
         parsed_value = parse_environments(env_value, env_group)
         env.update(acre.compute(
             _merge_env(parsed_value, env),
