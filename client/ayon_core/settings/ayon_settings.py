@@ -456,15 +456,6 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
         ayon_loader_tool["family_filter_profiles"] = (
             product_type_filter_profiles)
 
-    ayon_publish_tool = ayon_tools["publish"]
-    for profile in ayon_publish_tool["hero_template_name_profiles"]:
-        if "product_types" in profile:
-            profile["families"] = profile.pop("product_types")
-
-    for profile in ayon_publish_tool["template_name_profiles"]:
-        if "product_types" in profile:
-            profile["families"] = profile.pop("product_types")
-
     ayon_core["sync_server"] = (
         default_settings["global"]["sync_server"]
     )
