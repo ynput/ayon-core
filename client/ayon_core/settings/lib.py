@@ -48,11 +48,6 @@ def clear_metadata_from_settings(values):
             clear_metadata_from_settings(item)
 
 
-def get_local_settings():
-    # TODO implement ayon implementation
-    return {}
-
-
 def load_openpype_default_settings():
     """Load openpype default settings."""
     return load_jsons_from_dir(DEFAULTS_DIR)
