@@ -20,7 +20,6 @@ class RoyalRenderModule(OpenPypeModule, IPluginPaths):
 
     def __init__(self, manager, settings):
         # type: (ayon_core.addon.AddonsManager, dict) -> None
-        self.rr_paths = {}
         self._api = None
         self.settings = settings
         super(RoyalRenderModule, self).__init__(manager, settings)
@@ -29,7 +28,6 @@ class RoyalRenderModule(OpenPypeModule, IPluginPaths):
         # type: (dict) -> None
         rr_settings = module_settings[self.name]
         self.enabled = rr_settings["enabled"]
-        self.rr_paths = rr_settings.get("rr_paths")
 
     @staticmethod
     def get_plugin_paths():
