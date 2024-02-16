@@ -105,7 +105,7 @@ class MayaSubmitRemotePublishDeadline(
         }
 
         environment["AYON_PROJECT_NAME"] = project_name
-        environment["AYON_FOLDER_PATH"] = instance.context.data["asset"]
+        environment["AYON_FOLDER_PATH"] = instance.context.data["folderPath"]
         environment["AYON_TASK_NAME"] = instance.context.data["task"]
         environment["AYON_APP_NAME"] = os.environ.get("AYON_APP_NAME")
         environment["OPENPYPE_PUBLISH_SUBSET"] = instance.data["subset"]
