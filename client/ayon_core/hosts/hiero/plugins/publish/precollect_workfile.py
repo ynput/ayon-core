@@ -17,7 +17,7 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder - 0.491
 
     def process(self, context):
-        asset = context.data["asset"]
+        asset = context.data["folderPath"]
         asset_name = asset.split("/")[-1]
 
         active_timeline = hiero.ui.activeSequence()

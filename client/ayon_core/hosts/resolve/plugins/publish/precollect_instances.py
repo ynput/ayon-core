@@ -66,7 +66,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             data.update({
                 "name": "{}_{}".format(asset, subset),
                 "label": "{} {}".format(asset, subset),
-                "asset": asset,
+                "folderPath": asset,
                 "item": timeline_item,
                 "publish": get_publish_attribute(timeline_item),
                 "fps": context.data["fps"],
@@ -124,7 +124,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["asset"]
+        asset = data["folderPath"]
         subset = "shotMain"
 
         # insert family into families
@@ -134,7 +134,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             "name": "{}_{}".format(asset, subset),
             "label": "{} {}".format(asset, subset),
             "subset": subset,
-            "asset": asset,
+            "folderPath": asset,
             "family": family,
             "families": [],
             "publish": get_publish_attribute(timeline_item)
