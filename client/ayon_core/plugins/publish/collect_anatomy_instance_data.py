@@ -3,7 +3,7 @@ Requires:
     context     -> anatomyData
     context     -> projectEntity
     context     -> assetEntity
-    instance    -> asset
+    instance    -> folderPath
     instance    -> subset
     instance    -> family
 
