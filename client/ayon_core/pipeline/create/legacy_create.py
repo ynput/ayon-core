@@ -27,7 +27,7 @@ class LegacyCreator(object):
     log = logging.getLogger("LegacyCreator")
     log.propagate = True
 
-    def __init__(self, name, asset, options=None, data=None):
+    def __init__(self, name, folder_path, options=None, data=None):
         self.name = name  # For backwards compatibility
         self.options = options
 
@@ -35,7 +35,7 @@ class LegacyCreator(object):
         self.data = collections.OrderedDict()
         self.data["id"] = "pyblish.avalon.instance"
         self.data["family"] = self.family
-        self.data["asset"] = asset
+        self.data["folderPath"] = folder_path
         self.data["subset"] = name
         self.data["active"] = True
 

@@ -350,7 +350,7 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
 
         add_kwargs = {
             "project": anatomy_data["project"]["name"],
-            "asset": instance.context.data["asset"],
+            "asset": instance.context.data["folderPath"],
             "task": anatomy_data["task"]["name"],
             "app": instance.context.data.get("appName"),
             "envgroup": "farm"
