@@ -1807,9 +1807,9 @@ class PublisherController(BasePublisherController):
             context_title = self._host.get_context_title()
 
         if context_title is None:
-            context_title = os.environ.get("AVALON_APP_NAME")
+            context_title = os.environ.get("AYON_APP_NAME")
             if context_title is None:
-                context_title = os.environ.get("AVALON_APP")
+                context_title = os.environ.get("AYON_HOST_NAME")
 
         return context_title
 

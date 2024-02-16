@@ -62,20 +62,6 @@ def _convert_general(ayon_settings, output, default_settings):
     }
 
 
-def _convert_kitsu_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    if "kitsu" in ayon_settings:
-        output["kitsu"] = ayon_settings["kitsu"]
-
-    enabled = addon_versions.get("kitsu") is not None
-    kitsu_settings = default_settings["modules"]["kitsu"]
-    kitsu_settings["enabled"] = enabled
-    if enabled:
-        kitsu_settings["server"] = ayon_settings["kitsu"]["server"]
-    output["modules"]["kitsu"] = kitsu_settings
-
-
 def _convert_deadline_system_settings(
     ayon_settings, output, addon_versions, default_settings
 ):
@@ -113,7 +99,6 @@ def _convert_modules_system(
     # TODO add all modules
     # TODO add 'enabled' values
     for func in (
-        _convert_kitsu_system_settings,
         _convert_deadline_system_settings,
         _convert_royalrender_system_settings,
     ):
@@ -400,23 +385,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
     output["hiero"] = ayon_hiero
 
 
-def _convert_webpublisher_project_settings(ayon_settings, output):
-    if "webpublisher" not in ayon_settings:
-        return
-
-    ayon_webpublisher = ayon_settings["webpublisher"]
-
-    ayon_publish = ayon_webpublisher["publish"]
-
-    ayon_collect_files = ayon_publish["CollectPublishedFiles"]
-    ayon_collect_files["task_type_to_family"] = {
-        item["name"]: item["value"]
-        for item in ayon_collect_files["task_type_to_family"]
-    }
-
-    output["webpublisher"] = ayon_webpublisher
-
-
 def _convert_royalrender_project_settings(ayon_settings, output):
     if "royalrender" not in ayon_settings:
         return
@@ -427,62 +395,6 @@ def _convert_royalrender_project_settings(ayon_settings, output):
         "publish": ayon_royalrender["publish"],
         "rr_paths": rr_paths,
     }
-
-
-def _convert_kitsu_project_settings(ayon_settings, output):
-    if "kitsu" not in ayon_settings:
-        return
-
-    ayon_kitsu_settings = ayon_settings["kitsu"]
-    ayon_kitsu_settings.pop("server")
-
-    integrate_note = ayon_kitsu_settings["publish"]["IntegrateKitsuNote"]
-    status_change_conditions = integrate_note["status_change_conditions"]
-    if "product_type_requirements" in status_change_conditions:
-        status_change_conditions["family_requirements"] = (
-            status_change_conditions.pop("product_type_requirements"))
-
-    output["kitsu"] = ayon_kitsu_settings
-
-
-def _convert_shotgrid_project_settings(ayon_settings, output):
-    if "shotgrid" not in ayon_settings:
-        return
-
-    ayon_shotgrid = ayon_settings["shotgrid"]
-    # This means that a different variant of addon is used
-    if "leecher_backend_url" not in ayon_shotgrid:
-        return
-
-    for key in {
-        "leecher_backend_url",
-        "filter_projects_by_login",
-        "shotgrid_settings",
-        "leecher_manager_url",
-    }:
-        ayon_shotgrid.pop(key)
-
-    asset_field = ayon_shotgrid["fields"]["asset"]
-    asset_field["type"] = asset_field.pop("asset_type")
-
-    task_field = ayon_shotgrid["fields"]["task"]
-    if "task" in task_field:
-        task_field["step"] = task_field.pop("task")
-
-    output["shotgrid"] = ayon_settings["shotgrid"]
-
-
-def _convert_slack_project_settings(ayon_settings, output):
-    if "slack" not in ayon_settings:
-        return
-
-    ayon_slack = ayon_settings["slack"]
-    ayon_slack.pop("enabled", None)
-    for profile in ayon_slack["publish"]["CollectSlackFamilies"]["profiles"]:
-        profile["tasks"] = profile.pop("task_names")
-        profile["subsets"] = profile.pop("subset_names")
-
-    output["slack"] = ayon_slack
 
 
 def _convert_global_project_settings(ayon_settings, output, default_settings):
@@ -663,12 +575,8 @@ def convert_project_settings(ayon_settings, default_settings):
 
     _convert_nuke_project_settings(ayon_settings, output)
     _convert_hiero_project_settings(ayon_settings, output)
-    _convert_webpublisher_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
-    _convert_kitsu_project_settings(ayon_settings, output)
-    _convert_shotgrid_project_settings(ayon_settings, output)
-    _convert_slack_project_settings(ayon_settings, output)
 
     _convert_global_project_settings(ayon_settings, output, default_settings)
 
