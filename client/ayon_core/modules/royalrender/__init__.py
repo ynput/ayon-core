@@ -1,4 +1,4 @@
-from .royal_render_module import RoyalRenderAddon
+from .addon import RoyalRenderAddon
 
 
 __all__ = (
