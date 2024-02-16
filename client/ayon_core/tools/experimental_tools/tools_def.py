@@ -1,5 +1,4 @@
 import os
-from ayon_core.settings import get_local_settings
 
 # Constant key under which local settings are stored
 LOCAL_EXPERIMENTAL_KEY = "experimental_tools"
@@ -151,7 +150,10 @@ class ExperimentalTools:
 
     def refresh_availability(self):
         """Reload local settings and check if any tool changed ability."""
-        local_settings = get_local_settings()
+
+        # NOTE AYON does not have implemented settings for experimental
+        #   tools.
+        local_settings = {}
         experimental_settings = (
             local_settings.get(LOCAL_EXPERIMENTAL_KEY)
         ) or {}
