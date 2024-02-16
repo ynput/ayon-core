@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Module providing support for Royal Render."""
 import os
-import ayon_core.modules
-from ayon_core.modules import OpenPypeModule, IPluginPaths
+
+from ayon_core.addon import AYONAddon, IPluginPaths
 
 
-class RoyalRenderModule(OpenPypeModule, IPluginPaths):
+class RoyalRenderAddon(AYONAddon, IPluginPaths):
     """Class providing basic Royal Render implementation logic."""
     name = "royalrender"
 
@@ -19,15 +19,13 @@ class RoyalRenderModule(OpenPypeModule, IPluginPaths):
         return self._api
 
     def __init__(self, manager, settings):
-        # type: (ayon_core.addon.AddonsManager, dict) -> None
         self._api = None
         self.settings = settings
         super(RoyalRenderModule, self).__init__(manager, settings)
 
-    def initialize(self, module_settings):
+    def initialize(self, studio_settings):
         # type: (dict) -> None
-        rr_settings = module_settings[self.name]
-        self.enabled = rr_settings["enabled"]
+        self.enabled = self.name in studio_settings
 
     @staticmethod
     def get_plugin_paths():
