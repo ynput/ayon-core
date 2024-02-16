@@ -68,7 +68,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         instances_with_missing_asset_doc = collections.defaultdict(list)
         for instance in context:
             instance_asset_doc = instance.data.get("assetEntity")
-            _asset_name = instance.data["asset"]
+            _asset_name = instance.data["folderPath"]
 
             # There is possibility that assetEntity on instance is already set
             # which can happen in standalone publisher
