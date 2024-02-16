@@ -4,7 +4,7 @@ import six
 import sys
 
 from ayon_core.lib import requests_get, Logger
-from ayon_core.modules import OpenPypeModule, IPluginPaths
+from ayon_core.modules import AYONAddon, IPluginPaths
 
 
 class DeadlineWebserviceError(Exception):
@@ -13,28 +13,28 @@ class DeadlineWebserviceError(Exception):
     """
 
 
-class DeadlineModule(OpenPypeModule, IPluginPaths):
+class DeadlineModule(AYONAddon, IPluginPaths):
     name = "deadline"
 
-    def __init__(self, manager, settings):
-        self.deadline_urls = {}
-        super(DeadlineModule, self).__init__(manager, settings)
-
-    def initialize(self, modules_settings):
+    def initialize(self, studio_settings):
         # This module is always enabled
-        deadline_settings = modules_settings[self.name]
-        self.enabled = deadline_settings["enabled"]
-        deadline_url = deadline_settings.get("DEADLINE_REST_URL")
-        if deadline_url:
-            self.deadline_urls = {"default": deadline_url}
-        else:
-            self.deadline_urls = deadline_settings.get("deadline_urls")  # noqa: E501
+        deadline_urls = {}
+        enabled = self.name in studio_settings
+        if enabled:
+            deadline_settings = studio_settings[self.name]
+            deadline_urls = {
+                url_item["name"]: url_item["value"]
+                for url_item in deadline_settings["deadline_urls"]
+            }
 
-        if not self.deadline_urls:
-            self.enabled = False
-            self.log.warning(("default Deadline Webservice URL "
-                              "not specified. Disabling module."))
-            return
+        if enabled and not deadline_urls:
+            enabled = False
+            self.log.warning((
+                "Deadline Webservice URLs are not specified. Disabling addon."
+            ))
+
+        self.enabled = enabled
+        self.deadline_urls = deadline_urls
 
     def get_plugin_paths(self):
         """Deadline plugin paths."""
