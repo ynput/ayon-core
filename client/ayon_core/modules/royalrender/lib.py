@@ -213,30 +213,15 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
     @staticmethod
     def _resolve_rr_path(context, rr_path_name):
         # type: (pyblish.api.Context, str) -> str
-        rr_settings = (
-            context.data
-            ["system_settings"]
-            ["modules"]
-            ["royalrender"]
-        )
-        try:
-            default_servers = rr_settings["rr_paths"]
-            project_servers = (
-                context.data
-                ["project_settings"]
-                ["royalrender"]
-                ["rr_paths"]
-            )
-            rr_servers = {
-                k: default_servers[k]
-                for k in project_servers
-                if k in default_servers
-            }
+        rr_settings = context.data["project_settings"]["royalrender"]
+        rr_paths = rr_settings["rr_paths"]
+        selected_paths = rr_settings["selected_rr_paths"]
 
-        except (AttributeError, KeyError):
-            # Handle situation were we had only one url for royal render.
-            return context.data["defaultRRPath"][platform.system().lower()]
-
+        rr_servers = {
+            path_key: rr_paths[path_key]
+            for path_key in selected_paths
+            if path_key in rr_paths
+        }
         return rr_servers[rr_path_name][platform.system().lower()]
 
     def expected_files(self, instance, path, start_frame, end_frame):
