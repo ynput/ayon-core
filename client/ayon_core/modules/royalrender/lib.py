@@ -361,8 +361,8 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
 
         if not all(add_kwargs.values()):
             raise RuntimeError((
-                "Missing required env vars: AVALON_PROJECT, AVALON_ASSET,"
-                " AVALON_TASK, AVALON_APP_NAME"
+                "Missing required env vars: AYON_PROJECT_NAME, AYON_FOLDER_PATH,"
+                " AYON_TASK_NAME, AYON_APP_NAME"
             ))
 
         for key, value in add_kwargs.items():

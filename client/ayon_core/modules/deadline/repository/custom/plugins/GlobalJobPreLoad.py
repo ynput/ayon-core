@@ -14,7 +14,7 @@ from Deadline.Scripting import (
     DirectoryUtils,
     ProcessUtils,
 )
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 VERSION_REGEX = re.compile(
     r"(?P<major>0|[1-9]\d*)"
     r"\.(?P<minor>0|[1-9]\d*)"
@@ -471,12 +471,21 @@ def inject_ayon_environment(deadlinePlugin):
         ]
 
         add_kwargs = {
-            "project": job.GetJobEnvironmentKeyValue("AVALON_PROJECT"),
-            "asset": job.GetJobEnvironmentKeyValue("AVALON_ASSET"),
-            "task": job.GetJobEnvironmentKeyValue("AVALON_TASK"),
-            "app": job.GetJobEnvironmentKeyValue("AVALON_APP_NAME"),
             "envgroup": "farm",
         }
+        # Support backwards compatible keys
+        for key, env_keys in (
+            ("project", ["AYON_PROJECT_NAME", "AVALON_PROJECT"]),
+            ("asset", ["AYON_FOLDER_PATH", "AVALON_ASSET"]),
+            ("task", ["AYON_TASK_NAME", "AVALON_TASK"]),
+            ("app", ["AYON_APP_NAME", "AVALON_APP_NAME"]),
+        ):
+            value = ""
+            for env_key in env_keys:
+                value = job.GetJobEnvironmentKeyValue(env_key)
+                if value:
+                    break
+            add_kwargs[key] = value
 
         if job.GetJobEnvironmentKeyValue("IS_TEST"):
             args.append("--automatic-tests")
@@ -486,8 +495,8 @@ def inject_ayon_environment(deadlinePlugin):
                 args.extend(["--{}".format(key), value])
         else:
             raise RuntimeError((
-                "Missing required env vars: AVALON_PROJECT, AVALON_ASSET,"
-                " AVALON_TASK, AVALON_APP_NAME"
+                "Missing required env vars: AYON_PROJECT_NAME,"
+                " AYON_FOLDER_PATH, AYON_TASK_NAME, AYON_APP_NAME"
             ))
 
         environment = {
