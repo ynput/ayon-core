@@ -64,7 +64,7 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
             "label": "{} - {}Main".format(
                 asset, family),
             "name": "{}_{}".format(asset_name, family),
-            "asset": context.data["asset"],
+            "folderPath": context.data["folderPath"],
             # TODO use 'get_subset_name'
             "subset": "{}{}Main".format(asset_name, family.capitalize()),
             "item": project,
