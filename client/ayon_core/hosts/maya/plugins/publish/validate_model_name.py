@@ -67,14 +67,14 @@ class ValidateModelName(pyblish.api.InstancePlugin,
         r = re.compile(regex)
         m = r.match(top_group)
         project_name = instance.context.data["projectName"]
-        current_asset_name = instance.context.data["asset"]
+        current_folder_path = instance.context.data["folderPath"]
         if m is None:
             cls.log.error("invalid name on: {}".format(top_group))
             cls.log.error("name doesn't match regex {}".format(regex))
             invalid.append(top_group)
         else:
             if "asset" in r.groupindex:
-                if m.group("asset") != current_asset_name:
+                if m.group("folderPath") != current_folder_path:
                     cls.log.error("Invalid asset name in top level group.")
                     return top_group
             if "subset" in r.groupindex:

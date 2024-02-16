@@ -35,7 +35,7 @@ class CollectWorkfile(pyblish.api.ContextPlugin):
 
         data.update({
             "subset": subset,
-            "asset": context.data["asset"],
+            "folderPath": context.data["folderPath"],
             "label": subset,
             "publish": True,
             "family": 'workfile',
