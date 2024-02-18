@@ -24,8 +24,7 @@ class ExtractWorkfile(publish.Extractor):
         # project = instance.context.data["activeProject"]
         staging_dir = self.staging_dir(instance)
 
-        # TODO: Update to hiero project extension
-        ext = ".drp"
+        ext = ".hrox"
         drp_file_name = name + ext
         drp_file_path = os.path.normpath(
             os.path.join(staging_dir, drp_file_name))
@@ -49,5 +48,5 @@ class ExtractWorkfile(publish.Extractor):
             instance.data["sourcePath"] = drp_file_path
 
         self.log.debug(
-            "Added Resolve file representation: {}".format(representation_drp)
+            "Added hiero file representation: {}".format(representation_drp)
         )
