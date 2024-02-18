@@ -698,12 +698,14 @@ class PublishClip:
             track_item,
             pre_create_data=None,
             avalon=None,
-            rename_index=0,
-            **kwargs):
+            rename_index=0):
 
         self.rename_index = rename_index
         self.vertical_clip_match = dict()
         self.tag_data = dict()
+
+        # adding ui inputs if any
+        self.pre_create_data = pre_create_data or {}
 
         # get main parent objects
         self.track_item = track_item
@@ -723,9 +725,6 @@ class PublishClip:
         if avalon:
             self.tag_data.update(avalon)
 
-        # adding ui inputs if any
-        self.pre_create_data = pre_create_data or {}
-
         # add publish attribute to tag data
         self.tag_data.update({"publish": True})
 
@@ -739,10 +738,9 @@ class PublishClip:
         self._create_parents()
 
     def convert(self):
-        # solve track item data and add them to tag data
-        tag_hierarchy_data = self._convert_to_tag_data()
 
-        self.tag_data.update(tag_hierarchy_data)
+        # solve track item data and add them to tag data
+        self._convert_to_tag_data()
 
         # if track name is in review track name and also if driving track name
         # is not in review track name: skip tag creation
@@ -756,26 +754,15 @@ class PublishClip:
         if self.rename:
             # rename track item
             self.track_item.setName(new_name)
-            self.tag_data["asset_name"] = new_name
+            self.tag_data["asset"] = new_name
         else:
-            self.tag_data["asset_name"] = self.ti_name
+            self.tag_data["asset"] = self.ti_name
             self.tag_data["hierarchyData"]["shot"] = self.ti_name
 
-        # AYON unique identifier
-        folder_path = "/{}/{}".format(
-            tag_hierarchy_data["hierarchy"],
-            self.tag_data["asset_name"]
-        )
-        self.tag_data["folderPath"] = folder_path
         if self.tag_data["heroTrack"] and self.review_layer:
             self.tag_data.update({"reviewTrack": self.review_layer})
         else:
             self.tag_data.update({"reviewTrack": None})
-
-        # TODO: remove debug print
-        log.debug("___ self.tag_data: {}".format(
-            pformat(self.tag_data)
-        ))
 
         # create pype tag on track_item and add data
         lib.imprint(self.track_item, self.tag_data)
@@ -814,8 +801,6 @@ class PublishClip:
         self.rename = get("clipRename") or self.rename_default
         self.clip_name = get("clipName") or self.clip_name_default
         self.hierarchy = get("hierarchy") or self.hierarchy_default
-        self.hierarchy_data = get("hierarchyData") or \
-            self.track_item_default_data.copy()
         self.count_from = get("countFrom") or self.count_from_default
         self.count_steps = get("countSteps") or self.count_steps_default
         self.subset_name = get("subsetName") or self.subset_name_default
@@ -826,7 +811,7 @@ class PublishClip:
         self.audio = get("audio") or False
 
         self.hierarchy_data = {
-            key: get(key) or self.timeline_item_default_data[key]
+            key: get(key) or self.track_item_default_data[key]
             for key in ["folder", "episode", "sequence", "track", "shot"]
         }
 
@@ -835,6 +820,7 @@ class PublishClip:
             self.subset_name = self.track_name
 
         # create subset for publishing
+        # TODO: Use creator `get_subset_name` to correctly define name
         self.subset = self.subset_family + self.subset_name.capitalize()
 
     def _replace_hash_to_expression(self, name, text):
@@ -863,7 +849,7 @@ class PublishClip:
         self.count_steps *= self.rename_index
 
         hierarchy_formatting_data = dict()
-        _data = self.timeline_item_default_data.copy()
+        _data = self.track_item_default_data.copy()
         if self.pre_create_data:
 
             # adding tag metadata from ui
@@ -971,7 +957,7 @@ class PublishClip:
         return {
             "entity_type": entity_type,
             "entity_name": self.hierarchy_data[key].format(
-                **self.timeline_item_default_data
+                **self.track_item_default_data
             )
         }
 
