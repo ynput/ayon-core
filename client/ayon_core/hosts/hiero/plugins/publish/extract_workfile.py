@@ -1,8 +1,8 @@
 import os
 import pyblish.api
 
-from openpype.pipeline import publish
-from openpype.hosts.resolve.api.lib import get_project_manager
+from ayon_core.pipeline import publish
+from openpype.hosts.hiero.api import lib
 
 
 class ExtractWorkfile(publish.Extractor):
@@ -21,7 +21,7 @@ class ExtractWorkfile(publish.Extractor):
             instance.data["representations"] = []
 
         name = instance.data["name"]
-        project = instance.context.data["activeProject"]
+        # project = instance.context.data["activeProject"]
         staging_dir = self.staging_dir(instance)
 
         # TODO: Update to hiero project extension
@@ -30,10 +30,9 @@ class ExtractWorkfile(publish.Extractor):
         drp_file_path = os.path.normpath(
             os.path.join(staging_dir, drp_file_name))
 
-        # write out the drp workfile
-        # TODO: use hiero API here
-        get_project_manager().ExportProject(
-            project.GetName(), drp_file_path)
+        # write out the workfile workfile
+        project = lib.get_current_project()
+        project.saveAs(drp_file_path)
 
         # create drp workfile representation
         representation_drp = {
