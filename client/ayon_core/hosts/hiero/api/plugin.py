@@ -720,7 +720,7 @@ class PublishClip:
         self.track_index = int(track_item.parent().trackIndex())
 
         # adding tag.family into tag
-        if avalon):
+        if avalon:
             self.tag_data.update(avalon)
 
         # adding ui inputs if any
