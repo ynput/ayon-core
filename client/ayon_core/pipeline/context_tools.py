@@ -208,8 +208,8 @@ def install_ayon_plugins(project_name=None, host_name=None):
         platform_name = platform.system().lower()
         project_plugins = (
             project_settings
-            .get("global", {})
-            .get("project_plugins", {})
+            ["core"]
+            ["project_plugins"]
             .get(platform_name)
         ) or []
         for path in project_plugins:
