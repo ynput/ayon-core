@@ -96,6 +96,17 @@ class ExtractBurnin(publish.Extractor):
                 instance.data["representations"].remove(repre)
 
     def _get_burnins_per_representations(self, instance, src_burnin_defs):
+        """
+
+        Args:
+            instance (pyblish.api.Instance): Pyblish instance.
+            src_burnin_defs (list): Burnin definitions.
+
+        Returns:
+            list[tuple[dict, list]]: List of tuples containing representation
+                and its burnin definitions.
+
+        """
         self.log.debug(
             "Filtering of representations and their burnins starts"
         )
