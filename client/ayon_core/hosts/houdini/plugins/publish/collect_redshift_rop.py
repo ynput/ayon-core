@@ -83,7 +83,9 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             if not aov_prefix:
                 aov_prefix = default_prefix
 
-            if not full_exr_mode:
+            if rop.parm(f"RS_aovID_{i}").evalAsString() == "CRYPTOMATTE" or \
+                  not full_exr_mode:
+                
                 aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
                 render_products.append(aov_product)
 
