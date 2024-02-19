@@ -62,36 +62,6 @@ def _convert_general(ayon_settings, output, default_settings):
     }
 
 
-def _convert_kitsu_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    if "kitsu" in ayon_settings:
-        output["kitsu"] = ayon_settings["kitsu"]
-
-    enabled = addon_versions.get("kitsu") is not None
-    kitsu_settings = default_settings["modules"]["kitsu"]
-    kitsu_settings["enabled"] = enabled
-    if enabled:
-        kitsu_settings["server"] = ayon_settings["kitsu"]["server"]
-    output["modules"]["kitsu"] = kitsu_settings
-
-
-def _convert_deadline_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("deadline") is not None
-    deadline_settings = default_settings["modules"]["deadline"]
-    deadline_settings["enabled"] = enabled
-    if enabled:
-        ayon_deadline = ayon_settings["deadline"]
-        deadline_settings["deadline_urls"] = {
-            item["name"]: item["value"]
-            for item in ayon_deadline["deadline_urls"]
-        }
-
-    output["modules"]["deadline"] = deadline_settings
-
-
 def _convert_royalrender_system_settings(
     ayon_settings, output, addon_versions, default_settings
 ):
@@ -113,8 +83,6 @@ def _convert_modules_system(
     # TODO add all modules
     # TODO add 'enabled' values
     for func in (
-        _convert_kitsu_system_settings,
-        _convert_deadline_system_settings,
         _convert_royalrender_system_settings,
     ):
         func(ayon_settings, output, addon_versions, default_settings)
@@ -122,6 +90,7 @@ def _convert_modules_system(
     for key in {
         "timers_manager",
         "clockify",
+        "deadline",
     }:
         if addon_versions.get(key):
             output[key] = ayon_settings
@@ -164,9 +133,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
     output = {
         "modules": {}
     }
-    if "applications" in ayon_settings:
-        output["applications"] = ayon_settings["applications"]
-
     if "core" in ayon_settings:
         _convert_general(ayon_settings, output, default_settings)
 
@@ -188,59 +154,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_blender_project_settings(ayon_settings, output):
-    if "blender" not in ayon_settings:
-        return
-    ayon_blender = ayon_settings["blender"]
-
-    output["blender"] = ayon_blender
-
-
-def _convert_celaction_project_settings(ayon_settings, output):
-    if "celaction" not in ayon_settings:
-        return
-
-    ayon_celaction = ayon_settings["celaction"]
-
-    output["celaction"] = ayon_celaction
-
-
-def _convert_flame_project_settings(ayon_settings, output):
-    if "flame" not in ayon_settings:
-        return
-
-    ayon_flame = ayon_settings["flame"]
-
-    output["flame"] = ayon_flame
-
-
-def _convert_fusion_project_settings(ayon_settings, output):
-    if "fusion" not in ayon_settings:
-        return
-
-    ayon_fusion = ayon_settings["fusion"]
-
-    output["fusion"] = ayon_fusion
-
-
-def _convert_maya_project_settings(ayon_settings, output):
-    if "maya" not in ayon_settings:
-        return
-
-    ayon_maya = ayon_settings["maya"]
-
-    output["maya"] = ayon_maya
-
-
-def _convert_3dsmax_project_settings(ayon_settings, output):
-    if "max" not in ayon_settings:
-        return
-
-    ayon_max = ayon_settings["max"]
-
-    output["max"] = ayon_max
-
-
 def _convert_nuke_knobs(knobs):
     new_knobs = []
     for knob in knobs:
@@ -456,56 +369,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
     output["hiero"] = ayon_hiero
 
 
-def _convert_photoshop_project_settings(ayon_settings, output):
-    if "photoshop" not in ayon_settings:
-        return
-
-    ayon_photoshop = ayon_settings["photoshop"]
-    output["photoshop"] = ayon_photoshop
-
-
-def _convert_substancepainter_project_settings(ayon_settings, output):
-    if "substancepainter" not in ayon_settings:
-        return
-
-    ayon_substance_painter = ayon_settings["substancepainter"]
-    output["substancepainter"] = ayon_substance_painter
-
-
-def _convert_tvpaint_project_settings(ayon_settings, output):
-    if "tvpaint" not in ayon_settings:
-        return
-
-    ayon_tvpaint = ayon_settings["tvpaint"]
-    output["tvpaint"] = ayon_tvpaint
-
-
-def _convert_traypublisher_project_settings(ayon_settings, output):
-    if "traypublisher" not in ayon_settings:
-        return
-
-    ayon_traypublisher = ayon_settings["traypublisher"]
-
-    output["traypublisher"] = ayon_traypublisher
-
-
-def _convert_webpublisher_project_settings(ayon_settings, output):
-    if "webpublisher" not in ayon_settings:
-        return
-
-    ayon_webpublisher = ayon_settings["webpublisher"]
-
-    ayon_publish = ayon_webpublisher["publish"]
-
-    ayon_collect_files = ayon_publish["CollectPublishedFiles"]
-    ayon_collect_files["task_type_to_family"] = {
-        item["name"]: item["value"]
-        for item in ayon_collect_files["task_type_to_family"]
-    }
-
-    output["webpublisher"] = ayon_webpublisher
-
-
 def _convert_royalrender_project_settings(ayon_settings, output):
     if "royalrender" not in ayon_settings:
         return
@@ -516,62 +379,6 @@ def _convert_royalrender_project_settings(ayon_settings, output):
         "publish": ayon_royalrender["publish"],
         "rr_paths": rr_paths,
     }
-
-
-def _convert_kitsu_project_settings(ayon_settings, output):
-    if "kitsu" not in ayon_settings:
-        return
-
-    ayon_kitsu_settings = ayon_settings["kitsu"]
-    ayon_kitsu_settings.pop("server")
-
-    integrate_note = ayon_kitsu_settings["publish"]["IntegrateKitsuNote"]
-    status_change_conditions = integrate_note["status_change_conditions"]
-    if "product_type_requirements" in status_change_conditions:
-        status_change_conditions["family_requirements"] = (
-            status_change_conditions.pop("product_type_requirements"))
-
-    output["kitsu"] = ayon_kitsu_settings
-
-
-def _convert_shotgrid_project_settings(ayon_settings, output):
-    if "shotgrid" not in ayon_settings:
-        return
-
-    ayon_shotgrid = ayon_settings["shotgrid"]
-    # This means that a different variant of addon is used
-    if "leecher_backend_url" not in ayon_shotgrid:
-        return
-
-    for key in {
-        "leecher_backend_url",
-        "filter_projects_by_login",
-        "shotgrid_settings",
-        "leecher_manager_url",
-    }:
-        ayon_shotgrid.pop(key)
-
-    asset_field = ayon_shotgrid["fields"]["asset"]
-    asset_field["type"] = asset_field.pop("asset_type")
-
-    task_field = ayon_shotgrid["fields"]["task"]
-    if "task" in task_field:
-        task_field["step"] = task_field.pop("task")
-
-    output["shotgrid"] = ayon_settings["shotgrid"]
-
-
-def _convert_slack_project_settings(ayon_settings, output):
-    if "slack" not in ayon_settings:
-        return
-
-    ayon_slack = ayon_settings["slack"]
-    ayon_slack.pop("enabled", None)
-    for profile in ayon_slack["publish"]["CollectSlackFamilies"]["profiles"]:
-        profile["tasks"] = profile.pop("task_names")
-        profile["subsets"] = profile.pop("subset_names")
-
-    output["slack"] = ayon_slack
 
 
 def _convert_global_project_settings(ayon_settings, output, default_settings):
@@ -747,41 +554,13 @@ def _convert_global_project_settings(ayon_settings, output, default_settings):
 
 
 def convert_project_settings(ayon_settings, default_settings):
-    # Missing settings
-    # - standalonepublisher
     default_settings = copy.deepcopy(default_settings)
     output = {}
-    exact_match = {
-        "aftereffects",
-        "harmony",
-        "houdini",
-        "resolve",
-        "unreal",
-        "applications",
-        "deadline",
-    }
-    for key in exact_match:
-        if key in ayon_settings:
-            output[key] = ayon_settings[key]
 
-    _convert_blender_project_settings(ayon_settings, output)
-    _convert_celaction_project_settings(ayon_settings, output)
-    _convert_flame_project_settings(ayon_settings, output)
-    _convert_fusion_project_settings(ayon_settings, output)
-    _convert_maya_project_settings(ayon_settings, output)
-    _convert_3dsmax_project_settings(ayon_settings, output)
     _convert_nuke_project_settings(ayon_settings, output)
     _convert_hiero_project_settings(ayon_settings, output)
-    _convert_photoshop_project_settings(ayon_settings, output)
-    _convert_substancepainter_project_settings(ayon_settings, output)
-    _convert_tvpaint_project_settings(ayon_settings, output)
-    _convert_traypublisher_project_settings(ayon_settings, output)
-    _convert_webpublisher_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
-    _convert_kitsu_project_settings(ayon_settings, output)
-    _convert_shotgrid_project_settings(ayon_settings, output)
-    _convert_slack_project_settings(ayon_settings, output)
 
     _convert_global_project_settings(ayon_settings, output, default_settings)
 

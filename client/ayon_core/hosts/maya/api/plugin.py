@@ -612,7 +612,7 @@ def get_load_color_for_family(family, settings=None):
     else:
         raise ValueError("Invalid color definition {}".format(str(color)))
 
-    if type(red, int):
+    if isinstance(red, int):
         red = red / 255.0
         green = green / 255.0
         blue = blue / 255.0

@@ -22,14 +22,14 @@ class OpenTaskPath(LauncherAction):
 
     def is_compatible(self, session):
         """Return whether the action is compatible with the session"""
-        return bool(session.get("AVALON_ASSET"))
+        return bool(session.get("AYON_FOLDER_PATH"))
 
     def process(self, session, **kwargs):
         from qtpy import QtCore, QtWidgets
 
-        project_name = session["AVALON_PROJECT"]
-        asset_name = session["AVALON_ASSET"]
-        task_name = session.get("AVALON_TASK", None)
+        project_name = session["AYON_PROJECT_NAME"]
+        asset_name = session["AYON_FOLDER_PATH"]
+        task_name = session.get("AYON_TASK_NAME", None)
 
         path = self._get_workdir(project_name, asset_name, task_name)
         if not path:
