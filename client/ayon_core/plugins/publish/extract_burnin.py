@@ -113,9 +113,6 @@ class ExtractBurnin(publish.Extractor):
             )
 
             burnin_defs = copy.deepcopy(src_burnin_defs)
-            self.log.debug(
-                "burnin_defs.keys(): {}".format(burnin_defs.keys())
-            )
 
             # Filter output definition by `burnin` represetation key
             repre_linked_burnins = [
