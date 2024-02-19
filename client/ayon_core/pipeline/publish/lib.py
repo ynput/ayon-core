@@ -60,7 +60,7 @@ def get_template_name_profiles(
 
     return copy.deepcopy(
         project_settings
-        ["global"]
+        ["core"]
         ["tools"]
         ["publish"]
         ["template_name_profiles"]
@@ -95,7 +95,7 @@ def get_hero_template_name_profiles(
 
     return copy.deepcopy(
         project_settings
-        ["global"]
+        ["core"]
         ["tools"]
         ["publish"]
         ["hero_template_name_profiles"]
@@ -138,7 +138,7 @@ def get_publish_template_name(
     template = None
     filter_criteria = {
         "hosts": host_name,
-        "families": family,
+        "product_types": family,
         "task_names": task_name,
         "task_types": task_type,
     }
@@ -383,7 +383,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
 
     # TODO: change after all plugins are moved one level up
     if category_from_file in ("ayon_core", "openpype"):
-        category_from_file = "global"
+        category_from_file = "core"
 
     try:
         return (
@@ -437,7 +437,7 @@ def filter_pyblish_plugins(plugins):
     #   - kept becau on farm is probably used host 'shell' which propably
     #       affect how settings are applied there
     host_name = pyblish.api.current_host()
-    project_name = os.environ.get("AVALON_PROJECT")
+    project_name = os.environ.get("AYON_PROJECT_NAME")
 
     project_settings = get_project_settings(project_name)
     system_settings = get_system_settings()
@@ -744,7 +744,7 @@ def get_custom_staging_dir_info(project_name, host_name, family, task_name,
         ValueError - if misconfigured template should be used
     """
     settings = project_settings or get_project_settings(project_name)
-    custom_staging_dir_profiles = (settings["global"]
+    custom_staging_dir_profiles = (settings["core"]
                                            ["tools"]
                                            ["publish"]
                                            ["custom_staging_dir_profiles"])
