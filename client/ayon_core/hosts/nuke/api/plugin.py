@@ -493,7 +493,7 @@ def get_colorspace_from_node(node):
 def get_review_presets_config():
     settings = get_current_project_settings()
     review_profiles = (
-        settings["global"]
+        settings["core"]
         ["publish"]
         ["ExtractReview"]
         ["profiles"]
