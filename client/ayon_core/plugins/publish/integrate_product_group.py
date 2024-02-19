@@ -58,7 +58,7 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         template = profile["template"]
 
         fill_pairs = prepare_template_data({
-            "family": filter_criteria["families"],
+            "family": filter_criteria["product_types"],
             "task": filter_criteria["tasks"],
             "host": filter_criteria["hosts"],
             "subset": instance.data["subset"],
