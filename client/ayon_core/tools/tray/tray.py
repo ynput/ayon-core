@@ -17,6 +17,7 @@ from ayon_core.lib import (
     is_staging_enabled,
     is_running_from_build,
 )
+from ayon_core.settings import get_ayon_settings
 from ayon_core.addon import (
     ITrayAction,
     ITrayService,
@@ -46,20 +47,20 @@ class TrayManager:
 
         self.log = Logger.get_logger(self.__class__.__name__)
 
-        system_settings = get_system_settings()
+        studio_settings = get_ayon_settings()
 
-        version_check_interval = system_settings["general"].get(
-            "version_check_interval"
+        update_check_interval = studio_settings["core"].get(
+            "update_check_interval"
         )
-        if version_check_interval is None:
-            version_check_interval = 5
-        self._version_check_interval = version_check_interval * 60 * 1000
+        if update_check_interval is None:
+            update_check_interval = 5
+        self._update_check_interval = update_check_interval * 60 * 1000
 
         self._addons_manager = TrayAddonsManager()
 
         self.errors = []
 
-        self._bundle_check_timer = None
+        self._update_check_timer = None
         self._outdated_dialog = None
 
         self._main_thread_timer = None
@@ -137,15 +138,12 @@ class TrayManager:
 
         self._main_thread_timer = main_thread_timer
 
-        version_check_timer = QtCore.QTimer()
-        if self._version_check_interval > 0:
-            version_check_timer.timeout.connect(self._on_bundle_check_timer)
-            version_check_timer.setInterval(self._version_check_interval)
-            version_check_timer.start()
-        self._bundle_check_timer = version_check_timer
-
-        # For storing missing settings dialog
-        self._settings_validation_dialog = None
+        update_check_timer = QtCore.QTimer()
+        if self._update_check_interval > 0:
+            update_check_timer.timeout.connect(self._on_update_check_timer)
+            update_check_timer.setInterval(self._update_check_interval)
+            update_check_timer.start()
+        self._update_check_timer = update_check_timer
 
         self.execute_in_main_thread(self._startup_validations)
 
@@ -204,7 +202,7 @@ class TrayManager:
 
         return item
 
-    def _on_bundle_check_timer(self):
+    def _on_update_check_timer(self):
         try:
             bundles = ayon_api.get_bundles()
             user = ayon_api.get_user()
@@ -298,7 +296,7 @@ class TrayManager:
     def _startup_validations(self):
         """Run possible startup validations."""
         # Trigger bundle validation on start
-        self._bundle_check_timer.timeout.emit()
+        self._update_check_timer.timeout.emit()
 
     def _add_version_item(self):
         login_action = QtWidgets.QAction("Login", self.tray_widget)
