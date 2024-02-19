@@ -405,6 +405,11 @@ class ClipLoader:
             files,
             self.active_bin
         )
+
+        assert media_pool_item, AssertionError(
+            "Cannot create media pool item for files: `{}`".format(files)
+        )
+
         _clip_property = media_pool_item.GetClipProperty
         source_in = int(_clip_property("Start"))
         source_out = int(_clip_property("End"))
