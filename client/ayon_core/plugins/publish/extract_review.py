@@ -1280,14 +1280,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "FFprobe couldn't read resolution from input file: \"{}\""
             ).format(full_input_path_single_file))
 
-        # NOTE Setting only one of `width` or `heigth` is not allowed
+        # NOTE Setting only one of `width` or `height` is not allowed
         # - settings value can't have None but has value of 0
-        output_width = (
-            output_def.get("output_width") or output_width or None
-        )
-        output_height = (
-            output_def.get("output_height") or output_height or None
-        )
+        output_width = output_def["width"] or output_width or None
+        output_height = output_def["height"] or output_height or None
+
         # Force to use input resolution if output resolution was not defined
         #   in settings. Resolution from instance is not used when
         #   'use_input_res' is set to 'True'.
