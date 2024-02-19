@@ -4,16 +4,15 @@ import os
 import platform
 import re
 
-import gridfs
 import pyblish.api
 from maya import cmds
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.client.mongo import OpenPypeMongoConnection
-from ayon_core.hosts.maya.api.shader_definition_editor import (
-    DEFINITION_FILENAME)
 from ayon_core.pipeline.publish import (
-    OptionalPyblishPluginMixin, PublishValidationError, ValidateContentsOrder)
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateContentsOrder,
+)
 
 
 class ValidateModelName(pyblish.api.InstancePlugin,
@@ -31,13 +30,16 @@ class ValidateModelName(pyblish.api.InstancePlugin,
     families = ["model"]
     label = "Model Name"
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
-    material_file = None
-    database_file = DEFINITION_FILENAME
+
+    material_file = {
+        "windows": None,
+        "darwin": None,
+        "linux": None,
+    }
 
     @classmethod
     def get_invalid(cls, instance):
         """Get invalid nodes."""
-        use_db = cls.database
 
         def is_group(group_name):
             """Find out if supplied transform is group or not."""
@@ -98,25 +100,15 @@ class ValidateModelName(pyblish.api.InstancePlugin,
 
         # load shader list file as utf-8
         shaders = []
-        if not use_db:
-            material_file = cls.material_file[platform.system().lower()]
-            if material_file:
-                if os.path.isfile(material_file):
-                    shader_file = open(material_file, "r")
-                    shaders = shader_file.readlines()
-                    shader_file.close()
-            else:
-                cls.log.error("Missing shader name definition file.")
-                return True
+        material_file = cls.material_file[platform.system().lower()]
+        if material_file:
+            if os.path.isfile(material_file):
+                shader_file = open(material_file, "r")
+                shaders = shader_file.readlines()
+                shader_file.close()
         else:
-            client = OpenPypeMongoConnection.get_mongo_client()
-            fs = gridfs.GridFS(client[os.getenv("OPENPYPE_DATABASE_NAME")])
-            shader_file = fs.find_one({"filename": cls.database_file})
-            if not shader_file:
-                cls.log.error("Missing shader name definition in database.")
-                return True
-            shaders = shader_file.read().splitlines()
-            shader_file.close()
+            cls.log.error("Missing shader name definition file.")
+            return True
 
         # strip line endings from list
         shaders = [s.rstrip() for s in shaders if s.rstrip()]
