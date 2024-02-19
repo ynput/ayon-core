@@ -7,10 +7,8 @@ from ayon_core.hosts.max.api.lib import (
     object_transform_set
 )
 from ayon_core.hosts.max.api.pipeline import (
-    containerise,
-    get_previous_loaded_object,
-    update_custom_attribute_data,
-    remove_container_data
+    containerise, get_previous_loaded_object,
+    update_custom_attribute_data
 )
 from ayon_core.pipeline import get_representation_path, load
 
@@ -95,5 +93,6 @@ class MaxSceneLoader(load.LoaderPlugin):
 
     def remove(self, container):
         from pymxs import runtime as rt
+
         node = rt.GetNodeByName(container["instance_node"])
-        remove_container_data(node)
+        rt.Delete(node)
