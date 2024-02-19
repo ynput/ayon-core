@@ -330,7 +330,7 @@ def generate_capture_preset(instance, camera, path,
 
     # Update preset with current panel setting
     # if override_viewport_options is turned off
-    if not capture_preset["Viewport Options"]["override_viewport_options"]:
+    if not capture_preset["ViewportOptions"]["override_viewport_options"]:
         panel_preset = capture.parse_view(preset["panel"])
         panel_preset.pop("camera")
         preset.update(panel_preset)
@@ -2945,14 +2945,15 @@ def load_capture_preset(data):
     options.update(data["Generic"])
     options.update(data["Resolution"])
 
-    camera_options.update(data['Camera Options'])
+    camera_options.update(data["CameraOptions"])
     viewport_options.update(data["Renderer"])
 
     # DISPLAY OPTIONS
     disp_options = {}
-    for key, value in data['Display Options'].items():
-        if key.startswith('background'):
+    for key, value in data["DisplayOptions"].items():
+        if key.startswith("background"):
             # Convert background, backgroundTop, backgroundBottom colors
+
             if len(value) == 4:
                 # Ignore alpha + convert RGB to float
                 value = [
@@ -2964,7 +2965,7 @@ def load_capture_preset(data):
         elif key == "displayGradient":
             disp_options[key] = value
 
-    options['display_options'] = disp_options
+    options["display_options"] = disp_options
 
     # Viewport Options has a mixture of Viewport2 Options and Viewport Options
     # to pass along to capture. So we'll need to differentiate between the two
@@ -2989,7 +2990,7 @@ def load_capture_preset(data):
         "motionBlurShutterOpenFraction",
         "lineAAEnable"
     }
-    for key, value in data['Viewport Options'].items():
+    for key, value in data["ViewportOptions"].items():
 
         # There are some keys we want to ignore
         if key in {"override_viewport_options", "high_quality"}:
@@ -3146,119 +3147,6 @@ def fix_incompatible_containers():
             )
             cmds.setAttr(container["objectName"] + ".loader",
                          "ReferenceLoader", type="string")
-
-
-def _null(*args):
-    pass
-
-
-class shelf():
-    '''A simple class to build shelves in maya. Since the build method is empty,
-    it should be extended by the derived class to build the necessary shelf
-    elements. By default it creates an empty shelf called "customShelf".'''
-
-    ###########################################################################
-    '''This is an example shelf.'''
-    # class customShelf(_shelf):
-    #     def build(self):
-    #         self.addButon(label="button1")
-    #         self.addButon("button2")
-    #         self.addButon("popup")
-    #         p = cmds.popupMenu(b=1)
-    #         self.addMenuItem(p, "popupMenuItem1")
-    #         self.addMenuItem(p, "popupMenuItem2")
-    #         sub = self.addSubMenu(p, "subMenuLevel1")
-    #         self.addMenuItem(sub, "subMenuLevel1Item1")
-    #         sub2 = self.addSubMenu(sub, "subMenuLevel2")
-    #         self.addMenuItem(sub2, "subMenuLevel2Item1")
-    #         self.addMenuItem(sub2, "subMenuLevel2Item2")
-    #         self.addMenuItem(sub, "subMenuLevel1Item2")
-    #         self.addMenuItem(p, "popupMenuItem3")
-    #         self.addButon("button3")
-    # customShelf()
-    ###########################################################################
-
-    def __init__(self, name="customShelf", iconPath="", preset={}):
-        self.name = name
-
-        self.iconPath = iconPath
-
-        self.labelBackground = (0, 0, 0, 0)
-        self.labelColour = (.9, .9, .9)
-
-        self.preset = preset
-
-        self._cleanOldShelf()
-        cmds.setParent(self.name)
-        self.build()
-
-    def build(self):
-        '''This method should be overwritten in derived classes to actually
-        build the shelf elements. Otherwise, nothing is added to the shelf.'''
-        for item in self.preset['items']:
-            if not item.get('command'):
-                item['command'] = self._null
-            if item['type'] == 'button':
-                self.addButon(item['name'],
-                              command=item['command'],
-                              icon=item['icon'])
-            if item['type'] == 'menuItem':
-                self.addMenuItem(item['parent'],
-                                 item['name'],
-                                 command=item['command'],
-                                 icon=item['icon'])
-            if item['type'] == 'subMenu':
-                self.addMenuItem(item['parent'],
-                                 item['name'],
-                                 command=item['command'],
-                                 icon=item['icon'])
-
-    def addButon(self, label, icon="commandButton.png",
-                 command=_null, doubleCommand=_null):
-        '''
-            Adds a shelf button with the specified label, command,
-            double click command and image.
-        '''
-        cmds.setParent(self.name)
-        if icon:
-            icon = os.path.join(self.iconPath, icon)
-            print(icon)
-        cmds.shelfButton(width=37, height=37, image=icon, label=label,
-                         command=command, dcc=doubleCommand,
-                         imageOverlayLabel=label, olb=self.labelBackground,
-                         olc=self.labelColour)
-
-    def addMenuItem(self, parent, label, command=_null, icon=""):
-        '''
-            Adds a shelf button with the specified label, command,
-            double click command and image.
-        '''
-        if icon:
-            icon = os.path.join(self.iconPath, icon)
-            print(icon)
-        return cmds.menuItem(p=parent, label=label, c=command, i="")
-
-    def addSubMenu(self, parent, label, icon=None):
-        '''
-            Adds a sub menu item with the specified label and icon to
-            the specified parent popup menu.
-        '''
-        if icon:
-            icon = os.path.join(self.iconPath, icon)
-            print(icon)
-        return cmds.menuItem(p=parent, label=label, i=icon, subMenu=1)
-
-    def _cleanOldShelf(self):
-        '''
-            Checks if the shelf exists and empties it if it does
-            or creates it if it does not.
-        '''
-        if cmds.shelfLayout(self.name, ex=1):
-            if cmds.shelfLayout(self.name, q=1, ca=1):
-                for each in cmds.shelfLayout(self.name, q=1, ca=1):
-                    cmds.deleteUI(each)
-        else:
-            cmds.shelfLayout(self.name, p="ShelfLayout")
 
 
 def update_content_on_context_change():
@@ -4067,10 +3955,10 @@ def get_capture_preset(task_name, task_type, subset, project_settings, log):
 
     Args:
         task_name (str): Task name.
-        take_type (str): Task type.
+        task_type (str): Task type.
         subset (str): Subset name.
         project_settings (dict): Project settings.
-        log (object): Logging object.
+        log (logging.Logger): Logging object.
     """
     capture_preset = None
     filtering_criteria = {
@@ -4099,8 +3987,18 @@ def get_capture_preset(task_name, task_type, subset, project_settings, log):
             "Falling back to deprecated Extract Playblast capture preset "
             "because no new style playblast profiles are defined."
         )
-        capture_preset = plugin_settings["capture_preset"]
+        capture_preset = plugin_settings.get("capture_preset")
 
+    if capture_preset:
+        # Create deepcopy of preset as we'll change the values
+        capture_preset = copy.deepcopy(capture_preset)
+
+        viewport_options = capture_preset["ViewportOptions"]
+        # Change 'list' to 'dict' for 'capture.py'
+        viewport_options["pluginObjects"] = {
+            item["name"]: item["value"]
+            for item in viewport_options["pluginObjects"]
+        }
     return capture_preset or {}
 
 

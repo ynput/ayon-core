@@ -12,7 +12,7 @@ class PreCopyMel(PreLaunchHook):
 
     def execute(self):
         project_doc = self.data["project_doc"]
-        workdir = self.launch_context.env.get("AVALON_WORKDIR")
+        workdir = self.launch_context.env.get("AYON_WORKDIR")
         if not workdir:
             self.log.warning("BUG: Workdir is not filled.")
             return
