@@ -493,7 +493,7 @@ def get_colorspace_from_node(node):
 def get_review_presets_config():
     settings = get_current_project_settings()
     review_profiles = (
-        settings["global"]
+        settings["core"]
         ["publish"]
         ["ExtractReview"]
         ["profiles"]
@@ -1348,7 +1348,9 @@ def _remove_old_knobs(node):
 
 
 def exposed_write_knobs(settings, plugin_name, instance_node):
-    exposed_knobs = settings["nuke"]["create"][plugin_name]["exposed_knobs"]
+    exposed_knobs = settings["nuke"]["create"][plugin_name].get(
+        "exposed_knobs", []
+    )
     if exposed_knobs:
         instance_node.addKnob(nuke.Text_Knob('', 'Write Knobs'))
     write_node = nuke.allNodes(group=instance_node, filter="Write")[0]
