@@ -6,7 +6,6 @@ import requests
 
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
@@ -221,17 +220,21 @@ class FusionSubmitDeadline(
             "FTRACK_API_KEY",
             "FTRACK_API_USER",
             "FTRACK_SERVER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "AYON_LOG_NO_COLORS",
             "IS_TEST",
             "AYON_BUNDLE_NAME",
         ]
 
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **legacy_io.Session)
+        environment = {
+            key: os.environ[key]
+            for key in keys
+            if key in os.environ
+        }
 
         # to recognize render jobs
         environment["AYON_RENDER_JOB"] = "1"

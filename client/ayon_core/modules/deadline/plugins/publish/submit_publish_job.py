@@ -12,9 +12,8 @@ import pyblish.api
 from ayon_core.client import (
     get_last_version_by_subset_name,
 )
-from ayon_core.pipeline import publish, legacy_io
-from ayon_core.lib import EnumDef, is_running_from_build
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.pipeline import publish
+from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
 
 from ayon_core.pipeline.farm.pyblish_functions import (
@@ -99,18 +98,39 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                 "karma_rop", "vray_rop",
                 "redshift_rop"]
 
-    aov_filter = {"maya": [r".*([Bb]eauty).*"],
-                  "blender": [r".*([Bb]eauty).*"],
-                  "aftereffects": [r".*"],  # for everything from AE
-                  "harmony": [r".*"],  # for everything from AE
-                  "celaction": [r".*"],
-                  "max": [r".*"]}
+    aov_filter = [
+        {
+            "name": "maya",
+            "value": [r".*([Bb]eauty).*"]
+        },
+        {
+            "name": "blender",
+            "value": [r".*([Bb]eauty).*"]
+        },
+        {
+            # for everything from AE
+            "name": "aftereffects",
+            "value": [r".*"]
+        },
+        {
+            "name": "harmony",
+            "value": [r".*"]
+        },
+        {
+            "name": "celaction",
+            "value": [r".*"]
+        },
+        {
+            "name": "max",
+            "value": [r".*"]
+        },
+    ]
 
     environ_keys = [
         "FTRACK_API_USER",
         "FTRACK_API_KEY",
         "FTRACK_SERVER",
-        "AVALON_APP_NAME",
+        "AYON_APP_NAME",
         "AYON_USERNAME",
         "OPENPYPE_SG_USER",
         "KITSU_LOGIN",
@@ -182,9 +202,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             create_metadata_path(instance, anatomy)
 
         environment = {
-            "AVALON_PROJECT": instance.context.data["projectName"],
-            "AVALON_ASSET": instance.context.data["asset"],
-            "AVALON_TASK": instance.context.data["task"],
+            "AYON_PROJECT_NAME": instance.context.data["projectName"],
+            "AYON_FOLDER_PATH": instance.context.data["asset"],
+            "AYON_TASK_NAME": instance.context.data["task"],
             "AYON_USERNAME": instance.context.data["user"],
             "AYON_LOG_NO_COLORS": "1",
             "IS_TEST": str(int(is_in_tests())),
@@ -506,17 +526,23 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             self.log.debug("Instance has review explicitly disabled.")
             do_not_add_review = True
 
+        aov_filter = {
+            item["name"]: item["value"]
+            for item in self.aov_filter
+        }
         if isinstance(instance.data.get("expectedFiles")[0], dict):
             instances = create_instances_for_aov(
                 instance, instance_skeleton_data,
-                self.aov_filter, self.skip_integration_repre_list,
-                do_not_add_review)
+                aov_filter,
+                self.skip_integration_repre_list,
+                do_not_add_review
+            )
         else:
             representations = prepare_representations(
                 instance_skeleton_data,
                 instance.data.get("expectedFiles"),
                 anatomy,
-                self.aov_filter,
+                aov_filter,
                 self.skip_integration_repre_list,
                 do_not_add_review,
                 instance.context,
@@ -604,7 +630,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "intent": instance.context.data.get("intent"),
             "comment": instance.context.data.get("comment"),
             "job": render_job or None,
-            "session": legacy_io.Session.copy(),
             "instances": instances
         }
 

@@ -11,7 +11,6 @@ from ayon_core.lib import (
     EnumDef,
 )
 from ayon_core.pipeline import (
-    legacy_io,
     Creator,
     CreatedInstance
 )
@@ -136,7 +135,7 @@ class GenericCreateSaver(Creator):
         ext = data["creator_attributes"]["image_format"]
 
         # Subset change detected
-        workdir = os.path.normpath(legacy_io.Session["AVALON_WORKDIR"])
+        workdir = os.path.normpath(os.getenv("AYON_WORKDIR"))
         formatting_data.update({
             "workdir": workdir,
             "frame": "0" * frame_padding,
@@ -148,7 +147,16 @@ class GenericCreateSaver(Creator):
         })
 
         # build file path to render
-        filepath = self.temp_rendering_path_template.format(**formatting_data)
+        # TODO make sure the keys are available in 'formatting_data'
+        temp_rendering_path_template = (
+            self.temp_rendering_path_template
+            .replace("{product[name]}", "{subset}")
+            .replace("{product[type]}", "{family}")
+            .replace("{folder[name]}", "{asset}")
+            .replace("{task[name]}", "{task}")
+        )
+
+        filepath = temp_rendering_path_template.format(**formatting_data)
 
         comp = get_current_comp()
         tool["Clip"] = comp.ReverseMapPath(os.path.normpath(filepath))

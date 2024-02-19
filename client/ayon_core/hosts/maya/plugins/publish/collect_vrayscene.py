@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
 """Collect Vray Scene and prepare it for extraction and publishing."""
-import re
-
-import maya.app.renderSetup.model.renderSetup as renderSetup
-from maya import cmds
 
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io
 from ayon_core.lib import get_formatted_current_time
 from ayon_core.hosts.maya.api import lib
 
