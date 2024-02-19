@@ -6,7 +6,6 @@ import datetime
 
 import clique
 import six
-from bson.objectid import ObjectId
 import pyblish.api
 
 from ayon_core.client.operations import (
@@ -988,7 +987,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         """
 
         return {
-            "_id": ObjectId(),
             "path": self.get_rootless_path(anatomy, path),
             "size": os.path.getsize(path),
             "hash": source_hash(path),
