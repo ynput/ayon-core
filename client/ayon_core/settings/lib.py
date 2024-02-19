@@ -198,8 +198,8 @@ def merge_overrides(source_dict, override_dict):
 def get_site_local_overrides(project_name, site_name, local_settings=None):
     """Site overrides from local settings for passet project and site name.
 
-    Warning:
-        This function is not implemented for AYON.
+    Deprecated:
+        This function is not implemented for AYON and will be removed.
 
     Args:
         project_name (str): For which project are overrides.
