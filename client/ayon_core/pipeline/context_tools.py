@@ -1,7 +1,6 @@
 """Core pipeline functionality"""
 
 import os
-import json
 import types
 import logging
 import platform
@@ -20,20 +19,20 @@ from ayon_core.client import (
     get_asset_name_identifier,
     get_ayon_server_api_connection,
 )
+from ayon_core.lib import is_in_tests
 from ayon_core.lib.events import emit_event
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
-from ayon_core.tests.lib import is_in_tests
 
 from .publish.lib import filter_pyblish_plugins
 from .anatomy import Anatomy
 from .template_data import get_template_data_with_names
 from .workfile import (
+    get_workdir,
     get_workfile_template_key,
     get_custom_workfile_template_by_string_context,
 )
 from . import (
-    legacy_io,
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
@@ -116,22 +115,17 @@ def install_host(host):
     # Make sure global AYON connection has set site id and version
     get_ayon_server_api_connection()
 
-    legacy_io.install()
     addons_manager = _get_addons_manager()
 
-    missing = list()
-    for key in ("AVALON_PROJECT", "AVALON_ASSET"):
-        if key not in legacy_io.Session:
-            missing.append(key)
+    project_name = os.getenv("AYON_PROJECT_NAME")
+    # WARNING: This might be an issue
+    #   - commented out because 'traypublisher' does not have set project
+    # if not project_name:
+    #     raise ValueError(
+    #         "AYON_PROJECT_NAME is missing in environment variables."
+    #     )
 
-    assert not missing, (
-        "%s missing from environment, %s" % (
-            ", ".join(missing),
-            json.dumps(legacy_io.Session, indent=4, sort_keys=True)
-        ))
-
-    project_name = legacy_io.Session["AVALON_PROJECT"]
-    log.info("Activating %s.." % project_name)
+    log.info("Activating {}..".format(project_name))
 
     # Optional host install function
     if hasattr(host, "install"):
@@ -158,14 +152,13 @@ def install_host(host):
         print("Registering pyblish target: automated")
         pyblish.api.register_target("automated")
 
-    project_name = os.environ.get("AVALON_PROJECT")
-    host_name = os.environ.get("AVALON_APP")
+    host_name = os.environ.get("AYON_HOST_NAME")
 
     # Give option to handle host installation
     for addon in addons_manager.get_enabled_addons():
         addon.on_host_install(host, host_name, project_name)
 
-    install_openpype_plugins(project_name, host_name)
+    install_ayon_plugins(project_name, host_name)
 
 
 def install_ayon_plugins(project_name=None, host_name=None):
@@ -179,7 +172,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
     register_inventory_action_path(INVENTORY_PATH)
 
     if host_name is None:
-        host_name = os.environ.get("AVALON_APP")
+        host_name = os.environ.get("AYON_HOST_NAME")
 
     addons_manager = _get_addons_manager()
     publish_plugin_dirs = addons_manager.collect_publish_plugin_paths(
@@ -203,7 +196,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
         register_inventory_action_path(path)
 
     if project_name is None:
-        project_name = os.environ.get("AVALON_PROJECT")
+        project_name = os.environ.get("AYON_PROJECT_NAME")
 
     # Register studio specific plugins
     if project_name:
@@ -255,8 +248,6 @@ def uninstall_host():
     log.info("Global plug-ins unregistred")
 
     deregister_host()
-
-    legacy_io.uninstall()
 
     log.info("Successfully uninstalled Avalon!")
 
@@ -340,7 +331,7 @@ def get_current_host_name():
     """Current host name.
 
     Function is based on currently registered host integration or environment
-    variable 'AVALON_APP'.
+    variable 'AYON_HOST_NAME'.
 
     Returns:
         Union[str, None]: Name of host integration in current process or None.
@@ -349,7 +340,7 @@ def get_current_host_name():
     host = registered_host()
     if isinstance(host, HostBase):
         return host.name
-    return os.environ.get("AVALON_APP")
+    return os.environ.get("AYON_HOST_NAME")
 
 
 def get_global_context():
@@ -374,9 +365,9 @@ def get_global_context():
     """
 
     return {
-        "project_name": os.environ.get("AVALON_PROJECT"),
-        "asset_name": os.environ.get("AVALON_ASSET"),
-        "task_name": os.environ.get("AVALON_TASK"),
+        "project_name": os.environ.get("AYON_PROJECT_NAME"),
+        "asset_name": os.environ.get("AYON_FOLDER_PATH"),
+        "task_name": os.environ.get("AYON_TASK_NAME"),
     }
 
 
@@ -482,13 +473,17 @@ def get_template_data_from_session(session=None, system_settings=None):
         Dict[str, Any]: All available data from session.
     """
 
-    if session is None:
-        session = legacy_io.Session
-
-    project_name = session["AVALON_PROJECT"]
-    asset_name = session["AVALON_ASSET"]
-    task_name = session["AVALON_TASK"]
-    host_name = session["AVALON_APP"]
+    if session is not None:
+        project_name = session["AYON_PROJECT_NAME"]
+        asset_name = session["AYON_FOLDER_PATH"]
+        task_name = session["AYON_TASK_NAME"]
+        host_name = session["AYON_HOST_NAME"]
+    else:
+        context = get_current_context()
+        project_name = context["project_name"]
+        asset_name = context["asset_name"]
+        task_name = context["task_name"]
+        host_name = get_current_host_name()
 
     return get_template_data_with_names(
         project_name, asset_name, task_name, host_name, system_settings
@@ -529,10 +524,12 @@ def get_workdir_from_session(session=None, template_key=None):
         str: Workdir path.
     """
 
-    if session is None:
-        session = legacy_io.Session
-    project_name = session["AVALON_PROJECT"]
-    host_name = session["AVALON_APP"]
+    if session is not None:
+        project_name = session["AYON_PROJECT_NAME"]
+        host_name = session["AYON_HOST_NAME"]
+    else:
+        project_name = get_current_project_name()
+        host_name = get_current_host_name()
     template_data = get_template_data_from_session(session)
 
     if not template_key:
@@ -556,84 +553,37 @@ def get_custom_workfile_template_from_session(
 ):
     """Filter and fill workfile template profiles by current context.
 
-    Current context is defined by `legacy_io.Session`. That's why this
-    function should be used only inside host where context is set and stable.
+    This function cab be used only inside host where context is set.
 
     Args:
-        session (Union[None, Dict[str, str]]): Session from which are taken
+        session (Optional[Dict[str, str]]): Session from which are taken
             data.
-        project_settings(Dict[str, Any]): Template profiles from settings.
+        project_settings(Optional[Dict[str, Any]]): Project settings.
 
     Returns:
         str: Path to template or None if none of profiles match current
             context. (Existence of formatted path is not validated.)
     """
 
-    if session is None:
-        session = legacy_io.Session
+    if session is not None:
+        project_name = session["AYON_PROJECT_NAME"]
+        asset_name = session["AYON_FOLDER_PATH"]
+        task_name = session["AYON_TASK_NAME"]
+        host_name = session["AYON_HOST_NAME"]
+    else:
+        context = get_current_context()
+        project_name = context["project_name"]
+        asset_name = context["asset_name"]
+        task_name = context["task_name"]
+        host_name = get_current_host_name()
 
     return get_custom_workfile_template_by_string_context(
-        session["AVALON_PROJECT"],
-        session["AVALON_ASSET"],
-        session["AVALON_TASK"],
-        session["AVALON_APP"],
+        project_name,
+        asset_name,
+        task_name,
+        host_name,
         project_settings=project_settings
     )
-
-
-def compute_session_changes(
-    session, asset_doc, task_name, template_key=None
-):
-    """Compute the changes for a session object on task under asset.
-
-    Function does not change the session object, only returns changes.
-
-    Args:
-        session (Dict[str, str]): The initial session to compute changes to.
-            This is required for computing the full Work Directory, as that
-            also depends on the values that haven't changed.
-        asset_doc (Dict[str, Any]): Asset document to switch to.
-        task_name (str): Name of task to switch to.
-        template_key (Union[str, None]): Prepare workfile template key in
-            anatomy templates.
-
-    Returns:
-        Dict[str, str]: Changes in the Session dictionary.
-    """
-
-    # Get asset document and asset
-    if not asset_doc:
-        task_name = None
-        asset_name = None
-    else:
-        asset_name = get_asset_name_identifier(asset_doc)
-
-    # Detect any changes compared session
-    mapping = {
-        "AVALON_ASSET": asset_name,
-        "AVALON_TASK": task_name,
-    }
-    changes = {
-        key: value
-        for key, value in mapping.items()
-        if value != session.get(key)
-    }
-    if not changes:
-        return changes
-
-    # Compute work directory (with the temporary changed session so far)
-    changed_session = session.copy()
-    changed_session.update(changes)
-
-    workdir = None
-    if asset_doc:
-        workdir = get_workdir_from_session(
-            changed_session, template_key
-        )
-
-    changes["AVALON_WORKDIR"] = workdir
-
-    return changes
 
 
 def change_current_context(asset_doc, task_name, template_key=None):
@@ -651,32 +601,47 @@ def change_current_context(asset_doc, task_name, template_key=None):
         Dict[str, str]: The changed key, values in the current Session.
     """
 
-    changes = compute_session_changes(
-        legacy_io.Session,
-        asset_doc,
-        task_name,
-        template_key=template_key
-    )
+    project_name = get_current_project_name()
+    workdir = None
+    if asset_doc:
+        project_doc = get_project(project_name)
+        host_name = get_current_host_name()
+        workdir = get_workdir(
+            project_doc,
+            asset_doc,
+            task_name,
+            host_name,
+            template_key=template_key
+        )
+
+    folder_path = get_asset_name_identifier(asset_doc)
+    envs = {
+        "AYON_PROJECT_NAME": project_name,
+        "AYON_FOLDER_PATH": folder_path,
+        "AYON_TASK_NAME": task_name,
+        "AYON_WORKDIR": workdir,
+    }
 
     # Update the Session and environments. Pop from environments all keys with
     # value set to None.
-    for key, value in changes.items():
-        legacy_io.Session[key] = value
+    for key, value in envs.items():
         if value is None:
             os.environ.pop(key, None)
         else:
             os.environ[key] = value
 
-    data = changes.copy()
+    data = envs.copy()
+
     # Convert env keys to human readable keys
-    data["project_name"] = legacy_io.Session["AVALON_PROJECT"]
-    data["asset_name"] = legacy_io.Session["AVALON_ASSET"]
-    data["task_name"] = legacy_io.Session["AVALON_TASK"]
+    data["project_name"] = project_name
+    data["asset_name"] = get_asset_name_identifier(asset_doc)
+    data["task_name"] = task_name
+    data["workdir_path"] = workdir
 
     # Emit session change
     emit_event("taskChanged", data)
 
-    return changes
+    return data
 
 
 def get_process_id():

@@ -2,10 +2,7 @@ import os
 import logging
 
 from ayon_core.settings import get_system_settings, get_project_settings
-from ayon_core.pipeline import (
-    schema,
-    legacy_io,
-)
+from ayon_core.pipeline import schema
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -41,7 +38,7 @@ class LoaderPlugin(list):
 
     @classmethod
     def apply_settings(cls, project_settings, system_settings):
-        host_name = os.environ.get("AVALON_APP")
+        host_name = os.environ.get("AYON_HOST_NAME")
         plugin_type = "load"
         plugin_type_settings = (
             project_settings

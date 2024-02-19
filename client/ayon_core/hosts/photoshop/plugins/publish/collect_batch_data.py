@@ -17,12 +17,11 @@ import os
 
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io
 from openpype_modules.webpublisher.lib import (
     get_batch_asset_task_info,
     parse_json
 )
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import is_in_tests
 
 
 class CollectBatchData(pyblish.api.ContextPlugin):
@@ -53,10 +52,10 @@ class CollectBatchData(pyblish.api.ContextPlugin):
         assert os.path.exists(batch_dir), \
             "Folder {} doesn't exist".format(batch_dir)
 
-        project_name = os.environ.get("AVALON_PROJECT")
+        project_name = os.environ.get("AYON_PROJECT_NAME")
         if project_name is None:
             raise AssertionError(
-                "Environment `AVALON_PROJECT` was not found."
+                "Environment `AYON_PROJECT_NAME` was not found."
                 "Could not set project `root` which may cause issues."
             )
 
@@ -69,10 +68,8 @@ class CollectBatchData(pyblish.api.ContextPlugin):
             batch_data["context"]
         )
 
-        os.environ["AVALON_ASSET"] = asset_name
-        os.environ["AVALON_TASK"] = task_name
-        legacy_io.Session["AVALON_ASSET"] = asset_name
-        legacy_io.Session["AVALON_TASK"] = task_name
+        os.environ["AYON_FOLDER_PATH"] = asset_name
+        os.environ["AYON_TASK_NAME"] = task_name
 
         context.data["asset"] = asset_name
         context.data["task"] = task_name

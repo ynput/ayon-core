@@ -155,7 +155,9 @@ class ExtractPointCloud(publish.Extractor):
 
         custom_attr_list = []
         attr_settings = self.settings["attribute"]
-        for key, value in attr_settings.items():
+        for attr in attr_settings:
+            key = attr["name"]
+            value = attr["value"]
             custom_attr = "{0}.PRTChannels_{1}=True".format(operator,
                                                             value)
             self.log.debug(

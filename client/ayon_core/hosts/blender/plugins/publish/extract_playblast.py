@@ -1,9 +1,11 @@
 import os
+import json
+
 import clique
+import pyblish.api
 
 import bpy
 
-import pyblish.api
 from ayon_core.pipeline import publish
 from ayon_core.hosts.blender.api import capture
 from ayon_core.hosts.blender.api.lib import maintained_time
@@ -22,6 +24,8 @@ class ExtractPlayblast(publish.Extractor, publish.OptionalPyblishPluginMixin):
     families = ["review"]
     optional = True
     order = pyblish.api.ExtractorOrder + 0.01
+
+    presets = "{}"
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -59,8 +63,7 @@ class ExtractPlayblast(publish.Extractor, publish.OptionalPyblishPluginMixin):
 
         self.log.debug(f"Outputting images to {path}")
 
-        project_settings = instance.context.data["project_settings"]["blender"]
-        presets = project_settings["publish"]["ExtractPlayblast"]["presets"]
+        presets = json.loads(self.presets)
         preset = presets.get("default")
         preset.update({
             "camera": camera,
