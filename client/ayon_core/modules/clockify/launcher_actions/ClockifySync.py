@@ -36,7 +36,7 @@ class ClockifySync(LauncherAction):
             raise ClockifyPermissionsCheckFailed(
                 "Current CLockify user is missing permissions for this action!"
             )
-        project_name = session.get("AVALON_PROJECT") or ""
+        project_name = session.get("AYON_PROJECT_NAME") or ""
 
         projects_to_sync = []
         if project_name.strip():

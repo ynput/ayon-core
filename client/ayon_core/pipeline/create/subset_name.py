@@ -128,13 +128,13 @@ def get_subset_name(
         return ""
 
     if not host_name:
-        host_name = os.environ.get("AVALON_APP")
+        host_name = os.environ.get("AYON_HOST_NAME")
 
     # Use only last part of class family value split by dot (`.`)
     family = family.rsplit(".", 1)[-1]
 
     if project_name is None:
-        project_name = os.environ.get("AVALON_PROJECT")
+        project_name = os.environ.get("AYON_PROJECT_NAME")
 
     asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
     task_info = asset_tasks.get(task_name) or {}

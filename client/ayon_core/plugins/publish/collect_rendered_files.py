@@ -179,14 +179,14 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
                     )
 
             # Remap workdir if it's set
-            workdir = os.getenv("AVALON_WORKDIR")
+            workdir = os.getenv("AYON_WORKDIR")
             remapped_workdir = None
             if workdir:
                 remapped_workdir = anatomy.roots_obj.path_remapper(
-                    os.getenv("AVALON_WORKDIR")
+                    os.getenv("AYON_WORKDIR")
                 )
             if remapped_workdir:
-                os.environ["AVALON_WORKDIR"] = remapped_workdir
+                os.environ["AYON_WORKDIR"] = remapped_workdir
         except Exception as e:
             self.log.error(e, exc_info=True)
             raise Exception("Error") from e

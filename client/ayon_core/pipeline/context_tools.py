@@ -117,12 +117,12 @@ def install_host(host):
 
     addons_manager = _get_addons_manager()
 
-    project_name = os.getenv("AVALON_PROJECT")
+    project_name = os.getenv("AYON_PROJECT_NAME")
     # WARNING: This might be an issue
     #   - commented out because 'traypublisher' does not have set project
     # if not project_name:
     #     raise ValueError(
-    #         "AVALON_PROJECT is missing in environment variables."
+    #         "AYON_PROJECT_NAME is missing in environment variables."
     #     )
 
     log.info("Activating {}..".format(project_name))
@@ -152,7 +152,7 @@ def install_host(host):
         print("Registering pyblish target: automated")
         pyblish.api.register_target("automated")
 
-    host_name = os.environ.get("AVALON_APP")
+    host_name = os.environ.get("AYON_HOST_NAME")
 
     # Give option to handle host installation
     for addon in addons_manager.get_enabled_addons():
@@ -172,7 +172,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
     register_inventory_action_path(INVENTORY_PATH)
 
     if host_name is None:
-        host_name = os.environ.get("AVALON_APP")
+        host_name = os.environ.get("AYON_HOST_NAME")
 
     addons_manager = _get_addons_manager()
     publish_plugin_dirs = addons_manager.collect_publish_plugin_paths(
@@ -196,7 +196,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
         register_inventory_action_path(path)
 
     if project_name is None:
-        project_name = os.environ.get("AVALON_PROJECT")
+        project_name = os.environ.get("AYON_PROJECT_NAME")
 
     # Register studio specific plugins
     if project_name:
@@ -331,7 +331,7 @@ def get_current_host_name():
     """Current host name.
 
     Function is based on currently registered host integration or environment
-    variable 'AVALON_APP'.
+    variable 'AYON_HOST_NAME'.
 
     Returns:
         Union[str, None]: Name of host integration in current process or None.
@@ -340,7 +340,7 @@ def get_current_host_name():
     host = registered_host()
     if isinstance(host, HostBase):
         return host.name
-    return os.environ.get("AVALON_APP")
+    return os.environ.get("AYON_HOST_NAME")
 
 
 def get_global_context():
@@ -365,9 +365,9 @@ def get_global_context():
     """
 
     return {
-        "project_name": os.environ.get("AVALON_PROJECT"),
-        "asset_name": os.environ.get("AVALON_ASSET"),
-        "task_name": os.environ.get("AVALON_TASK"),
+        "project_name": os.environ.get("AYON_PROJECT_NAME"),
+        "asset_name": os.environ.get("AYON_FOLDER_PATH"),
+        "task_name": os.environ.get("AYON_TASK_NAME"),
     }
 
 
@@ -474,10 +474,10 @@ def get_template_data_from_session(session=None, system_settings=None):
     """
 
     if session is not None:
-        project_name = session["AVALON_PROJECT"]
-        asset_name = session["AVALON_ASSET"]
-        task_name = session["AVALON_TASK"]
-        host_name = session["AVALON_APP"]
+        project_name = session["AYON_PROJECT_NAME"]
+        asset_name = session["AYON_FOLDER_PATH"]
+        task_name = session["AYON_TASK_NAME"]
+        host_name = session["AYON_HOST_NAME"]
     else:
         context = get_current_context()
         project_name = context["project_name"]
@@ -525,8 +525,8 @@ def get_workdir_from_session(session=None, template_key=None):
     """
 
     if session is not None:
-        project_name = session["AVALON_PROJECT"]
-        host_name = session["AVALON_APP"]
+        project_name = session["AYON_PROJECT_NAME"]
+        host_name = session["AYON_HOST_NAME"]
     else:
         project_name = get_current_project_name()
         host_name = get_current_host_name()
@@ -566,10 +566,10 @@ def get_custom_workfile_template_from_session(
     """
 
     if session is not None:
-        project_name = session["AVALON_PROJECT"]
-        asset_name = session["AVALON_ASSET"]
-        task_name = session["AVALON_TASK"]
-        host_name = session["AVALON_APP"]
+        project_name = session["AYON_PROJECT_NAME"]
+        asset_name = session["AYON_FOLDER_PATH"]
+        task_name = session["AYON_TASK_NAME"]
+        host_name = session["AYON_HOST_NAME"]
     else:
         context = get_current_context()
         project_name = context["project_name"]
@@ -616,10 +616,10 @@ def change_current_context(asset_doc, task_name, template_key=None):
 
     folder_path = get_asset_name_identifier(asset_doc)
     envs = {
-        "AVALON_PROJECT": project_name,
-        "AVALON_ASSET": folder_path,
-        "AVALON_TASK": task_name,
-        "AVALON_WORKDIR": workdir,
+        "AYON_PROJECT_NAME": project_name,
+        "AYON_FOLDER_PATH": folder_path,
+        "AYON_TASK_NAME": task_name,
+        "AYON_WORKDIR": workdir,
     }
 
     # Update the Session and environments. Pop from environments all keys with

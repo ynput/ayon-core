@@ -1698,15 +1698,15 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
 
     app = data["app"]
     context_env = {
-        "AVALON_PROJECT": project_doc["name"],
-        "AVALON_APP_NAME": app.full_name
+        "AYON_PROJECT_NAME": project_doc["name"],
+        "AYON_APP_NAME": app.full_name
     }
     if asset_doc:
         asset_name = get_asset_name_identifier(asset_doc)
-        context_env["AVALON_ASSET"] = asset_name
+        context_env["AYON_FOLDER_PATH"] = asset_name
 
         if task_name:
-            context_env["AVALON_TASK"] = task_name
+            context_env["AYON_TASK_NAME"] = task_name
 
     log.debug(
         "Context environments set:\n{}".format(
@@ -1724,7 +1724,7 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
     if not app.is_host:
         return
 
-    data["env"]["AVALON_APP"] = app.host_name
+    data["env"]["AYON_HOST_NAME"] = app.host_name
 
     if not asset_doc or not task_name:
         # QUESTION replace with log.info and skip workfile discovery?
@@ -1770,7 +1770,7 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
                 "Couldn't create workdir because: {}".format(str(exc))
             )
 
-    data["env"]["AVALON_WORKDIR"] = workdir
+    data["env"]["AYON_WORKDIR"] = workdir
 
     _prepare_last_workfile(data, workdir, addons_manager)
 
@@ -1887,7 +1887,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
         "Setting last workfile path: {}".format(last_workfile_path)
     )
 
-    data["env"]["AVALON_LAST_WORKFILE"] = last_workfile_path
+    data["env"]["AYON_LAST_WORKFILE"] = last_workfile_path
     data["last_workfile_path"] = last_workfile_path
 
 

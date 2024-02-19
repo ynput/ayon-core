@@ -423,7 +423,7 @@ class Anatomy(BaseAnatomy):
 
     def __init__(self, project_name=None, site_name=None):
         if not project_name:
-            project_name = os.environ.get("AVALON_PROJECT")
+            project_name = os.environ.get("AYON_PROJECT_NAME")
 
         if not project_name:
             raise ProjectNotSet((
