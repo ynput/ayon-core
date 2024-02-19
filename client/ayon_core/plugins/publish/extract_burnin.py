@@ -773,10 +773,13 @@ class ExtractBurnin(publish.Extractor):
                 continue
 
             # Burnin values
+            new_burnin_def = {}
             burnin_values = {}
             for key, value in tuple(burnin_def.items()):
                 key_low = key.lower()
-                if key_low in self.positions and value:
+                if key_low not in self.positions:
+                    new_burnin_def[key] = value
+                elif value:
                     burnin_values[key_low] = value
 
             # Skip processing if burnin values are not set
@@ -788,9 +791,9 @@ class ExtractBurnin(publish.Extractor):
                 ).format(filename_suffix, str(orig_burnin_def)))
                 continue
 
-            burnin_values["filter"] = def_filter
+            new_burnin_def.update(burnin_values)
 
-            filtered_burnin_defs.append(burnin_values)
+            filtered_burnin_defs.append(new_burnin_def)
 
             self.log.debug((
                 "Burnin definition \"{}\" passed first filtering."
