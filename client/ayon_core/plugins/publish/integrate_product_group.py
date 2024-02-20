@@ -17,24 +17,24 @@ from ayon_core.lib import (
 )
 
 
-class IntegrateSubsetGroup(pyblish.api.InstancePlugin):
+class IntegrateProductGroup(pyblish.api.InstancePlugin):
     """Integrate Subset Group for publish."""
 
     # Run after CollectAnatomyInstanceData
     order = pyblish.api.IntegratorOrder - 0.1
-    label = "Subset Group"
+    label = "Product Group"
 
     # Attributes set by settings
-    subset_grouping_profiles = None
+    product_grouping_profiles = None
 
     def process(self, instance):
         """Look into subset group profiles set by settings.
 
-        Attribute 'subset_grouping_profiles' is defined by settings.
+        Attribute 'product_grouping_profiles' is defined by settings.
         """
 
-        # Skip if 'subset_grouping_profiles' is empty
-        if not self.subset_grouping_profiles:
+        # Skip if 'product_grouping_profiles' is empty
+        if not self.product_grouping_profiles:
             return
 
         if instance.data.get("subsetGroup"):
@@ -47,7 +47,7 @@ class IntegrateSubsetGroup(pyblish.api.InstancePlugin):
         # Skip if there is no matching profile
         filter_criteria = self.get_profile_filter_criteria(instance)
         profile = filter_profiles(
-            self.subset_grouping_profiles,
+            self.product_grouping_profiles,
             filter_criteria,
             logger=self.log
         )
@@ -58,7 +58,7 @@ class IntegrateSubsetGroup(pyblish.api.InstancePlugin):
         template = profile["template"]
 
         fill_pairs = prepare_template_data({
-            "family": filter_criteria["families"],
+            "family": filter_criteria["product_types"],
             "task": filter_criteria["tasks"],
             "host": filter_criteria["hosts"],
             "subset": instance.data["subset"],
@@ -91,7 +91,7 @@ class IntegrateSubsetGroup(pyblish.api.InstancePlugin):
 
         # Return filter criteria
         return {
-            "families": anatomy_data["family"],
+            "product_types": anatomy_data["family"],
             "tasks": task.get("name"),
             "hosts": instance.context.data["hostName"],
             "task_types": task.get("type")
