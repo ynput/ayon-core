@@ -122,7 +122,7 @@ class HoudiniCreatorBase(object):
 
             nodes = []
             for id_type in [AYON_INSTANCE_ID, AVALON_INSTANCE_ID]:
-                nodes.extend(lsattr("id", AYON_INSTANCE_ID))
+                nodes.extend(lsattr("id", id_type))
             for node in nodes:
 
                 creator_identifier_parm = node.parm("creator_identifier")
