@@ -5,7 +5,7 @@ from ayon_core.client import (
     get_asset_by_name,
     get_asset_name_identifier,
 )
-import ayon_core.lib.usdlib as usdlib
+from ayon_core.pipeline import usdlib
 
 
 class CollectUsdBootstrap(pyblish.api.InstancePlugin):
