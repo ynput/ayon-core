@@ -278,8 +278,22 @@ class CreateShotClip(plugin.HieroCreator):
     def collect_instances(self):
         """Collect all created instances from current timeline."""
 
+        # TODO: is this really what we want to do here...
+        gui_tracks = [track for track in lib.get_current_sequence().videoTracks()]
+
         instances = []
-        # # TODO: Collect instances somehow from host app?
+        for track_item in gui_tracks:
+
+            # get openpype tag data
+            tag_data = lib.get_trackitem_openpype_tag(track_item)
+            if not tag_data:
+                continue
+
+            instance = CreatedInstance.from_existing(tag_data, self)
+            instance.transient_data["track_item"] = track_item
+            self._add_instance_to_context(instance)
+
+            print("ZZ", tag_data)
 
         return instances
 
