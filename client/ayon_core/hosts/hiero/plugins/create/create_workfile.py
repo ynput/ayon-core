@@ -6,7 +6,7 @@ from ayon_core.client import get_asset_by_name
 
 class CreateWorkfile(AutoCreator):
     """Workfile auto-creator."""
-    identifier = "io.openpype.creators.hiero.workfile"
+    identifier = "io.ayon.creators.hiero.workfile"
     label = "Workfile"
     family = "workfile"
     icon = "fa5.file"
