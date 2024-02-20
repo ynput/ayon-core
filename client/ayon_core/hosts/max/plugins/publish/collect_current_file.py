@@ -7,7 +7,7 @@ from pymxs import runtime as rt
 class CollectCurrentFile(pyblish.api.ContextPlugin):
     """Inject the current working file."""
 
-    order = pyblish.api.CollectorOrder - 0.4
+    order = pyblish.api.CollectorOrder - 0.5
     label = "Max Current File"
     hosts = ['max']
 
