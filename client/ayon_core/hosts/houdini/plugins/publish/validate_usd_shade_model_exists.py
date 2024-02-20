@@ -18,7 +18,7 @@ class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         project_name = instance.context.data["projectName"]
-        asset_name = instance.data["asset"]
+        asset_name = instance.data["folderPath"]
         subset = instance.data["subset"]
 
         # Assume shading variation starts after a dot separator
