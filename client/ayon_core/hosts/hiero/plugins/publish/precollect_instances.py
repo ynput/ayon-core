@@ -248,7 +248,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not self.test_any_audio(item):
             return
 
-        asset = data["folferPath"]
+        asset = data["folderPath"]
         asset_name = data["asset_name"]
 
         # insert family into families
