@@ -5,13 +5,13 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     RecursiveSortFilterProxyModel,
-    get_asset_icon,
 )
 from ayon_core.tools.utils.assets_widget import (
     SingleSelectAssetsWidget,
     ASSET_ID_ROLE,
     ASSET_NAME_ROLE,
     ASSET_PATH_ROLE,
+    get_asset_icon,
 )
 
 
@@ -21,7 +21,7 @@ class CreateWidgetAssetsWidget(SingleSelectAssetsWidget):
 
     def __init__(self, controller, parent):
         self._controller = controller
-        super(CreateWidgetAssetsWidget, self).__init__(None, parent)
+        super(CreateWidgetAssetsWidget, self).__init__(parent)
 
         self.set_refresh_btn_visibility(False)
         self.set_current_asset_btn_visibility(False)
@@ -30,6 +30,9 @@ class CreateWidgetAssetsWidget(SingleSelectAssetsWidget):
         self._enabled = None
 
         self._last_filter_height = None
+
+    def get_project_name(self):
+        return self._controller.project_name
 
     def get_selected_asset_name(self):
         selection_model = self._view.selectionModel()
@@ -79,10 +82,10 @@ class CreateWidgetAssetsWidget(SingleSelectAssetsWidget):
 
     def update_current_asset(self):
         # Hide set current asset if there is no one
-        asset_name = self._get_current_session_asset()
+        asset_name = self._get_current_asset_name()
         self.set_current_asset_btn_visibility(bool(asset_name))
 
-    def _get_current_session_asset(self):
+    def _get_current_asset_name(self):
         return self._controller.current_asset_name
 
     def _create_source_model(self):

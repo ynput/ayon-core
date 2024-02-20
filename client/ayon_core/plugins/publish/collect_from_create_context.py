@@ -5,7 +5,7 @@ import os
 import pyblish.api
 
 from ayon_core.host import IPublishHost
-from ayon_core.pipeline import legacy_io, registered_host
+from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.create import CreateContext
 
 
@@ -57,12 +57,14 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         asset_name = create_context.get_current_asset_name()
         task_name = create_context.get_current_task_name()
         for key, value in (
-            ("AVALON_PROJECT", project_name),
-            ("AVALON_ASSET", asset_name),
-            ("AVALON_TASK", task_name)
+            ("AYON_PROJECT_NAME", project_name),
+            ("AYON_FOLDER_PATH", asset_name),
+            ("AYON_TASK_NAME", task_name)
         ):
-            legacy_io.Session[key] = value
-            os.environ[key] = value
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
     def create_instance(
         self,

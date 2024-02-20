@@ -2,7 +2,6 @@ import os
 
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import filter_profiles, prepare_template_data
-from ayon_core.pipeline import legacy_io
 
 from .constants import DEFAULT_SUBSET_TEMPLATE
 
@@ -48,10 +47,10 @@ def get_subset_name_template(
 
     if project_settings is None:
         project_settings = get_project_settings(project_name)
-    tools_settings = project_settings["global"]["tools"]
-    profiles = tools_settings["creator"]["subset_name_profiles"]
+    tools_settings = project_settings["core"]["tools"]
+    profiles = tools_settings["creator"]["product_name_profiles"]
     filtering_criteria = {
-        "families": family,
+        "product_types": family,
         "hosts": host_name,
         "tasks": task_name,
         "task_types": task_type
@@ -60,7 +59,19 @@ def get_subset_name_template(
     matching_profile = filter_profiles(profiles, filtering_criteria)
     template = None
     if matching_profile:
-        template = matching_profile["template"]
+        # TODO remove formatting keys replacement
+        template = (
+            matching_profile["template"]
+            .replace("{task[name]}", "{task}")
+            .replace("{Task[name]}", "{Task}")
+            .replace("{TASK[NAME]}", "{TASK}")
+            .replace("{product[type]}", "{family}")
+            .replace("{Product[type]}", "{Family}")
+            .replace("{PRODUCT[TYPE]}", "{FAMILY}")
+            .replace("{folder[name]}", "{asset}")
+            .replace("{Folder[name]}", "{Asset}")
+            .replace("{FOLDER[NAME]}", "{ASSET}")
+        )
 
     # Make sure template is set (matching may have empty string)
     if not template:
@@ -83,9 +94,9 @@ def get_subset_name(
     """Calculate subset name based on passed context and OpenPype settings.
 
     Subst name templates are defined in `project_settings/global/tools/creator
-    /subset_name_profiles` where are profiles with host name, family, task name
-    and task type filters. If context does not match any profile then
-    `DEFAULT_SUBSET_TEMPLATE` is used as default template.
+    /product_name_profiles` where are profiles with host name, family,
+    task name and task type filters. If context does not match any profile
+    then `DEFAULT_SUBSET_TEMPLATE` is used as default template.
 
     That's main reason why so many arguments are required to calculate subset
     name.
@@ -129,13 +140,13 @@ def get_subset_name(
         return ""
 
     if not host_name:
-        host_name = os.environ.get("AVALON_APP")
+        host_name = os.environ.get("AYON_HOST_NAME")
 
     # Use only last part of class family value split by dot (`.`)
     family = family.rsplit(".", 1)[-1]
 
     if project_name is None:
-        project_name = legacy_io.Session["AVALON_PROJECT"]
+        project_name = os.environ.get("AYON_PROJECT_NAME")
 
     asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
     task_info = asset_tasks.get(task_name) or {}

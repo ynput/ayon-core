@@ -14,8 +14,7 @@ from .models import SiteSyncModel
 class SceneInventoryController:
     """This is a temporary controller for AYON.
 
-    Goal of this temporary controller is to provide a way to get current
-    context instead of using 'AvalonMongoDB' object (or 'legacy_io').
+    Goal of this controller is to provide a way to get current context.
 
     Also provides (hopefully) cleaner api for site sync.
     """

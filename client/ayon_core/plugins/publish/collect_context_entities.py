@@ -1,7 +1,6 @@
 """Collect Anatomy and global anatomy data.
 
 Requires:
-    session -> AVALON_ASSET
     context -> projectName
     context -> asset
     context -> task

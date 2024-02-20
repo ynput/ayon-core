@@ -9,7 +9,7 @@ from ayon_server.settings import (
     task_types_enum,
 )
 
-from ayon_server.types import ColorRGBA_uint8
+from ayon_server.types import ColorRGB_uint8, ColorRGBA_uint8
 
 
 class ValidateBaseModel(BaseSettingsModel):
@@ -395,6 +395,14 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
             " same as output aspect ratio."
         )
     )
+    # overscan_color: ColorRGB_uint8 = SettingsField(
+    #     (0, 0, 0),
+    #     title="Overscan color",
+    #     description=(
+    #         "Overscan color is used when input aspect ratio is not"
+    #         " same as output aspect ratio."
+    #     )
+    # )
     width: int = SettingsField(
         0,
         ge=0,
@@ -901,7 +909,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "single_frame_filter": "single_frame"
                         },
                         "overscan_crop": "",
-                        "overscan_color": [0, 0, 0, 1.0],
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
                         "width": 1920,
                         "height": 1080,
                         "scale_pixel_aspect": True,
@@ -946,7 +955,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "single_frame_filter": "multi_frame"
                         },
                         "overscan_crop": "",
-                        "overscan_color": [0, 0, 0, 1.0],
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
                         "width": 0,
                         "height": 0,
                         "scale_pixel_aspect": True,
