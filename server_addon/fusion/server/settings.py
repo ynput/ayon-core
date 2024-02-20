@@ -73,7 +73,7 @@ class HookOptionalModel(BaseSettingsModel):
 class HooksModel(BaseSettingsModel):
     InstallPySideToFusion: HookOptionalModel = SettingsField(
         default_factory=HookOptionalModel,
-        title="Install PySide2"
+        title="Install PySide",
     )
 
 
