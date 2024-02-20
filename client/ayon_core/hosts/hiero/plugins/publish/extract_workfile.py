@@ -13,7 +13,7 @@ class ExtractWorkfile(publish.Extractor):
     label = "Extract Workfile"
     order = pyblish.api.ExtractorOrder
     families = ["workfile"]
-    hosts = ["resolve"]
+    hosts = ["hiero"]
 
     def process(self, instance):
         # create representation data
