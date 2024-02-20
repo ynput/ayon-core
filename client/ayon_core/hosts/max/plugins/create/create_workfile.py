@@ -9,7 +9,7 @@ from pymxs import runtime as rt
 
 class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
     """Workfile auto-creator."""
-    identifier = "io.openpype.creators.max.workfile"
+    identifier = "io.ayon.creators.max.workfile"
     label = "Workfile"
     family = "workfile"
     icon = "fa5.file"
