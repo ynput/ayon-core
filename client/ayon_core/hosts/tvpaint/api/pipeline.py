@@ -13,7 +13,6 @@ from ayon_core.hosts.tvpaint import TVPAINT_ROOT_DIR
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import register_event_callback
 from ayon_core.pipeline import (
-    legacy_io,
     register_loader_plugin_path,
     register_creator_plugin_path,
     AVALON_CONTAINER_ID,
@@ -66,11 +65,10 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def install(self):
         """Install TVPaint-specific functionality."""
 
-        log.info("OpenPype - Installing TVPaint integration")
-        legacy_io.install()
+        log.info("AYON - Installing TVPaint integration")
 
         # Create workdir folder if does not exist yet
-        workdir = legacy_io.Session["AVALON_WORKDIR"]
+        workdir = os.getenv("AYON_WORKDIR")
         if not os.path.exists(workdir):
             os.makedirs(workdir)
 
@@ -157,7 +155,7 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return execute_george(george_script)
 
     def work_root(self, session):
-        return session["AVALON_WORKDIR"]
+        return session["AYON_WORKDIR"]
 
     def get_current_workfile(self):
         return execute_george("tv_GetProjectName")
@@ -176,7 +174,7 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         # Setup project settings if its the template that's launched.
         # TODO also check for template creation when it's possible to define
         #   templates
-        last_workfile = os.environ.get("AVALON_LAST_WORKFILE")
+        last_workfile = os.environ.get("AYON_LAST_WORKFILE")
         if not last_workfile or os.path.exists(last_workfile):
             return
 

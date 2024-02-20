@@ -234,62 +234,6 @@ def get_qta_icon_by_name_and_color(icon_name, icon_color):
     return icon
 
 
-def get_asset_icon_name(asset_doc, has_children=True):
-    icon_name = get_asset_icon_name_from_doc(asset_doc)
-    if icon_name:
-        return icon_name
-    return get_default_asset_icon_name(has_children)
-
-
-def get_asset_icon_color(asset_doc):
-    icon_color = get_asset_icon_color_from_doc(asset_doc)
-    if icon_color:
-        return icon_color
-    return get_default_entity_icon_color()
-
-
-def get_default_asset_icon_name(has_children):
-    if has_children:
-        return "fa.folder"
-    return "fa.folder-o"
-
-
-def get_asset_icon_name_from_doc(asset_doc):
-    if asset_doc:
-        return asset_doc["data"].get("icon")
-    return None
-
-
-def get_asset_icon_color_from_doc(asset_doc):
-    if asset_doc:
-        return asset_doc["data"].get("color")
-    return None
-
-
-def get_asset_icon_by_name(icon_name, icon_color, has_children=False):
-    if not icon_name:
-        icon_name = get_default_asset_icon_name(has_children)
-
-    if icon_color:
-        icon_color = QtGui.QColor(icon_color)
-    else:
-        icon_color = get_default_entity_icon_color()
-    icon = get_qta_icon_by_name_and_color(icon_name, icon_color)
-    if icon is not None:
-        return icon
-    return get_qta_icon_by_name_and_color(
-        get_default_asset_icon_name(has_children),
-        icon_color
-    )
-
-
-def get_asset_icon(asset_doc, has_children=False):
-    icon_name = get_asset_icon_name(asset_doc, has_children)
-    icon_color = get_asset_icon_color(asset_doc)
-
-    return get_qta_icon_by_name_and_color(icon_name, icon_color)
-
-
 def get_default_task_icon(color=None):
     if color is None:
         color = get_default_entity_icon_color()

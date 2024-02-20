@@ -10,7 +10,7 @@ class SetPath(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        workdir = self.launch_context.env.get("AVALON_WORKDIR", "")
+        workdir = self.launch_context.env.get("AYON_WORKDIR", "")
         if not workdir:
             self.log.warning("BUG: Workdir is not filled.")
             return

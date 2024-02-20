@@ -19,7 +19,6 @@ from ayon_core.host import (
 from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     schema,
-    legacy_io,
     get_current_project_name,
     get_current_asset_name,
     register_loader_plugin_path,
@@ -273,7 +272,7 @@ def set_resolution(data):
 
 
 def on_new():
-    project = os.environ.get("AVALON_PROJECT")
+    project = os.environ.get("AYON_PROJECT_NAME")
     settings = get_project_settings(project).get("blender")
 
     set_resolution_startup = settings.get("set_resolution_startup")
@@ -294,7 +293,7 @@ def on_new():
 
 
 def on_open():
-    project = os.environ.get("AVALON_PROJECT")
+    project = os.environ.get("AYON_PROJECT_NAME")
     settings = get_project_settings(project).get("blender")
 
     set_resolution_startup = settings.get("set_resolution_startup")
@@ -380,7 +379,7 @@ def _on_task_changed():
     # `directory` attribute, so it opens in that directory (does it?).
     # https://docs.blender.org/api/blender2.8/bpy.types.Operator.html#calling-a-file-selector
     # https://docs.blender.org/api/blender2.8/bpy.types.WindowManager.html#bpy.types.WindowManager.fileselect_add
-    workdir = legacy_io.Session["AVALON_WORKDIR"]
+    workdir = os.getenv("AYON_WORKDIR")
     log.debug("New working directory: %s", workdir)
 
 
