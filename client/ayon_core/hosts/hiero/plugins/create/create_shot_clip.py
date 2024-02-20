@@ -10,7 +10,7 @@ from ayon_core.pipeline.create import CreatorError, CreatedInstance
 from ayon_core.lib import BoolDef, EnumDef, TextDef, UILabelDef, NumberDef
 
 
-class CreateShotClip(plugin.Creator):
+class CreateShotClip(plugin.HieroCreator):
     """Publishable clip"""
 
     identifier = "io.openpype.creators.hiero.clip"

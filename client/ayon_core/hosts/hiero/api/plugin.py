@@ -11,11 +11,11 @@ import qargparse
 
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import Logger
-from ayon_core.pipeline import LoaderPlugin, LegacyCreator
+from ayon_core.pipeline import LoaderPlugin
 from ayon_core.pipeline.load import get_representation_path_from_context
 from . import lib
 from ayon_core.pipeline import (
-    Creator as NewCreator
+    HieroCreator
 )
 from ayon_core.lib import BoolDef
 
@@ -609,7 +609,7 @@ class ClipLoader:
         return track_item
 
 
-class Creator(NewCreator):
+class HieroCreator(Creator):
     """Creator class wrapper
     """
     clip_color = "Purple"
