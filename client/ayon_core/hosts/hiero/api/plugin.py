@@ -14,9 +14,7 @@ from ayon_core.lib import Logger
 from ayon_core.pipeline import LoaderPlugin
 from ayon_core.pipeline.load import get_representation_path_from_context
 from . import lib
-from ayon_core.pipeline import (
-    HieroCreator
-)
+from ayon_core.pipeline import Creator
 from ayon_core.lib import BoolDef
 
 log = Logger.get_logger(__name__)
