@@ -7,7 +7,7 @@ from openpype.hosts.hiero.api import lib
 
 class ExtractWorkfile(publish.Extractor):
     """
-    Extractor export DRP workfile file representation
+    Extractor export Hiero workfile representation
     """
 
     label = "Extract Workfile"
