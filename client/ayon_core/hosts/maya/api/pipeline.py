@@ -380,8 +380,7 @@ def _ls():
     ids = {
         AYON_CONTAINER_ID,
         # Backwards compatibility
-        AVALON_CONTAINER_ID,
-        "pyblish.mindbender.container"
+        AVALON_CONTAINER_ID
     }
 
     # Iterate over all 'set' nodes in the scene to detect whether
