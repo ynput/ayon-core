@@ -64,7 +64,7 @@ def is_workfile_lock_enabled(host_name, project_name, project_setting=None):
         project_setting = get_project_settings(project_name)
     workfile_lock_profiles = (
         project_setting
-        ["global"]
+        ["core"]
         ["tools"]
         ["Workfiles"]
         ["workfile_lock_profiles"])

@@ -191,8 +191,11 @@ def create_addon_package(
 
     # Copy server content
     package_py = addon_output_dir / "package.py"
+    addon_name = addon_dir.name
+    if addon_name == "royal_render":
+        addon_name = "royalrender"
     package_py_content = PACKAGE_PY_TEMPLATE.format(
-        addon_name=addon_dir.name, addon_version=addon_version
+        addon_name=addon_name, addon_version=addon_version
     )
 
     with open(package_py, "w+") as pkg_py:
