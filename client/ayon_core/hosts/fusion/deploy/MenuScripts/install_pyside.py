@@ -5,7 +5,7 @@ import importlib
 from pathlib import Path
 import platform
 import subprocess
-from ayon_core.hosts.fusion import FUSION_VERSIONS_DICT
+from openpype.hosts.fusion import FUSION_VERSIONS_DICT
 
 
 def get_python_home() -> Path:
