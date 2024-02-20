@@ -1,5 +1,6 @@
 import pyblish
 
+from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 from ayon_core.pipeline.editorial import is_overlapping_otio_ranges
 
 from ayon_core.hosts.hiero import api as phiero
@@ -56,7 +57,9 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             if not tag_data:
                 continue
 
-            if tag_data.get("id") != "pyblish.avalon.instance":
+            if tag_data.get("id") not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 continue
 
             # get clips subtracks and anotations

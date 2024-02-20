@@ -119,14 +119,14 @@ class PhotoshopServerStub:
             "active":true,
             "subset":"imageBG",
             "family":"image",
-            "id":"pyblish.avalon.instance",
+            "id":"ayon.create.instance",
             "asset":"Town",
             "uuid": "8"
         }] - for created instances
         OR
         [{
             "schema": "openpype:container-2.0",
-            "id": "pyblish.avalon.instance",
+            "id": "ayon.create.instance",
             "name": "imageMG",
             "namespace": "Jungle_imageMG_001",
             "loader": "ImageLoader",
@@ -420,7 +420,7 @@ class PhotoshopServerStub:
             (list)
             example:
                 {"8":{"active":true,"subset":"imageBG",
-                      "family":"image","id":"pyblish.avalon.instance",
+                      "family":"image","id":"ayon.create.instance",
                       "asset":"Town"}}
                 8 is layer(group) id - used for deletion, update etc.
         """

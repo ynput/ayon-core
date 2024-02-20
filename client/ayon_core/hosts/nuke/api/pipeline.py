@@ -18,6 +18,8 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     register_inventory_action_path,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
     get_current_asset_name,
     get_current_task_name,
@@ -550,7 +552,9 @@ def list_instances(creator_id=None):
         if not instance_data:
             continue
 
-        if instance_data["id"] != "pyblish.avalon.instance":
+        if instance_data["id"] not in {
+            AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+        }:
             continue
 
         if creator_id and instance_data["creator_identifier"] != creator_id:
