@@ -21,32 +21,28 @@ class ExtractWorkfile(publish.Extractor):
             instance.data["representations"] = []
 
         name = instance.data["name"]
-        # project = instance.context.data["activeProject"]
+        project = instance.context.data["activeProject"]
         staging_dir = self.staging_dir(instance)
 
         ext = ".hrox"
-        drp_file_name = name + ext
-        drp_file_path = os.path.normpath(
-            os.path.join(staging_dir, drp_file_name))
+        filename = name + ext
+        filepath = os.path.normpath(
+            os.path.join(staging_dir, filename))
 
-        # write out the workfile workfile
-        project = lib.get_current_project()
-        project.saveAs(drp_file_path)
+        # write out the workfile
+        project.saveAs(filepath)
 
-        # create drp workfile representation
-        representation_drp = {
+        # create workfile representation
+        representation = {
             'name': ext.lstrip("."),
             'ext': ext.lstrip("."),
-            'files': drp_file_name,
+            'files': filename,
             "stagingDir": staging_dir,
         }
         representations = instance.data.setdefault("representations", [])
-        representations.append(representation_drp)
-
-        # add sourcePath attribute to instance
-        if not instance.data.get("sourcePath"):
-            instance.data["sourcePath"] = drp_file_path
+        representations.append(representation )
 
         self.log.debug(
-            "Added hiero file representation: {}".format(representation_drp)
+            "Added hiero file representation: {}".format(representation)
+        )
         )
