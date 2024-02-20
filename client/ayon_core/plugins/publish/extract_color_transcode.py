@@ -81,6 +81,7 @@ class ExtractOIIOTranscode(publish.Extractor):
         if not profile:
             return
 
+        profile_output_defs = profile["outputs"]
         new_representations = []
         repres = instance.data["representations"]
         for idx, repre in enumerate(list(repres)):
@@ -98,7 +99,8 @@ class ExtractOIIOTranscode(publish.Extractor):
                 self.log.warning("Config file doesn't exist, skipping")
                 continue
 
-            for output_name, output_def in profile.get("outputs", {}).items():
+            for output_def in profile_output_defs:
+                output_name = output_def["name"]
                 new_repre = copy.deepcopy(repre)
 
                 original_staging_dir = new_repre["stagingDir"]
@@ -318,10 +320,10 @@ class ExtractOIIOTranscode(publish.Extractor):
         subset = instance.data["subset"]
         filtering_criteria = {
             "hosts": host_name,
-            "families": family,
+            "product_types": family,
+            "product_names": subset,
             "task_names": task_name,
             "task_types": task_type,
-            "subsets": subset
         }
         profile = filter_profiles(self.profiles, filtering_criteria,
                                   logger=self.log)
@@ -329,8 +331,8 @@ class ExtractOIIOTranscode(publish.Extractor):
         if not profile:
             self.log.debug((
               "Skipped instance. None of profiles in presets are for"
-              " Host: \"{}\" | Families: \"{}\" | Task \"{}\""
-              " | Task type \"{}\" | Subset \"{}\" "
+              " Host: \"{}\" | Product types: \"{}\" | Task \"{}\""
+              " | Task type \"{}\" | Product names: \"{}\" "
             ).format(host_name, family, task_name, task_type, subset))
 
         return profile
