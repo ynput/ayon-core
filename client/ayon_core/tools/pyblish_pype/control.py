@@ -208,7 +208,7 @@ class Controller(QtCore.QObject):
         if not presets:
             return {}
 
-        result = presets.get("global", {}).get("filters", {})
+        result = presets.get("core", {}).get("filters", {})
         hosts = pyblish.api.registered_hosts()
         for host in hosts:
             host_presets = presets.get(host, {}).get("filters")
