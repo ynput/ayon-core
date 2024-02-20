@@ -17,7 +17,7 @@ class CollectShotInstance(pyblish.api.InstancePlugin):
     families = ["shot"]
 
     SHARED_KEYS = [
-        "asset",
+        "folderPath",
         "fps",
         "handleStart",
         "handleEnd",
@@ -132,7 +132,7 @@ class CollectShotInstance(pyblish.api.InstancePlugin):
             "sourceIn": _cr_attrs["sourceIn"],
             "sourceOut": _cr_attrs["sourceOut"],
             "workfileFrameStart": workfile_start_frame,
-            "asset": _cr_attrs["folderPath"],
+            "folderPath": _cr_attrs["folderPath"],
         }
 
     def _solve_hierarchy_context(self, instance):
