@@ -8,9 +8,6 @@ import numbers
 import six
 import time
 
-from ayon_core.settings.lib import (
-    get_local_settings,
-)
 from ayon_core.client import get_project, get_ayon_server_api_connection
 from ayon_core.lib import Logger, get_local_site_id
 from ayon_core.lib.path_templates import (
@@ -453,7 +450,7 @@ class Anatomy(BaseAnatomy):
         return cls._sync_server_addon_cache.data
 
     @classmethod
-    def _get_studio_roots_overrides(cls, project_name, local_settings=None):
+    def _get_studio_roots_overrides(cls, project_name):
         """This would return 'studio' site override by local settings.
 
         Notes:
@@ -465,7 +462,6 @@ class Anatomy(BaseAnatomy):
 
         Args:
             project_name (str): Name of project.
-            local_settings (Optional[dict[str, Any]]): Prepared local settings.
 
         Returns:
             Union[Dict[str, str], None]): Local root overrides.
@@ -488,11 +484,6 @@ class Anatomy(BaseAnatomy):
                 should be returned.
         """
 
-        # Local settings may be used more than once or may not be used at all
-        # - to avoid slowdowns 'get_local_settings' is not called until it's
-        #   really needed
-        local_settings = None
-
         # First check if sync server is available and enabled
         sync_server = cls.get_sync_server_addon()
         if sync_server is None or not sync_server.enabled:
@@ -503,11 +494,8 @@ class Anatomy(BaseAnatomy):
             # Use sync server to receive active site name
             project_cache = cls._default_site_id_cache[project_name]
             if project_cache.is_outdated:
-                local_settings = get_local_settings()
                 project_cache.update_data(
-                    sync_server.get_active_site_type(
-                        project_name, local_settings
-                    )
+                    sync_server.get_active_site_type(project_name)
                 )
             site_name = project_cache.data
 
@@ -517,12 +505,12 @@ class Anatomy(BaseAnatomy):
                 # Handle studio root overrides without sync server
                 # - studio root overrides can be done even without sync server
                 roots_overrides = cls._get_studio_roots_overrides(
-                    project_name, local_settings
+                    project_name
                 )
             else:
                 # Ask sync server to get roots overrides
                 roots_overrides = sync_server.get_site_root_overrides(
-                    project_name, site_name, local_settings
+                    project_name, site_name
                 )
             site_cache.update_data(roots_overrides)
         return site_cache.data
