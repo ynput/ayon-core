@@ -6,7 +6,7 @@ class ValidateWorkfileProjectName(pyblish.api.ContextPlugin):
     """Validate project name stored in workfile metadata.
 
     It is not possible to publish from different project than is set in
-    environment variable "AVALON_PROJECT".
+    environment variable "AYON_PROJECT_NAME".
     """
 
     label = "Validate Workfile Project Name"

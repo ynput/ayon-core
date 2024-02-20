@@ -136,10 +136,10 @@ class OpenPypeContextSelector:
 
     def run_publish(self):
         """Run publish process."""
-        env = {"AVALON_PROJECT": str(self.context.get("project")),
-               "AVALON_ASSET": str(self.context.get("asset")),
-               "AVALON_TASK": str(self.context.get("task")),
-               # "AVALON_APP_NAME": str(self.context.get("app_name"))
+        env = {"AYON_PROJECT_NAME": str(self.context.get("project")),
+               "AYON_FOLDER_PATH": str(self.context.get("asset")),
+               "AYON_TASK_NAME": str(self.context.get("task")),
+               # "AYON_APP_NAME": str(self.context.get("app_name"))
                }
 
         print(">>> setting environment:")
@@ -182,10 +182,18 @@ print("running selector")
 selector = OpenPypeContextSelector()
 
 # try to set context from environment
-selector.context["project"] = os.getenv("AVALON_PROJECT")
-selector.context["asset"] = os.getenv("AVALON_ASSET")
-selector.context["task"] = os.getenv("AVALON_TASK")
-# selector.context["app_name"] = os.getenv("AVALON_APP_NAME")
+for key, env_keys in (
+    ("project", ["AYON_PROJECT_NAME", "AVALON_PROJECT"]),
+    ("asset", ["AYON_FOLDER_PATH", "AVALON_ASSET"]),
+    ("task", ["AYON_TASK_NAME", "AVALON_TASK"]),
+    # ("app_name", ["AYON_APP_NAME", "AVALON_APP_NAME"])
+):
+    value = ""
+    for env_key in env_keys:
+        value = os.getenv(env_key)
+        if value:
+            break
+    selector.context[key] = value
 
 # if anything inside is None, scratch the whole thing and
 # ask user for context.

@@ -194,13 +194,13 @@ class RenderCreator(Creator):
         name into created subset name.
 
         Position of composition name could be set in
-        `project_settings/global/tools/creator/subset_name_profiles` with some
-        form of '{composition}' placeholder.
+        `project_settings/global/tools/creator/product_name_profiles` with
+        some form of '{composition}' placeholder.
 
         Composition name will be used implicitly if multiple composition should
         be handled at same time.
 
-        If {composition} placeholder is not us 'subset_name_profiles'
+        If {composition} placeholder is not us 'product_name_profiles'
         composition name will be capitalized and set at the end of subset name
         if necessary.
 
