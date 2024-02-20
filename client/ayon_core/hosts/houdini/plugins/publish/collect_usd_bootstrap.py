@@ -55,7 +55,7 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
         self.log.debug("Add bootstrap for: %s" % bootstrap)
 
         project_name = instance.context.data["projectName"]
-        asset_name = instance.data["asset"]
+        asset_name = instance.data["folderPath"]
         asset_doc = get_asset_by_name(project_name, asset_name)
         assert asset_doc, "Asset must exist: %s" % asset_name
 
