@@ -209,8 +209,8 @@ class ImageCreator(Creator):
 
         'Use layer name in subset' will explicitly add layer name into subset
         name. Position of this name is configurable in
-        `project_settings/global/tools/creator/subset_name_profiles`.
-        If layer placeholder ({layer}) is not used in `subset_name_profiles`
+        `project_settings/global/tools/creator/product_name_profiles`.
+        If layer placeholder ({layer}) is not used in `product_name_profiles`
         but layer name should be used (set explicitly in UI or implicitly if
         multiple images should be created), it is added in capitalized form
         as a suffix to subset name.
