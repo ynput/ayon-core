@@ -8,10 +8,9 @@ from .workio import (
 )
 
 from .pipeline import (
+    HieroHost,
     launch_workfiles_app,
     ls,
-    install,
-    uninstall,
     reload_config,
     containerise,
     publish,
@@ -66,11 +65,10 @@ from .plugin import (
 )
 
 __all__ = [
-    # avalon pipeline module
+    # pipeline module
+    "HieroHost",
     "launch_workfiles_app",
     "ls",
-    "install",
-    "uninstall",
     "reload_config",
     "containerise",
     "publish",

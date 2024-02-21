@@ -6,6 +6,13 @@ import os
 import contextlib
 from collections import OrderedDict
 
+from ayon_core.host import (
+    HostBase,
+    IWorkfileHost,
+    ILoadHost,
+    IPublishHost
+)
+
 from pyblish import api as pyblish
 from ayon_core.lib import Logger
 from ayon_core.pipeline import (
@@ -17,8 +24,17 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     AYON_CONTAINER_ID,
 )
+
 from ayon_core.tools.utils import host_tools
 from . import lib, menu, events
+from .workio import (
+    open_file,
+    save_file,
+    file_extensions,
+    has_unsaved_changes,
+    work_root,
+    current_file
+)
 import hiero
 
 log = Logger.get_logger(__name__)
@@ -34,42 +50,80 @@ CREATE_PATH = os.path.join(PLUGINS_DIR, "create").replace("\\", "/")
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
 
 
-def install():
-    """Installing Hiero integration."""
 
-    # adding all events
-    events.register_events()
+class HieroHost(
+    HostBase, IWorkfileHost, ILoadHost, IPublishHost
+):
+    name = "hiero"
 
-    log.info("Registering Hiero plug-ins..")
-    pyblish.register_host("hiero")
-    pyblish.register_plugin_path(PUBLISH_PATH)
-    register_loader_plugin_path(LOAD_PATH)
-    register_creator_plugin_path(CREATE_PATH)
+    def open_workfile(self, filepath):
+        return open_file(filepath)
 
-    # register callback for switching publishable
-    pyblish.register_callback("instanceToggled", on_pyblish_instance_toggled)
+    def save_workfile(self, filepath=None):
+        return save_file(filepath)
 
-    # install menu
-    menu.menu_install()
-    menu.add_scripts_menu()
+    def work_root(self, session):
+        return work_root(session)
 
-    # register hiero events
-    events.register_hiero_events()
+    def get_current_workfile(self):
+        return current_file()
 
+    def workfile_has_unsaved_changes(self):
+        return has_unsaved_changes()
 
-def uninstall():
-    """
-    Uninstalling Hiero integration for avalon
+    def get_workfile_extensions(self):
+        return file_extensions()
 
-    """
-    log.info("Deregistering Hiero plug-ins..")
-    pyblish.deregister_host("hiero")
-    pyblish.deregister_plugin_path(PUBLISH_PATH)
-    deregister_loader_plugin_path(LOAD_PATH)
-    deregister_creator_plugin_path(CREATE_PATH)
+    def get_containers(self):
+        return ls()
 
-    # register callback for switching publishable
-    pyblish.deregister_callback("instanceToggled", on_pyblish_instance_toggled)
+    def install(self):
+        ''' Installing all requarements for hiero host
+        '''
+
+        # adding all events
+        events.register_events()
+
+        log.info("Registering Hiero plug-ins..")
+        pyblish.register_host("hiero")
+        pyblish.register_plugin_path(PUBLISH_PATH)
+        register_loader_plugin_path(LOAD_PATH)
+        register_creator_plugin_path(CREATE_PATH)
+
+        # register callback for switching publishable
+        pyblish.register_callback(
+            "instanceToggled", on_pyblish_instance_toggled)
+
+        # install menu
+        menu.menu_install()
+        menu.add_scripts_menu()
+
+        # register hiero events
+        events.register_hiero_events()
+
+    def uninstall(self):
+        """
+        Uninstalling Hiero integration for avalon
+
+        """
+        log.info("Deregistering Hiero plug-ins..")
+        pyblish.deregister_host("hiero")
+        pyblish.deregister_plugin_path(PUBLISH_PATH)
+        deregister_loader_plugin_path(LOAD_PATH)
+        deregister_creator_plugin_path(CREATE_PATH)
+
+        # register callback for switching publishable
+        pyblish.deregister_callback("instanceToggled", on_pyblish_instance_toggled)
+
+    def get_context_data(self):
+        # root_node = nuke.root()
+        # return get_node_data(root_node, ROOT_DATA_KNOB)
+        pass
+
+    def update_context_data(self, data, changes):
+        # root_node = nuke.root()
+        # set_node_data(root_node, ROOT_DATA_KNOB, data)
+        pass
 
 
 def containerise(track_item,
