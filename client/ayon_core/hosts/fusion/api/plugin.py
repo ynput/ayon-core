@@ -135,7 +135,7 @@ class GenericCreateSaver(Creator):
         ext = data["creator_attributes"]["image_format"]
 
         # Subset change detected
-        workdir = os.path.normpath(os.getenv("AVALON_WORKDIR"))
+        workdir = os.path.normpath(os.getenv("AYON_WORKDIR"))
         formatting_data.update({
             "workdir": workdir,
             "frame": "0" * frame_padding,

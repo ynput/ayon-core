@@ -77,7 +77,7 @@ class ValidateSceneSettings(pyblish.api.InstancePlugin):
             expected_settings.pop("resolutionWidth")
             expected_settings.pop("resolutionHeight")
 
-        if (any(re.search(pattern, os.getenv('AVALON_TASK'))
+        if (any(re.search(pattern, os.getenv('AYON_TASK_NAME'))
                 for pattern in self.skip_timelines_check)):
             self.log.info("Skipping frames check because of "
                           "task name and pattern {}".format(

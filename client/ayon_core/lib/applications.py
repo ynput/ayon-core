@@ -16,7 +16,6 @@ from ayon_core.client import get_asset_name_identifier
 from ayon_core.settings import (
     get_system_settings,
     get_project_settings,
-    get_local_settings
 )
 from ayon_core.settings.constants import (
     METADATA_KEYS,
@@ -1528,16 +1527,17 @@ def prepare_app_environments(
 
     # Use environments from local settings
     filtered_local_envs = {}
-    system_settings = data["system_settings"]
-    whitelist_envs = system_settings["general"].get("local_env_white_list")
-    if whitelist_envs:
-        local_settings = get_local_settings()
-        local_envs = local_settings.get("environments") or {}
-        filtered_local_envs = {
-            key: value
-            for key, value in local_envs.items()
-            if key in whitelist_envs
-        }
+    # NOTE Overrides for environment variables are not implemented in AYON.
+    # system_settings = data["system_settings"]
+    # whitelist_envs = system_settings["general"].get("local_env_white_list")
+    # if whitelist_envs:
+    #     local_settings = get_local_settings()
+    #     local_envs = local_settings.get("environments") or {}
+    #     filtered_local_envs = {
+    #         key: value
+    #         for key, value in local_envs.items()
+    #         if key in whitelist_envs
+    #     }
 
     # Apply local environment variables for already existing values
     for key, value in filtered_local_envs.items():
@@ -1656,8 +1656,9 @@ def apply_project_environments_value(
     if project_settings is None:
         project_settings = get_project_settings(project_name)
 
-    env_value = project_settings["global"]["project_environments"]
+    env_value = project_settings["core"]["project_environments"]
     if env_value:
+        env_value = json.loads(env_value)
         parsed_value = parse_environments(env_value, env_group)
         env.update(acre.compute(
             _merge_env(parsed_value, env),
@@ -1698,15 +1699,15 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
 
     app = data["app"]
     context_env = {
-        "AVALON_PROJECT": project_doc["name"],
-        "AVALON_APP_NAME": app.full_name
+        "AYON_PROJECT_NAME": project_doc["name"],
+        "AYON_APP_NAME": app.full_name
     }
     if asset_doc:
         asset_name = get_asset_name_identifier(asset_doc)
-        context_env["AVALON_ASSET"] = asset_name
+        context_env["AYON_FOLDER_PATH"] = asset_name
 
         if task_name:
-            context_env["AVALON_TASK"] = task_name
+            context_env["AYON_TASK_NAME"] = task_name
 
     log.debug(
         "Context environments set:\n{}".format(
@@ -1724,7 +1725,7 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
     if not app.is_host:
         return
 
-    data["env"]["AVALON_APP"] = app.host_name
+    data["env"]["AYON_HOST_NAME"] = app.host_name
 
     if not asset_doc or not task_name:
         # QUESTION replace with log.info and skip workfile discovery?
@@ -1770,7 +1771,7 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
                 "Couldn't create workdir because: {}".format(str(exc))
             )
 
-    data["env"]["AVALON_WORKDIR"] = workdir
+    data["env"]["AYON_WORKDIR"] = workdir
 
     _prepare_last_workfile(data, workdir, addons_manager)
 
@@ -1887,7 +1888,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
         "Setting last workfile path: {}".format(last_workfile_path)
     )
 
-    data["env"]["AVALON_LAST_WORKFILE"] = last_workfile_path
+    data["env"]["AYON_LAST_WORKFILE"] = last_workfile_path
     data["last_workfile_path"] = last_workfile_path
 
 
@@ -1916,7 +1917,7 @@ def should_start_last_workfile(
     project_settings = get_project_settings(project_name)
     profiles = (
         project_settings
-        ["global"]
+        ["core"]
         ["tools"]
         ["Workfiles"]
         ["last_workfile_on_startup"]
@@ -1966,7 +1967,7 @@ def should_workfile_tool_start(
     project_settings = get_project_settings(project_name)
     profiles = (
         project_settings
-        ["global"]
+        ["core"]
         ["tools"]
         ["Workfiles"]
         ["open_workfile_tool_on_startup"]
