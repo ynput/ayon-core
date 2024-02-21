@@ -4,6 +4,8 @@ import pyblish.api
 from ayon_core.pipeline import publish
 from openpype.hosts.hiero.api import lib
 
+import hiero
+
 
 class ExtractWorkfile(publish.Extractor):
     """
@@ -21,7 +23,7 @@ class ExtractWorkfile(publish.Extractor):
             instance.data["representations"] = []
 
         name = instance.data["name"]
-        project = instance.context.data["activeProject"]
+        project = hiero.ui.activeProject()
         staging_dir = self.staging_dir(instance)
 
         ext = ".hrox"
