@@ -31,7 +31,7 @@ class SelectInvalidAction(pyblish.api.Action):
         if not invalid:
             self.log.info("No invalid nodes found.")
             return
-        invalid_names = [obj.name for obj in invalid if isinstance(obj, str)]
+        invalid_names = [obj.name for obj in invalid if not isinstance(obj, tuple)]
         if not invalid_names:
             invalid_names = [obj.name for obj, _ in invalid]
             invalid = [obj for obj, _ in invalid]
