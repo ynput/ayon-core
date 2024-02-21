@@ -73,6 +73,20 @@ class Commands:
         import pyblish.api
         import pyblish.util
 
+        # Fix older jobs
+        for src_key, dst_key in (
+            ("AVALON_PROJECT", "AYON_PROJECT_NAME"),
+            ("AVALON_ASSET", "AYON_FOLDER_PATH"),
+            ("AVALON_TASK", "AYON_TASK_NAME"),
+            ("AVALON_WORKDIR", "AYON_WORKDIR"),
+            ("AVALON_APP_NAME", "AYON_APP_NAME"),
+            ("AVALON_APP", "AYON_HOST_NAME"),
+        ):
+            if src_key in os.environ and dst_key not in os.environ:
+                os.environ[dst_key] = os.environ[src_key]
+            # Remove old keys, so we're sure they're not used
+            os.environ.pop(src_key, None)
+
         log = Logger.get_logger("CLI-publish")
 
         install_ayon_plugins()
@@ -87,7 +101,7 @@ class Commands:
         if not any(paths):
             raise RuntimeError("No publish paths specified")
 
-        app_full_name = os.getenv("AVALON_APP_NAME")
+        app_full_name = os.getenv("AYON_APP_NAME")
         if app_full_name:
             context = get_global_context()
             env = get_app_environments_for_context(

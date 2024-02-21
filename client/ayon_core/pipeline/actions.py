@@ -26,7 +26,7 @@ class LauncherAction(object):
 
         Args:
             session (dict[str, Union[str, None]]): Session data with
-                AVALON_PROJECT, AVALON_ASSET and AVALON_TASK.
+                AYON_PROJECT_NAME, AYON_FOLDER_PATH and AYON_TASK_NAME.
         """
 
         return True

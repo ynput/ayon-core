@@ -4,9 +4,9 @@ Requires:
     context -> anatomy
     context -> projectEntity
     context -> assetEntity
+    context -> task
     context -> username
     context -> datetimeData
-    session -> AVALON_TASK
 
 Provides:
     context -> anatomyData

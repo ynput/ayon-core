@@ -70,7 +70,7 @@ class LoadClip(opfapi.ClipLoader):
         self.log.info("Loading with colorspace: `{}`".format(colorspace))
 
         # create workfile path
-        workfile_dir = os.environ["AVALON_WORKDIR"]
+        workfile_dir = os.environ["AYON_WORKDIR"]
         openclip_dir = os.path.join(
             workfile_dir, clip_name
         )
