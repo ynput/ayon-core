@@ -10,8 +10,13 @@ from .utils import (
     get_next_versions_for_instances,
 )
 
-from .subset_name import (
+from .product_name import (
     TaskNotSetError,
+    get_product_name,
+    get_product_name_template,
+)
+
+from .subset_name import (
     get_subset_name_template,
     get_subset_name,
 )
@@ -56,9 +61,12 @@ __all__ = (
     "get_last_versions_for_instances",
     "get_next_versions_for_instances",
 
-    "TaskNotSetError",
     "get_subset_name_template",
     "get_subset_name",
+
+    "TaskNotSetError",
+    "get_product_name",
+    "get_product_name_template",
 
     "CreatorError",
 
