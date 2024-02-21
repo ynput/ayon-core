@@ -48,11 +48,6 @@ def clear_metadata_from_settings(values):
             clear_metadata_from_settings(item)
 
 
-def get_local_settings():
-    # TODO implement ayon implementation
-    return {}
-
-
 def load_openpype_default_settings():
     """Load openpype default settings."""
     return load_jsons_from_dir(DEFAULTS_DIR)
@@ -203,53 +198,31 @@ def merge_overrides(source_dict, override_dict):
 def get_site_local_overrides(project_name, site_name, local_settings=None):
     """Site overrides from local settings for passet project and site name.
 
+    Deprecated:
+        This function is not implemented for AYON and will be removed.
+
     Args:
         project_name (str): For which project are overrides.
         site_name (str): For which site are overrides needed.
         local_settings (dict): Preloaded local settings. They are loaded
             automatically if not passed.
     """
-    # Check if local settings were passed
-    if local_settings is None:
-        local_settings = get_local_settings()
 
-    output = {}
-
-    # Skip if local settings are empty
-    if not local_settings:
-        return output
-
-    local_project_settings = local_settings.get("projects") or {}
-
-    # Prepare overrides for entered project and for default project
-    project_locals = None
-    if project_name:
-        project_locals = local_project_settings.get(project_name)
-    default_project_locals = local_project_settings.get(DEFAULT_PROJECT_KEY)
-
-    # First load and use local settings from default project
-    if default_project_locals and site_name in default_project_locals:
-        output.update(default_project_locals[site_name])
-
-    # Apply project specific local settings if there are any
-    if project_locals and site_name in project_locals:
-        output.update(project_locals[site_name])
-
-    return output
+    return {}
 
 
 def get_current_project_settings():
     """Project settings for current context project.
 
-    Project name should be stored in environment variable `AVALON_PROJECT`.
+    Project name should be stored in environment variable `AYON_PROJECT_NAME`.
     This function should be used only in host context where environment
     variable must be set and should not happen that any part of process will
     change the value of the enviornment variable.
     """
-    project_name = os.environ.get("AVALON_PROJECT")
+    project_name = os.environ.get("AYON_PROJECT_NAME")
     if not project_name:
         raise ValueError(
-            "Missing context project in environemt variable `AVALON_PROJECT`."
+            "Missing context project in environemt variable `AYON_PROJECT_NAME`."
         )
     return get_project_settings(project_name)
 

@@ -65,8 +65,8 @@ class ExtractBurnin(publish.Extractor):
     # Default options for burnins for cases that are not set in presets.
     default_options = {
         "font_size": 42,
-        "font_color": [255, 255, 255, 255],
-        "bg_color": [0, 0, 0, 127],
+        "font_color": [255, 255, 255, 1.0],
+        "bg_color": [0, 0, 0, 0.5],
         "bg_padding": 5,
         "x_offset": 5,
         "y_offset": 5
@@ -96,7 +96,20 @@ class ExtractBurnin(publish.Extractor):
                 instance.data["representations"].remove(repre)
 
     def _get_burnins_per_representations(self, instance, src_burnin_defs):
-        self.log.debug("Filtering of representations and their burnins starts")
+        """
+
+        Args:
+            instance (pyblish.api.Instance): Pyblish instance.
+            src_burnin_defs (list): Burnin definitions.
+
+        Returns:
+            list[tuple[dict, list]]: List of tuples containing representation
+                and its burnin definitions.
+
+        """
+        self.log.debug(
+            "Filtering of representations and their burnins starts"
+        )
 
         filtered_repres = []
         repres = instance.data.get("representations") or []
@@ -111,16 +124,13 @@ class ExtractBurnin(publish.Extractor):
             )
 
             burnin_defs = copy.deepcopy(src_burnin_defs)
-            self.log.debug(
-                "burnin_defs.keys(): {}".format(burnin_defs.keys())
-            )
 
             # Filter output definition by `burnin` represetation key
-            repre_linked_burnins = {
-                name: output
-                for name, output in burnin_defs.items()
-                if name in repre_burnin_links
-            }
+            repre_linked_burnins = [
+                burnin_def
+                for burnin_def in burnin_defs
+                if burnin_def["name"] in repre_burnin_links
+            ]
             self.log.debug(
                 "repre_linked_burnins: {}".format(repre_linked_burnins)
             )
@@ -154,19 +164,21 @@ class ExtractBurnin(publish.Extractor):
 
         filtering_criteria = {
             "hosts": host_name,
-            "families": family,
+            "product_types": family,
+            "product_names": subset,
             "task_names": task_name,
             "task_types": task_type,
-            "subset": subset
         }
-        profile = filter_profiles(self.profiles, filtering_criteria,
-                                  logger=self.log)
-
+        profile = filter_profiles(
+            self.profiles,
+            filtering_criteria,
+            logger=self.log
+        )
         if not profile:
             self.log.debug((
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Families: \"{}\" | Task \"{}\""
-                " | Task type \"{}\" | Subset \"{}\" "
+                " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
+                " | Task type \"{}\" | Product name \"{}\" "
             ).format(host_name, family, task_name, task_type, subset))
             return
 
@@ -175,7 +187,7 @@ class ExtractBurnin(publish.Extractor):
         if not burnin_defs:
             self.log.debug((
                 "Skipped instance. Burnin definitions are not set for profile"
-                " Host: \"{}\" | Families: \"{}\" | Task \"{}\""
+                " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
                 " | Profile \"{}\""
             ).format(host_name, family, task_name, profile))
             return
@@ -275,7 +287,8 @@ class ExtractBurnin(publish.Extractor):
                 #  it in review?
                 # burnin_data["fps"] = fps
 
-            for filename_suffix, burnin_def in repre_burnin_defs.items():
+            for burnin_def in repre_burnin_defs:
+                filename_suffix = burnin_def["name"]
                 new_repre = copy.deepcopy(repre)
                 new_repre["stagingDir"] = src_repre_staging_dir
 
@@ -288,16 +301,28 @@ class ExtractBurnin(publish.Extractor):
                 burnin_values = {}
                 for key in self.positions:
                     value = burnin_def.get(key)
-                    if value:
-                        burnin_values[key] = value.replace(
-                            "{task}", "{task[name]}"
-                        )
+                    if not value:
+                        continue
+                    # TODO remove replacements
+                    burnin_values[key] = (
+                        value
+                        .replace("{task}", "{task[name]}")
+                        .replace("{product[name]}", "{subset}")
+                        .replace("{Product[name]}", "{Subset}")
+                        .replace("{PRODUCT[NAME]}", "{SUBSET}")
+                        .replace("{product[type]}", "{family}")
+                        .replace("{Product[type]}", "{Family}")
+                        .replace("{PRODUCT[TYPE]}", "{FAMILY}")
+                        .replace("{folder[name]}", "{asset}")
+                        .replace("{Folder[name]}", "{Asset}")
+                        .replace("{FOLDER[NAME]}", "{ASSET}")
+                    )
 
                 # Remove "delete" tag from new representation
                 if "delete" in new_repre["tags"]:
                     new_repre["tags"].remove("delete")
 
-                if len(repre_burnin_defs.keys()) > 1:
+                if len(repre_burnin_defs) > 1:
                     # Update name and outputName to be
                     # able have multiple outputs in case of more burnin presets
                     # Join previous "outputName" with filename suffix
@@ -401,8 +426,7 @@ class ExtractBurnin(publish.Extractor):
             bg_color_hex = "#{0:0>2X}{1:0>2X}{2:0>2X}".format(
                 bg_red, bg_green, bg_blue
             )
-            bg_color_alpha = float(bg_alpha) / 255
-            burnin_options["bg_opacity"] = bg_color_alpha
+            burnin_options["bg_opacity"] = bg_alpha
             burnin_options["bg_color"] = bg_color_hex
 
         # FG Color
@@ -412,8 +436,7 @@ class ExtractBurnin(publish.Extractor):
             fg_color_hex = "#{0:0>2X}{1:0>2X}{2:0>2X}".format(
                 fg_red, fg_green, fg_blue
             )
-            fg_color_alpha = float(fg_alpha) / 255
-            burnin_options["opacity"] = fg_color_alpha
+            burnin_options["opacity"] = fg_alpha
             burnin_options["font_color"] = fg_color_hex
 
         # Define font filepath
@@ -543,15 +566,16 @@ class ExtractBurnin(publish.Extractor):
         Burnin definitions without tags filter are marked as valid.
 
         Args:
-            outputs (list): Contain list of burnin definitions from presets.
+            burnin_defs (list): Burnin definitions.
             tags (list): Tags of processed representation.
 
         Returns:
             list: Containg all burnin definitions matching entered tags.
+
         """
-        filtered_burnins = {}
+        filtered_burnins = []
         repre_tags_low = set(tag.lower() for tag in tags)
-        for filename_suffix, burnin_def in burnin_defs.items():
+        for burnin_def in burnin_defs:
             valid = True
             tag_filters = burnin_def["filter"]["tags"]
             if tag_filters:
@@ -561,8 +585,7 @@ class ExtractBurnin(publish.Extractor):
                 valid = bool(repre_tags_low & tag_filters_low)
 
             if valid:
-                filtered_burnins[filename_suffix] = burnin_def
-
+                filtered_burnins.append(burnin_def)
         return filtered_burnins
 
     def input_output_paths(
@@ -724,7 +747,7 @@ class ExtractBurnin(publish.Extractor):
         Returns:
             list: Containg all valid output definitions.
         """
-        filtered_burnin_defs = {}
+        filtered_burnin_defs = []
 
         burnin_defs = profile.get("burnins")
         if not burnin_defs:
@@ -732,13 +755,11 @@ class ExtractBurnin(publish.Extractor):
 
         families = self.families_from_instance(instance)
 
-        for filename_suffix, orig_burnin_def in burnin_defs.items():
+        for orig_burnin_def in burnin_defs:
             burnin_def = copy.deepcopy(orig_burnin_def)
-            def_filter = burnin_def.get("filter", None) or {}
-            for key in ("families", "tags"):
-                if key not in def_filter:
-                    def_filter[key] = []
+            filename_suffix = burnin_def["name"]
 
+            def_filter = burnin_def["filter"]
             families_filters = def_filter["families"]
             if not self.families_filter_validation(
                 families, families_filters
@@ -752,10 +773,13 @@ class ExtractBurnin(publish.Extractor):
                 continue
 
             # Burnin values
+            new_burnin_def = {}
             burnin_values = {}
             for key, value in tuple(burnin_def.items()):
                 key_low = key.lower()
-                if key_low in self.positions and value:
+                if key_low not in self.positions:
+                    new_burnin_def[key] = value
+                elif value:
                     burnin_values[key_low] = value
 
             # Skip processing if burnin values are not set
@@ -767,9 +791,9 @@ class ExtractBurnin(publish.Extractor):
                 ).format(filename_suffix, str(orig_burnin_def)))
                 continue
 
-            burnin_values["filter"] = def_filter
+            new_burnin_def.update(burnin_values)
 
-            filtered_burnin_defs[filename_suffix] = burnin_values
+            filtered_burnin_defs.append(new_burnin_def)
 
             self.log.debug((
                 "Burnin definition \"{}\" passed first filtering."

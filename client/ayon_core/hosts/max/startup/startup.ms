@@ -8,5 +8,8 @@
     local pythonpath = systemTools.getEnvVariable "MAX_PYTHONPATH"
     systemTools.setEnvVariable "PYTHONPATH" pythonpath
 
+    /*opens the create menu on startup to ensure users are presented with a useful default view.*/
+    max create mode
+
     python.ExecuteFile startup
 )
