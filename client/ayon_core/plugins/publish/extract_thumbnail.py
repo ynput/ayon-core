@@ -42,15 +42,27 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
     integrate_thumbnail = False
     target_size = {
-        "type": "resize",
-        "width": 1920,
-        "height": 1080
+        "type": "source",
+        "resize": {
+            "width": 1920,
+            "height": 1080
+        }
     }
-    background_color = None
+    background_color = (0, 0, 0, 0.0)
     duration_split = 0.5
     # attribute presets from settings
-    oiiotool_defaults = None
-    ffmpeg_args = None
+    oiiotool_defaults = {
+        "type": "colorspace",
+        "colorspace": "color_picking",
+        "display_and_view": {
+            "display": "default",
+            "view": "sRGB"
+        }
+    }
+    ffmpeg_args = {
+        "input": [],
+        "output": []
+    }
     product_names = []
 
     def process(self, instance):
@@ -369,7 +381,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         repre_display = colorspace_data.get("display")
         repre_view = colorspace_data.get("view")
-        oiio_default_type = None
         oiio_default_display = None
         oiio_default_view = None
         oiio_default_colorspace = None
@@ -387,11 +398,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         #   oiiotool_defaults
         elif self.oiiotool_defaults:
             oiio_default_type = self.oiiotool_defaults["type"]
-            if "colorspace" in oiio_default_type:
+            if "colorspace" == oiio_default_type:
                 oiio_default_colorspace = self.oiiotool_defaults["colorspace"]
             else:
-                oiio_default_display = self.oiiotool_defaults["display"]
-                oiio_default_view = self.oiiotool_defaults["view"]
+                display_and_view = self.oiiotool_defaults["display_and_view"]
+                oiio_default_display = display_and_view["display"]
+                oiio_default_view = display_and_view["view"]
 
         try:
             convert_colorspace(
@@ -507,11 +519,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         input_path,
     ):
         # get settings
-        if self.target_size.get("type") == "source":
+        if self.target_size["type"] == "source":
             return []
 
-        target_width = self.target_size["width"]
-        target_height = self.target_size["height"]
+        resize = self.target_size["resize"]
+        target_width = resize["width"]
+        target_height = resize["height"]
 
         # form arg string per application
         return get_rescaled_command_arguments(
