@@ -57,9 +57,9 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         asset_name = create_context.get_current_asset_name()
         task_name = create_context.get_current_task_name()
         for key, value in (
-            ("AVALON_PROJECT", project_name),
-            ("AVALON_ASSET", asset_name),
-            ("AVALON_TASK", task_name)
+            ("AYON_PROJECT_NAME", project_name),
+            ("AYON_FOLDER_PATH", asset_name),
+            ("AYON_TASK_NAME", task_name)
         ):
             if value is None:
                 os.environ.pop(key, None)

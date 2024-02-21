@@ -1536,7 +1536,7 @@ class CreateContext:
     def host_name(self):
         if hasattr(self.host, "name"):
             return self.host.name
-        return os.environ["AVALON_APP"]
+        return os.environ["AYON_HOST_NAME"]
 
     def get_current_project_name(self):
         """Project name which was used as current context on context reset.
