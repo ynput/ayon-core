@@ -9,35 +9,35 @@ from .constants import DEFAULT_SUBSET_TEMPLATE
 class TaskNotSetError(KeyError):
     def __init__(self, msg=None):
         if not msg:
-            msg = "Creator's subset name template requires task name."
+            msg = "Creator's product name template requires task name."
         super(TaskNotSetError, self).__init__(msg)
 
 
 class TemplateFillError(Exception):
     def __init__(self, msg=None):
         if not msg:
-            msg = "Creator's subset name template is missing key value."
+            msg = "Creator's product name template is missing key value."
         super(TemplateFillError, self).__init__(msg)
 
 
 def get_product_name_template(
     project_name,
-    family,
+    product_type,
     task_name,
     task_type,
     host_name,
     default_template=None,
     project_settings=None
 ):
-    """Get subset name template based on passed context.
+    """Get product name template based on passed context.
 
     Args:
         project_name (str): Project on which the context lives.
-        family (str): Family (subset type) for which the subset name is
+        product_type (str): Product type for which the subset name is
             calculated.
-        host_name (str): Name of host in which the subset name is calculated.
-        task_name (str): Name of task in which context the subset is created.
-        task_type (str): Type of task in which context the subset is created.
+        host_name (str): Name of host in which the product name is calculated.
+        task_name (str): Name of task in which context the product is created.
+        task_type (str): Type of task in which context the product is created.
         default_template (Union[str, None]): Default template which is used if
             settings won't find any matching possitibility. Constant
             'DEFAULT_SUBSET_TEMPLATE' is used if not defined.
@@ -50,7 +50,7 @@ def get_product_name_template(
     tools_settings = project_settings["core"]["tools"]
     profiles = tools_settings["creator"]["product_name_profiles"]
     filtering_criteria = {
-        "product_types": family,
+        "product_types": product_type,
         "hosts": host_name,
         "tasks": task_name,
         "task_types": task_type
@@ -94,7 +94,7 @@ def get_product_name(
     """Calculate product name based on passed context and AYON settings.
 
     Subst name templates are defined in `project_settings/global/tools/creator
-    /product_name_profiles` where are profiles with host name, family,
+    /product_name_profiles` where are profiles with host name, product type,
     task name and task type filters. If context does not match any profile
     then `DEFAULT_SUBSET_TEMPLATE` is used as default template.
 
@@ -120,12 +120,12 @@ def get_product_name(
             a creator which creates instance.
         project_settings (Optional[Union[Dict[str, Any]]]): Prepared settings
             for project. Settings are queried if not passed.
-        family_filter (Optional[str]): Use different family for subset template
+        family_filter (Optional[str]): Use different family for product template
             filtering. Value of 'family' is used when not passed.
 
     Raises:
-        TemplateFillError: If filled template contains placeholder key which is not
-            collected.
+        TemplateFillError: If filled template contains placeholder key which
+            is not collected.
     """
 
     if not product_type:
