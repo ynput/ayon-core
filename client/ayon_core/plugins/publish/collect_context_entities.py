@@ -25,7 +25,7 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
 
     def process(self, context):
         project_name = context.data["projectName"]
-        asset_name = context.data["asset"]
+        asset_name = context.data["folderPath"]
         task_name = context.data["task"]
 
         project_entity = get_project(project_name)

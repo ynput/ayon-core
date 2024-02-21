@@ -1,7 +1,7 @@
 """
 Provides:
     context -> projectName (str)
-    context -> asset (str)
+    context -> folderPath (str)
     context -> task (str)
 """
 
@@ -21,7 +21,7 @@ class CollectCurrentContext(pyblish.api.ContextPlugin):
     def process(self, context):
         # Check if values are already set
         project_name = context.data.get("projectName")
-        asset_name = context.data.get("asset")
+        asset_name = context.data.get("folderPath")
         task_name = context.data.get("task")
 
         current_context = get_current_context()
@@ -29,13 +29,12 @@ class CollectCurrentContext(pyblish.api.ContextPlugin):
             context.data["projectName"] = current_context["project_name"]
 
         if not asset_name:
-            context.data["asset"] = current_context["asset_name"]
+            context.data["folderPath"] = current_context["asset_name"]
 
         if not task_name:
             context.data["task"] = current_context["task_name"]
 
         # QUESTION should we be explicit with keys? (the same on instances)
-        #   - 'asset' -> 'assetName'
         #   - 'task' -> 'taskName'
 
         self.log.info((
@@ -45,6 +44,6 @@ class CollectCurrentContext(pyblish.api.ContextPlugin):
             "Task: {task_name}"
         ).format(
             project_name=context.data["projectName"],
-            asset_name=context.data["asset"],
+            asset_name=context.data["folderPath"],
             task_name=context.data["task"]
         ))
