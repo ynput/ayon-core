@@ -2346,25 +2346,8 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
             if not write_node:
                 return
 
-            try:
-                # write all knobs to node
-                for knob in nuke_imageio_writes["knobs"]:
-                    value = knob["value"]
-                    if isinstance(value, six.text_type):
-                        value = str(value)
-                    if str(value).startswith("0x"):
-                        value = int(value, 16)
-
-                    log.debug("knob: {}| value: {}".format(
-                        knob["name"], value
-                    ))
-                    write_node[knob["name"]].setValue(value)
-            except TypeError:
-                log.warning(
-                    "Legacy workflow didn't work, switching to current")
-
-                set_node_knobs_from_settings(
-                    write_node, nuke_imageio_writes["knobs"])
+            set_node_knobs_from_settings(
+                write_node, nuke_imageio_writes["knobs"])
 
     def set_reads_colorspace(self, read_clrs_inputs):
         """ Setting colorspace to Read nodes
