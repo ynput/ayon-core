@@ -134,7 +134,7 @@ class HostBase(object):
 
         Returns:
             Dict[str, Union[str, None]]: Context with 3 keys 'project_name',
-                'asset_name' and 'task_name'. All of them can be 'None'.
+                'folder_path' and 'task_name'. All of them can be 'None'.
         """
 
         return {
