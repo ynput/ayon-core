@@ -1,3 +1,4 @@
+from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
 from ayon_core.hosts.nuke.api.lib import (
     INSTANCE_DATA_KNOB,
@@ -34,7 +35,9 @@ class LegacyConverted(SubsetConvertorPlugin):
             if not avalon_knob_data:
                 continue
 
-            if avalon_knob_data["id"] != "pyblish.avalon.instance":
+            if avalon_knob_data["id"] not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 continue
 
             # catch and break

@@ -10,6 +10,7 @@ import logging
 import collections
 
 from ayon_core.client import get_asset_by_id
+from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 
 from .subset_name import get_subset_name
 
@@ -33,7 +34,8 @@ class LegacyCreator(object):
 
         # Default data
         self.data = collections.OrderedDict()
-        self.data["id"] = "pyblish.avalon.instance"
+        # TODO use 'AYON_INSTANCE_ID' when all hosts support it
+        self.data["id"] = AVALON_INSTANCE_ID
         self.data["family"] = self.family
         self.data["folderPath"] = folder_path
         self.data["subset"] = name
