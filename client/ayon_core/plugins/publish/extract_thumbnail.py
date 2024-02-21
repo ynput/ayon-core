@@ -86,16 +86,16 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 instance.data["representations"].remove(repre)
 
     def _main_process(self, instance):
-        subset_name = instance.data["subset"]
+        product_name = instance.data["productName"]
         instance_repres = instance.data.get("representations")
         if not instance_repres:
             self.log.debug((
                 "Instance {} does not have representations. Skipping"
-            ).format(subset_name))
+            ).format(product_name))
             return
 
         self.log.debug(
-            "Processing instance with subset name {}".format(subset_name)
+            "Processing instance with product name {}".format(product_name)
         )
 
         # Skip if instance have 'review' key in data set to 'False'
@@ -110,15 +110,15 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         # skip crypto passes.
         # TODO: This is just a quick fix and has its own side-effects - it is
-        #       affecting every subset name with `crypto` in its name.
+        #       affecting every prouct name with `crypto` in its name.
         #       This must be solved properly, maybe using tags on
         #       representation that can be determined much earlier and
         #       with better precision.
-        if "crypto" in subset_name.lower():
+        if "crypto" in product_name.lower():
             self.log.debug("Skipping crypto passes.")
             return
 
-        # We only want to process the subsets needed from settings.
+        # We only want to process the produces needed from settings.
         def validate_string_against_patterns(input_str, patterns):
             for pattern in patterns:
                 if re.match(pattern, input_str):
@@ -128,14 +128,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         product_names = self.product_names
         if product_names:
             result = validate_string_against_patterns(
-                instance.data["subset"], product_names
+                product_name, product_names
             )
             if not result:
-                self.log.debug(
-                    "Product name \"{}\" did not match settings filters: {}".format(
-                        instance.data["subset"], product_names
-                    )
-                )
+                self.log.debug((
+                    "Product name \"{}\" did not match settings filters: {}"
+                ).format(product_name, product_names))
                 return
 
         # first check for any explicitly marked representations for thumbnail

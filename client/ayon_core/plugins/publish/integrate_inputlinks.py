@@ -61,8 +61,8 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                     "Instance {} doesn't have version.".format(instance))
                 continue
 
-            family = instance.data.get("family")
-            if family == "workfile":
+            product_type = instance.data["productType"]
+            if product_type == "workfile":
                 workfile_instance = instance
             else:
                 other_instances.append(instance)
