@@ -30,7 +30,7 @@ class RenderInstance(object):
     label = attr.ib()  # label to show in GUI
     subset = attr.ib()  # subset name
     task = attr.ib()  # task name
-    asset = attr.ib()  # asset name
+    folderPath = attr.ib()  # folder path
     attachTo = attr.ib()  # subset name to attach render to
     setMembers = attr.ib()  # list of nodes/members producing render output
     publish = attr.ib()  # bool, True to publish instance

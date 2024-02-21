@@ -98,7 +98,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             data.update({
                 "name": "{}_{}".format(asset, subset),
                 "label": label,
-                "asset": asset,
+                "folderPath": asset,
                 "asset_name": asset_name,
                 "item": track_item,
                 "families": families,
@@ -189,7 +189,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["asset"]
+        asset = data["folderPath"]
         asset_name = data["asset_name"]
 
         # insert family into families
@@ -241,7 +241,6 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not master_layer:
             return
 
-        asset = data.get("asset")
         item = data.get("item")
         clip_name = item.name()
 
@@ -249,7 +248,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not self.test_any_audio(item):
             return
 
-        asset = data["asset"]
+        asset = data["folderPath"]
         asset_name = data["asset_name"]
 
         # insert family into families

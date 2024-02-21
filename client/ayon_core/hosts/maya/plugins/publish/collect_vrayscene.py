@@ -99,7 +99,7 @@ class CollectVrayScene(pyblish.api.InstancePlugin):
         instance.data.update(data)
 
         # Define nice label
-        label = "{0} ({1})".format(layer_name, instance.data["asset"])
+        label = "{0} ({1})".format(layer_name, instance.data["folderPath"])
         label += "  [{0}-{1}]".format(
             int(data["frameStartHandle"]), int(data["frameEndHandle"])
         )

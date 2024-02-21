@@ -120,7 +120,7 @@ class PhotoshopServerStub:
             "subset":"imageBG",
             "family":"image",
             "id":"pyblish.avalon.instance",
-            "asset":"Town",
+            "folderPath":"Town",
             "uuid": "8"
         }] - for created instances
         OR
@@ -421,7 +421,7 @@ class PhotoshopServerStub:
             example:
                 {"8":{"active":true,"subset":"imageBG",
                       "family":"image","id":"pyblish.avalon.instance",
-                      "asset":"Town"}}
+                      "folderPath":"Town"}}
                 8 is layer(group) id - used for deletion, update etc.
         """
         res = self.websocketserver.call(self.client.call('Photoshop.read'))
