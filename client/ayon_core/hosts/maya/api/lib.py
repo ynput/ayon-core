@@ -36,7 +36,11 @@ from ayon_core.pipeline import (
     loaders_from_representation,
     get_representation_path,
     load_container,
-    registered_host
+    registered_host,
+    AVALON_CONTAINER_ID,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_project_asset
@@ -2101,7 +2105,7 @@ def get_related_sets(node):
     """Return objectSets that are relationships for a look for `node`.
 
     Filters out based on:
-    - id attribute is NOT `pyblish.avalon.container`
+    - id attribute is NOT `AVALON_CONTAINER_ID`
     - shapes and deformer shapes (alembic creates meshShapeDeformed)
     - set name ends with any from a predefined list
     - set in not in viewport set (isolate selected for example)
@@ -2121,7 +2125,12 @@ def get_related_sets(node):
     defaults = {"defaultLightSet", "defaultObjectSet"}
 
     # Ids to ignore
-    ignored = {"pyblish.avalon.instance", "pyblish.avalon.container"}
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
 
     view_sets = get_isolate_view_sets()
 
@@ -3152,7 +3161,9 @@ def update_content_on_context_change():
     new_data = asset_doc["data"]
     for s in scene_sets:
         try:
-            if cmds.getAttr("{}.id".format(s)) == "pyblish.avalon.instance":
+            if cmds.getAttr("{}.id".format(s)) in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 attr = cmds.listAttr(s)
                 print(s)
                 if "folderPath" in attr:
