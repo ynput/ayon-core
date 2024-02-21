@@ -28,7 +28,7 @@ class LegacyCreator(object):
     log = logging.getLogger("LegacyCreator")
     log.propagate = True
 
-    def __init__(self, name, asset, options=None, data=None):
+    def __init__(self, name, folder_path, options=None, data=None):
         self.name = name  # For backwards compatibility
         self.options = options
 
@@ -37,7 +37,7 @@ class LegacyCreator(object):
         # TODO use 'AYON_INSTANCE_ID' when all hosts support it
         self.data["id"] = AVALON_INSTANCE_ID
         self.data["family"] = self.family
-        self.data["asset"] = asset
+        self.data["folderPath"] = folder_path
         self.data["subset"] = name
         self.data["active"] = True
 

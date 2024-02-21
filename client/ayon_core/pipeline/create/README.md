@@ -48,7 +48,7 @@ Family tells how should be instance processed and subset what name will publishe
         <Plugin name>: {...},
         ...
     },
-    ## Additional data related to instance (`asset`, `task`, etc.)
+    ## Additional data related to instance (`folderPath`, `task`, etc.)
     ...
 }
 ```

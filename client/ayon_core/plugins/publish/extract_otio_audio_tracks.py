@@ -68,7 +68,7 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
     def add_audio_to_instances(self, audio_file, instances):
         created_files = []
         for inst in instances:
-            name = inst.data["asset"]
+            name = inst.data["folderPath"]
 
             recycling_file = [f for f in created_files if name in f]
 
