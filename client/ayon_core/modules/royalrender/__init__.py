@@ -1,6 +1,6 @@
-from .royal_render_module import RoyalRenderModule
+from .addon import RoyalRenderAddon
 
 
 __all__ = (
-    "RoyalRenderModule",
+    "RoyalRenderAddon",
 )

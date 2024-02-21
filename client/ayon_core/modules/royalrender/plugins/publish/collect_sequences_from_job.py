@@ -189,8 +189,8 @@ class CollectSequencesFromJob(pyblish.api.ContextPlugin):
                     "family": families[0],  # backwards compatibility / pyblish
                     "families": list(families),
                     "subset": subset,
-                    "asset": data.get(
-                        "asset", context.data["asset"]
+                    "folderPath": data.get(
+                        "folderPath", context.data["folderPath"]
                     ),
                     "stagingDir": root,
                     "frameStart": start,

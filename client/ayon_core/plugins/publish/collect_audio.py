@@ -66,7 +66,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
         # Add audio to instance if exists.
         instances_by_asset_name = collections.defaultdict(list)
         for instance in filtered_instances:
-            asset_name = instance.data["asset"]
+            asset_name = instance.data["folderPath"]
             instances_by_asset_name[asset_name].append(instance)
 
         asset_names = set(instances_by_asset_name.keys())

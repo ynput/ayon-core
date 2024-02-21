@@ -15,6 +15,7 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_inventory_action_path,
     AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
 from ayon_core.hosts.houdini import HOUDINI_HOST_DIR
@@ -271,8 +272,11 @@ def parse_container(container):
 
 def ls():
     containers = []
-    for identifier in (AVALON_CONTAINER_ID,
-                       "pyblish.mindbender.container"):
+    for identifier in (
+        AYON_CONTAINER_ID,
+        AVALON_CONTAINER_ID,
+        "pyblish.mindbender.container"
+    ):
         containers += lib.lsattr("id", identifier)
 
     for container in sorted(containers,

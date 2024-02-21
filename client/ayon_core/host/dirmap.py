@@ -181,6 +181,10 @@ class HostDirmap(object):
                 exclude_locals=False,
                 cached=False)
 
+            # TODO implement
+            # Dirmap is dependent on 'get_site_local_overrides' which
+            #   is not implemented in AYON. The mapping should be received
+            #   from sitesync addon.
             active_overrides = get_site_local_overrides(
                 project_name, active_site)
             remote_overrides = get_site_local_overrides(

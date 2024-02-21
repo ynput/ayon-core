@@ -8,8 +8,6 @@ import sys
 import traceback
 import uuid
 
-from bson.objectid import ObjectId
-
 from ayon_core.client import (
     get_project,
     get_assets,
@@ -1080,7 +1078,6 @@ class ProjectPushItemProcess:
             new_repre_files = []
             for (path, rootless_path) in repre_filepaths:
                 new_repre_files.append({
-                    "_id": ObjectId(),
                     "path": rootless_path,
                     "size": os.path.getsize(path),
                     "hash": source_hash(path),

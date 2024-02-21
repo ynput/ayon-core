@@ -34,7 +34,7 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
             project_settings=context.data["project_settings"]
         )
 
-        asset_name = get_asset_name_identifier(asset_doc)
+        folder_path = get_asset_name_identifier(asset_doc)
 
         # adding otio timeline to context
         with opfapi.maintained_segment_selection(sequence) as selected_seg:
@@ -42,7 +42,7 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
 
             instance_data = {
                 "name": subset_name,
-                "asset": asset_name,
+                "folderPath": folder_path,
                 "subset": subset_name,
                 "family": "workfile",
                 "families": []
