@@ -485,26 +485,6 @@ def filter_pyblish_plugins(plugins):
             plugins.remove(plugin)
 
 
-def remote_publish(log):
-    """Loops through all plugins, logs to console. Used for tests.
-
-    Args:
-        log (Logger)
-    """
-
-    # Error exit as soon as any error occurs.
-    error_format = "Failed {plugin.__name__}: {error}\n{error.traceback}"
-
-    for result in pyblish.util.publish_iter():
-        if not result["error"]:
-            continue
-
-        error_message = error_format.format(**result)
-        log.error(error_message)
-        # 'Fatal Error: ' is because of Deadline
-        raise RuntimeError("Fatal Error: {}".format(error_message))
-
-
 def get_errored_instances_from_context(context, plugin=None):
     """Collect failed instances from pyblish context.
 

@@ -16,7 +16,6 @@ from ayon_core.client import get_asset_name_identifier
 from ayon_core.settings import (
     get_system_settings,
     get_project_settings,
-    get_local_settings
 )
 from ayon_core.settings.constants import (
     METADATA_KEYS,
@@ -1528,16 +1527,17 @@ def prepare_app_environments(
 
     # Use environments from local settings
     filtered_local_envs = {}
-    system_settings = data["system_settings"]
-    whitelist_envs = system_settings["general"].get("local_env_white_list")
-    if whitelist_envs:
-        local_settings = get_local_settings()
-        local_envs = local_settings.get("environments") or {}
-        filtered_local_envs = {
-            key: value
-            for key, value in local_envs.items()
-            if key in whitelist_envs
-        }
+    # NOTE Overrides for environment variables are not implemented in AYON.
+    # system_settings = data["system_settings"]
+    # whitelist_envs = system_settings["general"].get("local_env_white_list")
+    # if whitelist_envs:
+    #     local_settings = get_local_settings()
+    #     local_envs = local_settings.get("environments") or {}
+    #     filtered_local_envs = {
+    #         key: value
+    #         for key, value in local_envs.items()
+    #         if key in whitelist_envs
+    #     }
 
     # Apply local environment variables for already existing values
     for key, value in filtered_local_envs.items():
