@@ -1,5 +1,4 @@
 import os
-from ayon_core.settings import get_local_settings
 
 # Constant key under which local settings are stored
 LOCAL_EXPERIMENTAL_KEY = "experimental_tools"
@@ -89,9 +88,13 @@ class ExperimentalTools:
                 "New publisher",
                 "Combined creation and publishing into one tool.",
                 self._show_publisher,
-                hosts_filter=["blender", "maya", "nuke", "celaction", "flame",
-                              "fusion", "harmony", "hiero", "resolve",
-                              "tvpaint", "unreal"]
+                hosts_filter=[
+                    "celaction",
+                    "flame",
+                    "harmony",
+                    "hiero",
+                    "resolve",
+                ]
             )
         ]
 
@@ -139,7 +142,7 @@ class ExperimentalTools:
 
     def get_tools_for_host(self, host_name=None):
         if not host_name:
-            host_name = os.environ.get("AVALON_APP")
+            host_name = os.environ.get("AYON_HOST_NAME")
         tools = []
         for tool in self.tools:
             if (
@@ -151,7 +154,10 @@ class ExperimentalTools:
 
     def refresh_availability(self):
         """Reload local settings and check if any tool changed ability."""
-        local_settings = get_local_settings()
+
+        # NOTE AYON does not have implemented settings for experimental
+        #   tools.
+        local_settings = {}
         experimental_settings = (
             local_settings.get(LOCAL_EXPERIMENTAL_KEY)
         ) or {}
