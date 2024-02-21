@@ -45,7 +45,7 @@ class TimersManagerModuleRestApi:
         data = await request.json()
         try:
             project_name = data["project_name"]
-            asset_name = data["asset_name"]
+            asset_name = data["folder_path"]
             task_name = data["task_name"]
         except KeyError:
             msg = (

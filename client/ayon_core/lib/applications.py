@@ -493,7 +493,7 @@ class ApplicationManager:
         """Launch procedure.
 
         For host application it's expected to contain "project_name",
-        "asset_name" and "task_name".
+        "folder_path" and "task_name".
 
         Args:
             app_name (str): Name of application that should be launched.
