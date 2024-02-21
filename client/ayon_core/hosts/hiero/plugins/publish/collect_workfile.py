@@ -1,4 +1,9 @@
+import os
+
 import pyblish.api
+
+import hiero
+import nuke
 
 
 class CollectWorkfile(pyblish.api.InstancePlugin):
@@ -9,7 +14,26 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder - 0.49
 
     def process(self, instance):
-        # Backwards compatibility - workfile instances previously had 'item'
-        # in Resolve.
-        # TODO: Remove this if it is not needed
-        instance.data["item"] = instance.context.data["activeProject"]
+        current_file = os.path.normpath(hiero.ui.activeProject().path())
+
+        # creating instances per write node
+        staging_dir = os.path.dirname(current_file)
+        base_name = os.path.basename(current_file)
+
+        # creating representation
+        representation = {
+            'name': 'nk',
+            'ext': 'nk',
+            'files': base_name,
+            "stagingDir": staging_dir,
+        }
+
+        # creating instance data
+        instance.data.update({
+            "name": base_name,
+            "representations": [representation]
+        })
+
+        self.log.debug(
+            "Collected current script version: {}".format(current_file)
+        )
