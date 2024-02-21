@@ -321,7 +321,7 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
 
     """
     representations = []
-    host_name = os.environ.get("AVALON_APP", "")
+    host_name = os.environ.get("AYON_HOST_NAME", "")
     collections, remainders = clique.assemble(exp_files)
 
     log = Logger.get_logger("farm_publishing")
@@ -541,7 +541,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
     """
     # TODO: this needs to be taking the task from context or instance
-    task = os.environ["AVALON_TASK"]
+    task = os.environ["AYON_TASK_NAME"]
 
     anatomy = instance.context.data["anatomy"]
     subset = skeleton["subset"]
@@ -611,7 +611,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
         log.info("Creating data for: {}".format(subset_name))
 
-        app = os.environ.get("AVALON_APP", "")
+        app = os.environ.get("AYON_HOST_NAME", "")
 
         if isinstance(col, list):
             render_file_name = os.path.basename(col[0])
