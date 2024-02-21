@@ -25,7 +25,7 @@ class ValidateLoadedPlugin(OptionalPyblishPluginMixin,
     optional = True
     actions = [RepairAction]
 
-    family_plugins_mapping = {}
+    family_plugins_mapping = []
 
     @classmethod
     def get_invalid(cls, instance):
@@ -33,6 +33,12 @@ class ValidateLoadedPlugin(OptionalPyblishPluginMixin,
         family_plugins_mapping = cls.family_plugins_mapping
         if not family_plugins_mapping:
             return
+
+        # Backward compatibility - settings did have 'product_types'
+        if "product_types" in family_plugins_mapping:
+            family_plugins_mapping["families"] = family_plugins_mapping.pop(
+                "product_types"
+            )
 
         invalid = []
         # Find all plug-in requirements for current instance
@@ -47,7 +53,9 @@ class ValidateLoadedPlugin(OptionalPyblishPluginMixin,
             if not mapping:
                 return
 
-            match_families = {fam.strip() for fam in mapping["families"]}
+            match_families = {
+                fam.strip() for fam in mapping["families"]
+            }
             has_match = "*" in match_families or match_families.intersection(
                 instance_families)
 

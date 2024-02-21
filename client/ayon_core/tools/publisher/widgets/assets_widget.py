@@ -5,13 +5,13 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     RecursiveSortFilterProxyModel,
-    get_asset_icon,
 )
 from ayon_core.tools.utils.assets_widget import (
     SingleSelectAssetsWidget,
     ASSET_ID_ROLE,
     ASSET_NAME_ROLE,
     ASSET_PATH_ROLE,
+    get_asset_icon,
 )
 
 

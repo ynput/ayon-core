@@ -1,4 +1,3 @@
-import os
 import difflib
 import contextlib
 
@@ -6,7 +5,7 @@ from maya import cmds
 import qargparse
 
 from ayon_core.settings import get_project_settings
-import ayon_core.hosts.maya.api.plugin
+from ayon_core.hosts.maya.api import plugin
 from ayon_core.hosts.maya.api.lib import (
     maintained_selection,
     get_container_members,
@@ -87,7 +86,7 @@ def preserve_modelpanel_cameras(container, log=None):
             cmds.modelPanel(panel, edit=True, camera=new_camera)
 
 
-class ReferenceLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
+class ReferenceLoader(plugin.ReferenceLoader):
     """Reference file"""
 
     families = ["model",
@@ -185,14 +184,16 @@ class ReferenceLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
                     "{}.displayHandle".format(group_name), display_handle
                 )
 
-                colors = settings['maya']['load']['colors']
-                c = colors.get(family)
-                if c is not None:
+                color = plugin.get_load_color_for_family(family, settings)
+                if color is not None:
+                    red, green, blue = color
                     cmds.setAttr("{}.useOutlinerColor".format(group_name), 1)
-                    cmds.setAttr("{}.outlinerColor".format(group_name),
-                                 (float(c[0]) / 255),
-                                 (float(c[1]) / 255),
-                                 (float(c[2]) / 255))
+                    cmds.setAttr(
+                        "{}.outlinerColor".format(group_name),
+                        red,
+                        green,
+                        blue
+                    )
 
                 cmds.setAttr(
                     "{}.displayHandle".format(group_name), display_handle

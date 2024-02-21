@@ -9,6 +9,7 @@ from .folders_widget import (
     FoldersWidget,
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
+    SimpleFoldersWidget,
 )
 
 from .tasks_widget import (
@@ -31,6 +32,7 @@ __all__ = (
     "FoldersWidget",
     "FoldersQtModel",
     "FOLDERS_MODEL_SENDER_NAME",
+    "SimpleFoldersWidget",
 
     "TasksWidget",
     "TasksQtModel",

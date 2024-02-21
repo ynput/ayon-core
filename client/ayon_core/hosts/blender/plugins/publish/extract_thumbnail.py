@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 
 import pyblish.api
 from ayon_core.pipeline import publish
@@ -21,7 +22,7 @@ class ExtractThumbnail(publish.Extractor):
     hosts = ["blender"]
     families = ["review"]
     order = pyblish.api.ExtractorOrder + 0.01
-    presets = {}
+    presets = "{}"
 
     def process(self, instance):
         self.log.debug("Extracting capture..")
@@ -44,7 +45,8 @@ class ExtractThumbnail(publish.Extractor):
         family = instance.data.get("family")
         isolate = instance.data("isolate", None)
 
-        preset = self.presets.get(family, {})
+        presets = json.loads(self.presets)
+        preset = presets.get(family, {})
 
         preset.update({
             "camera": camera,
