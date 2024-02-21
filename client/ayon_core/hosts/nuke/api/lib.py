@@ -1298,7 +1298,8 @@ def create_write_node(
 
     for knob in imageio_writes["knobs"]:
         if knob["name"] == "file_type":
-            ext = knob["value"]
+            knot_type = knob["type"]
+            ext = knob[knot_type]
 
     data.update({
         "imageio_writes": imageio_writes,
@@ -1413,12 +1414,17 @@ def create_write_node(
     # set tile color
     tile_color = next(
         iter(
-            k["value"] for k in imageio_writes["knobs"]
+            k[k["type"]] for k in imageio_writes["knobs"]
             if "tile_color" in k["name"]
         ), [255, 0, 0, 255]
     )
+    new_tile_color = []
+    for c in tile_color:
+        if isinstance(c, float):
+            c = int(c * 255)
+        new_tile_color.append(c)
     GN["tile_color"].setValue(
-        color_gui_to_int(tile_color))
+        color_gui_to_int(new_tile_color))
 
     return GN
 
