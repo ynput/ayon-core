@@ -40,7 +40,7 @@ class ExtractWorkfile(publish.Extractor):
             "stagingDir": staging_dir,
         }
         representations = instance.data.setdefault("representations", [])
-        representations.append(representation )
+        representations.append(representation)
 
         self.log.debug(
             "Added hiero file representation: {}".format(representation)
