@@ -72,18 +72,21 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         transient_data,
         thumbnail_path
     ):
-        subset = in_data["subset"]
+        product_name = in_data["productName"]
         # If instance data already contain families then use it
         instance_families = in_data.get("families") or []
+        # Add product type to families
+        instance_families.append(in_data["productType"])
 
-        instance = context.create_instance(subset)
+        instance = context.create_instance(product_name)
         instance.data.update({
-            "subset": subset,
+            "publish": True,
+            "label": in_data.get("label") or product_name,
+            "name": product_name,
             "folderPath": in_data["folderPath"],
             "task": in_data["task"],
-            "label": in_data.get("label") or subset,
-            "name": subset,
-            "family": in_data["family"],
+            "productName": product_name,
+            "productType": in_data["productType"],
             "families": instance_families,
             "representations": [],
             "thumbnailSource": thumbnail_path
