@@ -25,16 +25,6 @@ class SubmitJobsToRoyalRender(pyblish.api.ContextPlugin):
         self._submission_parameters = []
 
     def process(self, context):
-        rr_settings = (
-            context.data
-            ["system_settings"]
-            ["modules"]
-            ["royalrender"]
-        )
-
-        if rr_settings["enabled"] is not True:
-            self.log.warning("RoyalRender modules is disabled.")
-            return
 
         # iterate over all instances and try to find RRJobs
         jobs = []
@@ -51,7 +41,7 @@ class SubmitJobsToRoyalRender(pyblish.api.ContextPlugin):
                 instance_rr_path = instance.data["rrPathName"]
 
         if jobs:
-            self._rr_root = self._resolve_rr_path(context, instance_rr_path)
+            self._rr_root = instance_rr_path
             if not self._rr_root:
                 raise KnownPublishError(
                     ("Missing RoyalRender root. "
@@ -100,17 +90,3 @@ class SubmitJobsToRoyalRender(pyblish.api.ContextPlugin):
 
     def get_submission_parameters(self):
         return [SubmitterParameter("RequiredMemory", "0")]
-
-    @staticmethod
-    def _resolve_rr_path(context, rr_path_name):
-        # type: (pyblish.api.Context, str) -> str
-        rr_settings = context.data["project_settings"]["royalrender"]
-        rr_paths = rr_settings["rr_paths"]
-        selected_paths = rr_settings["selected_rr_paths"]
-
-        rr_servers = {
-            path_key: rr_paths[path_key]
-            for path_key in selected_paths
-            if path_key in rr_paths
-        }
-        return rr_servers[rr_path_name][platform.system().lower()]
