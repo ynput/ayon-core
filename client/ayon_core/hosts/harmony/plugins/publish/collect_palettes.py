@@ -31,7 +31,7 @@ class CollectPalettes(pyblish.api.ContextPlugin):
             if (not any([re.search(pattern, task_name)
                          for pattern in self.allowed_tasks])):
                 return
-        asset_name = context.data["asset"]
+        folder_path = context.data["folderPath"]
 
         for name, id in palettes.items():
             instance = context.create_instance(name)
@@ -39,7 +39,7 @@ class CollectPalettes(pyblish.api.ContextPlugin):
                 "id": id,
                 "family": "harmony.palette",
                 'families': [],
-                "asset": asset_name,
+                "folderPath": folder_path,
                 "subset": "{}{}".format("palette", name)
             })
             self.log.info(

@@ -94,7 +94,7 @@ class CollectRender(pyblish.api.InstancePlugin):
         renderer = str(renderer_class).split(":")[0]
         # also need to get the render dir for conversion
         data = {
-            "asset": instance.data["asset"],
+            "folderPath": instance.data["folderPath"],
             "subset": str(instance.name),
             "publish": True,
             "maxversion": str(get_max_version()),
