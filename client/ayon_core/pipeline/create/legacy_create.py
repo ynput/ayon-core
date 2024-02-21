@@ -12,7 +12,7 @@ import collections
 from ayon_core.client import get_asset_by_id
 from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 
-from .subset_name import get_subset_name
+from .product_name import get_product_name
 
 
 class LegacyCreator(object):
@@ -123,7 +123,7 @@ class LegacyCreator(object):
         return dynamic_data
 
     @classmethod
-    def get_subset_name(
+    def get_product_name(
         cls, variant, task_name, asset_id, project_name, host_name=None
     ):
         """Return subset name created with entered arguments.
@@ -155,13 +155,13 @@ class LegacyCreator(object):
             project_name, asset_id, fields=["data.tasks"]
         )
 
-        return get_subset_name(
+        return get_product_name(
+            project_name,
+            asset_doc,
+            task_name,
+            host_name,
             cls.family,
             variant,
-            task_name,
-            asset_doc,
-            project_name,
-            host_name,
             dynamic_data=dynamic_data
         )
 
