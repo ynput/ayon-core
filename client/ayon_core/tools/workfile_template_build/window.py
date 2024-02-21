@@ -1,8 +1,9 @@
+import os
+
 from qtpy import QtWidgets
 
 from ayon_core import style
 from ayon_core.lib import Logger
-from ayon_core.pipeline import legacy_io
 from ayon_core.tools.attribute_defs import AttributeDefinitionsWidget
 
 
@@ -26,7 +27,7 @@ class WorkfileBuildPlaceholderDialog(QtWidgets.QDialog):
 
         host_name = getattr(self._host, "name", None)
         if not host_name:
-            host_name = legacy_io.Session.get("AVALON_APP") or "NA"
+            host_name = os.getenv("AYON_HOST_NAME") or "NA"
         self._host_name = host_name
 
         plugins_combo = QtWidgets.QComboBox(self)

@@ -50,17 +50,28 @@ class LoadClipBatch(opfapi.ClipLoader):
         version_name = version.get("name", None)
         colorspace = self.get_colorspace(context)
 
+        # TODO remove '{folder[name]}' and '{product[name]}' replacement
+        clip_name_template = (
+            self.clip_name_template
+            .replace("{folder[name]}", "{asset}")
+            .replace("{product[name]}", "{subset}")
+        )
+        layer_rename_template = (
+            self.layer_rename_template
+            .replace("{folder[name]}", "{asset}")
+            .replace("{product[name]}", "{subset}")
+        )
         # in case output is not in context replace key to representation
         if not context["representation"]["context"].get("output"):
-            self.clip_name_template = self.clip_name_template.replace(
+            clip_name_template = clip_name_template.replace(
                 "output", "representation")
-            self.layer_rename_template = self.layer_rename_template.replace(
+            layer_rename_template = layer_rename_template.replace(
                 "output", "representation")
 
         formatting_data = deepcopy(context["representation"]["context"])
         formatting_data["batch"] = self.batch.name.get_value()
 
-        clip_name = StringTemplate(self.clip_name_template).format(
+        clip_name = StringTemplate(clip_name_template).format(
             formatting_data)
 
         # convert colorspace with ocio to flame mapping
@@ -69,7 +80,7 @@ class LoadClipBatch(opfapi.ClipLoader):
         self.log.info("Loading with colorspace: `{}`".format(colorspace))
 
         # create workfile path
-        workfile_dir = options.get("workdir") or os.environ["AVALON_WORKDIR"]
+        workfile_dir = options.get("workdir") or os.environ["AYON_WORKDIR"]
         openclip_dir = os.path.join(
             workfile_dir, clip_name
         )
@@ -86,7 +97,7 @@ class LoadClipBatch(opfapi.ClipLoader):
             "path": path.replace("\\", "/"),
             "colorspace": colorspace,
             "version": "v{:0>3}".format(version_name),
-            "layer_rename_template": self.layer_rename_template,
+            "layer_rename_template": layer_rename_template,
             "layer_rename_patterns": self.layer_rename_patterns,
             "context_data": formatting_data
         }

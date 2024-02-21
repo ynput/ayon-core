@@ -8,8 +8,6 @@ from pprint import pformat
 
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io
-
 
 def collect(root,
             regex=None,
@@ -132,7 +130,6 @@ class CollectSequencesFromJob(pyblish.api.ContextPlugin):
                     session = metadata.get("session")
                     if session:
                         self.log.info("setting session using metadata")
-                        legacy_io.Session.update(session)
                         os.environ.update(session)
 
             else:

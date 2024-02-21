@@ -5,7 +5,6 @@ import platform
 import getpass
 import socket
 
-from ayon_core.settings.lib import get_local_settings
 from .execute import get_ayon_launcher_args
 from .local_settings import get_local_site_id
 
@@ -36,6 +35,16 @@ def is_running_from_build():
 
 def is_staging_enabled():
     return os.getenv("AYON_USE_STAGING") == "1"
+
+
+def is_in_tests():
+    """Process is running in automatic tests mode.
+
+    Returns:
+        bool: True if running in tests.
+
+    """
+    return os.environ.get("AYON_IN_TESTS") == "1"
 
 
 def is_dev_mode_enabled():
@@ -86,7 +95,6 @@ def get_all_current_info():
     return {
         "workstation": get_workstation_info(),
         "env": os.environ.copy(),
-        "local_settings": get_local_settings(),
         "ayon": get_ayon_info(),
     }
 
