@@ -17,7 +17,7 @@ from ayon_core.pipeline.plugin_discover import (
 )
 
 from .constants import DEFAULT_VARIANT_VALUE
-from .subset_name import get_subset_name
+from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
 
@@ -507,7 +507,7 @@ class BaseCreator:
 
         return {}
 
-    def get_subset_name(
+    def get_product_name(
         self,
         variant,
         task_name,
@@ -546,13 +546,13 @@ class BaseCreator:
             variant, task_name, asset_doc, project_name, host_name, instance
         )
 
-        return get_subset_name(
+        return get_product_name(
+            project_name,
+            asset_doc,
+            task_name,
+            host_name,
             self.family,
             variant,
-            task_name,
-            asset_doc,
-            project_name,
-            host_name,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings
         )

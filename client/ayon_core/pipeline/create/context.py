@@ -2003,12 +2003,12 @@ class CreateContext:
         # TODO validate types
         _pre_create_data.update(pre_create_data)
 
-        subset_name = creator.get_subset_name(
-            variant,
-            task_name,
-            asset_doc,
+        subset_name = creator.get_product_name(
             project_name,
-            self.host_name
+            asset_doc,
+            task_name,
+            self.host_name,
+            variant,
         )
         asset_name = get_asset_name_identifier(asset_doc)
 
