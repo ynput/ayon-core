@@ -19,7 +19,9 @@ from ayon_core.pipeline import (
     CreatorError,
     Creator as NewCreator,
     CreatedInstance,
-    get_current_task_name
+    get_current_task_name,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
 )
 from ayon_core.pipeline.colorspace import (
     get_display_view_colorspace_name,
@@ -1273,7 +1275,9 @@ def convert_to_valid_instaces():
         if not avalon_knob_data:
             continue
 
-        if avalon_knob_data["id"] != "pyblish.avalon.instance":
+        if avalon_knob_data["id"] not in {
+            AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+        }:
             continue
 
         transfer_data.update({

@@ -13,7 +13,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
     a composite node and marked with a unique identifier.
 
     Identifier:
-        id (str): "pyblish.avalon.instance"
+        id (str): "ayon.create.instance"
     """
 
     label = "Instances"
