@@ -377,23 +377,25 @@ class CreatorWindow(QtWidgets.QDialog):
 
         self._creators_model.reset()
 
-        pype_project_setting = (
+        product_types_smart_select = (
             get_current_project_settings()
             ["global"]
             ["tools"]
             ["creator"]
-            ["families_smart_select"]
+            ["product_types_smart_select"]
         )
         current_index = None
         family = None
         task_name = get_current_task_name() or None
         lowered_task_name = task_name.lower()
         if task_name:
-            for _family, _task_names in pype_project_setting.items():
-                _low_task_names = {name.lower() for name in _task_names}
+            for smart_item in product_types_smart_select:
+                _low_task_names = {
+                    name.lower() for name in smart_item["task_names"]
+                }
                 for _task_name in _low_task_names:
                     if _task_name in lowered_task_name:
-                        family = _family
+                        family = smart_item["name"]
                         break
                 if family:
                     break

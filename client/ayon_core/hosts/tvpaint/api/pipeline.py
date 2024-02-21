@@ -52,7 +52,7 @@ expected that there are also keys `["instances0", "instances1"]`.
 Workfile data looks like:
 ```
 [avalon]
-instances0=[{{__dq__}id{__dq__}: {__dq__}pyblish.avalon.instance{__dq__...
+instances0=[{{__dq__}id{__dq__}: {__dq__}ayon.create.instance{__dq__...
 instances1=...more data...
 instances=2
 ```
@@ -68,7 +68,7 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         log.info("AYON - Installing TVPaint integration")
 
         # Create workdir folder if does not exist yet
-        workdir = os.getenv("AVALON_WORKDIR")
+        workdir = os.getenv("AYON_WORKDIR")
         if not os.path.exists(workdir):
             os.makedirs(workdir)
 
@@ -155,7 +155,7 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return execute_george(george_script)
 
     def work_root(self, session):
-        return session["AVALON_WORKDIR"]
+        return session["AYON_WORKDIR"]
 
     def get_current_workfile(self):
         return execute_george("tv_GetProjectName")
@@ -174,7 +174,7 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         # Setup project settings if its the template that's launched.
         # TODO also check for template creation when it's possible to define
         #   templates
-        last_workfile = os.environ.get("AVALON_LAST_WORKFILE")
+        last_workfile = os.environ.get("AYON_LAST_WORKFILE")
         if not last_workfile or os.path.exists(last_workfile):
             return
 

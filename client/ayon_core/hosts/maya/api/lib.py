@@ -24,7 +24,8 @@ from ayon_core.client import (
     get_asset_by_name,
     get_subsets,
     get_last_versions,
-    get_representation_by_name
+    get_representation_by_name,
+    get_asset_name_identifier,
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
@@ -35,7 +36,11 @@ from ayon_core.pipeline import (
     loaders_from_representation,
     get_representation_path,
     load_container,
-    registered_host
+    registered_host,
+    AVALON_CONTAINER_ID,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_project_asset
@@ -2100,7 +2105,7 @@ def get_related_sets(node):
     """Return objectSets that are relationships for a look for `node`.
 
     Filters out based on:
-    - id attribute is NOT `pyblish.avalon.container`
+    - id attribute is NOT `AVALON_CONTAINER_ID`
     - shapes and deformer shapes (alembic creates meshShapeDeformed)
     - set name ends with any from a predefined list
     - set in not in viewport set (isolate selected for example)
@@ -2120,7 +2125,12 @@ def get_related_sets(node):
     defaults = {"defaultLightSet", "defaultObjectSet"}
 
     # Ids to ignore
-    ignored = {"pyblish.avalon.instance", "pyblish.avalon.container"}
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
 
     view_sets = get_isolate_view_sets()
 
@@ -3143,21 +3153,27 @@ def fix_incompatible_containers():
 
 def update_content_on_context_change():
     """
-    This will update scene content to match new asset on context change
+    This will update scene content to match new folder on context change
     """
     scene_sets = cmds.listSets(allSets=True)
     asset_doc = get_current_project_asset()
-    new_asset = asset_doc["name"]
+    new_folder_path = get_asset_name_identifier(asset_doc)
     new_data = asset_doc["data"]
     for s in scene_sets:
         try:
-            if cmds.getAttr("{}.id".format(s)) == "pyblish.avalon.instance":
+            if cmds.getAttr("{}.id".format(s)) in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 attr = cmds.listAttr(s)
                 print(s)
-                if "asset" in attr:
-                    print("  - setting asset to: [ {} ]".format(new_asset))
-                    cmds.setAttr("{}.asset".format(s),
-                                 new_asset, type="string")
+                if "folderPath" in attr:
+                    print(
+                        "  - setting folder to: [ {} ]".format(new_folder_path)
+                    )
+                    cmds.setAttr(
+                        "{}.folderPath".format(s),
+                        new_folder_path, type="string"
+                    )
                 if "frameStart" in attr:
                     cmds.setAttr("{}.frameStart".format(s),
                                  new_data["frameStart"])

@@ -106,7 +106,7 @@ class HostBase(object):
             Union[str, None]: Current project name.
         """
 
-        return os.environ.get("AVALON_PROJECT")
+        return os.environ.get("AYON_PROJECT_NAME")
 
     def get_current_asset_name(self):
         """
@@ -114,7 +114,7 @@ class HostBase(object):
             Union[str, None]: Current asset name.
         """
 
-        return os.environ.get("AVALON_ASSET")
+        return os.environ.get("AYON_FOLDER_PATH")
 
     def get_current_task_name(self):
         """
@@ -122,7 +122,7 @@ class HostBase(object):
             Union[str, None]: Current task name.
         """
 
-        return os.environ.get("AVALON_TASK")
+        return os.environ.get("AYON_TASK_NAME")
 
     def get_current_context(self):
         """Get current context information.
