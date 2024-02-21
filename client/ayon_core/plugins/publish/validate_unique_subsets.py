@@ -36,7 +36,7 @@ class ValidateSubsetUniqueness(pyblish.api.ContextPlugin):
                 continue
 
             # Ignore instance without asset data
-            asset = instance.data.get("asset")
+            asset = instance.data.get("folderPath")
             if asset is None:
                 self.log.warning("Instance found without `asset` data: "
                                  "{}".format(instance.name))

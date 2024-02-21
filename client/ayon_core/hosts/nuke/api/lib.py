@@ -45,6 +45,8 @@ from ayon_core.pipeline import (
     get_current_host_name,
     get_current_project_name,
     get_current_asset_name,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
 )
 from ayon_core.pipeline.context_tools import (
     get_custom_workfile_template_from_session
@@ -120,7 +122,7 @@ def deprecated(new_destination):
 class Context:
     main_window = None
     context_action_item = None
-    project_name = os.getenv("AVALON_PROJECT")
+    project_name = os.getenv("AYON_PROJECT_NAME")
     # Workfile related code
     workfiles_launched = False
     workfiles_tool_timer = None
@@ -2300,12 +2302,16 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
                 # backward compatibility
                 # TODO: remove this once old avalon data api will be removed
                 avalon_knob_data
-                and avalon_knob_data.get("id") != "pyblish.avalon.instance"
+                and avalon_knob_data.get("id") not in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }
             ):
                 continue
             elif (
                 node_data
-                and node_data.get("id") != "pyblish.avalon.instance"
+                and node_data.get("id") not in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }
             ):
                 continue
 
@@ -2605,7 +2611,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
     def set_favorites(self):
         from .utils import set_context_favorites
 
-        work_dir = os.getenv("AVALON_WORKDIR")
+        work_dir = os.getenv("AYON_WORKDIR")
         asset = get_current_asset_name()
         favorite_items = OrderedDict()
 
@@ -2953,7 +2959,7 @@ def process_workfile_builder():
     create_fv_on = workfile_builder.get("create_first_version") or None
     builder_on = workfile_builder.get("builder_on_start") or None
 
-    last_workfile_path = os.environ.get("AVALON_LAST_WORKFILE")
+    last_workfile_path = os.environ.get("AYON_LAST_WORKFILE")
 
     # generate first version in file not existing and feature is enabled
     if create_fv_on and not os.path.exists(last_workfile_path):
@@ -3203,7 +3209,7 @@ class DirmapCache:
     @classmethod
     def project_name(cls):
         if cls._project_name is None:
-            cls._project_name = os.getenv("AVALON_PROJECT")
+            cls._project_name = os.getenv("AYON_PROJECT_NAME")
         return cls._project_name
 
     @classmethod

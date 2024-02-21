@@ -31,7 +31,7 @@ class ExtractSequence(pyblish.api.Extractor):
     families = ["review", "render"]
 
     # Modifiable with settings
-    review_bg = [255, 255, 255, 255]
+    review_bg = [255, 255, 255, 1.0]
 
     def process(self, instance):
         self.log.info(
