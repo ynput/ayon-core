@@ -16,11 +16,6 @@ from .product_name import (
     get_product_name_template,
 )
 
-from .subset_name import (
-    get_subset_name_template,
-    get_subset_name,
-)
-
 from .creator_plugins import (
     CreatorError,
 
