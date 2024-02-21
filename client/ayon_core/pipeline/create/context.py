@@ -866,7 +866,7 @@ class CreatedInstance:
             creator.
 
     Args:
-        family (str): Name of family that will be created.
+        product_type (str): Product type that will be created.
         product_name (str): Name of product that will be created.
         data (Dict[str, Any]): Data used for filling product name or override
             data from already existing instance.
@@ -885,7 +885,7 @@ class CreatedInstance:
     __immutable_keys = (
         "id",
         "instance_id",
-        "family",
+        "product_type",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
@@ -1436,7 +1436,7 @@ class CreateContext:
         self.publish_plugins_mismatch_targets = []
         self.publish_plugins = []
         self.plugins_with_defs = []
-        self._attr_plugins_by_family = {}
+        self._attr_plugins_by_product_type = {}
 
         # Helpers for validating context of collected instances
         #   - they can be validation for multiple instances at one time
@@ -1745,7 +1745,7 @@ class CreateContext:
         )
 
         # Reset publish plugins
-        self._attr_plugins_by_family = {}
+        self._attr_plugins_by_product_type = {}
 
         discover_result = DiscoverResult(pyblish.api.Plugin)
         plugins_with_defs = []
@@ -1917,8 +1917,8 @@ class CreateContext:
 
         self._instances_by_id[instance.id] = instance
         # Prepare publish plugin attributes and set it on instance
-        attr_plugins = self._get_publish_plugins_with_attr_for_family(
-            instance.family
+        attr_plugins = self._get_publish_plugins_with_attr_for_product_type(
+            instance.product_type
         )
         instance.set_publish_plugins(attr_plugins)
 
@@ -2431,29 +2431,29 @@ class CreateContext:
         if failed_info:
             raise CreatorsRemoveFailed(failed_info)
 
-    def _get_publish_plugins_with_attr_for_family(self, family):
-        """Publish plugin attributes for passed family.
+    def _get_publish_plugins_with_attr_for_product_type(self, product_type):
+        """Publish plugin attributes for passed product type.
 
-        Attribute definitions for specific family are cached.
+        Attribute definitions for specific product type are cached.
 
         Args:
-            family(str): Instance family for which should be attribute
-                definitions returned.
+            product_type(str): Instance product type for which should be
+                attribute definitions returned.
         """
 
-        if family not in self._attr_plugins_by_family:
+        if product_type not in self._attr_plugins_by_product_type:
             import pyblish.logic
 
             filtered_plugins = pyblish.logic.plugins_by_families(
-                self.plugins_with_defs, [family]
+                self.plugins_with_defs, [product_type]
             )
             plugins = []
             for plugin in filtered_plugins:
                 if plugin.__instanceEnabled__:
                     plugins.append(plugin)
-            self._attr_plugins_by_family[family] = plugins
+            self._attr_plugins_by_product_type[product_type] = plugins
 
-        return self._attr_plugins_by_family[family]
+        return self._attr_plugins_by_product_type[product_type]
 
     def _get_publish_plugins_with_attr_for_context(self):
         """Publish plugins attributes for Context plugins.

@@ -14,7 +14,7 @@ Except creating and removing instances are all changes not automatically propaga
 
 
 ## CreatedInstance
-Product of creation is "instance" which holds basic data defying it. Core data are `creator_identifier`, `productType` and `productName`. Other data can be keys used to fill subset name or metadata modifying publishing process of the instance (more described later). All instances have `id` which holds constant `ayon.create.instance` or `pyblish.avalon.instance` (for backwards compatibility) and `instance_id` which is identifier of the instance.
+Product of creation is "instance" which holds basic data defying it. Core data are `creator_identifier`, `productType` and `productName`. Other data can be keys used to fill product name or metadata modifying publishing process of the instance (more described later). All instances have `id` which holds constant `ayon.create.instance` or `pyblish.avalon.instance` (for backwards compatibility) and `instance_id` which is identifier of the instance.
 Product type tells how should be instance processed and product name what name will published item have.
 - There are cases when product name is not fully filled during creation and may change during publishing. That is in most of cases caused because instance is related to other instance or instance data do not represent final product.
 
