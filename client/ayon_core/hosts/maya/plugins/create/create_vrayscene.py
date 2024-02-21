@@ -23,7 +23,7 @@ class CreateVRayScene(plugin.RenderlayerCreator):
 
     @classmethod
     def apply_settings(cls, project_settings):
-        cls.render_settings = project_settings["maya"]["RenderSettings"]
+        cls.render_settings = project_settings["maya"]["render_settings"]
 
     def create(self, subset_name, instance_data, pre_create_data):
         # Only allow a single render instance to exist

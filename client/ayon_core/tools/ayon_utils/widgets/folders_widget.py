@@ -2,6 +2,11 @@ import collections
 
 from qtpy import QtWidgets, QtGui, QtCore
 
+from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.tools.ayon_utils.models import (
+    HierarchyModel,
+    HierarchyExpectedSelection,
+)
 from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     TreeView,
@@ -390,6 +395,15 @@ class FoldersWidget(QtWidgets.QWidget):
 
         return self._get_selected_item_id()
 
+    def get_selected_folder_path(self):
+        """Get selected folder id.
+
+        Returns:
+            Union[str, None]: Folder path which is selected.
+        """
+
+        return self._get_selected_item_value(FOLDER_PATH_ROLE)
+
     def get_selected_folder_label(self):
         """Selected folder label.
 
@@ -473,9 +487,12 @@ class FoldersWidget(QtWidgets.QWidget):
         self.refreshed.emit()
 
     def _get_selected_item_id(self):
+        return self._get_selected_item_value(FOLDER_ID_ROLE)
+
+    def _get_selected_item_value(self, role):
         selection_model = self._folders_view.selectionModel()
         for index in selection_model.selectedIndexes():
-            item_id = index.data(FOLDER_ID_ROLE)
+            item_id = index.data(role)
             if item_id is not None:
                 return item_id
         return None
@@ -514,3 +531,110 @@ class FoldersWidget(QtWidgets.QWidget):
         if folder_id is not None:
             self.set_selected_folder(folder_id)
         self._controller.expected_folder_selected(folder_id)
+
+
+class SimpleSelectionModel(object):
+    """Model handling selection changes.
+
+    Triggering events:
+    - "selection.project.changed"
+    - "selection.folder.changed"
+    """
+
+    event_source = "selection.model"
+
+    def __init__(self, controller):
+        self._controller = controller
+
+        self._project_name = None
+        self._folder_id = None
+        self._task_id = None
+        self._task_name = None
+
+    def get_selected_project_name(self):
+        return self._project_name
+
+    def set_selected_project(self, project_name):
+        self._project_name = project_name
+        self._controller.emit_event(
+            "selection.project.changed",
+            {"project_name": project_name},
+            self.event_source
+        )
+
+    def get_selected_folder_id(self):
+        return self._folder_id
+
+    def set_selected_folder(self, folder_id):
+        if folder_id == self._folder_id:
+            return
+        self._folder_id = folder_id
+        self._controller.emit_event(
+            "selection.folder.changed",
+            {
+                "project_name": self._project_name,
+                "folder_id": folder_id,
+            },
+            self.event_source
+        )
+
+
+class SimpleFoldersController(object):
+    def __init__(self):
+        self._event_system = self._create_event_system()
+        self._hierarchy_model = HierarchyModel(self)
+        self._selection_model = SimpleSelectionModel(self)
+        self._expected_selection = HierarchyExpectedSelection(
+            self, handle_project=False, handle_folder=True, handle_task=False
+        )
+
+    def emit_event(self, topic, data=None, source=None):
+        """Use implemented event system to trigger event."""
+
+        if data is None:
+            data = {}
+        self._event_system.emit(topic, data, source)
+
+    def register_event_callback(self, topic, callback):
+        self._event_system.add_callback(topic, callback)
+
+    # Model functions
+    def get_folder_items(self, project_name, sender=None):
+        return self._hierarchy_model.get_folder_items(project_name, sender)
+
+    def set_selected_project(self, project_name):
+        self._selection_model.set_selected_project(project_name)
+
+    def set_selected_folder(self, folder_id):
+        self._selection_model.set_selected_folder(folder_id)
+
+    def get_expected_selection_data(self):
+        self._expected_selection.get_expected_selection_data()
+
+    def expected_folder_selected(self, folder_id):
+        self._expected_selection.expected_folder_selected(folder_id)
+
+    def _create_event_system(self):
+        return QueuedEventSystem()
+
+
+class SimpleFoldersWidget(FoldersWidget):
+    def __init__(self, controller=None, *args, **kwargs):
+        if controller is None:
+            controller = SimpleFoldersController()
+        super(SimpleFoldersWidget, self).__init__(controller, *args, **kwargs)
+
+    def set_project_name(self, project_name):
+        self._controller.set_selected_project(project_name)
+        super(SimpleFoldersWidget, self).set_project_name(project_name)
+
+    def _on_project_selection_change(self, event):
+        """Ignore project selection change from controller.
+
+        Only who can trigger project change is this widget with
+            'set_project_name' which already cares about project change.
+
+        Args:
+            event (Event): Triggered event.
+        """
+        pass

@@ -18,6 +18,7 @@ Attributes:
 
 from __future__ import print_function
 import os
+import json
 import getpass
 import copy
 import re
@@ -35,14 +36,14 @@ from ayon_core.lib import (
     BoolDef,
     NumberDef,
     TextDef,
-    EnumDef
+    EnumDef,
+    is_in_tests,
 )
 from ayon_core.hosts.maya.api.lib_rendersettings import RenderSettings
 from ayon_core.hosts.maya.api.lib import get_attr_in_layer
 
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
-from ayon_core.tests.lib import is_in_tests
 from ayon_core.pipeline.farm.tools import iter_expected_files
 
 
@@ -130,8 +131,15 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         cls.group = settings.get("group", cls.group)
         cls.strict_error_checking = settings.get("strict_error_checking",
                                                  cls.strict_error_checking)
-        cls.jobInfo = settings.get("jobInfo", cls.jobInfo)
-        cls.pluginInfo = settings.get("pluginInfo", cls.pluginInfo)
+        job_info = settings.get("jobInfo")
+        if job_info:
+            job_info = json.loads(job_info)
+        plugin_info = settings.get("pluginInfo")
+        if plugin_info:
+            plugin_info = json.loads(plugin_info)
+
+        cls.jobInfo = job_info or cls.jobInfo
+        cls.pluginInfo = plugin_info or cls.pluginInfo
 
     def get_job_info(self):
         job_info = DeadlineJobInfo(Plugin="MayaBatch")
@@ -199,11 +207,11 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_WORKDIR",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "IS_TEST"
         ]
 
@@ -251,7 +259,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         default_rs_include_lights = (
             instance.context.data['project_settings']
                                  ['maya']
-                                 ['RenderSettings']
+                                 ['render_settings']
                                  ['enable_all_lights']
         )
 

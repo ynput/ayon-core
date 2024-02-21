@@ -52,7 +52,7 @@ Because Harmony projects are directories, this integration uses `.zip` as work f
 
 ### Show Workfiles on launch
 
-You can show the Workfiles app when Harmony launches by setting environment variable `AVALON_HARMONY_WORKFILES_ON_LAUNCH=1`.
+You can show the Workfiles app when Harmony launches by setting environment variable `AYON_HARMONY_WORKFILES_ON_LAUNCH=1`.
 
 ## Developing
 

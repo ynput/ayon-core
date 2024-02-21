@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import maya.cmds as cmds  # noqa
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
@@ -12,6 +11,7 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
 
 
 class VRaySceneLoader(load.LoaderPlugin):
@@ -58,14 +58,12 @@ class VRaySceneLoader(load.LoaderPlugin):
         # colour the group node
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-        c = colors.get(family)
-        if c is not None:
+        color = get_load_color_for_family(family, settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(root_node), 1)
-            cmds.setAttr("{0}.outlinerColor".format(root_node),
-                (float(c[0])/255),
-                (float(c[1])/255),
-                (float(c[2])/255)
+            cmds.setAttr(
+                "{0}.outlinerColor".format(root_node), red, green, blue
             )
 
         return containerise(

@@ -59,7 +59,9 @@ class ValidatePointCloud(pyblish.api.InstancePlugin):
                     event_name = sub_anim.name
                     opt = "${0}.{1}.export_particles".format(sel.name,
                                                              event_name)
-                    for key, value in attr_settings.items():
+                    for attr in attr_settings:
+                        key = attr["name"]
+                        value = attr["value"]
                         custom_attr = "{0}.PRTChannels_{1}".format(opt,
                                                                    value)
                         try:

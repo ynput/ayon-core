@@ -311,7 +311,7 @@ class SettingsCreator(TrayPublishCreator):
     @classmethod
     def from_settings(cls, item_data):
         identifier = item_data["identifier"]
-        family = item_data["family"]
+        family = item_data["product_type"]
         if not identifier:
             identifier = "settings_{}".format(family)
         return type(
