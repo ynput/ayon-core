@@ -107,7 +107,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             self.add_link(
                 new_links_by_type,
                 "reference",
-                version["version"],
+                version["version_id"],
                 workfile_version_id,
             )
 
