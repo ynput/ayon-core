@@ -21,7 +21,7 @@ class CreateWorkdirExtraFolders(PreLaunchHook):
             return
 
         env = self.data.get("env") or {}
-        workdir = env.get("AVALON_WORKDIR")
+        workdir = env.get("AYON_WORKDIR")
         if not workdir or not os.path.exists(workdir):
             return
 

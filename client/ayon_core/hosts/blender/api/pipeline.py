@@ -26,6 +26,7 @@ from ayon_core.pipeline import (
     deregister_loader_plugin_path,
     deregister_creator_plugin_path,
     AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.lib import (
     Logger,
@@ -272,7 +273,7 @@ def set_resolution(data):
 
 
 def on_new():
-    project = os.environ.get("AVALON_PROJECT")
+    project = os.environ.get("AYON_PROJECT_NAME")
     settings = get_project_settings(project).get("blender")
 
     set_resolution_startup = settings.get("set_resolution_startup")
@@ -293,7 +294,7 @@ def on_new():
 
 
 def on_open():
-    project = os.environ.get("AVALON_PROJECT")
+    project = os.environ.get("AYON_PROJECT_NAME")
     settings = get_project_settings(project).get("blender")
 
     set_resolution_startup = settings.get("set_resolution_startup")
@@ -379,7 +380,7 @@ def _on_task_changed():
     # `directory` attribute, so it opens in that directory (does it?).
     # https://docs.blender.org/api/blender2.8/bpy.types.Operator.html#calling-a-file-selector
     # https://docs.blender.org/api/blender2.8/bpy.types.WindowManager.html#bpy.types.WindowManager.fileselect_add
-    workdir = os.getenv("AVALON_WORKDIR")
+    workdir = os.getenv("AYON_WORKDIR")
     log.debug("New working directory: %s", workdir)
 
 
@@ -563,8 +564,9 @@ def ls() -> Iterator:
     called containers.
     """
 
-    for container in lib.lsattr("id", AVALON_CONTAINER_ID):
-        yield parse_container(container)
+    for id_type in {AYON_CONTAINER_ID, AVALON_CONTAINER_ID}:
+        for container in lib.lsattr("id", id_type):
+            yield parse_container(container)
 
 
 def publish():

@@ -197,7 +197,7 @@ def create_skeleton_instance(
 
     if data.get("extendFrames", False):
         time_data.start, time_data.end = extend_frames(
-            data["asset"],
+            data["folderPath"],
             data["subset"],
             time_data.start,
             time_data.end,
@@ -228,7 +228,7 @@ def create_skeleton_instance(
         "family": family,
         "subset": data["subset"],
         "families": families,
-        "asset": data["asset"],
+        "folderPath": data["folderPath"],
         "frameStart": time_data.start,
         "frameEnd": time_data.end,
         "handleStart": time_data.handle_start,
@@ -321,7 +321,7 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
 
     """
     representations = []
-    host_name = os.environ.get("AVALON_APP", "")
+    host_name = os.environ.get("AYON_HOST_NAME", "")
     collections, remainders = clique.assemble(exp_files)
 
     log = Logger.get_logger("farm_publishing")
@@ -541,7 +541,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
     """
     # TODO: this needs to be taking the task from context or instance
-    task = os.environ["AVALON_TASK"]
+    task = os.environ["AYON_TASK_NAME"]
 
     anatomy = instance.context.data["anatomy"]
     subset = skeleton["subset"]
@@ -611,7 +611,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
         log.info("Creating data for: {}".format(subset_name))
 
-        app = os.environ.get("AVALON_APP", "")
+        app = os.environ.get("AYON_HOST_NAME", "")
 
         if isinstance(col, list):
             render_file_name = os.path.basename(col[0])
@@ -777,7 +777,7 @@ def create_skeleton_instance_cache(instance):
 
     if data.get("extendFrames", False):
         time_data.start, time_data.end = extend_frames(
-            data["asset"],
+            data["folderPath"],
             data["subset"],
             time_data.start,
             time_data.end,
@@ -805,7 +805,7 @@ def create_skeleton_instance_cache(instance):
         "family": family,
         "subset": data["subset"],
         "families": families,
-        "asset": data["asset"],
+        "folderPath": data["folderPath"],
         "frameStart": time_data.start,
         "frameEnd": time_data.end,
         "handleStart": time_data.handle_start,
@@ -1011,7 +1011,7 @@ def copy_extend_frames(instance, representation):
     version = get_last_version_by_subset_name(
         project_name,
         instance.data.get("subset"),
-        asset_name=instance.data.get("asset")
+        asset_name=instance.data.get("folderPath")
     )
 
     # get its files based on extension

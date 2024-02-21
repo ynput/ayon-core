@@ -132,8 +132,8 @@ class TextureCopy:
 def texture_copy(asset, project, path):
     t.echo("*** Running Texture tool ***")
     t.echo(">>> Initializing avalon session ...")
-    os.environ["AVALON_PROJECT"] = project
-    os.environ["AVALON_ASSET"] = asset
+    os.environ["AYON_PROJECT_NAME"] = project
+    os.environ["AYON_FOLDER_PATH"] = asset
     TextureCopy().process(asset, project, path)
 
 

@@ -30,7 +30,7 @@ class ValidateInstanceAssetRepair(pyblish.api.Action):
         for instance in instances:
             data = stub.read(instance[0])
 
-            data["asset"] = get_current_asset_name()
+            data["folderPath"] = get_current_asset_name()
             stub.imprint(instance[0].instance_id, data)
 
 
@@ -53,7 +53,7 @@ class ValidateInstanceAsset(pyblish.api.InstancePlugin):
     order = ValidateContentsOrder
 
     def process(self, instance):
-        instance_asset = instance.data["asset"]
+        instance_asset = instance.data["folderPath"]
         current_asset = get_current_asset_name()
         msg = (
             f"Instance asset {instance_asset} is not the same "
