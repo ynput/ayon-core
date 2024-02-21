@@ -132,7 +132,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         # publish job file
         publish_job = {
-            "asset": instance_skeleton_data["asset"],
+            "folderPath": instance_skeleton_data["folderPath"],
             "frameStart": instance_skeleton_data["frameStart"],
             "frameEnd": instance_skeleton_data["frameEnd"],
             "fps": instance_skeleton_data["fps"],
@@ -180,7 +180,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         environment = RREnvList({
             "AYON_PROJECT_NAME": anatomy_data["project"]["name"],
-            "AYON_FOLDER_PATH": instance.context.data["asset"],
+            "AYON_FOLDER_PATH": instance.context.data["folderPath"],
             "AYON_TASK_NAME": anatomy_data["task"]["name"],
             "AYON_USERNAME": anatomy_data["user"]
         })
