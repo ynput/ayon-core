@@ -9,7 +9,7 @@ from ayon_core.client import (
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.pipeline.create import get_subset_name_template
+from ayon_core.pipeline.create import get_product_name_template
 from ayon_core.tools.ayon_utils.models import ProjectsModel, HierarchyModel
 
 from .models import (
@@ -259,7 +259,7 @@ class PushToContextController:
         family = subset_doc["data"].get("family")
         if not family:
             family = subset_doc["data"]["families"][0]
-        template = get_subset_name_template(
+        template = get_product_name_template(
             self._src_project_name,
             family,
             task_name,
