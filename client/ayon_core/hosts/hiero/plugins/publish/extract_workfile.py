@@ -45,4 +45,3 @@ class ExtractWorkfile(publish.Extractor):
         self.log.debug(
             "Added hiero file representation: {}".format(representation)
         )
-        )
