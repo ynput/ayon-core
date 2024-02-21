@@ -4,10 +4,23 @@ from ayon_core.settings import get_project_settings
 from ayon_core.lib import filter_profiles, prepare_template_data
 
 from .constants import DEFAULT_SUBSET_TEMPLATE
-from .product_name import TaskNotSetError, TemplateFillError
 
 
-def get_subset_name_template(
+class TaskNotSetError(KeyError):
+    def __init__(self, msg=None):
+        if not msg:
+            msg = "Creator's subset name template requires task name."
+        super(TaskNotSetError, self).__init__(msg)
+
+
+class TemplateFillError(Exception):
+    def __init__(self, msg=None):
+        if not msg:
+            msg = "Creator's subset name template is missing key value."
+        super(TemplateFillError, self).__init__(msg)
+
+
+def get_product_name_template(
     project_name,
     family,
     task_name,
@@ -66,48 +79,40 @@ def get_subset_name_template(
     return template
 
 
-def get_subset_name(
-    family,
-    variant,
-    task_name,
+def get_product_name(
+    project_name,
     asset_doc,
-    project_name=None,
-    host_name=None,
+    task_name,
+    host_name,
+    product_type,
+    variant,
     default_template=None,
     dynamic_data=None,
     project_settings=None,
     family_filter=None,
 ):
-    """Calculate subset name based on passed context and OpenPype settings.
+    """Calculate product name based on passed context and AYON settings.
 
     Subst name templates are defined in `project_settings/global/tools/creator
     /product_name_profiles` where are profiles with host name, family,
     task name and task type filters. If context does not match any profile
     then `DEFAULT_SUBSET_TEMPLATE` is used as default template.
 
-    That's main reason why so many arguments are required to calculate subset
+    That's main reason why so many arguments are required to calculate product
     name.
-
-    Option to pass family filter was added for special cases when creator or
-    automated publishing require special subset name template which would be
-    hard to maintain using its family value.
-        Why not just pass the right family? -> Family is also used as fill
-            value and for filtering of publish plugins.
 
     Todos:
         Find better filtering options to avoid requirement of
             argument 'family_filter'.
 
     Args:
-        family (str): Instance family.
+        project_name (str): Project name.
+        host_name (str): Host name.
+        product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
         task_name (str): Task name on which context is instance created.
         asset_doc (dict): Queried asset document with its tasks in data.
             Used to get task type.
-        project_name (Optional[str]): Name of project on which is instance
-            created. Important for project settings that are loaded.
-        host_name (Optional[str]): One of filtering criteria for template
-            profile filters.
         default_template (Optional[str]): Default template if any profile does
             not match passed context. Constant 'DEFAULT_SUBSET_TEMPLATE'
             is used if is not passed.
@@ -123,25 +128,16 @@ def get_subset_name(
             collected.
     """
 
-    if not family:
+    if not product_type:
         return ""
-
-    if not host_name:
-        host_name = os.environ.get("AYON_HOST_NAME")
-
-    # Use only last part of class family value split by dot (`.`)
-    family = family.rsplit(".", 1)[-1]
-
-    if project_name is None:
-        project_name = os.environ.get("AYON_PROJECT_NAME")
 
     asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
     task_info = asset_tasks.get(task_name) or {}
     task_type = task_info.get("type")
 
-    template = get_subset_name_template(
+    template = get_product_name_template(
         project_name,
-        family_filter or family,
+        family_filter or product_type,
         task_name,
         task_type,
         host_name,
@@ -153,10 +149,20 @@ def get_subset_name(
     if not task_name and "{task" in template.lower():
         raise TaskNotSetError()
 
+    task_value = {
+        "name": task_name,
+        "type": task_type,
+    }
+    if "{task}" in template.lower():
+        task_value = task_name
+
     fill_pairs = {
         "variant": variant,
-        "family": family,
-        "task": task_name
+        "family": product_type,
+        "task": task_value,
+        "product": {
+            "type": product_type
+        }
     }
     if dynamic_data:
         # Dynamic data may override default values
