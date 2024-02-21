@@ -108,9 +108,7 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
 
         context = instance.context
 
-        self._rr_root = self._resolve_rr_path(context, instance.data.get(
-            "rrPathName"))  # noqa
-        self.log.debug(self._rr_root)
+        self._rr_root = instance.data.get("rrPathName")
         if not self._rr_root:
             raise KnownPublishError(
                 ("Missing RoyalRender root. "
@@ -209,20 +207,6 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
     def update_job_with_host_specific(self, instance, job):
         """Host specific mapping for RRJob"""
         raise NotImplementedError
-
-    @staticmethod
-    def _resolve_rr_path(context, rr_path_name):
-        # type: (pyblish.api.Context, str) -> str
-        rr_settings = context.data["project_settings"]["royalrender"]
-        rr_paths = rr_settings["rr_paths"]
-        selected_paths = rr_settings["selected_rr_paths"]
-
-        rr_servers = {
-            path_key: rr_paths[path_key]
-            for path_key in selected_paths
-            if path_key in rr_paths
-        }
-        return rr_servers[rr_path_name][platform.system().lower()]
 
     def expected_files(self, instance, path, start_frame, end_frame):
         """Get expected files.

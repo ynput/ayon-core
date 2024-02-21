@@ -19,6 +19,9 @@ class CollectRRPathFromInstance(pyblish.api.InstancePlugin):
         # type: (pyblish.api.Instance) -> str
         """Get Royal Render pat name from render instance."""
 
+        # TODO there are no "rrPaths" on instance, if Publisher should expose
+        # this (eg. artist could select specific server) it must be added
+        # to publisher
         instance_rr_paths = instance.data.get("rrPaths")
         if instance_rr_paths is None:
             return "default"
