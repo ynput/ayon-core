@@ -43,7 +43,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
         "unreal"
     ]
 
-    audio_subset_name = "audioMain"
+    audio_product_name = "audioMain"
 
     def process(self, context):
         # Fake filtering by family inside context plugin
@@ -71,9 +71,9 @@ class CollectAudio(pyblish.api.ContextPlugin):
 
         asset_names = set(instances_by_asset_name.keys())
         self.log.debug((
-            "Searching for audio subset '{subset}' in assets {assets}"
+            "Searching for audio product '{subset}' in assets {assets}"
         ).format(
-            subset=self.audio_subset_name,
+            subset=self.audio_product_name,
             assets=", ".join([
                 '"{}"'.format(asset_name)
                 for asset_name in asset_names
@@ -130,11 +130,11 @@ class CollectAudio(pyblish.api.ContextPlugin):
         }
         asset_ids = set(asset_id_by_name.values())
 
-        # Query subsets with name define by 'audio_subset_name' attr
+        # Query subsets with name define by 'audio_product_name' attr
         # - one or none subsets with the name should be available on an asset
         subset_docs = get_subsets(
             project_name,
-            subset_names=[self.audio_subset_name],
+            subset_names=[self.audio_product_name],
             asset_ids=asset_ids,
             fields=["_id", "parent"]
         )

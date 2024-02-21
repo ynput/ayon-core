@@ -12,7 +12,7 @@ class ClockifyStart(LauncherAction):
 
     def is_compatible(self, session):
         """Return whether the action is compatible with the session"""
-        if "AVALON_TASK" in session:
+        if "AYON_TASK_NAME" in session:
             return True
         return False
 
@@ -20,9 +20,9 @@ class ClockifyStart(LauncherAction):
         self.clockify_api.set_api()
         user_id = self.clockify_api.user_id
         workspace_id = self.clockify_api.workspace_id
-        project_name = session["AVALON_PROJECT"]
-        asset_name = session["AVALON_ASSET"]
-        task_name = session["AVALON_TASK"]
+        project_name = session["AYON_PROJECT_NAME"]
+        asset_name = session["AYON_FOLDER_PATH"]
+        task_name = session["AYON_TASK_NAME"]
         description = asset_name
 
         # fetch asset docs

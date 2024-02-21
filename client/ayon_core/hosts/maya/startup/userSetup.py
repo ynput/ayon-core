@@ -38,31 +38,12 @@ if explicit_plugins_loading["enabled"]:
 key = "AYON_OPEN_WORKFILE_POST_INITIALIZATION"
 if bool(int(os.environ.get(key, "0"))):
     def _log_and_open():
-        path = os.environ["AVALON_LAST_WORKFILE"]
+        path = os.environ["AYON_LAST_WORKFILE"]
         print("Opening \"{}\"".format(path))
         cmds.file(path, open=True, force=True)
     cmds.evalDeferred(
         _log_and_open,
         lowestPriority=True
-    )
-
-# Build a shelf.
-shelf_preset = settings['maya'].get('project_shelf')
-if shelf_preset:
-    icon_path = os.path.join(
-        os.environ['OPENPYPE_PROJECT_SCRIPTS'],
-        project_name,
-        "icons")
-    icon_path = os.path.abspath(icon_path)
-
-    for i in shelf_preset['imports']:
-        import_string = "from {} import {}".format(project_name, i)
-        print(import_string)
-        exec(import_string)
-
-    cmds.evalDeferred(
-        "mlib.shelf(name=shelf_preset['name'], iconPath=icon_path,"
-        " preset=shelf_preset)"
     )
 
 

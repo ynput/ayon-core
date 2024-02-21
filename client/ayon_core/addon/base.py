@@ -788,6 +788,7 @@ class AddonsManager:
 
                 addon_classes.append(modules_item)
 
+        aliased_names = []
         for addon_cls in addon_classes:
             name = addon_cls.__name__
             if issubclass(addon_cls, OpenPypeModule):
@@ -807,6 +808,13 @@ class AddonsManager:
                 self._addons.append(addon)
                 self._addons_by_id[addon.id] = addon
                 self._addons_by_name[addon.name] = addon
+                # NOTE This will be removed with release 1.0.0 of ayon-core
+                #   please use carefully.
+                # Gives option to use alias name for addon for cases when
+                #   name in OpenPype was not the same as in AYON.
+                name_alias = getattr(addon, "openpype_alias", None)
+                if name_alias:
+                    aliased_names.append((name_alias, addon))
                 enabled_str = "X"
                 if not addon.enabled:
                     enabled_str = " "
@@ -821,6 +829,17 @@ class AddonsManager:
                     "Initialization of addon '{}' failed.".format(name),
                     exc_info=True
                 )
+
+        for item in aliased_names:
+            name_alias, addon = item
+            if name_alias not in self._addons_by_name:
+                self._addons_by_name[name_alias] = addon
+                continue
+            self.log.warning(
+                "Alias name '{}' of addon '{}' is already assigned.".format(
+                    name_alias, addon.name
+                )
+            )
 
         if self._report is not None:
             report[self._report_total_key] = time.time() - time_start
