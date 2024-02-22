@@ -49,18 +49,18 @@ class JobQueueAddon(AYONAddon):
     name = "job_queue"
 
     def initialize(self, studio_settings):
-        module_settings = studio_settings.get(self.name) or {}
-        server_url = module_settings.get("server_url") or ""
+        addon_settings = studio_settings.get(self.name) or {}
+        server_url = addon_settings.get("server_url") or ""
 
         self._server_url = self.url_conversion(server_url)
         jobs_root_mapping = self._roots_mapping_conversion(
-            module_settings.get("jobs_root")
+            addon_settings.get("jobs_root")
         )
 
         self._jobs_root_mapping = jobs_root_mapping
 
         # Is always enabled
-        #   - the module does nothing until is used
+        #   - the addon does nothing until is used
         self.enabled = True
 
     @classmethod
@@ -126,8 +126,8 @@ class JobQueueAddon(AYONAddon):
 
     @classmethod
     def get_jobs_root_from_settings(cls):
-        module_settings = get_system_settings()["modules"]
-        jobs_root_mapping = module_settings.get(cls.name, {}).get("jobs_root")
+        studio_settings = get_system_settings()
+        jobs_root_mapping = studio_settings.get(cls.name, {}).get("jobs_root")
         converted_mapping = cls._roots_mapping_conversion(jobs_root_mapping)
 
         return converted_mapping[platform.system().lower()]
@@ -156,9 +156,9 @@ class JobQueueAddon(AYONAddon):
 
     @classmethod
     def get_server_url_from_settings(cls):
-        module_settings = get_system_settings()["modules"]
+        studio_settings = get_system_settings()
         return cls.url_conversion(
-            module_settings
+            studio_settings
             .get(cls.name, {})
             .get("server_url")
         )
