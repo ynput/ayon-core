@@ -197,7 +197,7 @@ def create_skeleton_instance(
 
     if data.get("extendFrames", False):
         time_data.start, time_data.end = extend_frames(
-            data["asset"],
+            data["folderPath"],
             data["subset"],
             time_data.start,
             time_data.end,
@@ -228,7 +228,7 @@ def create_skeleton_instance(
         "family": family,
         "subset": data["subset"],
         "families": families,
-        "asset": data["asset"],
+        "folderPath": data["folderPath"],
         "frameStart": time_data.start,
         "frameEnd": time_data.end,
         "handleStart": time_data.handle_start,
@@ -777,7 +777,7 @@ def create_skeleton_instance_cache(instance):
 
     if data.get("extendFrames", False):
         time_data.start, time_data.end = extend_frames(
-            data["asset"],
+            data["folderPath"],
             data["subset"],
             time_data.start,
             time_data.end,
@@ -805,7 +805,7 @@ def create_skeleton_instance_cache(instance):
         "family": family,
         "subset": data["subset"],
         "families": families,
-        "asset": data["asset"],
+        "folderPath": data["folderPath"],
         "frameStart": time_data.start,
         "frameEnd": time_data.end,
         "handleStart": time_data.handle_start,
@@ -1011,7 +1011,7 @@ def copy_extend_frames(instance, representation):
     version = get_last_version_by_subset_name(
         project_name,
         instance.data.get("subset"),
-        asset_name=instance.data.get("asset")
+        asset_name=instance.data.get("folderPath")
     )
 
     # get its files based on extension

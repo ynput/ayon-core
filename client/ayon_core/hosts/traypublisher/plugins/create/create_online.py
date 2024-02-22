@@ -53,7 +53,7 @@ class OnlineCreator(TrayPublishCreator):
         # disable check for existing subset with the same name
         """
         asset = get_asset_by_name(
-            self.project_name, instance_data["asset"], fields=["_id"])
+            self.project_name, instance_data["folderPath"], fields=["_id"])
 
         if get_subset_by_name(
                 self.project_name, origin_basename, asset["_id"],

@@ -41,7 +41,7 @@ class CollectFramesFixDef(
         instance.data["frames_to_fix"] = frames_to_fix
 
         subset_name = instance.data["subset"]
-        asset_name = instance.data["asset"]
+        asset_name = instance.data["folderPath"]
 
         project_entity = instance.data["projectEntity"]
         project_name = project_entity["name"]

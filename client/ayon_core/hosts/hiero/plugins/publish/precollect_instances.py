@@ -1,5 +1,6 @@
 import pyblish
 
+from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 from ayon_core.pipeline.editorial import is_overlapping_otio_ranges
 
 from ayon_core.hosts.hiero import api as phiero
@@ -56,7 +57,9 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             if not tag_data:
                 continue
 
-            if tag_data.get("id") != "pyblish.avalon.instance":
+            if tag_data.get("id") not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 continue
 
             # get clips subtracks and anotations
@@ -98,7 +101,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             data.update({
                 "name": "{}_{}".format(asset, subset),
                 "label": label,
-                "asset": asset,
+                "folderPath": asset,
                 "asset_name": asset_name,
                 "item": track_item,
                 "families": families,
@@ -189,7 +192,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["asset"]
+        asset = data["folderPath"]
         asset_name = data["asset_name"]
 
         # insert family into families
@@ -241,7 +244,6 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not master_layer:
             return
 
-        asset = data.get("asset")
         item = data.get("item")
         clip_name = item.name()
 
@@ -249,7 +251,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not self.test_any_audio(item):
             return
 
-        asset = data["asset"]
+        asset = data["folderPath"]
         asset_name = data["asset_name"]
 
         # insert family into families

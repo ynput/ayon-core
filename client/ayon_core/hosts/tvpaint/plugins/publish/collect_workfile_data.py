@@ -65,7 +65,7 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
         # Collect and store current context to have reference
         current_context = {
             "project_name": context.data["projectName"],
-            "asset_name": context.data["asset"],
+            "asset_name": context.data["folderPath"],
             "task_name": context.data["task"]
         }
         self.log.debug("Current context is: {}".format(current_context))
@@ -105,7 +105,7 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
             ))
 
         # Store context asset name
-        context.data["asset"] = asset_name
+        context.data["folderPath"] = asset_name
         context.data["task"] = task_name
         self.log.info(
             "Context is set to Asset: \"{}\" and Task: \"{}\"".format(
