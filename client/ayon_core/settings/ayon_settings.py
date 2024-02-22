@@ -52,51 +52,6 @@ def _convert_color(color_value):
     return color_value
 
 
-def _convert_general(ayon_settings, output, default_settings):
-    output["core"] = ayon_settings["core"]
-    version_check_interval = (
-        default_settings["general"]["version_check_interval"]
-    )
-    output["general"] = {
-        "version_check_interval": version_check_interval
-    }
-
-
-def _convert_modules_system(
-    ayon_settings, output, addon_versions, default_settings
-):
-    for key in {
-        "timers_manager",
-        "clockify",
-        "royalrender",
-        "deadline",
-    }:
-        if addon_versions.get(key):
-            output[key] = ayon_settings
-        else:
-            output.pop(key, None)
-
-    modules_settings = output["modules"]
-    for module_name in (
-        "sync_server",
-        "job_queue",
-        "addon_paths",
-    ):
-        settings = default_settings["modules"][module_name]
-        if "enabled" in settings:
-            settings["enabled"] = False
-        modules_settings[module_name] = settings
-
-    for key, value in ayon_settings.items():
-        if key not in output:
-            output[key] = value
-
-        # Make sure addons have access to settings in initialization
-        # - AddonsManager passes only modules settings into initialization
-        if key not in modules_settings:
-            modules_settings[key] = value
-
-
 def is_dev_mode_enabled():
     """Dev mode is enabled in AYON.
 
@@ -105,31 +60,6 @@ def is_dev_mode_enabled():
     """
 
     return os.getenv("AYON_USE_DEV") == "1"
-
-
-def convert_system_settings(ayon_settings, default_settings, addon_versions):
-    default_settings = copy.deepcopy(default_settings)
-    output = {
-        "modules": {}
-    }
-    if "core" in ayon_settings:
-        _convert_general(ayon_settings, output, default_settings)
-
-    for key, value in ayon_settings.items():
-        if key not in output:
-            output[key] = value
-
-    for key, value in default_settings.items():
-        if key not in output:
-            output[key] = value
-
-    _convert_modules_system(
-        ayon_settings,
-        output,
-        addon_versions,
-        default_settings
-    )
-    return output
 
 
 # --------- Project settings ---------
@@ -285,13 +215,12 @@ def get_ayon_project_settings(default_values, project_name):
     return convert_project_settings(ayon_settings, default_values)
 
 
-def get_ayon_system_settings(default_values):
-    addon_versions = _AyonSettingsCache.get_addon_versions()
+def get_ayon_system_settings():
     ayon_settings = _AyonSettingsCache.get_value_by_project(None)
-
-    return convert_system_settings(
-        ayon_settings, default_values, addon_versions
-    )
+    ayon_settings["general"] = {
+        "version_check_interval": 5
+    }
+    return ayon_settings
 
 
 def get_ayon_settings(project_name=None):
