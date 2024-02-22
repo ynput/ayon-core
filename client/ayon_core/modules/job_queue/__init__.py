@@ -1,6 +1,6 @@
-from .module import JobQueueModule
+from .module import JobQueueAddon
 
 
 __all__ = (
-    "JobQueueModule",
+    "JobQueueAddon",
 )

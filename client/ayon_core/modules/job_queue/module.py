@@ -41,16 +41,15 @@ import json
 import copy
 import platform
 
-from ayon_core.addon import click_wrap
-from ayon_core.modules import OpenPypeModule
+from ayon_core.addon import AYONAddon, click_wrap
 from ayon_core.settings import get_system_settings
 
 
-class JobQueueModule(OpenPypeModule):
+class JobQueueAddon(AYONAddon):
     name = "job_queue"
 
-    def initialize(self, modules_settings):
-        module_settings = modules_settings.get(self.name) or {}
+    def initialize(self, studio_settings):
+        module_settings = studio_settings.get(self.name) or {}
         server_url = module_settings.get("server_url") or ""
 
         self._server_url = self.url_conversion(server_url)
@@ -214,7 +213,7 @@ class JobQueueModule(OpenPypeModule):
 
 
 @click_wrap.group(
-    JobQueueModule.name,
+    JobQueueAddon.name,
     help="Application job server. Can be used as render farm."
 )
 def cli_main():
@@ -228,7 +227,7 @@ def cli_main():
 @click_wrap.option("--port", help="Server port")
 @click_wrap.option("--host", help="Server host (ip address)")
 def cli_start_server(port, host):
-    JobQueueModule.start_server(port, host)
+    JobQueueAddon.start_server(port, host)
 
 
 @cli_main.command(
@@ -241,4 +240,4 @@ def cli_start_server(port, host):
     "--server_url",
     help="Server url which handle workers and jobs.")
 def cli_start_worker(app_name, server_url):
-    JobQueueModule.start_worker(app_name, server_url)
+    JobQueueAddon.start_worker(app_name, server_url)
