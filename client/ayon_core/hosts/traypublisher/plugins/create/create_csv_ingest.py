@@ -312,14 +312,20 @@ configuration in project settings.
         _, extension = os.path.splitext(filepath)
 
         # validate filepath is having correct extension based on output
-        config_repre_data = self.representations_config["representations"]
         repre_name = repre_data["representationName"]
-        if repre_name not in config_repre_data:
+        repre_config_data = None
+        for repre in self.representations_config["representations"]:
+            if repre["name"] == repre_name:
+                repre_config_data = repre
+                break
+
+        if not repre_config_data:
             raise KeyError(
                 f"Representation '{repre_name}' not found "
                 "in config representation data."
             )
-        validate_extensions = config_repre_data[repre_name]["extensions"]
+
+        validate_extensions = repre_config_data["extensions"]
         if extension not in validate_extensions:
             raise TypeError(
                 f"File extension '{extension}' not valid for "
@@ -413,8 +419,8 @@ configuration in project settings.
 
         # make sure csv file contains columns from following list
         required_columns = [
-            name for name, value in self.columns_config["columns"].items()
-            if value["required"]
+            column["name"] for column in self.columns_config["columns"]
+            if column["required"]
         ]
         # get data from csv file
         with open(csv_file_path, "r") as csv_file:
@@ -582,9 +588,14 @@ configuration in project settings.
         self, column_name, row_data, default_value=None
     ):
         """Get row value with validation"""
-        columns_config = self.columns_config["columns"]
+
         # get column data from column config
-        column_data = columns_config.get(column_name)
+        column_data = None
+        for column in self.columns_config["columns"]:
+            if column["name"] == column_name:
+                column_data = column
+                break
+
         if not column_data:
             raise KeyError(
                 f"Column '{column_name}' not found in column config."
