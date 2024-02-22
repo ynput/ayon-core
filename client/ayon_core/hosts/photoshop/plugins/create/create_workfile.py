@@ -3,7 +3,7 @@ from ayon_core.hosts.photoshop.lib import PSAutoCreator
 
 class WorkfileCreator(PSAutoCreator):
     identifier = "workfile"
-    family = "workfile"
+    product_type = "workfile"
 
     default_variant = "Main"
 
