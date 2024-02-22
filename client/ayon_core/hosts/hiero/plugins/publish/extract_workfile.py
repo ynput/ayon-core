@@ -33,7 +33,7 @@ class ExtractWorkfile(publish.Extractor):
 
         # adding otio timeline to context
         # otio_timeline = hiero_export.create_otio_timeline()
-        # otio_timeline = instance.data["otio_timeline"]
+        # otio_timeline = instance.data["otioTimeline"]
 
         # get workfile thumbnail paths
         tmp_staging = tempfile.mkdtemp(prefix="pyblish_tmp_")
