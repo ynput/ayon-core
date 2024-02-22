@@ -268,3 +268,4 @@ def remove_container_data(container_node: str):
         rt.deleteModifier(container_node, container_node.modifiers[0])
 
     rt.Delete(container_node)
+    rt.redrawViews()
