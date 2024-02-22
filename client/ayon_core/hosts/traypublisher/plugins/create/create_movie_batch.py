@@ -11,7 +11,7 @@ from ayon_core.pipeline import (
     CreatedInstance,
 )
 from ayon_core.pipeline.create import (
-    get_subset_name,
+    get_product_name,
     TaskNotSetError,
 )
 
@@ -29,7 +29,7 @@ class BatchMovieCreator(TrayPublishCreator):
     """
     identifier = "render_movie_batch"
     label = "Batch Movies"
-    family = "render"
+    product_type = "render"
     description = "Publish batch of video files"
 
     create_allow_context_change = False
@@ -48,7 +48,7 @@ class BatchMovieCreator(TrayPublishCreator):
     def get_icon(self):
         return "fa.file"
 
-    def create(self, subset_name, data, pre_create_data):
+    def create(self, product_name, data, pre_create_data):
         file_paths = pre_create_data.get("filepath")
         if not file_paths:
             return
@@ -62,7 +62,7 @@ class BatchMovieCreator(TrayPublishCreator):
             asset_doc, version = get_asset_doc_from_file_name(
                 file_name, self.project_name, self.version_regex)
 
-            subset_name, task_name = self._get_subset_and_task(
+            product_name, task_name = self._get_product_and_task(
                 asset_doc, data["variant"], self.project_name)
 
             asset_name = get_asset_name_identifier(asset_doc)
@@ -71,21 +71,22 @@ class BatchMovieCreator(TrayPublishCreator):
             instance_data["task"] = task_name
 
             # Create new instance
-            new_instance = CreatedInstance(self.family, subset_name,
+            new_instance = CreatedInstance(self.product_type, product_name,
                                            instance_data, self)
             self._store_new_instance(new_instance)
 
-    def _get_subset_and_task(self, asset_doc, variant, project_name):
-        """Create subset name according to standard template process"""
+    def _get_product_and_task(self, asset_doc, variant, project_name):
+        """Create product name according to standard template process"""
         task_name = self._get_task_name(asset_doc)
 
         try:
-            subset_name = get_subset_name(
-                self.family,
-                variant,
-                task_name,
+            product_name = get_product_name(
+                project_name,
                 asset_doc,
-                project_name
+                task_name,
+                self.create_context.host_name,
+                self.product_type,
+                variant,
             )
         except TaskNotSetError:
             # Create instance with fake task
@@ -93,15 +94,15 @@ class BatchMovieCreator(TrayPublishCreator):
             #   but user have ability to change it
             # NOTE: This expect that there is not task 'Undefined' on asset
             task_name = "Undefined"
-            subset_name = get_subset_name(
-                self.family,
-                variant,
-                task_name,
+            product_name = get_product_name(
+                project_name,
                 asset_doc,
-                project_name
+                task_name,
+                self.product_type,
+                variant,
             )
 
-        return subset_name, task_name
+        return product_name, task_name
 
     def _get_task_name(self, asset_doc):
         """Get applicable task from 'asset_doc' """
