@@ -22,7 +22,7 @@ class CollectCelactionInstances(pyblish.api.ContextPlugin):
         asset_name = get_asset_name_identifier(asset_entity)
 
         shared_instance_data = {
-            "asset": asset_name,
+            "folderPath": asset_name,
             "frameStart": asset_entity["data"]["frameStart"],
             "frameEnd": asset_entity["data"]["frameEnd"],
             "handleStart": asset_entity["data"]["handleStart"],

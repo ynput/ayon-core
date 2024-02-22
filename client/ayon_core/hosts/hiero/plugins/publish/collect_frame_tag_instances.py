@@ -102,7 +102,7 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
         # first collect all available subset tag frames
         subset_data = {}
         context_asset_doc = context.data["assetEntity"]
-        context_asset_name = get_asset_name_identifier(context_asset_doc)
+        context_folder_path = get_asset_name_identifier(context_asset_doc)
 
         for tag_data in sequence_tags:
             frame = int(tag_data["start"])
@@ -120,7 +120,7 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
                 subset_data[subset] = {
                     "frames": [frame],
                     "format": tag_data["format"],
-                    "asset": context_asset_name
+                    "folderPath": context_folder_path
                 }
         return subset_data
 
@@ -133,7 +133,7 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
                 "label": "{} {}".format(name, subset_data["frames"]),
                 "family": "image",
                 "families": ["frame"],
-                "asset": subset_data["asset"],
+                "folderPath": subset_data["folderPath"],
                 "subset": name,
                 "format": subset_data["format"],
                 "frames": subset_data["frames"]

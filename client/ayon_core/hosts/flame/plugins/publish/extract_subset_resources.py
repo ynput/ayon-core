@@ -55,7 +55,7 @@ class ExtractProductResources(publish.Extractor):
 
         # flame objects
         segment = instance.data["item"]
-        asset_name = instance.data["asset"]
+        folder_path = instance.data["folderPath"]
         segment_name = segment.name.get_value()
         clip_path = instance.data["path"]
         sequence_clip = instance.context.data["flameSequence"]
@@ -249,7 +249,7 @@ class ExtractProductResources(publish.Extractor):
                 out_mark = in_mark + source_duration_handles
                 exporting_clip = self.import_clip(clip_path)
                 exporting_clip.name.set_value("{}_{}".format(
-                    asset_name, segment_name))
+                    folder_path, segment_name))
 
             # add xml tags modifications
             modify_xml_data.update({

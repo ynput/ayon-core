@@ -62,34 +62,13 @@ def _convert_general(ayon_settings, output, default_settings):
     }
 
 
-def _convert_royalrender_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("royalrender") is not None
-    rr_settings = default_settings["modules"]["royalrender"]
-    rr_settings["enabled"] = enabled
-    if enabled:
-        ayon_royalrender = ayon_settings["royalrender"]
-        rr_settings["rr_paths"] = {
-            item["name"]: item["value"]
-            for item in ayon_royalrender["rr_paths"]
-        }
-    output["modules"]["royalrender"] = rr_settings
-
-
 def _convert_modules_system(
     ayon_settings, output, addon_versions, default_settings
 ):
-    # TODO add all modules
-    # TODO add 'enabled' values
-    for func in (
-        _convert_royalrender_system_settings,
-    ):
-        func(ayon_settings, output, addon_versions, default_settings)
-
     for key in {
         "timers_manager",
         "clockify",
+        "royalrender",
         "deadline",
     }:
         if addon_versions.get(key):

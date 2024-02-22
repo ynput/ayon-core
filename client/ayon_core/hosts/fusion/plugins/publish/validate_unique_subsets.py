@@ -21,7 +21,9 @@ class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
         # Collect instances per subset per asset
         instances_per_subset_asset = defaultdict(lambda: defaultdict(list))
         for instance in context:
-            asset = instance.data.get("asset", context.data.get("asset"))
+            asset = instance.data.get(
+                "folderPath", context.data.get("folderPath")
+            )
             subset = instance.data.get("subset", context.data.get("subset"))
             instances_per_subset_asset[asset][subset].append(instance)
 

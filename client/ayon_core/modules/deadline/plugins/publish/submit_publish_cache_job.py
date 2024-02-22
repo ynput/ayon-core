@@ -112,7 +112,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         output_dir = self._get_publish_folder(
             anatomy,
             deepcopy(instance.data["anatomyData"]),
-            instance.data.get("asset"),
+            instance.data.get("folderPath"),
             instance.data["subset"],
             instance.context,
             instance.data["family"],
@@ -126,7 +126,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
 
         environment = {
             "AYON_PROJECT_NAME": instance.context.data["projectName"],
-            "AYON_FOLDER_PATH": instance.context.data["asset"],
+            "AYON_FOLDER_PATH": instance.context.data["folderPath"],
             "AYON_TASK_NAME": instance.context.data["task"],
             "AYON_USERNAME": instance.context.data["user"],
             "AYON_LOG_NO_COLORS": "1",
@@ -359,7 +359,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
 
         # publish job file
         publish_job = {
-            "asset": instance_skeleton_data["asset"],
+            "folderPath": instance_skeleton_data["folderPath"],
             "frameStart": instance_skeleton_data["frameStart"],
             "frameEnd": instance_skeleton_data["frameEnd"],
             "fps": instance_skeleton_data["fps"],
