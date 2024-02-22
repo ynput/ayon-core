@@ -37,7 +37,7 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
 
-        asset = instance.data.get("asset")
+        asset = instance.data.get("folderPath")
         context_asset = self.get_context_asset(instance)
         if asset != context_asset:
             raise PublishValidationError(
@@ -74,4 +74,4 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
 
     @staticmethod
     def get_context_asset(instance):
-        return instance.context.data["asset"]
+        return instance.context.data["folderPath"]

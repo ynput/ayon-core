@@ -37,10 +37,6 @@ from .lib import (
     get_qt_app,
     get_ayon_qt_app,
     get_openpype_qt_app,
-    get_asset_icon,
-    get_asset_icon_by_name,
-    get_asset_icon_name_from_doc,
-    get_asset_icon_color_from_doc,
 )
 
 from .models import (
@@ -100,10 +96,6 @@ __all__ = (
     "get_qt_app",
     "get_ayon_qt_app",
     "get_openpype_qt_app",
-    "get_asset_icon",
-    "get_asset_icon_by_name",
-    "get_asset_icon_name_from_doc",
-    "get_asset_icon_color_from_doc",
 
     "RecursiveSortFilterProxyModel",
 

@@ -257,7 +257,7 @@ class Logger:
             return cls._process_name
 
         # Get process name
-        process_name = os.environ.get("AVALON_APP_NAME")
+        process_name = os.environ.get("AYON_APP_NAME")
         if not process_name:
             try:
                 import psutil

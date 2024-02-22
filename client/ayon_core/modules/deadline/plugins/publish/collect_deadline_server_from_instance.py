@@ -47,11 +47,11 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
         deadline_settings = (
             render_instance.context.data
             ["system_settings"]
-            ["modules"]
             ["deadline"]
         )
 
         default_server = render_instance.context.data["defaultDeadline"]
+        # QUESTION How and where is this is set? Should be removed?
         instance_server = render_instance.data.get("deadlineServers")
         if not instance_server:
             self.log.debug("Using default server.")
@@ -64,7 +64,10 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
                 asString=True
             )
 
-        default_servers = deadline_settings["deadline_urls"]
+        default_servers = {
+            url_item["name"]: url_item["value"]
+            for url_item in deadline_settings["deadline_urls"]
+        }
         project_servers = (
             render_instance.context.data
             ["project_settings"]

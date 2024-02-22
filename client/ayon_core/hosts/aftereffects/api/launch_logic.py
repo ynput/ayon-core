@@ -297,11 +297,11 @@ class AfterEffectsRoute(WebSocketRoute):
         log.info("Setting context change")
         log.info("project {} asset {} ".format(project, asset))
         if project:
-            os.environ["AVALON_PROJECT"] = project
+            os.environ["AYON_PROJECT_NAME"] = project
         if asset:
-            os.environ["AVALON_ASSET"] = asset
+            os.environ["AYON_FOLDER_PATH"] = asset
         if task:
-            os.environ["AVALON_TASK"] = task
+            os.environ["AYON_TASK_NAME"] = task
 
     async def read(self):
         log.debug("aftereffects.read client calls server server calls "

@@ -2,7 +2,7 @@ import hou
 import pyblish.api
 from ayon_core.hosts.houdini.api import lib
 import ayon_core.hosts.houdini.api.usd as hou_usdlib
-import ayon_core.lib.usdlib as usdlib
+from ayon_core.pipeline import usdlib
 
 
 class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
@@ -12,7 +12,7 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
     layers remain set to 'publish' by the user.
 
     This works differently from most of our Avalon instances in the pipeline.
-    As opposed to storing `pyblish.avalon.instance` as id on the node we store
+    As opposed to storing `ayon.create.instance` as id on the node we store
     `pyblish.avalon.usdlayered`.
 
     Additionally this instance has no need for storing family, asset, subset

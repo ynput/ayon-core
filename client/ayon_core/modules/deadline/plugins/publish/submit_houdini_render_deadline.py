@@ -44,7 +44,10 @@ class VrayRenderPluginInfo():
 @attr.s
 class RedshiftRenderPluginInfo():
     SceneFile = attr.ib(default=None)
-    Version = attr.ib(default=None)
+    # Use "1" as the default Redshift version just because it
+    # default fallback version in Deadline's Redshift plugin
+    # if no version was specified
+    Version = attr.ib(default="1")
 
 
 class HoudiniSubmitDeadline(
@@ -204,11 +207,11 @@ class HoudiniSubmitDeadline(
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_WORKDIR",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "AYON_LOG_NO_COLORS",
         ]
 
