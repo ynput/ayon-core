@@ -19,13 +19,13 @@ class CollectOTIOTimeline(pyblish.api.ContextPlugin):
         project = active_timeline.project()
         fps = active_timeline.framerate().toFloat()
 
-        current_file = project.path()
+        # current_file = project.path()
 
         context_data = {
             "activeProject": project,
             "activeTimeline": active_timeline,
             "otioTimeline": otio_timeline,
-            "currentFile": current_file,
+            # "currentFile": current_file,
             "colorspace": self.get_colorspace(project),
             "fps": fps
         }
