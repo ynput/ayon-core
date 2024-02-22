@@ -66,7 +66,9 @@ class ExtractWorkfile(publish.Extractor):
             os.path.join(staging_dir, filename))
 
         # write out the workfile
+        path_previous = project.path()
         project.saveAs(filepath)
+        project.setPath(path_previous)
 
         # create workfile representation
         representation = {

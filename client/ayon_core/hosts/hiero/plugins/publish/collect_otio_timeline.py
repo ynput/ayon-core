@@ -22,11 +22,26 @@ class CollectOTIOTimeline(pyblish.api.ContextPlugin):
         current_file = project.path()
 
         context_data = {
-            # "activeProject": project,
+            "activeProject": project,
             "activeTimeline": active_timeline,
             "otioTimeline": otio_timeline,
             "currentFile": current_file,
-            # "colorspace": self.get_colorspace(project),
+            "colorspace": self.get_colorspace(project),
             "fps": fps
         }
         context.data.update(context_data)
+
+    def get_colorspace(self, project):
+        # get workfile's colorspace properties
+        return {
+            "useOCIOEnvironmentOverride": project.useOCIOEnvironmentOverride(),
+            "lutSetting16Bit": project.lutSetting16Bit(),
+            "lutSetting8Bit": project.lutSetting8Bit(),
+            "lutSettingFloat": project.lutSettingFloat(),
+            "lutSettingLog": project.lutSettingLog(),
+            "lutSettingViewer": project.lutSettingViewer(),
+            "lutSettingWorkingSpace": project.lutSettingWorkingSpace(),
+            "lutUseOCIOForExport": project.lutUseOCIOForExport(),
+            "ocioConfigName": project.ocioConfigName(),
+            "ocioConfigPath": project.ocioConfigPath()
+        }
