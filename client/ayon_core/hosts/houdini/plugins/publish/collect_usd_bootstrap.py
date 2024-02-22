@@ -11,7 +11,7 @@ from ayon_core.pipeline import usdlib
 class CollectUsdBootstrap(pyblish.api.InstancePlugin):
     """Collect special Asset/Shot bootstrap instances if those are needed.
 
-    Some specific subsets are intended to be part of the default structure
+    Some specific products are intended to be part of the default structure
     of an "Asset" or "Shot" in our USD pipeline. For example, for an Asset
     we layer a Model and Shade USD file over each other and expose that in
     a Asset USD file, ready to use.
@@ -30,13 +30,12 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
-        # Detect whether the current subset is a subset in a pipeline
+        # Detect whether the current product is a product in a pipeline
         def get_bootstrap(instance):
-            instance_subset = instance.data["subset"]
+            instance_product_name = instance.data["productName"]
             for name, layers in usdlib.PIPELINE.items():
-                if instance_subset in set(layers):
+                if instance_product_name in set(layers):
                     return name  # e.g. "asset"
-                    break
             else:
                 return
 
@@ -72,22 +71,22 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
                 required += list(layers)
 
         self.log.debug("Checking required bootstrap: %s" % required)
-        for subset_name in required:
-            if self._subset_exists(
-                project_name, instance, subset_name, asset_doc
+        for product_name in required:
+            if self._product_exists(
+                project_name, instance, product_name, asset_doc
             ):
                 continue
 
             self.log.debug(
                 "Creating {0} USD bootstrap: {1} {2}".format(
-                    bootstrap, asset_name, subset_name
+                    bootstrap, asset_name, product_name
                 )
             )
 
-            new = instance.context.create_instance(subset_name)
-            new.data["subset"] = subset_name
-            new.data["label"] = "{0} ({1})".format(subset_name, asset_name)
-            new.data["family"] = "usd.bootstrap"
+            new = instance.context.create_instance(product_name)
+            new.data["productName"] = product_name
+            new.data["label"] = "{0} ({1})".format(product_name, asset_name)
+            new.data["productType"] = "usd.bootstrap"
             new.data["comment"] = "Automated bootstrap USD file."
             new.data["publishFamilies"] = ["usd"]
 
@@ -98,15 +97,17 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
             for key in ["folderPath"]:
                 new.data[key] = instance.data[key]
 
-    def _subset_exists(self, project_name, instance, subset_name, asset_doc):
-        """Return whether subset exists in current context or in database."""
+    def _product_exists(
+        self, project_name, instance, product_name, asset_doc
+    ):
+        """Return whether product exists in current context or in database."""
         # Allow it to be created during this publish session
         context = instance.context
 
         asset_doc_name = get_asset_name_identifier(asset_doc)
         for inst in context:
             if (
-                inst.data["subset"] == subset_name
+                inst.data["productName"] == product_name
                 and inst.data["folderPath"] == asset_doc_name
             ):
                 return True
@@ -114,7 +115,7 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
         # Or, if they already exist in the database we can
         # skip them too.
         if get_subset_by_name(
-            project_name, subset_name, asset_doc["_id"], fields=["_id"]
+            project_name, product_name, asset_doc["_id"], fields=["_id"]
         ):
             return True
         return False

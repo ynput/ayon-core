@@ -11,17 +11,17 @@ class CreateStaticMesh(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.staticmesh.fbx"
     label = "Static Mesh (FBX)"
-    family = "staticMesh"
+    product_type = "staticMesh"
     icon = "fa5s.cubes"
 
     default_variants = ["Main"]
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.update({"node_type": "filmboxfbx"})
 
         instance = super(CreateStaticMesh, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -30,7 +30,7 @@ class CreateStaticMesh(plugin.HoudiniCreator):
 
         # prepare parms
         output_path = hou.text.expandString(
-            "$HIP/pyblish/{}.fbx".format(subset_name)
+            "$HIP/pyblish/{}.fbx".format(product_name)
         )
 
         parms = {
@@ -48,7 +48,7 @@ class CreateStaticMesh(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock any parameters in this list
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_network_categories(self):
@@ -91,7 +91,7 @@ class CreateStaticMesh(plugin.HoudiniCreator):
         self, variant, task_name, asset_doc, project_name, host_name, instance
     ):
         """
-        The default subset name templates for Unreal include {asset} and thus
+        The default prodcut name templates for Unreal include {asset} and thus
         we should pass that along as dynamic data.
         """
         dynamic_data = super(CreateStaticMesh, self).get_dynamic_data(

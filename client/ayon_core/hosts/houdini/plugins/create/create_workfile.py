@@ -12,7 +12,7 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
     """Workfile auto-creator."""
     identifier = "io.openpype.creators.houdini.workfile"
     label = "Workfile"
-    family = "workfile"
+    product_type = "workfile"
     icon = "fa5.file"
 
     default_variant = "Main"
@@ -37,7 +37,7 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
 
         if current_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 variant, task_name, asset_doc, project_name, host_name
             )
             data = {
@@ -53,7 +53,7 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
             )
             self.log.info("Auto-creating workfile instance...")
             current_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             self._add_instance_to_context(current_instance)
         elif (
@@ -62,12 +62,12 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
         ):
             # Update instance context if is not the same
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 variant, task_name, asset_doc, project_name, host_name
             )
             current_instance["folderPath"] = asset_name
             current_instance["task"] = task_name
-            current_instance["subset"] = subset_name
+            current_instance["productName"] = product_name
 
         # write workfile information to context container.
         op_ctx = hou.node(CONTEXT_CONTAINER)

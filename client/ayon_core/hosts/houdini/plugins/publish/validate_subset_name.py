@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
 )
 from ayon_core.hosts.houdini.api.action import SelectInvalidAction
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 
 import hou
 
@@ -53,21 +53,23 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
 
         rop_node = hou.node(instance.data["instance_node"])
 
-        # Check subset name
+        # Check product name
         asset_doc = instance.data["assetEntity"]
-        subset_name = get_subset_name(
-            family=instance.data["family"],
+        product_name = get_product_name(
+            instance.context.data["projctName"],
+            asset_doc,
+            instance.data["task"],
+            instance.context.data["hostName"],
+            instance.data["productType"],
             variant=instance.data["variant"],
-            task_name=instance.data["task"],
-            asset_doc=asset_doc,
             dynamic_data={"asset": asset_doc["name"]}
         )
 
-        if instance.data.get("subset") != subset_name:
+        if instance.data.get("productName") != product_name:
             invalid.append(rop_node)
             cls.log.error(
-                "Invalid subset name on rop node '%s' should be '%s'.",
-                rop_node.path(), subset_name
+                "Invalid product name on rop node '%s' should be '%s'.",
+                rop_node.path(), product_name
             )
 
         return invalid
@@ -76,20 +78,22 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
     def repair(cls, instance):
         rop_node = hou.node(instance.data["instance_node"])
 
-        # Check subset name
+        # Check product name
         asset_doc = instance.data["assetEntity"]
-        subset_name = get_subset_name(
-            family=instance.data["family"],
+        product_name = get_product_name(
+            instance.context.data["projectName"],
+            asset_doc,
+            instance.data["task"],
+            instance.context.data["hostName"],
+            instance.data["productType"],
             variant=instance.data["variant"],
-            task_name=instance.data["task"],
-            asset_doc=asset_doc,
             dynamic_data={"asset": asset_doc["name"]}
         )
 
-        instance.data["subset"] = subset_name
-        rop_node.parm("subset").set(subset_name)
+        instance.data["productName"] = product_name
+        rop_node.parm("productName").set(product_name)
 
         cls.log.debug(
-            "Subset name on rop node '%s' has been set to '%s'.",
-            rop_node.path(), subset_name
+            "Product name on rop node '%s' has been set to '%s'.",
+            rop_node.path(), product_name
         )
