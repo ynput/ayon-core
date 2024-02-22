@@ -55,7 +55,7 @@ class CollectUsdLayers(pyblish.api.InstancePlugin):
             layer_inst.data["families"] = [family]
             layer_inst.data["subset"] = "__stub__"
             layer_inst.data["label"] = label
-            layer_inst.data["asset"] = instance.data["asset"]
+            layer_inst.data["folderPath"] = instance.data["folderPath"]
             layer_inst.data["instance_node"] = instance.data["instance_node"]
             # include same USD ROP
             layer_inst.append(rop_node)

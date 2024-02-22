@@ -5,7 +5,7 @@ from ayon_core.client import (
     get_asset_by_name,
     get_asset_name_identifier,
 )
-import ayon_core.lib.usdlib as usdlib
+from ayon_core.pipeline import usdlib
 
 
 class CollectUsdBootstrap(pyblish.api.InstancePlugin):
@@ -55,7 +55,7 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
         self.log.debug("Add bootstrap for: %s" % bootstrap)
 
         project_name = instance.context.data["projectName"]
-        asset_name = instance.data["asset"]
+        asset_name = instance.data["folderPath"]
         asset_doc = get_asset_by_name(project_name, asset_name)
         assert asset_doc, "Asset must exist: %s" % asset_name
 
@@ -95,7 +95,7 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
             new.data["optional"] = False
 
             # Copy some data from the instance for which we bootstrap
-            for key in ["asset"]:
+            for key in ["folderPath"]:
                 new.data[key] = instance.data[key]
 
     def _subset_exists(self, project_name, instance, subset_name, asset_doc):
@@ -107,7 +107,7 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
         for inst in context:
             if (
                 inst.data["subset"] == subset_name
-                and inst.data["asset"] == asset_doc_name
+                and inst.data["folderPath"] == asset_doc_name
             ):
                 return True
 
