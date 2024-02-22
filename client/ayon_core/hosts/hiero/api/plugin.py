@@ -796,7 +796,7 @@ class PublishClip:
             return self.pre_create_data.get(key)
 
         # ui_inputs data or default values if gui was not used
-        self.rename = get("clipRename") or self.rename_default
+        self.rename = self.pre_create_data.get("clipRename", self.rename_default)
         self.clip_name = get("clipName") or self.clip_name_default
         self.hierarchy = get("hierarchy") or self.hierarchy_default
         self.count_from = get("countFrom") or self.count_from_default
