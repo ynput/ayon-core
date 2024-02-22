@@ -1,0 +1,3 @@
+# configuration for the OpenAssetIO host inside AYON
+[manager]
+identifier = "io.ynput.ayon.openassetio.manager"

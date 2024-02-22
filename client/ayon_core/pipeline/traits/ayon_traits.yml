@@ -1,0 +1,403 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/OpenAssetIO/OpenAssetIO-TraitGen/main/python/openassetio_traitgen/schema.json
+# yamllint disable-line rule:document-start
+package: Ayon
+
+description: Traits and Specifications used in AYON
+
+traits:
+  core:
+    description: Core traits.
+    members:
+      Product:
+        description: >
+          A trait indicating the product of an entity in AYON.
+        usage:
+          - entity
+        properties:
+          productName:
+            type: string
+            description: >
+              Product name of the entity.
+          productId:
+            type: string
+            description: >
+              Product ID of the entity.
+      Version:
+        description: >
+          A trait indicating the version of an entity in AYON.
+        usage:
+          - entity
+        properties:
+          version:
+            type: integer
+            description: >
+              Version of the entity.
+          versionId:
+            type: string
+            description: >
+              Version ID of the entity.
+      Representation:
+        description: >
+          A trait indicating the representation of an entity in AYON.
+        usage:
+          - entity
+        properties:
+            name:
+              type: string
+              description: >
+                Name of the representation..
+            format:
+              type: string
+              description: >
+                Format of the files in representation.
+            template:
+                type: string
+                description: >
+                    Template used to generate the files in representation.
+            # dictionaries are note supported yet
+            # context:
+            #    type: dictionary
+            #    description: >
+            #        Context snapshot at the time of representation creation.
+      Tagged:
+          description: >
+            A trait indicating the tags of an entity in AYON.
+          usage:
+            - entity
+          properties:
+            tags:
+              type: string
+              description: >
+                Tags of the entity.
+      Transient:
+        description: >
+          A trait indicating a transient entity.
+        usage:
+          - entity
+        properties:
+          lifetime:
+            type: string
+            description: >
+              Lifetime of the entity. "session" means the entity is valid
+              for lifetime of the session (running DCC for example). "process"
+              means the entity is valid for lifetime of the process (running publish)
+              "timebased" means the entity is valid for a specific time period specified
+              by ttl.
+          ttl:
+            type: integer
+            description: >
+              Time to live of the entity. 0 means infinite.
+  time:
+    description: Traits related to time.
+    members:
+      Clip:
+        description: >
+          A trait indicating time defined clip with start, end and rate.
+        usage:
+          - entity
+        properties:
+          frameStart:
+            type: integer
+            description: >
+              Frame number where the clip starts.
+          frameEnd:
+            type: integer
+            description: >
+              Frame number where the clip ends.
+          frameRate:
+            type: float
+            description: >
+              Frame rate of the clip.
+          step:
+            type: integer
+            description: >
+              Frame step of the clip.
+          clipIn:
+            type: integer
+            description: >
+              Frame number where the clip starts in the parent clip.
+          clipOut:
+            type: integer
+            description: >
+              Frame number where the clip ends in the parent clip.
+          handlesStart:
+            type: integer
+            description: >
+              Number of frames of handles at the start of the clip.
+          handlesEnd:
+            type: integer
+            description: >
+              Number of frames of handles at the end of the clip.
+          inclusiveHandles:
+            type: boolean
+            description: >
+              Whether the handles are included in the clip.
+          timecode:
+            type: string
+            description: >
+              Timecode of the clip.
+      Sequence:
+        description: >
+          A trait similar to Clip.
+        usage:
+            - entity
+        properties:
+          allowGaps:
+            type: boolean
+            description: >
+              Whether the sequence allows gaps.
+      Animation:
+        description: >
+          A trait indicating an animation.
+        usage:
+          - entity
+        properties:
+          loop:
+            type: boolean
+            description: >
+              Indicate if animation is looped.
+      Cache:
+        description: >
+          A trait indicating a cached entity.
+        usage:
+          - entity
+
+  raster:
+    description: Traits related to raster images.
+    members:
+      Image:
+        description: >
+          A trait indicating a raster image.
+        usage:
+          - entity
+        properties:
+          width:
+            type: integer
+            description: >
+              Width of the image in pixels.
+          height:
+            type: integer
+            description: >
+              Height of the image in pixels.
+          channels:
+            type: integer
+            description: >
+              Number of channels in the image.
+          depth:
+            type: integer
+            description: >
+              Bit depth of the image.
+          pixelAspectRatio:
+            type: float
+            description: >
+              Pixel aspect ratio of the image.
+          compression:
+            type: string
+            description: >
+              Compression of the image.
+          overscanWidth:
+            type: integer
+            description: >
+              Overscan width of the image.
+          overscanHeight:
+            type: integer
+            description: >
+              Overscan height of the image.
+      ColorManaged:
+        description: >
+          A trait indicating a color managed image.
+        usage:
+          - entity
+        properties:
+          colorSpace:
+            type: string
+            description: >
+              Color space of the image.
+          configPath:
+            type: string
+            description: >
+              Config path of the image.
+          configTemplate:
+            type: string
+            description: >
+              Config template.
+          display:
+            type: string
+            description: >
+              Color space display of the image.
+          view:
+            type: string
+            description: >
+              Color space view of the image.
+      Texture:
+        description: >
+          A trait indicating a texture.
+        usage:
+            - entity
+  geo:
+    description: Traits related to geometry.
+    members:
+      Model:
+        description: >
+                  A trait indicating a model.
+        usage:
+          - entity
+        properties:
+          boundingBox:
+            type: string
+            description: >
+              Bounding box of the model.
+      PointCache:
+        description: >
+          A trait indicating a pointcache.
+        usage:
+          - entity
+      Rig:
+        description: >
+          A trait indicating a rig.
+        usage:
+          - entity
+      Camera:
+        description: >
+          A trait indicating a camera.
+        usage:
+          - entity
+      Look:
+        description: >
+          A trait indicating a look.
+        usage:
+          - entity
+      Volume:
+        description: >
+          A trait indicating a volume.
+        usage:
+          - entity
+        properties:
+          boundingBox:
+            type: string
+            description: >
+              Bounding box of the volume.
+          grids:
+            type: string
+            description: >
+              Grids of the volume.
+      SpatialContent:
+        description: >
+          A trait indicating a spatial content.
+        usage:
+          - entity
+        properties:
+          boundingBox:
+            type: string
+            description: >
+              Bounding box of the spatial content.
+          upAxis:
+            type: string
+            description: >
+              Up axis of the spatial content.
+          frontAxis:
+            type: string
+            description: >
+              Front axis of the spatial content.
+          units:
+            type: string
+            description: >
+              Units of the spatial content.
+            
+
+      Archive:
+        description: >
+          A trait indicating an archive.
+        usage:
+          - entity
+        properties:
+          renderer:
+            type: string
+            description: >
+              Renderer of the archive.
+
+      Proxy:
+        description: >
+          A trait indicating a proxy.
+        usage:
+          - entity
+  scene:
+    description: Traits related to scene.
+    members:
+      Workfile:
+        description: >
+          A trait indicating a workfile.
+        usage:
+            - entity
+        properties:
+          type:
+            type: string
+            description: >
+              Type of the workfile - like Maya Binary, Maya ASCII, etc.
+          host:
+            type: string
+            description: >
+              Name and version of the DCC that created this workfile.
+      Usd:
+        description: >
+          A trait indicating a USD file.
+        usage:
+            - entity
+  sound:
+    description: Traits related to sound.
+    members:
+      Audio:
+        description: >
+          A trait indicating a sound.
+        usage:
+          - entity
+        properties:
+          duration:
+            type: float
+            description: >
+              Duration of the sound in seconds.
+          channels:
+            type: integer
+            description: >
+              Number of channels in the sound.
+          sampleRate:
+            type: integer
+            description: >
+              Sample rate of the sound.
+          bitDepth:
+            type: integer
+            description: >
+              Bit depth of the sound.
+          compression:
+            type: string
+            description: >
+              Compression of the sound.
+
+  meta:
+    description: Traits related to metadata.
+    members:
+      Relationship:
+        description: >
+          A trait indicating a relationship.
+        usage:
+          - entity
+      XMP:
+        description: >
+          A trait indicating an XMP metadata.
+        usage:
+          - entity
+        properties:
+          xmp:
+            type: string
+            description: >
+              XMP metadata.
+      Annotation:
+        description: >
+          A trait indicating an annotation.
+        usage:
+          - entity
+        properties:
+          annotation:
+            type: string
+            description: >
+              Annotation.

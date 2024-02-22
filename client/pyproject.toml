@@ -15,6 +15,9 @@ pynput = "^1.7.2" # Timers manager - TODO remove
 speedcopy = "^2.1"
 six = "^1.15"
 qtawesome = "0.7.3"
+openassetio-traitgen = "*" # for generating traits from yaml definitions
+openassetio-mediacreation = "*" # for default media creation traits
+ayon-openassetio-manager-plugin = { git = "https://github.com/ynput/ayon-openassetio-manager-plugin.git", branch = "master" }
 
 [ayon.runtimeDependencies]
 OpenTimelineIO = "0.14.1"

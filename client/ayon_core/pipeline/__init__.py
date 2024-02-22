@@ -95,6 +95,9 @@ from .context_tools import (
     get_current_asset_name,
     get_current_task_name
 )
+
+from .openassetio_host_interface import get_openassetio_manager
+
 install = install_host
 uninstall = uninstall_host
 
@@ -197,4 +200,7 @@ __all__ = (
     # Backwards compatible function names
     "install",
     "uninstall",
+
+    # OpenAssetIO
+    "get_openassetio_manager",
 )
