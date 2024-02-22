@@ -72,7 +72,7 @@ class FusionRenderLocal(
         self.log.info(
             "Rendered '{nm}' for asset '{ast}' under the task '{tsk}'".format(
                 nm=instance.data["name"],
-                ast=instance.data["asset"],
+                ast=instance.data["folderPath"],
                 tsk=instance.data["task"],
             )
         )

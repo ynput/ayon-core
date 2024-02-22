@@ -519,7 +519,7 @@ def imprint(timeline_item, data=None):
 
     Examples:
         data = {
-            'asset': 'sq020sh0280',
+            'folderPath': 'sq020sh0280',
             'family': 'render',
             'subset': 'subsetMain'
         }

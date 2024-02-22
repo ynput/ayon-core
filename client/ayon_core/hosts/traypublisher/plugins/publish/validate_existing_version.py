@@ -40,7 +40,7 @@ class ValidateExistingVersion(
 
         formatting_data = {
             "subset_name": subset_name,
-            "asset_name": instance.data["asset"],
+            "asset_name": instance.data["folderPath"],
             "version": version
         }
         raise PublishXmlValidationError(

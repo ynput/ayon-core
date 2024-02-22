@@ -98,7 +98,7 @@ class CollectAERender(publish.AbstractCollectRender):
                 source=current_file,
                 label="{} - {}".format(subset_name, family),
                 subset=subset_name,
-                asset=inst.data["asset"],
+                folderPath=inst.data["folderPath"],
                 task=task_name,
                 attachTo=False,
                 setMembers='',
@@ -175,7 +175,7 @@ class CollectAERender(publish.AbstractCollectRender):
             version_str = "v{:03d}".format(render_instance.version)
             if "#" not in file_name:  # single frame (mov)W
                 path = os.path.join(base_dir, "{}_{}_{}.{}".format(
-                    render_instance.asset,
+                    render_instance.folderPath,
                     render_instance.subset,
                     version_str,
                     ext
@@ -184,7 +184,7 @@ class CollectAERender(publish.AbstractCollectRender):
             else:
                 for frame in range(start, end + 1):
                     path = os.path.join(base_dir, "{}_{}_{}.{}.{}".format(
-                        render_instance.asset,
+                        render_instance.folderPath,
                         render_instance.subset,
                         version_str,
                         str(frame).zfill(self.padding_width),
