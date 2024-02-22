@@ -8,9 +8,7 @@ from .constants import (
 
     METADATA_KEYS,
 
-    SYSTEM_SETTINGS_KEY,
     PROJECT_SETTINGS_KEY,
-    DEFAULT_PROJECT_KEY
 )
 
 from .ayon_settings import (

@@ -1,5 +1,4 @@
 from .constants import (
-    SYSTEM_SETTINGS_KEY,
     PROJECT_SETTINGS_KEY,
 )
 from .lib import (
@@ -12,7 +11,6 @@ from .ayon_settings import get_ayon_settings
 
 
 __all__ = (
-    "SYSTEM_SETTINGS_KEY",
     "PROJECT_SETTINGS_KEY",
 
     "get_general_environments",

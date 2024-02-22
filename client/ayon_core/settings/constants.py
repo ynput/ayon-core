@@ -9,10 +9,7 @@ METADATA_KEYS = frozenset([
 ])
 
 # Keys where studio's system overrides are stored
-SYSTEM_SETTINGS_KEY = "system_settings"
 PROJECT_SETTINGS_KEY = "project_settings"
-
-DEFAULT_PROJECT_KEY = "__default_project__"
 
 
 __all__ = (
@@ -21,8 +18,5 @@ __all__ = (
 
     "METADATA_KEYS",
 
-    "SYSTEM_SETTINGS_KEY",
     "PROJECT_SETTINGS_KEY",
-
-    "DEFAULT_PROJECT_KEY",
 )
