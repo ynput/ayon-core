@@ -24,16 +24,6 @@ import six
 from ayon_core.client import get_ayon_server_api_connection
 
 
-def is_dev_mode_enabled():
-    """Dev mode is enabled in AYON.
-
-    Returns:
-        bool: True if dev mode is enabled.
-    """
-
-    return os.getenv("AYON_USE_DEV") == "1"
-
-
 # --------- Project settings ---------
 def _convert_royalrender_project_settings(ayon_settings, output):
     if "royalrender" not in ayon_settings:
@@ -111,7 +101,7 @@ class _AyonSettingsCache:
     @classmethod
     def _get_variant(cls):
         if _AyonSettingsCache.variant is None:
-            from ayon_core.lib import is_staging_enabled
+            from ayon_core.lib import is_staging_enabled, is_dev_mode_enabled
 
             variant = "production"
             if is_dev_mode_enabled():
