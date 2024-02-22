@@ -1793,6 +1793,9 @@ def convert_knob_value_to_correct_type(knob_type, knob_value):
 
 
 def color_gui_to_int(color_gui):
+    # Append alpha channel if not present
+    if len(color_gui) == 3:
+        color_gui = list(color_gui) + [255]
     hex_value = (
         "0x{0:0>2x}{1:0>2x}{2:0>2x}{3:0>2x}").format(*color_gui)
     return int(hex_value, 16)
