@@ -615,10 +615,10 @@ class HieroCreator(Creator):
 
 
     def apply_settings(self, project_settings):
-        resolve_create_settings = (
+        hiero_create_settings = (
             project_settings.get("hiero", {}).get("create")
         )
-        self.presets = resolve_create_settings.get(
+        self.presets = hiero_create_settings.get(
             self.__class__.__name__, {}
         )
 
