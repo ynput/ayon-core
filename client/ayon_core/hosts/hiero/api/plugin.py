@@ -826,8 +826,7 @@ class PublishClip:
         _spl = text.split("#")
         _len = (len(_spl) - 1)
         _repl = "{{{0}:0>{1}}}".format(name, _len)
-        new_text = text.replace(("#" * _len), _repl)
-        return new_text
+        return text.replace(("#" * _len), _repl)
 
     def _convert_to_tag_data(self):
         """ Convert internal data to tag data.
