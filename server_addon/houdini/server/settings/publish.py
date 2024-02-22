@@ -20,6 +20,39 @@ class CollectChunkSizeModel(BaseSettingsModel):
         title="Frames Per Task")
 
 
+def product_types_enum():
+    return [
+        {"value": "camera", "label": "Camera (Abc)"},
+        {"value": "pointcache", "label": "PointCache (Abc)/PointCache (Bgeo)"},
+        {"value": "review", "staticMesh": "Static Mesh (FBX)"},
+        {"value": "usd", "label": "USD (experimental)"},
+        {"value": "vdbcache", "label": "VDB Cache"},
+        {"value": "imagesequence", "label": "Composite (Image Sequence)"},
+        {"value": "review", "review": "Review"},
+        {"value": "ass", "label": "Arnold ASS"},
+        # {"value": "arnold_rop", "label": "Arnold ROP"},
+        {"value": "mantraifd", "label": "Mantra IFD"},
+        # {"value": "mantra_rop", "label": "Mantra ROP"},
+        {"value": "redshiftproxy", "label": "Redshift Proxy"},
+        # {"value": "redshift_rop", "label": "Redshift ROP"},
+        # {"value": "karma_rop", "label": "Karma ROP"},
+        # {"value": "vray_rop", "label": "VRay ROP"},
+    ]
+
+
+class CollectFilesForCleaningUpModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+    families: list[str] = SettingsField(
+        default_factory=list,
+        enum_resolver=product_types_enum,
+        conditionalEnum=True,
+        title="Product Types",
+    )
+
+
 class ValidateWorkfilePathsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -49,7 +82,7 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=CollectChunkSizeModel,
         title="Collect Chunk Size."
     )
-    CollectFilesForCleaningUp:BasicValidateModel = SettingsField(
+    CollectFilesForCleaningUp:CollectFilesForCleaningUpModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Collect Files For Cleaning Up."
     )
@@ -86,7 +119,8 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
     "CollectFilesForCleaningUp": {
         "enabled": False,
         "optional": True,
-        "active": True
+        "active": True,
+        "families" : []
     },
     "ValidateContainers": {
         "enabled": True,
