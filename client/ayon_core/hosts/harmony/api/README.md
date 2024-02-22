@@ -204,7 +204,7 @@ class CreateComposite(harmony.Creator):
 
     name = "compositeDefault"
     label = "Composite"
-    family = "mindbender.template"
+    product_type = "mindbender.template"
 
     def __init__(self, *args, **kwargs):
         super(CreateComposite, self).__init__(*args, **kwargs)
@@ -221,7 +221,7 @@ class CreateRender(harmony.Creator):
 
     name = "writeDefault"
     label = "Write"
-    family = "mindbender.imagesequence"
+    product_type = "mindbender.imagesequence"
     node_type = "WRITE"
 
     def __init__(self, *args, **kwargs):
