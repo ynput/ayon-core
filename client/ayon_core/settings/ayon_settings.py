@@ -133,35 +133,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_hiero_project_settings(ayon_settings, output):
-    if "hiero" not in ayon_settings:
-        return
-
-    ayon_hiero = ayon_settings["hiero"]
-
-    new_gui_filters = {}
-    for item in ayon_hiero.pop("filters", []):
-        subvalue = {}
-        key = item["name"]
-        for subitem in item["value"]:
-            subvalue[subitem["name"]] = subitem["value"]
-        new_gui_filters[key] = subvalue
-    ayon_hiero["filters"] = new_gui_filters
-
-    ayon_load_clip = ayon_hiero["load"]["LoadClip"]
-    if "product_types" in ayon_load_clip:
-        ayon_load_clip["families"] = ayon_load_clip.pop("product_types")
-
-    ayon_load_clip = ayon_hiero["load"]["LoadClip"]
-    ayon_load_clip["clip_name_template"] = (
-        ayon_load_clip["clip_name_template"]
-        .replace("{folder[name]}", "{asset}")
-        .replace("{product[name]}", "{subset}")
-    )
-
-    output["hiero"] = ayon_hiero
-
-
 def _convert_royalrender_project_settings(ayon_settings, output):
     if "royalrender" not in ayon_settings:
         return
@@ -177,8 +148,6 @@ def _convert_royalrender_project_settings(ayon_settings, output):
 def convert_project_settings(ayon_settings, default_settings):
     default_settings = copy.deepcopy(default_settings)
     output = {}
-
-    _convert_hiero_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
 
