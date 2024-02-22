@@ -89,7 +89,7 @@ def get_product_name(
     default_template=None,
     dynamic_data=None,
     project_settings=None,
-    family_filter=None,
+    product_type_filter=None,
 ):
     """Calculate product name based on passed context and AYON settings.
 
@@ -120,8 +120,9 @@ def get_product_name(
             a creator which creates instance.
         project_settings (Optional[Union[Dict[str, Any]]]): Prepared settings
             for project. Settings are queried if not passed.
-        family_filter (Optional[str]): Use different family for product template
-            filtering. Value of 'family' is used when not passed.
+        product_type_filter (Optional[str]): Use different product type for
+            product template filtering. Value of `product_type` is used when
+            not passed.
 
     Raises:
         TemplateFillError: If filled template contains placeholder key which
@@ -137,7 +138,7 @@ def get_product_name(
 
     template = get_product_name_template(
         project_name,
-        family_filter or product_type,
+        product_type_filter or product_type,
         task_name,
         task_type,
         host_name,
