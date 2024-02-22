@@ -95,11 +95,11 @@ class CollectRender(pyblish.api.InstancePlugin):
         # also need to get the render dir for conversion
         data = {
             "folderPath": instance.data["folderPath"],
-            "subset": str(instance.name),
+            "productName": str(instance.name),
             "publish": True,
             "maxversion": str(get_max_version()),
             "imageFormat": img_format,
-            "family": 'maxrender',
+            "productType": 'maxrender',
             "families": ['maxrender'],
             "renderer": renderer,
             "source": filepath,
