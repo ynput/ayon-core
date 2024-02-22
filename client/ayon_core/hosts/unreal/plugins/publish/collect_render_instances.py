@@ -57,19 +57,20 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                     seq = s.get('sequence')
                     seq_name = seq.get_name()
 
+                    new_product_name = f"{data.get('productName')}_{seq_name}"
                     new_instance = context.create_instance(
-                        f"{data.get('subset')}_"
-                        f"{seq_name}")
+                        new_product_name
+                    )
                     new_instance[:] = seq_name
 
                     new_data = new_instance.data
 
                     new_data["folderPath"] = seq_name
                     new_data["setMembers"] = seq_name
-                    new_data["family"] = "render"
+                    new_data["productType"] = "render"
+                    new_data["productName"] = new_product_name
                     new_data["families"] = ["render", "review"]
                     new_data["parent"] = data.get("parent")
-                    new_data["subset"] = f"{data.get('subset')}_{seq_name}"
                     new_data["level"] = data.get("level")
                     new_data["output"] = s.get('output')
                     new_data["fps"] = seq.get_display_rate().numerator

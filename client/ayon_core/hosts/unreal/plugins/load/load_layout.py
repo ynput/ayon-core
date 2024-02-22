@@ -481,7 +481,7 @@ class LayoutLoader(plugin.Loader):
         for asset_container in asset_containers:
             package_path = asset_container.get_editor_property('package_path')
             family = EditorAssetLibrary.get_metadata_tag(
-                asset_container.get_asset(), 'family')
+                asset_container.get_asset(), "family")
             assets = EditorAssetLibrary.list_assets(
                 str(package_path), recursive=False)
             if family == 'model':
@@ -501,7 +501,7 @@ class LayoutLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
