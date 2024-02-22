@@ -15,7 +15,7 @@ class CollectWorkfile(pyblish.api.ContextPlugin):
 
     def process(self, context):
         for instance in context:
-            if instance.data["family"] == "workfile":
+            if instance.data["productType"] == "workfile":
                 file_path = context.data["currentFile"]
                 _, ext = os.path.splitext(file_path)
                 staging_dir = os.path.dirname(file_path)
