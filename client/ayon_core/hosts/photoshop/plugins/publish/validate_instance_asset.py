@@ -31,7 +31,7 @@ class ValidateInstanceAssetRepair(pyblish.api.Action):
         current_asset_name = get_current_asset_name()
         for instance in instances:
             data = stub.read(instance[0])
-            data["asset"] = current_asset_name
+            data["folderPath"] = current_asset_name
             stub.imprint(instance[0], data)
 
 
@@ -54,7 +54,7 @@ class ValidateInstanceAsset(OptionalPyblishPluginMixin,
     order = ValidateContentsOrder
 
     def process(self, instance):
-        instance_asset = instance.data["asset"]
+        instance_asset = instance.data["folderPath"]
         current_asset = get_current_asset_name()
 
         if instance_asset != current_asset:

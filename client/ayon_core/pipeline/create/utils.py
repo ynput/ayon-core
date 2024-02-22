@@ -32,7 +32,7 @@ def get_last_versions_for_instances(
     subset_names_by_asset_name = collections.defaultdict(set)
     instances_by_hierarchy = {}
     for instance in instances:
-        asset_name = instance.data.get("asset")
+        asset_name = instance.data.get("folderPath")
         subset_name = instance.subset_name
         if not asset_name or not subset_name:
             if use_value_for_missing:
