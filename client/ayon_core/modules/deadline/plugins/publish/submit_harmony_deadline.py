@@ -273,11 +273,11 @@ class HarmonySubmitDeadline(
             "FTRACK_API_KEY",
             "FTRACK_API_USER",
             "FTRACK_SERVER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_WORKDIR",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "AYON_LOG_NO_COLORS"
             "IS_TEST"
         ]

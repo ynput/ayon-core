@@ -285,7 +285,7 @@ class ExtractUSDLayered(publish.Extractor):
         # to detect whether we should make this into a new publish
         # version. If not, skip it.
         asset = get_asset_by_name(
-            project_name, dependency.data["asset"], fields=["_id"]
+            project_name, dependency.data["folderPath"], fields=["_id"]
         )
         subset = get_subset_by_name(
             project_name,

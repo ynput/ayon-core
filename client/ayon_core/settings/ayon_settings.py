@@ -52,26 +52,6 @@ def _convert_color(color_value):
     return color_value
 
 
-def _convert_host_imageio(host_settings):
-    if "imageio" not in host_settings:
-        return
-
-    # --- imageio ---
-    ayon_imageio = host_settings["imageio"]
-    # TODO remove when fixed on server
-    if "ocio_config" in ayon_imageio["ocio_config"]:
-        ayon_imageio["ocio_config"]["filepath"] = (
-            ayon_imageio["ocio_config"].pop("ocio_config")
-        )
-    # Convert file rules
-    imageio_file_rules = ayon_imageio["file_rules"]
-    new_rules = {}
-    for rule in imageio_file_rules["rules"]:
-        name = rule.pop("name")
-        new_rules[name] = rule
-    imageio_file_rules["rules"] = new_rules
-
-
 def _convert_general(ayon_settings, output, default_settings):
     output["core"] = ayon_settings["core"]
     version_check_interval = (
@@ -82,106 +62,24 @@ def _convert_general(ayon_settings, output, default_settings):
     }
 
 
-def _convert_kitsu_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    if "kitsu" in ayon_settings:
-        output["kitsu"] = ayon_settings["kitsu"]
-
-    enabled = addon_versions.get("kitsu") is not None
-    kitsu_settings = default_settings["modules"]["kitsu"]
-    kitsu_settings["enabled"] = enabled
-    if enabled:
-        kitsu_settings["server"] = ayon_settings["kitsu"]["server"]
-    output["modules"]["kitsu"] = kitsu_settings
-
-
-def _convert_timers_manager_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("timers_manager") is not None
-    manager_settings = default_settings["modules"]["timers_manager"]
-    manager_settings["enabled"] = enabled
-    if enabled:
-        ayon_manager = ayon_settings["timers_manager"]
-        manager_settings.update({
-            key: ayon_manager[key]
-            for key in {
-                "auto_stop",
-                "full_time",
-                "message_time",
-                "disregard_publishing"
-            }
-        })
-    output["modules"]["timers_manager"] = manager_settings
-
-
-def _convert_clockify_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("clockify") is not None
-    clockify_settings = default_settings["modules"]["clockify"]
-    clockify_settings["enabled"] = enabled
-    if enabled:
-        clockify_settings["workspace_name"] = (
-            ayon_settings["clockify"]["workspace_name"]
-        )
-    output["modules"]["clockify"] = clockify_settings
-
-
-def _convert_deadline_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("deadline") is not None
-    deadline_settings = default_settings["modules"]["deadline"]
-    deadline_settings["enabled"] = enabled
-    if enabled:
-        ayon_deadline = ayon_settings["deadline"]
-        deadline_settings["deadline_urls"] = {
-            item["name"]: item["value"]
-            for item in ayon_deadline["deadline_urls"]
-        }
-
-    output["modules"]["deadline"] = deadline_settings
-
-
-def _convert_royalrender_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("royalrender") is not None
-    rr_settings = default_settings["modules"]["royalrender"]
-    rr_settings["enabled"] = enabled
-    if enabled:
-        ayon_royalrender = ayon_settings["royalrender"]
-        rr_settings["rr_paths"] = {
-            item["name"]: item["value"]
-            for item in ayon_royalrender["rr_paths"]
-        }
-    output["modules"]["royalrender"] = rr_settings
-
-
 def _convert_modules_system(
     ayon_settings, output, addon_versions, default_settings
 ):
-    # TODO add all modules
-    # TODO add 'enabled' values
-    for func in (
-        _convert_kitsu_system_settings,
-        _convert_timers_manager_system_settings,
-        _convert_clockify_system_settings,
-        _convert_deadline_system_settings,
-        _convert_royalrender_system_settings,
-    ):
-        func(ayon_settings, output, addon_versions, default_settings)
+    for key in {
+        "timers_manager",
+        "clockify",
+        "royalrender",
+        "deadline",
+    }:
+        if addon_versions.get(key):
+            output[key] = ayon_settings
+        else:
+            output.pop(key, None)
 
     modules_settings = output["modules"]
     for module_name in (
         "sync_server",
-        "log_viewer",
-        "standalonepublish_tool",
-        "project_manager",
         "job_queue",
-        "avalon",
         "addon_paths",
     ):
         settings = default_settings["modules"][module_name]
@@ -214,9 +112,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
     output = {
         "modules": {}
     }
-    if "applications" in ayon_settings:
-        output["applications"] = ayon_settings["applications"]
-
     if "core" in ayon_settings:
         _convert_general(ayon_settings, output, default_settings)
 
@@ -238,67 +133,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_blender_project_settings(ayon_settings, output):
-    if "blender" not in ayon_settings:
-        return
-    ayon_blender = ayon_settings["blender"]
-    _convert_host_imageio(ayon_blender)
-
-    output["blender"] = ayon_blender
-
-
-def _convert_celaction_project_settings(ayon_settings, output):
-    if "celaction" not in ayon_settings:
-        return
-
-    ayon_celaction = ayon_settings["celaction"]
-    _convert_host_imageio(ayon_celaction)
-
-    output["celaction"] = ayon_celaction
-
-
-def _convert_flame_project_settings(ayon_settings, output):
-    if "flame" not in ayon_settings:
-        return
-
-    ayon_flame = ayon_settings["flame"]
-
-    _convert_host_imageio(ayon_flame)
-    output["flame"] = ayon_flame
-
-
-def _convert_fusion_project_settings(ayon_settings, output):
-    if "fusion" not in ayon_settings:
-        return
-
-    ayon_fusion = ayon_settings["fusion"]
-    _convert_host_imageio(ayon_fusion)
-
-    output["fusion"] = ayon_fusion
-
-
-def _convert_maya_project_settings(ayon_settings, output):
-    if "maya" not in ayon_settings:
-        return
-
-    ayon_maya = ayon_settings["maya"]
-
-    _convert_host_imageio(ayon_maya)
-
-    output["maya"] = ayon_maya
-
-
-def _convert_3dsmax_project_settings(ayon_settings, output):
-    if "max" not in ayon_settings:
-        return
-
-    ayon_max = ayon_settings["max"]
-
-    _convert_host_imageio(ayon_max)
-
-    output["max"] = ayon_max
-
-
 def _convert_nuke_knobs(knobs):
     new_knobs = []
     for knob in knobs:
@@ -442,7 +276,6 @@ def _convert_nuke_project_settings(ayon_settings, output):
 
     # --- ImageIO ---
     # NOTE 'monitorOutLut' is maybe not yet in v3 (ut should be)
-    _convert_host_imageio(ayon_nuke)
     ayon_imageio = ayon_nuke["imageio"]
 
     # workfile
@@ -491,7 +324,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
         return
 
     ayon_hiero = ayon_settings["hiero"]
-    _convert_host_imageio(ayon_hiero)
 
     new_gui_filters = {}
     for item in ayon_hiero.pop("filters", []):
@@ -516,62 +348,6 @@ def _convert_hiero_project_settings(ayon_settings, output):
     output["hiero"] = ayon_hiero
 
 
-def _convert_photoshop_project_settings(ayon_settings, output):
-    if "photoshop" not in ayon_settings:
-        return
-
-    ayon_photoshop = ayon_settings["photoshop"]
-    _convert_host_imageio(ayon_photoshop)
-    output["photoshop"] = ayon_photoshop
-
-
-def _convert_substancepainter_project_settings(ayon_settings, output):
-    if "substancepainter" not in ayon_settings:
-        return
-
-    ayon_substance_painter = ayon_settings["substancepainter"]
-    _convert_host_imageio(ayon_substance_painter)
-    output["substancepainter"] = ayon_substance_painter
-
-
-def _convert_tvpaint_project_settings(ayon_settings, output):
-    if "tvpaint" not in ayon_settings:
-        return
-
-    ayon_tvpaint = ayon_settings["tvpaint"]
-    _convert_host_imageio(ayon_tvpaint)
-    output["tvpaint"] = ayon_tvpaint
-
-
-def _convert_traypublisher_project_settings(ayon_settings, output):
-    if "traypublisher" not in ayon_settings:
-        return
-
-    ayon_traypublisher = ayon_settings["traypublisher"]
-
-    _convert_host_imageio(ayon_traypublisher)
-
-    output["traypublisher"] = ayon_traypublisher
-
-
-def _convert_webpublisher_project_settings(ayon_settings, output):
-    if "webpublisher" not in ayon_settings:
-        return
-
-    ayon_webpublisher = ayon_settings["webpublisher"]
-    _convert_host_imageio(ayon_webpublisher)
-
-    ayon_publish = ayon_webpublisher["publish"]
-
-    ayon_collect_files = ayon_publish["CollectPublishedFiles"]
-    ayon_collect_files["task_type_to_family"] = {
-        item["name"]: item["value"]
-        for item in ayon_collect_files["task_type_to_family"]
-    }
-
-    output["webpublisher"] = ayon_webpublisher
-
-
 def _convert_royalrender_project_settings(ayon_settings, output):
     if "royalrender" not in ayon_settings:
         return
@@ -584,274 +360,14 @@ def _convert_royalrender_project_settings(ayon_settings, output):
     }
 
 
-def _convert_kitsu_project_settings(ayon_settings, output):
-    if "kitsu" not in ayon_settings:
-        return
-
-    ayon_kitsu_settings = ayon_settings["kitsu"]
-    ayon_kitsu_settings.pop("server")
-
-    integrate_note = ayon_kitsu_settings["publish"]["IntegrateKitsuNote"]
-    status_change_conditions = integrate_note["status_change_conditions"]
-    if "product_type_requirements" in status_change_conditions:
-        status_change_conditions["family_requirements"] = (
-            status_change_conditions.pop("product_type_requirements"))
-
-    output["kitsu"] = ayon_kitsu_settings
-
-
-def _convert_shotgrid_project_settings(ayon_settings, output):
-    if "shotgrid" not in ayon_settings:
-        return
-
-    ayon_shotgrid = ayon_settings["shotgrid"]
-    # This means that a different variant of addon is used
-    if "leecher_backend_url" not in ayon_shotgrid:
-        return
-
-    for key in {
-        "leecher_backend_url",
-        "filter_projects_by_login",
-        "shotgrid_settings",
-        "leecher_manager_url",
-    }:
-        ayon_shotgrid.pop(key)
-
-    asset_field = ayon_shotgrid["fields"]["asset"]
-    asset_field["type"] = asset_field.pop("asset_type")
-
-    task_field = ayon_shotgrid["fields"]["task"]
-    if "task" in task_field:
-        task_field["step"] = task_field.pop("task")
-
-    output["shotgrid"] = ayon_settings["shotgrid"]
-
-
-def _convert_slack_project_settings(ayon_settings, output):
-    if "slack" not in ayon_settings:
-        return
-
-    ayon_slack = ayon_settings["slack"]
-    ayon_slack.pop("enabled", None)
-    for profile in ayon_slack["publish"]["CollectSlackFamilies"]["profiles"]:
-        profile["tasks"] = profile.pop("task_names")
-        profile["subsets"] = profile.pop("subset_names")
-
-    output["slack"] = ayon_slack
-
-
-def _convert_global_project_settings(ayon_settings, output, default_settings):
-    if "core" not in ayon_settings:
-        return
-
-    ayon_core = ayon_settings["core"]
-
-    _convert_host_imageio(ayon_core)
-    # Publish conversion
-    ayon_publish = ayon_core["publish"]
-
-    # ExtractThumbnail plugin
-    ayon_extract_thumbnail = ayon_publish["ExtractThumbnail"]
-    # fix display and view at oiio defaults
-    ayon_default_oiio = copy.deepcopy(
-        ayon_extract_thumbnail["oiiotool_defaults"])
-    display_and_view = ayon_default_oiio.pop("display_and_view")
-    ayon_default_oiio["display"] = display_and_view["display"]
-    ayon_default_oiio["view"] = display_and_view["view"]
-    ayon_extract_thumbnail["oiiotool_defaults"] = ayon_default_oiio
-    # fix target size
-    ayon_default_resize = copy.deepcopy(ayon_extract_thumbnail["target_size"])
-    resize = ayon_default_resize.pop("resize")
-    ayon_default_resize["width"] = resize["width"]
-    ayon_default_resize["height"] = resize["height"]
-    ayon_extract_thumbnail["target_size"] = ayon_default_resize
-    # fix background color
-    ayon_extract_thumbnail["background_color"] = _convert_color(
-        ayon_extract_thumbnail["background_color"]
-    )
-
-    # ExtractOIIOTranscode plugin
-    extract_oiio_transcode = ayon_publish["ExtractOIIOTranscode"]
-    extract_oiio_transcode_profiles = extract_oiio_transcode["profiles"]
-    for profile in extract_oiio_transcode_profiles:
-        new_outputs = {}
-        name_counter = {}
-        if "product_names" in profile:
-            profile["subsets"] = profile.pop("product_names")
-        for profile_output in profile["outputs"]:
-            if "name" in profile_output:
-                name = profile_output.pop("name")
-            else:
-                # Backwards compatibility for setting without 'name' in model
-                name = profile_output["extension"]
-                if name in new_outputs:
-                    name_counter[name] += 1
-                    name = "{}_{}".format(name, name_counter[name])
-                else:
-                    name_counter[name] = 0
-
-            new_outputs[name] = profile_output
-        profile["outputs"] = new_outputs
-
-    # Extract Burnin plugin
-    extract_burnin = ayon_publish["ExtractBurnin"]
-    extract_burnin_options = extract_burnin["options"]
-    for color_key in ("font_color", "bg_color"):
-        extract_burnin_options[color_key] = _convert_color(
-            extract_burnin_options[color_key]
-        )
-
-    for profile in extract_burnin["profiles"]:
-        extract_burnin_defs = profile["burnins"]
-        if "product_names" in profile:
-            profile["subsets"] = profile.pop("product_names")
-            profile["families"] = profile.pop("product_types")
-
-        for burnin_def in extract_burnin_defs:
-            for key in (
-                "TOP_LEFT",
-                "TOP_CENTERED",
-                "TOP_RIGHT",
-                "BOTTOM_LEFT",
-                "BOTTOM_CENTERED",
-                "BOTTOM_RIGHT",
-            ):
-                burnin_def[key] = (
-                    burnin_def[key]
-                    .replace("{product[name]}", "{subset}")
-                    .replace("{Product[name]}", "{Subset}")
-                    .replace("{PRODUCT[NAME]}", "{SUBSET}")
-                    .replace("{product[type]}", "{family}")
-                    .replace("{Product[type]}", "{Family}")
-                    .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-                    .replace("{folder[name]}", "{asset}")
-                    .replace("{Folder[name]}", "{Asset}")
-                    .replace("{FOLDER[NAME]}", "{ASSET}")
-                )
-        profile["burnins"] = {
-            extract_burnin_def.pop("name"): extract_burnin_def
-            for extract_burnin_def in extract_burnin_defs
-        }
-
-    if "IntegrateProductGroup" in ayon_publish:
-        subset_group = ayon_publish.pop("IntegrateProductGroup")
-        subset_group_profiles = subset_group.pop("product_grouping_profiles")
-        for profile in subset_group_profiles:
-            profile["families"] = profile.pop("product_types")
-        subset_group["subset_grouping_profiles"] = subset_group_profiles
-        ayon_publish["IntegrateSubsetGroup"] = subset_group
-
-    # Cleanup plugin
-    ayon_cleanup = ayon_publish["CleanUp"]
-    if "patterns" in ayon_cleanup:
-        ayon_cleanup["paterns"] = ayon_cleanup.pop("patterns")
-
-    # Project root settings - json string to dict
-    ayon_core["project_environments"] = json.loads(
-        ayon_core["project_environments"]
-    )
-    ayon_core["project_folder_structure"] = json.dumps(json.loads(
-        ayon_core["project_folder_structure"]
-    ))
-
-    # Tools settings
-    ayon_tools = ayon_core["tools"]
-    ayon_create_tool = ayon_tools["creator"]
-    if "product_name_profiles" in ayon_create_tool:
-        product_name_profiles = ayon_create_tool.pop("product_name_profiles")
-        for profile in product_name_profiles:
-            profile["families"] = profile.pop("product_types")
-        ayon_create_tool["subset_name_profiles"] = product_name_profiles
-
-    for profile in ayon_create_tool["subset_name_profiles"]:
-        template = profile["template"]
-        profile["template"] = (
-            template
-            .replace("{task[name]}", "{task}")
-            .replace("{Task[name]}", "{Task}")
-            .replace("{TASK[NAME]}", "{TASK}")
-            .replace("{product[type]}", "{family}")
-            .replace("{Product[type]}", "{Family}")
-            .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-            .replace("{folder[name]}", "{asset}")
-            .replace("{Folder[name]}", "{Asset}")
-            .replace("{FOLDER[NAME]}", "{ASSET}")
-        )
-
-    product_smart_select_key = "families_smart_select"
-    if "product_types_smart_select" in ayon_create_tool:
-        product_smart_select_key = "product_types_smart_select"
-
-    new_smart_select_families = {
-        item["name"]: item["task_names"]
-        for item in ayon_create_tool.pop(product_smart_select_key)
-    }
-    ayon_create_tool["families_smart_select"] = new_smart_select_families
-
-    ayon_loader_tool = ayon_tools["loader"]
-    if "product_type_filter_profiles" in ayon_loader_tool:
-        product_type_filter_profiles = (
-            ayon_loader_tool.pop("product_type_filter_profiles"))
-        for profile in product_type_filter_profiles:
-            profile["filter_families"] = profile.pop("filter_product_types")
-
-        ayon_loader_tool["family_filter_profiles"] = (
-            product_type_filter_profiles)
-
-    ayon_publish_tool = ayon_tools["publish"]
-    for profile in ayon_publish_tool["hero_template_name_profiles"]:
-        if "product_types" in profile:
-            profile["families"] = profile.pop("product_types")
-
-    for profile in ayon_publish_tool["template_name_profiles"]:
-        if "product_types" in profile:
-            profile["families"] = profile.pop("product_types")
-
-    ayon_core["sync_server"] = (
-        default_settings["global"]["sync_server"]
-    )
-    output["global"] = ayon_core
-
-
 def convert_project_settings(ayon_settings, default_settings):
-    # Missing settings
-    # - standalonepublisher
     default_settings = copy.deepcopy(default_settings)
     output = {}
-    exact_match = {
-        "aftereffects",
-        "harmony",
-        "houdini",
-        "resolve",
-        "unreal",
-        "applications",
-        "deadline",
-    }
-    for key in exact_match:
-        if key in ayon_settings:
-            output[key] = ayon_settings[key]
-            _convert_host_imageio(output[key])
 
-    _convert_blender_project_settings(ayon_settings, output)
-    _convert_celaction_project_settings(ayon_settings, output)
-    _convert_flame_project_settings(ayon_settings, output)
-    _convert_fusion_project_settings(ayon_settings, output)
-    _convert_maya_project_settings(ayon_settings, output)
-    _convert_3dsmax_project_settings(ayon_settings, output)
     _convert_nuke_project_settings(ayon_settings, output)
     _convert_hiero_project_settings(ayon_settings, output)
-    _convert_photoshop_project_settings(ayon_settings, output)
-    _convert_substancepainter_project_settings(ayon_settings, output)
-    _convert_tvpaint_project_settings(ayon_settings, output)
-    _convert_traypublisher_project_settings(ayon_settings, output)
-    _convert_webpublisher_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
-    _convert_kitsu_project_settings(ayon_settings, output)
-    _convert_shotgrid_project_settings(ayon_settings, output)
-    _convert_slack_project_settings(ayon_settings, output)
-
-    _convert_global_project_settings(ayon_settings, output, default_settings)
 
     for key, value in ayon_settings.items():
         if key not in output:

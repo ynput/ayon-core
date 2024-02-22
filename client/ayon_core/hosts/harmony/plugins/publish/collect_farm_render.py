@@ -98,7 +98,7 @@ class CollectFarmRender(publish.AbstractCollectRender):
 
         self_name = self.__class__.__name__
 
-        asset_name = context.data["asset"]
+        folder_path = context.data["folderPath"]
 
         for node in context.data["allNodes"]:
             data = harmony.read(node)
@@ -142,7 +142,7 @@ class CollectFarmRender(publish.AbstractCollectRender):
                 source=context.data["currentFile"],
                 label=node.split("/")[1],
                 subset=subset_name,
-                asset=asset_name,
+                folderPath=folder_path,
                 task=task_name,
                 attachTo=False,
                 setMembers=[node],

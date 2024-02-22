@@ -38,7 +38,7 @@ class LoaderPlugin(list):
 
     @classmethod
     def apply_settings(cls, project_settings, system_settings):
-        host_name = os.environ.get("AVALON_APP")
+        host_name = os.environ.get("AYON_HOST_NAME")
         plugin_type = "load"
         plugin_type_settings = (
             project_settings
@@ -47,7 +47,7 @@ class LoaderPlugin(list):
         )
         global_type_settings = (
             project_settings
-            .get("global", {})
+            .get("core", {})
             .get(plugin_type, {})
         )
         if not global_type_settings and not plugin_type_settings:

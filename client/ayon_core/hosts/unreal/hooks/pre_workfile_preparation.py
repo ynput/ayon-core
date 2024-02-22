@@ -146,7 +146,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
     def execute(self):
         """Hook entry method."""
-        workdir = self.launch_context.env["AVALON_WORKDIR"]
+        workdir = self.launch_context.env["AYON_WORKDIR"]
         executable = str(self.launch_context.executable)
         engine_version = self.app_name.split("/")[-1].replace("-", ".")
         try:
