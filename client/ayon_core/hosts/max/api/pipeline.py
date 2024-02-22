@@ -260,8 +260,9 @@ def remove_container_data(container_node: str):
         # clean up the children of alembic dummy objects
         for current_set_member in all_set_members_names:
             shape_list = [members for members in current_set_member.Children
-                          if rt.ClassOf(members) == rt.AlembicObject]
-            if shape_list:
+                          if rt.ClassOf(members) == rt.AlembicObject
+                          or rt.isValidNode(members)]
+            if shape_list:  # noqa
                 rt.Delete(shape_list)
             rt.Delete(current_set_member)
         rt.deleteModifier(container_node, container_node.modifiers[0])
