@@ -100,7 +100,7 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
 
     @staticmethod
     def get_context_asset(instance):
-        return instance.context.data["asset"]
+        return instance.context.data["folderPath"]
 
     @staticmethod
     def get_context_task(instance):
