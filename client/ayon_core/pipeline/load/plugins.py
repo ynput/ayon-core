@@ -47,7 +47,7 @@ class LoaderPlugin(list):
         )
         global_type_settings = (
             project_settings
-            .get("global", {})
+            .get("core", {})
             .get(plugin_type, {})
         )
         if not global_type_settings and not plugin_type_settings:

@@ -6,7 +6,13 @@ import six
 from pymxs import runtime as rt
 
 from ayon_core.lib import BoolDef
-from ayon_core.pipeline import CreatedInstance, Creator, CreatorError
+from ayon_core.pipeline import (
+    CreatedInstance,
+    Creator,
+    CreatorError,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
+)
 
 from .lib import imprint, lsattr, read
 
@@ -162,7 +168,11 @@ class MaxCreatorBase(object):
             return shared_data
 
         shared_data["max_cached_subsets"] = {}
-        cached_instances = lsattr("id", "pyblish.avalon.instance")
+
+        cached_instances = []
+        for id_type in [AYON_INSTANCE_ID, AVALON_INSTANCE_ID]:
+            cached_instances.extend(lsattr("id", id_type))
+
         for i in cached_instances:
             creator_id = rt.GetUserProp(i, "creator_identifier")
             if creator_id not in shared_data["max_cached_subsets"]:
