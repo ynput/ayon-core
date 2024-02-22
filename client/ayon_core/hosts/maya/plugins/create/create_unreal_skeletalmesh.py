@@ -14,9 +14,8 @@ class CreateUnrealSkeletalMesh(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.unrealskeletalmesh"
     label = "Unreal - Skeletal Mesh"
-    family = "skeletalMesh"
+    product_type = "skeletalMesh"
     icon = "thumbs-up"
-    dynamic_subset_keys = ["asset"]
 
     # Defined in settings
     joint_hints = set()
@@ -32,7 +31,7 @@ class CreateUnrealSkeletalMesh(plugin.MayaCreator):
         self, variant, task_name, asset_doc, project_name, host_name, instance
     ):
         """
-        The default subset name templates for Unreal include {asset} and thus
+        The default product name templates for Unreal include {asset} and thus
         we should pass that along as dynamic data.
         """
         dynamic_data = super(CreateUnrealSkeletalMesh, self).get_dynamic_data(
@@ -41,11 +40,11 @@ class CreateUnrealSkeletalMesh(plugin.MayaCreator):
         dynamic_data["asset"] = asset_doc["name"]
         return dynamic_data
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         with lib.undo_chunk():
             instance = super(CreateUnrealSkeletalMesh, self).create(
-                subset_name, instance_data, pre_create_data)
+                product_name, instance_data, pre_create_data)
             instance_node = instance.get("instance_node")
 
             # We reorganize the geometry that was originally added into the

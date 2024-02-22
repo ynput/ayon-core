@@ -27,7 +27,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
     """
     identifier = "io.openpype.creators.maya.multishotlayout"
     label = "Multi-shot Layout"
-    family = "layout"
+    product_type = "layout"
     icon = "project-diagram"
 
     def get_pre_create_attr_defs(self):
@@ -106,7 +106,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
                     default="layout"),
         ]
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         shots = list(
             self.get_related_shots(folder_path=pre_create_data["shotParent"])
         )
@@ -164,7 +164,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
                 instance_data["task"] = layout_task
 
             layout_creator.create(
-                subset_name=layout_creator.get_subset_name(
+                product_name=layout_creator.get_product_name(
                     layout_creator.get_default_variant(),
                     self.create_context.get_current_task_name(),
                     asset_doc,

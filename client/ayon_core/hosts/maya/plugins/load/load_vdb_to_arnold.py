@@ -5,7 +5,7 @@ from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 # TODO aiVolume doesn't automatically set velocity fps correctly, set manual?
 
 
@@ -26,9 +26,9 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         from ayon_core.hosts.maya.api.lib import unique_namespace
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "vdbcache"
+            product_type = "vdbcache"
 
         # Check if the plugin for arnold is available on the pc
         try:
@@ -51,7 +51,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)

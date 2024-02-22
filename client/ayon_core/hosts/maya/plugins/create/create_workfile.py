@@ -10,7 +10,7 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
     """Workfile auto-creator."""
     identifier = "io.openpype.creators.maya.workfile"
     label = "Workfile"
-    family = "workfile"
+    product_type = "workfile"
     icon = "fa5.file"
 
     default_variant = "Main"
@@ -36,7 +36,7 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
 
         if current_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 variant, task_name, asset_doc, project_name, host_name
             )
             data = {
@@ -51,7 +51,7 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
             )
             self.log.info("Auto-creating workfile instance...")
             current_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             self._add_instance_to_context(current_instance)
         elif (
@@ -60,19 +60,21 @@ class CreateWorkfile(plugin.MayaCreatorBase, AutoCreator):
         ):
             # Update instance context if is not the same
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 variant, task_name, asset_doc, project_name, host_name
             )
             asset_name = get_asset_name_identifier(asset_doc)
 
             current_instance["folderPath"] = asset_name
             current_instance["task"] = task_name
-            current_instance["subset"] = subset_name
+            current_instance["productName"] = product_name
 
     def collect_instances(self):
-        self.cache_subsets(self.collection_shared_data)
-        cached_subsets = self.collection_shared_data["maya_cached_subsets"]
-        for node in cached_subsets.get(self.identifier, []):
+        self.cache_instance_data(self.collection_shared_data)
+        cached_instances = (
+            self.collection_shared_data["maya_cached_instance_data"]
+        )
+        for node in cached_instances.get(self.identifier, []):
             node_data = self.read_instance_node(node)
 
             created_instance = CreatedInstance.from_existing(node_data, self)

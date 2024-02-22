@@ -10,30 +10,32 @@ from maya.app.renderSetup.model import renderSetup
 
 class MayaLegacyConvertor(SubsetConvertorPlugin,
                           plugin.MayaCreatorBase):
-    """Find and convert any legacy subsets in the scene.
+    """Find and convert any legacy products in the scene.
 
-    This Convertor will find all legacy subsets in the scene and will
-    transform them to the current system. Since the old subsets doesn't
+    This Convertor will find all legacy products in the scene and will
+    transform them to the current system. Since the old products doesn't
     retain any information about their original creators, the only mapping
     we can do is based on their families.
 
-    Its limitation is that you can have multiple creators creating subset
-    of the same family and there is no way to handle it. This code should
+    Its limitation is that you can have multiple creators creating product
+    of the same type and there is no way to handle it. This code should
     nevertheless cover all creators that came with OpenPype.
 
     """
     identifier = "io.openpype.creators.maya.legacy"
 
-    # Cases where the identifier or new family doesn't correspond to the
+    # Cases where the identifier or new product type doesn't correspond to the
     # original family on the legacy instances
-    special_family_conversions = {
+    product_type_mapping = {
         "rendering": "io.openpype.creators.maya.renderlayer",
     }
 
     def find_instances(self):
 
-        self.cache_subsets(self.collection_shared_data)
-        legacy = self.collection_shared_data.get("maya_cached_legacy_subsets")
+        self.cache_instance_data(self.collection_shared_data)
+        legacy = self.collection_shared_data.get(
+            "maya_cached_legacy_instances"
+        )
         if not legacy:
             return
 
@@ -45,43 +47,43 @@ class MayaLegacyConvertor(SubsetConvertorPlugin,
         # We can't use the collected shared data cache here
         # we re-query it here directly to convert all found.
         cache = {}
-        self.cache_subsets(cache)
-        legacy = cache.get("maya_cached_legacy_subsets")
+        self.cache_instance_data(cache)
+        legacy = cache.get("maya_cached_legacy_instances")
         if not legacy:
             return
 
         # From all current new style manual creators find the mapping
-        # from family to identifier
-        family_to_id = {}
+        # from product type to identifier
+        product_type_to_id = {}
         for identifier, creator in self.create_context.creators.items():
-            family = getattr(creator, "family", None)
-            if not family:
+            product_type = getattr(creator, "product_type", None)
+            if not product_type:
                 continue
 
-            if family in family_to_id:
-                # We have a clash of family -> identifier. Multiple
-                # new style creators use the same family
-                self.log.warning("Clash on family->identifier: "
-                                 "{}".format(identifier))
-            family_to_id[family] = identifier
+            if product_type in product_type_to_id:
+                # We have a clash of product type -> identifier. Multiple
+                # new style creators use the same product type
+                self.log.warning(
+                    "Clash on product type->identifier: {}".format(identifier)
+                )
+            product_type_to_id[product_type] = identifier
 
-        family_to_id.update(self.special_family_conversions)
+        product_type_to_id.update(self.product_type_mapping)
 
         # We also embed the current 'task' into the instance since legacy
         # instances didn't store that data on the instances. The old style
         # logic was thus to be live to the current task to begin with.
         data = dict()
         data["task"] = self.create_context.get_current_task_name()
-        for family, instance_nodes in legacy.items():
-            if family not in family_to_id:
-                self.log.warning(
+        for product_type, instance_nodes in legacy.items():
+            if product_type not in product_type_to_id:
+                self.log.warning((
                     "Unable to convert legacy instance with family '{}'"
-                    " because there is no matching new creator's family"
-                    "".format(family)
-                )
+                    " because there is no matching new creator"
+                ).format(product_type))
                 continue
 
-            creator_id = family_to_id[family]
+            creator_id = product_type_to_id[family]
             creator = self.create_context.creators[creator_id]
             data["creator_identifier"] = creator_id
 
@@ -133,21 +135,21 @@ class MayaLegacyConvertor(SubsetConvertorPlugin,
             # Copy the attributes of the original instance to the new node
             original_data = read(instance_node)
 
-            # The family gets converted to the new family (this is due to
-            # "rendering" family being converted to "renderlayer" family)
-            original_data["family"] = creator.family
+            # The product type gets converted to the new product type (this
+            # is due to "rendering" being converted to "renderlayer")
+            original_data["productType"] = creator.product_type
 
-            # recreate subset name as without it would be
+            # recreate product name as without it would be
             # `renderingMain` vs correct `renderMain`
             project_name = self.create_context.get_current_project_name()
             asset_doc = get_asset_by_name(project_name,
                                           original_data["asset"])
-            subset_name = creator.get_subset_name(
+            product_name = creator.get_product_name(
                 original_data["variant"],
                 data["task"],
                 asset_doc,
                 project_name)
-            original_data["subset"] = subset_name
+            original_data["productName"] = product_name
 
             # Convert to creator attributes when relevant
             creator_attributes = {}

@@ -9,9 +9,8 @@ class CreateUnrealStaticMesh(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.unrealstaticmesh"
     label = "Unreal - Static Mesh"
-    family = "staticMesh"
+    product_type = "staticMesh"
     icon = "cube"
-    dynamic_subset_keys = ["asset"]
 
     # Defined in settings
     collision_prefixes = []
@@ -25,7 +24,7 @@ class CreateUnrealStaticMesh(plugin.MayaCreator):
         self, variant, task_name, asset_doc, project_name, host_name, instance
     ):
         """
-        The default subset name templates for Unreal include {asset} and thus
+        The default product name templates for Unreal include {asset} and thus
         we should pass that along as dynamic data.
         """
         dynamic_data = super(CreateUnrealStaticMesh, self).get_dynamic_data(
@@ -34,11 +33,11 @@ class CreateUnrealStaticMesh(plugin.MayaCreator):
         dynamic_data["asset"] = asset_doc["name"]
         return dynamic_data
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         with lib.undo_chunk():
             instance = super(CreateUnrealStaticMesh, self).create(
-                subset_name, instance_data, pre_create_data)
+                product_name, instance_data, pre_create_data)
             instance_node = instance.get("instance_node")
 
             # We reorganize the geometry that was originally added into the
