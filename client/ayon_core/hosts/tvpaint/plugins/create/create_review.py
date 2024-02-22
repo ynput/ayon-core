@@ -4,7 +4,7 @@ from ayon_core.hosts.tvpaint.api.plugin import TVPaintAutoCreator
 
 
 class TVPaintReviewCreator(TVPaintAutoCreator):
-    family = "review"
+    product_type = "review"
     identifier = "scene.review"
     label = "Review"
     icon = "ei.video"
@@ -40,7 +40,7 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
 
         if existing_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 self.default_variant,
                 task_name,
                 asset_doc,
@@ -57,7 +57,7 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
                 data["active"] = False
 
             new_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             instances_data = self.host.list_instances()
             instances_data.append(new_instance.data_to_store())
@@ -69,7 +69,7 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
             or existing_instance["task"] != task_name
         ):
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 existing_instance["variant"],
                 task_name,
                 asset_doc,
@@ -79,4 +79,4 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
             )
             existing_instance["folderPath"] = asset_name
             existing_instance["task"] = task_name
-            existing_instance["subset"] = subset_name
+            existing_instance["productName"] = product_name

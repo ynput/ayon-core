@@ -101,7 +101,7 @@ class LoadWorkfile(plugin.Loader):
                 "tvpaint",
                 task_name=task_name,
                 task_type=data["task"]["type"],
-                family="workfile"
+                product_type="workfile"
             )
         else:
             version += 1
