@@ -58,7 +58,7 @@ class ValidateModelName(pyblish.api.InstancePlugin,
         reg = re.compile(regex)
         matched_name = reg.match(name)
         project_name = instance.context.data["projectName"]
-        current_asset_name = instance.context.data["asset"]
+        current_asset_name = instance.context.data["folderPath"]
         if matched_name is None:
             cls.log.error("invalid model name on: {}".format(name))
             cls.log.error("name doesn't match regex {}".format(regex))
