@@ -59,10 +59,6 @@ class JobQueueAddon(AYONAddon):
 
         self._jobs_root_mapping = jobs_root_mapping
 
-        # Is always enabled
-        #   - the addon does nothing until is used
-        self.enabled = True
-
     @classmethod
     def _root_conversion(cls, root_path):
         """Make sure root path does not end with slash."""
