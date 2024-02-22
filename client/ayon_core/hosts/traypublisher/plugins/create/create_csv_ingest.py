@@ -603,7 +603,7 @@ configuration in project settings.
 
         # get column value from row
         column_value = row_data.get(column_name)
-        column_required = column_data["required"]
+        column_required = column_data["required_column"]
 
         # check if column value is not empty string and column is required
         if column_value == "" and column_required:
@@ -614,7 +614,7 @@ configuration in project settings.
         # get column type
         column_type = column_data["type"]
         # get column validation regex
-        column_validation = column_data["validate"]
+        column_validation = column_data["validation_pattern"]
         # get column default value
         column_default = default_value or column_data["default"]
 
