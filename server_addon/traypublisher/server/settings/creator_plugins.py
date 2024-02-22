@@ -45,14 +45,14 @@ class ColumnItemModel(BaseSettingsModel):
         default=""
     )
 
-    required: bool = SettingsField(
-        title="Required",
+    required_column: bool = SettingsField(
+        title="Required Column",
         default=False
     )
 
-    validate: str = SettingsField(
-        title="Validate",
-        default=""
+    validation_pattern: str = SettingsField(
+        title="Validation Regex Pattern",
+        default="^(.*)$"
     )
 
 
@@ -96,7 +96,7 @@ class RepresentationItemModel(BaseSettingsModel):
     def validate_extension(cls, value):
         for ext in value:
             if not ext.startswith("."):
-                raise BadRequestException("Extension must start with '.'")
+                raise BadRequestException(f"Extension must start with '.': {ext}")
         return value
 
 
@@ -179,120 +179,120 @@ DEFAULT_CREATORS = {
                     "name": "File Path",
                     "type": "text",
                     "default": "",
-                    "required": True,
-                    "validate": "^([a-z0-9#._\\/]*)$"
+                    "required_column": True,
+                    "validation_pattern": "^([a-z0-9#._\\/]*)$"
                 },
                 {
                     "name": "Folder Context",
                     "type": "text",
                     "default": "",
-                    "required": True,
-                    "validate": "^([a-zA-Z0-9_]*)$"
+                    "required_column": True,
+                    "validation_pattern": "^([a-zA-Z0-9_]*)$"
                 },
                 {
                     "name": "Task Name",
                     "type": "text",
                     "default": "",
-                    "required": True,
-                    "validate": "^(.*)$"
+                    "required_column": True,
+                    "validation_pattern": "^(.*)$"
                 },
                 {
                     "name": "Version",
                     "type": "number",
                     "default": 1,
-                    "required": True,
-                    "validate": "^(\\d{1,3})$"
+                    "required_column": True,
+                    "validation_pattern": "^(\\d{1,3})$"
                 },
                 {
                     "name": "Frame Start",
                     "type": "number",
                     "default": 0,
-                    "required": True,
-                    "validate": "^(\\d{1,8})$"
+                    "required_column": True,
+                    "validation_pattern": "^(\\d{1,8})$"
                 },
                 {
                     "name": "Frame End",
                     "type": "number",
                     "default": 0,
-                    "required": True,
-                    "validate": "^(\\d{1,8})$"
+                    "required_column": True,
+                    "validation_pattern": "^(\\d{1,8})$"
                 },
                 {
                     "name": "Handle Start",
                     "type": "number",
                     "default": 0,
-                    "required": True,
-                    "validate": "^(\\d)$"
+                    "required_column": True,
+                    "validation_pattern": "^(\\d)$"
                 },
                 {
                     "name": "Handle End",
                     "type": "number",
                     "default": 0,
-                    "required": True,
-                    "validate": "^(\\d)$"
+                    "required_column": True,
+                    "validation_pattern": "^(\\d)$"
                 },
                 {
                     "name": "FPS",
                     "type": "decimal",
                     "default": 0.0,
-                    "required": True,
-                    "validate": "^[0-9]*\\.[0-9]+$|^[0-9]+$"
+                    "required_column": True,
+                    "validation_pattern": "^[0-9]*\\.[0-9]+$|^[0-9]+$"
                 },
                 {
                     "name": "Thumbnail",
                     "type": "text",
                     "default": "",
-                    "required": False,
-                    "validate": "^([a-z0-9#._\\/]*)$"
+                    "required_column": False,
+                    "validation_pattern": "^([a-z0-9#._\\/]*)$"
                 },
                 {
                     "name": "Colorspace",
                     "type": "text",
                     "default": "",
-                    "required": False,
-                    "validate": "^(.*)$"
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
                 },
                 {
                     "name": "Version Comment",
                     "type": "text",
                     "default": "",
-                    "required": False,
-                    "validate": "^(.*)$"
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
                 },
                 {
                     "name": "Representation",
                     "type": "text",
                     "default": "",
-                    "required": False,
-                    "validate": "^(.*)$"
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
                 },
                 {
                     "name": "Product Type",
                     "type": "text",
                     "default": "",
-                    "required": False,
-                    "validate": "^(.*)$"
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
                 },
                 {
                     "name": "Variant",
                     "type": "text",
                     "default": "",
-                    "required": False,
-                    "validate": "^(.*)$"
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
                 },
                 {
                     "name": "Slate Exists",
                     "type": "bool",
                     "default": True,
-                    "required": False,
-                    "validate": "(True|False)"
+                    "required_column": False,
+                    "validation_pattern": "(True|False)"
                 },
                 {
                     "name": "Representation Tags",
                     "type": "text",
                     "default": "",
-                    "required": False,
-                    "validate": "^(.*)$"
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
                 }
             ]
         },
