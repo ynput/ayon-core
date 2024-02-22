@@ -60,17 +60,22 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             instance.data["ifdFile"] = beauty_export_product
             instance.data["exportFiles"] = list(export_products)
 
-        # Default beauty AOV
+        full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
+        if full_exr_mode:
+            # Ignore beauty suffix if full mode is enabled
+            # As this is what the rop does. 
+            beauty_suffix = ""
+
+        # Default beauty/main layer AOV
         beauty_product = self.get_render_product_name(
             prefix=default_prefix, suffix=beauty_suffix
         )
         render_products = [beauty_product]
         files_by_aov = {
-            "_": self.generate_expected_files(instance,
+            beauty_suffix: self.generate_expected_files(instance,
                                               beauty_product)}
 
         num_aovs = rop.evalParm("RS_aov")
-        full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
         for index in range(num_aovs):
             i = index + 1
 
