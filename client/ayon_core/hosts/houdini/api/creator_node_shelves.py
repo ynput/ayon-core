@@ -90,7 +90,7 @@ def create_interactive(creator_identifier, **kwargs):
     pane = stateutils.activePane(kwargs)
     if isinstance(pane, hou.NetworkEditor):
         pwd = pane.pwd()
-        subset_name = creator.get_subset_name(
+        product_name = creator.get_product_name(
             variant=variant,
             task_name=context.get_current_task_name(),
             asset_doc=get_asset_by_name(
@@ -104,7 +104,7 @@ def create_interactive(creator_identifier, **kwargs):
         tool_fn = CATEGORY_GENERIC_TOOL.get(pwd.childTypeCategory())
         if tool_fn is not None:
             out_null = tool_fn(kwargs, "null")
-            out_null.setName("OUT_{}".format(subset_name), unique_name=True)
+            out_null.setName("OUT_{}".format(product_name), unique_name=True)
 
     before = context.instances_by_id.copy()
 
