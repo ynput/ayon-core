@@ -233,8 +233,7 @@ def get_general_environments():
 
 
 def get_system_settings(*args, **kwargs):
-    default_settings = get_default_settings()[SYSTEM_SETTINGS_KEY]
-    return get_ayon_system_settings(default_settings)
+    return get_ayon_system_settings()
 
 
 def get_project_settings(project_name, *args, **kwargs):
