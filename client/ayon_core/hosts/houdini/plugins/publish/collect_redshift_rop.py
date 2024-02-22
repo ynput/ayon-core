@@ -118,7 +118,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
         # When AOV is explicitly defined in prefix we just swap it out
         # directly with the AOV suffix to embed it.
-        # Note: ${AOV} seems to be evaluated in the parameter as %AOV%
+        # Note: '$AOV' seems to be evaluated in the parameter as '%AOV%'
         has_aov_in_prefix = "%AOV%" in prefix
         if has_aov_in_prefix:
             # It seems that when some special separator characters are present

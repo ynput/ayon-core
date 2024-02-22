@@ -65,7 +65,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         filepath = "{renders_dir}{subset_name}/{subset_name}.{fmt}".format(
                 renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
                 subset_name=subset_name,
-                fmt="%{aov}%.$F4.{ext}".format(aov="AOV", ext=ext)
+                fmt="$AOV.$F4.{ext}".format(ext=ext)
             )
         
         if multilayer_mode_index[multi_layered_mode] == "1": 
