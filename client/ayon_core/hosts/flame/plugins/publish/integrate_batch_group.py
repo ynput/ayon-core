@@ -168,10 +168,10 @@ class IntegrateBatchGroup(pyblish.api.InstancePlugin):
         handle_start = instance.data["handleStart"]
         handle_end = instance.data["handleEnd"]
         frame_duration = (frame_end - frame_start) + 1
-        asset_name = instance.data["asset"]
+        folder_path = instance.data["folderPath"]
 
         task_name = task_data["name"]
-        batchgroup_name = "{}_{}".format(asset_name, task_name)
+        batchgroup_name = "{}_{}".format(folder_path, task_name)
 
         batch_data = {
             "shematic_reels": [

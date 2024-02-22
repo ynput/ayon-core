@@ -2,7 +2,12 @@ import json
 
 from maya import cmds
 
-from ayon_core.pipeline import registered_host, get_current_asset_name
+from ayon_core.pipeline import (
+    registered_host,
+    get_current_asset_name,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
+)
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     TemplateAlreadyImported,
     AbstractTemplateBuilder,
@@ -73,7 +78,9 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
         for node in imported_sets:
             if not cmds.attributeQuery("id", node=node, exists=True):
                 continue
-            if cmds.getAttr("{}.id".format(node)) != "pyblish.avalon.instance":
+            if cmds.getAttr("{}.id".format(node)) not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 continue
             if not cmds.attributeQuery("asset", node=node, exists=True):
                 continue

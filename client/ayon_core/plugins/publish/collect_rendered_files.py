@@ -71,14 +71,19 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         """
         # validate basic necessary data
         data_err = "invalid json file - missing data"
-        required = ["asset", "user", "comment",
+        required = ["user", "comment",
                     "job", "instances", "version"]
         assert all(elem in data.keys() for elem in required), data_err
+        if "folderPath" not in data and "asset" not in data:
+            raise AssertionError(data_err)
+
+        if "folderPath" not in data:
+            data["folderPath"] = data.pop("asset")
 
         # set context by first json file
         ctx = self._context.data
 
-        ctx["asset"] = ctx.get("asset") or data.get("asset")
+        ctx["folderPath"] = ctx.get("folderPath") or data.get("folderPath")
         ctx["intent"] = ctx.get("intent") or data.get("intent")
         ctx["comment"] = ctx.get("comment") or data.get("comment")
         ctx["user"] = ctx.get("user") or data.get("user")
@@ -87,7 +92,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         # basic sanity check to see if we are working in same context
         # if some other json file has different context, bail out.
         ctx_err = "inconsistent contexts in json files - %s"
-        assert ctx.get("asset") == data.get("asset"), ctx_err % "asset"
+        assert ctx.get("folderPath") == data.get("folderPath"), ctx_err % "folderPath"
         assert ctx.get("intent") == data.get("intent"), ctx_err % "intent"
         assert ctx.get("comment") == data.get("comment"), ctx_err % "comment"
         assert ctx.get("user") == data.get("user"), ctx_err % "user"
