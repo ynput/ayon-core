@@ -24,34 +24,6 @@ import six
 from ayon_core.client import get_ayon_server_api_connection
 
 
-def _convert_color(color_value):
-    if isinstance(color_value, six.string_types):
-        color_value = color_value.lstrip("#")
-        color_value_len = len(color_value)
-        _color_value = []
-        for idx in range(color_value_len // 2):
-            _color_value.append(int(color_value[idx:idx + 2], 16))
-        for _ in range(4 - len(_color_value)):
-            _color_value.append(255)
-        return _color_value
-
-    if isinstance(color_value, list):
-        # WARNING R,G,B can be 'int' or 'float'
-        # - 'float' variant is using 'int' for min: 0 and max: 1
-        if len(color_value) == 3:
-            # Add alpha
-            color_value.append(255)
-        else:
-            # Convert float alha to int
-            alpha = int(color_value[3] * 255)
-            if alpha > 255:
-                alpha = 255
-            elif alpha < 0:
-                alpha = 0
-            color_value[3] = alpha
-    return color_value
-
-
 def is_dev_mode_enabled():
     """Dev mode is enabled in AYON.
 
