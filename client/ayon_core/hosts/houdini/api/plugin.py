@@ -11,7 +11,9 @@ from ayon_core.pipeline import (
     CreatorError,
     LegacyCreator,
     Creator as NewCreator,
-    CreatedInstance
+    CreatedInstance,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
 )
 from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
@@ -118,7 +120,10 @@ class HoudiniCreatorBase(object):
             cache = dict()
             cache_legacy = dict()
 
-            for node in lsattr("id", "pyblish.avalon.instance"):
+            nodes = []
+            for id_type in [AYON_INSTANCE_ID, AVALON_INSTANCE_ID]:
+                nodes.extend(lsattr("id", id_type))
+            for node in nodes:
 
                 creator_identifier_parm = node.parm("creator_identifier")
                 if creator_identifier_parm:

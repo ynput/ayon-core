@@ -10,6 +10,9 @@ from maya.app.renderSetup.model import renderSetup
 from ayon_core.lib import BoolDef, Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
+    AYON_INSTANCE_ID,
+    AYON_CONTAINER_ID,
+    AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
     Anatomy,
 
@@ -110,7 +113,9 @@ class MayaCreatorBase(object):
 
             for node in cmds.ls(type="objectSet"):
 
-                if _get_attr(node, attr="id") != "pyblish.avalon.instance":
+                if _get_attr(node, attr="id") not in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }:
                     continue
 
                 creator_id = _get_attr(node, attr="creator_identifier")
@@ -612,7 +617,7 @@ def get_load_color_for_family(family, settings=None):
     else:
         raise ValueError("Invalid color definition {}".format(str(color)))
 
-    if type(red, int):
+    if isinstance(red, int):
         red = red / 255.0
         green = green / 255.0
         blue = blue / 255.0
@@ -992,5 +997,7 @@ class ReferenceLoader(Loader):
             id_attr = "{}.id".format(node)
             if not cmds.attributeQuery("id", node=node, exists=True):
                 continue
-            if cmds.getAttr(id_attr) == AVALON_CONTAINER_ID:
+            if cmds.getAttr(id_attr) not in {
+                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
+            }:
                 cmds.sets(node, forceElement=container)
