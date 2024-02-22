@@ -29,9 +29,15 @@ class ExtractSlateFrame(publish.Extractor):
 
     # Settings values
     key_value_mapping = {
-        "f_submission_note": [True, "{comment}"],
-        "f_submitting_for": [True, "{intent[value]}"],
-        "f_vfx_scope_of_work": [False, ""]
+        "f_submission_note": {
+            "enabled": True, "template": "{comment}"
+        },
+        "f_submitting_for": {
+            "enabled": True, "template": "{intent[value]}"
+        },
+        "f_vfx_scope_of_work": {
+            "enabled": False, "template": ""
+        }
     }
 
     def process(self, instance):
@@ -316,11 +322,11 @@ class ExtractSlateFrame(publish.Extractor):
         })
 
         for key, _values in self.key_value_mapping.items():
-            enabled, template = _values
-            if not enabled:
+            if not _values["enabled"]:
                 self.log.debug("Key \"{}\" is disabled".format(key))
                 continue
 
+            template = _values["template"]
             try:
                 value = template.format(**fill_data)
 
