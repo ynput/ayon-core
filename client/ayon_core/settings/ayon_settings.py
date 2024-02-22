@@ -178,11 +178,7 @@ def get_ayon_project_settings(default_values, project_name):
 
 
 def get_ayon_system_settings():
-    ayon_settings = _AyonSettingsCache.get_value_by_project(None)
-    ayon_settings["general"] = {
-        "version_check_interval": 5
-    }
-    return ayon_settings
+    return _AyonSettingsCache.get_value_by_project(None)
 
 
 def get_ayon_settings(project_name=None):
