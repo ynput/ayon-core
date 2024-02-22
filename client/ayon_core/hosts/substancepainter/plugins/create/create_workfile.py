@@ -17,7 +17,7 @@ class CreateWorkfile(AutoCreator):
     """Workfile auto-creator."""
     identifier = "io.openpype.creators.substancepainter.workfile"
     label = "Workfile"
-    family = "workfile"
+    product_type = "workfile"
     icon = "document"
 
     default_variant = "Main"
@@ -49,7 +49,7 @@ class CreateWorkfile(AutoCreator):
         if current_instance is None:
             self.log.info("Auto-creating workfile instance...")
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 variant, task_name, asset_doc, project_name, host_name
             )
             data = {
@@ -57,7 +57,7 @@ class CreateWorkfile(AutoCreator):
                 "task": task_name,
                 "variant": variant
             }
-            current_instance = self.create_instance_in_context(subset_name,
+            current_instance = self.create_instance_in_context(product_name,
                                                                data)
         elif (
             current_instance_asset != asset_name
@@ -65,12 +65,12 @@ class CreateWorkfile(AutoCreator):
         ):
             # Update instance context if is not the same
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 variant, task_name, asset_doc, project_name, host_name
             )
             current_instance["folderPath"] = asset_name
             current_instance["task"] = task_name
-            current_instance["subset"] = subset_name
+            current_instance["productName"] = product_name
 
         set_instance(
             instance_id=current_instance.get("instance_id"),
@@ -80,7 +80,7 @@ class CreateWorkfile(AutoCreator):
     def collect_instances(self):
         for instance in get_instances():
             if (instance.get("creator_identifier") == self.identifier or
-                    instance.get("family") == self.family):
+                    instance.get("productType") == self.product_type):
                 self.create_instance_in_context_from_existing(instance)
 
     def update_instances(self, update_list):
@@ -93,9 +93,9 @@ class CreateWorkfile(AutoCreator):
         set_instances(instance_data_by_id, update=True)
 
     # Helper methods (this might get moved into Creator class)
-    def create_instance_in_context(self, subset_name, data):
+    def create_instance_in_context(self, product_name, data):
         instance = CreatedInstance(
-            self.family, subset_name, data, self
+            self.product_type, product_name, data, self
         )
         self.create_context.creator_adds_instance(instance)
         return instance
