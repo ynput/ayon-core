@@ -41,28 +41,23 @@ import json
 import copy
 import platform
 
-from ayon_core.addon import click_wrap
-from ayon_core.modules import OpenPypeModule
+from ayon_core.addon import AYONAddon, click_wrap
 from ayon_core.settings import get_system_settings
 
 
-class JobQueueModule(OpenPypeModule):
+class JobQueueAddon(AYONAddon):
     name = "job_queue"
 
-    def initialize(self, modules_settings):
-        module_settings = modules_settings.get(self.name) or {}
-        server_url = module_settings.get("server_url") or ""
+    def initialize(self, studio_settings):
+        addon_settings = studio_settings.get(self.name) or {}
+        server_url = addon_settings.get("server_url") or ""
 
         self._server_url = self.url_conversion(server_url)
         jobs_root_mapping = self._roots_mapping_conversion(
-            module_settings.get("jobs_root")
+            addon_settings.get("jobs_root")
         )
 
         self._jobs_root_mapping = jobs_root_mapping
-
-        # Is always enabled
-        #   - the module does nothing until is used
-        self.enabled = True
 
     @classmethod
     def _root_conversion(cls, root_path):
@@ -127,8 +122,8 @@ class JobQueueModule(OpenPypeModule):
 
     @classmethod
     def get_jobs_root_from_settings(cls):
-        module_settings = get_system_settings()["modules"]
-        jobs_root_mapping = module_settings.get(cls.name, {}).get("jobs_root")
+        studio_settings = get_system_settings()
+        jobs_root_mapping = studio_settings.get(cls.name, {}).get("jobs_root")
         converted_mapping = cls._roots_mapping_conversion(jobs_root_mapping)
 
         return converted_mapping[platform.system().lower()]
@@ -157,9 +152,9 @@ class JobQueueModule(OpenPypeModule):
 
     @classmethod
     def get_server_url_from_settings(cls):
-        module_settings = get_system_settings()["modules"]
+        studio_settings = get_system_settings()
         return cls.url_conversion(
-            module_settings
+            studio_settings
             .get(cls.name, {})
             .get("server_url")
         )
@@ -214,7 +209,7 @@ class JobQueueModule(OpenPypeModule):
 
 
 @click_wrap.group(
-    JobQueueModule.name,
+    JobQueueAddon.name,
     help="Application job server. Can be used as render farm."
 )
 def cli_main():
@@ -228,7 +223,7 @@ def cli_main():
 @click_wrap.option("--port", help="Server port")
 @click_wrap.option("--host", help="Server host (ip address)")
 def cli_start_server(port, host):
-    JobQueueModule.start_server(port, host)
+    JobQueueAddon.start_server(port, host)
 
 
 @cli_main.command(
@@ -241,4 +236,4 @@ def cli_start_server(port, host):
     "--server_url",
     help="Server url which handle workers and jobs.")
 def cli_start_worker(app_name, server_url):
-    JobQueueModule.start_worker(app_name, server_url)
+    JobQueueAddon.start_worker(app_name, server_url)
