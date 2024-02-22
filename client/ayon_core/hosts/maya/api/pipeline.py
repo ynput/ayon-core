@@ -33,6 +33,7 @@ from ayon_core.pipeline import (
     deregister_loader_plugin_path,
     deregister_inventory_action_path,
     deregister_creator_plugin_path,
+    AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
@@ -246,7 +247,7 @@ def _set_project():
         None
 
     """
-    workdir = os.getenv("AVALON_WORKDIR")
+    workdir = os.getenv("AYON_WORKDIR")
 
     try:
         os.makedirs(workdir)
@@ -376,9 +377,11 @@ def _ls():
             yield iterator.thisNode()
             iterator.next()
 
-    ids = {AVALON_CONTAINER_ID,
-           # Backwards compatibility
-           "pyblish.mindbender.container"}
+    ids = {
+        AYON_CONTAINER_ID,
+        # Backwards compatibility
+        AVALON_CONTAINER_ID
+    }
 
     # Iterate over all 'set' nodes in the scene to detect whether
     # they have the avalon container ".id" attribute.
@@ -628,7 +631,7 @@ def on_task_changed():
     # Run
     menu.update_menu_task_label()
 
-    workdir = os.getenv("AVALON_WORKDIR")
+    workdir = os.getenv("AYON_WORKDIR")
     if os.path.exists(workdir):
         log.info("Updating Maya workspace for task change to %s", workdir)
         _set_project()
@@ -677,7 +680,7 @@ def workfile_save_before_xgen(event):
 
     import xgenm
 
-    current_work_dir = os.getenv("AVALON_WORKDIR").replace("\\", "/")
+    current_work_dir = os.getenv("AYON_WORKDIR").replace("\\", "/")
     expected_work_dir = event.data["workdir_path"].replace("\\", "/")
     if current_work_dir == expected_work_dir:
         return

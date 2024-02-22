@@ -359,7 +359,7 @@
 #
 #         if mongo_changes_bulk:
 #             dbcon = AvalonMongoDB()
-#             dbcon.Session["AVALON_PROJECT"] = project_name
+#             dbcon.Session["AYON_PROJECT_NAME"] = project_name
 #             dbcon.install()
 #             dbcon.bulk_write(mongo_changes_bulk)
 #             dbcon.uninstall()

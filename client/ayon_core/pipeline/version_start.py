@@ -16,7 +16,7 @@ def get_versioning_start(
         project_settings = get_project_settings(project_name)
 
     version_start = 1
-    settings = project_settings["global"]
+    settings = project_settings["core"]
     profiles = settings.get("version_start_category", {}).get("profiles", [])
 
     if not profiles:

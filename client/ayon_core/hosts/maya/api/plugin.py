@@ -10,6 +10,9 @@ from maya.app.renderSetup.model import renderSetup
 from ayon_core.lib import BoolDef, Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
+    AYON_INSTANCE_ID,
+    AYON_CONTAINER_ID,
+    AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
     Anatomy,
 
@@ -22,6 +25,7 @@ from ayon_core.pipeline import (
     LegacyCreator,
     LoaderPlugin,
     get_representation_path,
+    get_current_project_name,
 )
 from ayon_core.pipeline.load import LoadError
 from ayon_core.client import get_asset_by_name
@@ -109,7 +113,9 @@ class MayaCreatorBase(object):
 
             for node in cmds.ls(type="objectSet"):
 
-                if _get_attr(node, attr="id") != "pyblish.avalon.instance":
+                if _get_attr(node, attr="id") not in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }:
                     continue
 
                 creator_id = _get_attr(node, attr="creator_identifier")
@@ -585,6 +591,39 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
                                project_name)
 
 
+def get_load_color_for_family(family, settings=None):
+    """Get color for family from settings.
+
+    Args:
+        family (str): Family name.
+        settings (Optional[dict]): Settings dictionary.
+
+    Returns:
+        Union[tuple[float, float, float], None]: RGB color.
+
+    """
+    if settings is None:
+        settings = get_project_settings(get_current_project_name())
+
+    colors = settings["maya"]["load"]["colors"]
+    color = colors.get(family)
+    if not color:
+        return None
+
+    if len(color) == 3:
+        red, green, blue = color
+    elif len(color) == 4:
+        red, green, blue, _ = color
+    else:
+        raise ValueError("Invalid color definition {}".format(str(color)))
+
+    if isinstance(red, int):
+        red = red / 255.0
+        green = green / 255.0
+        blue = blue / 255.0
+    return red, green, blue
+
+
 class Loader(LoaderPlugin):
     hosts = ["maya"]
 
@@ -611,33 +650,38 @@ class Loader(LoaderPlugin):
         options["attach_to_root"] = True
         custom_naming = self.load_settings[loader_key]
 
-        if not custom_naming['namespace']:
+        if not custom_naming["namespace"]:
             raise LoadError("No namespace specified in "
                             "Maya ReferenceLoader settings")
-        elif not custom_naming['group_name']:
+        elif not custom_naming["group_name"]:
             self.log.debug("No custom group_name, no group will be created.")
             options["attach_to_root"] = False
 
-        asset = context['asset']
-        subset = context['subset']
+        asset = context["asset"]
+        subset = context["subset"]
+        family = (
+            subset["data"].get("family")
+            or subset["data"]["families"][0]
+        )
         formatting_data = {
-            "asset_name": asset['name'],
-            "asset_type": asset['type'],
+            "asset_name": asset["name"],
+            "asset_type": asset["type"],
             "folder": {
                 "name": asset["name"],
             },
-            "subset": subset['name'],
-            "family": (
-                subset['data'].get('family') or
-                subset['data']['families'][0]
-            )
+            "subset": subset["name"],
+            "product": {
+                "name": subset["name"],
+                "type": family,
+            },
+            "family": family
         }
 
-        custom_namespace = custom_naming['namespace'].format(
+        custom_namespace = custom_naming["namespace"].format(
             **formatting_data
         )
 
-        custom_group_name = custom_naming['group_name'].format(
+        custom_group_name = custom_naming["group_name"].format(
             **formatting_data
         )
 
@@ -937,7 +981,7 @@ class ReferenceLoader(Loader):
         """
         settings = get_project_settings(project_name)
         use_env_var_as_root = (settings["maya"]
-                                       ["maya-dirmap"]
+                                       ["maya_dirmap"]
                                        ["use_env_var_as_root"])
         if use_env_var_as_root:
             anatomy = Anatomy(project_name)
@@ -953,5 +997,7 @@ class ReferenceLoader(Loader):
             id_attr = "{}.id".format(node)
             if not cmds.attributeQuery("id", node=node, exists=True):
                 continue
-            if cmds.getAttr(id_attr) == AVALON_CONTAINER_ID:
+            if cmds.getAttr(id_attr) not in {
+                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
+            }:
                 cmds.sets(node, forceElement=container)

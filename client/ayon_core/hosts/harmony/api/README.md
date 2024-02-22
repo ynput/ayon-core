@@ -52,7 +52,7 @@ Because Harmony projects are directories, this integration uses `.zip` as work f
 
 ### Show Workfiles on launch
 
-You can show the Workfiles app when Harmony launches by setting environment variable `AVALON_HARMONY_WORKFILES_ON_LAUNCH=1`.
+You can show the Workfiles app when Harmony launches by setting environment variable `AYON_HARMONY_WORKFILES_ON_LAUNCH=1`.
 
 ## Developing
 
@@ -212,6 +212,7 @@ class CreateComposite(harmony.Creator):
 
 The creator plugin can be configured to use other node types. For example here is a write node creator:
 ```python
+from uuid import uuid4
 import ayon_core.hosts.harmony.api as harmony
 
 
@@ -242,6 +243,7 @@ class CreateRender(harmony.Creator):
 #### Collector Plugin
 ```python
 import pyblish.api
+from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 import ayon_core.hosts.harmony.api as harmony
 
 
@@ -252,7 +254,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
     a composite node and marked with a unique identifier;
 
     Identifier:
-        id (str): "pyblish.avalon.instance"
+        id (str): "ayon.create.instance"
     """
 
     label = "Instances"
@@ -272,7 +274,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
                 continue
 
             # Skip containers.
-            if "container" in data["id"]:
+            if data["id"] not in {AYON_INSTANCE_ID, AVALON_INSTANCE_ID}:
                 continue
 
             instance = context.create_instance(node.split("/")[-1])
@@ -287,6 +289,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
 #### Extractor Plugin
 ```python
 import os
+from uuid import uuid4
 
 import pyblish.api
 import ayon_core.hosts.harmony.api as harmony
@@ -418,6 +421,7 @@ class ExtractImage(pyblish.api.InstancePlugin):
 #### Loader Plugin
 ```python
 import os
+from uuid import uuid4
 
 import ayon_core.hosts.harmony.api as harmony
 

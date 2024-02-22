@@ -12,8 +12,7 @@ from ayon_core.client import (
     get_last_version_by_subset_name,
 )
 from ayon_core.pipeline import publish
-from ayon_core.lib import EnumDef
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
 
 from ayon_core.pipeline.farm.pyblish_functions import (
@@ -68,7 +67,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         "FTRACK_API_USER",
         "FTRACK_API_KEY",
         "FTRACK_SERVER",
-        "AVALON_APP_NAME",
+        "AYON_APP_NAME",
         "AYON_USERNAME",
         "OPENPYPE_SG_USER",
         "KITSU_LOGIN",
@@ -113,7 +112,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         output_dir = self._get_publish_folder(
             anatomy,
             deepcopy(instance.data["anatomyData"]),
-            instance.data.get("asset"),
+            instance.data.get("folderPath"),
             instance.data["subset"],
             instance.context,
             instance.data["family"],
@@ -126,9 +125,9 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
             create_metadata_path(instance, anatomy)
 
         environment = {
-            "AVALON_PROJECT": instance.context.data["projectName"],
-            "AVALON_ASSET": instance.context.data["asset"],
-            "AVALON_TASK": instance.context.data["task"],
+            "AYON_PROJECT_NAME": instance.context.data["projectName"],
+            "AYON_FOLDER_PATH": instance.context.data["folderPath"],
+            "AYON_TASK_NAME": instance.context.data["task"],
             "AYON_USERNAME": instance.context.data["user"],
             "AYON_LOG_NO_COLORS": "1",
             "IS_TEST": str(int(is_in_tests())),
@@ -360,7 +359,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
 
         # publish job file
         publish_job = {
-            "asset": instance_skeleton_data["asset"],
+            "folderPath": instance_skeleton_data["folderPath"],
             "frameStart": instance_skeleton_data["frameStart"],
             "frameEnd": instance_skeleton_data["frameEnd"],
             "fps": instance_skeleton_data["fps"],

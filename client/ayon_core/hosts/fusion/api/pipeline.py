@@ -135,7 +135,7 @@ class FusionHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return current_filepath
 
     def work_root(self, session):
-        work_dir = session["AVALON_WORKDIR"]
+        work_dir = session["AYON_WORKDIR"]
         scene_dir = session.get("AVALON_SCENEDIR")
         if scene_dir:
             return os.path.join(work_dir, scene_dir)

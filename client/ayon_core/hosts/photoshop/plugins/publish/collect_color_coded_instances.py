@@ -3,10 +3,9 @@ import re
 
 import pyblish.api
 
-from ayon_core.lib import prepare_template_data
+from ayon_core.lib import prepare_template_data, is_in_tests
 from ayon_core.hosts.photoshop import api as photoshop
 from ayon_core.settings import get_project_settings
-from ayon_core.tests.lib import is_in_tests
 
 
 class CollectColorCodedInstances(pyblish.api.ContextPlugin):
@@ -27,11 +26,10 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
         only separate subsets per marked layer.
 
     Identifier:
-        id (str): "pyblish.avalon.instance"
+        id (str): "ayon.create.instance"
     """
-    order = pyblish.api.CollectorOrder + 0.100
 
-    label = "Instances"
+    label = "Collect Color-coded Instances"
     order = pyblish.api.CollectorOrder
     hosts = ["photoshop"]
     targets = ["automated"]
@@ -42,7 +40,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
     # flattened template cannot
     subset_template_name = ""
     create_flatten_image = "no"
-    flatten_subset_template = ""
+    flatten_product_name_template = ""
 
     def process(self, context):
         self.log.info("CollectColorCodedInstances")
@@ -58,7 +56,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
         existing_subset_names = self._get_existing_subset_names(context)
 
         # from CollectBatchData
-        asset_name = context.data["asset"]
+        asset_name = context.data["folderPath"]
         task_name = context.data["task"]
         variant = context.data["variant"]
         project_name = context.data["projectEntity"]["name"]
@@ -124,12 +122,12 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
 
         if self.create_flatten_image != "no" and publishable_layers:
             self.log.debug("create_flatten_image")
-            if not self.flatten_subset_template:
+            if not self.flatten_product_name_template:
                 self.log.warning("No template for flatten image")
                 return
 
             fill_pairs.pop("layer")
-            subset = self.flatten_subset_template.format(
+            subset = self.flatten_product_name_template.format(
                 **prepare_template_data(fill_pairs))
 
             first_layer = publishable_layers[0]  # dummy layer
@@ -165,7 +163,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
         instance = context.create_instance(layer.name)
         instance.data["family"] = family
         instance.data["publish"] = True
-        instance.data["asset"] = asset
+        instance.data["folderPath"] = asset
         instance.data["task"] = task_name
         instance.data["subset"] = subset
         instance.data["layer"] = layer

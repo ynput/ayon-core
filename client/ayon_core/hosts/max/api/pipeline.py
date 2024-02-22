@@ -12,6 +12,7 @@ from ayon_core.pipeline import (
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.hosts.max.api.menu import OpenPypeMenu
 from ayon_core.hosts.max.api import lib
@@ -63,9 +64,8 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         rt.callbacks.addScript(rt.Name('postWorkspaceChange'),
                                self._deferred_menu_creation)
 
-    def has_unsaved_changes(self):
-        # TODO: how to get it from 3dsmax?
-        return True
+    def workfile_has_unsaved_changes(self):
+        return rt.getSaveRequired()
 
     def get_workfile_extensions(self):
         return [".max"]
@@ -152,7 +152,9 @@ def ls() -> list:
     objs = rt.objects
     containers = [
         obj for obj in objs
-        if rt.getUserProp(obj, "id") == AVALON_CONTAINER_ID
+        if rt.getUserProp(obj, "id") in {
+            AYON_CONTAINER_ID, AVALON_CONTAINER_ID
+        }
     ]
 
     for container in sorted(containers, key=attrgetter("name")):
