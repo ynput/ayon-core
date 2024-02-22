@@ -10,6 +10,8 @@ from ayon_core.pipeline import (
     Creator,
     CreatedInstance,
     LoaderPlugin,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
 )
 from ayon_core.lib import BoolDef
 
@@ -193,7 +195,9 @@ class BaseCreator(Creator):
                 if not avalon_prop:
                     continue
 
-                if avalon_prop.get('id') != 'pyblish.avalon.instance':
+                if avalon_prop.get('id') not in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }:
                     continue
 
                 creator_id = avalon_prop.get('creator_identifier')
@@ -352,7 +356,7 @@ class BaseCreator(Creator):
 
         instance_data.update(
             {
-                "id": "pyblish.avalon.instance",
+                "id": AVALON_INSTANCE_ID,
                 "creator_identifier": self.identifier,
                 "subset": subset_name,
             }

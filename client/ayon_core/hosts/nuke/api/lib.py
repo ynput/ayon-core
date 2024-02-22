@@ -45,6 +45,8 @@ from ayon_core.pipeline import (
     get_current_host_name,
     get_current_project_name,
     get_current_asset_name,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
 )
 from ayon_core.pipeline.context_tools import (
     get_custom_workfile_template_from_session
@@ -2300,12 +2302,16 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
                 # backward compatibility
                 # TODO: remove this once old avalon data api will be removed
                 avalon_knob_data
-                and avalon_knob_data.get("id") != "pyblish.avalon.instance"
+                and avalon_knob_data.get("id") not in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }
             ):
                 continue
             elif (
                 node_data
-                and node_data.get("id") != "pyblish.avalon.instance"
+                and node_data.get("id") not in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }
             ):
                 continue
 

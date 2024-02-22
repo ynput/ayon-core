@@ -1,7 +1,5 @@
 import pyblish.api
 
-from bson.objectid import ObjectId
-
 from ayon_core.client import get_representations
 
 
