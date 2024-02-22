@@ -1,4 +1,4 @@
-from .module import JobQueueAddon
+from .addon import JobQueueAddon
 
 
 __all__ = (
