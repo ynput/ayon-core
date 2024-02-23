@@ -17,7 +17,7 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
         current_asset_name = get_current_asset_name()
         asset_name = current_asset_name.split("/")[-1]
 
-        subset = "workfileMain"
+        product_name = "workfileMain"
         project = rapi.get_current_project()
         fps = project.GetSetting("timelineFrameRate")
         video_tracks = rapi.get_video_track_names()
@@ -26,12 +26,12 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
         otio_timeline = davinci_export.create_otio_timeline(project)
 
         instance_data = {
-            "name": "{}_{}".format(asset_name, subset),
-            "label": "{} {}".format(current_asset_name, subset),
+            "name": "{}_{}".format(asset_name, product_name),
+            "label": "{} {}".format(current_asset_name, product_name),
             "folderPath": current_asset_name,
-            "subset": subset,
+            "productName": product_name,
             "item": project,
-            "family": "workfile",
+            "productType": "workfile",
             "families": []
         }
 
