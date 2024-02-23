@@ -28,7 +28,7 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
         instance_data = {
             "name": "{}_{}".format(asset_name, subset),
             "label": "{} {}".format(current_asset_name, subset),
-            "asset": current_asset_name,
+            "folderPath": current_asset_name,
             "subset": subset,
             "item": project,
             "family": "workfile",

@@ -23,10 +23,10 @@ class ValidateCorrectAssetContext(
     current asset (shot). This validator checks if this is so. It is optional
     so it can be disabled when needed.
 
-    Checking `asset` and `task` keys.
+    Checking `folderPath` and `task` keys.
     """
     order = ValidateContentsOrder
-    label = "Validate asset context"
+    label = "Validate Folder context"
     hosts = ["nuke"]
     actions = [
         RepairAction,
@@ -85,7 +85,7 @@ class ValidateCorrectAssetContext(
         """Get invalid keys from instance data and context data."""
 
         invalid_keys = []
-        testing_keys = ["asset", "task"]
+        testing_keys = ["folderPath", "task"]
         for _key in testing_keys:
             if _key not in instance.data:
                 invalid_keys.append(_key)

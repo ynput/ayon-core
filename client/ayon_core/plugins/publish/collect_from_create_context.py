@@ -38,7 +38,6 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
 
         for created_instance in create_context.instances:
             instance_data = created_instance.data_to_store()
-            instance_data["asset"] = instance_data.pop("folderPath")
             if instance_data["active"]:
                 thumbnail_path = thumbnail_paths_by_instance_id.get(
                     created_instance.id
@@ -80,7 +79,7 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         instance = context.create_instance(subset)
         instance.data.update({
             "subset": subset,
-            "asset": in_data["asset"],
+            "folderPath": in_data["folderPath"],
             "task": in_data["task"],
             "label": in_data.get("label") or subset,
             "name": subset,

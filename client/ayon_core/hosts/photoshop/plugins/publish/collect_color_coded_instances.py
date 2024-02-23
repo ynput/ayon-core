@@ -26,7 +26,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
         only separate subsets per marked layer.
 
     Identifier:
-        id (str): "pyblish.avalon.instance"
+        id (str): "ayon.create.instance"
     """
 
     label = "Collect Color-coded Instances"
@@ -56,7 +56,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
         existing_subset_names = self._get_existing_subset_names(context)
 
         # from CollectBatchData
-        asset_name = context.data["asset"]
+        asset_name = context.data["folderPath"]
         task_name = context.data["task"]
         variant = context.data["variant"]
         project_name = context.data["projectEntity"]["name"]
@@ -163,7 +163,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
         instance = context.create_instance(layer.name)
         instance.data["family"] = family
         instance.data["publish"] = True
-        instance.data["asset"] = asset
+        instance.data["folderPath"] = asset
         instance.data["task"] = task_name
         instance.data["subset"] = subset
         instance.data["layer"] = layer
