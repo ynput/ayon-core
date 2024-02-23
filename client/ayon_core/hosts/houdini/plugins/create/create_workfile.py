@@ -67,7 +67,7 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
             )
             current_instance["folderPath"] = asset_name
             current_instance["task"] = task_name
-            current_instance["AYONProductName"] = product_name
+            current_instance["productName"] = product_name
 
         # write workfile information to context container.
         op_ctx = hou.node(CONTEXT_CONTAINER)
