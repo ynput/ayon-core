@@ -22,7 +22,7 @@ from ayon_core.tools.utils import (
 )
 from ayon_core.style import get_objected_colors
 from ayon_core.pipeline.create import (
-    SUBSET_NAME_ALLOWED_SYMBOLS,
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
     TaskNotSetError,
 )
 from .thumbnail_widget import ThumbnailWidget
@@ -127,7 +127,7 @@ class ContextWarningLabel(PublishPixmapLabel):
         self.setToolTip(
             "Contain invalid context. Please check details."
         )
-        self.setObjectName("FamilyIconLabel")
+        self.setObjectName("ProductTypeIconLabel")
 
 
 class PublishIconBtn(IconButton):
@@ -901,7 +901,7 @@ class VariantInputWidget(PlaceholderLineEdit):
         self.setObjectName("VariantInput")
         self.setToolTip(VARIANT_TOOLTIP)
 
-        name_pattern = "^[{}]*$".format(SUBSET_NAME_ALLOWED_SYMBOLS)
+        name_pattern = "^[{}]*$".format(PRODUCT_NAME_ALLOWED_SYMBOLS)
         self._name_pattern = name_pattern
         self._compiled_name_pattern = re.compile(name_pattern)
 
@@ -1077,10 +1077,10 @@ class MultipleItemWidget(QtWidgets.QWidget):
 
 
 class GlobalAttrsWidget(QtWidgets.QWidget):
-    """Global attributes mainly to define context and subset name of instances.
+    """Global attributes mainly to define context and product name of instances.
 
-    Subset name is or may be affected on context. Gives abiity to modify
-    context and subset name of instance. This change is not autopromoted but
+    product name is or may be affected on context. Gives abiity to modify
+    context and product name of instance. This change is not autopromoted but
     must be submitted.
 
     Warning: Until artist hit `Submit` changes must not be propagated to
@@ -1088,10 +1088,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
     Global attributes contain these widgets:
     Variant:      [  text input  ]
-    Asset:        [ asset dialog ]
+    Folder:       [ folder dialog ]
     Task:         [   combobox   ]
-    Family:       [   immutable  ]
-    Subset name:  [   immutable  ]
+    Product type: [   immutable  ]
+    product name: [   immutable  ]
                      [Submit] [Cancel]
     """
     instance_context_changed = QtCore.Signal()
@@ -1108,8 +1108,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         variant_input = VariantInputWidget(self)
         asset_value_widget = AssetsField(controller, self)
         task_value_widget = TasksCombobox(controller, self)
-        family_value_widget = MultipleItemWidget(self)
-        subset_value_widget = MultipleItemWidget(self)
+        product_type_value_widget = MultipleItemWidget(self)
+        product_value_widget = MultipleItemWidget(self)
 
         variant_input.set_multiselection_text(self.multiselection_text)
         asset_value_widget.set_multiselection_text(self.multiselection_text)
@@ -1118,8 +1118,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         variant_input.set_value()
         asset_value_widget.set_selected_items()
         task_value_widget.set_selected_items()
-        family_value_widget.set_value()
-        subset_value_widget.set_value()
+        product_type_value_widget.set_value()
+        product_value_widget.set_value()
 
         submit_btn = QtWidgets.QPushButton("Confirm", self)
         cancel_btn = QtWidgets.QPushButton("Cancel", self)
@@ -1139,8 +1139,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         main_layout.addRow("Variant", variant_input)
         main_layout.addRow("Folder", asset_value_widget)
         main_layout.addRow("Task", task_value_widget)
-        main_layout.addRow("Product type", family_value_widget)
-        main_layout.addRow("Product name", subset_value_widget)
+        main_layout.addRow("Product type", product_type_value_widget)
+        main_layout.addRow("Product name", product_value_widget)
         main_layout.addRow(btns_layout)
 
         variant_input.value_changed.connect(self._on_variant_change)
@@ -1152,8 +1152,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.variant_input = variant_input
         self.asset_value_widget = asset_value_widget
         self.task_value_widget = task_value_widget
-        self.family_value_widget = family_value_widget
-        self.subset_value_widget = subset_value_widget
+        self.product_type_value_widget = product_type_value_widget
+        self.product_value_widget = product_value_widget
         self.submit_btn = submit_btn
         self.cancel_btn = cancel_btn
 
@@ -1172,7 +1172,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         if self.task_value_widget.has_value_changed():
             task_name = self.task_value_widget.get_selected_items()[0]
 
-        subset_names = set()
+        product_names = set()
         invalid_tasks = False
         asset_names = []
         for instance in self._current_instances:
@@ -1190,7 +1190,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
             asset_names.append(new_asset_name)
             try:
-                new_subset_name = self._controller.get_subset_name(
+                new_product_name = self._controller.get_product_name(
                     instance.creator_identifier,
                     new_variant_value,
                     new_task_name,
@@ -1201,10 +1201,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             except TaskNotSetError:
                 invalid_tasks = True
                 instance.set_task_invalid(True)
-                subset_names.add(instance["subset"])
+                product_names.add(instance["productName"])
                 continue
 
-            subset_names.add(new_subset_name)
+            product_names.add(new_product_name)
             if variant_value is not None:
                 instance["variant"] = variant_value
 
@@ -1216,12 +1216,12 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 instance["task"] = task_name or None
                 instance.set_task_invalid(False)
 
-            instance["subset"] = new_subset_name
+            instance["productName"] = new_product_name
 
         if invalid_tasks:
             self.task_value_widget.set_invalid_empty_task()
 
-        self.subset_value_widget.set_value(subset_names)
+        self.product_value_widget.set_value(product_names)
 
         self._set_btns_enabled(False)
         self._set_btns_visible(invalid_tasks)
@@ -1292,8 +1292,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         asset_names = set()
         variants = set()
-        families = set()
-        subset_names = set()
+        product_types = set()
+        product_names = set()
 
         editable = True
         if len(instances) == 0:
@@ -1306,12 +1306,12 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 editable = False
 
             variants.add(instance.get("variant") or self.unknown_value)
-            families.add(instance.get("family") or self.unknown_value)
+            product_types.add(instance.get("productType") or self.unknown_value)
             asset_name = instance.get("folderPath") or self.unknown_value
             task_name = instance.get("task") or ""
             asset_names.add(asset_name)
             asset_task_combinations.append((asset_name, task_name))
-            subset_names.add(instance.get("subset") or self.unknown_value)
+            product_names.add(instance.get("productName") or self.unknown_value)
 
         self.variant_input.set_value(variants)
 
@@ -1319,8 +1319,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.asset_value_widget.set_selected_items(asset_names)
         # Set context of task widget
         self.task_value_widget.set_selected_items(asset_task_combinations)
-        self.family_value_widget.set_value(families)
-        self.subset_value_widget.set_value(subset_names)
+        self.product_type_value_widget.set_value(product_types)
+        self.product_value_widget.set_value(product_names)
 
         self.variant_input.setEnabled(editable)
         self.asset_value_widget.setEnabled(editable)
@@ -1476,7 +1476,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
     Widgets are disabled if context of instance is not valid.
 
     Definitions are shown for all instance no matter if they have different
-    families. Similar definitions are merged into one (different label
+    product types. Similar definitions are merged into one (different label
     does not count).
     """
 
@@ -1624,7 +1624,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
             plugin_val[attr_def.key] = value
 
 
-class SubsetAttributesWidget(QtWidgets.QWidget):
+class ProductAttributesWidget(QtWidgets.QWidget):
     """Wrapper widget where attributes of instance/s are modified.
     ┌─────────────────┬─────────────┐
     │   Global        │             │
@@ -1640,7 +1640,7 @@ class SubsetAttributesWidget(QtWidgets.QWidget):
     convert_requested = QtCore.Signal()
 
     def __init__(self, controller, parent):
-        super(SubsetAttributesWidget, self).__init__(parent)
+        super(ProductAttributesWidget, self).__init__(parent)
 
         # TOP PART
         top_widget = QtWidgets.QWidget(self)
@@ -1666,9 +1666,9 @@ class SubsetAttributesWidget(QtWidgets.QWidget):
         # Set the label text with 'setText' to apply html
         convert_label.setText(
             (
-                "Found old publishable subsets"
+                "Found old publishable products"
                 " incompatible with new publisher."
-                "<br/><br/>Press the <b>update subsets</b> button"
+                "<br/><br/>Press the <b>update products</b> button"
                 " to automatically update them"
                 " to be able to publish again."
             )
@@ -1677,7 +1677,7 @@ class SubsetAttributesWidget(QtWidgets.QWidget):
         convert_label.setAlignment(QtCore.Qt.AlignCenter)
 
         convert_btn = QtWidgets.QPushButton(
-            "Update subsets", convert_widget
+            "Update products", convert_widget
         )
         convert_separator = QtWidgets.QFrame(convert_widget)
         convert_separator.setObjectName("Separator")

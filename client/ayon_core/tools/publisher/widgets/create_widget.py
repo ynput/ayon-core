@@ -3,7 +3,7 @@ import re
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.pipeline.create import (
-    SUBSET_NAME_ALLOWED_SYMBOLS,
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
     PRE_CREATE_THUMBNAIL_KEY,
     DEFAULT_VARIANT_VALUE,
     TaskNotSetError,
@@ -19,7 +19,7 @@ from .tasks_widget import CreateWidgetTasksWidget
 from .precreate_widget import PreCreateWidget
 from ..constants import (
     VARIANT_TOOLTIP,
-    FAMILY_ROLE,
+    PRODUCT_TYPE_ROLE,
     CREATOR_IDENTIFIER_ROLE,
     CREATOR_THUMBNAIL_ENABLED_ROLE,
     CREATOR_SORT_ROLE,
@@ -45,13 +45,13 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
 
         # --- Short description widget ---
         icon_widget = IconValuePixmapLabel(None, self)
-        icon_widget.setObjectName("FamilyIconLabel")
+        icon_widget.setObjectName("ProductTypeIconLabel")
 
         # --- Short description inputs ---
         short_desc_input_widget = QtWidgets.QWidget(self)
 
-        family_label = QtWidgets.QLabel(short_desc_input_widget)
-        family_label.setAlignment(
+        product_type_label = QtWidgets.QLabel(short_desc_input_widget)
+        product_type_label.setAlignment(
             QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft
         )
 
@@ -64,7 +64,7 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
             short_desc_input_widget
         )
         short_desc_input_layout.setSpacing(0)
-        short_desc_input_layout.addWidget(family_label)
+        short_desc_input_layout.addWidget(product_type_label)
         short_desc_input_layout.addWidget(description_label)
         # --------------------------------
 
@@ -75,13 +75,13 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         # --------------------------------
 
         self._icon_widget = icon_widget
-        self._family_label = family_label
+        self._product_type_label = product_type_label
         self._description_label = description_label
 
     def set_creator_item(self, creator_item=None):
         if not creator_item:
             self._icon_widget.set_icon_def(None)
-            self._family_label.setText("")
+            self._product_type_label.setText("")
             self._description_label.setText("")
             return
 
@@ -89,8 +89,8 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         description = creator_item.description or ""
 
         self._icon_widget.set_icon_def(plugin_icon)
-        self._family_label.setText("<b>{}</b>".format(creator_item.family))
-        self._family_label.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        self._product_type_label.setText("<b>{}</b>".format(creator_item.product_type))
+        self._product_type_label.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         self._description_label.setText(description)
 
 
@@ -110,12 +110,12 @@ class CreateWidget(QtWidgets.QWidget):
         self._controller = controller
 
         self._asset_name = None
-        self._subset_names = None
+        self._product_names = None
         self._selected_creator = None
 
         self._prereq_available = False
 
-        name_pattern = "^[{}]*$".format(SUBSET_NAME_ALLOWED_SYMBOLS)
+        name_pattern = "^[{}]*$".format(PRODUCT_NAME_ALLOWED_SYMBOLS)
         self._name_pattern = name_pattern
         self._compiled_name_pattern = re.compile(name_pattern)
 
@@ -164,19 +164,19 @@ class CreateWidget(QtWidgets.QWidget):
         # --- Creator attr defs ---
         creators_attrs_widget = QtWidgets.QWidget(creators_splitter)
 
-        # Top part - variant / subset name + thumbnail
+        # Top part - variant / product name + thumbnail
         creators_attrs_top = QtWidgets.QWidget(creators_attrs_widget)
 
-        # Basics - variant / subset name
+        # Basics - variant / product name
         creator_basics_widget = ResizeControlWidget(creators_attrs_top)
 
-        variant_subset_label = QtWidgets.QLabel(
+        product_variant_label = QtWidgets.QLabel(
             "Create options", creator_basics_widget
         )
 
-        variant_subset_widget = QtWidgets.QWidget(creator_basics_widget)
-        # Variant and subset input
-        variant_widget = ResizeControlWidget(variant_subset_widget)
+        product_variant_widget = QtWidgets.QWidget(creator_basics_widget)
+        # Variant and product input
+        variant_widget = ResizeControlWidget(product_variant_widget)
         variant_widget.setObjectName("VariantInputsWidget")
 
         variant_input = QtWidgets.QLineEdit(variant_widget)
@@ -196,20 +196,20 @@ class CreateWidget(QtWidgets.QWidget):
         variant_layout.addWidget(variant_input, 1)
         variant_layout.addWidget(variant_hints_btn, 0, QtCore.Qt.AlignVCenter)
 
-        subset_name_input = QtWidgets.QLineEdit(variant_subset_widget)
-        subset_name_input.setEnabled(False)
+        product_name_input = QtWidgets.QLineEdit(product_variant_widget)
+        product_name_input.setEnabled(False)
 
-        variant_subset_layout = QtWidgets.QFormLayout(variant_subset_widget)
-        variant_subset_layout.setContentsMargins(0, 0, 0, 0)
-        variant_subset_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
-        variant_subset_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
-        variant_subset_layout.addRow("Variant", variant_widget)
-        variant_subset_layout.addRow("Product", subset_name_input)
+        product_variant_layout = QtWidgets.QFormLayout(product_variant_widget)
+        product_variant_layout.setContentsMargins(0, 0, 0, 0)
+        product_variant_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
+        product_variant_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
+        product_variant_layout.addRow("Variant", variant_widget)
+        product_variant_layout.addRow("Product", product_name_input)
 
         creator_basics_layout = QtWidgets.QVBoxLayout(creator_basics_widget)
         creator_basics_layout.setContentsMargins(0, 0, 0, 0)
-        creator_basics_layout.addWidget(variant_subset_label, 0)
-        creator_basics_layout.addWidget(variant_subset_widget, 0)
+        creator_basics_layout.addWidget(product_variant_label, 0)
+        creator_basics_layout.addWidget(product_variant_widget, 0)
 
         thumbnail_widget = ThumbnailWidget(controller, creators_attrs_top)
 
@@ -302,7 +302,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._assets_widget = assets_widget
         self._tasks_widget = tasks_widget
 
-        self.subset_name_input = subset_name_input
+        self.product_name_input = product_name_input
 
         self.variant_input = variant_input
         self.variant_hints_btn = variant_hints_btn
@@ -467,20 +467,20 @@ class CreateWidget(QtWidgets.QWidget):
         if self._asset_name and self._asset_name == asset_name:
             return
 
-        # Make sure `_asset_name` and `_subset_names` variables are reset
+        # Make sure `_asset_name` and `_product_names` variables are reset
         self._asset_name = asset_name
-        self._subset_names = None
+        self._product_names = None
         if asset_name is None:
             return
 
-        subset_names = self._controller.get_existing_subset_names(asset_name)
+        product_names = self._controller.get_existing_product_names(asset_name)
 
-        self._subset_names = subset_names
-        if subset_names is None:
-            self.subset_name_input.setText("< Asset is not set >")
+        self._product_names = product_names
+        if product_names is None:
+            self.product_name_input.setText("< Asset is not set >")
 
     def _refresh_creators(self):
-        # Refresh creators and add their families to list
+        # Refresh creators and add their product types to list
         existing_items = {}
         old_creators = set()
         for row in range(self._creators_model.rowCount()):
@@ -489,7 +489,7 @@ class CreateWidget(QtWidgets.QWidget):
             existing_items[identifier] = item
             old_creators.add(identifier)
 
-        # Add new families
+        # Add new create plugins
         new_creators = set()
         creator_items_by_identifier = self._controller.creator_items
         for identifier, creator_item in creator_items_by_identifier.items():
@@ -515,11 +515,11 @@ class CreateWidget(QtWidgets.QWidget):
                 creator_item.create_allow_thumbnail,
                 CREATOR_THUMBNAIL_ENABLED_ROLE
             )
-            item.setData(creator_item.family, FAMILY_ROLE)
+            item.setData(creator_item.product_type, PRODUCT_TYPE_ROLE)
             if is_new:
                 self._creators_model.appendRow(item)
 
-        # Remove families that are no more available
+        # Remove create plugins that are no more available
         for identifier in (old_creators - new_creators):
             item = existing_items[identifier]
             self._creators_model.takeRow(item.row())
@@ -641,7 +641,7 @@ class CreateWidget(QtWidgets.QWidget):
                 self.variant_hints_menu.addAction(variant)
 
         variant_text = default_variant or DEFAULT_VARIANT_VALUE
-        # Make sure subset name is updated to new plugin
+        # Make sure product name is updated to new plugin
         if variant_text == self.variant_input.text():
             self._on_variant_change()
         else:
@@ -666,8 +666,8 @@ class CreateWidget(QtWidgets.QWidget):
 
         # This should probably never happen?
         if not self._selected_creator:
-            if self.subset_name_input.text():
-                self.subset_name_input.setText("")
+            if self.product_name_input.text():
+                self.product_name_input.setText("")
             return
 
         if variant_value is None:
@@ -676,52 +676,52 @@ class CreateWidget(QtWidgets.QWidget):
         if not self._compiled_name_pattern.match(variant_value):
             self._create_btn.setEnabled(False)
             self._set_variant_state_property("invalid")
-            self.subset_name_input.setText("< Invalid variant >")
+            self.product_name_input.setText("< Invalid variant >")
             return
 
         if not self._context_change_is_enabled():
             self._create_btn.setEnabled(True)
             self._set_variant_state_property("")
-            self.subset_name_input.setText("< Valid variant >")
+            self.product_name_input.setText("< Valid variant >")
             return
 
         asset_name = self._get_asset_name()
         task_name = self._get_task_name()
         creator_idenfier = self._selected_creator.identifier
-        # Calculate subset name with Creator plugin
+        # Calculate product name with Creator plugin
         try:
-            subset_name = self._controller.get_subset_name(
+            product_name = self._controller.get_product_name(
                 creator_idenfier, variant_value, task_name, asset_name
             )
         except TaskNotSetError:
             self._create_btn.setEnabled(False)
             self._set_variant_state_property("invalid")
-            self.subset_name_input.setText("< Missing task >")
+            self.product_name_input.setText("< Missing task >")
             return
 
-        self.subset_name_input.setText(subset_name)
+        self.product_name_input.setText(product_name)
 
         self._create_btn.setEnabled(True)
-        self._validate_subset_name(subset_name, variant_value)
+        self._validate_product_name(product_name, variant_value)
 
-    def _validate_subset_name(self, subset_name, variant_value):
-        # Get all subsets of the current asset
-        if self._subset_names:
-            existing_subset_names = set(self._subset_names)
+    def _validate_product_name(self, product_name, variant_value):
+        # Get all products of the current asset
+        if self._product_names:
+            existing_product_names = set(self._product_names)
         else:
-            existing_subset_names = set()
-        existing_subset_names_low = set(
+            existing_product_names = set()
+        existing_product_names_low = set(
             _name.lower()
-            for _name in existing_subset_names
+            for _name in existing_product_names
         )
 
         # Replace
         compare_regex = re.compile(re.sub(
-            variant_value, "(.+)", subset_name, flags=re.IGNORECASE
+            variant_value, "(.+)", product_name, flags=re.IGNORECASE
         ))
         variant_hints = set()
         if variant_value:
-            for _name in existing_subset_names:
+            for _name in existing_product_names:
                 _result = compare_regex.search(_name)
                 if _result:
                     variant_hints |= set(_result.groups())
@@ -741,12 +741,12 @@ class CreateWidget(QtWidgets.QWidget):
             action = self.variant_hints_menu.addAction(variant_hint)
             self.variant_hints_group.addAction(action)
 
-        # Indicate subset existence
+        # Indicate product existence
         if not variant_value:
             property_value = "empty"
 
-        elif subset_name.lower() in existing_subset_names_low:
-            # validate existence of subset name with lowered text
+        elif product_name.lower() in existing_product_names_low:
+            # validate existence of product name with lowered text
             #   - "renderMain" vs. "rendermain" mean same path item for
             #   windows
             property_value = "exists"
@@ -794,14 +794,14 @@ class CreateWidget(QtWidgets.QWidget):
 
         index = indexes[0]
         creator_identifier = index.data(CREATOR_IDENTIFIER_ROLE)
-        family = index.data(FAMILY_ROLE)
+        product_type = index.data(PRODUCT_TYPE_ROLE)
         variant = self.variant_input.text()
-        # Care about subset name only if context change is enabled
-        subset_name = None
+        # Care about product name only if context change is enabled
+        product_name = None
         asset_name = None
         task_name = None
         if self._context_change_is_enabled():
-            subset_name = self.subset_name_input.text()
+            product_name = self.product_name_input.text()
             asset_name = self._get_asset_name()
             task_name = self._get_task_name()
 
@@ -817,12 +817,12 @@ class CreateWidget(QtWidgets.QWidget):
             "folderPath": asset_name,
             "task": task_name,
             "variant": variant,
-            "family": family
+            "productType": product_type
         }
 
         success = self._controller.create(
             creator_identifier,
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data
         )
