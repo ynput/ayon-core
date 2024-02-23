@@ -13,7 +13,7 @@ def get_launch_script_path():
     )
 
 
-class UnrealAddon(OpenPypeModule, IHostAddon):
+class UnrealAddon(AYONAddon, IHostAddon):
     name = "unreal"
     host_name = "unreal"
 
