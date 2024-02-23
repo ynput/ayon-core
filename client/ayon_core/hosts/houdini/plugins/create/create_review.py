@@ -34,7 +34,7 @@ class CreateReview(plugin.HoudiniCreator):
         filepath = "{root}/{product_name}/{product_name}.$F4.{ext}".format(
             root=hou.text.expandString("$HIP/pyblish"),
             # keep dynamic link to product name
-            product_name="`chs(\"productName\")`",
+            product_name="`chs(\"AYONProductName\")`",
             ext=pre_create_data.get("image_format") or "png"
         )
 
