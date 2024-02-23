@@ -91,7 +91,7 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
         )
 
         instance.data["productName"] = product_name
-        rop_node.parm("productName").set(product_name)
+        rop_node.parm("AYONProductName").set(product_name)
 
         cls.log.debug(
             "Product name on rop node '%s' has been set to '%s'.",
