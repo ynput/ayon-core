@@ -287,6 +287,13 @@ class ProcessSubmittedJobOnFarmModel(BaseSettingsModel):
         default_factory=list,
         title="Skip integration of representation with ext"
     )
+    families_transfer: list[str] = SettingsField(
+        default_factory=list,
+        title=(
+            "List of family names to transfer\n"
+            "to generated instances (AOVs for example)."
+        )
+    )
     aov_filter: list[AOVFilterSubmodel] = SettingsField(
         default_factory=list,
         title="Reviewable products filter",
@@ -470,6 +477,7 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "deadline_priority": 50,
         "publishing_script": "",
         "skip_integration_repre_list": [],
+        "families_transfer": ["render3d", "render2d", "ftrack", "slate"],
         "aov_filter": [
             {
                 "name": "maya",
