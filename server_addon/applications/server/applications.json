@@ -1206,11 +1206,7 @@
             "label": "Zbrush",
             "icon": "{}/app_icons/zbrush.png",
             "host_name": "zbrush",
-            "environment": {
-                "ZBRUSH_PLUGIN_PATH": [
-                "{ZBRUSH_PLUGIN_PATH}",
-                "{OPENPYPE_STUDIO_PLUGINS}/zbrush/api/zscripts"
-            ]},
+            "environment": "{\n    \"ZBRUSH_PLUGIN_PATH\": [\n        \"{ZBRUSH_PLUGIN_PATH}\",\n        \"{OPENPYPE_STUDIO_PLUGINS}/zbrush/api/zscripts\"\n    ]\n}",
             "variants": [
                 {
                     "name": "2024",
