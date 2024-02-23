@@ -186,6 +186,8 @@ class ApplicationsSettings(BaseSettingsModel):
         default_factory=AppGroupWithPython, title="Unreal Editor")
     wrap: AppGroup = SettingsField(
         default_factory=AppGroupWithPython, title="Wrap")
+    zbrush: AppGroup = SettingsField(
+        default_factory=AppGroupWithPython, title="Zbrush")
     additional_apps: list[AdditionalAppGroup] = SettingsField(
         default_factory=list, title="Additional Applications")
 

@@ -1615,5 +1615,32 @@
             }
         }
     },
+    "zbrush": {
+        "enabled": true,
+        "label": "Zbrush",
+        "icon": "{}/app_icons/zbrush.png",
+        "host_name": "zbrush",
+        "environment": {
+            "ZBRUSH_PLUGIN_PATH": [
+            "{ZBRUSH_PLUGIN_PATH}",
+            "{OPENPYPE_STUDIO_PLUGINS}/zbrush/api/zscripts"
+        ]},
+        "variants": {
+            "2024": {
+                "use_python_2": false,
+                "executables": {
+                    "windows": ["C:\\Program Files\\Maxon ZBrush 2024\\ZBrush.exe"],
+                    "darwin": [],
+                    "linux": []
+                },
+                "arguments": {
+                    "windows": [],
+                    "darwin": [],
+                    "linux": []
+                },
+                "environment": {}
+            }
+        }
+    },
     "additional_apps": {}
 }
