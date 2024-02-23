@@ -1,6 +1,6 @@
 import os
 
-from ayon_core.hosts.max.api import lib, maintained_selection
+from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.lib import (
     unique_namespace,
     get_namespace,
@@ -9,7 +9,8 @@ from ayon_core.hosts.max.api.lib import (
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
-    update_custom_attribute_data
+    update_custom_attribute_data,
+    remove_container_data
 )
 from ayon_core.pipeline import get_representation_path, load
 
@@ -96,4 +97,4 @@ class FbxLoader(load.LoaderPlugin):
         from pymxs import runtime as rt
 
         node = rt.GetNodeByName(container["instance_node"])
-        rt.Delete(node)
+        remove_container_data(node)
