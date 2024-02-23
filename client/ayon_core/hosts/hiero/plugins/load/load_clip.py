@@ -14,7 +14,7 @@ import ayon_core.hosts.hiero.api as phiero
 
 
 class LoadClip(phiero.SequenceLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
