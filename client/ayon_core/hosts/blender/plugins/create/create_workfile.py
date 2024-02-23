@@ -19,7 +19,7 @@ class CreateWorkfile(BaseCreator, AutoCreator):
     """
     identifier = "io.openpype.creators.blender.workfile"
     label = "Workfile"
-    family = "workfile"
+    product_type = "workfile"
     icon = "fa5.file"
 
     def create(self):
@@ -43,7 +43,7 @@ class CreateWorkfile(BaseCreator, AutoCreator):
 
         if not workfile_instance:
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 task_name, task_name, asset_doc, project_name, host_name
             )
             data = {
@@ -63,7 +63,7 @@ class CreateWorkfile(BaseCreator, AutoCreator):
             )
             self.log.info("Auto-creating workfile instance...")
             workfile_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             self._add_instance_to_context(workfile_instance)
 
@@ -73,13 +73,13 @@ class CreateWorkfile(BaseCreator, AutoCreator):
         ):
             # Update instance context if it's different
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
+            product_name = self.get_product_name(
                 task_name, task_name, asset_doc, project_name, host_name
             )
 
             workfile_instance["folderPath"] = asset_name
             workfile_instance["task"] = task_name
-            workfile_instance["subset"] = subset_name
+            workfile_instance["productName"] = product_name
 
         instance_node = bpy.data.collections.get(AVALON_CONTAINERS)
         if not instance_node:
