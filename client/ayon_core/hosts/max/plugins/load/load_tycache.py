@@ -7,7 +7,8 @@ from ayon_core.hosts.max.api.lib import (
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
-    update_custom_attribute_data
+    update_custom_attribute_data,
+    remove_container_data
 )
 from ayon_core.pipeline import get_representation_path, load
 
@@ -59,6 +60,5 @@ class TyCacheLoader(load.LoaderPlugin):
     def remove(self, container):
         """remove the container"""
         from pymxs import runtime as rt
-
         node = rt.GetNodeByName(container["instance_node"])
-        rt.Delete(node)
+        remove_container_data(node)

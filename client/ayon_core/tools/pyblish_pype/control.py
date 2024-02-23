@@ -202,18 +202,38 @@ class Controller(QtCore.QObject):
     def current_state(self):
         return self._current_state
 
+    @staticmethod
+    def _convert_filter_presets(filter_presets):
+        """Convert AYON settings presets to dictionary.
+
+        Returns:
+            dict[str, dict[str, Any]]: Filter presets converted to dictionary.
+        """
+        if not isinstance(filter_presets, list):
+            return filter_presets
+
+        return {
+            filter_preset["name"]: {
+                item["name"]: item["value"]
+                for item in filter_preset["value"]
+            }
+            for filter_preset in filter_presets
+        }
+
     def presets_by_hosts(self):
         # Get global filters as base
         presets = get_current_project_settings()
         if not presets:
             return {}
 
-        result = presets.get("core", {}).get("filters", {})
+        result = {}
         hosts = pyblish.api.registered_hosts()
         for host in hosts:
             host_presets = presets.get(host, {}).get("filters")
             if not host_presets:
                 continue
+
+            host_presets = self._convert_filter_presets(host_presets)
 
             for key, value in host_presets.items():
                 if value is None:
