@@ -88,11 +88,13 @@ class CollectAERender(publish.AbstractCollectRender):
                 raise ValueError("No file extension set in Render Queue")
             render_item = render_q[0]
 
+            product_type = "render"
             instance_families = inst.data.get("families", [])
-            instance_families.append("render")
+            instance_families.append(product_type)
             product_name = inst.data["productName"]
             instance = AERenderInstance(
-                productType="render",
+                productType=product_type,
+                family=product_type,
                 families=instance_families,
                 version=version,
                 time="",

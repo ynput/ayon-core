@@ -71,6 +71,7 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
             ),
             "item": project,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type],
             "representations": [workfile_representation, thumb_representation]
         }

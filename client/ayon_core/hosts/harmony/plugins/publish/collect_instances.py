@@ -53,6 +53,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
             if product_type is None:
                 product_type = data["family"]
                 data["productType"] = product_type
+            data["family"] = product_type
 
             # skip render farm product type as it is collected separately
             if product_type == "renderFarm":

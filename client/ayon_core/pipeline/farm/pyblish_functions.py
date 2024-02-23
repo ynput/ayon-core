@@ -801,8 +801,9 @@ def create_skeleton_instance_cache(instance):
     families = ["render", product_type]
 
     instance_skeleton_data = {
-        "productType": product_type,
         "productName": data["productName"],
+        "productType": product_type,
+        "family": product_type,
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
@@ -1085,6 +1086,7 @@ def attach_instances_to_product(attach_to, instances):
             new_inst["version"] = attach_instance.get("version")
             new_inst["productName"] = attach_instance.get("productName")
             new_inst["productType"] = attach_instance.get("productType")
+            new_inst["family"] = attach_instance.get("family")
             new_inst["append"] = True
             # don't set subsetGroup if we are attaching
             new_inst.pop("subsetGroup")

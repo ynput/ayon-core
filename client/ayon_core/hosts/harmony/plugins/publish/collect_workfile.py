@@ -34,6 +34,7 @@ class CollectWorkfile(pyblish.api.ContextPlugin):
             "label": basename,
             "name": basename,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type],
             "representations": [],
             "folderPath": context.data["folderPath"]

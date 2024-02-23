@@ -188,6 +188,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
         instance.data["folderPath"] = folder_path
         instance.data["task"] = task_name
         instance.data["layer"] = layer
+        instance.data["family"] = product_type
         instance.data["families"] = [product_type]
 
         return instance

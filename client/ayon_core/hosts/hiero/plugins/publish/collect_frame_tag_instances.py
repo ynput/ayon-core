@@ -138,6 +138,7 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
                 "name": name,
                 "label": "{} {}".format(name, product_data["frames"]),
                 "productType": product_type,
+                "family": product_type,
                 "families": [product_type, "frame"],
                 "folderPath": product_data["folderPath"],
                 "productName": name,

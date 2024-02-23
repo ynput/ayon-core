@@ -89,6 +89,7 @@ class CollectAutoWorkfile(pyblish.api.ContextPlugin):
             "name": base_name,
             "productName": product_name,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type],
             "representations": [],
             "folderPath": folder_path

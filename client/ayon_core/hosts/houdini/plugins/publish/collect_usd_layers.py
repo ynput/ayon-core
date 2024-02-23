@@ -52,6 +52,7 @@ class CollectUsdLayers(pyblish.api.InstancePlugin):
             layer_inst = context.create_instance(name)
 
             layer_inst.data["productType"] = product_type
+            layer_inst.data["family"] = product_type
             layer_inst.data["families"] = [product_type]
             layer_inst.data["productName"] = "__stub__"
             layer_inst.data["label"] = label

@@ -87,6 +87,7 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
             "task": in_data["task"],
             "productName": product_name,
             "productType": in_data["productType"],
+            "family": in_data["productType"],
             "families": instance_families,
             "representations": [],
             "thumbnailSource": thumbnail_path

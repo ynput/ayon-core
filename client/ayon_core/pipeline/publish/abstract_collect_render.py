@@ -28,6 +28,7 @@ class RenderInstance(object):
     time = attr.ib()  # time of instance creation (get_formatted_current_time)
     source = attr.ib()  # path to source scene file
     label = attr.ib()  # label to show in GUI
+    family = attr.ib()  # product type for pyblish filtering
     productType = attr.ib()  # product type
     productName = attr.ib()  # product name
     folderPath = attr.ib()  # folder path

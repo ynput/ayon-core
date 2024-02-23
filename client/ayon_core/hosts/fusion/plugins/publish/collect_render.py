@@ -59,9 +59,10 @@ class CollectFusionRender(
             instance_families = inst.data.get("families", [])
             product_name = inst.data["productName"]
             instance = FusionRenderInstance(
-                productType=product_type,
                 tool=tool,
                 workfileComp=comp,
+                productType=product_type,
+                family=product_type,
                 families=instance_families,
                 version=version,
                 time="",

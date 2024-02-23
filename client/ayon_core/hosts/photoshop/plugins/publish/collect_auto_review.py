@@ -85,6 +85,7 @@ class CollectAutoReview(pyblish.api.ContextPlugin):
             "name": product_name,
             "productName": product_name,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type],
             "representations": [],
             "folderPath": folder_path,

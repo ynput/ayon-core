@@ -209,6 +209,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             "label": label,
             "productName": product_name,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type]
         })
 
@@ -267,6 +268,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             "label": label,
             "productName": product_name,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type, "clip"]
         })
         # remove review track attr if any

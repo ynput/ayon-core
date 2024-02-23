@@ -954,11 +954,11 @@ def get_publish_instance_families(instance):
         list[str]: List of families.
     """
 
-    product_type = instance.data.get("productType")
+    family = instance.data.get("family")
     families = set(instance.data.get("families") or [])
     output = []
-    if product_type:
-        output.append(product_type)
-        families.discard(product_type)
+    if family:
+        output.append(family)
+        families.discard(family)
     output.extend(families)
     return output

@@ -39,6 +39,7 @@ class CollectPalettes(pyblish.api.ContextPlugin):
             instance.data.update({
                 "id": id,
                 "productType": product_type,
+                "family": product_type,
                 "families": [product_type],
                 "folderPath": folder_path,
                 "productName": "{}{}".format("palette", name)

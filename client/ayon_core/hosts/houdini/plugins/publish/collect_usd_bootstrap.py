@@ -83,10 +83,12 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
                 )
             )
 
+            product_type = "usd.bootstrap"
             new = instance.context.create_instance(product_name)
             new.data["productName"] = product_name
             new.data["label"] = "{0} ({1})".format(product_name, asset_name)
-            new.data["productType"] = "usd.bootstrap"
+            new.data["productType"] = product_type
+            new.data["family"] = product_type
             new.data["comment"] = "Automated bootstrap USD file."
             new.data["publishFamilies"] = ["usd"]
 

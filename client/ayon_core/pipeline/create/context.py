@@ -1193,14 +1193,14 @@ class CreatedInstance:
 
         instance_data = copy.deepcopy(instance_data)
 
-        product_type = instance_data.get("productType", None)
-        if not product_type:
-            product_type = instance_data.get("family", None)
+        product_type = instance_data.get("productType")
+        if product_type is None:
+            product_type = instance_data.get("family")
             if product_type is None:
                 product_type = creator.product_type
-        product_name = instance_data.get("productName", None)
-        if not product_name:
-            product_name = instance_data.get("subset", None)
+        product_name = instance_data.get("productName")
+        if product_name is None:
+            product_name = instance_data.get("subset")
 
         return cls(
             product_type, product_name, instance_data, creator
