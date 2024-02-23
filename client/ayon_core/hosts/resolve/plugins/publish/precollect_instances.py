@@ -64,11 +64,11 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             })
 
             asset = tag_data["folder_path"]
-            subset = tag_data["subset"]
+            product_name = tag_data["productName"]
 
             data.update({
-                "name": "{}_{}".format(asset, subset),
-                "label": "{} {}".format(asset, subset),
+                "name": "{}_{}".format(asset, product_name),
+                "label": "{} {}".format(asset, product_name),
                 "folderPath": asset,
                 "item": timeline_item,
                 "publish": get_publish_attribute(timeline_item),
@@ -128,18 +128,18 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             return
 
         asset = data["folderPath"]
-        subset = "shotMain"
+        product_name = "shotMain"
 
         # insert family into families
-        family = "shot"
+        product_type = "shot"
 
         data.update({
-            "name": "{}_{}".format(asset, subset),
-            "label": "{} {}".format(asset, subset),
-            "subset": subset,
+            "name": "{}_{}".format(asset, product_name),
+            "label": "{} {}".format(asset, product_name),
             "folderPath": asset,
-            "family": family,
-            "families": [],
+            "productName": product_name,
+            "productType": product_type,
+            "families": [product_type],
             "publish": get_publish_attribute(timeline_item)
         })
 
