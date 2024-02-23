@@ -118,9 +118,9 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
             data["subset"] = name
             data["family"] = family
             data["families"] = [family]
-            data["name"] = data["subset"] + "_" + data["asset"]
+            data["name"] = data["subset"] + "_" + data["folderPath"]
             data["label"] = "{} - {}".format(
-                data['asset'], data["subset"]
+                data["folderPath"], data["subset"]
             )
             data["effects"] = effects
 

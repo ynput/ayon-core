@@ -9,6 +9,8 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     AVALON_CONTAINER_ID,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
 )
 from ayon_core.hosts.aftereffects.api.workfile_template_builder import (
     AEPlaceholderLoadPlugin,
@@ -142,7 +144,9 @@ class AfterEffectsHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         layers_meta = stub.get_metadata()
 
         for instance in layers_meta:
-            if instance.get("id") == "pyblish.avalon.instance":
+            if instance.get("id") in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 instances.append(instance)
         return instances
 

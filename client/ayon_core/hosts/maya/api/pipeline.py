@@ -33,6 +33,7 @@ from ayon_core.pipeline import (
     deregister_loader_plugin_path,
     deregister_inventory_action_path,
     deregister_creator_plugin_path,
+    AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
@@ -376,9 +377,11 @@ def _ls():
             yield iterator.thisNode()
             iterator.next()
 
-    ids = {AVALON_CONTAINER_ID,
-           # Backwards compatibility
-           "pyblish.mindbender.container"}
+    ids = {
+        AYON_CONTAINER_ID,
+        # Backwards compatibility
+        AVALON_CONTAINER_ID
+    }
 
     # Iterate over all 'set' nodes in the scene to detect whether
     # they have the avalon container ".id" attribute.
