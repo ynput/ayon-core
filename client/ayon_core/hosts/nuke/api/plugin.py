@@ -396,17 +396,25 @@ class NukeWriteCreator(NukeCreator):
 
         # plugin settings
         plugin_settings = self.get_creator_settings(project_settings)
-
+        temp_rendering_path_template = (
+            plugin_settings.get("temp_rendering_path_template")
+            or self.temp_rendering_path_template
+        )
+        # TODO remove template key replacements
+        temp_rendering_path_template = (
+            temp_rendering_path_template
+            .replace("{product[name]}", "{subset}")
+            .replace("{product[type]}", "{family}")
+            .replace("{task[name]}", "{task}")
+            .replace("{folder[name]}", "{asset}")
+        )
         # individual attributes
         self.instance_attributes = plugin_settings.get(
             "instance_attributes") or self.instance_attributes
         self.prenodes = plugin_settings["prenodes"]
         self.default_variants = plugin_settings.get(
             "default_variants") or self.default_variants
-        self.temp_rendering_path_template = (
-            plugin_settings.get("temp_rendering_path_template")
-            or self.temp_rendering_path_template
-        )
+        self.temp_rendering_path_template = temp_rendering_path_template
 
 
 class OpenPypeCreator(LegacyCreator):
@@ -1061,7 +1069,7 @@ class AbstractWriteRender(OpenPypeCreator):
     icon = "sign-out"
     defaults = ["Main", "Mask"]
     knobs = []
-    prenodes = {}
+    prenodes = []
 
     def __init__(self, *args, **kwargs):
         super(AbstractWriteRender, self).__init__(*args, **kwargs)
@@ -1167,7 +1175,7 @@ class AbstractWriteRender(OpenPypeCreator):
             bool: True if legacy
         """
         imageio_nodes = get_nuke_imageio_settings()["nodes"]
-        node = imageio_nodes["requiredNodes"][0]
+        node = imageio_nodes["required_nodes"][0]
         if "type" not in node["knobs"][0]:
             # if type is not yet in project anatomy
             return True

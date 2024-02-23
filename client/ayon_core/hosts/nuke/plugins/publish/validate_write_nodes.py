@@ -86,7 +86,10 @@ class ValidateNukeWriteNode(
         # Collect key values of same type in a list.
         values_by_name = defaultdict(list)
         for knob_data in correct_data["knobs"]:
-            values_by_name[knob_data["name"]].append(knob_data["value"])
+            knob_type = knob_data["type"]
+            knob_value = knob_data[knob_type]
+
+            values_by_name[knob_data["name"]].append(knob_value)
 
         for knob_data in correct_data["knobs"]:
             knob_type = knob_data["type"]
@@ -97,7 +100,7 @@ class ValidateNukeWriteNode(
                 raise PublishXmlValidationError(
                     self, (
                         "Please update data in settings 'project_settings"
-                        "/nuke/imageio/nodes/requiredNodes'"
+                        "/nuke/imageio/nodes/required_nodes'"
                     ),
                     key="legacy"
                 )

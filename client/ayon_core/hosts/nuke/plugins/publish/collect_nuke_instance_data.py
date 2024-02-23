@@ -12,7 +12,7 @@ class CollectInstanceData(pyblish.api.InstancePlugin):
     hosts = ["nuke", "nukeassist"]
 
     # presets
-    sync_workfile_version_on_families = []
+    sync_workfile_version_on_product_types = []
 
     def process(self, instance):
         family = instance.data["family"]
@@ -25,7 +25,7 @@ class CollectInstanceData(pyblish.api.InstancePlugin):
         pixel_aspect = format_.pixelAspect()
 
         # sync workfile version
-        if family in self.sync_workfile_version_on_families:
+        if family in self.sync_workfile_version_on_product_types:
             self.log.debug(
                 "Syncing version with workfile for '{}'".format(
                     family
