@@ -154,6 +154,7 @@ class CollectFarmRender(publish.AbstractCollectRender):
                 name=node.split("/")[1],
 
                 productType="render.farm",
+                family="render.farm",
                 families=["render.farm"],
                 farm=True,
 

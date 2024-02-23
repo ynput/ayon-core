@@ -188,7 +188,8 @@ class CollectSequencesFromJob(pyblish.api.ContextPlugin):
 
                 instance.data.update({
                     "name": str(collection),
-                    "productType": families[0],  # backwards compatibility / pyblish
+                    "productType": families[0],
+                    "family": families[0],
                     "families": list(families),
                     "productName": product_name,
                     "folderPath": data.get(

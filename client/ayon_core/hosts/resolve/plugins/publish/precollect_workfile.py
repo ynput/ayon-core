@@ -28,10 +28,11 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
         instance_data = {
             "name": "{}_{}".format(asset_name, product_name),
             "label": "{} {}".format(current_asset_name, product_name),
+            "item": project,
             "folderPath": current_asset_name,
             "productName": product_name,
-            "item": project,
             "productType": "workfile",
+            "family": "workfile",
             "families": []
         }
 

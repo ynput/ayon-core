@@ -356,6 +356,7 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
             "productName": product_name,
             "folderPath": folder_path,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type]
         })
 

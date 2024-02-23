@@ -53,7 +53,7 @@ class ExtractReviewIntermediates(publish.Extractor):
         # TODO 'families' should not be included for filtering of outputs
         families = set(instance.data["families"])
 
-        # add main family to make sure all families are compared
+        # Add product type to families
         families.add(instance.data["productType"])
 
         task_type = instance.context.data["taskType"]

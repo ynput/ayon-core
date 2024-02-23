@@ -33,11 +33,7 @@ class InstanceItem:
     def __init__(self, instance_id, instance_data, logs_by_instance_id):
         self._id = instance_id
         self.label = instance_data.get("label") or instance_data.get("name")
-
-        family = instance_data.get("productType")
-        if not family:
-            family = instance_data.get("family")
-        self.family = family
+        self.family = instance_data.get("family")
         self.removed = not instance_data.get("exists", True)
 
         logs = logs_by_instance_id.get(instance_id) or []

@@ -56,6 +56,7 @@ class CollectCelactionInstances(pyblish.api.ContextPlugin):
             "label": scene_file,
             "productName": product_name,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type],
             "representations": []
         })
@@ -86,6 +87,7 @@ class CollectCelactionInstances(pyblish.api.ContextPlugin):
         instance.data.update({
             "label": "{} - farm".format(product_name),
             "productType": product_type,
+            "family": product_type,
             "families": [product_type],
             "productName": product_name
         })

@@ -45,6 +45,7 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
                 "folderPath": folder_path,
                 "productName": product_name,
                 "productType": product_type,
+                "family": product_type,
                 "families": [product_type]
             }
 

@@ -139,6 +139,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             "folderPath": asset,
             "productName": product_name,
             "productType": product_type,
+            "family": product_type,
             "families": [product_type],
             "publish": get_publish_attribute(timeline_item)
         })
