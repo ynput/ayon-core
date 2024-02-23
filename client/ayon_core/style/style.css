@@ -845,7 +845,7 @@ OverlayMessageWidget QWidget {
     padding: 1px 5px;
 }
 
-#CreatorFamilyLabel {
+#CreatorProductTypeLabel {
     font-size: 10pt;
     font-weight: bold;
 }
@@ -875,7 +875,7 @@ OverlayMessageWidget QWidget {
     border-radius: 0px;
 }
 
-#SubsetView::item, #RepresentationView:item {
+#ProductView::item, #RepresentationView:item {
     padding: 5px 1px;
     border: 0px;
 }
