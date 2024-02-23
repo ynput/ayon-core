@@ -54,7 +54,7 @@ class ExtractReviewIntermediates(publish.Extractor):
         families = set(instance.data["families"])
 
         # add main family to make sure all families are compared
-        families.add(instance.data["family"])
+        families.add(instance.data["productType"])
 
         task_type = instance.context.data["taskType"]
         subset = instance.data["subset"]

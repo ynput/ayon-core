@@ -436,9 +436,9 @@ def set_avalon_knob_data(node, data=None, prefix="avalon:"):
 
     Examples:
         data = {
-            'asset': 'sq020sh0280',
-            'family': 'render',
-            'subset': 'subsetMain'
+            'folderPath': 'sq020sh0280',
+            'productType': 'render',
+            'productName': 'productMain'
         }
     """
     data = data or dict()
@@ -662,7 +662,7 @@ def get_nuke_imageio_settings():
     return get_project_settings(Context.project_name)["nuke"]["imageio"]
 
 
-def get_imageio_node_setting(node_class, plugin_name, subset):
+def get_imageio_node_setting(node_class, plugin_name, product_name):
     ''' Get preset data for dataflow (fileType, compression, bitDepth)
     '''
     imageio_nodes = get_nuke_imageio_settings()["nodes"]
@@ -687,7 +687,7 @@ def get_imageio_node_setting(node_class, plugin_name, subset):
     get_imageio_node_override_setting(
         node_class,
         plugin_name,
-        subset,
+        product_name,
         imageio_node["knobs"]
     )
 
@@ -696,7 +696,7 @@ def get_imageio_node_setting(node_class, plugin_name, subset):
 
 
 def get_imageio_node_override_setting(
-    node_class, plugin_name, subset, knobs_settings
+    node_class, plugin_name, product_name, knobs_settings
 ):
     ''' Get imageio node overrides from settings
     '''
@@ -707,7 +707,7 @@ def get_imageio_node_override_setting(
     override_imageio_node = None
     for onode in override_nodes:
         log.debug("__ onode: {}".format(onode))
-        log.debug("__ subset: {}".format(subset))
+        log.debug("__ productName: {}".format(product_name))
         if node_class not in onode["nuke_node_class"]:
             continue
 
@@ -717,7 +717,7 @@ def get_imageio_node_override_setting(
         if (
             onode["subsets"]
             and not any(
-                re.search(s.lower(), subset.lower())
+                re.search(s.lower(), product_name.lower())
                 for s in onode["subsets"]
             )
         ):
@@ -868,16 +868,16 @@ def check_inventory_versions():
     version_docs = get_versions(
         project_name, version_ids, fields=["_id", "name", "parent"]
     )
-    # Store versions by id and collect subset ids
+    # Store versions by id and collect product ids
     version_docs_by_id = {}
-    subset_ids = set()
+    product_ids = set()
     for version_doc in version_docs:
         version_docs_by_id[version_doc["_id"]] = version_doc
-        subset_ids.add(version_doc["parent"])
+        product_ids.add(version_doc["parent"])
 
-    # Query last versions based on subset ids
-    last_versions_by_subset_id = get_last_versions(
-        project_name, subset_ids=subset_ids, fields=["_id", "parent"]
+    # Query last versions based on product ids
+    last_versions_by_product_id = get_last_versions(
+        project_name, subset_ids=product_ids, fields=["_id", "parent"]
     )
 
     # Loop through collected container nodes and their representation ids
@@ -900,9 +900,9 @@ def check_inventory_versions():
             ).format(node.name()))
             continue
 
-        # Get last version based on subset id
-        subset_id = version_doc["parent"]
-        last_version = last_versions_by_subset_id[subset_id]
+        # Get last version based on product id
+        product_id = version_doc["parent"]
+        last_version = last_versions_by_product_id[product_id]
         # Check if last version is same as current version
         if last_version["_id"] == version_doc["_id"]:
             color_value = "0x4ecd25ff"
@@ -959,19 +959,19 @@ def version_up_script():
     nukescripts.script_and_write_nodes_version_up()
 
 
-def check_subsetname_exists(nodes, subset_name):
+def check_product_name_exists(nodes, product_name):
     """
     Checking if node is not already created to secure there is no duplicity
 
     Arguments:
         nodes (list): list of nuke.Node objects
-        subset_name (str): name we try to find
+        product_name (str): name we try to find
 
     Returns:
         bool: True of False
     """
     return next((True for n in nodes
-                 if subset_name in read_avalon_data(n).get("subset", "")),
+                 if product_name in read_avalon_data(n).get("productName", "")),
                 False)
 
 
@@ -1012,8 +1012,12 @@ def format_anatomy(data):
     )
     data.update(context_data)
     data.update({
-        "subset": data["subset"],
-        "family": data["family"],
+        "subset": data["productName"],
+        "family": data["productType"],
+        "product": {
+            "name": data["productName"],
+            "type": data["productType"],
+        },
         "frame": "#" * padding,
     })
     return anatomy.format(data)
@@ -1048,7 +1052,7 @@ def create_prenodes(
     prev_node,
     nodes_setting,
     plugin_name=None,
-    subset=None,
+    product_name=None,
     **kwargs
 ):
     last_node = None
@@ -1072,12 +1076,12 @@ def create_prenodes(
             "dependent": node["dependent"]
         }
 
-        if all([plugin_name, subset]):
+        if all([plugin_name, product_name]):
             # find imageio overrides
             get_imageio_node_override_setting(
                 now_node.Class(),
                 plugin_name,
-                subset,
+                product_name,
                 knobs
             )
 
@@ -1151,13 +1155,13 @@ def create_write_node(
 
     # filtering variables
     plugin_name = data["creator"]
-    subset = data["subset"]
+    product_name = data["productName"]
 
     # get knob settings for write node
     imageio_writes = get_imageio_node_setting(
         node_class="Write",
         plugin_name=plugin_name,
-        subset=subset
+        product_name=product_name
     )
 
     for knob in imageio_writes["knobs"]:
@@ -1206,7 +1210,7 @@ def create_write_node(
             prev_node,
             prenodes,
             plugin_name,
-            subset,
+            product_name,
             **kwargs
         )
         if last_prenode:
@@ -1839,14 +1843,17 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
             nuke_imageio_writes = None
             if avalon_knob_data:
                 # establish families
-                families = [avalon_knob_data["family"]]
+                product_type = avalon_knob_data.get("productType")
+                if product_type is None:
+                    product_type = avalon_knob_data["family"]
+                families = [product_type]
                 if avalon_knob_data.get("families"):
                     families.append(avalon_knob_data.get("families"))
 
                 nuke_imageio_writes = get_imageio_node_setting(
                     node_class=avalon_knob_data["families"],
                     plugin_name=avalon_knob_data["creator"],
-                    subset=avalon_knob_data["subset"]
+                    product_name=avalon_knob_data["productName"]
                 )
             elif node_data:
                 nuke_imageio_writes = get_write_node_template_attr(node)
@@ -2148,7 +2155,7 @@ def get_write_node_template_attr(node):
     return get_imageio_node_setting(
         node_class="Write",
         plugin_name=plugin_names_mapping[identifier],
-        subset=node_data["subset"]
+        product_name=node_data["productName"]
     )
 
 
