@@ -25,24 +25,9 @@ from ayon_core.client import get_ayon_server_api_connection
 
 
 # --------- Project settings ---------
-def _convert_royalrender_project_settings(ayon_settings, output):
-    if "royalrender" not in ayon_settings:
-        return
-    ayon_royalrender = ayon_settings["royalrender"]
-    rr_paths = ayon_royalrender.get("selected_rr_paths", [])
-
-    output["royalrender"] = {
-        "publish": ayon_royalrender["publish"],
-        "rr_paths": rr_paths,
-    }
-
-
 def convert_project_settings(ayon_settings, default_settings):
     default_settings = copy.deepcopy(default_settings)
     output = {}
-
-    _convert_royalrender_project_settings(ayon_settings, output)
-
     for key, value in ayon_settings.items():
         if key not in output:
             output[key] = value

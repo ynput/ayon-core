@@ -108,7 +108,7 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
 
         context = instance.context
 
-        self._rr_root = instance.data.get("rrPathName")
+        self._rr_root = instance.data.get("rr_root")
         if not self._rr_root:
             raise KnownPublishError(
                 ("Missing RoyalRender root. "
