@@ -2153,10 +2153,13 @@ def get_write_node_template_attr(node):
     identifier = node_data["creator_identifier"]
 
     # return template data
+    product_name = node_data.get("productName")
+    if product_name is None:
+        product_name = node_data["subset"]
     return get_imageio_node_setting(
         node_class="Write",
         plugin_name=plugin_names_mapping[identifier],
-        product_name=node_data["productName"]
+        product_name=product_name
     )
 
 
