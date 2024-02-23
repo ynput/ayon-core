@@ -1,0 +1,77 @@
+[VarDef, crlf, [StrMerge, [StrFromAsc, 13], [StrFromAsc, 10]]]
+[VarDef, quot, [StrFromAsc, 34]]
+[VarDef, temp, [FileNameResolvePath, "_deleteme"]]
+[VarDef, bat, [StrMerge, temp, ".bat"]]
+[VarDef, txt, [StrMerge, temp, ".txt"]]
+[VarSet, offset, 0]
+
+[RoutineDef, write,
+  [VarAdd, offset, [MemWriteString, OpenpypePlugins,
+    [StrMerge, text, crlf], offset, 0]
+  ]
+, text]
+
+[If, [MemGetSize, OpenpypePlugins],
+  [MemDelete, OpenpypePlugins]
+]
+[MemCreate, OpenpypePlugins, 1000]
+
+[RoutineCall, write, "@echo off"]
+[RoutineCall, write, [StrMerge, "set ", quot, "_OUT=", txt, quot]]
+[RoutineCall, write, [StrMerge, "if exist ", quot, "%_OUT%", quot, " del ", quot, "%_OUT%", quot]]
+[RoutineCall, write, [StrMerge, "set ", quot, "_BUFFER=%ZBRUSH_PLUGIN_PATH%", quot]]
+[RoutineCall, write, ":loop"]
+[RoutineCall, write, [StrMerge, "for /f ", quot, "delims=; tokens=1,*", quot, " %%G in (", quot, "%_BUFFER%", quot, ") do ("]]
+[RoutineCall, write, [StrMerge, "  set ", quot, "_BUFFER=%%~H", quot, ""]]
+[RoutineCall, write, [StrMerge, "  if exist ", quot, "%%~G", quot, " ("]]
+[RoutineCall, write, [StrMerge, "    for /f ", quot, "tokens=*", quot, " %%I in ('dir /b ", quot, "%%~G", quot, "') do ("]]
+[RoutineCall, write, [StrMerge, "      call :validate ", quot, "%%~G\%%~I", quot]]
+[RoutineCall, write, "    )"]
+[RoutineCall, write, "  )"]
+[RoutineCall, write, "  goto loop"]
+[RoutineCall, write, ")"]
+[RoutineCall, write, "goto :eof"]
+[RoutineCall, write, ":validate"]
+[RoutineCall, write, "set _DONE=0"]
+[RoutineCall, write, [StrMerge, "echo %~x1| findstr /irxc:", quot, ".zsc", quot, " > nul && ("]]
+[RoutineCall, write, "  set _DONE=1"]
+[RoutineCall, write, [StrMerge, "  if exist ", quot, "%~dpn1.zs", quot, " goto :eof"]]
+[RoutineCall, write, [StrMerge, "  if exist ", quot, "%~dpn1.txt", quot, " goto :eof"]]
+[RoutineCall, write, ")"]
+[RoutineCall, write, "if %_DONE% == 0 ("]
+[RoutineCall, write, [StrMerge, "  echo %~x1| findstr /irxc:", quot, ".txt", quot, " > nul && ("]]
+[RoutineCall, write, "    set _DONE=1"]
+[RoutineCall, write, [StrMerge, "    if exist ", quot, "%~dpn1.zs", quot, " goto :eof"]]
+[RoutineCall, write, "  )"]
+[RoutineCall, write, ")"]
+[RoutineCall, write, "if %_DONE% == 0 ("]
+[RoutineCall, write, [StrMerge, "  echo %~x1| findstr /irxc:", quot, ".zs", quot, " > nul || goto :eof"]]
+[RoutineCall, write, ")"]
+[RoutineCall, write, [StrMerge, "echo %~1>> ", quot, "%_OUT%", quot]]
+
+[MemResize, OpenpypePlugins, offset]
+[If, [MemSaveToFile, OpenpypePlugins, bat, 1] < 1,
+  [Note, "Error preparing ZBrush for external plugins."]
+,
+  [VarDef, file, ""]
+  [VarSet, offset, 0]
+
+  [MemDelete, OpenpypePlugins]
+  [ShellExecute, [StrMerge, quot, bat, quot]]
+  [FileDelete, bat]
+  [MemCreateFromFile, OpenpypePlugins, txt]
+  [FileDelete, txt]
+
+  [Loop, 10000,
+    [VarSet, bytes, [MemReadString, OpenpypePlugins, file, offset, 1]]
+    [If, bytes,
+      [VarAdd, offset, bytes]
+      [FileNameSetNext, file]
+      [IPress, "Zscript:Load"]
+    ,
+      [LoopExit]
+      [IPress,CLOSE]
+    ]
+  ]
+]
+[MemDelete, OpenpypePlugins]
