@@ -666,14 +666,14 @@ def get_imageio_node_setting(node_class, plugin_name, subset):
     ''' Get preset data for dataflow (fileType, compression, bitDepth)
     '''
     imageio_nodes = get_nuke_imageio_settings()["nodes"]
-    required_nodes = imageio_nodes["requiredNodes"]
+    required_nodes = imageio_nodes["required_nodes"]
 
     imageio_node = None
     for node in required_nodes:
         log.info(node)
         if (
-                node_class in node["nukeNodeClass"]
-                and plugin_name in node["plugins"]
+            node_class in node["nuke_node_class"]
+            and plugin_name in node["plugins"]
         ):
             imageio_node = node
             break
@@ -701,14 +701,14 @@ def get_imageio_node_override_setting(
     ''' Get imageio node overrides from settings
     '''
     imageio_nodes = get_nuke_imageio_settings()["nodes"]
-    override_nodes = imageio_nodes["overrideNodes"]
+    override_nodes = imageio_nodes["override_nodes"]
 
     # find matching override node
     override_imageio_node = None
     for onode in override_nodes:
         log.debug("__ onode: {}".format(onode))
         log.debug("__ subset: {}".format(subset))
-        if node_class not in onode["nukeNodeClass"]:
+        if node_class not in onode["nuke_node_class"]:
             continue
 
         if plugin_name not in onode["plugins"]:
@@ -733,26 +733,31 @@ def get_imageio_node_override_setting(
         knob_names = [k["name"] for k in knobs_settings]
 
         for oknob in override_imageio_node["knobs"]:
+            oknob_name = oknob["name"]
+            oknob_type = oknob["type"]
+            oknob_value = oknob[oknob_type]
             for knob in knobs_settings:
-                # override matching knob name
-                if oknob["name"] == knob["name"]:
-                    log.debug(
-                        "_ overriding knob: `{}` > `{}`".format(
-                            knob, oknob
-                        ))
-                    if not oknob["value"]:
-                        # remove original knob if no value found in oknob
-                        knobs_settings.remove(knob)
-                    else:
-                        # override knob value with oknob's
-                        knob["value"] = oknob["value"]
-
                 # add missing knobs into imageio_node
-                if oknob["name"] not in knob_names:
-                    log.debug(
-                        "_ adding knob: `{}`".format(oknob))
+                if oknob_name not in knob_names:
+                    log.debug("_ adding knob: `{}`".format(oknob))
                     knobs_settings.append(oknob)
-                    knob_names.append(oknob["name"])
+                    knob_names.append(oknob_name)
+                    continue
+
+                if oknob_name != knob["name"]:
+                    continue
+
+                knob_type = knob["type"]
+                # override matching knob name
+                log.debug(
+                    "_ overriding knob: `{}` > `{}`".format(knob, oknob)
+                )
+                if not oknob_value:
+                    # remove original knob if no value found in oknob
+                    knobs_settings.remove(knob)
+                else:
+                    # override knob value with oknob's
+                    knob[knob_type] = oknob_value
 
     return knobs_settings
 
@@ -761,7 +766,7 @@ def get_imageio_input_colorspace(filename):
     ''' Get input file colorspace based on regex in settings.
     '''
     imageio_regex_inputs = (
-        get_nuke_imageio_settings()["regexInputs"]["inputs"])
+        get_nuke_imageio_settings()["regex_inputs"]["inputs"])
 
     preset_clrsp = None
     for regexInput in imageio_regex_inputs:
@@ -1048,8 +1053,9 @@ def create_prenodes(
 ):
     last_node = None
     for_dependency = {}
-    for name, node in nodes_setting.items():
+    for node in nodes_setting:
         # get attributes
+        name = node["name"]
         nodeclass = node["nodeclass"]
         knobs = node["knobs"]
 
@@ -1111,8 +1117,8 @@ def create_write_node(
         name (str): name of node
         data (dict): creator write instance data
         input (node)[optional]: selected node to connect to
-        prenodes (dict)[optional]:
-            nodes to be created before write with dependency
+        prenodes (Optional[list[dict]]): nodes to be created before write
+            with dependency
         review (bool)[optional]: adding review knob
         farm (bool)[optional]: rendering workflow target
         kwargs (dict)[optional]: additional key arguments for formatting
@@ -1141,7 +1147,7 @@ def create_write_node(
     Return:
         node (obj): group node with avalon data as Knobs
     '''
-    prenodes = prenodes or {}
+    prenodes = prenodes or []
 
     # filtering variables
     plugin_name = data["creator"]
@@ -1156,7 +1162,8 @@ def create_write_node(
 
     for knob in imageio_writes["knobs"]:
         if knob["name"] == "file_type":
-            ext = knob["value"]
+            knot_type = knob["type"]
+            ext = knob[knot_type]
 
     data.update({
         "imageio_writes": imageio_writes,
@@ -1271,12 +1278,17 @@ def create_write_node(
     # set tile color
     tile_color = next(
         iter(
-            k["value"] for k in imageio_writes["knobs"]
+            k[k["type"]] for k in imageio_writes["knobs"]
             if "tile_color" in k["name"]
         ), [255, 0, 0, 255]
     )
+    new_tile_color = []
+    for c in tile_color:
+        if isinstance(c, float):
+            c = int(c * 255)
+        new_tile_color.append(c)
     GN["tile_color"].setValue(
-        color_gui_to_int(tile_color))
+        color_gui_to_int(new_tile_color))
 
     return GN
 
@@ -1293,41 +1305,31 @@ def set_node_knobs_from_settings(node, knob_settings, **kwargs):
     """
     for knob in knob_settings:
         log.debug("__ knob: {}".format(pformat(knob)))
-        knob_type = knob["type"]
         knob_name = knob["name"]
-
         if knob_name not in node.knobs():
             continue
 
+        knob_type = knob["type"]
+        knob_value = knob[knob_type]
         if knob_type == "expression":
-            knob_expression = knob["expression"]
-            node[knob_name].setExpression(
-                knob_expression
-            )
+            node[knob_name].setExpression(knob_value)
             continue
 
         # first deal with formattable knob settings
         if knob_type == "formatable":
-            template = knob["template"]
-            to_type = knob["to_type"]
+            template = knob_value["template"]
+            to_type = knob_value["to_type"]
             try:
-                _knob_value = template.format(
-                    **kwargs
-                )
+                knob_value = template.format(**kwargs)
             except KeyError as msg:
                 raise KeyError(
                     "Not able to format expression: {}".format(msg))
 
             # convert value to correct type
             if to_type == "2d_vector":
-                knob_value = _knob_value.split(";").split(",")
-            else:
-                knob_value = _knob_value
+                knob_value = knob_value.split(";").split(",")
 
             knob_type = to_type
-
-        else:
-            knob_value = knob["value"]
 
         if not knob_value:
             continue
@@ -1339,29 +1341,46 @@ def set_node_knobs_from_settings(node, knob_settings, **kwargs):
 
 
 def convert_knob_value_to_correct_type(knob_type, knob_value):
-    # first convert string types to string
-    # just to ditch unicode
-    if isinstance(knob_value, six.text_type):
-        knob_value = str(knob_value)
+    # Convert 'text' to string to avoid unicode
+    if knob_type == "text":
+        return str(knob_value)
 
-    # set correctly knob types
-    if knob_type == "bool":
-        knob_value = bool(knob_value)
-    elif knob_type == "decimal_number":
-        knob_value = float(knob_value)
-    elif knob_type == "number":
-        knob_value = int(knob_value)
-    elif knob_type == "text":
-        knob_value = knob_value
-    elif knob_type == "color_gui":
-        knob_value = color_gui_to_int(knob_value)
-    elif knob_type in ["2d_vector", "3d_vector", "color", "box"]:
-        knob_value = [float(val_) for val_ in knob_value]
+    if knob_type == "boolean":
+        return bool(knob_value)
+
+    if knob_type == "decimal_number":
+        return float(knob_value)
+
+    if knob_type == "number":
+        return int(knob_value)
+
+    if knob_type == "color_gui":
+        new_color = []
+        for value in knob_value:
+            if isinstance(value, float):
+                value = int(value * 255)
+            new_color.append(value)
+        return color_gui_to_int(new_color)
+
+    if knob_type == "box":
+        return [
+            knob_value["x"], knob_value["y"],
+            knob_value["r"], knob_value["t"]
+        ]
+
+    if knob_type == "vector_2d":
+        return [knob_value["x"], knob_value["y"]]
+
+    if knob_type == "vector_3d":
+        return [knob_value["x"], knob_value["y"], knob_value["z"]]
 
     return knob_value
 
 
 def color_gui_to_int(color_gui):
+    # Append alpha channel if not present
+    if len(color_gui) == 3:
+        color_gui = list(color_gui) + [255]
     hex_value = (
         "0x{0:0>2x}{1:0>2x}{2:0>2x}{3:0>2x}").format(*color_gui)
     return int(hex_value, 16)
@@ -1530,41 +1549,21 @@ class WorkfileSettings(object):
             host_name="nuke"
         )
 
-        workfile_settings = imageio_host["workfile"]
         viewer_process_settings = imageio_host["viewer"]["viewerProcess"]
+        workfile_settings = imageio_host["workfile"]
+        color_management = workfile_settings["color_management"]
+        native_ocio_config = workfile_settings["native_ocio_config"]
 
         if not config_data:
-            # TODO: backward compatibility for old projects - remove later
-            # perhaps old project overrides is having it set to older version
-            # with use of `customOCIOConfigPath`
-            resolved_path = None
-            if workfile_settings.get("customOCIOConfigPath"):
-                unresolved_path = workfile_settings["customOCIOConfigPath"]
-                ocio_paths = unresolved_path[platform.system().lower()]
+            # no ocio config found and no custom path used
+            if self._root_node["colorManagement"].value() \
+                    not in color_management:
+                self._root_node["colorManagement"].setValue(color_management)
 
-                for ocio_p in ocio_paths:
-                    resolved_path = str(ocio_p).format(**os.environ)
-                    if not os.path.exists(resolved_path):
-                        continue
-
-            if resolved_path:
-                # set values to root
-                self._root_node["colorManagement"].setValue("OCIO")
-                self._root_node["OCIO_config"].setValue("custom")
-                self._root_node["customOCIOConfigPath"].setValue(
-                    resolved_path)
-            else:
-                # no ocio config found and no custom path used
-                if self._root_node["colorManagement"].value() \
-                        not in str(workfile_settings["colorManagement"]):
-                    self._root_node["colorManagement"].setValue(
-                        str(workfile_settings["colorManagement"]))
-
-                # second set ocio version
-                if self._root_node["OCIO_config"].value() \
-                        not in str(workfile_settings["OCIO_config"]):
-                    self._root_node["OCIO_config"].setValue(
-                        str(workfile_settings["OCIO_config"]))
+            # second set ocio version
+            if self._root_node["OCIO_config"].value() \
+                    not in native_ocio_config:
+                self._root_node["OCIO_config"].setValue(native_ocio_config)
 
         else:
             # OCIO config path is defined from prelaunch hook
@@ -1577,22 +1576,17 @@ class WorkfileSettings(object):
                     residual_path
                 ))
 
-        # we dont need the key anymore
-        workfile_settings.pop("customOCIOConfigPath", None)
-        workfile_settings.pop("colorManagement", None)
-        workfile_settings.pop("OCIO_config", None)
-
         # get monitor lut from settings respecting Nuke version differences
-        monitor_lut = workfile_settings.pop("monitorLut", None)
+        monitor_lut = workfile_settings["thumbnail_space"]
         monitor_lut_data = self._get_monitor_settings(
-            viewer_process_settings, monitor_lut)
-
-        # set monitor related knobs luts (MonitorOut, Thumbnails)
-        for knob, value_ in monitor_lut_data.items():
-            workfile_settings[knob] = value_
+            viewer_process_settings, monitor_lut
+        )
+        monitor_lut_data["workingSpaceLUT"] = (
+            workfile_settings["working_space"]
+        )
 
         # then set the rest
-        for knob, value_ in workfile_settings.items():
+        for knob, value_ in monitor_lut_data.items():
             # skip unfilled ocio config path
             # it will be dict in value
             if isinstance(value_, dict):
@@ -1874,25 +1868,8 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
             if not write_node:
                 return
 
-            try:
-                # write all knobs to node
-                for knob in nuke_imageio_writes["knobs"]:
-                    value = knob["value"]
-                    if isinstance(value, six.text_type):
-                        value = str(value)
-                    if str(value).startswith("0x"):
-                        value = int(value, 16)
-
-                    log.debug("knob: {}| value: {}".format(
-                        knob["name"], value
-                    ))
-                    write_node[knob["name"]].setValue(value)
-            except TypeError:
-                log.warning(
-                    "Legacy workflow didn't work, switching to current")
-
-                set_node_knobs_from_settings(
-                    write_node, nuke_imageio_writes["knobs"])
+            set_node_knobs_from_settings(
+                write_node, nuke_imageio_writes["knobs"])
 
     def set_reads_colorspace(self, read_clrs_inputs):
         """ Setting colorspace to Read nodes
@@ -1970,7 +1947,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
             log.error(_error)
 
         log.info("Setting colorspace to read nodes...")
-        read_clrs_inputs = nuke_colorspace["regexInputs"].get("inputs", [])
+        read_clrs_inputs = nuke_colorspace["regex_inputs"].get("inputs", [])
         if read_clrs_inputs:
             self.set_reads_colorspace(read_clrs_inputs)
 

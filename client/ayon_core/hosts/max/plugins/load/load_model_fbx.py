@@ -2,7 +2,8 @@ import os
 from ayon_core.pipeline import load, get_representation_path
 from ayon_core.hosts.max.api.pipeline import (
     containerise, get_previous_loaded_object,
-    update_custom_attribute_data
+    update_custom_attribute_data,
+    remove_container_data
 )
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.lib import (
@@ -92,6 +93,5 @@ class FbxModelLoader(load.LoaderPlugin):
 
     def remove(self, container):
         from pymxs import runtime as rt
-
         node = rt.GetNodeByName(container["instance_node"])
-        rt.Delete(node)
+        remove_container_data(node)
