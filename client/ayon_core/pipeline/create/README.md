@@ -31,7 +31,7 @@ Product type tells how should be instance processed and product name what name w
     "productType": <product type>,
 
     # Mutable data
-    ## Subset name based on product name template - may change overtime (on context change)
+    ## Product name based on product name template - may change overtime (on context change)
     "productName": <product name>,
     ## Instance is active and will be published
     "active": True,

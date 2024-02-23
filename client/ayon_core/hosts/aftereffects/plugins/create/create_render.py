@@ -11,7 +11,7 @@ from ayon_core.pipeline import (
 from ayon_core.hosts.aftereffects.api.pipeline import cache_and_get_instances
 from ayon_core.hosts.aftereffects.api.lib import set_settings
 from ayon_core.lib import prepare_template_data
-from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
 
 
 class RenderCreator(Creator):
@@ -58,7 +58,7 @@ class RenderCreator(Creator):
                                 len(comps) > 1)
         for comp in comps:
             composition_name = re.sub(
-                "[^{}]+".format(SUBSET_NAME_ALLOWED_SYMBOLS),
+                "[^{}]+".format(PRODUCT_NAME_ALLOWED_SYMBOLS),
                 "",
                 comp.name
             )

@@ -3,7 +3,7 @@ import re
 import pyblish.api
 
 from ayon_core.hosts.photoshop import api as photoshop
-from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
@@ -56,7 +56,7 @@ class ValidateNamingRepair(pyblish.api.Action):
 
             # format from Tool Creator
             product_name = re.sub(
-                "[^{}]+".format(SUBSET_NAME_ALLOWED_SYMBOLS),
+                "[^{}]+".format(PRODUCT_NAME_ALLOWED_SYMBOLS),
                 "",
                 product_name
             )

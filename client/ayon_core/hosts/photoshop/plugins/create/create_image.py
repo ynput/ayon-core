@@ -8,7 +8,7 @@ from ayon_core.pipeline import (
     CreatorError
 )
 from ayon_core.lib import prepare_template_data
-from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
 from ayon_core.hosts.photoshop.api.pipeline import cache_and_get_instances
 from ayon_core.hosts.photoshop.lib import clean_product_name
 
@@ -80,7 +80,7 @@ class ImageCreator(Creator):
 
             if use_layer_name:
                 layer_name = re.sub(
-                    "[^{}]+".format(SUBSET_NAME_ALLOWED_SYMBOLS),
+                    "[^{}]+".format(PRODUCT_NAME_ALLOWED_SYMBOLS),
                     "",
                     group.name
                 )
