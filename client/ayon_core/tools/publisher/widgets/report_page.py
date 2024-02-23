@@ -744,7 +744,7 @@ class PublishInstanceCardWidget(BaseClickableFrame):
         self.setObjectName("CardViewWidget")
 
         icon_widget = IconValuePixmapLabel(icon, self)
-        icon_widget.setObjectName("FamilyIconLabel")
+        icon_widget.setObjectName("ProductTypeIconLabel")
 
         label_widget = QtWidgets.QLabel(instance.label, self)
 
