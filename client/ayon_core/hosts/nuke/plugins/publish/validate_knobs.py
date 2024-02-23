@@ -30,6 +30,8 @@ class ValidateKnobs(pyblish.api.ContextPlugin):
     actions = [RepairContextAction]
     optional = True
 
+    knobs = "{}"
+
     def process(self, context):
         invalid = self.get_invalid(context, compute=True)
         if invalid:
@@ -61,6 +63,8 @@ class ValidateKnobs(pyblish.api.ContextPlugin):
         invalid_knobs = []
 
         for instance in context:
+            # Load fresh knobs data for each instance
+            settings_knobs = json.loads(cls.knobs)
 
             # Filter families.
             families = [instance.data["family"]]
@@ -74,12 +78,12 @@ class ValidateKnobs(pyblish.api.ContextPlugin):
                     family = family.split(".")[0]
 
                 # avoid families not in settings
-                if family not in cls.knobs:
+                if family not in settings_knobs:
                     continue
 
                 # get presets of knobs
-                for preset in cls.knobs[family]:
-                    knobs[preset] = cls.knobs[family][preset]
+                for preset in settings_knobs[family]:
+                    knobs[preset] = settings_knobs[family][preset]
 
             # Get invalid knobs.
             nodes = []
