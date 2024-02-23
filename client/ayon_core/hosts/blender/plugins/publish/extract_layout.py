@@ -133,7 +133,7 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
 
         fbx_count = 0
 
-        project_name = instance.context.data["projectEntity"]["name"]
+        project_name = instance.context.data["projectName"]
         for asset in asset_group.children:
             metadata = asset.get(AVALON_PROPERTY)
             if not metadata:
@@ -147,7 +147,9 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
                 continue
 
             version_id = metadata["parent"]
-            family = metadata["family"]
+            product_type = metadata.get("product_type")
+            if product_type is None:
+                product_type = metadata["family"]
 
             self.log.debug("Parent: {}".format(version_id))
             # Get blend reference
@@ -179,7 +181,8 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
                 json_element["reference_fbx"] = str(fbx_id)
             if abc_id:
                 json_element["reference_abc"] = str(abc_id)
-            json_element["family"] = family
+            json_element["family"] = product_type
+            json_element["product_type"] = product_type
             json_element["instance_name"] = asset.name
             json_element["asset_name"] = metadata["asset_name"]
             json_element["file_path"] = metadata["libpath"]
@@ -215,7 +218,7 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
             ]
 
             # Extract the animation as well
-            if family == "rig":
+            if product_type == "rig":
                 f, n = self._export_animation(
                     asset, instance, stagingdir, fbx_count)
                 if f:
@@ -225,9 +228,9 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
 
             json_data.append(json_element)
 
-        asset_name = instance.data["assetEntity"]["name"]
-        subset = instance.data["subset"]
-        instance_name = f"{asset_name}_{subset}"
+        folder_name = instance.data["assetEntity"]["name"]
+        product_name = instance.data["productName"]
+        instance_name = f"{folder_name}_{product_name}"
         json_filename = f"{instance_name}.json"
 
         json_path = os.path.join(stagingdir, json_filename)
