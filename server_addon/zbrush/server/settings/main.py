@@ -1,7 +1,7 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
 
 
-class ZbrushSetting(BaseSettingsModel):
+class ZbrushSettings(BaseSettingsModel):
     stop_timer_on_application_exit: bool = SettingsField(
         title="Stop timer on application exit")
 
