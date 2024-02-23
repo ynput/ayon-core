@@ -160,7 +160,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         subset_docs = []
         if names_by_folder_ids:
             subset_docs = list(get_subsets(
-                project_name, names_by_folder_ids=names_by_folder_ids
+                project_name, names_by_asset_ids=names_by_folder_ids
             ))
 
         product_ids = {
