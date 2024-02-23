@@ -17,7 +17,7 @@ import appdirs
 
 from ayon_core.lib import Logger, is_dev_mode_enabled
 from ayon_core.client import get_ayon_server_api_connection
-from ayon_core.settings.ayon_settings import get_ayon_settings
+from ayon_core.settings import get_ayon_settings
 
 from .interfaces import (
     IPluginPaths,
