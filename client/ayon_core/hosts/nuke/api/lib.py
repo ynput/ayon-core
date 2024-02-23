@@ -445,7 +445,7 @@ def set_avalon_knob_data(node, data=None, prefix="avalon:"):
     create = OrderedDict()
 
     tab_name = NODE_TAB_NAME
-    editable = ["asset", "subset", "name", "namespace"]
+    editable = ["folderPath", "productName", "name", "namespace"]
 
     existed_knobs = node.knobs()
 
@@ -714,6 +714,7 @@ def get_imageio_node_override_setting(
         if plugin_name not in onode["plugins"]:
             continue
 
+        # TODO change 'subsets' to 'product_names' in settings
         if (
             onode["subsets"]
             and not any(

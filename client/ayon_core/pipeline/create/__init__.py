@@ -1,6 +1,6 @@
 from .constants import (
-    SUBSET_NAME_ALLOWED_SYMBOLS,
-    DEFAULT_SUBSET_TEMPLATE,
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
+    DEFAULT_PRODUCT_TEMPLATE,
     PRE_CREATE_THUMBNAIL_KEY,
     DEFAULT_VARIANT_VALUE,
 )
@@ -48,16 +48,13 @@ from .legacy_create import (
 
 
 __all__ = (
-    "SUBSET_NAME_ALLOWED_SYMBOLS",
-    "DEFAULT_SUBSET_TEMPLATE",
+    "PRODUCT_NAME_ALLOWED_SYMBOLS",
+    "DEFAULT_PRODUCT_TEMPLATE",
     "PRE_CREATE_THUMBNAIL_KEY",
     "DEFAULT_VARIANT_VALUE",
 
     "get_last_versions_for_instances",
     "get_next_versions_for_instances",
-
-    "get_subset_name_template",
-    "get_subset_name",
 
     "TaskNotSetError",
     "get_product_name",

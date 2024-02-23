@@ -3,7 +3,7 @@ import os
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import filter_profiles, prepare_template_data
 
-from .constants import DEFAULT_SUBSET_TEMPLATE
+from .constants import DEFAULT_PRODUCT_TEMPLATE
 
 
 class TaskNotSetError(KeyError):
@@ -40,7 +40,7 @@ def get_product_name_template(
         task_type (str): Type of task in which context the product is created.
         default_template (Union[str, None]): Default template which is used if
             settings won't find any matching possitibility. Constant
-            'DEFAULT_SUBSET_TEMPLATE' is used if not defined.
+            'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.
         project_settings (Union[Dict[str, Any], None]): Prepared settings for
             project. Settings are queried if not passed.
     """
@@ -75,7 +75,7 @@ def get_product_name_template(
 
     # Make sure template is set (matching may have empty string)
     if not template:
-        template = default_template or DEFAULT_SUBSET_TEMPLATE
+        template = default_template or DEFAULT_PRODUCT_TEMPLATE
     return template
 
 
@@ -96,7 +96,7 @@ def get_product_name(
     Subst name templates are defined in `project_settings/global/tools/creator
     /product_name_profiles` where are profiles with host name, product type,
     task name and task type filters. If context does not match any profile
-    then `DEFAULT_SUBSET_TEMPLATE` is used as default template.
+    then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
 
     That's main reason why so many arguments are required to calculate product
     name.
@@ -114,7 +114,7 @@ def get_product_name(
         asset_doc (dict): Queried asset document with its tasks in data.
             Used to get task type.
         default_template (Optional[str]): Default template if any profile does
-            not match passed context. Constant 'DEFAULT_SUBSET_TEMPLATE'
+            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
             is used if is not passed.
         dynamic_data (Optional[Dict[str, Any]]): Dynamic data specific for
             a creator which creates instance.

@@ -57,7 +57,7 @@ class ExtractReviewIntermediates(publish.Extractor):
         families.add(instance.data["productType"])
 
         task_type = instance.context.data["taskType"]
-        subset = instance.data["subset"]
+        product_name = instance.data["productName"]
         self.log.debug("Creating staging dir...")
 
         if "representations" not in instance.data:
@@ -93,8 +93,8 @@ class ExtractReviewIntermediates(publish.Extractor):
                         f_task_types, task_type))
 
                 self.log.debug(
-                    "product_names `{}` > subset: {}".format(
-                        product_names, subset))
+                    "product_names `{}` > product: {}".format(
+                        product_names, product_name))
 
                 # test if family found in context
                 # using intersection to make sure all defined
@@ -111,7 +111,7 @@ class ExtractReviewIntermediates(publish.Extractor):
 
                 # test subsets from filter
                 if product_names and not any(
-                    re.search(p, subset) for p in product_names
+                    re.search(p, product_name) for p in product_names
                 ):
                     continue
 

@@ -1299,6 +1299,10 @@ class PlaceholderLoadMixin(object):
             " used."
         )
 
+        product_type = options.get("product_type")
+        if product_type is None:
+            product_type = options.get("family")
+
         return [
             attribute_definitions.UISeparatorDef(),
             attribute_definitions.UILabelDef("Main attributes"),
@@ -1312,9 +1316,9 @@ class PlaceholderLoadMixin(object):
                 tooltip=build_type_help
             ),
             attribute_definitions.EnumDef(
-                "family",
-                label="Family",
-                default=options.get("family"),
+                "product_type",
+                label="Product type",
+                default=product_type,
                 items=families
             ),
             attribute_definitions.TextDef(

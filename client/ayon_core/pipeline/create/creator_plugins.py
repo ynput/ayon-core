@@ -532,7 +532,7 @@ class BaseCreator:
         instance is passed in.
 
         Args:
-            variant(str): Subset name variant. In most of cases user input.
+            variant(str): Product name variant. In most of cases user input.
             task_name(str): For which task product is created.
             asset_doc(dict): Asset document for which product is created.
             project_name(str): Project name.
@@ -687,7 +687,7 @@ class Creator(BaseCreator):
         Ideally should be stored to workfile using host implementation.
 
         Args:
-            product_name(str): Subset name of created instance.
+            product_name(str): Product name of created instance.
             instance_data(dict): Base data for instance.
             pre_create_data(dict): Data based on pre creation attributes.
                 Those may affect how creator works.
