@@ -56,7 +56,7 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
         # Check product name
         asset_doc = instance.data["assetEntity"]
         product_name = get_product_name(
-            instance.context.data["projctName"],
+            instance.context.data["projectName"],
             asset_doc,
             instance.data["task"],
             instance.context.data["hostName"],
