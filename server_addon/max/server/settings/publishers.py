@@ -82,6 +82,10 @@ class PublishersModel(BaseSettingsModel):
             "the system automatically skips checking it"
         )
     )
+    ValidateNoAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate No Animation"
+    )
     ValidateLoadedPlugin: ValidateLoadedPluginModel = SettingsField(
         default_factory=ValidateLoadedPluginModel,
         title="Validate Loaded Plugin"
@@ -133,6 +137,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False,
         "optional": True,
         "family_plugins_mapping": []
+    },
+    "ValidateNoAnimation": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
     },
     "ExtractModelObj": {
         "enabled": True,
