@@ -17,10 +17,6 @@ from ayon_core.settings import (
     get_system_settings,
     get_project_settings,
 )
-from ayon_core.settings.constants import (
-    METADATA_KEYS,
-    M_DYNAMIC_KEY_LABEL
-)
 from .log import Logger
 from .profiles_filtering import filter_profiles
 from .local_settings import get_ayon_username
