@@ -17,7 +17,7 @@ import appdirs
 
 from ayon_core.lib import Logger, is_dev_mode_enabled
 from ayon_core.client import get_ayon_server_api_connection
-from ayon_core.settings import get_ayon_settings
+from ayon_core.settings import get_studio_settings
 
 from .interfaces import (
     IPluginPaths,
@@ -733,7 +733,7 @@ class AddonsManager:
         # Prepare settings for addons
         settings = self._settings
         if settings is None:
-            settings = get_ayon_settings()
+            settings = get_studio_settings()
 
         modules_settings = {}
 
