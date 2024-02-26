@@ -334,17 +334,23 @@ class ActionsModel:
             # Handling of 'force_not_open_workfile' for applications
             if action_item.is_application:
                 action_item = action_item.copy()
-                host_name = action_item.identifier.replace(
-                    "application.", ""
-                ).split("/")[0]
-                start_last_workfile_default = self.should_start_last_workfile(
-                    project_name, host_name, task_id
-                )
-                action_item.force_not_open_workfile = (
-                    not_open_workfile_actions.get(
-                        identifier, not start_last_workfile_default
+
+                if identifier in not_open_workfile_actions:
+                    action_item.force_not_open_workfile = (
+                        not_open_workfile_actions[identifier]
                     )
-                )
+                else:
+                    host_name = action_item.identifier.replace(
+                        "application.", ""
+                    ).split("/")[0]
+                    start_last_workfile_default = (
+                        self.should_start_last_workfile(
+                            project_name, host_name, task_id
+                        )
+                    )
+                    action_item.force_not_open_workfile = (
+                        not start_last_workfile_default
+                    )
 
             output.append(action_item)
         return output
@@ -384,17 +390,26 @@ class ActionsModel:
                     project_name, folder_id, task_id
                 )
                 action.data["start_last_workfile"] = True
-                host_name = action_item.identifier.replace(
-                    "application.", ""
-                ).split("/")[0]
-                start_last_workfile_default = self.should_start_last_workfile(
-                    project_name, host_name, task_id
-                )
-                force_not_open_workfile = per_action.get(
-                    identifier, not start_last_workfile_default
-                )
+
+                force_not_open_workfile = None
+                if identifier in per_action:
+                    force_not_open_workfile = per_action[identifier]
+                else:
+                    host_name = action_item.identifier.replace(
+                        "application.", ""
+                    ).split("/")[0]
+                    start_last_workfile_default = (
+                        self.should_start_last_workfile(
+                            project_name, host_name, task_id
+                        )
+                    )
+                    force_not_open_workfile = per_action.get(
+                        identifier, not start_last_workfile_default
+                    )
+
                 if force_not_open_workfile:
                     action.data["start_last_workfile"] = False
+
             action.process(session)
         except Exception as exc:
             self.log.warning("Action trigger failed.", exc_info=True)
