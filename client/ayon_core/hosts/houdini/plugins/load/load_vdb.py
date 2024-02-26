@@ -79,8 +79,8 @@ class VdbLoader(load.LoaderPlugin):
 
         return filename
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_doc = context["representation"]
         node = container["node"]
         try:
             file_node = next(
@@ -91,18 +91,18 @@ class VdbLoader(load.LoaderPlugin):
             return
 
         # Update the file path
-        file_path = get_representation_path(representation)
-        file_path = self.format_path(file_path, representation)
+        file_path = get_representation_path(repre_doc)
+        file_path = self.format_path(file_path, repre_doc)
 
         file_node.setParms({"file": file_path})
 
         # Update attribute
-        node.setParms({"representation": str(representation["_id"])})
+        node.setParms({"representation": str(repre_doc["_id"])})
 
     def remove(self, container):
 
         node = container["node"]
         node.destroy()
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
