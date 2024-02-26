@@ -131,7 +131,7 @@ class FbxCameraLoader(plugin.AssetLoader):
         self[:] = objects
         return objects
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """Update the loaded asset.
 
         This will remove all objects of the current collection, load the new
@@ -143,15 +143,16 @@ class FbxCameraLoader(plugin.AssetLoader):
         Warning:
             No nested collections are supported at the moment!
         """
+        repre_doc = context["representation"]
         object_name = container["objectName"]
         asset_group = bpy.data.objects.get(object_name)
-        libpath = Path(get_representation_path(representation))
+        libpath = Path(get_representation_path(repre_doc))
         extension = libpath.suffix.lower()
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(representation, indent=2),
+            pformat(repre_doc, indent=2),
         )
 
         assert asset_group, (
@@ -193,7 +194,7 @@ class FbxCameraLoader(plugin.AssetLoader):
         asset_group.matrix_basis = mat
 
         metadata["libpath"] = str(libpath)
-        metadata["representation"] = str(representation["_id"])
+        metadata["representation"] = str(repre_doc["_id"])
 
     def exec_remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.

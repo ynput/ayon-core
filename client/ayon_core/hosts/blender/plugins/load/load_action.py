@@ -114,7 +114,7 @@ class BlendActionLoader(plugin.AssetLoader):
         self[:] = nodes
         return nodes
 
-    def update(self, container: Dict, representation: Dict):
+    def update(self, container: Dict, context: Dict):
         """Update the loaded asset.
 
         This will remove all objects of the current collection, load the new
@@ -126,18 +126,18 @@ class BlendActionLoader(plugin.AssetLoader):
         Warning:
             No nested collections are supported at the moment!
         """
-
+        repre_doc = context["representation"]
         collection = bpy.data.collections.get(
             container["objectName"]
         )
 
-        libpath = Path(get_representation_path(representation))
+        libpath = Path(get_representation_path(repre_doc))
         extension = libpath.suffix.lower()
 
         logger.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(representation, indent=2),
+            pformat(repre_doc, indent=2),
         )
 
         assert collection, (
@@ -241,7 +241,7 @@ class BlendActionLoader(plugin.AssetLoader):
         # Save the list of objects in the metadata container
         collection_metadata["objects"] = objects_list
         collection_metadata["libpath"] = str(libpath)
-        collection_metadata["representation"] = str(representation["_id"])
+        collection_metadata["representation"] = str(repre_doc["_id"])
 
         bpy.ops.object.select_all(action='DESELECT')
 

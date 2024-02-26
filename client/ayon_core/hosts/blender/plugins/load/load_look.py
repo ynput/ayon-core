@@ -138,15 +138,16 @@ class BlendLookLoader(plugin.AssetLoader):
         self[:] = nodes
         return nodes
 
-    def update(self, container: Dict, representation: Dict):
+    def update(self, container: Dict, context: Dict):
         collection = bpy.data.collections.get(container["objectName"])
-        libpath = Path(get_representation_path(representation))
+        repre_doc = context["representation"]
+        libpath = Path(get_representation_path(repre_doc))
         extension = libpath.suffix.lower()
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(representation, indent=2),
+            pformat(repre_doc, indent=2),
         )
 
         assert collection, (
@@ -201,7 +202,7 @@ class BlendLookLoader(plugin.AssetLoader):
         collection_metadata["objects"] = objects
         collection_metadata["materials"] = materials
         collection_metadata["libpath"] = str(libpath)
-        collection_metadata["representation"] = str(representation["_id"])
+        collection_metadata["representation"] = str(repre_doc["_id"])
 
     def remove(self, container: Dict) -> bool:
         collection = bpy.data.collections.get(container["objectName"])

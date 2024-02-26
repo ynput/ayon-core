@@ -507,13 +507,13 @@ class AssetLoader(LoaderPlugin):
 
         # return self._get_instance_collection(instance_name, nodes)
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """Must be implemented by a sub-class"""
         raise NotImplementedError("Must be implemented by a sub-class")
 
-    def update(self, container: Dict, representation: Dict):
+    def update(self, container: Dict, context: Dict):
         """ Run the update on Blender main thread"""
-        mti = MainThreadItem(self.exec_update, container, representation)
+        mti = MainThreadItem(self.exec_update, container, context)
         execute_in_main_thread(mti)
 
     def exec_remove(self, container: Dict) -> bool:

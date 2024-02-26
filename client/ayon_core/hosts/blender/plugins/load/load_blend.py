@@ -179,13 +179,14 @@ class BlendLoader(plugin.AssetLoader):
         self[:] = objects
         return objects
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """
         Update the loaded asset.
         """
+        repre_doc = context["representation"]
         group_name = container["objectName"]
         asset_group = bpy.data.objects.get(group_name)
-        libpath = Path(get_representation_path(representation)).as_posix()
+        libpath = Path(get_representation_path(repre_doc)).as_posix()
 
         assert asset_group, (
             f"The asset is not loaded: {container['objectName']}"
@@ -232,8 +233,8 @@ class BlendLoader(plugin.AssetLoader):
 
         new_data = {
             "libpath": libpath,
-            "representation": str(representation["_id"]),
-            "parent": str(representation["parent"]),
+            "representation": str(repre_doc["_id"]),
+            "parent": str(repre_doc["parent"]),
             "members": members,
         }
 
