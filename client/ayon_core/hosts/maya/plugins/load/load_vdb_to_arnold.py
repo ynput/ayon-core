@@ -81,11 +81,13 @@ class LoadVDBtoArnold(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
 
         from maya import cmds
 
-        path = get_representation_path(representation)
+        repre_doc = context["representation"]
+
+        path = get_representation_path(repre_doc)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
@@ -93,15 +95,15 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         assert len(grid_nodes) == 1, "This is a bug"
 
         # Update the VRayVolumeGrid
-        self._set_path(grid_nodes[0], path=path, representation=representation)
+        self._set_path(grid_nodes[0], path=path, representation=repre_doc)
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
 

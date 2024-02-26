@@ -254,9 +254,10 @@ class LoadVDBtoVRay(load.LoaderPlugin):
                              restored_mapping,
                              type="string")
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_doc = context["representation"]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_doc)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
@@ -269,11 +270,11 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
 
