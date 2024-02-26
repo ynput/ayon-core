@@ -407,16 +407,18 @@ class ExistingLayoutLoader(plugin.Loader):
         }
         upipeline.imprint(f"{curr_level_path}/{container_name}", data)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         asset_dir = container.get('namespace')
 
-        source_path = get_representation_path(representation)
-        project_name = get_current_project_name()
+        project_name = context["project"]["name"]
+        repre_doc = context["representation"]
+
+        source_path = get_representation_path(repre_doc)
         containers = self._process(source_path, project_name)
 
         data = {
-            "representation": str(representation["_id"]),
-            "parent": str(representation["parent"]),
+            "representation": str(repre_doc["_id"]),
+            "parent": str(repre_doc["parent"]),
             "loaded_assets": containers
         }
         upipeline.imprint(

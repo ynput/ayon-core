@@ -96,11 +96,15 @@ class UAssetLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
+    def update(self, container, context):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         asset_dir = container["namespace"]
-        name = representation["context"]["subset"]
+
+        subset_doc = context["subset"]
+        repre_doc = context["representation"]
+
+        product_name = subset_doc["name"]
 
         unique_number = container["container_name"].split("_")[-2]
 
@@ -116,19 +120,20 @@ class UAssetLoader(plugin.Loader):
             if obj.get_class().get_name() != "AyonAssetContainer":
                 unreal.EditorAssetLibrary.delete_asset(asset)
 
-        update_filepath = get_representation_path(representation)
+        update_filepath = get_representation_path(repre_doc)
 
         shutil.copy(
             update_filepath,
-            f"{destination_path}/{name}_{unique_number}.{self.extension}")
+            f"{destination_path}/{product_name}_{unique_number}.{self.extension}"
+        )
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
         unreal_pipeline.imprint(
             container_path,
             {
-                "representation": str(representation["_id"]),
-                "parent": str(representation["parent"]),
+                "representation": str(repre_doc["_id"]),
+                "parent": str(repre_doc["parent"]),
             }
         )
 
