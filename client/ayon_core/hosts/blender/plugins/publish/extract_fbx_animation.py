@@ -146,7 +146,7 @@ class ExtractAnimationFBX(
         root.select_set(True)
         armature.select_set(True)
         folder_name = instance.data["assetEntity"]["name"]
-        product_name = instance.data["prouctName"]
+        product_name = instance.data["productName"]
         instance_name = f"{folder_name}_{product_name}"
         fbx_filename = f"{instance_name}_{armature.name}.fbx"
         filepath = os.path.join(stagingdir, fbx_filename)
