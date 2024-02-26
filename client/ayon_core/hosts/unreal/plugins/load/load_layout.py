@@ -369,16 +369,18 @@ class LayoutLoader(plugin.Loader):
             if representation not in repr_loaded:
                 repr_loaded.append(representation)
 
-                family = element.get('family')
+                product_type = element.get("product_type")
+                if product_type is None:
+                    product_type = element.get("family")
                 loaders = loaders_from_representation(
                     all_loaders, representation)
 
                 loader = None
 
                 if repr_format == 'fbx':
-                    loader = self._get_fbx_loader(loaders, family)
+                    loader = self._get_fbx_loader(loaders, product_type)
                 elif repr_format == 'abc':
-                    loader = self._get_abc_loader(loaders, family)
+                    loader = self._get_abc_loader(loaders, product_type)
 
                 if not loader:
                     self.log.error(
@@ -422,12 +424,12 @@ class LayoutLoader(plugin.Loader):
 
                     actors = []
 
-                    if family == 'model':
+                    if product_type == 'model':
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
                             sequence, inst
                         )
-                    elif family == 'rig':
+                    elif product_type == 'rig':
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
                             sequence, inst
