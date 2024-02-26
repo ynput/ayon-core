@@ -171,9 +171,37 @@ def get_project_settings(project_name, *args, **kwargs):
     return _AyonSettingsCache.get_value_by_project(project_name)
 
 
-def get_general_environments():
-    settings = get_ayon_settings()
-    return json.loads(settings["core"]["environments"])
+def get_general_environments(studio_settings=None):
+    """General studio environment variables.
+
+    Args:
+        studio_settings (Optional[dict]): Pre-queried studio settings.
+
+    Returns:
+        dict[str, Any]: General studio environment variables.
+
+    """
+    if studio_settings is None:
+        studio_settings = get_ayon_settings()
+    return json.loads(studio_settings["core"]["environments"])
+
+
+def get_project_environments(project_name, project_settings=None):
+    """Project environment variables.
+
+    Args:
+        project_name (str): Project name.
+        project_settings (Optional[dict]): Pre-queried project settings.
+
+    Returns:
+        dict[str, Any]: Project environment variables.
+
+    """
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+    return json.loads(
+        project_settings["core"]["project_environments"]
+    )
 
 
 def get_current_project_settings():
