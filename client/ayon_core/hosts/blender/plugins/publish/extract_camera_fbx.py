@@ -21,7 +21,7 @@ class ExtractCamera(publish.Extractor, publish.OptionalPyblishPluginMixin):
         # Define extract output file path
         stagingdir = self.staging_dir(instance)
         folder_name = instance.data["assetEntity"]["name"]
-        product_name = instance.data["prouctName"]
+        product_name = instance.data["productName"]
         instance_name = f"{folder_name}_{product_name}"
         filename = f"{instance_name}.fbx"
         filepath = os.path.join(stagingdir, filename)
