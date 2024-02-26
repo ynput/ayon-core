@@ -64,7 +64,28 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             })
 
             asset = tag_data["folder_path"]
-            product_name = tag_data["productName"]
+
+            # TODO: remove backward compatibility
+            product_name = tag_data.get("productName")
+            if product_name is None:
+                # backward compatibility: subset -> productName
+                product_name = tag_data.get("subset")
+
+            # backward compatibility: product_name should not be missing
+            if not product_name:
+                self.log.error(
+                    "Product name is not defined for: {}".format(asset))
+
+            # TODO: remove backward compatibility
+            product_type = tag_data.get("productType")
+            if product_type is None:
+                # backward compatibility: family -> productType
+                product_type = tag_data.get("family")
+
+            # backward compatibility: product_type should not be missing
+            if not product_type:
+                self.log.error(
+                    "Product type is not defined for: {}".format(asset))
 
             data.update({
                 "name": "{}_{}".format(asset, product_name),
@@ -77,6 +98,9 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 "handleEnd": handle_end,
                 "newAssetPublishing": True,
                 "families": ["clip"],
+                "productType": product_type,
+                "productName": product_name,
+                "family": product_type
             })
 
             # otio clip data
