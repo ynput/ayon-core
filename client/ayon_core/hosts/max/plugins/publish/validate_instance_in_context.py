@@ -39,9 +39,9 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
         if not instance_node:
             return
         asset = rt.getUserProp(instance_node, "folderPath")
-        context_asset = self.get_context_asset(instance)
+        context_asset = instance.context.data["folderPath"]
         task = rt.getUserProp(instance_node, "task")
-        context_task = self.get_context_task(instance)
+        context_task = instance.context.data["task"]
         if asset != context_asset:
             raise PublishValidationError(
                 message=(
@@ -81,27 +81,26 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
 
     @classmethod
     def get_invalid(cls, instance):
+        invalid = []
         node = rt.getNodeByName(instance.data["instance_node"])
         asset = rt.getUserProp(node, "folderPath")
-        context_asset = cls.get_context_asset(instance)
+        context_asset = instance.context.data["folderPath"]
         if asset != context_asset:
-            return instance.data["instance_node"]
+            invalid.append(node)
+        task = rt.getUserProp(node, "task")
+        context_task = instance.context.data["task"]
+        if task != context_task:
+            invalid.append(node)
+
+        return invalid
 
     @classmethod
     def repair(cls, instance):
-        context_asset = cls.get_context_asset(instance)
-        context_task = cls.get_context_task(instance)
+        context_asset = instance.context.data["folderPath"]
+        context_task = instance.context.data["task"]
         instance_node = rt.getNodeByName(instance.data.get(
             "instance_node", ""))
         if not instance_node:
             return
         rt.SetUserProp(instance_node, "folderPath", context_asset)
         rt.SetUserProp(instance_node, "task", context_task)
-
-    @staticmethod
-    def get_context_asset(instance):
-        return instance.context.data["folderPath"]
-
-    @staticmethod
-    def get_context_task(instance):
-        return instance.context.data["task"]
