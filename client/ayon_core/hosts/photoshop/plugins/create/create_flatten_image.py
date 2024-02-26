@@ -44,11 +44,11 @@ class AutoImageCreator(PSAutoCreator):
 
         if existing_instance is None:
             product_name = self.get_product_name(
-                project_name,
-                asset_doc,
-                task_name,
-                host_name,
                 self.default_variant,
+                task_name,
+                asset_doc,
+                project_name,
+                host_name,
             )
 
             data = {

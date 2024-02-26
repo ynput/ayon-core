@@ -61,8 +61,8 @@ This creator publishes color space look file (LUT).
         product_name = self.get_product_name(
             variant=instance_data["variant"],
             task_name=instance_data["task"] or "Not set",
-            project_name=self.project_name,
             asset_doc=asset_doc,
+            project_name=self.project_name,
         )
 
         instance_data["creator_attributes"] = {
