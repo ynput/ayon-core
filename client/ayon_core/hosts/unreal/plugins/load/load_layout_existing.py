@@ -284,9 +284,9 @@ class ExistingLayoutLoader(plugin.Loader):
 
                 # Create the container for the asset.
                 asset = repr_data.get('context').get('asset')
-                subset = repr_data.get('context').get('subset')
+                product_name = repr_data.get('context').get('subset')
                 container = self._create_container(
-                    f"{asset}_{subset}", mesh_path, asset,
+                    f"{asset}_{product_name}", mesh_path, asset,
                     repr_data.get('_id'), repr_data.get('parent'),
                     repr_data.get('context').get('family')
                 )
