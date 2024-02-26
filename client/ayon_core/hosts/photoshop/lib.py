@@ -52,12 +52,11 @@ class PSAutoCreator(AutoCreator):
         if existing_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
             product_name = self.get_product_name(
-                project_name,
-                asset_doc,
-                task_name,
-                host_name,
-                self.product_type,
                 self.default_variant,
+                task_name,
+                asset_doc,
+                project_name,
+                host_name,
             )
             data = {
                 "folderPath": asset_name,
