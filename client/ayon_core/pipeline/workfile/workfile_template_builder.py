@@ -1471,7 +1471,7 @@ class PlaceholderLoadMixin(object):
 
         Note:
             This returns all representation documents from all versions of
-                matching subset. To filter for last version use
+                matching product. To filter for last version use
                 '_reduce_last_version_repre_docs'.
 
         Args:
@@ -1562,22 +1562,22 @@ class PlaceholderLoadMixin(object):
             repre_context = repre_doc["context"]
 
             asset_name = repre_context["asset"]
-            subset_name = repre_context["subset"]
+            product_name = repre_context["subset"]
             version = repre_context.get("version", -1)
 
             if asset_name not in mapping:
                 mapping[asset_name] = {}
 
-            subset_mapping = mapping[asset_name]
-            if subset_name not in subset_mapping:
-                subset_mapping[subset_name] = collections.defaultdict(list)
+            product_mapping = mapping[asset_name]
+            if product_name not in product_mapping:
+                product_mapping[product_name] = collections.defaultdict(list)
 
-            version_mapping = subset_mapping[subset_name]
+            version_mapping = product_mapping[product_name]
             version_mapping[version].append(repre_doc)
 
         output = []
-        for subset_mapping in mapping.values():
-            for version_mapping in subset_mapping.values():
+        for product_mapping in mapping.values():
+            for version_mapping in product_mapping.values():
                 last_version = tuple(sorted(version_mapping.keys()))[-1]
                 output.extend(version_mapping[last_version])
         return output
@@ -1588,8 +1588,8 @@ class PlaceholderLoadMixin(object):
         Note:
             Ignore repre ids is to avoid loading the same representation again
             on load. But the representation can be loaded with different loader
-            and there could be published new version of matching subset for the
-            representation. We should maybe expect containers.
+            and there could be published new version of matching product for
+            the representation. We should maybe expect containers.
 
             Also import loaders don't have containers at all...
 
@@ -1761,7 +1761,7 @@ class PlaceholderCreateMixin(object):
                 tooltip=(
                     "Creator"
                     "\nDefines variant name which will be use for "
-                    "\ncompiling of subset name."
+                    "\ncompiling of product name."
                 )
             ),
             attribute_definitions.UISeparatorDef(),
@@ -1796,7 +1796,7 @@ class PlaceholderCreateMixin(object):
 
         creator_plugin = self.builder.get_creators_by_name()[creator_name]
 
-        # create subset name
+        # create product name
         context = self._builder.get_current_context()
         project_name = context["project_name"]
         asset_name = context["asset_name"]
@@ -1807,7 +1807,7 @@ class PlaceholderCreateMixin(object):
                 project_name, asset_name, fields=["_id"]
             )
             assert asset_doc, "No current asset found in Session"
-            subset_name = creator_plugin.get_subset_name(
+            product_name = creator_plugin.get_product_name(
                 create_variant,
                 task_name,
                 asset_doc["_id"],
@@ -1817,7 +1817,7 @@ class PlaceholderCreateMixin(object):
         else:
             asset_doc = get_asset_by_name(project_name, asset_name)
             assert asset_doc, "No current asset found in Session"
-            subset_name = creator_plugin.get_subset_name(
+            product_name = creator_plugin.get_product_name(
                 create_variant,
                 task_name,
                 asset_doc,
@@ -1828,17 +1828,17 @@ class PlaceholderCreateMixin(object):
         creator_data = {
             "creator_name": creator_name,
             "create_variant": create_variant,
-            "subset_name": subset_name,
+            "product_name": product_name,
             "creator_plugin": creator_plugin
         }
 
         self._before_instance_create(placeholder)
 
-        # compile subset name from variant
+        # compile product name from variant
         try:
             if legacy_create:
                 creator_instance = creator_plugin(
-                    subset_name,
+                    product_name,
                     asset_name
                 ).process()
             else:
