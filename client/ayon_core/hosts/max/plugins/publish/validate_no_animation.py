@@ -46,22 +46,22 @@ class ValidateNoAnimation(pyblish.api.InstancePlugin,
             sel_pos_ctl = rt.getPropertyController(
                 sel.controller, 'Position')
             ctl_count = (sel_pos_ctl.keys).count
-            if len(ctl_count) > 0:
+            if ctl_count > 0:
                 invalid.append(
-                    (sel), f"Object Position(s) has {ctl_count} keyframe(s)")
+                   ( (sel), f"Object Position(s) has {ctl_count} keyframe(s)"))
             sel_rot_ctl = rt.getPropertyController(
                 sel.controller, "Rotation"
             )
             ctl_count = (sel_rot_ctl.keys).count
-            if len(ctl_count) > 0:
+            if ctl_count > 0:
                 invalid.append(
-                    (sel), f"Object Rotation(s) has {ctl_count} keyframe(s)")
+                    ((sel), f"Object Rotation(s) has {ctl_count} keyframe(s)"))
             sel_scale_ctl = rt.getPropertyController(
                 sel.controller, "Scale"
             )
             ctl_count = (sel_scale_ctl.keys).count
-            if len(ctl_count) > 0:
+            if ctl_count > 0:
                 invalid.append(
-                    (sel), f"Object Rotation(s) has {ctl_count} keyframe(s)")
+                    ((sel), f"Object Scale(s) has {ctl_count} keyframe(s)"))
 
         return invalid
