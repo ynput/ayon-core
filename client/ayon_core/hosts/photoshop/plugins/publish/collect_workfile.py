@@ -1,8 +1,6 @@
 import os
 import pyblish.api
 
-from ayon_core.pipeline.create import get_subset_name
-
 
 class CollectWorkfile(pyblish.api.ContextPlugin):
     """Collect current script for publish."""
