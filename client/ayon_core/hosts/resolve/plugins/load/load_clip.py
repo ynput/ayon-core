@@ -59,21 +59,21 @@ class LoadClip(plugin.TimelineItemLoader):
             self.__class__.__name__,
             data_imprint)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """ Updating previously loaded clips
         """
 
-        context = get_representation_context(representation)
+        repre_doc = context["representation"]
         name = container['name']
         namespace = container['namespace']
         timeline_item = container["_timeline_item"]
 
         media_pool_item = timeline_item.GetMediaPoolItem()
 
-        files = plugin.get_representation_files(representation)
+        files = plugin.get_representation_files(repre_doc)
 
         loader = plugin.ClipLoader(self, context)
         timeline_item = loader.update(timeline_item, files)
@@ -92,10 +92,10 @@ class LoadClip(plugin.TimelineItemLoader):
     def get_tag_data(self, context, name, namespace):
         """Return data to be imprinted on the timeline item marker"""
 
-        representation = context["representation"]
-        version = context['version']
-        version_data = version.get("data", {})
-        version_name = version.get("name", None)
+        repre_doc = context["representation"]
+        version_doc = context["version"]
+        version_data = version_doc.get("data", {})
+        version_name = version_doc.get("name", None)
         colorspace = version_data.get("colorspace", None)
         object_name = "{}_{}".format(name, namespace)
 
@@ -111,7 +111,7 @@ class LoadClip(plugin.TimelineItemLoader):
 
         # add variables related to version context
         data.update({
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "version": version_name,
             "colorspace": colorspace,
             "objectName": object_name
