@@ -177,7 +177,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         return proxy_path, string_replace_operator
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # Update the standin
         members = cmds.sets(container['objectName'], query=True)
         for member in members:
@@ -190,7 +190,8 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             if cmds.nodeType(shapes[0]) == "aiStandIn":
                 standin = shapes[0]
 
-        path = get_representation_path(representation)
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
         proxy_basename, proxy_path = self._get_proxy_path(path)
 
         # Whether there is proxy or so, we still update the string operator.
@@ -216,12 +217,12 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         cmds.setAttr(
             container["objectName"] + ".representation",
-            str(representation["_id"]),
+            str(repre_doc["_id"]),
             type="string"
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)
