@@ -192,13 +192,13 @@ class LoaderPlugin(list):
         raise NotImplementedError("Loader.load() must be "
                                   "implemented by subclass")
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update `container` to `representation`
 
-        Arguments:
+        Args:
             container (avalon-core:container-1.0): Container to update,
                 from `host.ls()`.
-            representation (dict): Update the container to this representation.
+            context (dict): Update the container to this representation.
 
         """
         raise NotImplementedError("Loader.update() must be "
