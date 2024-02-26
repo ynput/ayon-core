@@ -630,7 +630,6 @@ class PublishClip:
         self.track_name = str(track_name).replace(" ", "_")
         self.track_index = int(timeline_item_data["track"]["index"])
 
-        # adding tag.family into tag
         if kwargs.get("avalon"):
             self.tag_data.update(kwargs["avalon"])
 
