@@ -181,7 +181,7 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
                 json_element["reference_fbx"] = str(fbx_id)
             if abc_id:
                 json_element["reference_abc"] = str(abc_id)
-            json_element["family"] = product_type
+
             json_element["product_type"] = product_type
             json_element["instance_name"] = asset.name
             json_element["asset_name"] = metadata["asset_name"]
