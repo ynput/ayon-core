@@ -99,11 +99,35 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 label += " ({})".format(clip_name)
             label += " {}".format(product_name)
 
+            # TODO: remove backward compatibility
+            product_name = tag_data.get("productName")
+            if product_name is None:
+                # backward compatibility: subset -> productName
+                product_name = tag_data.get("subset")
+
+            # backward compatibility: product_name should not be missing
+            if not product_name:
+                self.log.error(
+                    "Product name is not defined for: {}".format(asset))
+
+            # TODO: remove backward compatibility
+            product_type = tag_data.get("productType")
+            if product_type is None:
+                # backward compatibility: family -> productType
+                product_type = tag_data.get("family")
+
+            # backward compatibility: product_type should not be missing
+            if not product_type:
+                self.log.error(
+                    "Product type is not defined for: {}".format(asset))
+
             data.update({
                 "name": "{}_{}".format(asset, product_name),
                 "label": label,
                 "folderPath": asset,
                 "asset_name": asset_name,
+                "productName": product_name,
+                "productType": product_type,
                 "item": track_item,
                 "families": families,
                 "publish": tag_data["publish"],

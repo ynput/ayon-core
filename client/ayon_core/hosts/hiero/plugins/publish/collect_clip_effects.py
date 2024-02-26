@@ -1,3 +1,4 @@
+from itertools import product
 import re
 import pyblish.api
 
@@ -114,15 +115,17 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
                     continue
                 data[key] = value
 
-            # change names
-            data["productName"] = product_name
-            data["productType"] = product_type
-            data["families"] = [product_type]
-            data["name"] = product_name + "_" + data["folderPath"]
-            data["label"] = "{} - {}".format(
-                data["folderPath"], product_name
-            )
-            data["effects"] = effects
+            data.update({
+                "productName": product_name,
+                "productType": product_type,
+                "family": product_type,
+                "families": [product_type],
+                "name": product_name + "_" + data["folderPath"],
+                "label": "{} - {}".format(
+                    data["folderPath"], product_name
+                ),
+                "effects": effects,
+            })
 
             # create new instance
             _instance = instance.context.create_instance(**data)
