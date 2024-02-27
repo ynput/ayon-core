@@ -29,6 +29,8 @@ pytest = "^8.0"
 pytest-print = "^1.0"
 ayon-python-api = "^1.0"
 arrow = "^1.3.0"
+wemake-python-styleguide = "*"
+isort="*"
 
 [build-system]
 requires = ["poetry-core"]
