@@ -33,6 +33,6 @@ jobs:
           pip install ruff
         shell: bash
       - name: Annotate PR with Ruff
-        uses: antirotor/annotate_pr_with_ruff@bugfix/diff
+        uses: antirotor/annotate_pr_with_ruff@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
