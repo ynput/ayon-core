@@ -409,6 +409,9 @@ def get_current_timeline_items(
         }
         # get track item object and its color
         for clip_index, ti in enumerate(_clips[track_index]):
+            if not ti.GetMediaPoolItem():
+                continue
+
             data = _data.copy()
             data["clip"] = {
                 "item": ti,
