@@ -120,12 +120,12 @@ class ApplicationAction(LauncherAction):
         )
 
         project_name = session["AYON_PROJECT_NAME"]
-        asset_name = session["AYON_FOLDER_PATH"]
+        folder_path = session["AYON_FOLDER_PATH"]
         task_name = session["AYON_TASK_NAME"]
         try:
             self.application.launch(
                 project_name=project_name,
-                asset_name=asset_name,
+                folder_path=folder_path,
                 task_name=task_name,
                 **self.data
             )
