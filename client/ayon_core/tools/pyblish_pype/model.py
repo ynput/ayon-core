@@ -34,8 +34,6 @@ import qtawesome
 from six import text_type
 from .constants import PluginStates, InstanceStates, GroupStates, Roles
 
-from ayon_core.settings import get_system_settings
-
 
 # ItemTypes
 UserType = QtGui.QStandardItem.UserType
@@ -105,12 +103,8 @@ class IntentModel(QtGui.QStandardItemModel):
         self._item_count = 0
         self.default_index = 0
 
-        intent_settings = (
-            get_system_settings()
-            .get("modules", {})
-            .get("ftrack", {})
-            .get("intent", {})
-        )
+        # Intent settings are not available in core addon
+        intent_settings = {}
 
         items = intent_settings.get("items", {})
         if not items:

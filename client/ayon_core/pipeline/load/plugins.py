@@ -1,7 +1,7 @@
 import os
 import logging
 
-from ayon_core.settings import get_system_settings, get_project_settings
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import schema
 from ayon_core.pipeline.plugin_discover import (
     discover,
@@ -37,7 +37,7 @@ class LoaderPlugin(list):
     log.propagate = True
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         host_name = os.environ.get("AYON_HOST_NAME")
         plugin_type = "load"
         plugin_type_settings = (
@@ -262,11 +262,10 @@ def discover_loader_plugins(project_name=None):
     plugins = discover(LoaderPlugin)
     if not project_name:
         project_name = get_current_project_name()
-    system_settings = get_system_settings()
     project_settings = get_project_settings(project_name)
     for plugin in plugins:
         try:
-            plugin.apply_settings(project_settings, system_settings)
+            plugin.apply_settings(project_settings)
         except Exception:
             log.warning(
                 "Failed to apply settings to loader {}".format(

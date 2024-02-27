@@ -460,14 +460,14 @@ def is_representation_from_latest(representation):
     return version_is_latest(project_name, representation["parent"])
 
 
-def get_template_data_from_session(session=None, system_settings=None):
+def get_template_data_from_session(session=None, settings=None):
     """Template data for template fill from session keys.
 
     Args:
         session (Union[Dict[str, str], None]): The Session to use. If not
             provided use the currently active global Session.
-        system_settings (Union[Dict[str, Any], Any]): Prepared system settings.
-            Optional are auto received if not passed.
+        settings (Optional[Dict[str, Any]]): Prepared studio or project
+            settings.
 
     Returns:
         Dict[str, Any]: All available data from session.
@@ -486,15 +486,16 @@ def get_template_data_from_session(session=None, system_settings=None):
         host_name = get_current_host_name()
 
     return get_template_data_with_names(
-        project_name, asset_name, task_name, host_name, system_settings
+        project_name, asset_name, task_name, host_name, settings
     )
 
 
-def get_current_context_template_data(system_settings=None):
+def get_current_context_template_data(settings=None):
     """Prepare template data for current context.
 
     Args:
-        system_settings (Optional[Dict[str, Any]]): Prepared system settings.
+        settings (Optional[Dict[str, Any]]): Prepared studio or
+            project settings.
 
     Returns:
         Dict[str, Any] Template data for current context.
@@ -507,7 +508,7 @@ def get_current_context_template_data(system_settings=None):
     host_name = get_current_host_name()
 
     return get_template_data_with_names(
-        project_name, asset_name, task_name, host_name, system_settings
+        project_name, asset_name, task_name, host_name, settings
     )
 
 

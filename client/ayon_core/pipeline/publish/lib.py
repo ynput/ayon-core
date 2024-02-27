@@ -13,12 +13,8 @@ from ayon_core.lib import (
     Logger,
     import_filepath,
     filter_profiles,
-    is_func_signature_supported,
 )
-from ayon_core.settings import (
-    get_project_settings,
-    get_system_settings,
-)
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     tempdir,
     Anatomy
@@ -421,8 +417,8 @@ def apply_plugin_settings_automatically(plugin, settings, logger=None):
 def filter_pyblish_plugins(plugins):
     """Pyblish plugin filter which applies AYON settings.
 
-    Apply OpenPype settings on discovered plugins. On plugin with implemented
-    class method 'def apply_settings(cls, project_settings, system_settings)'
+    Apply settings on discovered plugins. On plugin with implemented
+    class method 'def apply_settings(cls, project_settings)'
     is called the method. Default behavior looks for plugin name and current
     host name to look for
 
@@ -440,7 +436,6 @@ def filter_pyblish_plugins(plugins):
     project_name = os.environ.get("AYON_PROJECT_NAME")
 
     project_settings = get_project_settings(project_name)
-    system_settings = get_system_settings()
 
     # iterate over plugins
     for plugin in plugins[:]:
@@ -452,19 +447,7 @@ def filter_pyblish_plugins(plugins):
             # - can be used to target settings from custom settings place
             # - skip default behavior when successful
             try:
-                # Support to pass only project settings
-                # - make sure that both settings are passed, when can be
-                #   - that covers cases when *args are in method parameters
-                both_supported = is_func_signature_supported(
-                    apply_settings_func, project_settings, system_settings
-                )
-                project_supported = is_func_signature_supported(
-                    apply_settings_func, project_settings
-                )
-                if not both_supported and project_supported:
-                    plugin.apply_settings(project_settings)
-                else:
-                    plugin.apply_settings(project_settings, system_settings)
+                plugin.apply_settings(project_settings)
 
             except Exception:
                 log.warning(
