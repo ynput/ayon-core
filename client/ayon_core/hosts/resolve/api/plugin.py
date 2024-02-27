@@ -11,6 +11,7 @@ from ayon_core.pipeline import (
     LoaderPlugin,
     Anatomy
 )
+from ayon_core.pipeline.load import LoadError
 
 from . import lib
 from .menu import load_stylesheet
@@ -406,7 +407,7 @@ class ClipLoader:
             self.active_bin
         )
 
-        assert media_pool_item, AssertionError(
+        assert media_pool_item, LoadError(
             "Cannot create media pool item for files: `{}`".format(files)
         )
 
@@ -480,6 +481,11 @@ class ClipLoader:
             files,
             self.active_bin
         )
+
+        assert media_pool_item, LoadError(
+            "Cannot create media pool item for files: `{}`".format(files)
+        )
+
         _clip_property = media_pool_item.GetClipProperty
 
         source_in = int(_clip_property("Start"))
