@@ -18,6 +18,7 @@ from ayon_core.pipeline import (
 from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
 
+KEY_PREFIX = "AYON_"
 
 class OpenPypeCreatorError(CreatorError):
     pass
@@ -237,14 +238,18 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
             node_data = read(instance)
 
+            for key, value in tuple(node_data.items()):
+                if not key.startswith(KEY_PREFIX):
+                    continue
+                new_key = key[len(KEY_PREFIX):]
+                node_data[new_key] = node_data.pop(key)
+
             # Node paths are always the full node path since that is unique
             # Because it's the node's path it's not written into attributes
             # but explicitly collected
             node_path = instance.path()
             node_data["instance_id"] = node_path
             node_data["instance_node"] = node_path
-            if "AYONProductName" in node_data:
-                node_data["productName"] = node_data.pop("AYONProductName")
 
             created_instance = CreatedInstance.from_existing(
                 node_data, self
@@ -255,7 +260,7 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
         for created_inst, changes in update_list:
             instance_node = hou.node(created_inst.get("instance_node"))
             new_values = {
-                key: changes[key].new_value
+                "{}_{}".format(KEY_PREFIX, key): changes[key].new_value
                 for key in changes.changed_keys
             }
             # Update parm templates and values
@@ -268,8 +273,6 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
     def imprint(self, node, values, update=False):
         # Never store instance node and instance id since that data comes
         # from the node's path
-        if "productName" in values:
-            values["AYONProductName"] = values.pop("productName")
         values.pop("instance_node", None)
         values.pop("instance_id", None)
         imprint(node, values, update=update)
