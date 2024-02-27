@@ -304,7 +304,7 @@ class ActionsModel:
         from ayon_core.lib.applications import should_start_last_workfile
 
         if identifier in not_open_workfile_actions:
-            return not_open_workfile_actions[identifier]
+            return not not_open_workfile_actions[identifier]
 
         task_name = None
         task_type = None
@@ -319,7 +319,6 @@ class ActionsModel:
             task_name,
             task_type
         )
-        not_open_workfile_actions[identifier] = output
         return output
 
     def get_action_items(self, project_name, folder_id, task_id):
