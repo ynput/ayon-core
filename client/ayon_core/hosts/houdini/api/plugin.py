@@ -86,7 +86,7 @@ class Creator(LegacyCreator):
             instance = out.createNode(node_type, node_name=self.name)
             instance.moveToGoodPosition()
 
-            imprint(instance, self.data)
+            imprint(instance, self.data, labeler=True)
 
             self._process(instance)
 
@@ -204,7 +204,11 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
                 instance_data,
                 self)
             self._add_instance_to_context(instance)
-            self.imprint(instance_node, instance.data_to_store())
+            self.imprint(
+                instance_node,
+                instance.data_to_store(),
+                labeler=True
+            )
 
             if self.add_publish_button:
                 add_self_publish_button(instance_node)
@@ -263,15 +267,16 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             self.imprint(
                 instance_node,
                 new_values,
-                update=True
+                update=True,
+                labeler=True
             )
 
-    def imprint(self, node, values, update=False):
+    def imprint(self, node, values, update=False, labeler=False):
         # Never store instance node and instance id since that data comes
         # from the node's path
         values.pop("instance_node", None)
         values.pop("instance_id", None)
-        imprint(node, values, update=update)
+        imprint(node, values, update=update, labeler=labeler)
 
     def remove_instances(self, instances):
         """Remove specified instance from the scene.

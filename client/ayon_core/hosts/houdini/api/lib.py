@@ -34,6 +34,7 @@ self = sys.modules[__name__]
 self._parent = None
 log = logging.getLogger(__name__)
 JSON_PREFIX = "JSON:::"
+KEY_PREFIX = "AYON_"  # It's used to prefix parameters in AYON tab.
 
 
 def get_asset_fps(asset_doc=None):
@@ -331,7 +332,7 @@ def render_rop(ropnode):
         raise RuntimeError("Render failed: {0}".format(exc))
 
 
-def imprint(node, data, update=False):
+def imprint(node, data, update=False, labeler=None):
     """Store attributes with value on a node
 
     Depending on the type of attribute it creates the correct parameter
@@ -369,6 +370,16 @@ def imprint(node, data, update=False):
     for key, value in data.items():
         if value is None:
             continue
+
+        if labeler is not None:
+            if not key.startswith(KEY_PREFIX):
+                key = KEY_PREFIX + key
+
+        # Use the key with the prefix by default.
+        # But, if that key doesn't exist, use the old key.
+        key_without_prefix = key.replace(KEY_PREFIX, "", 1)
+        if node.parm(key_without_prefix):
+            key = key_without_prefix
 
         parm_template = get_template_from_value(key, value)
 
@@ -498,7 +509,8 @@ def read(node):
             except json.JSONDecodeError:
                 # not a json
                 pass
-        data[parameter.name()] = value
+        # Use parameter name without prefix if prefix exists.
+        data[parameter.name().replace(KEY_PREFIX, "", 1)] = value
 
     return data
 
