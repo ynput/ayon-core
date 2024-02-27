@@ -41,5 +41,5 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
                 title="Mesh has missing UVs",
                 message="Model meshes are required to have UVs.<br><br>"
                         "Meshes detected with invalid or missing UVs:<br>"
-                        "{0}".format(invalid)
+                        "{0}".format([err.name for err in invalid])
             )
