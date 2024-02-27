@@ -91,14 +91,14 @@ def create_interactive(creator_identifier, **kwargs):
     if isinstance(pane, hou.NetworkEditor):
         pwd = pane.pwd()
         product_name = creator.get_product_name(
-            variant=variant,
-            task_name=context.get_current_task_name(),
+            project_name=context.get_current_project_name(),
             asset_doc=get_asset_by_name(
                 project_name=context.get_current_project_name(),
                 asset_name=context.get_current_asset_name()
             ),
-            project_name=context.get_current_project_name(),
-            host_name=context.host_name
+            task_name=context.get_current_task_name(),
+            variant=variant,
+            host_name=context.host_name,
         )
 
         tool_fn = CATEGORY_GENERIC_TOOL.get(pwd.childTypeCategory())

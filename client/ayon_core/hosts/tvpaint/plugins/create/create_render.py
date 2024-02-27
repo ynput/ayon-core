@@ -778,10 +778,10 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
         )
 
         product_name: str = creator.get_product_name(
-            variant,
-            task_name,
-            asset_doc,
             project_name,
+            asset_doc,
+            task_name,
+            variant,
             host_name=self.create_context.host_name,
         )
         asset_name = get_asset_name_identifier(asset_doc)
@@ -832,10 +832,10 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
                     variant = render_pass["variant"]
 
             product_name = creator.get_product_name(
-                variant,
-                task_name,
-                asset_doc,
                 project_name,
+                asset_doc,
+                task_name,
+                variant,
                 host_name=self.create_context.host_name,
                 instance=render_pass
             )
@@ -1059,11 +1059,11 @@ class TVPaintSceneRenderCreator(TVPaintAutoCreator):
 
         asset_doc = get_asset_by_name(project_name, asset_name)
         product_name = self.get_product_name(
-            self.default_variant,
-            task_name,
-            asset_doc,
             project_name,
-            host_name
+            asset_doc,
+            task_name,
+            self.default_variant,
+            host_name,
         )
         data = {
             "folderPath": asset_name,
@@ -1113,10 +1113,10 @@ class TVPaintSceneRenderCreator(TVPaintAutoCreator):
         ):
             asset_doc = get_asset_by_name(project_name, asset_name)
             product_name = self.get_product_name(
-                existing_instance["variant"],
-                task_name,
-                asset_doc,
                 project_name,
+                asset_doc,
+                task_name,
+                existing_instance["variant"],
                 host_name,
                 existing_instance
             )

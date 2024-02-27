@@ -2098,7 +2098,7 @@ class PublisherController(BasePublisherController):
             instance = self.instances[instance_id]
 
         return creator.get_product_name(
-            variant, task_name, asset_doc, project_name, instance=instance
+            project_name, asset_doc, task_name, variant, instance=instance
         )
 
     def trigger_convertor_items(self, convertor_identifiers):

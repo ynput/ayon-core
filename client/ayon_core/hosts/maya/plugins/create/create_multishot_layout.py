@@ -165,10 +165,11 @@ class CreateMultishotLayout(plugin.MayaCreator):
 
             layout_creator.create(
                 product_name=layout_creator.get_product_name(
-                    layout_creator.get_default_variant(),
-                    self.create_context.get_current_task_name(),
+                    self.project_name,
                     asset_doc,
-                    self.project_name),
+                    self.create_context.get_current_task_name(),
+                    layout_creator.get_default_variant(),
+                ),
                 instance_data=instance_data,
                 pre_create_data={
                     "groupLoadedAssets": pre_create_data["groupLoadedAssets"]

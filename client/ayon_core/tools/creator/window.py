@@ -244,7 +244,7 @@ class CreatorWindow(QtWidgets.QDialog):
 
         # Calculate product name with Creator plugin
         product_name = creator_plugin.get_product_name(
-            user_input_text, task_name, folder_id, project_name
+            project_name, folder_id, task_name, user_input_text
         )
         # Force replacement of prohibited symbols
         # QUESTION should Creator care about this and here should be only

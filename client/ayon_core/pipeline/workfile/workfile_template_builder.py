@@ -1808,20 +1808,20 @@ class PlaceholderCreateMixin(object):
             )
             assert asset_doc, "No current asset found in Session"
             product_name = creator_plugin.get_product_name(
-                create_variant,
-                task_name,
+                project_name,
                 asset_doc["_id"],
-                project_name
+                task_name,
+                create_variant,
             )
 
         else:
             asset_doc = get_asset_by_name(project_name, asset_name)
             assert asset_doc, "No current asset found in Session"
             product_name = creator_plugin.get_product_name(
-                create_variant,
-                task_name,
-                asset_doc,
                 project_name,
+                asset_doc,
+                task_name,
+                create_variant,
                 self.builder.host_name
             )
 
