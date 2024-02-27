@@ -14,10 +14,9 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
 
     """Validate the current mesh has UVs.
 
-    It validates whether the current UV set has non-zero UVs and
-    at least more than the vertex count. It's not really bulletproof,
-    but a simple quick validation to check if there are likely
-    UVs for every face.
+    It validates whether the current mesh has texture vertex(s).
+    If the mesh does not have texture vertex(s), it does not
+    have UVs in Max.
     """
 
     order = ValidateMeshOrder
