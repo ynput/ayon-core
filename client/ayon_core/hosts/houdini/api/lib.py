@@ -391,12 +391,14 @@ def imprint(node, data, update=False):
 
     # Add new parm templates
     if new_parm_templates:
-        parm_folder = parm_group.findFolder("Extra")
+        parm_folder = (
+            parm_group.findFolder("AYON") or parm_group.findFolder("Extra")
+        )
 
         # if folder doesn't exist yet, create one and append to it,
         # else append to existing one
         if not parm_folder:
-            parm_folder = hou.FolderParmTemplate("folder", "Extra")
+            parm_folder = hou.FolderParmTemplate("folder", "AYON")
             parm_folder.setParmTemplates(new_parm_templates)
             parm_group.append(parm_folder)
         else:
