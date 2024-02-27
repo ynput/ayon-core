@@ -293,8 +293,18 @@ class ActionsModel:
         self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
-    def should_start_last_workfile(self, project_name, host_name, task_id):
+    def _should_start_last_workfile(
+        self,
+        project_name,
+        task_id,
+        identifier,
+        host_name,
+        not_open_workfile_actions
+    ):
         from ayon_core.lib.applications import should_start_last_workfile
+
+        if identifier in not_open_workfile_actions:
+            return not_open_workfile_actions[identifier]
 
         task_name = None
         task_type = None
@@ -303,12 +313,14 @@ class ActionsModel:
             task_name = task["name"]
             task_type = task["taskType"]
 
-        return should_start_last_workfile(
+        output = should_start_last_workfile(
             project_name,
             host_name,
             task_name,
             task_type
         )
+        not_open_workfile_actions[identifier] = output
+        return output
 
     def get_action_items(self, project_name, folder_id, task_id):
         """Get actions for project.
@@ -334,23 +346,16 @@ class ActionsModel:
             # Handling of 'force_not_open_workfile' for applications
             if action_item.is_application:
                 action_item = action_item.copy()
-
-                if identifier in not_open_workfile_actions:
-                    action_item.force_not_open_workfile = (
-                        not_open_workfile_actions[identifier]
-                    )
-                else:
-                    host_name = action_item.identifier.replace(
-                        "application.", ""
-                    ).split("/")[0]
-                    start_last_workfile_default = (
-                        self.should_start_last_workfile(
-                            project_name, host_name, task_id
-                        )
-                    )
-                    action_item.force_not_open_workfile = (
-                        not start_last_workfile_default
-                    )
+                start_last_workfile = self._should_start_last_workfile(
+                    project_name,
+                    task_id,
+                    identifier,
+                    action.application.host_name,
+                    not_open_workfile_actions
+                )
+                action_item.force_not_open_workfile = (
+                    not start_last_workfile
+                )
 
             output.append(action_item)
         return output
@@ -389,26 +394,14 @@ class ActionsModel:
                 per_action = self._get_no_last_workfile_for_context(
                     project_name, folder_id, task_id
                 )
-                action.data["start_last_workfile"] = True
-
-                force_not_open_workfile = None
-                if identifier in per_action:
-                    force_not_open_workfile = per_action[identifier]
-                else:
-                    host_name = action_item.identifier.replace(
-                        "application.", ""
-                    ).split("/")[0]
-                    start_last_workfile_default = (
-                        self.should_start_last_workfile(
-                            project_name, host_name, task_id
-                        )
-                    )
-                    force_not_open_workfile = per_action.get(
-                        identifier, not start_last_workfile_default
-                    )
-
-                if force_not_open_workfile:
-                    action.data["start_last_workfile"] = False
+                start_last_workfile = self._should_start_last_workfile(
+                    project_name,
+                    task_id,
+                    identifier,
+                    action.application.host_name,
+                    per_action
+                )
+                action.data["start_last_workfile"] = start_last_workfile
 
             action.process(session)
         except Exception as exc:
