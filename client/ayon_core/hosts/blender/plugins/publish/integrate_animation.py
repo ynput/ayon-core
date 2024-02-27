@@ -47,7 +47,6 @@ class IntegrateAnimation(
             obj_id = rep["representation"]["_id"]
 
             if obj_id:
-                json_dict["_id"] = str(obj_id)
                 json_dict["representation_id"] = str(obj_id)
 
         with open(json_path, "w") as file:
