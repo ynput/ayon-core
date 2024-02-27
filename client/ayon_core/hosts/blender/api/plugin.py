@@ -175,8 +175,6 @@ class BaseCreator(Creator):
         Args:
             shared_data(Dict[str, Any]): Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data with cached products.
         """
         if not shared_data.get('blender_cached_instances'):
             cache = {}

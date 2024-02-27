@@ -49,11 +49,7 @@ class UnrealBaseCreator(Creator):
         Args:
             Dict[str, Any]: Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data dictionary.
-
         """
-
         if "unreal_cached_instances" in shared_data:
             return
 
