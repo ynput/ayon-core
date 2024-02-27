@@ -108,9 +108,7 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
 
         context = instance.context
 
-        self._rr_root = self._resolve_rr_path(context, instance.data.get(
-            "rrPathName"))  # noqa
-        self.log.debug(self._rr_root)
+        self._rr_root = instance.data.get("rr_root")
         if not self._rr_root:
             raise KnownPublishError(
                 ("Missing RoyalRender root. "
@@ -209,35 +207,6 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
     def update_job_with_host_specific(self, instance, job):
         """Host specific mapping for RRJob"""
         raise NotImplementedError
-
-    @staticmethod
-    def _resolve_rr_path(context, rr_path_name):
-        # type: (pyblish.api.Context, str) -> str
-        rr_settings = (
-            context.data
-            ["system_settings"]
-            ["modules"]
-            ["royalrender"]
-        )
-        try:
-            default_servers = rr_settings["rr_paths"]
-            project_servers = (
-                context.data
-                ["project_settings"]
-                ["royalrender"]
-                ["rr_paths"]
-            )
-            rr_servers = {
-                k: default_servers[k]
-                for k in project_servers
-                if k in default_servers
-            }
-
-        except (AttributeError, KeyError):
-            # Handle situation were we had only one url for royal render.
-            return context.data["defaultRRPath"][platform.system().lower()]
-
-        return rr_servers[rr_path_name][platform.system().lower()]
 
     def expected_files(self, instance, path, start_frame, end_frame):
         """Get expected files.
@@ -350,7 +319,7 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
 
         add_kwargs = {
             "project": anatomy_data["project"]["name"],
-            "asset": instance.context.data["asset"],
+            "asset": instance.context.data["folderPath"],
             "task": anatomy_data["task"]["name"],
             "app": instance.context.data.get("appName"),
             "envgroup": "farm"

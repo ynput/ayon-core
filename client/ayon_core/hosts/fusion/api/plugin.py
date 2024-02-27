@@ -12,7 +12,9 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import (
     Creator,
-    CreatedInstance
+    CreatedInstance,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
 )
 
 
@@ -172,13 +174,13 @@ class GenericCreateSaver(Creator):
         if not isinstance(data, dict):
             return
 
-        required = {
-            "id": "pyblish.avalon.instance",
-            "creator_identifier": self.identifier,
-        }
-        for key, value in required.items():
-            if key not in data or data[key] != value:
-                return
+        if (
+            data.get("creator_identifier") != self.identifier
+            or data.get("id") not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }
+        ):
+            return
 
         # Get active state from the actual tool state
         attrs = tool.GetAttrs()

@@ -50,11 +50,11 @@ class CollectWorkfile(pyblish.api.ContextPlugin):
         asset_entity = context.data["assetEntity"]
         project_entity = context.data["projectEntity"]
 
-        asset_name = get_asset_name_identifier(asset_entity)
+        folder_path = get_asset_name_identifier(asset_entity)
 
         instance_data = {
             "active": True,
-            "asset": asset_name,
+            "folderPath": folder_path,
             "task": task,
             "frameStart": context.data['frameStart'],
             "frameEnd": context.data['frameEnd'],

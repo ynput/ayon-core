@@ -57,7 +57,7 @@ class ExtractClipEffects(publish.Extractor):
             "sourceStart", "sourceStartH", "sourceEnd", "sourceEndH",
             "frameStart", "frameEnd",
             "clipIn", "clipOut", "clipInH", "clipOutH",
-            "asset", "version"
+            "folderPath", "version"
         ]
 
         # pass data to version

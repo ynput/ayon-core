@@ -5,7 +5,6 @@ import platform
 import getpass
 import socket
 
-from ayon_core.settings.lib import get_local_settings
 from .execute import get_ayon_launcher_args
 from .local_settings import get_local_site_id
 
@@ -96,7 +95,6 @@ def get_all_current_info():
     return {
         "workstation": get_workstation_info(),
         "env": os.environ.copy(),
-        "local_settings": get_local_settings(),
         "ayon": get_ayon_info(),
     }
 

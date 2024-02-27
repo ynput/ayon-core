@@ -64,7 +64,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
 
                     new_data = new_instance.data
 
-                    new_data["asset"] = seq_name
+                    new_data["folderPath"] = f"/{s.get('output')}"
                     new_data["setMembers"] = seq_name
                     new_data["family"] = "render"
                     new_data["families"] = ["render", "review"]

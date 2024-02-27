@@ -2,6 +2,7 @@ from pprint import pformat
 
 import pyblish
 
+from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 from ayon_core.hosts.resolve.api.lib import (
     get_current_timeline_items,
     get_timeline_item_pype_tag,
@@ -39,7 +40,9 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             if not tag_data:
                 continue
 
-            if tag_data.get("id") != "pyblish.avalon.instance":
+            if tag_data.get("id") not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 continue
 
             media_pool_item = timeline_item.GetMediaPoolItem()
@@ -66,7 +69,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             data.update({
                 "name": "{}_{}".format(asset, subset),
                 "label": "{} {}".format(asset, subset),
-                "asset": asset,
+                "folderPath": asset,
                 "item": timeline_item,
                 "publish": get_publish_attribute(timeline_item),
                 "fps": context.data["fps"],
@@ -124,7 +127,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["asset"]
+        asset = data["folderPath"]
         subset = "shotMain"
 
         # insert family into families
@@ -134,7 +137,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             "name": "{}_{}".format(asset, subset),
             "label": "{} {}".format(asset, subset),
             "subset": subset,
-            "asset": asset,
+            "folderPath": asset,
             "family": family,
             "families": [],
             "publish": get_publish_attribute(timeline_item)
