@@ -293,9 +293,7 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
             "colorspaceView": colorspace_data["view"],
         }
 
-        rr_settings = (
-            context.data["system_settings"]["modules"]["royalrender"]
-        )
+        rr_settings = context.data["system_settings"]["royalrender"]
         if rr_settings["enabled"]:
             data["rrPathName"] = instance.data.get("rrPathName")
             self.log.debug(data["rrPathName"])
@@ -307,7 +305,7 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
                     _instance.data["version"] = context.data["version"]
 
         # Define nice label
-        label = "{0} ({1})".format(layer_name, instance.data["asset"])
+        label = "{0} ({1})".format(layer_name, instance.data["folderPath"])
         label += "  [{0}-{1}]".format(
             int(data["frameStartHandle"]), int(data["frameEndHandle"])
         )

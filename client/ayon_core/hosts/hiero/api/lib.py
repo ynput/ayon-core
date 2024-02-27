@@ -22,7 +22,12 @@ except ImportError:
 
 from ayon_core.client import get_project
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import Anatomy, get_current_project_name
+from ayon_core.pipeline import (
+    Anatomy,
+    get_current_project_name,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
+)
 from ayon_core.pipeline.load import filter_containers
 from ayon_core.lib import Logger
 from . import tags
@@ -1217,7 +1222,9 @@ def sync_clip_name_to_data_asset(track_items_list):
         # ignore if no data on the clip or not publish instance
         if not data:
             continue
-        if data.get("id") != "pyblish.avalon.instance":
+        if data.get("id") not in {
+            AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+        }:
             continue
 
         # fix data if wrong name

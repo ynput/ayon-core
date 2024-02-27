@@ -28,7 +28,7 @@ class CollectAutoImage(pyblish.api.ContextPlugin):
         task_name = context.data["task"]
         host_name = context.data["hostName"]
         asset_doc = context.data["assetEntity"]
-        asset_name = get_asset_name_identifier(asset_doc)
+        folder_path = get_asset_name_identifier(asset_doc)
 
         auto_creator = proj_settings.get(
             "photoshop", {}).get(
@@ -86,7 +86,7 @@ class CollectAutoImage(pyblish.api.ContextPlugin):
 
             instance = context.create_instance(subset_name)
             instance.data["family"] = family
-            instance.data["asset"] = asset_name
+            instance.data["folderPath"] = folder_path
             instance.data["subset"] = subset_name
             instance.data["ids"] = publishable_ids
             instance.data["publish"] = True

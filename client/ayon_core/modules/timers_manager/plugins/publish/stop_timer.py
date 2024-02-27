@@ -19,8 +19,8 @@ class StopTimer(pyblish.api.ContextPlugin):
             self.log.debug("TimersManager is disabled")
             return
 
-        modules_settings = context.data["system_settings"]["modules"]
-        if not modules_settings["timers_manager"]["disregard_publishing"]:
+        studio_settings = context.data["system_settings"]
+        if not studio_settings["timers_manager"]["disregard_publishing"]:
             self.log.debug("Publish is not affecting running timers.")
             return
 

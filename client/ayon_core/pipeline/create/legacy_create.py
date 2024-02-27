@@ -10,6 +10,7 @@ import logging
 import collections
 
 from ayon_core.client import get_asset_by_id
+from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 
 from .subset_name import get_subset_name
 
@@ -27,15 +28,16 @@ class LegacyCreator(object):
     log = logging.getLogger("LegacyCreator")
     log.propagate = True
 
-    def __init__(self, name, asset, options=None, data=None):
+    def __init__(self, name, folder_path, options=None, data=None):
         self.name = name  # For backwards compatibility
         self.options = options
 
         # Default data
         self.data = collections.OrderedDict()
-        self.data["id"] = "pyblish.avalon.instance"
+        # TODO use 'AYON_INSTANCE_ID' when all hosts support it
+        self.data["id"] = AVALON_INSTANCE_ID
         self.data["family"] = self.family
-        self.data["asset"] = asset
+        self.data["folderPath"] = folder_path
         self.data["subset"] = name
         self.data["active"] = True
 
@@ -54,7 +56,7 @@ class LegacyCreator(object):
         )
         global_type_settings = (
             project_settings
-            .get("global", {})
+            .get("core", {})
             .get(plugin_type, {})
         )
         if not global_type_settings and not plugin_type_settings:

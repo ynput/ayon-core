@@ -19,7 +19,9 @@ from ayon_core.pipeline import (
     CreatorError,
     Creator as NewCreator,
     CreatedInstance,
-    get_current_task_name
+    get_current_task_name,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
 )
 from ayon_core.pipeline.colorspace import (
     get_display_view_colorspace_name,
@@ -394,17 +396,25 @@ class NukeWriteCreator(NukeCreator):
 
         # plugin settings
         plugin_settings = self.get_creator_settings(project_settings)
-
+        temp_rendering_path_template = (
+            plugin_settings.get("temp_rendering_path_template")
+            or self.temp_rendering_path_template
+        )
+        # TODO remove template key replacements
+        temp_rendering_path_template = (
+            temp_rendering_path_template
+            .replace("{product[name]}", "{subset}")
+            .replace("{product[type]}", "{family}")
+            .replace("{task[name]}", "{task}")
+            .replace("{folder[name]}", "{asset}")
+        )
         # individual attributes
         self.instance_attributes = plugin_settings.get(
             "instance_attributes") or self.instance_attributes
         self.prenodes = plugin_settings["prenodes"]
         self.default_variants = plugin_settings.get(
             "default_variants") or self.default_variants
-        self.temp_rendering_path_template = (
-            plugin_settings.get("temp_rendering_path_template")
-            or self.temp_rendering_path_template
-        )
+        self.temp_rendering_path_template = temp_rendering_path_template
 
 
 class OpenPypeCreator(LegacyCreator):
@@ -493,7 +503,7 @@ def get_colorspace_from_node(node):
 def get_review_presets_config():
     settings = get_current_project_settings()
     review_profiles = (
-        settings["global"]
+        settings["core"]
         ["publish"]
         ["ExtractReview"]
         ["profiles"]
@@ -1059,7 +1069,7 @@ class AbstractWriteRender(OpenPypeCreator):
     icon = "sign-out"
     defaults = ["Main", "Mask"]
     knobs = []
-    prenodes = {}
+    prenodes = []
 
     def __init__(self, *args, **kwargs):
         super(AbstractWriteRender, self).__init__(*args, **kwargs)
@@ -1165,7 +1175,7 @@ class AbstractWriteRender(OpenPypeCreator):
             bool: True if legacy
         """
         imageio_nodes = get_nuke_imageio_settings()["nodes"]
-        node = imageio_nodes["requiredNodes"][0]
+        node = imageio_nodes["required_nodes"][0]
         if "type" not in node["knobs"][0]:
             # if type is not yet in project anatomy
             return True
@@ -1265,7 +1275,9 @@ def convert_to_valid_instaces():
         if not avalon_knob_data:
             continue
 
-        if avalon_knob_data["id"] != "pyblish.avalon.instance":
+        if avalon_knob_data["id"] not in {
+            AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+        }:
             continue
 
         transfer_data.update({
@@ -1348,7 +1360,9 @@ def _remove_old_knobs(node):
 
 
 def exposed_write_knobs(settings, plugin_name, instance_node):
-    exposed_knobs = settings["nuke"]["create"][plugin_name]["exposed_knobs"]
+    exposed_knobs = settings["nuke"]["create"][plugin_name].get(
+        "exposed_knobs", []
+    )
     if exposed_knobs:
         instance_node.addKnob(nuke.Text_Knob('', 'Write Knobs'))
     write_node = nuke.allNodes(group=instance_node, filter="Write")[0]

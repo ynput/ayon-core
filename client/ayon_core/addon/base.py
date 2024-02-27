@@ -15,13 +15,9 @@ from abc import ABCMeta, abstractmethod
 import six
 import appdirs
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, is_dev_mode_enabled
 from ayon_core.client import get_ayon_server_api_connection
-from ayon_core.settings import get_system_settings
-from ayon_core.settings.ayon_settings import (
-    is_dev_mode_enabled,
-    get_ayon_settings,
-)
+from ayon_core.settings import get_studio_settings
 
 from .interfaces import (
     IPluginPaths,
@@ -648,7 +644,6 @@ class AddonsManager:
 
     def __init__(self, settings=None, initialize=True):
         self._settings = settings
-        self._system_settings = None
 
         self._addons = []
         self._addons_by_id = {}
@@ -738,14 +733,9 @@ class AddonsManager:
         # Prepare settings for addons
         settings = self._settings
         if settings is None:
-            settings = get_ayon_settings()
+            settings = get_studio_settings()
 
-        # OpenPype settings
-        system_settings = self._system_settings
-        if system_settings is None:
-            system_settings = get_system_settings()
-
-        modules_settings = system_settings["modules"]
+        modules_settings = {}
 
         report = {}
         time_start = time.time()
