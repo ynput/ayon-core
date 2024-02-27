@@ -88,14 +88,14 @@ class CreateStaticMesh(plugin.HoudiniCreator):
         return attrs + [createsubnetroot, vcformat, convert_units]
 
     def get_dynamic_data(
-        self, variant, task_name, asset_doc, project_name, host_name, instance
+        self, project_name, asset_doc, task_name, variant, host_name, instance
     ):
         """
         The default prodcut name templates for Unreal include {asset} and thus
         we should pass that along as dynamic data.
         """
         dynamic_data = super(CreateStaticMesh, self).get_dynamic_data(
-            variant, task_name, asset_doc, project_name, host_name, instance
+            project_name, asset_doc, task_name, variant, host_name, instance
         )
         dynamic_data["asset"] = asset_doc["name"]
         return dynamic_data

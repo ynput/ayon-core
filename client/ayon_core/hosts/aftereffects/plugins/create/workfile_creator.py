@@ -62,8 +62,12 @@ class AEWorkfileCreator(AutoCreator):
                 "variant": self.default_variant,
             }
             data.update(self.get_dynamic_data(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name, None
+                project_name,
+                asset_doc,
+                task_name,
+                self.default_variant,
+                host_name,
+                None,
             ))
 
             new_instance = CreatedInstance(

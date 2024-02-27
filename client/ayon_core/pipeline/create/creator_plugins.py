@@ -497,7 +497,13 @@ class BaseCreator:
         return self.icon
 
     def get_dynamic_data(
-        self, variant, task_name, asset_doc, project_name, host_name, instance
+        self,
+        project_name,
+        asset_doc,
+        task_name,
+        variant,
+        host_name,
+        instance
     ):
         """Dynamic data for product name filling.
 
@@ -546,7 +552,12 @@ class BaseCreator:
         if host_name is None:
             host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
-            variant, task_name, asset_doc, project_name, host_name, instance
+            project_name,
+            asset_doc,
+            task_name,
+            variant,
+            host_name,
+            instance
         )
 
         return get_product_name(

@@ -89,7 +89,7 @@ class LegacyCreator(object):
 
     @classmethod
     def get_dynamic_data(
-        cls, variant, task_name, asset_id, project_name, host_name
+        cls, project_name, asset_id, task_name, variant, host_name
     ):
         """Return dynamic data for current Creator plugin.
 
@@ -148,7 +148,7 @@ class LegacyCreator(object):
         """
 
         dynamic_data = cls.get_dynamic_data(
-            variant, task_name, asset_id, project_name, host_name
+            project_name, asset_id, task_name, variant, host_name
         )
 
         asset_doc = get_asset_by_id(

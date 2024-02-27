@@ -244,8 +244,15 @@ class ImageCreator(Creator):
         return item.replace(stub.PUBLISH_ICON, '').replace(stub.LOADED_ICON,
                                                            '')
 
-    def get_dynamic_data(self, variant, task_name, asset_doc,
-                         project_name, host_name, instance):
+    def get_dynamic_data(
+        self,
+        project_name,
+        asset_doc,
+        task_name,
+        variant,
+        host_name,
+        instance
+    ):
         if instance is not None:
             layer_name = instance.get("layer_name")
             if layer_name:

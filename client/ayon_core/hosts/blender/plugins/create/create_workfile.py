@@ -47,7 +47,7 @@ class CreateWorkfile(BaseCreator, AutoCreator):
                 project_name,
                 asset_doc,
                 task_name,
-                self.default_variant,
+                task_name,
                 host_name,
             )
             data = {
@@ -57,10 +57,10 @@ class CreateWorkfile(BaseCreator, AutoCreator):
             }
             data.update(
                 self.get_dynamic_data(
-                    task_name,
-                    task_name,
-                    asset_doc,
                     project_name,
+                    asset_doc,
+                    task_name,
+                    task_name,
                     host_name,
                     workfile_instance,
                 )

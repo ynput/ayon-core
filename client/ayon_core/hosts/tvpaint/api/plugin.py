@@ -63,7 +63,7 @@ class TVPaintCreatorCommon:
         instance=None
     ):
         dynamic_data = self.get_dynamic_data(
-            variant, task_name, asset_doc, project_name, host_name, instance
+            project_name, asset_doc, task_name, variant, host_name, instance
         )
 
         return get_product_name(

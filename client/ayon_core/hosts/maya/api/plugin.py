@@ -590,7 +590,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         if host_name is None:
             host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
-            variant, task_name, asset_doc, project_name, host_name, instance
+            project_name, asset_doc, task_name, variant, host_name, instance
         )
         # creator.product_type != 'render' as expected
         return get_product_name(
