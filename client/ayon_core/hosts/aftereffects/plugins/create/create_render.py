@@ -217,8 +217,9 @@ class RenderCreator(Creator):
         that would cause an issue in published file names.
         """
 
-    def get_dynamic_data(self, variant, task_name, asset_doc,
-                         project_name, host_name, instance):
+    def get_dynamic_data(
+        self, project_name, asset_doc, task_name, variant, host_name, instance
+    ):
         dynamic_data = {}
         if instance is not None:
             composition_name = instance.get("composition_name")
