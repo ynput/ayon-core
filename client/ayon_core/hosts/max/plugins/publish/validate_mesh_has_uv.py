@@ -14,9 +14,12 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
 
     """Validate the current mesh has UVs.
 
-    It validates whether the current mesh has texture vertex(s).
-    If the mesh does not have texture vertex(s), it does not
+    This validator only checks if the mesh has UVs but not
+    whether the faces of the mesh have UVs.
+    It validates whether the current mesh has texture vertices.
+    If the mesh does not have texture vertices, it does not
     have UVs in Max.
+
     """
 
     order = ValidateMeshOrder
@@ -36,9 +39,18 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
     def process(self, instance):
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError(
-                title="Mesh has missing UVs",
-                message="Model meshes are required to have UVs.<br><br>"
-                        "Meshes detected with invalid or missing UVs:<br>"
-                        "{0}".format([err.name for err in invalid])
+            bullet_point_invalid_statement = "\n".join(
+                "- {}".format(invalid.name) for invalid
+                in invalid
             )
+            report = (
+                "Model meshes are required to have UVs.\n\n"
+                "Meshes detected with invalid or missing UVs:\n"
+                f"{bullet_point_invalid_statement}\n\n"
+            )
+            raise PublishValidationError(
+                report,
+                description=(
+                "Model meshes are required to have UVs.\n\n"
+                "Meshes detected with no texture vertice(s) or missing UVs"),
+                title="Mesh has missing UVs")
