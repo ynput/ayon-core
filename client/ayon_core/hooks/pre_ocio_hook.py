@@ -30,7 +30,7 @@ class OCIOEnvHook(PreLaunchHook):
             asset_name=self.data["asset_name"],
             task_name=self.data["task_name"],
             host_name=self.host_name,
-            system_settings=self.data["system_settings"]
+            settings=self.data["project_settings"]
         )
 
         config_data = get_imageio_config(

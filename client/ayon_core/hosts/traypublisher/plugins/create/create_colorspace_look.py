@@ -148,7 +148,7 @@ This creator publishes color space look file (LUT).
             )
         ]
 
-    def apply_settings(self, project_settings, system_settings):
+    def apply_settings(self, project_settings):
         host = self.create_context.host
         host_name = host.name
         project_name = host.get_current_project_name()

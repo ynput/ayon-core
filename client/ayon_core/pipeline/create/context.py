@@ -16,10 +16,7 @@ from ayon_core.client import (
     get_asset_by_name,
     get_asset_name_identifier,
 )
-from ayon_core.settings import (
-    get_system_settings,
-    get_project_settings
-)
+from ayon_core.settings import get_project_settings
 from ayon_core.lib.attribute_definitions import (
     UnknownDef,
     serialize_attr_defs,
@@ -1774,7 +1771,6 @@ class CreateContext:
 
     def _reset_creator_plugins(self):
         # Prepare settings
-        system_settings = get_system_settings()
         project_settings = get_project_settings(self.project_name)
 
         # Discover and prepare creators
@@ -1812,7 +1808,6 @@ class CreateContext:
 
             creator = creator_class(
                 project_settings,
-                system_settings,
                 self,
                 self.headless
             )

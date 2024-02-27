@@ -630,8 +630,8 @@ class Loader(LoaderPlugin):
     load_settings = {}  # defined in settings
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
-        super(Loader, cls).apply_settings(project_settings, system_settings)
+    def apply_settings(cls, project_settings):
+        super(Loader, cls).apply_settings(project_settings)
         cls.load_settings = project_settings['maya']['load']
 
     def get_custom_namespace_and_group(self, context, options, loader_key):

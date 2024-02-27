@@ -704,7 +704,7 @@ class ClipLoader(LoaderPlugin):
     _mapping = None
     _host_settings = None
 
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
 
         plugin_type_settings = (
             project_settings
