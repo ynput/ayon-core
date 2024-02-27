@@ -103,9 +103,6 @@ class MayaCreatorBase(object):
         Args:
             Dict[str, Any]: Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data dictionary.
-
         """
         if shared_data.get("maya_cached_instance_data") is None:
             cache = dict()

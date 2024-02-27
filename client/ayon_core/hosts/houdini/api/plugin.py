@@ -112,9 +112,6 @@ class HoudiniCreatorBase(object):
         Args:
             Dict[str, Any]: Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data dictionary.
-
         """
         if shared_data.get("houdini_cached_instances") is None:
             cache = dict()
