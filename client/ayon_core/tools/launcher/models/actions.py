@@ -507,13 +507,11 @@ class ActionsModel:
             if is_application:
                 action.project_entities[project_name] = project_entity
                 action.project_settings[project_name] = project_settings
+
             label = action.label or identifier
             variant_label = getattr(action, "label_variant", None)
             icon = get_action_icon(action)
-            host_name = identifier.replace("application.", "").split("/")[0]
-            force_not_open_workfile = not self.should_start_last_workfile(
-                project_name, host_name, None
-            )
+
             item = ActionItem(
                 identifier,
                 label,
@@ -521,7 +519,7 @@ class ActionsModel:
                 icon,
                 action.order,
                 is_application,
-                force_not_open_workfile
+                False
             )
             action_items[identifier] = item
         self._action_items[project_name] = action_items
