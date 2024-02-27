@@ -38,7 +38,11 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
         if current_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
             product_name = self.get_product_name(
-                variant, task_name, asset_doc, project_name, host_name
+                project_name,
+                asset_doc,
+                task_name,
+                variant,
+                host_name,
             )
             data = {
                 "folderPath": asset_name,
@@ -63,7 +67,11 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
             # Update instance context if is not the same
             asset_doc = get_asset_by_name(project_name, asset_name)
             product_name = self.get_product_name(
-                variant, task_name, asset_doc, project_name, host_name
+                project_name,
+                asset_doc,
+                task_name,
+                variant,
+                host_name,
             )
             current_instance["folderPath"] = asset_name
             current_instance["task"] = task_name

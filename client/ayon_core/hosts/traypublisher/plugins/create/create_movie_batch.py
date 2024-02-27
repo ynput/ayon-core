@@ -78,13 +78,13 @@ class BatchMovieCreator(TrayPublishCreator):
     def _get_product_and_task(self, asset_doc, variant, project_name):
         """Create product name according to standard template process"""
         task_name = self._get_task_name(asset_doc)
-
+        host_name = self.create_context.host_name
         try:
             product_name = get_product_name(
                 project_name,
                 asset_doc,
                 task_name,
-                self.create_context.host_name,
+                host_name,
                 self.product_type,
                 variant,
             )
@@ -98,6 +98,7 @@ class BatchMovieCreator(TrayPublishCreator):
                 project_name,
                 asset_doc,
                 task_name,
+                host_name,
                 self.product_type,
                 variant,
             )

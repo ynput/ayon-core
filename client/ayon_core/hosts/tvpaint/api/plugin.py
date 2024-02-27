@@ -55,10 +55,10 @@ class TVPaintCreatorCommon:
 
     def _custom_get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        asset_doc,
+        task_name,
+        variant,
         host_name=None,
         instance=None
     ):

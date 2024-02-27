@@ -124,7 +124,7 @@ class LegacyCreator(object):
 
     @classmethod
     def get_product_name(
-        cls, variant, task_name, asset_id, project_name, host_name=None
+        cls, project_name, asset_id, task_name, variant, host_name=None
     ):
         """Return product name created with entered arguments.
 
@@ -136,10 +136,10 @@ class LegacyCreator(object):
         By default is output concatenated product type with variant.
 
         Args:
-            variant (str): What is entered by user in creator tool.
-            task_name (str): Context's task name.
-            asset_id (ObjectId): Mongo ID of context's asset.
             project_name (str): Context's project name.
+            asset_id (str): Folder id.
+            task_name (str): Context's task name.
+            variant (str): What is entered by user in creator tool.
             host_name (str): Name of host.
 
         Returns:

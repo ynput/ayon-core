@@ -44,10 +44,10 @@ class AutoImageCreator(PSAutoCreator):
 
         if existing_instance is None:
             product_name = self.get_product_name(
-                self.default_variant,
-                task_name,
-                asset_doc,
                 project_name,
+                asset_doc,
+                task_name,
+                self.default_variant,
                 host_name,
             )
 
@@ -74,8 +74,11 @@ class AutoImageCreator(PSAutoCreator):
             or existing_instance["task"] != task_name
         ):
             product_name = self.get_product_name(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name
+                project_name,
+                asset_doc,
+                task_name,
+                self.default_variant,
+                host_name,
             )
             existing_instance["folderPath"] = asset_name
             existing_instance["task"] = task_name
@@ -124,21 +127,23 @@ class AutoImageCreator(PSAutoCreator):
 
     def get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        asset_doc,
+        task_name,
+        variant,
         host_name=None,
         instance=None
     ):
+        if host_name is None:
+            host_name = self.create_context.host_name
         dynamic_data = prepare_template_data({"layer": "{layer}"})
         product_name = get_product_name(
             project_name,
             asset_doc,
             task_name,
+            host_name,
             self.product_type,
             variant,
-            host_name,
             dynamic_data=dynamic_data
         )
         return clean_product_name(product_name)

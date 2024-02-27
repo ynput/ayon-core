@@ -509,10 +509,10 @@ class BaseCreator:
 
     def get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        asset_doc,
+        task_name,
+        variant,
         host_name=None,
         instance=None
     ):
@@ -532,16 +532,19 @@ class BaseCreator:
         instance is passed in.
 
         Args:
-            variant(str): Product name variant. In most of cases user input.
-            task_name(str): For which task product is created.
-            asset_doc(dict): Asset document for which product is created.
-            project_name(str): Project name.
-            host_name(str): Which host creates product.
-            instance(CreatedInstance|None): Object of 'CreatedInstance' for
-                which is product name updated. Passed only on product name
+            project_name (str): Project name.
+            asset_doc (dict): Asset document for which product is created.
+            task_name (str): For which task product is created.
+            variant (str): Product name variant. In most of cases user input.
+            host_name (Optional[str]): Which host creates product. Defaults
+                to host name on create context.
+            instance (Optional[CreatedInstance]): Object of 'CreatedInstance'
+                for which is product name updated. Passed only on product name
                 update.
         """
 
+        if host_name is None:
+            host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
             variant, task_name, asset_doc, project_name, host_name, instance
         )

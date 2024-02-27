@@ -2012,8 +2012,8 @@ class CreateContext:
             project_name,
             asset_doc,
             task_name,
-            self.host_name,
             variant,
+            self.host_name,
         )
         asset_name = get_asset_name_identifier(asset_doc)
 
