@@ -251,9 +251,6 @@ class QtRemotePublishController(BasePublisherController):
 
         pass
 
-    def get_asset_hierarchy(self):
-        pass
-
     def get_existing_product_names(self, folder_path):
         pass
 
@@ -299,7 +296,7 @@ class QtRemotePublishController(BasePublisherController):
         creator_identifier,
         variant,
         task_name,
-        asset_name,
+        folder_path,
         instance_id=None
     ):
         """Get product name based on passed data.
@@ -309,7 +306,7 @@ class QtRemotePublishController(BasePublisherController):
                 responsible for product name creation.
             variant (str): Variant value from user's input.
             task_name (str): Name of task for which is instance created.
-            asset_name (str): Name of asset for which is instance created.
+            folder_path (str): Folder path for which is instance created.
             instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
@@ -328,7 +325,7 @@ class QtRemotePublishController(BasePublisherController):
             creator_identifier (str): Identifier of Creator plugin.
             product_name (str): Calculated product name.
             instance_data (Dict[str, Any]): Base instance data with variant,
-                asset name and task name.
+                folder path and task name.
             options (Dict[str, Any]): Data from pre-create attributes.
         """
 

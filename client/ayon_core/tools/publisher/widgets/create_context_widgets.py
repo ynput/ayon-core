@@ -211,7 +211,7 @@ class CreateContextWidget(QtWidgets.QWidget):
         return self._tasks_widget.get_selected_task_type()
 
     def update_current_context_btn(self):
-        # Hide set current asset if there is no one
+        # Hide set current folder if there is no one
         folder_path = self._controller.current_folder_path
         self._current_context_btn.setVisible(bool(folder_path))
 
