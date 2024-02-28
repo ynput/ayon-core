@@ -23,7 +23,7 @@ class CreateColorspaceLook(TrayPublishCreator):
 
     identifier = "io.openpype.creators.traypublisher.colorspace_look"
     label = "Colorspace Look"
-    family = "ociolook"
+    product_type = "ociolook"
     description = "Publishes color space look file."
     extensions = [".cc", ".cube", ".3dl", ".spi1d", ".spi3d", ".csp", ".lut"]
     enabled = False
@@ -44,7 +44,7 @@ This creator publishes color space look file (LUT).
     def get_icon(self):
         return "mdi.format-color-fill"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         repr_file = pre_create_data.get("luts_file")
         if not repr_file:
             raise CreatorError("No files specified")
@@ -58,11 +58,11 @@ This creator publishes color space look file (LUT).
         asset_doc = get_asset_by_name(
             self.project_name, asset_name)
 
-        subset_name = self.get_subset_name(
-            variant=instance_data["variant"],
-            task_name=instance_data["task"] or "Not set",
+        product_name = self.get_product_name(
             project_name=self.project_name,
             asset_doc=asset_doc,
+            task_name=instance_data["task"] or "Not set",
+            variant=instance_data["variant"],
         )
 
         instance_data["creator_attributes"] = {
@@ -71,7 +71,7 @@ This creator publishes color space look file (LUT).
         }
 
         # Create new instance
-        new_instance = CreatedInstance(self.family, subset_name,
+        new_instance = CreatedInstance(self.product_type, product_name,
                                        instance_data, self)
         new_instance.transient_data["config_items"] = self.config_items
         new_instance.transient_data["config_data"] = self.config_data

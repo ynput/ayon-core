@@ -28,7 +28,7 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
     product_grouping_profiles = None
 
     def process(self, instance):
-        """Look into subset group profiles set by settings.
+        """Look into product group profiles set by settings.
 
         Attribute 'product_grouping_profiles' is defined by settings.
         """
@@ -40,7 +40,7 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         if instance.data.get("subsetGroup"):
             # If subsetGroup is already set then allow that value to remain
             self.log.debug((
-                "Skipping collect subset group due to existing value: {}"
+                "Skipping collect product group due to existing value: {}"
             ).format(instance.data["subsetGroup"]))
             return
 
@@ -56,12 +56,18 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
             return
 
         template = profile["template"]
+        product_name = instance.data["productName"]
+        product_type = instance.data["productType"]
 
         fill_pairs = prepare_template_data({
-            "family": filter_criteria["product_types"],
+            "family": product_type,
             "task": filter_criteria["tasks"],
             "host": filter_criteria["hosts"],
-            "subset": instance.data["subset"],
+            "subset": product_name,
+            "product": {
+                "name": product_name,
+                "type": product_type,
+            },
             "renderlayer": instance.data.get("renderlayer")
         })
 
@@ -91,7 +97,7 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
 
         # Return filter criteria
         return {
-            "product_types": anatomy_data["family"],
+            "product_types": instance.data["productType"],
             "tasks": task.get("name"),
             "hosts": instance.context.data["hostName"],
             "task_types": task.get("type")

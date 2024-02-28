@@ -17,7 +17,7 @@ from ayon_core.pipeline.plugin_discover import (
 )
 
 from .constants import DEFAULT_VARIANT_VALUE
-from .subset_name import get_subset_name
+from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
 
@@ -179,7 +179,7 @@ class BaseCreator:
     # Creator is enabled (Probably does not have reason of existence?)
     enabled = True
 
-    # Creator (and family) icon
+    # Creator (and product type) icon
     # - may not be used if `get_icon` is reimplemented
     icon = None
 
@@ -329,14 +329,14 @@ class BaseCreator:
     def identifier(self):
         """Identifier of creator (must be unique).
 
-        Default implementation returns plugin's family.
+        Default implementation returns plugin's product type.
         """
 
-        return self.family
+        return self.product_type
 
     @property
     @abstractmethod
-    def family(self):
+    def product_type(self):
         """Family that plugin represents."""
 
         pass
@@ -370,7 +370,7 @@ class BaseCreator:
 
         Default implementation use attributes in this order:
             - 'group_label' -> 'label' -> 'identifier'
-                Keep in mind that 'identifier' use 'family' by default.
+                Keep in mind that 'identifier' use 'product_type' by default.
 
         Returns:
             str: Group label that can be used for grouping of instances in UI.
@@ -489,7 +489,7 @@ class BaseCreator:
         pass
 
     def get_icon(self):
-        """Icon of creator (family).
+        """Icon of creator (product type).
 
         Can return path to image file or awesome icon name.
         """
@@ -497,9 +497,15 @@ class BaseCreator:
         return self.icon
 
     def get_dynamic_data(
-        self, variant, task_name, asset_doc, project_name, host_name, instance
+        self,
+        project_name,
+        asset_doc,
+        task_name,
+        variant,
+        host_name,
+        instance
     ):
-        """Dynamic data for subset name filling.
+        """Dynamic data for product name filling.
 
         These may be get dynamically created based on current context of
         workfile.
@@ -507,16 +513,16 @@ class BaseCreator:
 
         return {}
 
-    def get_subset_name(
+    def get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        asset_doc,
+        task_name,
+        variant,
         host_name=None,
         instance=None
     ):
-        """Return subset name for passed context.
+        """Return product name for passed context.
 
         CHANGES:
         Argument `asset_id` was replaced with `asset_doc`. It is easier to
@@ -526,33 +532,41 @@ class BaseCreator:
 
         NOTE:
         Asset document is not used yet but is required if would like to use
-        task type in subset templates.
+        task type in product templates.
 
-        Method is also called on subset name update. In that case origin
+        Method is also called on product name update. In that case origin
         instance is passed in.
 
         Args:
-            variant(str): Subset name variant. In most of cases user input.
-            task_name(str): For which task subset is created.
-            asset_doc(dict): Asset document for which subset is created.
-            project_name(str): Project name.
-            host_name(str): Which host creates subset.
-            instance(CreatedInstance|None): Object of 'CreatedInstance' for
-                which is subset name updated. Passed only on subset name
+            project_name (str): Project name.
+            asset_doc (dict): Asset document for which product is created.
+            task_name (str): For which task product is created.
+            variant (str): Product name variant. In most of cases user input.
+            host_name (Optional[str]): Which host creates product. Defaults
+                to host name on create context.
+            instance (Optional[CreatedInstance]): Object of 'CreatedInstance'
+                for which is product name updated. Passed only on product name
                 update.
         """
 
+        if host_name is None:
+            host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
-            variant, task_name, asset_doc, project_name, host_name, instance
+            project_name,
+            asset_doc,
+            task_name,
+            variant,
+            host_name,
+            instance
         )
 
-        return get_subset_name(
-            self.family,
-            variant,
-            task_name,
-            asset_doc,
+        return get_product_name(
             project_name,
+            asset_doc,
+            task_name,
             host_name,
+            self.product_type,
+            variant,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings
         )
@@ -599,8 +613,8 @@ class BaseCreator:
         """Prepare next versions for instances.
 
         This is helper method to receive next possible versions for instances.
-        It is using context information on instance to receive them, 'asset'
-        and 'subset'.
+        It is using context information on instance to receive them,
+        'folderPath' and 'product'.
 
         Output will contain version by each instance id.
 
@@ -620,7 +634,7 @@ class BaseCreator:
 class Creator(BaseCreator):
     """Creator that has more information for artist to show in UI.
 
-    Creation requires prepared subset name and instance data.
+    Creation requires prepared product name and instance data.
     """
 
     # GUI Purposes
@@ -630,11 +644,11 @@ class Creator(BaseCreator):
     # Default variant used in 'get_default_variant'
     _default_variant = None
 
-    # Short description of family
+    # Short description of product type
     # - may not be used if `get_description` is overriden
     description = None
 
-    # Detailed description of family for artists
+    # Detailed description of product type for artists
     # - may not be used if `get_detail_description` is overriden
     detailed_description = None
 
@@ -681,39 +695,39 @@ class Creator(BaseCreator):
         return self.order
 
     @abstractmethod
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         """Create new instance and store it.
 
         Ideally should be stored to workfile using host implementation.
 
         Args:
-            subset_name(str): Subset name of created instance.
+            product_name(str): Product name of created instance.
             instance_data(dict): Base data for instance.
             pre_create_data(dict): Data based on pre creation attributes.
                 Those may affect how creator works.
         """
 
         # instance = CreatedInstance(
-        #     self.family, subset_name, instance_data
+        #     self.product_type, product_name, instance_data
         # )
         pass
 
     def get_description(self):
-        """Short description of family and plugin.
+        """Short description of product type and plugin.
 
         Returns:
-            str: Short description of family.
+            str: Short description of product type.
         """
 
         return self.description
 
     def get_detail_description(self):
-        """Description of family and plugin.
+        """Description of product type and plugin.
 
         Can be detailed with markdown or html tags.
 
         Returns:
-            str: Detailed description of family for artist.
+            str: Detailed description of product type for artist.
         """
 
         return self.detailed_description

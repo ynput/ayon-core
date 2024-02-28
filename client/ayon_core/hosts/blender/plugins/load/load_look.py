@@ -93,18 +93,18 @@ class BlendLookLoader(plugin.AssetLoader):
         """
 
         libpath = self.filepath_from_context(context)
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["asset"]["name"]
+        product_name = context["subset"]["name"]
 
         lib_container = plugin.prepare_scene_name(
-            asset, subset
+            folder_name, product_name
         )
         unique_number = plugin.get_unique_number(
-            asset, subset
+            folder_name, product_name
         )
-        namespace = namespace or f"{asset}_{unique_number}"
+        namespace = namespace or f"{folder_name}_{unique_number}"
         container_name = plugin.prepare_scene_name(
-            asset, subset, unique_number
+            folder_name, product_name, unique_number
         )
 
         container = bpy.data.collections.new(lib_container)
@@ -131,7 +131,7 @@ class BlendLookLoader(plugin.AssetLoader):
         metadata["materials"] = materials
 
         metadata["parent"] = str(context["representation"]["parent"])
-        metadata["family"] = context["representation"]["context"]["family"]
+        metadata["product_type"] = context["subset"]["data"]["family"]
 
         nodes = list(container.objects)
         nodes.append(container)
