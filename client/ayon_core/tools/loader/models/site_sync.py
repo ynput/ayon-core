@@ -325,21 +325,21 @@ class SiteSyncModel:
         repre_docs = list(get_representations(
             project_name, representation_ids=representation_ids
         ))
-        families_per_repre_id = {
+        product_type_by_repre_id = {
             item["_id"]: item["context"]["family"]
             for item in repre_docs
         }
 
         for repre_id in representation_ids:
-            family = families_per_repre_id[repre_id]
+            product_type = product_type_by_repre_id[repre_id]
             if identifier == DOWNLOAD_IDENTIFIER:
                 self._add_site(
-                    project_name, repre_id, active_site, family
+                    project_name, repre_id, active_site, product_type
                 )
 
             elif identifier == UPLOAD_IDENTIFIER:
                 self._add_site(
-                    project_name, repre_id, remote_site, family
+                    project_name, repre_id, remote_site, product_type
                 )
 
             elif identifier == REMOVE_IDENTIFIER:
@@ -485,13 +485,13 @@ class SiteSyncModel:
             representation_ids=representation_ids,
         )
 
-    def _add_site(self, project_name, repre_id, site_name, family):
+    def _add_site(self, project_name, repre_id, site_name, product_type):
         self._site_sync_addon.add_site(
             project_name, repre_id, site_name, force=True
         )
 
         # TODO this should happen in site sync addon
-        if family != "workfile":
+        if product_type != "workfile":
             return
 
         links = get_linked_representation_id(

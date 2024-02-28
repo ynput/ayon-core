@@ -116,9 +116,9 @@ class ReferenceLoader(plugin.ReferenceLoader):
         import maya.cmds as cmds
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "model"
+            product_type = "model"
 
         project_name = context["project"]["name"]
         # True by default to keep legacy behaviours
@@ -169,8 +169,9 @@ class ReferenceLoader(plugin.ReferenceLoader):
                                            children=True,
                                            fullPath=True) or []
 
-                if family not in {"layout", "setdress",
-                                  "mayaAscii", "mayaScene"}:
+                if product_type not in {
+                    "layout", "setdress", "mayaAscii", "mayaScene"
+                }:
                     # QUESTION Why do we need to exclude these families?
                     with parent_nodes(roots, parent=None):
                         cmds.xform(group_name, zeroTransformPivots=True)
@@ -184,7 +185,9 @@ class ReferenceLoader(plugin.ReferenceLoader):
                     "{}.displayHandle".format(group_name), display_handle
                 )
 
-                color = plugin.get_load_color_for_family(family, settings)
+                color = plugin.get_load_color_for_product_type(
+                    product_type, settings
+                )
                 if color is not None:
                     red, green, blue = color
                     cmds.setAttr("{}.useOutlinerColor".format(group_name), 1)
@@ -215,7 +218,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
                 cmds.setAttr("{}.selectHandleY".format(group_name), cy)
                 cmds.setAttr("{}.selectHandleZ".format(group_name), cz)
 
-            if family == "rig":
+            if product_type == "rig":
                 self._post_process_rig(namespace, context, options)
             else:
                 if "translate" in options:

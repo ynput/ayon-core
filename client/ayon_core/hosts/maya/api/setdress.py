@@ -492,7 +492,7 @@ def update_scene(set_container, containers, current_data, new_data, new_file):
                     continue
 
                 # Check whether the conversion can be done by the Loader.
-                # They *must* use the same asset, subset and Loader for
+                # They *must* use the same asset, product and Loader for
                 # `update_container` to make sense.
                 old = get_representation_by_id(
                     project_name, representation_current
@@ -571,13 +571,14 @@ def compare_representations(old, new):
     new_context = new["context"]
     old_context = old["context"]
 
+    # TODO add better validation e.g. based on parent ids
     if new_context["asset"] != old_context["asset"]:
         log.error("Changing assets between updates is "
                   "not supported.")
         return False
 
     if new_context["subset"] != old_context["subset"]:
-        log.error("Changing subsets between updates is "
+        log.error("Changing products between updates is "
                   "not supported.")
         return False
 

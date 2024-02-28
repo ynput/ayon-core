@@ -5,7 +5,7 @@ from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 from maya import cmds
 
@@ -95,9 +95,9 @@ class LoadVDBtoVRay(load.LoaderPlugin):
         )
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "vdbcache"
+            product_type = "vdbcache"
 
         # Ensure V-ray is loaded with the vrayvolumegrid
         if not cmds.pluginInfo("vrayformaya", query=True, loaded=True):
@@ -130,7 +130,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)

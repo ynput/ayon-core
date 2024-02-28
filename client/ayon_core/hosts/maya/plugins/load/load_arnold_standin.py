@@ -15,7 +15,7 @@ from ayon_core.hosts.maya.api.lib import (
     convert_to_maya_fps
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 def is_sequence(files):
@@ -67,7 +67,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         # Set color.
         settings = get_project_settings(context["project"]["name"])
-        color = get_load_color_for_family("ass", settings)
+        color = get_load_color_for_product_type("ass", settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", True)

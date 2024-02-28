@@ -84,13 +84,15 @@ class AbcCameraLoader(plugin.AssetLoader):
 
         libpath = self.filepath_from_context(context)
 
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["asset"]["name"]
+        product_name = context["subset"]["name"]
 
-        asset_name = plugin.prepare_scene_name(asset, subset)
-        unique_number = plugin.get_unique_number(asset, subset)
-        group_name = plugin.prepare_scene_name(asset, subset, unique_number)
-        namespace = namespace or f"{asset}_{unique_number}"
+        asset_name = plugin.prepare_scene_name(folder_name, product_name)
+        unique_number = plugin.get_unique_number(folder_name, product_name)
+        group_name = plugin.prepare_scene_name(
+            folder_name, product_name, unique_number
+        )
+        namespace = namespace or f"{folder_name}_{unique_number}"
 
         avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
         if not avalon_container:
@@ -121,7 +123,7 @@ class AbcCameraLoader(plugin.AssetLoader):
             "libpath": libpath,
             "asset_name": asset_name,
             "parent": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
+            "productType": context["subset"]["data"]["family"],
             "objectName": group_name,
         }
 

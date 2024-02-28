@@ -83,8 +83,8 @@ class LoadImage(plugin.Loader):
 
         # Prepare layer name
         asset_name = context["asset"]["name"]
-        subset_name = context["subset"]["name"]
-        layer_name = self.get_unique_layer_name(asset_name, subset_name)
+        product_name = context["subset"]["name"]
+        layer_name = self.get_unique_layer_name(asset_name, product_name)
 
         path = self.filepath_from_context(context)
 
