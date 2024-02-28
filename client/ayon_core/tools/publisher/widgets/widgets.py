@@ -27,7 +27,7 @@ from ayon_core.pipeline.create import (
 )
 from .thumbnail_widget import ThumbnailWidget
 from .folders_dialog import FoldersDialog
-from .tasks_widget import TasksModel
+from .tasks_model import TasksModel
 from .icons import (
     get_pixmap,
     get_icon_path

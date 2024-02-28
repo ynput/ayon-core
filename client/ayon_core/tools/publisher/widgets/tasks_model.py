@@ -31,7 +31,7 @@ class TasksModel(QtGui.QStandardItemModel):
         self._task_names_by_folder_path = {}
 
     def set_folder_paths(self, folder_paths):
-        """Set assets context."""
+        """Set folders context."""
         self._folder_paths = folder_paths
         self.reset()
 
@@ -43,8 +43,8 @@ class TasksModel(QtGui.QStandardItemModel):
         ```
         # Passed `task_names_by_folder_path`
         {
-            "asset_1": ["compositing", "animation"],
-            "asset_2": ["compositing", "editorial"]
+            "/folder_1": ["compositing", "animation"],
+            "/folder_2": ["compositing", "editorial"]
         }
         ```
         Result:
@@ -70,8 +70,11 @@ class TasksModel(QtGui.QStandardItemModel):
     def is_task_name_valid(self, folder_path, task_name):
         """Is task name available for folder.
 
+        Todos:
+            Move this method to PublisherController.
+
         Args:
-            folder_path (str): Name of asset where should look for task.
+            folder_path (str): Fodler path where should look for task.
             task_name (str): Name of task which should be available in folder
                 tasks.
         """
@@ -91,7 +94,8 @@ class TasksModel(QtGui.QStandardItemModel):
         if not self._folder_paths:
             self._items_by_name = {}
             self._task_names_by_folder_path = {}
-            self.clear()
+            root_item = self.invisibleRootItem()
+            root_item.removeRows(0, self.rowCount())
             return
 
         task_names_by_folder_path = (
@@ -131,17 +135,3 @@ class TasksModel(QtGui.QStandardItemModel):
 
         if new_items:
             root_item.appendRows(new_items)
-
-    def headerData(self, section, orientation, role=None):
-        if role is None:
-            role = QtCore.Qt.EditRole
-        # Show nice labels in the header
-        if section == 0:
-            if (
-                role in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole)
-                and orientation == QtCore.Qt.Horizontal
-            ):
-                return "Tasks"
-
-        return super(TasksModel, self).headerData(section, orientation, role)
-
