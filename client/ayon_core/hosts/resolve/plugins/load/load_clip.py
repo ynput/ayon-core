@@ -15,7 +15,7 @@ from ayon_core.lib.transcoding import (
 
 
 class LoadClip(plugin.TimelineItemLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project

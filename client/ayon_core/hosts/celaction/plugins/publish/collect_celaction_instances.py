@@ -46,17 +46,18 @@ class CollectCelactionInstances(pyblish.api.ContextPlugin):
             shared_instance_data.update(celaction_kwargs)
 
         # workfile instance
-        family = "workfile"
-        subset = family + task.capitalize()
+        product_type = "workfile"
+        product_name = product_type + task.capitalize()
         # Create instance
-        instance = context.create_instance(subset)
+        instance = context.create_instance(product_name)
 
         # creating instance data
         instance.data.update({
-            "subset": subset,
             "label": scene_file,
-            "family": family,
-            "families": [],
+            "productName": product_name,
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
             "representations": []
         })
 
@@ -76,17 +77,19 @@ class CollectCelactionInstances(pyblish.api.ContextPlugin):
         self.log.info('Publishing Celaction workfile')
 
         # render instance
-        subset = f"render{task}Main"
-        instance = context.create_instance(name=subset)
+        product_name = f"render{task}Main"
+        product_type = "render.farm"
+        instance = context.create_instance(name=product_name)
         # getting instance state
         instance.data["publish"] = True
 
         # add assetEntity data into instance
         instance.data.update({
-            "label": "{} - farm".format(subset),
-            "family": "render.farm",
-            "families": [],
-            "subset": subset
+            "label": "{} - farm".format(product_name),
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
+            "productName": product_name
         })
 
         # adding basic script data

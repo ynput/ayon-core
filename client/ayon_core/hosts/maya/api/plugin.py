@@ -103,9 +103,6 @@ class MayaCreatorBase(object):
         Args:
             Dict[str, Any]: Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data dictionary.
-
         """
         if shared_data.get("maya_cached_instance_data") is None:
             cache = dict()
@@ -444,6 +441,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         if not self._get_singleton_node():
             return
 
+        host_name = self.create_context.host_name
         rs = renderSetup.instance()
         layers = rs.getRenderLayers()
         for layer in layers:
@@ -464,10 +462,12 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
                 }
                 asset_doc = get_asset_by_name(project_name, asset_name)
                 product_name = self.get_product_name(
-                    layer.name(),
-                    instance_data["task"],
+                    project_name,
                     asset_doc,
-                    project_name)
+                    instance_data["task"],
+                    layer.name(),
+                    host_name,
+                )
 
                 instance = CreatedInstance(
                     product_type=self.product_type,
@@ -577,15 +577,17 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
 
     def get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        asset_doc,
+        task_name,
+        variant,
         host_name=None,
         instance=None
     ):
+        if host_name is None:
+            host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
-            variant, task_name, asset_doc, project_name, host_name, instance
+            project_name, asset_doc, task_name, variant, host_name, instance
         )
         # creator.product_type != 'render' as expected
         return get_product_name(
@@ -639,8 +641,8 @@ class Loader(LoaderPlugin):
     load_settings = {}  # defined in settings
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
-        super(Loader, cls).apply_settings(project_settings, system_settings)
+    def apply_settings(cls, project_settings):
+        super(Loader, cls).apply_settings(project_settings)
         cls.load_settings = project_settings['maya']['load']
 
     def get_custom_namespace_and_group(self, context, options, loader_key):

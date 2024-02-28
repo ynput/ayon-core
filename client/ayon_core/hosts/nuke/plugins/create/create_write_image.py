@@ -18,7 +18,7 @@ from ayon_core.hosts.nuke.api.plugin import exposed_write_knobs
 class CreateWriteImage(napi.NukeWriteCreator):
     identifier = "create_write_image"
     label = "Image (write)"
-    family = "image"
+    product_type = "image"
     icon = "sign-out"
 
     instance_attributes = [
@@ -64,18 +64,18 @@ class CreateWriteImage(napi.NukeWriteCreator):
             default=nuke.frame()
         )
 
-    def create_instance_node(self, subset_name, instance_data):
+    def create_instance_node(self, product_name, instance_data):
 
         # add fpath_template
         write_data = {
             "creator": self.__class__.__name__,
-            "subset": subset_name,
+            "productName": product_name,
             "fpath_template": self.temp_rendering_path_template
         }
         write_data.update(instance_data)
 
         created_node = napi.create_write_node(
-            subset_name,
+            product_name,
             write_data,
             input=self.selected_node,
             prenodes=self.prenodes,
@@ -91,8 +91,8 @@ class CreateWriteImage(napi.NukeWriteCreator):
 
         return created_node
 
-    def create(self, subset_name, instance_data, pre_create_data):
-        subset_name = subset_name.format(**pre_create_data)
+    def create(self, product_name, instance_data, pre_create_data):
+        product_name = product_name.format(**pre_create_data)
 
         # pass values from precreate to instance
         self.pass_pre_attributes_to_instance(
@@ -107,18 +107,18 @@ class CreateWriteImage(napi.NukeWriteCreator):
         # make sure selected nodes are added
         self.set_selected_nodes(pre_create_data)
 
-        # make sure subset name is unique
-        self.check_existing_subset(subset_name)
+        # make sure product name is unique
+        self.check_existing_product(product_name)
 
         instance_node = self.create_instance_node(
-            subset_name,
+            product_name,
             instance_data,
         )
 
         try:
             instance = CreatedInstance(
-                self.family,
-                subset_name,
+                self.product_type,
+                product_name,
                 instance_data,
                 self
             )

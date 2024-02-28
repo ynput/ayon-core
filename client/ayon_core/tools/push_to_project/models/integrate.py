@@ -42,7 +42,7 @@ from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.publish import get_publish_template_name
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 
 UNKNOWN = object()
 
@@ -461,8 +461,8 @@ class ProjectPushItemProcess:
         self._subset_doc = None
         self._version_doc = None
 
-        self._family = None
-        self._subset_name = None
+        self._product_type = None
+        self._product_name = None
 
         self._project_settings = None
         self._template_name = None
@@ -494,9 +494,9 @@ class ProjectPushItemProcess:
             self._log_info("Destination project was found")
             self._fill_or_create_destination_asset()
             self._log_info("Destination asset was determined")
-            self._determine_family()
+            self._determine_product_type()
             self._determine_publish_template_name()
-            self._determine_subset_name()
+            self._determine_product_name()
             self._make_sure_subset_exists()
             self._make_sure_version_exists()
             self._log_info("Prerequirements were prepared")
@@ -584,11 +584,11 @@ class ProjectPushItemProcess:
             ))
             raise PushToProjectError(self._status.fail_reason)
 
-        subset_id = version_doc["parent"]
-        subset_doc = get_subset_by_id(src_project_name, subset_id)
+        product_id = version_doc["parent"]
+        subset_doc = get_subset_by_id(src_project_name, product_id)
         if not subset_doc:
             self._status.set_failed((
-                f"Could find subset with id \"{subset_id}\""
+                f"Could find product with id \"{product_id}\""
                 f" in project \"{src_project_name}\""
             ))
             raise PushToProjectError(self._status.fail_reason)
@@ -791,29 +791,30 @@ class ProjectPushItemProcess:
         task_info.update(task_type_info)
         self._task_info = task_info
 
-    def _determine_family(self):
+    def _determine_product_type(self):
         subset_doc = self._src_subset_doc
-        family = subset_doc["data"].get("family")
+        product_type = subset_doc["data"].get("family")
         families = subset_doc["data"].get("families")
-        if not family and families:
-            family = families[0]
+        if not product_type and families:
+            product_type = families[0]
 
-        if not family:
+        if not product_type:
             self._status.set_failed(
-                "Couldn't figure out family from source subset"
+                "Couldn't figure out product type from source product"
             )
             raise PushToProjectError(self._status.fail_reason)
 
         self._log_debug(
-            f"Publishing family is '{family}' (Based on source subset)"
+            f"Publishing product type is '{product_type}'"
+            f" (Based on source product)"
         )
-        self._family = family
+        self._product_type = product_type
 
     def _determine_publish_template_name(self):
         template_name = get_publish_template_name(
             self._item.dst_project_name,
             self.host_name,
-            self._family,
+            self._product_type,
             self._task_info.get("name"),
             self._task_info.get("type"),
             project_settings=self._project_settings
@@ -823,39 +824,39 @@ class ProjectPushItemProcess:
         )
         self._template_name = template_name
 
-    def _determine_subset_name(self):
-        family = self._family
+    def _determine_product_name(self):
+        product_type = self._product_type
         asset_doc = self._asset_doc
         task_info = self._task_info
-        subset_name = get_subset_name(
-            family,
-            self._item.variant,
-            task_info.get("name"),
+        product_name = get_product_name(
+            self._item.dst_project_name,
             asset_doc,
-            project_name=self._item.dst_project_name,
-            host_name=self.host_name,
+            task_info.get("name"),
+            self.host_name,
+            product_type,
+            self._item.variant,
             project_settings=self._project_settings
         )
         self._log_info(
-            f"Push will be integrating to subset with name '{subset_name}'"
+            f"Push will be integrating to product with name '{product_name}'"
         )
-        self._subset_name = subset_name
+        self._product_name = product_name
 
     def _make_sure_subset_exists(self):
         project_name = self._item.dst_project_name
         asset_id = self._asset_doc["_id"]
-        subset_name = self._subset_name
-        family = self._family
-        subset_doc = get_subset_by_name(project_name, subset_name, asset_id)
+        product_name = self._product_name
+        product_type = self._product_type
+        subset_doc = get_subset_by_name(project_name, product_name, asset_id)
         if subset_doc:
             self._subset_doc = subset_doc
             return subset_doc
 
         data = {
-            "families": [family]
+            "families": [product_type]
         }
         subset_doc = new_subset_document(
-            subset_name, family, asset_id, data
+            product_name, product_type, asset_id, data
         )
         self._operations.create_entity(project_name, "subset", subset_doc)
         self._subset_doc = subset_doc
@@ -867,7 +868,7 @@ class ProjectPushItemProcess:
         version = self._item.dst_version
         src_version_doc = self._src_version_doc
         subset_doc = self._subset_doc
-        subset_id = subset_doc["_id"]
+        product_id = subset_doc["_id"]
         src_data = src_version_doc["data"]
         families = subset_doc["data"].get("families")
         if not families:
@@ -884,7 +885,7 @@ class ProjectPushItemProcess:
         }
         if version is None:
             last_version_doc = get_last_version_by_subset_id(
-                project_name, subset_id
+                project_name, product_id
             )
             if last_version_doc:
                 version = int(last_version_doc["name"]) + 1
@@ -894,17 +895,17 @@ class ProjectPushItemProcess:
                     self.host_name,
                     task_name=self._task_info["name"],
                     task_type=self._task_info["type"],
-                    family=families[0],
-                    subset=subset_doc["name"]
+                    product_type=families[0],
+                    product_name=subset_doc["name"]
                 )
 
         existing_version_doc = get_version_by_name(
-            project_name, version, subset_id
+            project_name, version, product_id
         )
         # Update existing version
         if existing_version_doc:
             version_doc = new_version_doc(
-                version, subset_id, version_data, existing_version_doc["_id"]
+                version, product_id, version_data, existing_version_doc["_id"]
             )
             update_data = prepare_version_update_data(
                 existing_version_doc, version_doc
@@ -921,7 +922,7 @@ class ProjectPushItemProcess:
             return
 
         version_doc = new_version_doc(
-            version, subset_id, version_data
+            version, product_id, version_data
         )
         self._operations.create_entity(project_name, "version", version_doc)
 
@@ -955,8 +956,12 @@ class ProjectPushItemProcess:
             self.host_name
         )
         formatting_data.update({
-            "subset": self._subset_name,
-            "family": self._family,
+            "subset": self._product_name,
+            "family": self._product_type,
+            "product": {
+                "name": self._product_name,
+                "type": self._product_type,
+            },
             "version": version_doc["name"]
         })
 

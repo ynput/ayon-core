@@ -64,11 +64,32 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             })
 
             asset = tag_data["folder_path"]
-            subset = tag_data["subset"]
+
+            # TODO: remove backward compatibility
+            product_name = tag_data.get("productName")
+            if product_name is None:
+                # backward compatibility: subset -> productName
+                product_name = tag_data.get("subset")
+
+            # backward compatibility: product_name should not be missing
+            if not product_name:
+                self.log.error(
+                    "Product name is not defined for: {}".format(asset))
+
+            # TODO: remove backward compatibility
+            product_type = tag_data.get("productType")
+            if product_type is None:
+                # backward compatibility: family -> productType
+                product_type = tag_data.get("family")
+
+            # backward compatibility: product_type should not be missing
+            if not product_type:
+                self.log.error(
+                    "Product type is not defined for: {}".format(asset))
 
             data.update({
-                "name": "{}_{}".format(asset, subset),
-                "label": "{} {}".format(asset, subset),
+                "name": "{}_{}".format(asset, product_name),
+                "label": "{} {}".format(asset, product_name),
                 "folderPath": asset,
                 "item": timeline_item,
                 "publish": get_publish_attribute(timeline_item),
@@ -77,6 +98,9 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 "handleEnd": handle_end,
                 "newAssetPublishing": True,
                 "families": ["clip"],
+                "productType": product_type,
+                "productName": product_name,
+                "family": product_type
             })
 
             # otio clip data
@@ -128,18 +152,19 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             return
 
         asset = data["folderPath"]
-        subset = "shotMain"
+        product_name = "shotMain"
 
         # insert family into families
-        family = "shot"
+        product_type = "shot"
 
         data.update({
-            "name": "{}_{}".format(asset, subset),
-            "label": "{} {}".format(asset, subset),
-            "subset": subset,
+            "name": "{}_{}".format(asset, product_name),
+            "label": "{} {}".format(asset, product_name),
             "folderPath": asset,
-            "family": family,
-            "families": [],
+            "productName": product_name,
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
             "publish": get_publish_attribute(timeline_item)
         })
 
