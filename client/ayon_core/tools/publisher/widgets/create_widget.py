@@ -342,7 +342,7 @@ class CreateWidget(QtWidgets.QWidget):
     def _get_task_name(self):
         task_name = None
         if self._context_change_is_enabled():
-            # Don't use selection of task if asset is not set
+            # Don't use selection of task if folder is not set
             folder_path = self._context_widget.get_selected_folder_path()
             if folder_path:
                 task_name = self._context_widget.get_selected_task_name()
@@ -367,7 +367,7 @@ class CreateWidget(QtWidgets.QWidget):
         current_folder_path = self._controller.current_folder_path
         current_task_name = self._controller.current_task_name
 
-        # Get context before refresh to keep selection of asset and
+        # Get context before refresh to keep selection of folder and
         #   task widgets
         folder_path = self._get_folder_path()
         task_name = self._get_task_name()
@@ -392,8 +392,8 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._prereq_available = False
 
-        # Disable context widget so refresh of asset will use context asset
-        #   name
+        # Disable context widget so refresh of folder will use context folder
+        #   path
         self._set_context_enabled(False)
 
         # Refresh data before update of creators
@@ -429,7 +429,7 @@ class CreateWidget(QtWidgets.QWidget):
             self._context_change_is_enabled()
             and self._get_folder_path() is None
         ):
-            # QUESTION how to handle invalid asset?
+            # QUESTION how to handle invalid folder?
             prereq_available = False
             creator_btn_tooltips.append("Context is not selected")
 
@@ -451,7 +451,7 @@ class CreateWidget(QtWidgets.QWidget):
     def _refresh_product_name(self):
         folder_path = self._get_folder_path()
 
-        # Skip if asset did not change
+        # Skip if folder did not change
         if self._folder_path and self._folder_path == folder_path:
             return
 
@@ -686,7 +686,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._validate_product_name(product_name, variant_value)
 
     def _validate_product_name(self, product_name, variant_value):
-        # Get all products of the current asset
+        # Get all products of the current folder
         if self._product_names:
             existing_product_names = set(self._product_names)
         else:
