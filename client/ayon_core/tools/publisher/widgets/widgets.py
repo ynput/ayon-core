@@ -438,13 +438,13 @@ class FoldersFields(BaseClickableFrame):
         dialog = FoldersDialog(controller, parent)
 
         name_input = ClickableLineEdit(self)
-        name_input.setObjectName("AssetNameInput")
+        name_input.setObjectName("FolderPathInput")
 
         icon_name = "fa.window-maximize"
         icon = qtawesome.icon(icon_name, color="white")
         icon_btn = QtWidgets.QPushButton(self)
         icon_btn.setIcon(icon)
-        icon_btn.setObjectName("AssetNameInputButton")
+        icon_btn.setObjectName("FolderPathInputButton")
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

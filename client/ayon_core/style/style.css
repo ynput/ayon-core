@@ -1148,7 +1148,7 @@ ValidationArtistMessage QLabel {
     background: transparent;
 }
 
-#AssetNameInputButton {
+#FolderPathInputButton {
     border-bottom-left-radius: 0px;
     border-top-left-radius: 0px;
     padding: 0px;
@@ -1159,7 +1159,7 @@ ValidationArtistMessage QLabel {
     border-bottom: none;
 }
 
-#AssetNameInput {
+#FolderPathInput {
     border-bottom-right-radius: 0px;
     border-top-right-radius: 0px;
     border: none;
@@ -1175,7 +1175,7 @@ ValidationArtistMessage QLabel {
     background: {color:bg-inputs-disabled};
 }
 
-#TasksCombobox[state="invalid"], #FolderPathInputWidget[state="invalid"], #AssetNameInputButton[state="invalid"] {
+#TasksCombobox[state="invalid"], #FolderPathInputWidget[state="invalid"], #FolderPathInputButton[state="invalid"] {
     border-color: {color:publisher:error};
 }
 
