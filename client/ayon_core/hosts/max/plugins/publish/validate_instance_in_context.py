@@ -42,36 +42,30 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
         context_asset = instance.context.data["folderPath"]
         task = rt.getUserProp(instance_node, "task")
         context_task = instance.context.data["task"]
+        invalid = []
         if asset != context_asset:
-            raise PublishValidationError(
-                message=(
-                    "Instance '{}' publishes to different asset than current "
-                    "context: {}. Current context: {}".format(
-                        instance.name, asset, context_asset
-                    )
-                ),
-                description=(
-                    "## Publishing to a different asset\n"
-                    "There are publish instances present which are publishing "
-                    "into a different asset than your current context.\n\n"
-                    "Usually this is not what you want but there can be cases "
-                    "where you might want to publish into another asset or "
-                    "shot. If that's the case you can disable the validation "
-                    "on the instance to ignore it."
+            invalid.append(
+                "Instance '{}' publishes to different asset than current "
+                "context: {}. Current context: {}".format(
+                    instance.name, asset, context_asset
                 )
             )
         if task != context_task:
+            invalid.append(
+                "Instance '{}' publishes to different task than current "
+                "context: {}. Current context: {}".format(
+                    instance.name, task, context_task
+                )
+            )
+
+        if invalid:
+            message = "\n".join(invalid)
             raise PublishValidationError(
-                message=(
-                    "Instance '{}' publishes to different task than current "
-                    "context: {}. Current context: {}".format(
-                        instance.name, task, context_task
-                    )
-                ),
+                message=message,
                 description=(
                     "## Publishing to a different asset\n"
                     "There are publish instances present which are publishing "
-                    "into a different asset than your current context.\n\n"
+                    "into a different asset or task than your current context.\n\n"
                     "Usually this is not what you want but there can be cases "
                     "where you might want to publish into another asset or "
                     "shot. If that's the case you can disable the validation "
