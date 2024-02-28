@@ -465,6 +465,7 @@ class AssetsField(BaseClickableFrame):
         icon_btn.clicked.connect(self._mouse_release_callback)
         dialog.finished.connect(self._on_dialog_finish)
 
+        self._controller = controller
         self._dialog = dialog
         self._name_input = name_input
         self._icon_btn = icon_btn
@@ -539,38 +540,33 @@ class AssetsField(BaseClickableFrame):
         self._name_input.setText(text)
         self._name_input.end(False)
 
-    def set_selected_items(self, asset_names=None):
+    def set_selected_items(self, folder_paths=None):
         """Set asset names for selection of instances.
 
         Passed asset names are validated and if there are 2 or more different
         asset names then multiselection text is shown.
 
         Args:
-            asset_names (list, tuple, set, NoneType): List of asset names.
+            folder_paths (list, tuple, set, NoneType): List of folder paths.
+
         """
-        if asset_names is None:
-            asset_names = []
+        if folder_paths is None:
+            folder_paths = []
 
         self._has_value_changed = False
-        self._origin_value = list(asset_names)
-        self._selected_items = list(asset_names)
-        is_valid = True
-        if not asset_names:
+        self._origin_value = list(folder_paths)
+        self._selected_items = list(folder_paths)
+        is_valid = self._controller.are_folder_paths_valid(folder_paths)
+        if not folder_paths:
             self.set_text("")
 
-        elif len(asset_names) == 1:
-            asset_name = tuple(asset_names)[0]
-            is_valid = self._dialog.name_is_valid(asset_name)
-            self.set_text(asset_name)
+        elif len(folder_paths) == 1:
+            folder_path = tuple(folder_paths)[0]
+            self.set_text(folder_path)
         else:
-            for asset_name in asset_names:
-                is_valid = self._dialog.name_is_valid(asset_name)
-                if not is_valid:
-                    break
-
             multiselection_text = self._multiselection_text
             if multiselection_text is None:
-                multiselection_text = "|".join(asset_names)
+                multiselection_text = "|".join(folder_paths)
             self.set_text(multiselection_text)
 
         self._set_is_valid(is_valid)
@@ -746,11 +742,11 @@ class TasksCombobox(QtWidgets.QComboBox):
         """
         return list(self._selected_items)
 
-    def set_asset_names(self, asset_names):
+    def set_folder_paths(self, asset_names):
         """Set asset names for which should show tasks."""
         self._ignore_index_change = True
 
-        self._model.set_asset_names(asset_names)
+        self._model.set_folder_paths(asset_names)
         self._proxy_model.set_filter_empty(False)
         self._proxy_model.sort(0)
 
@@ -822,7 +818,7 @@ class TasksCombobox(QtWidgets.QComboBox):
 
         self._ignore_index_change = True
 
-        self._model.set_asset_names(asset_names)
+        self._model.set_folder_paths(asset_names)
 
         self._has_value_changed = False
 
@@ -1265,7 +1261,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
     def _on_asset_change(self):
         asset_names = self.asset_value_widget.get_selected_items()
-        self.task_value_widget.set_asset_names(asset_names)
+        self.task_value_widget.set_folder_paths(asset_names)
         self._on_value_change()
 
     def _on_task_change(self):
