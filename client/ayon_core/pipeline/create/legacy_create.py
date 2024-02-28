@@ -12,18 +12,18 @@ import collections
 from ayon_core.client import get_asset_by_id
 from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 
-from .subset_name import get_subset_name
+from .product_name import get_product_name
 
 
 class LegacyCreator(object):
     """Determine how assets are created"""
     label = None
-    family = None
+    product_type = None
     defaults = None
     maintain_selection = True
     enabled = True
 
-    dynamic_subset_keys = []
+    dynamic_product_name_keys = []
 
     log = logging.getLogger("LegacyCreator")
     log.propagate = True
@@ -36,9 +36,9 @@ class LegacyCreator(object):
         self.data = collections.OrderedDict()
         # TODO use 'AYON_INSTANCE_ID' when all hosts support it
         self.data["id"] = AVALON_INSTANCE_ID
-        self.data["family"] = self.family
+        self.data["productType"] = self.product_type
         self.data["folderPath"] = folder_path
-        self.data["subset"] = name
+        self.data["productName"] = name
         self.data["active"] = True
 
         self.data.update(data or {})
@@ -89,23 +89,23 @@ class LegacyCreator(object):
 
     @classmethod
     def get_dynamic_data(
-        cls, variant, task_name, asset_id, project_name, host_name
+        cls, project_name, asset_id, task_name, variant, host_name
     ):
         """Return dynamic data for current Creator plugin.
 
-        By default return keys from `dynamic_subset_keys` attribute as mapping
-        to keep formatted template unchanged.
+        By default return keys from `dynamic_product_name_keys` attribute
+        as mapping to keep formatted template unchanged.
 
         ```
-        dynamic_subset_keys = ["my_key"]
+        dynamic_product_name_keys = ["my_key"]
         ---
         output = {
             "my_key": "{my_key}"
         }
         ```
 
-        Dynamic keys may override default Creator keys (family, task, asset,
-        ...) but do it wisely if you need.
+        Dynamic keys may override default Creator keys (productType, task,
+        folderPath, ...) but do it wisely if you need.
 
         All of keys will be converted into 3 variants unchanged, capitalized
         and all upper letters. Because of that are all keys lowered.
@@ -114,54 +114,54 @@ class LegacyCreator(object):
         is class method.
 
         Returns:
-            dict: Fill data for subset name template.
+            dict: Fill data for product name template.
         """
         dynamic_data = {}
-        for key in cls.dynamic_subset_keys:
+        for key in cls.dynamic_product_name_keys:
             key = key.lower()
             dynamic_data[key] = "{" + key + "}"
         return dynamic_data
 
     @classmethod
-    def get_subset_name(
-        cls, variant, task_name, asset_id, project_name, host_name=None
+    def get_product_name(
+        cls, project_name, asset_id, task_name, variant, host_name=None
     ):
-        """Return subset name created with entered arguments.
+        """Return product name created with entered arguments.
 
         Logic extracted from Creator tool. This method should give ability
-        to get subset name without the tool.
+        to get product name without the tool.
 
         TODO: Maybe change `variant` variable.
 
-        By default is output concatenated family with user text.
+        By default is output concatenated product type with variant.
 
         Args:
-            variant (str): What is entered by user in creator tool.
-            task_name (str): Context's task name.
-            asset_id (ObjectId): Mongo ID of context's asset.
             project_name (str): Context's project name.
+            asset_id (str): Folder id.
+            task_name (str): Context's task name.
+            variant (str): What is entered by user in creator tool.
             host_name (str): Name of host.
 
         Returns:
-            str: Formatted subset name with entered arguments. Should match
+            str: Formatted product name with entered arguments. Should match
                 config's logic.
         """
 
         dynamic_data = cls.get_dynamic_data(
-            variant, task_name, asset_id, project_name, host_name
+            project_name, asset_id, task_name, variant, host_name
         )
 
         asset_doc = get_asset_by_id(
             project_name, asset_id, fields=["data.tasks"]
         )
 
-        return get_subset_name(
-            cls.family,
-            variant,
-            task_name,
-            asset_doc,
+        return get_product_name(
             project_name,
+            asset_doc,
+            task_name,
             host_name,
+            cls.product_type,
+            variant,
             dynamic_data=dynamic_data
         )
 
@@ -169,23 +169,23 @@ class LegacyCreator(object):
 def legacy_create(Creator, name, asset, options=None, data=None):
     """Create a new instance
 
-    Associate nodes with a subset and family. These nodes are later
-    validated, according to their `family`, and integrated into the
-    shared environment, relative their `subset`.
+    Associate nodes with a product name and type. These nodes are later
+    validated, according to their `product type`, and integrated into the
+    shared environment, relative their `productName`.
 
-    Data relative each family, along with default data, are imprinted
+    Data relative each product type, along with default data, are imprinted
     into the resulting objectSet. This data is later used by extractors
     and finally asset browsers to help identify the origin of the asset.
 
     Arguments:
         Creator (Creator): Class of creator
-        name (str): Name of subset
+        name (str): Name of product
         asset (str): Name of asset
         options (dict, optional): Additional options from GUI
         data (dict, optional): Additional data from GUI
 
     Raises:
-        NameError on `subset` already exists
+        NameError on `productName` already exists
         KeyError on invalid dynamic property
         RuntimeError on host error
 

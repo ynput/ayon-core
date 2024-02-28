@@ -11,14 +11,14 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.redshift_rop"
     label = "Redshift ROP"
-    family = "redshift_rop"
+    product_type = "redshift_rop"
     icon = "magic"
     ext = "exr"
 
     # Default to split export and render jobs
     split_render = True
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "Redshift_ROP"})
@@ -28,7 +28,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateRedshiftROP, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -56,9 +56,9 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         ipr_rop.parm("linked_rop").set(instance_node.path())
 
         ext = pre_create_data.get("image_format")
-        filepath = "{renders_dir}{subset_name}/{subset_name}.{fmt}".format(
+        filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
             renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            subset_name=subset_name,
+            product_name=product_name,
             fmt="${aov}.$F4.{ext}".format(aov="AOV", ext=ext)
         )
 
@@ -83,7 +83,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             parms["RS_renderCamera"] = camera or ""
 
         export_dir = hou.text.expandString("$HIP/pyblish/rs/")
-        rs_filepath = f"{export_dir}{subset_name}/{subset_name}.$F4.rs"
+        rs_filepath = f"{export_dir}{product_name}/{product_name}.$F4.rs"
         parms["RS_archive_file"] = rs_filepath
 
         if pre_create_data.get("split_render", self.split_render):
@@ -92,7 +92,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock some Avalon attributes
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def remove_instances(self, instances):

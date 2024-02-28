@@ -7,7 +7,7 @@ def _process_reference(file_url, name, namespace, options):
 
     Args:
         file_url (str): fileapth of the objects to be loaded
-        name (str): subset name
+        name (str): product name
         namespace (str): namespace
         options (dict): dict of storing the param
 
@@ -16,7 +16,7 @@ def _process_reference(file_url, name, namespace, options):
     """
     from ayon_core.hosts.maya.api.lib import unique_namespace
     # Get name from asset being loaded
-    # Assuming name is subset name from the animation, we split the number
+    # Assuming name is product name from the animation, we split the number
     # suffix from the name to ensure the namespace is unique
     name = name.split("_")[0]
     ext = file_url.split(".")[-1]

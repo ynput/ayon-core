@@ -225,7 +225,7 @@ class LoaderPlugin(list):
             Returns static (cls) options or could collect from 'contexts'.
 
             Args:
-                contexts (list): of repre or subset contexts
+                contexts (list): of repre or product contexts
             Returns:
                 (list)
         """
@@ -246,7 +246,7 @@ class LoaderPlugin(list):
 
 
 class SubsetLoaderPlugin(LoaderPlugin):
-    """Load subset into host application
+    """Load product into host application
     Arguments:
         context (dict): avalon-core:context-1.0
         name (str, optional): Use pre-defined name
