@@ -26,7 +26,7 @@ from ayon_core.pipeline.create import (
     TaskNotSetError,
 )
 from .thumbnail_widget import ThumbnailWidget
-from .assets_widget import AssetsDialog
+from .assets_dialog import AssetsDialog
 from .tasks_widget import TasksModel
 from .icons import (
     get_pixmap,

@@ -2,99 +2,13 @@ import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.tools.utils.assets_widget import (
+    get_asset_icon,
+)
 from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     RecursiveSortFilterProxyModel,
 )
-from ayon_core.tools.utils.assets_widget import (
-    SingleSelectAssetsWidget,
-    ASSET_ID_ROLE,
-    ASSET_NAME_ROLE,
-    ASSET_PATH_ROLE,
-    get_asset_icon,
-)
-
-
-class CreateWidgetAssetsWidget(SingleSelectAssetsWidget):
-    current_context_required = QtCore.Signal()
-    header_height_changed = QtCore.Signal(int)
-
-    def __init__(self, controller, parent):
-        self._controller = controller
-        super(CreateWidgetAssetsWidget, self).__init__(parent)
-
-        self.set_refresh_btn_visibility(False)
-        self.set_current_asset_btn_visibility(False)
-
-        self._last_selection = None
-        self._enabled = None
-
-        self._last_filter_height = None
-
-    def get_project_name(self):
-        return self._controller.project_name
-
-    def get_selected_asset_name(self):
-        selection_model = self._view.selectionModel()
-        indexes = selection_model.selectedRows()
-        for index in indexes:
-            return index.data(ASSET_PATH_ROLE)
-        return None
-
-    def _check_header_height(self):
-        """Catch header height changes.
-
-        Label on top of creaters should have same height so Creators view has
-        same offset.
-        """
-        height = self.header_widget.height()
-        if height != self._last_filter_height:
-            self._last_filter_height = height
-            self.header_height_changed.emit(height)
-
-    def resizeEvent(self, event):
-        super(CreateWidgetAssetsWidget, self).resizeEvent(event)
-        self._check_header_height()
-
-    def showEvent(self, event):
-        super(CreateWidgetAssetsWidget, self).showEvent(event)
-        self._check_header_height()
-
-    def _on_current_asset_click(self):
-        self.current_context_required.emit()
-
-    def set_enabled(self, enabled):
-        if self._enabled == enabled:
-            return
-        self._enabled = enabled
-        if not enabled:
-            self._last_selection = self.get_selected_asset_id()
-            self._clear_selection()
-        elif self._last_selection is not None:
-            self.select_asset(self._last_selection)
-
-    def _select_indexes(self, *args, **kwargs):
-        super(CreateWidgetAssetsWidget, self)._select_indexes(*args, **kwargs)
-        if self._enabled:
-            return
-        self._last_selection = self.get_selected_asset_id()
-        self._clear_selection()
-
-    def update_current_asset(self):
-        # Hide set current asset if there is no one
-        asset_name = self._get_current_asset_name()
-        self.set_current_asset_btn_visibility(bool(asset_name))
-
-    def _get_current_asset_name(self):
-        return self._controller.current_asset_name
-
-    def _create_source_model(self):
-        return AssetsHierarchyModel(self._controller)
-
-    def _refresh_model(self):
-        self._model.reset()
-        self._on_model_refresh(self._model.rowCount() > 0)
-
 
 class AssetsHierarchyModel(QtGui.QStandardItemModel):
     """Assets hierarchy model.
@@ -119,7 +33,8 @@ class AssetsHierarchyModel(QtGui.QStandardItemModel):
         self._items_by_name = {}
         self._items_by_path = {}
         self._items_by_asset_id = {}
-        assets_by_parent_id = self._controller.get_asset_hierarchy()
+        # assets_by_parent_id = self._controller.get_asset_hierarchy()
+        assets_by_parent_id = {}
 
         items_by_name = {}
         items_by_path = {}

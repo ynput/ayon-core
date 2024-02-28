@@ -14,12 +14,10 @@ import arrow
 import pyblish.api
 
 from ayon_core.client import (
-    get_assets,
-    get_asset_by_id,
+    get_asset_by_name,
     get_subsets,
-    get_asset_name_identifier,
 )
-from ayon_core.lib.events import EventSystem
+from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import (
     UIDef,
     serialize_attr_defs,
@@ -43,6 +41,7 @@ from ayon_core.pipeline.create.context import (
     ConvertorsOperationFailed,
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
+from ayon_core.tools.ayon_utils.models import HierarchyModel
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
@@ -69,101 +68,17 @@ class MainThreadItem:
 class AssetDocsCache:
     """Cache asset documents for creation part."""
 
-    projection = {
-        "_id": True,
-        "name": True,
-        "data.visualParent": True,
-        "data.tasks": True,
-        "data.parents": True,
-    }
-
     def __init__(self, controller):
         self._controller = controller
-        self._asset_docs = None
-        self._asset_docs_hierarchy = None
-        self._task_names_by_asset_name = {}
-        self._asset_docs_by_name = {}
         self._full_asset_docs_by_name = {}
 
     def reset(self):
-        self._asset_docs = None
-        self._asset_docs_hierarchy = None
-        self._task_names_by_asset_name = {}
-        self._asset_docs_by_name = {}
         self._full_asset_docs_by_name = {}
 
-    def _query(self):
-        if self._asset_docs is not None:
-            return
-
-        project_name = self._controller.project_name
-        asset_docs = list(get_assets(
-            project_name, fields=self.projection.keys()
-        ))
-        asset_docs_by_name = {}
-        task_names_by_asset_name = {}
-        for asset_doc in asset_docs:
-            if "data" not in asset_doc:
-                asset_doc["data"] = {"tasks": {}, "visualParent": None}
-            elif "tasks" not in asset_doc["data"]:
-                asset_doc["data"]["tasks"] = {}
-
-            asset_name = get_asset_name_identifier(asset_doc)
-            asset_tasks = asset_doc["data"]["tasks"]
-            task_names_by_asset_name[asset_name] = list(asset_tasks.keys())
-            asset_docs_by_name[asset_name] = asset_doc
-
-        self._asset_docs = asset_docs
-        self._asset_docs_by_name = asset_docs_by_name
-        self._task_names_by_asset_name = task_names_by_asset_name
-
-    def get_asset_docs(self):
-        self._query()
-        return copy.deepcopy(self._asset_docs)
-
-    def get_asset_hierarchy(self):
-        """Prepare asset documents into hierarchy.
-
-        Convert ObjectId to string. Asset id is not used during whole
-        process of publisher but asset name is used rather.
-
-        Returns:
-            Dict[Union[str, None]: Any]: Mapping of parent id to it's children.
-                Top level assets have parent id 'None'.
-        """
-
-        if self._asset_docs_hierarchy is None:
-            _queue = collections.deque(self.get_asset_docs())
-
-            output = collections.defaultdict(list)
-            while _queue:
-                asset_doc = _queue.popleft()
-                asset_doc["_id"] = str(asset_doc["_id"])
-                parent_id = asset_doc["data"]["visualParent"]
-                if parent_id is not None:
-                    parent_id = str(parent_id)
-                    asset_doc["data"]["visualParent"] = parent_id
-                output[parent_id].append(asset_doc)
-            self._asset_docs_hierarchy = output
-        return copy.deepcopy(self._asset_docs_hierarchy)
-
-    def get_task_names_by_asset_name(self):
-        self._query()
-        return copy.deepcopy(self._task_names_by_asset_name)
-
-    def get_asset_by_name(self, asset_name):
-        self._query()
-        asset_doc = self._asset_docs_by_name.get(asset_name)
-        if asset_doc is None:
-            return None
-        return copy.deepcopy(asset_doc)
-
     def get_full_asset_by_name(self, asset_name):
-        self._query()
         if asset_name not in self._full_asset_docs_by_name:
-            asset_doc = self._asset_docs_by_name.get(asset_name)
             project_name = self._controller.project_name
-            full_asset_doc = get_asset_by_id(project_name, asset_doc["_id"])
+            full_asset_doc = get_asset_by_name(project_name, asset_name)
             self._full_asset_docs_by_name[asset_name] = full_asset_doc
         return copy.deepcopy(self._full_asset_docs_by_name[asset_name])
 
@@ -1105,18 +1020,6 @@ class AbstractPublisherController(object):
         pass
 
     @abstractmethod
-    def get_asset_docs(self):
-        pass
-
-    @abstractmethod
-    def get_asset_hierarchy(self):
-        pass
-
-    @abstractmethod
-    def get_task_names_by_asset_names(self, asset_names):
-        pass
-
-    @abstractmethod
     def get_existing_subset_names(self, asset_name):
         pass
 
@@ -1499,13 +1402,22 @@ class BasePublisherController(AbstractPublisherController):
         """
 
         if self._event_system is None:
-            self._event_system = EventSystem()
+            self._event_system = QueuedEventSystem()
         return self._event_system
 
-    def _emit_event(self, topic, data=None):
+    # Events system
+    def emit_event(self, topic, data=None, source=None):
+        """Use implemented event system to trigger event."""
+
         if data is None:
             data = {}
-        self.event_system.emit(topic, data, "controller")
+        self.event_system.emit(topic, data, source)
+
+    def register_event_callback(self, topic, callback):
+        self.event_system.add_callback(topic, callback)
+
+    def _emit_event(self, topic, data=None):
+        self.emit_event(topic, data, "controller")
 
     def _get_host_is_valid(self):
         return self._host_is_valid
@@ -1738,6 +1650,7 @@ class PublisherController(BasePublisherController):
         self._resetting_instances = False
 
         # Cacher of avalon documents
+        self._hierarchy_model = HierarchyModel(self)
         self._asset_docs_cache = AssetDocsCache(self)
 
     @property
@@ -1794,11 +1707,24 @@ class PublisherController(BasePublisherController):
         """Publish plugins."""
         return self._create_context.publish_plugins
 
-    # --- Publish specific callbacks ---
-    def get_asset_docs(self):
-        """Get asset documents from cache for whole project."""
-        return self._asset_docs_cache.get_asset_docs()
+    # Hierarchy model
+    def get_folder_items(self, project_name, sender=None):
+        return self._hierarchy_model.get_folder_items(project_name, sender)
 
+    def get_task_items(self, project_name, folder_id, sender=None):
+        return self._hierarchy_model.get_task_items(
+            project_name, folder_id, sender
+        )
+
+    def get_folder_entity(self, project_name, folder_id):
+        return self._hierarchy_model.get_folder_entity(
+            project_name, folder_id
+        )
+
+    def get_task_entity(self, project_name, task_id):
+        return self._hierarchy_model.get_task_entity(project_name, task_id)
+
+    # --- Publish specific callbacks ---
     def get_context_title(self):
         """Get context title for artist shown at the top of main window."""
 
@@ -1813,32 +1739,18 @@ class PublisherController(BasePublisherController):
 
         return context_title
 
-    def get_asset_hierarchy(self):
-        """Prepare asset documents into hierarchy."""
-
-        return self._asset_docs_cache.get_asset_hierarchy()
-
-    def get_task_names_by_asset_names(self, asset_names):
-        """Prepare task names by asset name."""
-        task_names_by_asset_name = (
-            self._asset_docs_cache.get_task_names_by_asset_name()
-        )
-        result = {}
-        for asset_name in asset_names:
-            result[asset_name] = set(
-                task_names_by_asset_name.get(asset_name) or []
-            )
-        return result
-
     def get_existing_subset_names(self, asset_name):
         project_name = self.project_name
-        asset_doc = self._asset_docs_cache.get_asset_by_name(asset_name)
-        if not asset_doc:
+        folder_item = self._hierarchy_model.get_folder_item_by_path(
+            project_name, asset_name
+        )
+        if not folder_item:
             return None
 
-        asset_id = asset_doc["_id"]
         subset_docs = get_subsets(
-            project_name, asset_ids=[asset_id], fields=["name"]
+            project_name,
+            asset_ids=[folder_item.entity_id],
+            fields=["name"]
         )
         return {
             subset_doc["name"]
@@ -1857,8 +1769,6 @@ class PublisherController(BasePublisherController):
 
         # Reset avalon context
         self._create_context.reset_current_context()
-
-        self._asset_docs_cache.reset()
 
         self._reset_plugins()
         # Publish part must be reset after plugins

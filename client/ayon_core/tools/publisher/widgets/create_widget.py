@@ -14,8 +14,7 @@ from .widgets import (
     IconValuePixmapLabel,
     CreateBtn,
 )
-from .assets_widget import CreateWidgetAssetsWidget
-from .tasks_widget import CreateWidgetTasksWidget
+from .create_context_widgets import CreateContextWidget
 from .precreate_widget import PreCreateWidget
 from ..constants import (
     VARIANT_TOOLTIP,
@@ -121,16 +120,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         main_splitter_widget = QtWidgets.QSplitter(self)
 
-        context_widget = QtWidgets.QWidget(main_splitter_widget)
-
-        assets_widget = CreateWidgetAssetsWidget(controller, context_widget)
-        tasks_widget = CreateWidgetTasksWidget(controller, context_widget)
-
-        context_layout = QtWidgets.QVBoxLayout(context_widget)
-        context_layout.setContentsMargins(0, 0, 0, 0)
-        context_layout.setSpacing(0)
-        context_layout.addWidget(assets_widget, 2)
-        context_layout.addWidget(tasks_widget, 1)
+        context_widget = CreateContextWidget(controller, main_splitter_widget)
 
         # --- Creators view ---
         creators_widget = QtWidgets.QWidget(main_splitter_widget)
@@ -279,11 +269,8 @@ class CreateWidget(QtWidgets.QWidget):
         )
         variant_hints_btn.clicked.connect(self._on_variant_btn_click)
         variant_hints_menu.triggered.connect(self._on_variant_action)
-        assets_widget.selection_changed.connect(self._on_asset_change)
-        assets_widget.current_context_required.connect(
-            self._on_current_session_context_request
-        )
-        tasks_widget.task_changed.connect(self._on_task_change)
+        context_widget.folder_changed.connect(self._on_folder_change)
+        context_widget.task_changed.connect(self._on_task_change)
         thumbnail_widget.thumbnail_created.connect(self._on_thumbnail_create)
         thumbnail_widget.thumbnail_cleared.connect(self._on_thumbnail_clear)
 
@@ -299,8 +286,6 @@ class CreateWidget(QtWidgets.QWidget):
         self._creators_splitter = creators_splitter
 
         self._context_widget = context_widget
-        self._assets_widget = assets_widget
-        self._tasks_widget = tasks_widget
 
         self.subset_name_input = subset_name_input
 
@@ -324,7 +309,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._first_show = True
         self._last_thumbnail_path = None
 
-        self._last_current_context_asset = None
+        self._last_current_context_folder_path = None
         self._last_current_context_task = None
         self._use_current_context = True
 
@@ -340,31 +325,35 @@ class CreateWidget(QtWidgets.QWidget):
         return self._context_widget.isEnabled()
 
     def _get_asset_name(self):
-        asset_name = None
+        folder_path = None
         if self._context_change_is_enabled():
-            asset_name = self._assets_widget.get_selected_asset_name()
+            folder_path = self._context_widget.get_selected_folder_path()
 
-        if asset_name is None:
-            asset_name = self.current_asset_name
-        return asset_name or None
+        if folder_path is None:
+            folder_path = self.current_asset_name
+        return folder_path or None
+
+    def _get_folder_id(self):
+        folder_id = None
+        if self._context_widget.isEnabled():
+            folder_id = self._context_widget.get_selected_folder_id()
+        return folder_id
 
     def _get_task_name(self):
         task_name = None
         if self._context_change_is_enabled():
             # Don't use selection of task if asset is not set
-            asset_name = self._assets_widget.get_selected_asset_name()
-            if asset_name:
-                task_name = self._tasks_widget.get_selected_task_name()
+            folder_path = self._context_widget.get_selected_folder_path()
+            if folder_path:
+                task_name = self._context_widget.get_selected_task_name()
 
         if not task_name:
             task_name = self.current_task_name
         return task_name
 
     def _set_context_enabled(self, enabled):
-        self._assets_widget.set_enabled(enabled)
-        self._tasks_widget.set_enabled(enabled)
         check_prereq = self._context_widget.isEnabled() != enabled
-        self._context_widget.setEnabled(enabled)
+        self._context_widget.set_enabled(enabled)
         if check_prereq:
             self._invalidate_prereq()
 
@@ -375,12 +364,12 @@ class CreateWidget(QtWidgets.QWidget):
         self._use_current_context = True
 
     def refresh(self):
-        current_asset_name = self._controller.current_asset_name
+        current_folder_path = self._controller.current_asset_name
         current_task_name = self._controller.current_task_name
 
         # Get context before refresh to keep selection of asset and
         #   task widgets
-        asset_name = self._get_asset_name()
+        folder_path = self._get_asset_name()
         task_name = self._get_task_name()
 
         # Replace by current context if last loaded context was
@@ -388,16 +377,16 @@ class CreateWidget(QtWidgets.QWidget):
         if (
             self._use_current_context
             or (
-                self._last_current_context_asset
-                and asset_name == self._last_current_context_asset
+                self._last_current_context_folder_path
+                and folder_path == self._last_current_context_folder_path
                 and task_name == self._last_current_context_task
             )
         ):
-            asset_name = current_asset_name
+            folder_path = current_folder_path
             task_name = current_task_name
 
         # Store values for future refresh
-        self._last_current_context_asset = current_asset_name
+        self._last_current_context_folder_path = current_folder_path
         self._last_current_context_task = current_task_name
         self._use_current_context = False
 
@@ -407,18 +396,16 @@ class CreateWidget(QtWidgets.QWidget):
         #   name
         self._set_context_enabled(False)
 
-        self._assets_widget.refresh()
-
         # Refresh data before update of creators
-        self._refresh_asset()
+        self._context_widget.refresh()
+        self._refresh_product_name()
+
         # Then refresh creators which may trigger callbacks using refreshed
         #   data
         self._refresh_creators()
 
-        self._assets_widget.update_current_asset()
-        self._assets_widget.select_asset_by_name(asset_name)
-        self._tasks_widget.set_asset_name(asset_name)
-        self._tasks_widget.select_task_name(task_name)
+        self._context_widget.update_current_context_btn()
+        self._context_widget.set_selected_context(folder_path, task_name)
 
         self._invalidate_prereq_deffered()
 
@@ -460,7 +447,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._on_variant_change()
 
-    def _refresh_asset(self):
+    def _refresh_product_name(self):
         asset_name = self._get_asset_name()
 
         # Skip if asset did not change
@@ -545,11 +532,8 @@ class CreateWidget(QtWidgets.QWidget):
         # Trigger refresh only if is visible
         self.refresh()
 
-    def _on_asset_change(self):
-        self._refresh_asset()
-
-        asset_name = self._assets_widget.get_selected_asset_name()
-        self._tasks_widget.set_asset_name(asset_name)
+    def _on_folder_change(self):
+        self._refresh_product_name()
         if self._context_change_is_enabled():
             self._invalidate_prereq_deffered()
 
@@ -563,12 +547,6 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _on_thumbnail_clear(self):
         self._last_thumbnail_path = None
-
-    def _on_current_session_context_request(self):
-        self._assets_widget.select_current_asset()
-        task_name = self.current_task_name
-        if task_name:
-            self._tasks_widget.select_task_name(task_name)
 
     def _on_creator_item_change(self, new_index, _old_index):
         identifier = None
@@ -616,7 +594,7 @@ class CreateWidget(QtWidgets.QWidget):
             != self._context_change_is_enabled()
         ):
             self._set_context_enabled(creator_item.create_allow_context_change)
-            self._refresh_asset()
+            self._refresh_product_name()
 
         self._thumbnail_widget.setVisible(
             creator_item.create_allow_thumbnail

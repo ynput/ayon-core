@@ -30,8 +30,8 @@ class TrayPublisherController(QtPublisherController):
     def host(self):
         return self._host
 
-    def reset_project_data_cache(self):
-        self._asset_docs_cache.reset()
+    def reset_hierarchy_cache(self):
+        self._hierarchy_model.reset()
 
 
 class TrayPublisherRegistry(JSONSettingRegistry):
@@ -248,7 +248,7 @@ class TrayPublishWindow(PublisherWindow):
     def _on_project_select(self, project_name):
         # TODO register project specific plugin paths
         self._controller.save_changes(False)
-        self._controller.reset_project_data_cache()
+        self._controller.reset_hierarchy_cache()
 
         self.reset()
         if not self._controller.instances:
