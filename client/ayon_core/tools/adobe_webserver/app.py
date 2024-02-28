@@ -82,7 +82,7 @@ class WebServerTool:
 
         context = get_global_context()
         project = context["project_name"]
-        asset = context["asset_name"]
+        asset = context["folder_path"]
         task = context["task_name"]
         log.info("Sending context change to {}-{}-{}".format(project,
                                                              asset,
