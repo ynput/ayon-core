@@ -1691,7 +1691,7 @@ class CreateContext:
             host_context = self.host.get_current_context()
             if host_context:
                 project_name = host_context.get("project_name")
-                asset_name = host_context.get("asset_name")
+                asset_name = host_context.get("folder_path")
                 task_name = host_context.get("task_name")
 
         if isinstance(self.host, IWorkfileHost):
