@@ -136,7 +136,7 @@ class FusionLoadSequence(load.LoaderPlugin):
         "render",
         "plate",
         "image",
-        "onilne",
+        "online",
     ]
     representations = ["*"]
     extensions = set(
