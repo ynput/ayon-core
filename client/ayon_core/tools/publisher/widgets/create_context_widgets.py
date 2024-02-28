@@ -3,6 +3,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.tools.utils import PlaceholderLineEdit
 
+from ayon_core.tools.ayon_utils.models import HierarchyExpectedSelection
 from ayon_core.tools.ayon_utils.widgets import FoldersWidget, TasksWidget
 
 
@@ -43,7 +44,6 @@ class CreateSelectionModel(object):
         return self._folder_id
 
     def set_selected_folder(self, folder_id):
-        print(folder_id, self._folder_id)
         if folder_id == self._folder_id:
             return
 
@@ -85,7 +85,10 @@ class CreateHierarchyController:
     def __init__(self, controller):
         self._event_system = QueuedEventSystem()
         self._controller = controller
-        self._selection_model = CreateSelectionModel(controller)
+        self._selection_model = CreateSelectionModel(self)
+        self._expected_selection = HierarchyExpectedSelection(
+            self, handle_project=False
+        )
 
     # Events system
     @property
@@ -97,7 +100,6 @@ class CreateHierarchyController:
 
         if data is None:
             data = {}
-        print("emit_event", topic, data, source)
         self.event_system.emit(topic, data, source)
 
     def register_event_callback(self, topic, callback):
@@ -124,6 +126,21 @@ class CreateHierarchyController:
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
+    # Expected selection
+    def get_expected_selection_data(self):
+        return self._expected_selection.get_expected_selection_data()
+
+    def set_expected_selection(self, project_name, folder_id, task_name):
+        self._expected_selection.set_expected_selection(
+            project_name, folder_id, task_name
+        )
+
+    def expected_folder_selected(self, folder_id):
+        self._expected_selection.expected_folder_selected(folder_id)
+
+    def expected_task_selected(self, folder_id, task_name):
+        self._expected_selection.expected_task_selected(folder_id, task_name)
+
 
 class CreateContextWidget(QtWidgets.QWidget):
     folder_changed = QtCore.Signal()
@@ -134,6 +151,7 @@ class CreateContextWidget(QtWidgets.QWidget):
 
         self._controller = controller
         self._enabled = True
+        self._last_project_name = None
         self._last_folder_id = None
         self._last_selected_task_name = None
 
@@ -155,8 +173,12 @@ class CreateContextWidget(QtWidgets.QWidget):
 
         hierarchy_controller = CreateHierarchyController(controller)
 
-        folders_widget = FoldersWidget(hierarchy_controller, self)
-        tasks_widget = TasksWidget(hierarchy_controller, self)
+        folders_widget = FoldersWidget(
+            hierarchy_controller, self, handle_expected_selection=True
+        )
+        tasks_widget = TasksWidget(
+            hierarchy_controller, self, handle_expected_selection=True
+        )
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -168,6 +190,7 @@ class CreateContextWidget(QtWidgets.QWidget):
         folders_widget.selection_changed.connect(self._on_folder_change)
         tasks_widget.selection_changed.connect(self._on_task_change)
         current_context_btn.clicked.connect(self._on_current_context_click)
+        folder_filter_input.textChanged.connect(self._on_folder_filter_change)
 
         self._folder_filter_input = folder_filter_input
         self._current_context_btn = current_context_btn
@@ -192,9 +215,12 @@ class CreateContextWidget(QtWidgets.QWidget):
         folder_path = self._controller.current_asset_name
         self._current_context_btn.setVisible(bool(folder_path))
 
-    def set_selected_context(self, folder_path, task_name):
-        self._folders_widget.set_selected_folder_path(folder_path)
-        self._tasks_widget.set_selected_task(task_name)
+    def set_selected_context(self, folder_id, task_name):
+        self._hierarchy_controller.set_expected_selection(
+            self._controller.project_name,
+            folder_id,
+            task_name
+        )
 
     def is_enabled(self):
         return self._enabled
@@ -215,14 +241,27 @@ class CreateContextWidget(QtWidgets.QWidget):
             self._clear_selection()
 
         elif self._last_selected_task_name is not None:
-            self.set_selected_folder(self._last_folder_id)
-            self.select_task_name(self._last_selected_task_name)
+            self._hierarchy_controller.set_expected_selection(
+                self._last_project_name,
+                self._last_folder_id,
+                self._last_selected_task_name
+            )
 
     def refresh(self):
+        self._last_project_name = self._controller.project_name
+        folder_id = self._last_folder_id
+        task_name = self._last_selected_task_name
+        if folder_id is None:
+            folder_path = self._controller.current_asset_name
+            folder_id = self._controller.get_folder_id_from_path(folder_path)
+            task_name = self._controller.current_task_name
         self._hierarchy_controller.set_selected_project(
-            self._controller.project_name
+            self._last_project_name
         )
-        self._folders_widget.set_project_name(self._controller.project_name)
+        self._folders_widget.set_project_name(self._last_project_name)
+        self._hierarchy_controller.set_expected_selection(
+            self._last_project_name, folder_id, task_name
+        )
 
     def _clear_selection(self):
         self._folders_widget.set_selected_folder(None)
@@ -234,6 +273,12 @@ class CreateContextWidget(QtWidgets.QWidget):
         self.task_changed.emit()
 
     def _on_current_context_click(self):
-        # TODO implement
         folder_path = self._controller.current_asset_name
         task_name = self._controller.current_task_name
+        folder_id = self._controller.get_folder_id_from_path(folder_path)
+        self._hierarchy_controller.set_expected_selection(
+            self._last_project_name, folder_id, task_name
+        )
+
+    def _on_folder_filter_change(self, text):
+        self._folders_widget.set_name_filter(text)

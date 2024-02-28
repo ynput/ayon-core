@@ -1725,6 +1725,15 @@ class PublisherController(BasePublisherController):
     def get_task_entity(self, project_name, task_id):
         return self._hierarchy_model.get_task_entity(project_name, task_id)
 
+    # Publisher custom method
+    def get_folder_id_from_path(self, folder_path):
+        folder_item = self._hierarchy_model.get_folder_item_by_path(
+            self.project_name, folder_path
+        )
+        if folder_item:
+            return folder_item.entity_id
+        return None
+
     # --- Publish specific callbacks ---
     def get_context_title(self):
         """Get context title for artist shown at the top of main window."""
