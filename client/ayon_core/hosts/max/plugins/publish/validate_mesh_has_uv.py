@@ -15,7 +15,8 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
     """Validate the current mesh has UVs.
 
     This validator only checks if the mesh has UVs but not
-    whether the faces of the mesh have UVs.
+    whether all the individual faces of the mesh have UVs.
+
     It validates whether the current mesh has texture vertices.
     If the mesh does not have texture vertices, it does not
     have UVs in Max.
@@ -52,5 +53,5 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
                 report,
                 description=(
                 "Model meshes are required to have UVs.\n\n"
-                "Meshes detected with no texture vertice(s) or missing UVs"),
+                "Meshes detected with no texture vertice or missing UVs"),
                 title="Mesh has missing UVs")
