@@ -720,7 +720,6 @@ class InstanceCardView(AbstractInstanceView):
                 )
                 group_widget.active_changed.connect(self._on_active_changed)
                 group_widget.selected.connect(self._on_widget_selection)
-                # group_widget.double_clicked.connect(self._on_widget_double_clicked)
                 self._content_layout.insertWidget(widget_idx, group_widget)
                 self._widgets_by_group[group_name] = group_widget
 
@@ -830,11 +829,6 @@ class InstanceCardView(AbstractInstanceView):
             self._select_item_extend_to(instance_id, group_name, new_widget)
 
         self.selection_changed.emit()
-
-    # def _on_widget_double_clicked(self):
-    #     print("_on_widget_double_clicked")
-    #     widgets = self._get_selected_widgets()
-    #     print(widgets)
 
     def _select_item_clear(self, instance_id, group_name, new_widget):
         """Select specific item by instance id and clear previous selection.
