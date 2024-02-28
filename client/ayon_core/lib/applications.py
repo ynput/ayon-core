@@ -489,7 +489,7 @@ class ApplicationManager:
         """Launch procedure.
 
         For host application it's expected to contain "project_name",
-        "asset_name" and "task_name".
+        "folder_path" and "task_name".
 
         Args:
             app_name (str): Name of application that should be launched.
@@ -1406,7 +1406,7 @@ class EnvironmentPrepData(dict):
 
 def get_app_environments_for_context(
     project_name,
-    asset_name,
+    folder_path,
     task_name,
     app_name,
     env_group=None,
@@ -1417,7 +1417,7 @@ def get_app_environments_for_context(
     """Prepare environment variables by context.
     Args:
         project_name (str): Name of project.
-        asset_name (str): Name of asset.
+        folder_path (str): Folder path.
         task_name (str): Name of task.
         app_name (str): Name of application that is launched and can be found
             by ApplicationManager.
@@ -1439,7 +1439,7 @@ def get_app_environments_for_context(
     context = app_manager.create_launch_context(
         app_name,
         project_name=project_name,
-        asset_name=asset_name,
+        folder_path=folder_path,
         task_name=task_name,
         env_group=env_group,
         launch_type=launch_type,
