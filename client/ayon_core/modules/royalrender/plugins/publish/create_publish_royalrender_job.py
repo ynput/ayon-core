@@ -16,7 +16,7 @@ from ayon_core.pipeline.publish import KnownPublishError
 from ayon_core.pipeline.farm.pyblish_functions import (
     create_skeleton_instance,
     create_instances_for_aov,
-    attach_instances_to_subset,
+    attach_instances_to_product,
     prepare_representations,
     create_metadata_path
 )
@@ -113,9 +113,9 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
             instance_skeleton_data["representations"] += representations
             instances = [instance_skeleton_data]
 
-        # attach instances to subset
+        # attach instances to product
         if instance.data.get("attachTo"):
-            instances = attach_instances_to_subset(
+            instances = attach_instances_to_product(
                 instance.data.get("attachTo"), instances
             )
 
@@ -168,8 +168,8 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         """
         data = instance.data.copy()
-        subset = data["subset"]
-        jobname = "Publish - {subset}".format(subset=subset)
+        product_name = data["productName"]
+        jobname = "Publish - {}".format(product_name)
 
         # Transfer the environment from the original job to this dependent
         # job, so they use the same environment

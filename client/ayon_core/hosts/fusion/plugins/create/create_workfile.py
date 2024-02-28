@@ -10,7 +10,7 @@ from ayon_core.pipeline import (
 
 class FusionWorkfileCreator(AutoCreator):
     identifier = "workfile"
-    family = "workfile"
+    product_type = "workfile"
     label = "Workfile"
     icon = "fa5.file"
 
@@ -27,9 +27,12 @@ class FusionWorkfileCreator(AutoCreator):
         if not data:
             return
 
+        product_name = data.get("productName")
+        if product_name is None:
+            product_name = data["subset"]
         instance = CreatedInstance(
-            family=self.family,
-            subset_name=data["subset"],
+            product_type=self.product_type,
+            product_name=product_name,
             data=data,
             creator=self
         )
@@ -59,7 +62,7 @@ class FusionWorkfileCreator(AutoCreator):
 
         existing_instance = None
         for instance in self.create_context.instances:
-            if instance.family == self.family:
+            if instance.product_type == self.product_type:
                 existing_instance = instance
                 break
 
@@ -75,9 +78,12 @@ class FusionWorkfileCreator(AutoCreator):
 
         if existing_instance is None:
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name
+            product_name = self.get_product_name(
+                project_name,
+                asset_doc,
+                task_name,
+                self.default_variant,
+                host_name,
             )
             data = {
                 "folderPath": asset_name,
@@ -85,12 +91,17 @@ class FusionWorkfileCreator(AutoCreator):
                 "variant": self.default_variant,
             }
             data.update(self.get_dynamic_data(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name, None
+                project_name,
+                asset_doc,
+                task_name,
+                self.default_variant,
+                host_name,
+                None
+
             ))
 
             new_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             new_instance.transient_data["comp"] = comp
             self._add_instance_to_context(new_instance)
@@ -100,10 +111,13 @@ class FusionWorkfileCreator(AutoCreator):
             or existing_instance["task"] != task_name
         ):
             asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name
+            product_name = self.get_product_name(
+                project_name,
+                asset_doc,
+                task_name,
+                self.default_variant,
+                host_name,
             )
             existing_instance["folderPath"] = asset_name
             existing_instance["task"] = task_name
-            existing_instance["subset"] = subset_name
+            existing_instance["productName"] = product_name

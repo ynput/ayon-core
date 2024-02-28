@@ -266,7 +266,8 @@ class PublishReportMaker:
         return {
             "name": instance.data.get("name"),
             "label": get_publish_instance_label(instance),
-            "family": instance.data["family"],
+            "product_type": instance.data.get("productType"),
+            "family": instance.data.get("family"),
             "families": instance.data.get("families") or [],
             "exists": exists,
             "creator_identifier": instance.data.get("creator_identifier"),
@@ -794,7 +795,7 @@ class CreatorItem:
         self,
         identifier,
         creator_type,
-        family,
+        product_type,
         label,
         group_label,
         icon,
@@ -809,7 +810,7 @@ class CreatorItem:
     ):
         self.identifier = identifier
         self.creator_type = creator_type
-        self.family = family
+        self.product_type = product_type
         self.label = label
         self.group_label = group_label
         self.icon = icon
@@ -858,7 +859,7 @@ class CreatorItem:
         return cls(
             identifier,
             creator_type,
-            creator.family,
+            creator.product_type,
             creator.label or identifier,
             creator.get_group_label(),
             creator.get_icon(),
@@ -882,7 +883,7 @@ class CreatorItem:
         return {
             "identifier": self.identifier,
             "creator_type": str(self.creator_type),
-            "family": self.family,
+            "product_type": self.product_type,
             "label": self.label,
             "group_label": self.group_label,
             "icon": self.icon,
@@ -1020,7 +1021,7 @@ class AbstractPublisherController(object):
         pass
 
     @abstractmethod
-    def get_existing_subset_names(self, asset_name):
+    def get_existing_product_names(self, asset_name):
         pass
 
     @abstractmethod
@@ -1055,7 +1056,7 @@ class AbstractPublisherController(object):
         pass
 
     @abstractmethod
-    def get_subset_name(
+    def get_product_name(
         self,
         creator_identifier,
         variant,
@@ -1063,15 +1064,15 @@ class AbstractPublisherController(object):
         asset_name,
         instance_id=None
     ):
-        """Get subset name based on passed data.
+        """Get product name based on passed data.
 
         Args:
             creator_identifier (str): Identifier of creator which should be
-                responsible for subset name creation.
+                responsible for product name creation.
             variant (str): Variant value from user's input.
             task_name (str): Name of task for which is instance created.
             asset_name (str): Name of asset for which is instance created.
-            instance_id (Union[str, None]): Existing instance id when subset
+            instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
 
@@ -1079,7 +1080,7 @@ class AbstractPublisherController(object):
 
     @abstractmethod
     def create(
-        self, creator_identifier, subset_name, instance_data, options
+        self, creator_identifier, product_name, instance_data, options
     ):
         """Trigger creation by creator identifier.
 
@@ -1087,7 +1088,7 @@ class AbstractPublisherController(object):
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
-            subset_name (str): Calculated subset name.
+            product_name (str): Calculated product name.
             instance_data (Dict[str, Any]): Base instance data with variant,
                 asset name and task name.
             options (Dict[str, Any]): Data from pre-create attributes.
@@ -1739,7 +1740,7 @@ class PublisherController(BasePublisherController):
 
         return context_title
 
-    def get_existing_subset_names(self, asset_name):
+    def get_existing_product_names(self, asset_name):
         project_name = self.project_name
         folder_item = self._hierarchy_model.get_folder_item_by_path(
             project_name, asset_name
@@ -1837,7 +1838,7 @@ class PublisherController(BasePublisherController):
                 self._emit_event(
                     "convertors.find.failed",
                     {
-                        "title": "Collection of unsupported subset failed",
+                        "title": "Collection of unsupported product failed",
                         "failed_info": exc.failed_info
                     }
                 )
@@ -1979,7 +1980,7 @@ class PublisherController(BasePublisherController):
             ))
         return output
 
-    def get_subset_name(
+    def get_product_name(
         self,
         creator_identifier,
         variant,
@@ -1987,15 +1988,15 @@ class PublisherController(BasePublisherController):
         asset_name,
         instance_id=None
     ):
-        """Get subset name based on passed data.
+        """Get product name based on passed data.
 
         Args:
             creator_identifier (str): Identifier of creator which should be
-                responsible for subset name creation.
+                responsible for product name creation.
             variant (str): Variant value from user's input.
             task_name (str): Name of task for which is instance created.
             asset_name (str): Name of asset for which is instance created.
-            instance_id (Union[str, None]): Existing instance id when subset
+            instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
 
@@ -2006,8 +2007,8 @@ class PublisherController(BasePublisherController):
         if instance_id:
             instance = self.instances[instance_id]
 
-        return creator.get_subset_name(
-            variant, task_name, asset_doc, project_name, instance=instance
+        return creator.get_product_name(
+            project_name, asset_doc, task_name, variant, instance=instance
         )
 
     def trigger_convertor_items(self, convertor_identifiers):
@@ -2043,14 +2044,14 @@ class PublisherController(BasePublisherController):
         self.reset()
 
     def create(
-        self, creator_identifier, subset_name, instance_data, options
+        self, creator_identifier, product_name, instance_data, options
     ):
         """Trigger creation and refresh of instances in UI."""
 
         success = True
         try:
             self._create_context.create_with_unified_error(
-                creator_identifier, subset_name, instance_data, options
+                creator_identifier, product_name, instance_data, options
             )
 
         except CreatorsOperationFailed as exc:

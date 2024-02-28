@@ -284,29 +284,29 @@ class ExtractUSDLayered(publish.Extractor):
         # Compare this dependency with the latest published version
         # to detect whether we should make this into a new publish
         # version. If not, skip it.
-        asset = get_asset_by_name(
+        asset_doc = get_asset_by_name(
             project_name, dependency.data["folderPath"], fields=["_id"]
         )
-        subset = get_subset_by_name(
+        subset_doc = get_subset_by_name(
             project_name,
-            dependency.data["subset"],
-            asset["_id"],
+            dependency.data["productName"],
+            asset_doc["_id"],
             fields=["_id"]
         )
-        if not subset:
+        if not subset_doc:
             # Subset doesn't exist yet. Definitely new file
-            self.log.debug("No existing subset..")
+            self.log.debug("No existing product..")
             return False
 
-        version = get_last_version_by_subset_id(
-            project_name, subset["_id"], fields=["_id"]
+        version_doc = get_last_version_by_subset_id(
+            project_name, subset_doc["_id"], fields=["_id"]
         )
-        if not version:
+        if not version_doc:
             self.log.debug("No existing version..")
             return False
 
         representation = get_representation_by_name(
-            project_name, ext.lstrip("."), version["_id"]
+            project_name, ext.lstrip("."), version_doc["_id"]
         )
         if not representation:
             self.log.debug("No existing representation..")
