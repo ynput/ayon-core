@@ -5,6 +5,14 @@ from ayon_core.addon import AYONAddon, IHostAddon
 UNREAL_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+def get_launch_script_path():
+    return os.path.join(
+        UNREAL_ROOT_DIR,
+        "api",
+        "launch_script.py"
+    )
+
+
 class UnrealAddon(AYONAddon, IHostAddon):
     name = "unreal"
     host_name = "unreal"
