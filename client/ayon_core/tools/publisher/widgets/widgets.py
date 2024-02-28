@@ -481,7 +481,7 @@ class AssetsField(BaseClickableFrame):
         if not result:
             return
 
-        asset_name = self._dialog.get_selected_asset()
+        asset_name = self._dialog.get_selected_folder_path()
         if asset_name is None:
             return
 
@@ -495,7 +495,7 @@ class AssetsField(BaseClickableFrame):
         self.value_changed.emit()
 
     def _mouse_release_callback(self):
-        self._dialog.set_selected_assets(self._selected_items)
+        self._dialog.set_selected_folders(self._selected_items)
         self._dialog.open()
 
     def set_multiselection_text(self, text):

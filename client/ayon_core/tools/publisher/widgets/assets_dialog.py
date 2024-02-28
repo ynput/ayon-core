@@ -1,142 +1,48 @@
-import collections
-
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.tools.utils.assets_widget import (
-    get_asset_icon,
-)
-from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
-    RecursiveSortFilterProxyModel,
-)
+from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.tools.ayon_utils.widgets import FoldersWidget
+from ayon_core.tools.utils import PlaceholderLineEdit
 
-class AssetsHierarchyModel(QtGui.QStandardItemModel):
-    """Assets hierarchy model.
 
-    For selecting asset for which an instance should be created.
-
-    Uses controller to load asset hierarchy. All asset documents are stored by
-    their parents.
-    """
-
+class FoldersDialogController:
     def __init__(self, controller):
-        super(AssetsHierarchyModel, self).__init__()
+        self._event_system = QueuedEventSystem()
         self._controller = controller
 
-        self._items_by_name = {}
-        self._items_by_path = {}
-        self._items_by_asset_id = {}
+    @property
+    def event_system(self):
+        return self._event_system
 
-    def reset(self):
-        self.clear()
+    def emit_event(self, topic, data=None, source=None):
+        """Use implemented event system to trigger event."""
 
-        self._items_by_name = {}
-        self._items_by_path = {}
-        self._items_by_asset_id = {}
-        # assets_by_parent_id = self._controller.get_asset_hierarchy()
-        assets_by_parent_id = {}
+        if data is None:
+            data = {}
+        self.event_system.emit(topic, data, source)
 
-        items_by_name = {}
-        items_by_path = {}
-        items_by_asset_id = {}
-        _queue = collections.deque()
-        _queue.append((self.invisibleRootItem(), None, None))
-        while _queue:
-            parent_item, parent_id, parent_path = _queue.popleft()
-            children = assets_by_parent_id.get(parent_id)
-            if not children:
-                continue
+    def register_event_callback(self, topic, callback):
+        self.event_system.add_callback(topic, callback)
 
-            children_by_name = {
-                child["name"]: child
-                for child in children
-            }
-            items = []
-            for name in sorted(children_by_name.keys()):
-                child = children_by_name[name]
-                child_id = child["_id"]
-                if parent_path:
-                    child_path = "{}/{}".format(parent_path, name)
-                else:
-                    child_path = "/{}".format(name)
+    def get_folder_items(self, project_name, sender=None):
+        return self._controller.get_folder_items(project_name, sender)
 
-                has_children = bool(assets_by_parent_id.get(child_id))
-                icon = get_asset_icon(child, has_children)
-
-                item = QtGui.QStandardItem(name)
-                item.setFlags(
-                    QtCore.Qt.ItemIsEnabled
-                    | QtCore.Qt.ItemIsSelectable
-                )
-                item.setData(icon, QtCore.Qt.DecorationRole)
-                item.setData(child_id, ASSET_ID_ROLE)
-                item.setData(name, ASSET_NAME_ROLE)
-                item.setData(child_path, ASSET_PATH_ROLE)
-
-                items_by_name[name] = item
-                items_by_path[child_path] = item
-                items_by_asset_id[child_id] = item
-                items.append(item)
-                _queue.append((item, child_id, child_path))
-
-            parent_item.appendRows(items)
-
-        self._items_by_name = items_by_name
-        self._items_by_path = items_by_path
-        self._items_by_asset_id = items_by_asset_id
-
-    def get_index_by_asset_id(self, asset_id):
-        item = self._items_by_asset_id.get(asset_id)
-        if item is not None:
-            return item.index()
-        return QtCore.QModelIndex()
-
-    def get_index_by_asset_name(self, asset_name):
-        item = self._items_by_path.get(asset_name)
-        if item is None:
-            item = self._items_by_name.get(asset_name)
-
-        if item is None:
-            return QtCore.QModelIndex()
-        return item.index()
-
-    def name_is_valid(self, item_name):
-        return item_name in self._items_by_path
-
-
-class AssetDialogView(QtWidgets.QTreeView):
-    double_clicked = QtCore.Signal(QtCore.QModelIndex)
-
-    def mouseDoubleClickEvent(self, event):
-        index = self.indexAt(event.pos())
-        if index.isValid():
-            self.double_clicked.emit(index)
-            event.accept()
+    def set_selected_folder(self, folder_id):
+        pass
 
 
 class AssetsDialog(QtWidgets.QDialog):
-    """Dialog to select asset for a context of instance."""
+    """Dialog to select folder for a context of instance."""
 
     def __init__(self, controller, parent):
         super(AssetsDialog, self).__init__(parent)
-        self.setWindowTitle("Select asset")
-
-        model = AssetsHierarchyModel(controller)
-        proxy_model = RecursiveSortFilterProxyModel()
-        proxy_model.setSourceModel(model)
-        proxy_model.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.setWindowTitle("Select folder")
 
         filter_input = PlaceholderLineEdit(self)
         filter_input.setPlaceholderText("Filter folders..")
 
-        asset_view = AssetDialogView(self)
-        asset_view.setModel(proxy_model)
-        asset_view.setHeaderHidden(True)
-        asset_view.setFrameShape(QtWidgets.QFrame.NoFrame)
-        asset_view.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        asset_view.setAlternatingRowColors(True)
-        asset_view.setSelectionBehavior(QtWidgets.QTreeView.SelectRows)
-        asset_view.setAllColumnsShowFocus(True)
+        folders_controller = FoldersDialogController(controller)
+        folders_widget = FoldersWidget(folders_controller, self)
 
         ok_btn = QtWidgets.QPushButton("OK", self)
         cancel_btn = QtWidgets.QPushButton("Cancel", self)
@@ -148,28 +54,26 @@ class AssetsDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(filter_input, 0)
-        layout.addWidget(asset_view, 1)
+        layout.addWidget(folders_widget, 1)
         layout.addLayout(btns_layout, 0)
 
         controller.event_system.add_callback(
             "controller.reset.finished", self._on_controller_reset
         )
 
-        asset_view.double_clicked.connect(self._on_ok_clicked)
+        folders_widget.double_clicked.connect(self._on_ok_clicked)
         filter_input.textChanged.connect(self._on_filter_change)
         ok_btn.clicked.connect(self._on_ok_clicked)
         cancel_btn.clicked.connect(self._on_cancel_clicked)
 
+        self._controller = controller
         self._filter_input = filter_input
         self._ok_btn = ok_btn
         self._cancel_btn = cancel_btn
 
-        self._model = model
-        self._proxy_model = proxy_model
+        self._folders_widget = folders_widget
 
-        self._asset_view = asset_view
-
-        self._selected_asset = None
+        self._selected_folder_path = None
         # Soft refresh is enabled
         # - reset will happen at all cost if soft reset is enabled
         # - adds ability to call reset on multiple places without repeating
@@ -194,7 +98,7 @@ class AssetsDialog(QtWidgets.QDialog):
         self._soft_reset_enabled = True
 
     def showEvent(self, event):
-        """Refresh asset model on show."""
+        """Refresh folders widget on show."""
         super(AssetsDialog, self).showEvent(event)
         if self._first_show:
             self._first_show = False
@@ -203,76 +107,44 @@ class AssetsDialog(QtWidgets.QDialog):
         self.reset(False)
 
     def reset(self, force=True):
-        """Reset asset model."""
+        """Reset widget."""
         if not force and not self._soft_reset_enabled:
             return
 
         if self._soft_reset_enabled:
             self._soft_reset_enabled = False
 
-        self._model.reset()
-
-    def name_is_valid(self, name):
-        """Is asset name valid.
-
-        Args:
-            name(str): Asset name that should be checked.
-        """
-        # Make sure we're reset
-        self.reset(False)
-        # Valid the name by model
-        return self._model.name_is_valid(name)
+        self._folders_widget.set_project_name(self._controller.project_name)
 
     def _on_filter_change(self, text):
-        """Trigger change of filter of assets."""
-        self._proxy_model.setFilterFixedString(text)
+        """Trigger change of filter of folders."""
+        self._folders_widget.set_name_filter(text)
 
     def _on_cancel_clicked(self):
         self.done(0)
 
     def _on_ok_clicked(self):
-        index = self._asset_view.currentIndex()
-        asset_name = None
-        if index.isValid():
-            asset_name = index.data(ASSET_PATH_ROLE)
-        self._selected_asset = asset_name
+        self._selected_folder_path = (
+            self._folders_widget.get_selected_folder_path()
+        )
         self.done(1)
 
-    def set_selected_assets(self, asset_names):
-        """Change preselected asset before showing the dialog.
+    def set_selected_folders(self, folder_paths):
+        """Change preselected folder before showing the dialog.
 
         This also resets model and clean filter.
         """
         self.reset(False)
-        self._asset_view.collapseAll()
         self._filter_input.setText("")
 
-        indexes = []
-        for asset_name in asset_names:
-            index = self._model.get_index_by_asset_name(asset_name)
-            if index.isValid():
-                indexes.append(index)
+        folder_id = None
+        for folder_path in folder_paths:
+            folder_id = self._controller.get_folder_id_from_path(folder_path)
+            if folder_id:
+                break
+        if folder_id:
+            self._folders_widget.set_selected_folder(folder_id)
 
-        if not indexes:
-            return
-
-        index_deque = collections.deque()
-        for index in indexes:
-            index_deque.append(index)
-
-        all_indexes = []
-        while index_deque:
-            index = index_deque.popleft()
-            all_indexes.append(index)
-
-            parent_index = index.parent()
-            if parent_index.isValid():
-                index_deque.append(parent_index)
-
-        for index in all_indexes:
-            proxy_index = self._proxy_model.mapFromSource(index)
-            self._asset_view.expand(proxy_index)
-
-    def get_selected_asset(self):
-        """Get selected asset name."""
-        return self._selected_asset
+    def get_selected_folder_path(self):
+        """Get selected folder path."""
+        return self._selected_folder_path

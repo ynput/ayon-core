@@ -212,13 +212,13 @@ class QtRemotePublishController(BasePublisherController):
         pass
 
     @abstractproperty
-    def current_asset_name(self):
-        """Current context asset name from client.
+    def current_folder_path(self):
+        """Current context folder path from host.
 
         Returns:
-            Union[str, None]: Name of asset.
-        """
+            Union[str, None]: Folder path.
 
+        """
         pass
 
     @abstractproperty
@@ -254,7 +254,7 @@ class QtRemotePublishController(BasePublisherController):
     def get_asset_hierarchy(self):
         pass
 
-    def get_existing_product_names(self, asset_name):
+    def get_existing_product_names(self, folder_path):
         pass
 
     @property

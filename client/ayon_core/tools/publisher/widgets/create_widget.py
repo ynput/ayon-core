@@ -108,7 +108,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._controller = controller
 
-        self._asset_name = None
+        self._folder_path = None
         self._product_names = None
         self._selected_creator = None
 
@@ -314,8 +314,8 @@ class CreateWidget(QtWidgets.QWidget):
         self._use_current_context = True
 
     @property
-    def current_asset_name(self):
-        return self._controller.current_asset_name
+    def current_folder_path(self):
+        return self._controller.current_folder_path
 
     @property
     def current_task_name(self):
@@ -324,13 +324,13 @@ class CreateWidget(QtWidgets.QWidget):
     def _context_change_is_enabled(self):
         return self._context_widget.is_enabled()
 
-    def _get_asset_name(self):
+    def _get_folder_path(self):
         folder_path = None
         if self._context_change_is_enabled():
             folder_path = self._context_widget.get_selected_folder_path()
 
         if folder_path is None:
-            folder_path = self.current_asset_name
+            folder_path = self.current_folder_path
         return folder_path or None
 
     def _get_folder_id(self):
@@ -364,12 +364,12 @@ class CreateWidget(QtWidgets.QWidget):
         self._use_current_context = True
 
     def refresh(self):
-        current_folder_path = self._controller.current_asset_name
+        current_folder_path = self._controller.current_folder_path
         current_task_name = self._controller.current_task_name
 
         # Get context before refresh to keep selection of asset and
         #   task widgets
-        folder_path = self._get_asset_name()
+        folder_path = self._get_folder_path()
         task_name = self._get_task_name()
 
         # Replace by current context if last loaded context was
@@ -427,7 +427,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         if (
             self._context_change_is_enabled()
-            and self._get_asset_name() is None
+            and self._get_folder_path() is None
         ):
             # QUESTION how to handle invalid asset?
             prereq_available = False
@@ -449,23 +449,25 @@ class CreateWidget(QtWidgets.QWidget):
         self._on_variant_change()
 
     def _refresh_product_name(self):
-        asset_name = self._get_asset_name()
+        folder_path = self._get_folder_path()
 
         # Skip if asset did not change
-        if self._asset_name and self._asset_name == asset_name:
+        if self._folder_path and self._folder_path == folder_path:
             return
 
-        # Make sure `_asset_name` and `_product_names` variables are reset
-        self._asset_name = asset_name
+        # Make sure `_folder_path` and `_product_names` variables are reset
+        self._folder_path = folder_path
         self._product_names = None
-        if asset_name is None:
+        if folder_path is None:
             return
 
-        product_names = self._controller.get_existing_product_names(asset_name)
+        product_names = self._controller.get_existing_product_names(
+            folder_path
+        )
 
         self._product_names = product_names
         if product_names is None:
-            self.product_name_input.setText("< Asset is not set >")
+            self.product_name_input.setText("< Folder is not set >")
 
     def _refresh_creators(self):
         # Refresh creators and add their product types to list
@@ -664,13 +666,13 @@ class CreateWidget(QtWidgets.QWidget):
             self.product_name_input.setText("< Valid variant >")
             return
 
-        asset_name = self._get_asset_name()
+        folder_path = self._get_folder_path()
         task_name = self._get_task_name()
         creator_idenfier = self._selected_creator.identifier
         # Calculate product name with Creator plugin
         try:
             product_name = self._controller.get_product_name(
-                creator_idenfier, variant_value, task_name, asset_name
+                creator_idenfier, variant_value, task_name, folder_path
             )
         except TaskNotSetError:
             self._create_btn.setEnabled(False)
@@ -777,11 +779,11 @@ class CreateWidget(QtWidgets.QWidget):
         variant = self.variant_input.text()
         # Care about product name only if context change is enabled
         product_name = None
-        asset_name = None
+        folder_path = None
         task_name = None
         if self._context_change_is_enabled():
             product_name = self.product_name_input.text()
-            asset_name = self._get_asset_name()
+            folder_path = self._get_folder_path()
             task_name = self._get_task_name()
 
         pre_create_data = self._pre_create_widget.current_value()
@@ -793,7 +795,7 @@ class CreateWidget(QtWidgets.QWidget):
         # Where to define these data?
         # - what data show be stored?
         instance_data = {
-            "folderPath": asset_name,
+            "folderPath": folder_path,
             "task": task_name,
             "variant": variant,
             "productType": product_type
