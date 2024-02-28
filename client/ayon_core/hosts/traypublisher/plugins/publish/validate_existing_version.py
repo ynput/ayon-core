@@ -34,12 +34,12 @@ class ValidateExistingVersion(
         if last_version is None or last_version < version:
             return
 
-        subset_name = instance.data["subset"]
-        msg = "Version {} already exists for subset {}.".format(
-            version, subset_name)
+        product_name = instance.data["productName"]
+        msg = "Version {} already exists for product {}.".format(
+            version, product_name)
 
         formatting_data = {
-            "subset_name": subset_name,
+            "product_name": product_name,
             "asset_name": instance.data["folderPath"],
             "version": version
         }

@@ -4,7 +4,7 @@ from ayon_core.hosts.photoshop.lib import PSAutoCreator
 class ReviewCreator(PSAutoCreator):
     """Creates review instance which might be disabled from publishing."""
     identifier = "review"
-    family = "review"
+    product_type = "review"
 
     default_variant = "Main"
 

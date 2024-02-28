@@ -108,7 +108,7 @@ class PointCacheAlembicLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know

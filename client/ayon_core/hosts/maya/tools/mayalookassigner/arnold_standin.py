@@ -131,8 +131,8 @@ def shading_engine_assignments(shading_engine, attribute, nodes, assignments):
         assignments[node].append(assignment)
 
 
-def assign_look(standin, subset):
-    log.info("Assigning {} to {}.".format(subset, standin))
+def assign_look(standin, product_name):
+    log.info("Assigning {} to {}.".format(product_name, standin))
 
     nodes_by_id = get_nodes_by_id(standin)
 
@@ -148,13 +148,13 @@ def assign_look(standin, subset):
         # Get latest look version
         version = get_last_version_by_subset_name(
             project_name,
-            subset_name=subset,
+            subset_name=product_name,
             asset_id=asset_id,
             fields=["_id"]
         )
         if not version:
-            log.info("Didn't find last version for subset name {}".format(
-                subset
+            log.info("Didn't find last version for product name {}".format(
+                product_name
             ))
             continue
 

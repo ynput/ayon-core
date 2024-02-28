@@ -44,11 +44,11 @@ class BlendActionLoader(plugin.AssetLoader):
         """
 
         libpath = self.filepath_from_context(context)
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
-        lib_container = plugin.prepare_scene_name(asset, subset)
+        folder_name = context["asset"]["name"]
+        product_name = context["subset"]["name"]
+        lib_container = plugin.prepare_scene_name(folder_name, product_name)
         container_name = plugin.prepare_scene_name(
-            asset, subset, namespace
+            folder_name, product_name, namespace
         )
 
         container = bpy.data.collections.new(lib_container)
