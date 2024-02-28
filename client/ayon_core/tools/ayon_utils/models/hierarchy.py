@@ -191,12 +191,12 @@ def _get_folder_item_from_hierarchy_item(item):
     name = item["name"]
     path_parts = list(item["parents"])
     path_parts.append(name)
-
+    path = "/" + "/".join(path_parts)
     return FolderItem(
         item["id"],
         item["parentId"],
         name,
-        "/".join(path_parts),
+        path,
         item["folderType"],
         item["label"],
         None,
