@@ -28,8 +28,8 @@ def tag_data():
         #     "note": "Collecting track items to Nuke scripts.",
         #     "icon": "icons:TagNuke.png",
         #     "metadata": {
-        #         "family": "nukescript",
-        #         "subset": "main"
+        #         "productType": "nukescript",
+        #         "productName": "main"
         #     }
         # },
         "Comment": {
@@ -37,17 +37,17 @@ def tag_data():
             "note": "Comment on a shot.",
             "icon": "icons:TagComment.png",
             "metadata": {
-                "family": "comment",
-                "subset": "main"
+                "productType": "comment",
+                "productName": "main"
             }
         },
         "FrameMain": {
             "editable": "1",
-            "note": "Publishing a frame subset.",
+            "note": "Publishing a frame product.",
             "icon": "z_layer_main.png",
             "metadata": {
-                "family": "frame",
-                "subset": "main",
+                "productType": "frame",
+                "productName": "main",
                 "format": "png"
             }
         }
@@ -153,7 +153,7 @@ def add_tags_to_workfile():
             "note": task_type,
             "icon": "icons:TagGood.png",
             "metadata": {
-                "family": "task",
+                "productType": "task",
                 "type": task_type
             }
         }
@@ -173,7 +173,7 @@ def add_tags_to_workfile():
                         "path": "icons:TagActor.png"
                     },
                     "metadata": {
-                        "family": "assetbuild"
+                        "productType": "assetbuild"
                     }
                 }
 
