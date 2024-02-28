@@ -251,13 +251,7 @@ class QtRemotePublishController(BasePublisherController):
 
         pass
 
-    def get_asset_docs(self):
-        pass
-
     def get_asset_hierarchy(self):
-        pass
-
-    def get_task_names_by_asset_names(self, asset_names):
         pass
 
     def get_existing_subset_names(self, asset_name):
