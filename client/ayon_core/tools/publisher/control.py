@@ -1738,30 +1738,24 @@ class PublisherController(BasePublisherController):
         return None
 
     def get_task_names_by_folder_paths(self, folder_paths):
-        # TODO implement model and cache values
         if not folder_paths:
             return {}
         folder_items = self._hierarchy_model.get_folder_items_by_paths(
             self.project_name, folder_paths
         )
-        folder_paths_by_id = {
-            folder_item.entity_id: folder_item.path
-            for folder_item in folder_items.values()
-            if folder_item
-        }
-        tasks = ayon_api.get_tasks(
-            self.project_name,
-            folder_ids=set(folder_paths_by_id),
-            fields=["name", "folderId"]
-        )
         output = {
             folder_path: set()
             for folder_path in folder_paths
         }
-        for task in tasks:
-            folder_path = folder_paths_by_id.get(task["folderId"])
-            if folder_path:
-                output[folder_path].add(task["name"])
+        project_name = self.project_name
+        for folder_item in folder_items.values():
+            task_items = self._hierarchy_model.get_task_items(
+                project_name, folder_item.entity_id, None
+            )
+            output[folder_item.path] = {
+                task_item.name
+                for task_item in task_items
+            }
 
         return output
 
