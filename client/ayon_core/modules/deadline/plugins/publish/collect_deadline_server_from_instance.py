@@ -46,7 +46,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
         from maya import cmds
         deadline_settings = (
             render_instance.context.data
-            ["system_settings"]
+            ["project_settings"]
             ["deadline"]
         )
 

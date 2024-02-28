@@ -34,7 +34,7 @@ class BlendSceneLoader(plugin.AssetLoader):
 
         return None
 
-    def _process_data(self, libpath, group_name, family):
+    def _process_data(self, libpath, group_name, product_type):
         # Append all the data from the .blend file
         with bpy.data.libraries.load(
             libpath, link=False, relative=False
@@ -82,25 +82,29 @@ class BlendSceneLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["asset"]["name"]
+        product_name = context["subset"]["name"]
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["subset"]["data"]["family"]
         except ValueError:
-            family = "model"
+            product_type = "model"
 
-        asset_name = plugin.prepare_scene_name(asset, subset)
-        unique_number = plugin.get_unique_number(asset, subset)
-        group_name = plugin.prepare_scene_name(asset, subset, unique_number)
-        namespace = namespace or f"{asset}_{unique_number}"
+        asset_name = plugin.prepare_scene_name(folder_name, product_name)
+        unique_number = plugin.get_unique_number(folder_name, product_name)
+        group_name = plugin.prepare_scene_name(
+            folder_name, product_name, unique_number
+        )
+        namespace = namespace or f"{folder_name}_{unique_number}"
 
         avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
         if not avalon_container:
             avalon_container = bpy.data.collections.new(name=AVALON_CONTAINERS)
             bpy.context.scene.collection.children.link(avalon_container)
 
-        container, members = self._process_data(libpath, group_name, family)
+        container, members = self._process_data(
+            libpath, group_name, product_type
+        )
 
         avalon_container.children.link(container)
 
@@ -114,7 +118,7 @@ class BlendSceneLoader(plugin.AssetLoader):
             "libpath": libpath,
             "asset_name": asset_name,
             "parent": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
+            "productType": context["subset"]["data"]["family"],
             "objectName": group_name,
             "members": members,
         }
@@ -167,8 +171,12 @@ class BlendSceneLoader(plugin.AssetLoader):
 
         self.exec_remove(container)
 
-        family = container["family"]
-        asset_group, members = self._process_data(libpath, group_name, family)
+        product_type = container.get("productType")
+        if product_type is None:
+            product_type = container["family"]
+        asset_group, members = self._process_data(
+            libpath, group_name, product_type
+        )
 
         for member in members:
             if member.name in collection_parents:

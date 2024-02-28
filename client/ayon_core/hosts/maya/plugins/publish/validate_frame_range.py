@@ -74,9 +74,9 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
         # compare with data on instance
         errors = []
         # QUESTION shouldn't this be just:
-        #   'if instance.data["family"] in self.exclude_product_types:'
+        #   'if instance.data["productType"] in self.exclude_product_types:'
         if [ef for ef in self.exclude_product_types
-                if instance.data["family"] in ef]:
+                if instance.data["productType"] in ef]:
             return
         if (inst_start != frame_start_handle):
             errors.append("Instance start frame [ {} ] doesn't "

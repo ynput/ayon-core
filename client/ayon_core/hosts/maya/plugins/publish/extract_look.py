@@ -104,11 +104,10 @@ class TextureProcessor:
             log = logging.getLogger(self.__class__.__name__)
         self.log = log
 
-    def apply_settings(self, system_settings, project_settings):
+    def apply_settings(self, project_settings):
         """Apply OpenPype system/project settings to the TextureProcessor
 
         Args:
-            system_settings (dict): OpenPype system settings
             project_settings (dict): OpenPype project settings
 
         Returns:
@@ -250,7 +249,7 @@ class MakeTX(TextureProcessor):
         super(MakeTX, self).__init__(log=log)
         self.extra_args = []
 
-    def apply_settings(self, system_settings, project_settings):
+    def apply_settings(self, project_settings):
         # Allow extra maketx arguments from project settings
         args_settings = (
             project_settings["maya"]["publish"]
@@ -488,8 +487,7 @@ class ExtractLook(publish.Extractor):
         }.items():
             if instance.data.get(key, False):
                 processor = Processor(log=self.log)
-                processor.apply_settings(context.data["system_settings"],
-                                         context.data["project_settings"])
+                processor.apply_settings(context.data["project_settings"])
                 processors.append(processor)
 
         if processors:

@@ -439,7 +439,7 @@ class ClipLoader:
         """ Gets context and convert it to self.data
         data structure:
             {
-                "name": "assetName_subsetName_representationName"
+                "name": "assetName_productName_representationName"
                 "path": "path/to/file/created/by/get_repr..",
                 "binPath": "projectBinPath",
             }
@@ -448,10 +448,10 @@ class ClipLoader:
         repr = self.context["representation"]
         repr_cntx = repr["context"]
         asset = str(repr_cntx["asset"])
-        subset = str(repr_cntx["subset"])
+        product_name = str(repr_cntx["subset"])
         representation = str(repr_cntx["representation"])
         self.data["clip_name"] = self.clip_name_template.format(**repr_cntx)
-        self.data["track_name"] = "_".join([subset, representation])
+        self.data["track_name"] = "_".join([product_name, representation])
         self.data["versionData"] = self.context["version"]["data"]
         # gets file path
         file = get_representation_path_from_context(self.context)
@@ -659,9 +659,9 @@ class PublishClip:
     rename_default = False
     hierarchy_default = "{_folder_}/{_sequence_}/{_track_}"
     clip_name_default = "shot_{_trackIndex_:0>3}_{_clipIndex_:0>4}"
-    subset_name_default = "<track_name>"
+    base_product_name_default = "<track_name>"
     review_track_default = "< none >"
-    subset_family_default = "plate"
+    product_type_default = "plate"
     count_from_default = 10
     count_steps_default = 10
     vertical_sync_default = False
@@ -785,10 +785,10 @@ class PublishClip:
             "countFrom", {}).get("value") or self.count_from_default
         self.count_steps = self.ui_inputs.get(
             "countSteps", {}).get("value") or self.count_steps_default
-        self.subset_name = self.ui_inputs.get(
-            "subsetName", {}).get("value") or self.subset_name_default
-        self.subset_family = self.ui_inputs.get(
-            "subsetFamily", {}).get("value") or self.subset_family_default
+        self.base_product_name = self.ui_inputs.get(
+            "productName", {}).get("value") or self.base_product_name_default
+        self.product_type = self.ui_inputs.get(
+            "productType", {}).get("value") or self.product_type_default
         self.vertical_sync = self.ui_inputs.get(
             "vSyncOn", {}).get("value") or self.vertical_sync_default
         self.driving_layer = self.ui_inputs.get(
@@ -798,12 +798,14 @@ class PublishClip:
         self.audio = self.ui_inputs.get(
             "audio", {}).get("value") or False
 
-        # build subset name from layer name
-        if self.subset_name == "<track_name>":
-            self.subset_name = self.track_name
+        # build product name from layer name
+        if self.base_product_name == "<track_name>":
+            self.base_product_name = self.track_name
 
-        # create subset for publishing
-        self.subset = self.subset_family + self.subset_name.capitalize()
+        # create product for publishing
+        self.product_name = (
+            self.product_type + self.base_product_name.capitalize()
+        )
 
     def _replace_hash_to_expression(self, name, text):
         """ Replace hash with number in correct padding. """
@@ -885,14 +887,14 @@ class PublishClip:
             for (_in, _out), hero_data in self.vertical_clip_match.items():
                 hero_data.update({"heroTrack": False})
                 if _in == self.clip_in and _out == self.clip_out:
-                    data_subset = hero_data["subset"]
+                    data_product_name = hero_data["productName"]
                     # add track index in case duplicity of names in hero data
-                    if self.subset in data_subset:
-                        hero_data["subset"] = self.subset + str(
+                    if self.product_name in data_product_name:
+                        hero_data["productName"] = self.product_name + str(
                             self.track_index)
-                    # in case track name and subset name is the same then add
-                    if self.subset_name == self.track_name:
-                        hero_data["subset"] = self.subset
+                    # in case track name and product name is the same then add
+                    if self.base_product_name == self.track_name:
+                        hero_data["productName"] = self.product_name
                     # assign data to return hierarchy data to tag
                     tag_hierarchy_data = hero_data
 
@@ -913,9 +915,9 @@ class PublishClip:
             "hierarchy": hierarchy_filled,
             "parents": self.parents,
             "hierarchyData": hierarchy_formatting_data,
-            "subset": self.subset,
-            "family": self.subset_family,
-            "families": [self.data["family"]]
+            "productName": self.product_name,
+            "productType": self.product_type,
+            "families": [self.product_type, self.data["family"]]
         }
 
     def _convert_to_entity(self, type, template):

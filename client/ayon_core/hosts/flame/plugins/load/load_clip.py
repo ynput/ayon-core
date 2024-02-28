@@ -11,7 +11,7 @@ from ayon_core.lib.transcoding import (
 
 
 class LoadClip(opfapi.ClipLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
@@ -31,14 +31,14 @@ class LoadClip(opfapi.ClipLoader):
     # settings
     reel_group_name = "OpenPype_Reels"
     reel_name = "Loaded"
-    clip_name_template = "{asset}_{subset}<_{output}>"
+    clip_name_template = "{folder[name]}_{product[name]}<_{output}>"
 
     """ Anatomy keys from version context data and dynamically added:
         - {layerName} - original layer name token
         - {layerUID} - original layer UID token
         - {originalBasename} - original clip name taken from file
     """
-    layer_rename_template = "{asset}_{subset}<_{output}>"
+    layer_rename_template = "{folder[name]}_{product[name]}<_{output}>"
     layer_rename_patterns = []
 
     def load(self, context, name, namespace, options):

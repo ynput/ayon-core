@@ -29,14 +29,14 @@ class CreateReview(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.review"
     label = "Review"
-    family = "review"
+    product_type = "review"
     icon = "video-camera"
 
     useMayaTimeline = True
     panZoom = False
 
     # Overriding "create" method to prefill values from settings.
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         members = list()
         if pre_create_data.get("use_selection"):
@@ -49,7 +49,7 @@ class CreateReview(plugin.MayaCreator):
         preset = lib.get_capture_preset(
             task_name,
             asset_doc["data"]["tasks"][task_name]["type"],
-            subset_name,
+            product_name,
             self.project_settings,
             self.log
         )
@@ -60,11 +60,11 @@ class CreateReview(plugin.MayaCreator):
         )
 
         with lib.undo_chunk():
-            instance_node = cmds.sets(members, name=subset_name)
+            instance_node = cmds.sets(members, name=product_name)
             instance_data["instance_node"] = instance_node
             instance = CreatedInstance(
-                self.family,
-                subset_name,
+                self.product_type,
+                product_name,
                 instance_data,
                 self)
 

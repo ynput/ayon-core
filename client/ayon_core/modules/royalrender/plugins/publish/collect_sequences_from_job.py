@@ -150,8 +150,8 @@ class CollectSequencesFromJob(pyblish.api.ContextPlugin):
 
             self.log.info("Found collections: {}".format(collections))
 
-            if data.get("subset") and len(collections) > 1:
-                self.log.error("Forced subset can only work with a single "
+            if data.get("productName") and len(collections) > 1:
+                self.log.error("Forced produce can only work with a single "
                                "found sequence")
                 raise RuntimeError("Invalid sequence")
 
@@ -174,8 +174,10 @@ class CollectSequencesFromJob(pyblish.api.ContextPlugin):
                 # Ensure each instance gets a unique reference to the data
                 data = copy.deepcopy(data)
 
-                # If no subset provided, get it from collection's head
-                subset = data.get("subset", collection.head.rstrip("_. "))
+                # If no product provided, get it from collection's head
+                product_name = (
+                    data.get("productName", collection.head.rstrip("_. "))
+                )
 
                 # If no start or end frame provided, get it from collection
                 indices = list(collection.indexes)
@@ -186,9 +188,10 @@ class CollectSequencesFromJob(pyblish.api.ContextPlugin):
 
                 instance.data.update({
                     "name": str(collection),
-                    "family": families[0],  # backwards compatibility / pyblish
+                    "productType": families[0],
+                    "family": families[0],
                     "families": list(families),
-                    "subset": subset,
+                    "productName": product_name,
                     "folderPath": data.get(
                         "folderPath", context.data["folderPath"]
                     ),

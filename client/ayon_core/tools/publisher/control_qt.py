@@ -254,7 +254,7 @@ class QtRemotePublishController(BasePublisherController):
     def get_asset_hierarchy(self):
         pass
 
-    def get_existing_subset_names(self, asset_name):
+    def get_existing_product_names(self, asset_name):
         pass
 
     @property
@@ -294,7 +294,7 @@ class QtRemotePublishController(BasePublisherController):
         pass
 
     @abstractmethod
-    def get_subset_name(
+    def get_product_name(
         self,
         creator_identifier,
         variant,
@@ -302,15 +302,15 @@ class QtRemotePublishController(BasePublisherController):
         asset_name,
         instance_id=None
     ):
-        """Get subset name based on passed data.
+        """Get product name based on passed data.
 
         Args:
             creator_identifier (str): Identifier of creator which should be
-                responsible for subset name creation.
+                responsible for product name creation.
             variant (str): Variant value from user's input.
             task_name (str): Name of task for which is instance created.
             asset_name (str): Name of asset for which is instance created.
-            instance_id (Union[str, None]): Existing instance id when subset
+            instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
 
@@ -318,7 +318,7 @@ class QtRemotePublishController(BasePublisherController):
 
     @abstractmethod
     def create(
-        self, creator_identifier, subset_name, instance_data, options
+        self, creator_identifier, product_name, instance_data, options
     ):
         """Trigger creation by creator identifier.
 
@@ -326,7 +326,7 @@ class QtRemotePublishController(BasePublisherController):
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
-            subset_name (str): Calculated subset name.
+            product_name (str): Calculated product name.
             instance_data (Dict[str, Any]): Base instance data with variant,
                 asset name and task name.
             options (Dict[str, Any]): Data from pre-create attributes.

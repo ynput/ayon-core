@@ -16,10 +16,7 @@ from ayon_core.client import (
     get_asset_by_name,
     get_asset_name_identifier,
 )
-from ayon_core.settings import (
-    get_system_settings,
-    get_project_settings
-)
+from ayon_core.settings import get_project_settings
 from ayon_core.lib.attribute_definitions import (
     UnknownDef,
     serialize_attr_defs,
@@ -94,7 +91,7 @@ class ConvertorsOperationFailed(Exception):
 
 class ConvertorsFindFailed(ConvertorsOperationFailed):
     def __init__(self, failed_info):
-        msg = "Failed to find incompatible subsets"
+        msg = "Failed to find incompatible products"
         super(ConvertorsFindFailed, self).__init__(
             msg, failed_info
         )
@@ -102,7 +99,7 @@ class ConvertorsFindFailed(ConvertorsOperationFailed):
 
 class ConvertorsConversionFailed(ConvertorsOperationFailed):
     def __init__(self, failed_info):
-        msg = "Failed to convert incompatible subsets"
+        msg = "Failed to convert incompatible products"
         super(ConvertorsConversionFailed, self).__init__(
             msg, failed_info
         )
@@ -857,8 +854,8 @@ class CreatedInstance:
     """Instance entity with data that will be stored to workfile.
 
     I think `data` must be required argument containing all minimum information
-    about instance like "asset" and "task" and all data used for filling subset
-    name as creators may have custom data for subset name filling.
+    about instance like "asset" and "task" and all data used for filling
+    product name as creators may have custom data for product name filling.
 
     Notes:
         Object have 2 possible initialization. One using 'creator' object which
@@ -866,9 +863,9 @@ class CreatedInstance:
             creator.
 
     Args:
-        family (str): Name of family that will be created.
-        subset_name (str): Name of subset that will be created.
-        data (Dict[str, Any]): Data used for filling subset name or override
+        product_type (str): Product type that will be created.
+        product_name (str): Name of product that will be created.
+        data (Dict[str, Any]): Data used for filling product name or override
             data from already existing instance.
         creator (Union[BaseCreator, None]): Creator responsible for instance.
         creator_identifier (str): Identifier of creator plugin.
@@ -885,7 +882,7 @@ class CreatedInstance:
     __immutable_keys = (
         "id",
         "instance_id",
-        "family",
+        "product_type",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
@@ -893,8 +890,8 @@ class CreatedInstance:
 
     def __init__(
         self,
-        family,
-        subset_name,
+        product_type,
+        product_name,
         data,
         creator=None,
         creator_identifier=None,
@@ -929,8 +926,10 @@ class CreatedInstance:
         # Store original value of passed data
         self._orig_data = copy.deepcopy(data)
 
-        # Pop family and subset to prevent unexpected changes
-        # TODO change to 'productType' and 'productName' in AYON
+        # Pop 'productType' and 'productName' to prevent unexpected changes
+        data.pop("productType", None)
+        data.pop("productName", None)
+        # Backwards compatibility with OpenPype instances
         data.pop("family", None)
         data.pop("subset", None)
 
@@ -946,8 +945,8 @@ class CreatedInstance:
         if item_id not in {AYON_INSTANCE_ID, AVALON_INSTANCE_ID}:
             item_id = AVALON_INSTANCE_ID
         self._data["id"] = item_id
-        self._data["family"] = family
-        self._data["subset"] = subset_name
+        self._data["productType"] = product_type
+        self._data["productName"] = product_name
         self._data["active"] = data.get("active", True)
         self._data["creator_identifier"] = creator_identifier
 
@@ -988,12 +987,11 @@ class CreatedInstance:
 
     def __str__(self):
         return (
-            "<CreatedInstance {subset} ({family}[{creator_identifier}])>"
-            " {data}"
+            "<CreatedInstance {product[name]}"
+            " ({product[type]}[{creator_identifier}])> {data}"
         ).format(
-            subset=str(self._data),
             creator_identifier=self.creator_identifier,
-            family=self.family,
+            product={"name": self.product_name, "type": self.product_type},
             data=str(self._data)
         )
 
@@ -1034,18 +1032,18 @@ class CreatedInstance:
     # ------
 
     @property
-    def family(self):
-        return self._data["family"]
+    def product_type(self):
+        return self._data["productType"]
 
     @property
-    def subset_name(self):
-        return self._data["subset"]
+    def product_name(self):
+        return self._data["productName"]
 
     @property
     def label(self):
         label = self._data.get("label")
         if not label:
-            label = self.subset_name
+            label = self.product_name
         return label
 
     @property
@@ -1192,13 +1190,17 @@ class CreatedInstance:
 
         instance_data = copy.deepcopy(instance_data)
 
-        family = instance_data.get("family", None)
-        if family is None:
-            family = creator.family
-        subset_name = instance_data.get("subset", None)
+        product_type = instance_data.get("productType")
+        if product_type is None:
+            product_type = instance_data.get("family")
+            if product_type is None:
+                product_type = creator.product_type
+        product_name = instance_data.get("productName")
+        if product_name is None:
+            product_name = instance_data.get("subset")
 
         return cls(
-            family, subset_name, instance_data, creator
+            product_type, product_name, instance_data, creator
         )
 
     def set_publish_plugins(self, attr_plugins):
@@ -1255,8 +1257,8 @@ class CreatedInstance:
         instance_data = copy.deepcopy(serialized_data["data"])
         creator_identifier = instance_data["creator_identifier"]
 
-        family = instance_data["family"]
-        subset_name = instance_data.get("subset", None)
+        product_type = instance_data["productType"]
+        product_name = instance_data.get("productName", None)
 
         creator_label = serialized_data["creator_label"]
         group_label = serialized_data["group_label"]
@@ -1266,8 +1268,8 @@ class CreatedInstance:
         publish_attributes = serialized_data["publish_attributes"]
 
         obj = cls(
-            family,
-            subset_name,
+            product_type,
+            product_name,
             instance_data,
             creator_identifier=creator_identifier,
             creator_label=creator_label,
@@ -1431,7 +1433,7 @@ class CreateContext:
         self.publish_plugins_mismatch_targets = []
         self.publish_plugins = []
         self.plugins_with_defs = []
-        self._attr_plugins_by_family = {}
+        self._attr_plugins_by_product_type = {}
 
         # Helpers for validating context of collected instances
         #   - they can be validation for multiple instances at one time
@@ -1740,7 +1742,7 @@ class CreateContext:
         )
 
         # Reset publish plugins
-        self._attr_plugins_by_family = {}
+        self._attr_plugins_by_product_type = {}
 
         discover_result = DiscoverResult(pyblish.api.Plugin)
         plugins_with_defs = []
@@ -1774,7 +1776,6 @@ class CreateContext:
 
     def _reset_creator_plugins(self):
         # Prepare settings
-        system_settings = get_system_settings()
         project_settings = get_project_settings(self.project_name)
 
         # Discover and prepare creators
@@ -1812,7 +1813,6 @@ class CreateContext:
 
             creator = creator_class(
                 project_settings,
-                system_settings,
                 self,
                 self.headless
             )
@@ -1912,8 +1912,8 @@ class CreateContext:
 
         self._instances_by_id[instance.id] = instance
         # Prepare publish plugin attributes and set it on instance
-        attr_plugins = self._get_publish_plugins_with_attr_for_family(
-            instance.family
+        attr_plugins = self._get_publish_plugins_with_attr_for_product_type(
+            instance.product_type
         )
         instance.set_publish_plugins(attr_plugins)
 
@@ -1960,11 +1960,11 @@ class CreateContext:
         values. If only 'task_name' is provided it will be overriden by
         task name from current context. If 'task_name' is not provided
         when 'asset_doc' is, it is considered that task name is not specified,
-        which can lead to error if subset name template requires task name.
+        which can lead to error if product name template requires task name.
 
         Args:
             creator_identifier (str): Identifier of creator plugin.
-            variant (str): Variant used for subset name.
+            variant (str): Variant used for product name.
             asset_doc (Dict[str, Any]): Asset document which define context of
                 creation (possible context of created instance/s).
             task_name (str): Name of task to which is context related.
@@ -2003,23 +2003,23 @@ class CreateContext:
         # TODO validate types
         _pre_create_data.update(pre_create_data)
 
-        subset_name = creator.get_subset_name(
-            variant,
-            task_name,
-            asset_doc,
+        product_name = creator.get_product_name(
             project_name,
-            self.host_name
+            asset_doc,
+            task_name,
+            variant,
+            self.host_name,
         )
         asset_name = get_asset_name_identifier(asset_doc)
 
         instance_data = {
             "folderPath": asset_name,
             "task": task_name,
-            "family": creator.family,
+            "productType": creator.product_type,
             "variant": variant
         }
         return creator.create(
-            subset_name,
+            product_name,
             instance_data,
             _pre_create_data
         )
@@ -2426,29 +2426,29 @@ class CreateContext:
         if failed_info:
             raise CreatorsRemoveFailed(failed_info)
 
-    def _get_publish_plugins_with_attr_for_family(self, family):
-        """Publish plugin attributes for passed family.
+    def _get_publish_plugins_with_attr_for_product_type(self, product_type):
+        """Publish plugin attributes for passed product type.
 
-        Attribute definitions for specific family are cached.
+        Attribute definitions for specific product type are cached.
 
         Args:
-            family(str): Instance family for which should be attribute
-                definitions returned.
+            product_type(str): Instance product type for which should be
+                attribute definitions returned.
         """
 
-        if family not in self._attr_plugins_by_family:
+        if product_type not in self._attr_plugins_by_product_type:
             import pyblish.logic
 
             filtered_plugins = pyblish.logic.plugins_by_families(
-                self.plugins_with_defs, [family]
+                self.plugins_with_defs, [product_type]
             )
             plugins = []
             for plugin in filtered_plugins:
                 if plugin.__instanceEnabled__:
                     plugins.append(plugin)
-            self._attr_plugins_by_family[family] = plugins
+            self._attr_plugins_by_product_type[product_type] = plugins
 
-        return self._attr_plugins_by_family[family]
+        return self._attr_plugins_by_product_type[product_type]
 
     def _get_publish_plugins_with_attr_for_context(self):
         """Publish plugins attributes for Context plugins.
