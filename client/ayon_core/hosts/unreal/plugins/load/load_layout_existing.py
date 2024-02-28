@@ -33,9 +33,9 @@ class ExistingLayoutLoader(plugin.Loader):
     delete_unmatched_assets = True
 
     @classmethod
-    def apply_settings(cls, project_settings, *args, **kwargs):
+    def apply_settings(cls, project_settings):
         super(ExistingLayoutLoader, cls).apply_settings(
-            project_settings, *args, **kwargs
+            project_settings
         )
         cls.delete_unmatched_assets = (
             project_settings["unreal"]["delete_unmatched_assets"]

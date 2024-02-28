@@ -27,10 +27,7 @@ from ayon_core.client import (
     get_representations,
     get_ayon_server_api_connection,
 )
-from ayon_core.settings import (
-    get_project_settings,
-    get_system_settings,
-)
+from ayon_core.settings import get_project_settings
 from ayon_core.host import IWorkfileHost, HostBase
 from ayon_core.lib import (
     Logger,
@@ -118,7 +115,6 @@ class AbstractTemplateBuilder(object):
         self._creators_by_name = None
         self._create_context = None
 
-        self._system_settings = None
         self._project_settings = None
 
         self._current_asset_doc = None
@@ -151,12 +147,6 @@ class AbstractTemplateBuilder(object):
             "folder_path": self.current_asset_name,
             "task_name": self.current_task_name
         }
-
-    @property
-    def system_settings(self):
-        if self._system_settings is None:
-            self._system_settings = get_system_settings()
-        return self._system_settings
 
     @property
     def project_settings(self):
@@ -256,7 +246,6 @@ class AbstractTemplateBuilder(object):
         self._linked_asset_docs = None
         self._task_type = None
 
-        self._system_settings = None
         self._project_settings = None
 
         self.clear_shared_data()
