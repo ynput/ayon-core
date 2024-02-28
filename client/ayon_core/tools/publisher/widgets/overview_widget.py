@@ -113,8 +113,14 @@ class OverviewWidget(QtWidgets.QFrame):
         product_list_view.selection_changed.connect(
             self._on_product_change
         )
+        product_list_view.double_clicked.connect(
+            self._on_double_clicked
+        )
         product_view_cards.selection_changed.connect(
             self._on_product_change
+        )
+        product_view_cards.double_clicked.connect(
+            self._on_double_clicked
         )
         # Active instances changed
         product_list_view.active_changed.connect(
@@ -292,6 +298,10 @@ class OverviewWidget(QtWidgets.QFrame):
         self._product_attributes_widget.set_current_instances(
             instances, context_selected, convertor_identifiers
         )
+
+    def _on_double_clicked(self):
+        from ayon_core.tools.utils import host_tools
+        host_tools.show_publisher(tab="publish")
 
     def _on_active_changed(self):
         if self._refreshing_instances:
