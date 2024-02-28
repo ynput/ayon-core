@@ -54,7 +54,7 @@ class CopyTemplateWorkfile(PreLaunchHook):
         self.log.info("Last workfile does not exist.")
 
         project_name = self.data["project_name"]
-        asset_name = self.data["asset_name"]
+        asset_name = self.data["folder_path"]
         task_name = self.data["task_name"]
         host_name = self.application.host_name
 

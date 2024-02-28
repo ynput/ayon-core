@@ -1462,10 +1462,7 @@ class WorkfileSettings(object):
 
         Context._project_doc = project_doc
         self._project_name = project_name
-        self._asset = (
-            kwargs.get("asset_name")
-            or get_current_asset_name()
-        )
+        self._asset = get_current_asset_name()
         self._asset_entity = get_asset_by_name(project_name, self._asset)
         self._root_node = root_node or nuke.root()
         self._nodes = self.get_nodes(nodes=nodes)
