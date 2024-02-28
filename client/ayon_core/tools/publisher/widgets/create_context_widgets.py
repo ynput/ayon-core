@@ -176,6 +176,8 @@ class CreateContextWidget(QtWidgets.QWidget):
         folders_widget = FoldersWidget(
             hierarchy_controller, self, handle_expected_selection=True
         )
+        folders_widget.set_deselectable(True)
+
         tasks_widget = TasksWidget(
             hierarchy_controller, self, handle_expected_selection=True
         )
