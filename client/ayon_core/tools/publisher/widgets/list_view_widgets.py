@@ -425,6 +425,9 @@ class InstanceListView(AbstractInstanceView):
 
     This is public access to and from list view.
     """
+
+    double_clicked = QtCore.Signal()
+
     def __init__(self, controller, parent):
         super(InstanceListView, self).__init__(parent)
 
@@ -473,6 +476,9 @@ class InstanceListView(AbstractInstanceView):
         self._proxy_model = proxy_model
 
         self._active_toggle_enabled = True
+
+    def mouseDoubleClickEvent(self, event):
+        self.double_clicked.emit()
 
     def _on_expand(self, index):
         self._update_widget_expand_state(index, True)
