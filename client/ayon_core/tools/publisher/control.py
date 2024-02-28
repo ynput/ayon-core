@@ -1819,6 +1819,9 @@ class PublisherController(BasePublisherController):
         # Reset avalon context
         self._create_context.reset_current_context()
 
+        self._hierarchy_model.reset()
+        self._asset_docs_cache.reset()
+
         self._reset_plugins()
         # Publish part must be reset after plugins
         self._reset_publish()
