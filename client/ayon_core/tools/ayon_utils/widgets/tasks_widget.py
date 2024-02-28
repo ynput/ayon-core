@@ -214,6 +214,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             item.setData(task_item.label, QtCore.Qt.DisplayRole)
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
+            item.setData(task_item.task_type, TASK_TYPE_ROLE)
             item.setData(task_item.parent_id, PARENT_ID_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
 
