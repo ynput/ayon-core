@@ -31,11 +31,11 @@ class FoldersDialogController:
         pass
 
 
-class AssetsDialog(QtWidgets.QDialog):
+class FoldersDialog(QtWidgets.QDialog):
     """Dialog to select folder for a context of instance."""
 
     def __init__(self, controller, parent):
-        super(AssetsDialog, self).__init__(parent)
+        super(FoldersDialog, self).__init__(parent)
         self.setWindowTitle("Select folder")
 
         filter_input = PlaceholderLineEdit(self)
@@ -99,7 +99,7 @@ class AssetsDialog(QtWidgets.QDialog):
 
     def showEvent(self, event):
         """Refresh folders widget on show."""
-        super(AssetsDialog, self).showEvent(event)
+        super(FoldersDialog, self).showEvent(event)
         if self._first_show:
             self._first_show = False
             self._on_first_show()
