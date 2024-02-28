@@ -44,7 +44,7 @@ class LegacyCreator(object):
         self.data.update(data or {})
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         """Apply OpenPype settings to a plugin class."""
 
         host_name = os.environ.get("AYON_HOST_NAME")

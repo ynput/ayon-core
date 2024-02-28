@@ -42,7 +42,7 @@ class LoadClip(phiero.SequenceLoader):
     clip_name_template = "{asset}_{subset}_{representation}"
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         plugin_type_settings = (
             project_settings
             .get("hiero", {})
