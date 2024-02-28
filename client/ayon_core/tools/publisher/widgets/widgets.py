@@ -431,7 +431,7 @@ class FoldersFields(BaseClickableFrame):
 
     def __init__(self, controller, parent):
         super(FoldersFields, self).__init__(parent)
-        self.setObjectName("AssetNameInputWidget")
+        self.setObjectName("FolderPathInputWidget")
 
         # Don't use 'self' for parent!
         # - this widget has specific styles
