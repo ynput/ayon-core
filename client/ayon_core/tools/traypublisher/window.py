@@ -32,6 +32,7 @@ class TrayPublisherController(QtPublisherController):
 
     def reset_hierarchy_cache(self):
         self._hierarchy_model.reset()
+        self._asset_docs_cache.reset()
 
 
 class TrayPublisherRegistry(JSONSettingRegistry):
