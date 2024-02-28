@@ -23,7 +23,6 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
 
     Action on this validator will select invalid instances.
     """
-
     order = ValidateContentsOrder
     label = "Instance in same Context"
     optional = True
