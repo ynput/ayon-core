@@ -27,7 +27,7 @@ class OCIOEnvHook(PreLaunchHook):
 
         template_data = get_template_data_with_names(
             project_name=self.data["project_name"],
-            asset_name=self.data["asset_name"],
+            asset_name=self.data["folder_path"],
             task_name=self.data["task_name"],
             host_name=self.host_name,
             system_settings=self.data["system_settings"]
