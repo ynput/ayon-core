@@ -1,7 +1,7 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.utils import PlaceholderLineEdit, GoToCurrentButton
 
 from ayon_core.tools.ayon_utils.models import HierarchyExpectedSelection
 from ayon_core.tools.ayon_utils.widgets import FoldersWidget, TasksWidget
@@ -160,9 +160,7 @@ class CreateContextWidget(QtWidgets.QWidget):
         folder_filter_input = PlaceholderLineEdit(headers_widget)
         folder_filter_input.setPlaceholderText("Filter folders..")
 
-        current_context_btn = QtWidgets.QPushButton(
-            "Go to current context", headers_widget
-        )
+        current_context_btn = GoToCurrentButton(headers_widget)
         current_context_btn.setToolTip("Go to current context")
         current_context_btn.setVisible(False)
 
