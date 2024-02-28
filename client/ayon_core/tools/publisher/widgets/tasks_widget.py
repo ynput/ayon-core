@@ -10,11 +10,11 @@ TASK_ORDER_ROLE = QtCore.Qt.UserRole + 3
 class TasksModel(QtGui.QStandardItemModel):
     """Tasks model.
 
-    Task model must have set context of asset documents.
+    Task model must have set context of folder paths.
 
-    Items in model are based on 0-infinite asset documents. Always contain
-    an interserction of context asset tasks. When no assets are in context
-    them model is empty if 2 or more are in context assets that don't have
+    Items in model are based on 0-infinite folders. Always contain
+    an interserction of context folder tasks. When no folders are in context
+    them model is empty if 2 or more are in context folders that don't have
     tasks with same names then model is empty too.
 
     Args:
@@ -27,21 +27,21 @@ class TasksModel(QtGui.QStandardItemModel):
         self._allow_empty_task = allow_empty_task
         self._controller = controller
         self._items_by_name = {}
-        self._asset_names = []
-        self._task_names_by_asset_name = {}
+        self._folder_paths = []
+        self._task_names_by_folder_path = {}
 
-    def set_asset_names(self, asset_names):
+    def set_folder_paths(self, folder_paths):
         """Set assets context."""
-        self._asset_names = asset_names
+        self._folder_paths = folder_paths
         self.reset()
 
     @staticmethod
-    def get_intersection_of_tasks(task_names_by_asset_name):
+    def get_intersection_of_tasks(task_names_by_folder_path):
         """Calculate intersection of task names from passed data.
 
         Example:
         ```
-        # Passed `task_names_by_asset_name`
+        # Passed `task_names_by_folder_path`
         {
             "asset_1": ["compositing", "animation"],
             "asset_2": ["compositing", "editorial"]
@@ -54,10 +54,10 @@ class TasksModel(QtGui.QStandardItemModel):
         ```
 
         Args:
-            task_names_by_asset_name (dict): Task names in iterable by parent.
+            task_names_by_folder_path (dict): Task names in iterable by parent.
         """
         tasks = None
-        for task_names in task_names_by_asset_name.values():
+        for task_names in task_names_by_folder_path.values():
             if tasks is None:
                 tasks = set(task_names)
             else:
@@ -67,41 +67,43 @@ class TasksModel(QtGui.QStandardItemModel):
                 break
         return tasks or set()
 
-    def is_task_name_valid(self, asset_name, task_name):
-        """Is task name available for asset.
+    def is_task_name_valid(self, folder_path, task_name):
+        """Is task name available for folder.
 
         Args:
-            asset_name (str): Name of asset where should look for task.
-            task_name (str): Name of task which should be available in asset's
+            folder_path (str): Name of asset where should look for task.
+            task_name (str): Name of task which should be available in folder
                 tasks.
         """
-        if asset_name not in self._task_names_by_asset_name:
+        if folder_path not in self._task_names_by_folder_path:
             return False
 
         if self._allow_empty_task and not task_name:
             return True
 
-        task_names = self._task_names_by_asset_name[asset_name]
+        task_names = self._task_names_by_folder_path[folder_path]
         if task_name in task_names:
             return True
         return False
 
     def reset(self):
         """Update model by current context."""
-        if not self._asset_names:
+        if not self._folder_paths:
             self._items_by_name = {}
-            self._task_names_by_asset_name = {}
+            self._task_names_by_folder_path = {}
             self.clear()
             return
 
-        task_names_by_asset_name = (
-            self._controller.get_task_names_by_asset_names(self._asset_names)
+        task_names_by_folder_path = (
+            self._controller.get_task_names_by_folder_paths(
+                self._folder_paths
+            )
         )
 
-        self._task_names_by_asset_name = task_names_by_asset_name
+        self._task_names_by_folder_path = task_names_by_folder_path
 
         new_task_names = self.get_intersection_of_tasks(
-            task_names_by_asset_name
+            task_names_by_folder_path
         )
         if self._allow_empty_task:
             new_task_names.add("")

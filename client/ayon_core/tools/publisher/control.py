@@ -12,6 +12,7 @@ from abc import ABCMeta, abstractmethod
 import six
 import arrow
 import pyblish.api
+import ayon_api
 
 from ayon_core.client import (
     get_asset_by_name,
@@ -70,17 +71,17 @@ class AssetDocsCache:
 
     def __init__(self, controller):
         self._controller = controller
-        self._full_asset_docs_by_name = {}
+        self._asset_docs_by_path = {}
 
     def reset(self):
-        self._full_asset_docs_by_name = {}
+        self._asset_docs_by_path = {}
 
-    def get_full_asset_by_name(self, asset_name):
-        if asset_name not in self._full_asset_docs_by_name:
+    def get_asset_doc_by_folder_path(self, folder_path):
+        if folder_path not in self._asset_docs_by_path:
             project_name = self._controller.project_name
-            full_asset_doc = get_asset_by_name(project_name, asset_name)
-            self._full_asset_docs_by_name[asset_name] = full_asset_doc
-        return copy.deepcopy(self._full_asset_docs_by_name[asset_name])
+            asset_doc = get_asset_by_name(project_name, folder_path)
+            self._asset_docs_by_path[folder_path] = asset_doc
+        return copy.deepcopy(self._asset_docs_by_path[folder_path])
 
 
 class PublishReportMaker:
@@ -951,13 +952,13 @@ class AbstractPublisherController(object):
 
     @property
     @abstractmethod
-    def current_asset_name(self):
-        """Current context asset name.
+    def current_folder_path(self):
+        """Current context folder path.
 
         Returns:
-            Union[str, None]: Name of asset.
-        """
+            Union[str, None]: Folder path.
 
+        """
         pass
 
     @property
@@ -1021,7 +1022,7 @@ class AbstractPublisherController(object):
         pass
 
     @abstractmethod
-    def get_existing_product_names(self, asset_name):
+    def get_existing_product_names(self, folder_path):
         pass
 
     @abstractmethod
@@ -1665,7 +1666,7 @@ class PublisherController(BasePublisherController):
         return self._create_context.get_current_project_name()
 
     @property
-    def current_asset_name(self):
+    def current_folder_path(self):
         """Current context asset name defined by host.
 
         Returns:
@@ -1727,12 +1728,42 @@ class PublisherController(BasePublisherController):
 
     # Publisher custom method
     def get_folder_id_from_path(self, folder_path):
+        if not folder_path:
+            return None
         folder_item = self._hierarchy_model.get_folder_item_by_path(
             self.project_name, folder_path
         )
         if folder_item:
             return folder_item.entity_id
         return None
+
+    def get_task_names_by_folder_paths(self, folder_paths):
+        # TODO implement model and cache values
+        if not folder_paths:
+            return {}
+        folder_items = self._hierarchy_model.get_folder_items_by_paths(
+            self.project_name, folder_paths
+        )
+        folder_paths_by_id = {
+            folder_item.entity_id: folder_item.path
+            for folder_item in folder_items.values()
+            if folder_item
+        }
+        tasks = ayon_api.get_tasks(
+            self.project_name,
+            folder_ids=set(folder_paths_by_id),
+            fields=["name", "folderId"]
+        )
+        output = {
+            folder_path: set()
+            for folder_path in folder_paths
+        }
+        for task in tasks:
+            folder_path = folder_paths_by_id.get(task["folderId"])
+            if folder_path:
+                output[folder_path].add(task["name"])
+
+        return output
 
     def are_folder_paths_valid(self, folder_paths):
         if not folder_paths:
@@ -1761,10 +1792,12 @@ class PublisherController(BasePublisherController):
 
         return context_title
 
-    def get_existing_product_names(self, asset_name):
+    def get_existing_product_names(self, folder_path):
+        if not folder_path:
+            return None
         project_name = self.project_name
         folder_item = self._hierarchy_model.get_folder_item_by_path(
-            project_name, asset_name
+            project_name, folder_path
         )
         if not folder_item:
             return None
@@ -2006,7 +2039,7 @@ class PublisherController(BasePublisherController):
         creator_identifier,
         variant,
         task_name,
-        asset_name,
+        folder_path,
         instance_id=None
     ):
         """Get product name based on passed data.
@@ -2016,14 +2049,16 @@ class PublisherController(BasePublisherController):
                 responsible for product name creation.
             variant (str): Variant value from user's input.
             task_name (str): Name of task for which is instance created.
-            asset_name (str): Name of asset for which is instance created.
+            folder_path (str): Folder path for which is instance created.
             instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
 
         creator = self._creators[creator_identifier]
         project_name = self.project_name
-        asset_doc = self._asset_docs_cache.get_full_asset_by_name(asset_name)
+        asset_doc = self._asset_docs_cache.get_asset_doc_by_folder_path(
+            folder_path
+        )
         instance = None
         if instance_id:
             instance = self.instances[instance_id]
