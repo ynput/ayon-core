@@ -243,8 +243,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             node_path = instance.path()
             node_data["instance_id"] = node_path
             node_data["instance_node"] = node_path
-            if "AYONProductName" in node_data:
-                node_data["productName"] = node_data.pop("AYONProductName")
+            if "AYON_productName" in node_data:
+                node_data["productName"] = node_data.pop("AYON_productName")
 
             created_instance = CreatedInstance.from_existing(
                 node_data, self
@@ -269,7 +269,7 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
         # Never store instance node and instance id since that data comes
         # from the node's path
         if "productName" in values:
-            values["AYONProductName"] = values.pop("productName")
+            values["AYON_productName"] = values.pop("productName")
         values.pop("instance_node", None)
         values.pop("instance_id", None)
         imprint(node, values, update=update)
