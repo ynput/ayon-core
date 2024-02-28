@@ -148,7 +148,7 @@ class AbstractTemplateBuilder(object):
             return self._host.get_current_context()
         return {
             "project_name": self.project_name,
-            "asset_name": self.current_asset_name,
+            "folder_path": self.current_asset_name,
             "task_name": self.current_task_name
         }
 
@@ -1799,7 +1799,7 @@ class PlaceholderCreateMixin(object):
         # create product name
         context = self._builder.get_current_context()
         project_name = context["project_name"]
-        asset_name = context["asset_name"]
+        asset_name = context["folder_path"]
         task_name = context["task_name"]
 
         if legacy_create:
