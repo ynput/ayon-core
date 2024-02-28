@@ -1734,6 +1734,18 @@ class PublisherController(BasePublisherController):
             return folder_item.entity_id
         return None
 
+    def are_folder_paths_valid(self, folder_paths):
+        if not folder_paths:
+            return True
+        folder_paths = set(folder_paths)
+        folder_items = self._hierarchy_model.get_folder_items_by_paths(
+            self.project_name, folder_paths
+        )
+        for folder_item in folder_items.values():
+            if folder_item is None:
+                return False
+        return True
+
     # --- Publish specific callbacks ---
     def get_context_title(self):
         """Get context title for artist shown at the top of main window."""
