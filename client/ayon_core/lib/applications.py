@@ -1395,7 +1395,7 @@ class EnvironmentPrepData(dict):
         if data.get("env") is None:
             data["env"] = os.environ.copy()
 
-        project_name = data["project_doct"]["name"]
+        project_name = data["project_doc"]["name"]
         if "project_settings" not in data:
             data["project_settings"] = get_project_settings(project_name)
 
