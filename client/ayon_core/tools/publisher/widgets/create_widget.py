@@ -322,7 +322,7 @@ class CreateWidget(QtWidgets.QWidget):
         return self._controller.current_task_name
 
     def _context_change_is_enabled(self):
-        return self._context_widget.isEnabled()
+        return self._context_widget.is_enabled()
 
     def _get_asset_name(self):
         folder_path = None
@@ -335,7 +335,7 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _get_folder_id(self):
         folder_id = None
-        if self._context_widget.isEnabled():
+        if self._context_widget.is_enabled():
             folder_id = self._context_widget.get_selected_folder_id()
         return folder_id
 
@@ -352,7 +352,7 @@ class CreateWidget(QtWidgets.QWidget):
         return task_name
 
     def _set_context_enabled(self, enabled):
-        check_prereq = self._context_widget.isEnabled() != enabled
+        check_prereq = self._context_widget.is_enabled() != enabled
         self._context_widget.set_enabled(enabled)
         if check_prereq:
             self._invalidate_prereq()
@@ -404,8 +404,9 @@ class CreateWidget(QtWidgets.QWidget):
         #   data
         self._refresh_creators()
 
+        folder_id = self._controller.get_folder_id_from_path(folder_path)
         self._context_widget.update_current_context_btn()
-        self._context_widget.set_selected_context(folder_path, task_name)
+        self._context_widget.set_selected_context(folder_id, task_name)
 
         self._invalidate_prereq_deffered()
 
