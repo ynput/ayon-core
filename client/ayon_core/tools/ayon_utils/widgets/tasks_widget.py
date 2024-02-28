@@ -359,6 +359,64 @@ class TasksWidget(QtWidgets.QWidget):
 
         self._tasks_model.refresh()
 
+    def get_selected_task_info(self):
+        _, task_id, task_name, task_type = self._get_selected_item_ids()
+        return {
+            "task_id": task_id,
+            "task_name": task_name,
+            "task_type": task_type,
+        }
+
+    def get_selected_task_name(self):
+        """Get selected task name.
+
+        Returns:
+            Union[str, None]: Task name.
+        """
+
+        _, _, task_name, _ = self._get_selected_item_ids()
+        return task_name
+
+    def get_selected_task_type(self):
+        """Get selected task type.
+
+        Returns:
+            Union[str, None]: Task type.
+
+        """
+        _, _, _, task_type = self._get_selected_item_ids()
+        return task_type
+
+    def set_selected_task(self, task_name):
+        """Set selected task by name.
+
+        Args:
+            task_name (str): Task name.
+
+        Returns:
+            bool: Task was selected.
+
+        """
+        if task_name is None:
+            self._tasks_view.clearSelection()
+            return True
+
+        if task_name == self.get_selected_task_name():
+            return True
+        index = self._tasks_model.get_index_by_name(task_name)
+        if not index.isValid():
+            return False
+
+        proxy_index = self._tasks_proxy_model.mapFromSource(index)
+        if not proxy_index.isValid():
+            return False
+
+        selection_model = self._folders_view.selectionModel()
+        selection_model.setCurrentIndex(
+            proxy_index, QtCore.QItemSelectionModel.SelectCurrent
+        )
+        return True
+
     def _on_tasks_refresh_finished(self, event):
         """Tasks were refreshed in controller.
 
@@ -396,10 +454,11 @@ class TasksWidget(QtWidgets.QWidget):
         for index in selection_model.selectedIndexes():
             task_id = index.data(ITEM_ID_ROLE)
             task_name = index.data(ITEM_NAME_ROLE)
+            task_type = index.data(TASK_TYPE_ROLE)
             parent_id = index.data(PARENT_ID_ROLE)
             if task_name is not None:
-                return parent_id, task_id, task_name
-        return self._selected_folder_id, None, None
+                return parent_id, task_id, task_name, task_type
+        return self._selected_folder_id, None, None, None
 
     def _on_selection_change(self):
         # Don't trigger task change during refresh
@@ -408,7 +467,7 @@ class TasksWidget(QtWidgets.QWidget):
         if self._tasks_model.is_refreshing:
             return
 
-        parent_id, task_id, task_name = self._get_selected_item_ids()
+        parent_id, task_id, task_name, _ = self._get_selected_item_ids()
         self._controller.set_selected_task(task_id, task_name)
         self.selection_changed.emit()
 
