@@ -4,9 +4,6 @@ from .constants import CURRENT_THUMBNAIL_SCHEMA
 from .utils import get_ayon_server_api_connection
 from .openpype_comp import get_folders_with_tasks
 from .conversion_utils import (
-    project_fields_v3_to_v4,
-    convert_v4_project_to_v3,
-
     folder_fields_v3_to_v4,
     convert_v4_folder_to_v3,
 
@@ -39,36 +36,6 @@ def get_asset_name_identifier(asset_doc):
     parents = list(asset_doc["data"]["parents"])
     parents.append(asset_doc["name"])
     return "/" + "/".join(parents)
-
-
-def get_projects(active=True, inactive=False, library=None, fields=None):
-    if not active and not inactive:
-        return
-
-    if active and inactive:
-        active = None
-    elif active:
-        active = True
-    elif inactive:
-        active = False
-
-    con = get_ayon_server_api_connection()
-    fields = project_fields_v3_to_v4(fields, con)
-    for project in con.get_projects(active, library, fields=fields):
-        yield convert_v4_project_to_v3(project)
-
-
-def get_project(project_name, active=True, inactive=False, fields=None):
-    # Skip if both are disabled
-    con = get_ayon_server_api_connection()
-    fields = project_fields_v3_to_v4(fields, con)
-    return convert_v4_project_to_v3(
-        con.get_project(project_name, fields=fields)
-    )
-
-
-def get_whole_project(*args, **kwargs):
-    raise NotImplementedError("'get_whole_project' not implemented")
 
 
 def _get_subsets(
