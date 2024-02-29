@@ -11,7 +11,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.redshift_rop"
     label = "Redshift ROP"
-    family = "redshift_rop"
+    product_type = "redshift_rop"
     icon = "magic"
     ext = "exr"
     render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$AOV.$F4.{ext}"
@@ -20,7 +20,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
     # Default to split export and render jobs
     split_render = True
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "Redshift_ROP"})
@@ -30,7 +30,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateRedshiftROP, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -60,7 +60,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
 
         filepath = self.render_staging_dir.format(
-            product={"name": subset_name},
+            product={"name": product_name},
             ext=ext
         )
 
@@ -85,7 +85,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             parms["RS_renderCamera"] = camera or ""
 
         rs_filepath = self.rs_dir.format(
-            product={"name": subset_name}
+            product={"name": product_name}
         )
 
         parms["RS_archive_file"] = rs_filepath
@@ -96,7 +96,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock some Avalon attributes
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def remove_instances(self, instances):

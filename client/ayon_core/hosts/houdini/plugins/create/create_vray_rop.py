@@ -12,7 +12,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.vray_rop"
     label = "VRay ROP"
-    family = "vray_rop"
+    product_type = "vray_rop"
     icon = "magic"
     ext = "exr"
     render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$AOV.$F4.{ext}",
@@ -21,7 +21,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
     # Default to split export and render jobs
     export_job = True
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "vray_renderer"})
@@ -31,7 +31,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateVrayROP, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
@@ -60,7 +60,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         if pre_create_data.get("export_job"):
 
             scene_filepath = self.vrscene_dir.format(
-                product={"name": subset_name}
+                product={"name": product_name}
             )
             # Setting render_export_mode to "2" because that's for
             # "Export only" ("1" is for "Export & Render")
@@ -83,7 +83,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         if pre_create_data.get("render_element_enabled", True):
             # Vray has its own tag for AOV file output
             filepath = self.render_staging_dir.format(
-                product={"name": subset_name},
+                product={"name": product_name},
                 ext=ext
             )
 
@@ -102,7 +102,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
         else:
             filepath = self.render_staging_dir.format(
-                product={"name": subset_name},
+                product={"name": product_name},
                 ext=ext
             ).replace(".$AOV", "")
         
@@ -118,7 +118,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # lock parameters from AVALON
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def remove_instances(self, instances):

@@ -23,20 +23,20 @@ class ConnectXgen(InventoryAction):
             self.display_warning(message)
             return
 
-        # Categorize containers by family.
-        containers_by_family = {}
+        # Categorize containers by product type.
+        containers_by_product_type = {}
         for container in containers:
-            family = get_representation_context(
+            product_type = get_representation_context(
                 container["representation"]
             )["subset"]["data"]["family"]
             try:
-                containers_by_family[family].append(container)
+                containers_by_product_type[product_type].append(container)
             except KeyError:
-                containers_by_family[family] = [container]
+                containers_by_product_type[product_type] = [container]
 
         # Validate to only 1 source container.
-        source_containers = containers_by_family.get("animation", [])
-        source_containers += containers_by_family.get("pointcache", [])
+        source_containers = containers_by_product_type.get("animation", [])
+        source_containers += containers_by_product_type.get("pointcache", [])
         source_container_namespaces = [
             x["namespace"] for x in source_containers
         ]
@@ -68,8 +68,8 @@ class ConnectXgen(InventoryAction):
 
         # Target containers.
         target_containers = []
-        for family, containers in containers_by_family.items():
-            if family in ["animation", "pointcache"]:
+        for product_type, containers in containers_by_product_type.items():
+            if product_type in ["animation", "pointcache"]:
                 continue
 
             target_containers.extend(containers)

@@ -7,7 +7,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.arnold_rop"
     label = "Arnold ROP"
-    family = "arnold_rop"
+    product_type = "arnold_rop"
     icon = "magic"
     render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}"
     ass_dir = "$HIP/ayon/{product[name]}/ass/{product[name]}.$F4.{ext}"
@@ -18,7 +18,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
     # Default to split export and render jobs
     export_job = True
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou
 
         # Remove the active, we are checking the bypass flag of the nodes
@@ -31,7 +31,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateArnoldRop, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: plugin.CreatedInstance
 
@@ -40,7 +40,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
         
         filepath = self.render_staging_dir.format(
-            product={"name": subset_name},
+            product={"name": product_name},
             ext=ext
         )
 
@@ -55,7 +55,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             ass_filepath = self.ass_dir.format(
-                product={"name": subset_name},
+                product={"name": product_name},
                 ext="ass"
             )
             
@@ -65,7 +65,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock any parameters in this list
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_pre_create_attr_defs(self):

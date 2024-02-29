@@ -111,9 +111,14 @@ class WriteNodeKnobSettingPanel(nukescripts.PythonPanel):
         )
         for write_node in write_selected_nodes:
             # data for mapping the path
+            # TODO add more fill data
+            product_name = write_node["name"].value()
             data = {
                 "work": os.getenv("AYON_WORKDIR"),
-                "subset": write_node["name"].value(),
+                "subset": product_name,
+                "product": {
+                    "name": product_name,
+                },
                 "frame": "#" * frame_padding,
                 "ext": ext
             }
@@ -139,6 +144,7 @@ class WriteNodeKnobSettingPanel(nukescripts.PythonPanel):
                 knobs_nodes = settings[i]["knobs"]
 
         for setting in settings:
+            # TODO change 'subsets' to 'product_names' in settings
             for subset in setting["subsets"]:
                 preset_name.append(subset)
 

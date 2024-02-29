@@ -12,16 +12,16 @@ class CreateRenderlayer(plugin.BaseCreator):
 
     identifier = "io.openpype.creators.blender.render"
     label = "Render"
-    family = "render"
+    product_type = "render"
     icon = "eye"
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
         try:
             # Run parent create method
             collection = super().create(
-                subset_name, instance_data, pre_create_data
+                product_name, instance_data, pre_create_data
             )
 
             prepare_rendering(collection)

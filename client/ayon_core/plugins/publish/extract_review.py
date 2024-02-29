@@ -103,38 +103,38 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
     def _get_outputs_for_instance(self, instance):
         host_name = instance.context.data["hostName"]
-        family = self.main_family_from_instance(instance)
+        product_type = instance.data["productType"]
 
         self.log.debug("Host: \"{}\"".format(host_name))
-        self.log.debug("Family: \"{}\"".format(family))
+        self.log.debug("Product type: \"{}\"".format(product_type))
 
         profile = filter_profiles(
             self.profiles,
             {
                 "hosts": host_name,
-                "product_types": family,
+                "product_types": product_type,
             },
             logger=self.log)
         if not profile:
             self.log.info((
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Family: \"{}\""
-            ).format(host_name, family))
+                " Host: \"{}\" | Product type: \"{}\""
+            ).format(host_name, product_type))
             return
 
         self.log.debug("Matching profile: \"{}\"".format(json.dumps(profile)))
 
-        subset_name = instance.data.get("subset")
+        product_name = instance.data.get("productName")
         instance_families = self.families_from_instance(instance)
         filtered_outputs = self.filter_output_defs(
-            profile, subset_name, instance_families
+            profile, product_name, instance_families
         )
         if not filtered_outputs:
             self.log.info((
                 "Skipped instance. All output definitions from selected"
                 " profile do not match instance families \"{}\" or"
-                " subset name \"{}\"."
-            ).format(str(instance_families), subset_name))
+                " product name \"{}\"."
+            ).format(str(instance_families), product_name))
 
         # Store `filename_suffix` to save arguments
         profile_outputs = []
@@ -1463,13 +1463,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         return filters
 
-    def main_family_from_instance(self, instance):
-        """Returns main family of entered instance."""
-        family = instance.data.get("family")
-        if not family:
-            family = instance.data["families"][0]
-        return family
-
     def families_from_instance(self, instance):
         """Returns all families of entered instance."""
         families = []
@@ -1497,7 +1490,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         return any(family.lower() in families_filter_lower
                    for family in families)
 
-    def filter_output_defs(self, profile, subset_name, families):
+    def filter_output_defs(self, profile, product_name, families):
         """Return outputs matching input instance families.
 
         Output definitions without families filter are marked as valid.
@@ -1505,7 +1498,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         Args:
             profile (dict): Profile from presets matching current context.
             families (list): All families of current instance.
-            subset_name (str): name of subset
+            product_name (str): Product name.
 
         Returns:
             dict[str, Any]: Containing all output definitions matching entered
@@ -1536,11 +1529,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 # Skip empty strings
                 if name_filter
             ]
-            if subset_name and product_name_filters:
+            if product_name and product_name_filters:
                 match = False
                 for product_name_filter in product_name_filters:
                     compiled = re.compile(product_name_filter)
-                    if compiled.search(subset_name):
+                    if compiled.search(product_name):
                         match = True
                         break
 

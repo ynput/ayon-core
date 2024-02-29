@@ -10,11 +10,11 @@ class CreateBGEO(plugin.HoudiniCreator):
     """BGEO pointcache creator."""
     identifier = "io.openpype.creators.houdini.bgeo"
     label = "PointCache (Bgeo)"
-    family = "pointcache"
+    product_type = "pointcache"
     icon = "gears"
     staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
 
@@ -24,14 +24,14 @@ class CreateBGEO(plugin.HoudiniCreator):
         creator_attributes["farm"] = pre_create_data["farm"]
 
         instance = super(CreateBGEO, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = self.staging_dir.format(
-            product={"name": subset_name},
+            product={"name": product_name},
             ext=pre_create_data.get("bgeo_type") or "bgeo.sc"
         )
 

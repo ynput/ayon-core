@@ -809,10 +809,10 @@ class LoaderActionsModel:
 
         error_info = []
         if loader.is_multiple_contexts_compatible:
-            subset_names = []
+            product_names = []
             for context in version_contexts:
-                subset_name = context.get("subset", {}).get("name") or "N/A"
-                subset_names.append(subset_name)
+                product_name = context.get("subset", {}).get("name") or "N/A"
+                product_names.append(product_name)
             try:
                 load_with_subset_contexts(
                     loader,
@@ -831,12 +831,12 @@ class LoaderActionsModel:
                     str(exc),
                     formatted_traceback,
                     None,
-                    ", ".join(subset_names),
+                    ", ".join(product_names),
                     None
                 ))
         else:
             for version_context in version_contexts:
-                subset_name = (
+                product_name = (
                     version_context.get("subset", {}).get("name") or "N/A"
                 )
                 try:
@@ -860,7 +860,7 @@ class LoaderActionsModel:
                         str(exc),
                         formatted_traceback,
                         None,
-                        subset_name,
+                        product_name,
                         None
                     ))
 

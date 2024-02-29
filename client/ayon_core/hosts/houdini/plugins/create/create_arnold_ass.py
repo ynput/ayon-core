@@ -9,7 +9,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.ass"
     label = "Arnold ASS"
-    family = "ass"
+    product_type = "ass"
     icon = "magic"
 
     # Default extension: `.ass` or `.ass.gz`
@@ -18,7 +18,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
     ext = ".ass"
     staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou
 
         instance_data.pop("active", None)
@@ -28,7 +28,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         creator_attributes["farm"] = pre_create_data["farm"]
 
         instance = super(CreateArnoldAss, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: plugin.CreatedInstance
 
@@ -41,7 +41,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         instance_node.setParmTemplateGroup(parm_template_group)
         
         filepath = self.staging_dir.format(
-            product={"name": subset_name},
+            product={"name": product_name},
             ext=self.ext.lstrip(".")
         )
         
@@ -56,7 +56,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock any parameters in this list
-        to_lock = ["ar_ass_export_enable", "family", "id"]
+        to_lock = ["ar_ass_export_enable", "productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_instance_attr_defs(self):

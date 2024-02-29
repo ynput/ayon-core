@@ -11,7 +11,7 @@ from ayon_core.hosts.aftereffects.api.lib import (
 
 class BackgroundLoader(api.AfterEffectsLoader):
     """
-        Load images from Background family
+        Load images from Background product type
         Creates for each background separate folder with all imported images
         from background json AND automatically created composition with layers,
         each layer for separate image.

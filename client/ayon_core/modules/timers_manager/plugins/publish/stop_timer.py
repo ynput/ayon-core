@@ -1,6 +1,6 @@
 """
 Requires:
-    context -> system_settings
+    context -> project_settings
     context -> ayonAddonsManager
 """
 
@@ -19,8 +19,8 @@ class StopTimer(pyblish.api.ContextPlugin):
             self.log.debug("TimersManager is disabled")
             return
 
-        modules_settings = context.data["system_settings"]["modules"]
-        if not modules_settings["timers_manager"]["disregard_publishing"]:
+        project_settings = context.data["project_settings"]
+        if not project_settings["timers_manager"]["disregard_publishing"]:
             self.log.debug("Publish is not affecting running timers.")
             return
 

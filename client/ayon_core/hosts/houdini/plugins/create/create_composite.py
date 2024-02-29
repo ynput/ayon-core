@@ -11,26 +11,26 @@ class CreateCompositeSequence(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.imagesequence"
     label = "Composite (Image Sequence)"
-    family = "imagesequence"
+    product_type = "imagesequence"
     icon = "gears"
     staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
     ext = "exr"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "comp"})
 
         instance = super(CreateCompositeSequence, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
         
         filepath = self.staging_dir.format(
-            product={"name": subset_name},
+            product={"name": product_name},
             ext=self.ext
         )
         

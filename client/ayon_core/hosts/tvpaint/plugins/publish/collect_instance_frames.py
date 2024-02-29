@@ -31,6 +31,6 @@ class CollectOutputFrameRange(pyblish.api.InstancePlugin):
         instance.data["frameEnd"] = frame_end
         self.log.info(
             "Set frames {}-{} on instance {} ".format(
-                frame_start, frame_end, instance.data["subset"]
+                frame_start, frame_end, instance.data["productName"]
             )
         )
