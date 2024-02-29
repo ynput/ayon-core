@@ -12,6 +12,7 @@ class ExtractModelAbc(publish.Extractor):
     order = pyblish.api.ExtractorOrder - 0.05
     label = "Extract Model"
     hosts = ["zbrush"]
+    families = ["model"]
 
     def process(self, instance):
 
