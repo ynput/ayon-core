@@ -35,13 +35,13 @@
           <Menu>AYON</Menu>
           <Geometry>
             <Size>
-              <Width>300</Width>
-              <Height>140</Height>
+              <Height>100</Height>
+							<Width>260</Width>
             </Size>
-            <MaxSize>
-              <Width>400</Width>
-              <Height>200</Height>
-            </MaxSize>
+            <MinSize>
+              <Height>100</Height>
+							<Width>260</Width>
+            </MinSize>
           </Geometry>
           <Icons>
             <Icon Type="Normal">./icons/ayon_logo.png</Icon>
