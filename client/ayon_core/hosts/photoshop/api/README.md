@@ -12,12 +12,26 @@ To install the extension download [Extension Manager Command Line tool (ExManCmd
 ExManCmd /install {path to addon}/api/extension.zxp
 ```
 
-### Server
+### Live code editing extension
+
+You can use a simlink to add your code directly to the extension folder during development. Close and open the Ayon extension panel to see your changes.
+
+Windows:
+
+```
+cd ayon-core
+
+# make a link
+mklink /D "%AppData%\Adobe\CEP\extensions\io.ynput.PS.panel" "%cd%\client\ayon_core\hosts\photoshop\api\extension"
+
+```
+
+Server
 
 The easiest way to get the server and Photoshop launch is with:
 
 ```
-python -c ^"import ayon_core.hosts.photoshop;ayon_core.hosts.photoshop.launch(""C:\Program Files\Adobe\Adobe Photoshop 2020\Photoshop.exe"")^"
+python -c ^"import ayon_core.hosts.photoshop;ayon_core.hosts.photoshop.launch(""C:\Program Files\Adobe\Adobe Photoshop 2024\Photoshop.exe"")^"
 ```
 
 `avalon.photoshop.launch` launches the application and server, and also closes the server when Photoshop exists.
@@ -28,10 +42,10 @@ The Photoshop extension can be found under `Window > Extensions > Ayon`. Once la
 
 ![Ayon Panel](panel.png "AYON Panel")
 
-
 ## Developing
 
 ### Extension
+
 When developing the extension you can load it [unsigned](https://github.com/Adobe-CEP/CEP-Resources/blob/master/CEP_9.x/Documentation/CEP%209.0%20HTML%20Extension%20Cookbook.md#debugging-unsigned-extensions).
 
 When signing the extension you can use this [guide](https://github.com/Adobe-CEP/Getting-Started-guides/tree/master/Package%20Distribute%20Install#package-distribute-install-guide).
@@ -46,6 +60,7 @@ ZXPSignCmd -sign {path to avalon-core}\avalon\photoshop\extension {path to avalo
 These plugins were made with the [polly config](https://github.com/mindbender-studio/config). To fully integrate and load, you will have to use this config and add `image` to the [integration plugin](https://github.com/mindbender-studio/config/blob/master/polly/plugins/publish/integrate_asset.py).
 
 #### Creator Plugin
+
 ```python
 from avalon import photoshop
 
@@ -62,6 +77,7 @@ class CreateImage(photoshop.Creator):
 ```
 
 #### Collector Plugin
+
 ```python
 import pythoncom
 
@@ -124,6 +140,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
 ```
 
 #### Extractor Plugin
+
 ```python
 import os
 
@@ -193,6 +210,7 @@ class ExtractImage(publish.Extractor):
 ```
 
 #### Loader Plugin
+
 ```python
 from avalon import api, photoshop
 from ayon_core.pipeline import load, get_representation_path
@@ -242,6 +260,7 @@ class ImageLoader(load.LoaderPlugin):
     def switch(self, container, representation):
         self.update(container, representation)
 ```
+
 For easier debugging of Javascript:
 https://community.adobe.com/t5/download-install/adobe-extension-debuger-problem/td-p/10911704?page=1
 Add --enable-blink-features=ShadowDOMV0,CustomElementsV0 when starting Chrome
@@ -250,8 +269,10 @@ then localhost:8078 (port set in `photoshop\extension\.debug`)
 Or use Visual Studio Code https://medium.com/adobetech/extendscript-debugger-for-visual-studio-code-public-release-a2ff6161fa01
 
 Or install CEF client from https://github.com/Adobe-CEP/CEP-Resources/tree/master/CEP_9.x
+
 ## Resources
-  - https://github.com/lohriialo/photoshop-scripting-python
-  - https://www.adobe.com/devnet/photoshop/scripting.html
-  - https://github.com/Adobe-CEP/Getting-Started-guides
-  - https://github.com/Adobe-CEP/CEP-Resources
+
+- https://github.com/lohriialo/photoshop-scripting-python
+- https://www.adobe.com/devnet/photoshop/scripting.html
+- https://github.com/Adobe-CEP/Getting-Started-guides
+- https://github.com/Adobe-CEP/CEP-Resources
