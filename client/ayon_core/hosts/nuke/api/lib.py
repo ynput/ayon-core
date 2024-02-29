@@ -44,7 +44,7 @@ from ayon_core.pipeline import (
     Anatomy,
     get_current_host_name,
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
 )
@@ -1462,7 +1462,7 @@ class WorkfileSettings(object):
 
         Context._project_entity = project_entity
         self._project_name = project_name
-        self._asset = get_current_asset_name()
+        self._asset = get_current_folder_path()
         self._asset_entity = get_asset_by_name(project_name, self._asset)
         self._root_node = root_node or nuke.root()
         self._nodes = self.get_nodes(nodes=nodes)
@@ -2108,7 +2108,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         from .utils import set_context_favorites
 
         work_dir = os.getenv("AYON_WORKDIR")
-        asset = get_current_asset_name()
+        asset = get_current_folder_path()
         favorite_items = OrderedDict()
 
         # project

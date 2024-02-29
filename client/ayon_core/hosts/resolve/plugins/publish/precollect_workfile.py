@@ -1,7 +1,7 @@
 import pyblish.api
 from pprint import pformat
 
-from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline import get_current_folder_path
 
 from ayon_core.hosts.resolve import api as rapi
 from ayon_core.hosts.resolve.otio import davinci_export
@@ -14,7 +14,7 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder - 0.5
 
     def process(self, context):
-        current_asset_name = get_current_asset_name()
+        current_asset_name = get_current_folder_path()
         asset_name = current_asset_name.split("/")[-1]
 
         product_name = "workfileMain"

@@ -13,7 +13,7 @@ from ayon_core.hosts.fusion.api.lib import (
     set_asset_framerange,
     set_asset_resolution,
 )
-from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline import get_current_folder_path
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.tools.utils import get_qt_app
 
@@ -131,7 +131,7 @@ class OpenPypeMenu(QtWidgets.QWidget):
 
     def on_task_changed(self):
         # Update current context label
-        label = get_current_asset_name()
+        label = get_current_folder_path()
         self.asset_label.setText(label)
 
     def register_callback(self, name, fn):

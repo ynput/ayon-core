@@ -385,10 +385,10 @@ def get_current_project_name():
     return get_global_context()["project_name"]
 
 
-def get_current_asset_name():
+def get_current_folder_path():
     host = registered_host()
     if isinstance(host, HostBase):
-        return host.get_current_asset_name()
+        return host.get_current_folder_path()
     return get_global_context()["folder_path"]
 
 
@@ -439,7 +439,7 @@ def get_current_project_asset(asset_name=None, asset_id=None, fields=None):
         return get_asset_by_id(project_name, asset_id, fields=fields)
 
     if not asset_name:
-        asset_name = get_current_asset_name()
+        asset_name = get_current_folder_path()
         # Skip if is not set even on context
         if not asset_name:
             return None

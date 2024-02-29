@@ -128,9 +128,9 @@ class AbstractTemplateBuilder(object):
         return os.getenv("AYON_PROJECT_NAME")
 
     @property
-    def current_asset_name(self):
+    def current_folder_path(self):
         if isinstance(self._host, HostBase):
-            return self._host.get_current_asset_name()
+            return self._host.get_current_folder_path()
         return os.getenv("AYON_FOLDER_PATH")
 
     @property
@@ -144,7 +144,7 @@ class AbstractTemplateBuilder(object):
             return self._host.get_current_context()
         return {
             "project_name": self.project_name,
-            "folder_path": self.current_asset_name,
+            "folder_path": self.current_folder_path,
             "task_name": self.current_task_name
         }
 
@@ -158,7 +158,7 @@ class AbstractTemplateBuilder(object):
     def current_asset_doc(self):
         if self._current_asset_doc is None:
             self._current_asset_doc = get_asset_by_name(
-                self.project_name, self.current_asset_name
+                self.project_name, self.current_folder_path
             )
         return self._current_asset_doc
 

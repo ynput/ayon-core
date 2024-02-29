@@ -4,7 +4,7 @@ from maya import cmds
 
 from ayon_core.pipeline import (
     registered_host,
-    get_current_asset_name,
+    get_current_folder_path,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
 )
@@ -74,7 +74,7 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
             return True
 
         # update imported sets information
-        asset_name = get_current_asset_name()
+        asset_name = get_current_folder_path()
         for node in imported_sets:
             if not cmds.attributeQuery("id", node=node, exists=True):
                 continue

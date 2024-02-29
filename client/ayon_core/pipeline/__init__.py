@@ -94,7 +94,7 @@ from .context_tools import (
     get_current_context,
     get_current_host_name,
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name
 )
 install = install_host
@@ -195,7 +195,7 @@ __all__ = (
     "get_current_context",
     "get_current_host_name",
     "get_current_project_name",
-    "get_current_asset_name",
+    "get_current_folder_path",
     "get_current_task_name",
 
     # Backwards compatible function names

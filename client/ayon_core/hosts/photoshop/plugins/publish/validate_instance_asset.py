@@ -1,6 +1,6 @@
 import pyblish.api
 
-from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline import get_current_folder_path
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
@@ -28,7 +28,7 @@ class ValidateInstanceAssetRepair(pyblish.api.Action):
         # Apply pyblish.logic to get the instances for the plug-in
         instances = pyblish.api.instances_by_plugin(failed, plugin)
         stub = photoshop.stub()
-        current_asset_name = get_current_asset_name()
+        current_asset_name = get_current_folder_path()
         for instance in instances:
             data = stub.read(instance[0])
             data["folderPath"] = current_asset_name
@@ -55,7 +55,7 @@ class ValidateInstanceAsset(OptionalPyblishPluginMixin,
 
     def process(self, instance):
         instance_asset = instance.data["folderPath"]
-        current_asset = get_current_asset_name()
+        current_asset = get_current_folder_path()
 
         if instance_asset != current_asset:
             msg = (

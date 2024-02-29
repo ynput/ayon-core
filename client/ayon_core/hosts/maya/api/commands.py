@@ -5,7 +5,7 @@ from maya import cmds
 from ayon_api import get_project
 
 from ayon_core.client import get_asset_by_name
-from ayon_core.pipeline import get_current_project_name, get_current_asset_name
+from ayon_core.pipeline import get_current_project_name, get_current_folder_path
 
 
 class ToolWindows:
@@ -75,7 +75,7 @@ def reset_resolution():
 
     # Get resolution from asset
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
+    asset_name = get_current_folder_path()
     asset_doc = get_asset_by_name(project_name, asset_name)
     resolution = _resolution_from_document(asset_doc)
     # Try get resolution from project

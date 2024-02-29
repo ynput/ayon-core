@@ -10,7 +10,7 @@ from ayon_core.settings import get_current_project_settings
 from ayon_core.tools.utils.lib import qt_app_context
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
 )
 from ayon_core.pipeline.create import (
@@ -372,7 +372,7 @@ class CreatorWindow(QtWidgets.QDialog):
             self.setStyleSheet(style.load_stylesheet())
 
     def refresh(self):
-        self._folder_path_input.setText(get_current_asset_name())
+        self._folder_path_input.setText(get_current_folder_path())
 
         self._creators_model.reset()
 

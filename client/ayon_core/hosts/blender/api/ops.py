@@ -16,7 +16,7 @@ import bpy
 import bpy.utils.previews
 
 from ayon_core import style
-from ayon_core.pipeline import get_current_asset_name, get_current_task_name
+from ayon_core.pipeline import get_current_folder_path, get_current_task_name
 from ayon_core.tools.utils import host_tools
 
 from .workio import OpenFileCacher
@@ -388,7 +388,7 @@ class TOPBAR_MT_avalon(bpy.types.Menu):
         else:
             pyblish_menu_icon_id = 0
 
-        asset = get_current_asset_name()
+        asset = get_current_folder_path()
         task = get_current_task_name()
         context_label = f"{asset}, {task}"
         context_label_item = layout.row()

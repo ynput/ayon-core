@@ -94,7 +94,7 @@ def create_interactive(creator_identifier, **kwargs):
             project_name=context.get_current_project_name(),
             asset_doc=get_asset_by_name(
                 project_name=context.get_current_project_name(),
-                asset_name=context.get_current_asset_name()
+                asset_name=context.get_current_folder_path()
             ),
             task_name=context.get_current_task_name(),
             variant=variant,

@@ -108,7 +108,7 @@ class HostBase(object):
 
         return os.environ.get("AYON_PROJECT_NAME")
 
-    def get_current_asset_name(self):
+    def get_current_folder_path(self):
         """
         Returns:
             Union[str, None]: Current asset name.
@@ -139,7 +139,7 @@ class HostBase(object):
 
         return {
             "project_name": self.get_current_project_name(),
-            "folder_path": self.get_current_asset_name(),
+            "folder_path": self.get_current_folder_path(),
             "task_name": self.get_current_task_name()
         }
 

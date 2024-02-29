@@ -32,7 +32,7 @@ class AutoImageCreator(PSAutoCreator):
 
         context = self.create_context
         project_name = context.get_current_project_name()
-        asset_name = context.get_current_asset_name()
+        asset_name = context.get_current_folder_path()
         task_name = context.get_current_task_name()
         host_name = context.host_name
         asset_doc = get_asset_by_name(project_name, asset_name)

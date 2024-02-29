@@ -1,7 +1,7 @@
 import pyblish.api
 
 import ayon_core.hosts.harmony.api as harmony
-from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline import get_current_folder_path
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
@@ -27,7 +27,7 @@ class ValidateInstanceRepair(pyblish.api.Action):
         # Apply pyblish.logic to get the instances for the plug-in
         instances = pyblish.api.instances_by_plugin(failed, plugin)
 
-        folder_path = get_current_asset_name()
+        folder_path = get_current_folder_path()
         for instance in instances:
             data = harmony.read(instance.data["setMembers"][0])
             data["folderPath"] = folder_path
@@ -44,7 +44,7 @@ class ValidateInstance(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         instance_asset = instance.data["folderPath"]
-        current_asset = get_current_asset_name()
+        current_asset = get_current_folder_path()
         msg = (
             "Instance asset is not the same as current asset:"
             f"\nInstance: {instance_asset}\nCurrent: {current_asset}"

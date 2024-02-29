@@ -20,7 +20,7 @@ from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     schema,
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     register_loader_plugin_path,
     register_creator_plugin_path,
     deregister_loader_plugin_path,
@@ -223,7 +223,7 @@ def message_window(title, message):
 
 def get_asset_data():
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
+    asset_name = get_current_folder_path()
     asset_doc = get_asset_by_name(project_name, asset_name)
 
     return asset_doc.get("data")
