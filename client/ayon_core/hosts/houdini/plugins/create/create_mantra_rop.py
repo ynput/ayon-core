@@ -11,7 +11,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
     label = "Mantra ROP"
     product_type = "mantra_rop"
     icon = "magic"
-    render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}",
+    render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}"
     ifd_dir = "$HIP/ayon/{product[name]}/ifd/{product[name]}.$F4.ifd"
 
     # Default to split export and render jobs
