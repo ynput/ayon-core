@@ -32,15 +32,11 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
 
     @classmethod
     def get_invalid(cls, instance):
-        invalid_mesh_type = [member for member in instance.data["members"]
-                             if rt.isProperty(member, "mesh")]
-        if invalid_mesh_type:
-            invalid_uv = [member for member in instance.data["members"]
-                        if not member.mesh.numTVerts > 0]
-            if invalid_uv:
-                cls.log.error("Meshes detected with invalid UVs")
-
-            return invalid_uv
+        meshes = [member for member in instance.data["members"]
+                  if rt.isProperty(member, "mesh")]
+        invalid = [member for member in meshes
+                   if not member.mesh.numTVerts > 0]
+        return invalid
 
     def process(self, instance):
         invalid = self.get_invalid(instance)
