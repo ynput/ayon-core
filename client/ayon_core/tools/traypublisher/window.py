@@ -18,14 +18,19 @@ from ayon_core.hosts.traypublisher.api import TrayPublisherHost
 from ayon_core.tools.publisher.control_qt import QtPublisherController
 from ayon_core.tools.publisher.window import PublisherWindow
 from ayon_core.tools.utils import PlaceholderLineEdit, get_ayon_qt_app
-from ayon_core.tools.utils.constants import PROJECT_NAME_ROLE
-from ayon_core.tools.utils.models import (
-    ProjectModel,
-    ProjectSortFilterProxy
+from ayon_core.tools.ayon_utils.models import ProjectsModel
+from ayon_core.tools.ayon_utils.widgets import (
+    ProjectsQtModel,
+    ProjectSortFilterProxy,
+    PROJECT_NAME_ROLE,
 )
 
 
 class TrayPublisherController(QtPublisherController):
+    def __init__(self, *args, **kwargs):
+        super(TrayPublisherController, self).__init__(*args, **kwargs)
+        self._projects_model = ProjectsModel(self)
+
     @property
     def host(self):
         return self._host
@@ -33,6 +38,9 @@ class TrayPublisherController(QtPublisherController):
     def reset_hierarchy_cache(self):
         self._hierarchy_model.reset()
         self._asset_docs_cache.reset()
+
+    def get_project_items(self, sender=None):
+        return self._projects_model.get_project_items(sender)
 
 
 class TrayPublisherRegistry(JSONSettingRegistry):
@@ -55,7 +63,7 @@ class TrayPublisherRegistry(JSONSettingRegistry):
 class StandaloneOverlayWidget(QtWidgets.QFrame):
     project_selected = QtCore.Signal(str)
 
-    def __init__(self, publisher_window):
+    def __init__(self, controller, publisher_window):
         super(StandaloneOverlayWidget, self).__init__(publisher_window)
         self.setObjectName("OverlayFrame")
 
@@ -67,7 +75,7 @@ class StandaloneOverlayWidget(QtWidgets.QFrame):
         header_label = QtWidgets.QLabel("Choose project", content_widget)
         header_label.setObjectName("ChooseProjectLabel")
         # Create project models and view
-        projects_model = ProjectModel()
+        projects_model = ProjectsQtModel(controller)
         projects_proxy = ProjectSortFilterProxy()
         projects_proxy.setSourceModel(projects_model)
         projects_proxy.setFilterKeyColumn(0)
@@ -138,12 +146,11 @@ class StandaloneOverlayWidget(QtWidgets.QFrame):
             project_name = None
 
         if project_name:
-            index = None
-            src_index = self._projects_model.find_project(project_name)
-            if src_index is not None:
-                index = self._projects_proxy.mapFromSource(src_index)
-
-            if index is not None:
+            src_index = self._projects_model.get_index_by_project_name(
+                project_name
+            )
+            index = self._projects_proxy.mapFromSource(src_index)
+            if index.isValid():
                 selection_model = self._projects_view.selectionModel()
                 selection_model.select(
                     index,
@@ -202,7 +209,7 @@ class TrayPublishWindow(PublisherWindow):
 
         self.setWindowFlags(flags)
 
-        overlay_widget = StandaloneOverlayWidget(self)
+        overlay_widget = StandaloneOverlayWidget(controller, self)
 
         btns_widget = self._header_extra_widget
 
