@@ -2,6 +2,7 @@
 Basic avalon integration
 """
 import os
+import json
 import contextlib
 from collections import OrderedDict
 
@@ -12,6 +13,7 @@ from ayon_core.pipeline import (
     schema,
     register_loader_plugin_path,
     register_creator_plugin_path,
+    register_inventory_action_path,
     AVALON_CONTAINER_ID,
 )
 from ayon_core.host import (
@@ -38,6 +40,7 @@ PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
+INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
 
@@ -65,6 +68,7 @@ class ResolveHost(HostBase, IWorkfileHost, ILoadHost):
 
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
+        register_inventory_action_path(INVENTORY_PATH)
 
         # register callback for switching publishable
         pyblish.register_callback("instanceToggled",
@@ -145,6 +149,26 @@ def ls():
     and the Maya equivalent, which is in `avalon.maya.pipeline`
     """
 
+    # Media Pool instances from Load Media loader
+    for clip in lib.iter_all_media_pool_clips():
+        data = clip.GetMetadata(lib.pype_tag_name)
+        if not data:
+            continue
+        data = json.loads(data)
+
+        # If not all required data, skip it
+        required = ['schema', 'id', 'loader', 'representation']
+        if not all(key in data for key in required):
+            continue
+
+        container = {key: data[key] for key in required}
+        container["objectName"] = clip.GetName()  # Get path in folders
+        container["namespace"] = clip.GetName()
+        container["name"] = clip.GetUniqueId()
+        container["_item"] = clip
+        yield container
+
+    # Timeline instances from Load Clip loader
     # get all track items from current timeline
     all_timeline_items = lib.get_current_timeline_items(filter=False)
 
