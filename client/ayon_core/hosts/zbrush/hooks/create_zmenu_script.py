@@ -1,7 +1,8 @@
 """Pre-launch to force zbrush startup script."""
 import os
+import subprocess
 from ayon_core.hosts.zbrush import ZBRUSH_HOST_DIR
-from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib import get_ayon_launcher_args
 from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 
 
@@ -15,7 +16,7 @@ class CreateZMenuScript(PreLaunchHook):
     Hook `GlobalHostDataHook` must be executed before this hook.
     """
     app_groups = {"zbrush"}
-    order = 10
+    order = 12
     launch_types = {LaunchTypes.local}
 
     def execute(self):
@@ -27,12 +28,11 @@ class CreateZMenuScript(PreLaunchHook):
             zscript.close()
 
     def ayon_menu(self):
+        os.environ["AYON_ZBRUSH_CMD"] = subprocess.list2cmdline(
+            get_ayon_launcher_args())
         zclient_path = os.path.join(ZBRUSH_HOST_DIR, "api", "widgets.py")
         zclient_path = zclient_path.replace("\\", "/")
-        python_exe = (
-            os.environ["AYON_EXECUTABLE"] if AYON_SERVER_ENABLED
-            else os.environ["OPENPYPE_EXECUTABLE"]
-        )
+        python_exe = os.environ["AYON_ZBRUSH_CMD"]
         ayon_script = ("""
 [ISubPalette,"Zplugin:AYON"]
 [IButton,"Zplugin:AYON:Load","Loader",

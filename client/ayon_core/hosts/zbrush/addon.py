@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.modules import AYONAddon, IHostAddon
 
 ZBRUSH_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -13,7 +13,7 @@ def get_launch_script_path():
     )
 
 
-class ZbrushAddon(OpenPypeModule, IHostAddon):
+class ZbrushAddon(AYONAddon, IHostAddon):
     name = "zbrush"
     host_name = "zbrush"
 
@@ -36,7 +36,7 @@ class ZbrushAddon(OpenPypeModule, IHostAddon):
 
         # Set some applications defaults
         defaults = {
-            "OPENPYPE_LOG_NO_COLORS": "True",
+            "AYON_LOG_NO_COLORS": "True",
             "WEBSOCKET_URL": "ws://localhost:6001"
         }
         for key, value in defaults.items():
