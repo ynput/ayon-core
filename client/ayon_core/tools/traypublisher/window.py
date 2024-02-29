@@ -10,9 +10,8 @@ import platform
 
 from qtpy import QtWidgets, QtCore
 import qtawesome
-import appdirs
 
-from ayon_core.lib import JSONSettingRegistry, is_running_from_build
+from ayon_core.lib import AYONSettingsRegistry, is_running_from_build
 from ayon_core.pipeline import install_host
 from ayon_core.hosts.traypublisher.api import TrayPublisherHost
 from ayon_core.tools.publisher.control_qt import QtPublisherController
@@ -24,6 +23,11 @@ from ayon_core.tools.ayon_utils.widgets import (
     ProjectSortFilterProxy,
     PROJECT_NAME_ROLE,
 )
+
+
+class TrayPublisherRegistry(AYONSettingsRegistry):
+    def __init__(self):
+        super(TrayPublisherRegistry, self).__init__("traypublisher")
 
 
 class TrayPublisherController(QtPublisherController):
@@ -41,23 +45,6 @@ class TrayPublisherController(QtPublisherController):
 
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
-
-
-class TrayPublisherRegistry(JSONSettingRegistry):
-    """Class handling AYON general settings registry.
-
-    Attributes:
-        vendor (str): Name used for path construction.
-        product (str): Additional name used for path construction.
-
-    """
-
-    def __init__(self):
-        self.vendor = "pypeclub"
-        self.product = "openpype"
-        name = "tray_publisher"
-        path = appdirs.user_data_dir(self.product, self.vendor)
-        super(TrayPublisherRegistry, self).__init__(name, path)
 
 
 class StandaloneOverlayWidget(QtWidgets.QFrame):
