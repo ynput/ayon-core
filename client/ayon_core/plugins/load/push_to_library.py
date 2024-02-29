@@ -40,9 +40,9 @@ class PushToLibraryProject(load.SubsetLoaderPlugin):
             "main.py"
         )
 
-        project_doc = context["project"]
+        project_entity = context["project"]
         version_doc = context["version"]
-        project_name = project_doc["name"]
+        project_name = project_entity["name"]
         version_id = str(version_doc["_id"])
 
         args = get_ayon_launcher_args(

@@ -12,8 +12,9 @@ Provides:
 """
 
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import get_project, get_asset_by_name
+from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import KnownPublishError
 
 
@@ -28,7 +29,7 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         asset_name = context.data["folderPath"]
         task_name = context.data["task"]
 
-        project_entity = get_project(project_name)
+        project_entity = ayon_api.get_project(project_name)
         if not project_entity:
             raise KnownPublishError(
                 "Project '{0}' was not found.".format(project_name)

@@ -19,8 +19,9 @@ from six import string_types
 from maya import cmds, mel
 from maya.api import OpenMaya
 
+import ayon_api
+
 from ayon_core.client import (
-    get_project,
     get_asset_by_name,
     get_subsets,
     get_last_versions,
@@ -2504,8 +2505,10 @@ def get_fps_for_current_context():
     ) or {}
     fps = asset_doc.get("data", {}).get("fps")
     if not fps:
-        project_doc = get_project(project_name, fields=["data.fps"]) or {}
-        fps = project_doc.get("data", {}).get("fps")
+        project_entity = ayon_api.get_project(
+            project_name, fields=["attrib.fps"]
+        ) or {}
+        fps = project_entity.get("attrib", {}).get("fps")
 
         if not fps:
             fps = 25
@@ -2624,8 +2627,8 @@ def reset_scene_resolution():
     """
 
     project_name = get_current_project_name()
-    project_doc = get_project(project_name)
-    project_data = project_doc["data"]
+    project_entity = ayon_api.get_project(project_name)
+    project_attribs = project_entity["attrib"]
     asset_data = get_current_project_asset()["data"]
 
     # Set project resolution
@@ -2633,10 +2636,10 @@ def reset_scene_resolution():
     height_key = "resolutionHeight"
     pixelAspect_key = "pixelAspect"
 
-    width = asset_data.get(width_key, project_data.get(width_key, 1920))
-    height = asset_data.get(height_key, project_data.get(height_key, 1080))
+    width = asset_data.get(width_key, project_attribs.get(width_key, 1920))
+    height = asset_data.get(height_key, project_attribs.get(height_key, 1080))
     pixelAspect = asset_data.get(pixelAspect_key,
-                                 project_data.get(pixelAspect_key, 1))
+                                 project_attribs.get(pixelAspect_key, 1))
 
     set_scene_resolution(width, height, pixelAspect)
 

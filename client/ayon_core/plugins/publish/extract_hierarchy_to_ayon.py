@@ -48,7 +48,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
             instance_asset_name = instance.data.get("folderPath")
             instances_by_asset_name[instance_asset_name].append(instance)
 
-        project_doc = context.data["projectEntity"]
+        project_entity = context.data["projectEntity"]
         asset_docs = get_assets(
             project_name, asset_names=instances_by_asset_name.keys()
         )
@@ -62,7 +62,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
             for instance in instances:
                 task_name = instance.data.get("task")
                 template_data = get_task_template_data(
-                    project_doc, asset_doc, task_name)
+                    project_entity, asset_doc, task_name)
                 template_data.update(copy.deepcopy(asset_data))
 
                 instance.data["anatomyData"].update(template_data)
@@ -157,7 +157,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         Output example:
             {
                 "name": "MyProject",
-                "entity_type": "Project",
+                "entity_type": "project",
                 "attributes": {},
                 "tasks": [],
                 "children": [

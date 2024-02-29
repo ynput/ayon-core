@@ -3,7 +3,9 @@ import re
 import copy
 import platform
 
-from ayon_core.client import get_project, get_asset_by_name
+import ayon_api
+
+from ayon_core.client import get_asset_by_name
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import (
     filter_profiles,
@@ -141,7 +143,7 @@ def get_workdir_with_workdir_data(
 
 
 def get_workdir(
-    project_doc,
+    project_entity,
     asset_doc,
     task_name,
     host_name,
@@ -152,14 +154,14 @@ def get_workdir(
     """Fill workdir path from entered data and project's anatomy.
 
     Args:
-        project_doc (Dict[str, Any]): Mongo document of project from MongoDB.
+        project_entity (Dict[str, Any]): Project entity.
         asset_doc (Dict[str, Any]): Mongo document of asset from MongoDB.
         task_name (str): Task name for which are workdir data preapred.
         host_name (str): Host which is used to workdir. This is required
             because workdir template may contain `{app}` key. In `Session`
             is stored under `AYON_HOST_NAME` key.
         anatomy (Anatomy): Optional argument. Anatomy object is created using
-            project name from `project_doc`. It is preferred to pass this
+            project name from `project_entity`. It is preferred to pass this
             argument as initialization of a new Anatomy object may be time
             consuming.
         template_key (str): Key of work templates in anatomy templates. Default
@@ -173,10 +175,12 @@ def get_workdir(
     """
 
     if not anatomy:
-        anatomy = Anatomy(project_doc["name"])
+        anatomy = Anatomy(
+            project_entity["name"], project_entity=project_entity
+        )
 
     workdir_data = get_template_data(
-        project_doc, asset_doc, task_name, host_name
+        project_entity, asset_doc, task_name, host_name
     )
     # Output is TemplateResult object which contain useful data
     return get_workdir_with_workdir_data(
@@ -336,7 +340,7 @@ def get_last_workfile(
 
 
 def get_custom_workfile_template(
-    project_doc,
+    project_entity,
     asset_doc,
     task_name,
     host_name,
@@ -360,7 +364,7 @@ def get_custom_workfile_template(
     project and asset as parents of processing task name.
 
     Args:
-        project_doc (Dict[str, Any]): Project document from MongoDB.
+        project_entity (Dict[str, Any]): Project entity.
         asset_doc (Dict[str, Any]): Asset document from MongoDB.
         task_name (str): Name of task for which templates are filtered.
         host_name (str): Name of host.
@@ -376,7 +380,7 @@ def get_custom_workfile_template(
 
     log = Logger.get_logger("CustomWorkfileResolve")
 
-    project_name = project_doc["name"]
+    project_name = project_entity["name"]
     if project_settings is None:
         project_settings = get_project_settings(project_name)
 
@@ -413,7 +417,7 @@ def get_custom_workfile_template(
 
     # get project, asset, task anatomy context data
     anatomy_context_data = get_template_data(
-        project_doc, asset_doc, task_name, host_name
+        project_entity, asset_doc, task_name, host_name
     )
     # add root dict
     anatomy_context_data["root"] = anatomy.roots
@@ -457,25 +461,30 @@ def get_custom_workfile_template_by_string_context(
     `get_custom_workfile_template` for rest of logic.
 
     Args:
-        project_name(str): Project name.
-        asset_name(str): Asset name.
-        task_name(str): Task name.
+        project_name (str): Project name.
+        asset_name (str): Asset name.
+        task_name (str): Task name.
         host_name (str): Name of host.
-        anatomy(Anatomy): Optionally prepared anatomy object for passed
+        anatomy (Anatomy): Optionally prepared anatomy object for passed
             project.
-        project_settings(Dict[str, Any]): Preloaded project settings.
+        project_settings (Dict[str, Any]): Preloaded project settings.
 
     Returns:
-        str: Path to template or None if none of profiles match current
-            context. (Existence of formatted path is not validated.)
-        None: If no profile is matching context.
+        Union[str, None]: Path to template or None if none of profiles match
+            current context. (Existence of formatted path is not validated.)
+
     """
 
-    project_doc = get_project(project_name)
+    project_entity = ayon_api.get_project(project_name)
     asset_doc = get_asset_by_name(project_name, asset_name)
 
     return get_custom_workfile_template(
-        project_doc, asset_doc, task_name, host_name, anatomy, project_settings
+        project_entity,
+        asset_doc,
+        task_name,
+        host_name,
+        anatomy,
+        project_settings
     )
 
 

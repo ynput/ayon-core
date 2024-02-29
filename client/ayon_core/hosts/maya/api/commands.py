@@ -2,7 +2,9 @@
 """OpenPype script commands to be used directly in Maya."""
 from maya import cmds
 
-from ayon_core.client import get_asset_by_name, get_project
+from ayon_api import get_project
+
+from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import get_current_project_name, get_current_asset_name
 
 
@@ -39,16 +41,22 @@ class ToolWindows:
 
 
 def _resolution_from_document(doc):
-    if not doc or "data" not in doc:
-        print("Entered document is not valid. \"{}\"".format(str(doc)))
+    if not doc:
+        print("Entered document is not valid. \"{}\"".format(
+            str(doc)
+        ))
         return None
 
-    resolution_width = doc["data"].get("resolutionWidth")
-    resolution_height = doc["data"].get("resolutionHeight")
+    attributes = doc.get("attrib")
+    if attributes is None:
+        attributes = doc.get("data", {})
+
+    resolution_width = attributes.get("resolutionWidth")
+    resolution_height = attributes.get("resolutionHeight")
     # Backwards compatibility
     if resolution_width is None or resolution_height is None:
-        resolution_width = doc["data"].get("resolution_width")
-        resolution_height = doc["data"].get("resolution_height")
+        resolution_width = attributes.get("resolution_width")
+        resolution_height = attributes.get("resolution_height")
 
     # Make sure both width and height are set
     if resolution_width is None or resolution_height is None:
@@ -77,8 +85,8 @@ def reset_resolution():
             "Asset \"{}\" does not have set resolution."
             " Trying to get resolution from project"
         ).format(asset_name))
-        project_doc = get_project(project_name)
-        resolution = _resolution_from_document(project_doc)
+        project_entity = get_project(project_name)
+        resolution = _resolution_from_document(project_entity)
 
     if resolution is None:
         msg = "Using default resolution {}x{}"

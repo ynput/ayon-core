@@ -9,9 +9,7 @@ import clique
 
 import pyblish.api
 
-from ayon_core.client import (
-    get_last_version_by_subset_name,
-)
+from ayon_core.client import get_last_version_by_subset_name
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start

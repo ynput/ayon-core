@@ -21,7 +21,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
         project_name = context.data["projectName"]
         final_context = {}
         final_context[project_name] = {}
-        final_context[project_name]['entity_type'] = 'Project'
+        final_context[project_name]["entity_type"] = "project"
 
         for instance in context:
             self.log.debug("Processing instance: `{}` ...".format(instance))

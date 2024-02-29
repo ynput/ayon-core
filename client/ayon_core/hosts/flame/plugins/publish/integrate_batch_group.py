@@ -219,7 +219,7 @@ class IntegrateBatchGroup(pyblish.api.InstancePlugin):
 
         # update task data in anatomy data
         project_task_types = anatomy_obj["tasks"]
-        task_code = project_task_types.get(task_type, {}).get("short_name")
+        task_code = project_task_types.get(task_type, {}).get("shortName")
         anatomy_data.update({
             "task": {
                 "name": task_name,
@@ -321,13 +321,13 @@ class IntegrateBatchGroup(pyblish.api.InstancePlugin):
         ))
 
     def _get_shot_task_dir_path(self, instance, task_data):
-        project_doc = instance.data["projectEntity"]
+        project_entity = instance.data["projectEntity"]
         asset_entity = instance.data["assetEntity"]
         anatomy = instance.context.data["anatomy"]
         project_settings = instance.context.data["project_settings"]
 
         return get_workdir(
-            project_doc,
+            project_entity,
             asset_entity,
             task_data["name"],
             "flame",

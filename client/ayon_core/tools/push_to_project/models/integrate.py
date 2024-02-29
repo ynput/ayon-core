@@ -8,8 +8,9 @@ import sys
 import traceback
 import uuid
 
+import ayon_api
+
 from ayon_core.client import (
-    get_project,
     get_assets,
     get_asset_by_id,
     get_subset_by_id,
@@ -453,7 +454,7 @@ class ProjectPushItemProcess:
         self._src_version_doc = None
         self._src_repre_items = None
 
-        self._project_doc = None
+        self._project_entity = None
         self._anatomy = None
         self._asset_doc = None
         self._created_asset_doc = None
@@ -562,8 +563,8 @@ class ProjectPushItemProcess:
         src_project_name = self._item.src_project_name
         src_version_id = self._item.src_version_id
 
-        project_doc = get_project(src_project_name)
-        if not project_doc:
+        project_entity = ayon_api.get_project(src_project_name)
+        if not project_entity:
             self._status.set_failed(
                 f"Source project \"{src_project_name}\" was not found"
             )
@@ -632,8 +633,8 @@ class ProjectPushItemProcess:
         # --- Destination entities ---
         dst_project_name = self._item.dst_project_name
         # Validate project existence
-        dst_project_doc = get_project(dst_project_name)
-        if not dst_project_doc:
+        dst_project_entity = ayon_api.get_project(dst_project_name)
+        if not dst_project_entity:
             self._status.set_failed(
                 f"Destination project '{dst_project_name}' was not found"
             )
@@ -642,8 +643,11 @@ class ProjectPushItemProcess:
         self._log_debug(
             f"Destination project '{dst_project_name}' found"
         )
-        self._project_doc = dst_project_doc
-        self._anatomy = Anatomy(dst_project_name)
+        self._project_entity = dst_project_entity
+        self._anatomy = Anatomy(
+            dst_project_name,
+            project_entity=dst_project_entity
+        )
         self._project_settings = get_project_settings(
             self._item.dst_project_name
         )
@@ -651,7 +655,7 @@ class ProjectPushItemProcess:
     def _create_asset(
         self,
         src_asset_doc,
-        project_doc,
+        project_entity,
         parent_asset_doc,
         asset_name
     ):
@@ -668,7 +672,8 @@ class ProjectPushItemProcess:
 
         asset_name_low = asset_name.lower()
         other_asset_docs = get_assets(
-            project_doc["name"], fields=["_id", "name", "data.visualParent"]
+            project_entity["name"],
+            fields=["_id", "name", "data.visualParent"]
         )
         for other_asset_doc in other_asset_docs:
             other_name = other_asset_doc["name"]
@@ -687,7 +692,9 @@ class ProjectPushItemProcess:
                 f"Found already existing asset with name \"{other_name}\""
                 f" which match requested name \"{asset_name}\""
             ))
-            return get_asset_by_id(project_doc["name"], other_asset_doc["_id"])
+            return get_asset_by_id(
+                project_entity["name"], other_asset_doc["_id"]
+            )
 
         data_keys = (
             "clipIn",
@@ -714,13 +721,13 @@ class ProjectPushItemProcess:
 
         asset_doc = new_asset_document(
             asset_name,
-            project_doc["_id"],
+            project_entity["name"],
             parent_id,
             parents,
             data=asset_data
         )
         self._operations.create_entity(
-            project_doc["name"],
+            project_entity["name"],
             asset_doc["type"],
             asset_doc
         )
@@ -759,7 +766,7 @@ class ProjectPushItemProcess:
         else:
             asset_doc = self._create_asset(
                 self._src_asset_doc,
-                self._project_doc,
+                self._project_entity,
                 parent_asset_doc,
                 new_folder_name
             )
@@ -785,9 +792,12 @@ class ProjectPushItemProcess:
         task_info = copy.deepcopy(task_info)
         task_info["name"] = dst_task_name
         # Fill rest of task information based on task type
-        task_type = task_info["type"]
-        task_type_info = self._project_doc["config"]["tasks"].get(
-            task_type, {})
+        task_type_name = task_info["type"]
+        task_types_by_name = {
+            task_type["name"]: task_type
+            for task_type in self._project_entity["taskTypes"]
+        }
+        task_type_info = task_types_by_name.get(task_type_name, {})
         task_info.update(task_type_info)
         self._task_info = task_info
 
@@ -950,7 +960,7 @@ class ProjectPushItemProcess:
         template_name = self._template_name
         anatomy = self._anatomy
         formatting_data = get_template_data(
-            self._project_doc,
+            self._project_entity,
             self._asset_doc,
             self._task_info.get("name"),
             self.host_name

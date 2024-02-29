@@ -1,11 +1,10 @@
 import os
 from copy import deepcopy
-import opentimelineio as otio
 
-from ayon_core.client import (
-    get_asset_by_name,
-    get_project
-)
+import opentimelineio as otio
+import ayon_api
+
+from ayon_core.client import get_asset_by_name
 from ayon_core.hosts.traypublisher.api.plugin import (
     TrayPublishCreator,
     HiddenTrayPublishCreator
@@ -628,7 +627,7 @@ or updating already created. Publishing will create OTIO file.
 
         # basic unique asset name
         clip_name = os.path.splitext(otio_clip.name)[0]
-        project_doc = get_project(self.project_name)
+        project_entity = ayon_api.get_project(self.project_name)
 
         shot_name, shot_metadata = self._shot_metadata_solver.generate_data(
             clip_name,
@@ -636,14 +635,14 @@ or updating already created. Publishing will create OTIO file.
                 "anatomy_data": {
                     "project": {
                         "name": self.project_name,
-                        "code": project_doc["data"]["code"]
+                        "code": project_entity["code"]
                     },
                     "parent": parent_asset_name,
                     "app": self.host_name
                 },
                 "selected_asset_doc": get_asset_by_name(
                     self.project_name, parent_asset_name),
-                "project_doc": project_doc
+                "project_entity": project_entity
             }
         )
 

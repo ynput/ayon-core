@@ -12,9 +12,9 @@ from collections import OrderedDict
 
 import nuke
 from qtpy import QtCore, QtWidgets
+import ayon_api
 
 from ayon_core.client import (
-    get_project,
     get_asset_by_name,
     get_versions,
     get_last_versions,
@@ -128,7 +128,7 @@ class Context:
     workfiles_tool_timer = None
 
     # Seems unused
-    _project_doc = None
+    _project_entity = None
 
 
 def get_main_window():
@@ -1453,14 +1453,14 @@ class WorkfileSettings(object):
     """
 
     def __init__(self, root_node=None, nodes=None, **kwargs):
-        project_doc = kwargs.get("project")
-        if project_doc is None:
+        project_entity = kwargs.get("project")
+        if project_entity is None:
             project_name = get_current_project_name()
-            project_doc = get_project(project_name)
+            project_entity = ayon_api.get_project(project_name)
         else:
-            project_name = project_doc["name"]
+            project_name = project_entity["name"]
 
-        Context._project_doc = project_doc
+        Context._project_entity = project_entity
         self._project_name = project_name
         self._asset = get_current_asset_name()
         self._asset_entity = get_asset_by_name(project_name, self._asset)

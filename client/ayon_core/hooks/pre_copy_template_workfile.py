@@ -60,13 +60,13 @@ class CopyTemplateWorkfile(PreLaunchHook):
 
         project_settings = get_project_settings(project_name)
 
-        project_doc = self.data.get("project_doc")
+        project_entity = self.data.get("project_entity")
         asset_doc = self.data.get("asset_doc")
         anatomy = self.data.get("anatomy")
-        if project_doc and asset_doc:
+        if project_entity and asset_doc:
             self.log.debug("Started filtering of custom template paths.")
             template_path = get_custom_workfile_template(
-                project_doc,
+                project_entity,
                 asset_doc,
                 task_name,
                 host_name,

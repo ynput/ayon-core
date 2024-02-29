@@ -184,7 +184,7 @@ class ShotMetadataSolver:
             # in case first parent is project then start parents from start
             if (
                 _index == 0
-                and parent_token_type == "Project"
+                and parent_token_type == "project"
             ):
                 project_parent = parents[0]
                 parents = [project_parent]
@@ -209,14 +209,14 @@ class ShotMetadataSolver:
         return "/".join(
             [
                 p["entity_name"] for p in parents
-                if p["entity_type"] != "Project"
+                if p["entity_type"] != "project"
             ]
         ) if parents else ""
 
     def _get_parents_from_selected_asset(
         self,
         asset_doc,
-        project_doc
+        project_entity
     ):
         """Returning parents from context on selected asset.
 
@@ -224,12 +224,12 @@ class ShotMetadataSolver:
 
         Args:
             asset_doc (db obj): selected asset doc
-            project_doc (db obj): actual project doc
+            project_entity (dict[str, Any]): Project entity.
 
         Returns:
             list:  list of dict parent components
         """
-        project_name = project_doc["name"]
+        project_name = project_entity["name"]
         visual_hierarchy = [asset_doc]
         current_doc = asset_doc
 
@@ -242,25 +242,28 @@ class ShotMetadataSolver:
                 visual_parent = get_asset_by_id(project_name, visual_parent_id)
 
             if not visual_parent:
-                visual_hierarchy.append(project_doc)
                 break
             visual_hierarchy.append(visual_parent)
             current_doc = visual_parent
 
         # add current selection context hierarchy
-        return [
-            {
+        output = []
+        for entity in reversed(visual_hierarchy):
+            output.append({
                 "entity_type": entity["data"]["entityType"],
                 "entity_name": entity["name"]
-            }
-            for entity in reversed(visual_hierarchy)
-        ]
+            })
+        output.append({
+            "entity_type": "project",
+            "entity_name": project_name,
+        })
+        return output
 
-    def _generate_tasks_from_settings(self, project_doc):
+    def _generate_tasks_from_settings(self, project_entity):
         """Convert settings inputs to task data.
 
         Args:
-            project_doc (db obj): actual project doc
+            project_entity (dict): Project entity.
 
         Raises:
             KeyError: Missing task type in project doc
@@ -270,19 +273,23 @@ class ShotMetadataSolver:
         """
         tasks_to_add = {}
 
-        project_task_types = project_doc["config"]["tasks"]
+        project_task_types = project_entity["taskTypes"]
+        task_type_names = {
+            task_type["name"]
+            for task_type in project_task_types
+        }
         for task_item in self.shot_add_tasks:
             task_name = task_item["name"]
             task_type = task_item["task_type"]
 
             # check if task type in project task types
-            if task_type not in project_task_types.keys():
+            if task_type not in task_type_names:
                 raise KeyError(
                     "Missing task type `{}` for `{}` is not"
                     " existing in `{}``".format(
                         task_type,
                         task_name,
-                        list(project_task_types.keys())
+                        list(task_type_names)
                     )
                 )
             tasks_to_add[task_name] = {"type": task_type}
@@ -304,7 +311,7 @@ class ShotMetadataSolver:
 
         tasks = {}
         asset_doc = source_data["selected_asset_doc"]
-        project_doc = source_data["project_doc"]
+        project_entity = source_data["project_entity"]
 
         # match clip to shot name at start
         shot_name = clip_name
@@ -313,7 +320,9 @@ class ShotMetadataSolver:
         formatting_data = self._generate_tokens(shot_name, source_data)
 
         # generate parents from selected asset
-        parents = self._get_parents_from_selected_asset(asset_doc, project_doc)
+        parents = self._get_parents_from_selected_asset(
+            asset_doc, project_entity
+        )
 
         if self.shot_rename["enabled"]:
             shot_name = self._rename_template(formatting_data)
@@ -325,7 +334,7 @@ class ShotMetadataSolver:
 
         if self.shot_add_tasks:
             tasks = self._generate_tasks_from_settings(
-                project_doc)
+                project_entity)
 
         # generate hierarchy path from parents
         hierarchy_path = self._create_hierarchy_path(parents)
