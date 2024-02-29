@@ -1673,7 +1673,7 @@ class PublisherController(BasePublisherController):
             Union[str, None]: Folder path or None if folder is not set.
         """
 
-        return self._create_context.get_current_asset_name()
+        return self._create_context.get_current_folder_path()
 
     @property
     def current_task_name(self):

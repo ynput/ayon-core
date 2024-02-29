@@ -10,7 +10,7 @@ from ayon_core.hosts.maya.api import plugin
 from ayon_core.lib import BoolDef, EnumDef, TextDef
 from ayon_core.pipeline import (
     Creator,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_project_name,
 )
 from ayon_core.pipeline.create import CreatorError
@@ -45,7 +45,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
         """
 
         project_name = get_current_project_name()
-        folder_path = get_current_asset_name()
+        folder_path = get_current_folder_path()
         if "/" in folder_path:
             current_folder = get_folder_by_path(project_name, folder_path)
         else:

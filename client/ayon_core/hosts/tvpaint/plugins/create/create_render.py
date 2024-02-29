@@ -1069,7 +1069,7 @@ class TVPaintSceneRenderCreator(TVPaintAutoCreator):
         create_context = self.create_context
         host_name = create_context.host_name
         project_name = create_context.get_current_project_name()
-        asset_name = create_context.get_current_asset_name()
+        asset_name = create_context.get_current_folder_path()
         task_name = create_context.get_current_task_name()
 
         asset_doc = get_asset_by_name(project_name, asset_name)
@@ -1118,7 +1118,7 @@ class TVPaintSceneRenderCreator(TVPaintAutoCreator):
         create_context = self.create_context
         host_name = create_context.host_name
         project_name = create_context.get_current_project_name()
-        asset_name = create_context.get_current_asset_name()
+        asset_name = create_context.get_current_folder_path()
         task_name = create_context.get_current_task_name()
 
         existing_name = existing_instance.get("folderPath")

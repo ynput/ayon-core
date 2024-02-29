@@ -24,7 +24,7 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
                 if instance.creator_identifier == self.identifier
             ), None)
         project_name = self.project_name
-        asset_name = self.create_context.get_current_asset_name()
+        asset_name = self.create_context.get_current_folder_path()
         task_name = self.create_context.get_current_task_name()
         host_name = self.create_context.host_name
 

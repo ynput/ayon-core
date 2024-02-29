@@ -1402,7 +1402,7 @@ class CreateContext:
             ).format(joined_methods))
 
         self._current_project_name = None
-        self._current_asset_name = None
+        self._current_folder_path = None
         self._current_task_name = None
         self._current_workfile_path = None
 
@@ -1557,14 +1557,14 @@ class CreateContext:
 
         return self._current_project_name
 
-    def get_current_asset_name(self):
+    def get_current_folder_path(self):
         """Asset name which was used as current context on context reset.
 
         Returns:
             Union[str, None]: Asset name.
         """
 
-        return self._current_asset_name
+        return self._current_folder_path
 
     def get_current_task_name(self):
         """Task name which was used as current context on context reset.
@@ -1612,7 +1612,7 @@ class CreateContext:
         )
         return (
             self._current_project_name != project_name
-            or self._current_asset_name != asset_name
+            or self._current_folder_path != asset_name
             or self._current_task_name != task_name
             or self._current_workfile_path != workfile_path
         )
@@ -1718,7 +1718,7 @@ class CreateContext:
         )
 
         self._current_project_name = project_name
-        self._current_asset_name = asset_name
+        self._current_folder_path = asset_name
         self._current_task_name = task_name
         self._current_workfile_path = workfile_path
 

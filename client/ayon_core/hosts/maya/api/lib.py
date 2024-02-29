@@ -31,7 +31,7 @@ from ayon_core.client import (
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
     discover_loader_plugins,
     loaders_from_representation,
@@ -1668,7 +1668,7 @@ def generate_ids(nodes, asset_id=None):
     if asset_id is None:
         # Get the asset ID from the database for the asset of current context
         project_name = get_current_project_name()
-        asset_name = get_current_asset_name()
+        asset_name = get_current_folder_path()
         asset_doc = get_asset_by_name(project_name, asset_name, fields=["_id"])
         assert asset_doc, "No current asset found in Session"
         asset_id = asset_doc['_id']
@@ -2499,7 +2499,7 @@ def get_fps_for_current_context():
     """
 
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
+    asset_name = get_current_folder_path()
     asset_doc = get_asset_by_name(
         project_name, asset_name, fields=["data.fps"]
     ) or {}
@@ -2531,7 +2531,7 @@ def get_frame_range(include_animation_range=False):
 
     # Set frame start/end
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
+    asset_name = get_current_folder_path()
     asset = get_asset_by_name(project_name, asset_name)
 
     frame_start = asset["data"].get("frameStart")

@@ -17,7 +17,7 @@ from ayon_core.settings import get_current_project_settings
 from ayon_core.pipeline import (
     Anatomy,
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     registered_host,
     get_current_context,
     get_current_host_name,
@@ -97,7 +97,7 @@ def generate_ids(nodes, asset_id=None):
 
     if asset_id is None:
         project_name = get_current_project_name()
-        asset_name = get_current_asset_name()
+        asset_name = get_current_folder_path()
         # Get the asset ID from the database for the asset of current context
         asset_doc = get_asset_by_name(project_name, asset_name, fields=["_id"])
 
@@ -531,7 +531,7 @@ def reset_framerange():
 
     # Get asset data
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
+    asset_name = get_current_folder_path()
     # Get the asset ID from the database for the asset of current context
     asset_doc = get_asset_by_name(project_name, asset_name)
     asset_data = asset_doc["data"]

@@ -1,6 +1,6 @@
 import pyblish.api
 
-from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline import get_current_folder_path
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
@@ -30,7 +30,7 @@ class ValidateInstanceAssetRepair(pyblish.api.Action):
         for instance in instances:
             data = stub.read(instance[0])
 
-            data["folderPath"] = get_current_asset_name()
+            data["folderPath"] = get_current_folder_path()
             stub.imprint(instance[0].instance_id, data)
 
 
@@ -54,7 +54,7 @@ class ValidateInstanceAsset(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         instance_asset = instance.data["folderPath"]
-        current_asset = get_current_asset_name()
+        current_asset = get_current_folder_path()
         msg = (
             f"Instance asset {instance_asset} is not the same "
             f"as current context {current_asset}."

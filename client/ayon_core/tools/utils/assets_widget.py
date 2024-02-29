@@ -521,7 +521,7 @@ class _AssetsWidget(QtWidgets.QWidget):
 
         self._last_btns_height = None
 
-        self._current_asset_name = None
+        self._current_folder_path = None
 
         self.model_selection = {}
 
@@ -536,7 +536,7 @@ class _AssetsWidget(QtWidgets.QWidget):
         self._model.set_project_name(project_name, refresh)
 
     def set_current_asset_name(self, asset_name):
-        self._current_asset_name = asset_name
+        self._current_folder_path = asset_name
 
     def _create_source_model(self):
         model = _AssetModel(parent=self)
@@ -560,8 +560,8 @@ class _AssetsWidget(QtWidgets.QWidget):
     def stop_refresh(self):
         self._model.stop_refresh()
 
-    def _get_current_asset_name(self):
-        return self._current_asset_name
+    def _get_current_folder_path(self):
+        return self._current_folder_path
 
     def _on_current_asset_click(self):
         """Trigger change of asset to current context asset.
@@ -572,7 +572,7 @@ class _AssetsWidget(QtWidgets.QWidget):
         self.select_current_asset()
 
     def select_current_asset(self):
-        asset_name = self._get_current_asset_name()
+        asset_name = self._get_current_folder_path()
         if asset_name:
             self.select_asset_by_name(asset_name)
 

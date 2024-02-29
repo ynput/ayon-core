@@ -250,8 +250,8 @@ class SubstanceHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         has_formatting_entries = any("{" in item["value"] for item in shelves)
         if has_formatting_entries:
             project_name = self.get_current_project_name()
-            asset_name = self.get_current_asset_name()
-            task_name = self.get_current_asset_name()
+            asset_name = self.get_current_folder_path()
+            task_name = self.get_current_task_name()
             project_settings = get_project_settings(project_name)
             formatting_data = get_template_data_with_names(
                 project_name, asset_name, task_name, project_settings

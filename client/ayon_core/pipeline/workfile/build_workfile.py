@@ -102,7 +102,7 @@ class BuildWorkfile:
 
         from ayon_core.pipeline.context_tools import (
             get_current_project_name,
-            get_current_asset_name,
+            get_current_folder_path,
             get_current_task_name,
         )
 
@@ -110,7 +110,7 @@ class BuildWorkfile:
 
         # Get current asset name and entity
         project_name = get_current_project_name()
-        current_folder_path = get_current_asset_name()
+        current_folder_path = get_current_folder_path()
         current_asset_doc = get_asset_by_name(
             project_name, current_folder_path
         )

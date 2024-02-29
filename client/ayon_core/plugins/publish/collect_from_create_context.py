@@ -53,7 +53,7 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         context.data.update(create_context.context_data_to_store())
         context.data["newPublishing"] = True
         # Update context data
-        asset_name = create_context.get_current_asset_name()
+        asset_name = create_context.get_current_folder_path()
         task_name = create_context.get_current_task_name()
         for key, value in (
             ("AYON_PROJECT_NAME", project_name),

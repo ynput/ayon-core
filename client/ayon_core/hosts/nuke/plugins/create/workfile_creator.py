@@ -27,7 +27,7 @@ class WorkfileCreator(AutoCreator):
         )
 
         project_name = self.create_context.get_current_project_name()
-        asset_name = self.create_context.get_current_asset_name()
+        asset_name = self.create_context.get_current_folder_path()
         task_name = self.create_context.get_current_task_name()
         host_name = self.create_context.host_name
 
