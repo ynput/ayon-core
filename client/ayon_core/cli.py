@@ -102,19 +102,18 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
 
 
 @main_cli.command()
-@click.argument("paths", nargs=-1)
-@click.option("-t", "--targets", help="Targets module", default=None,
+@click.argument("path", nargs=1)
+@click.option("-t", "--targets", help="Targets", default=None,
               multiple=True)
 @click.option("-g", "--gui", is_flag=True,
               help="Show Publish UI", default=False)
-def publish(paths, targets, gui):
+def publish(path, targets, gui):
     """Start CLI publishing.
 
-    Publish collects json from paths provided as an argument.
-    More than one path is allowed.
+    Publish collects json from path provided as an argument.
+S
     """
-
-    Commands.publish(list(paths), targets, gui)
+    Commands.publish(path, targets, gui)
 
 
 @main_cli.command(context_settings={"ignore_unknown_options": True})
