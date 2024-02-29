@@ -280,8 +280,9 @@ class BackgroundLoader(load.LoaderPlugin):
             nodes=container_nodes
         )
 
-    def update(self, container, representation):
-        path = get_representation_path(representation)
+    def update(self, container, context):
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
         with open(path) as json_file:
             data = json.load(json_file)
 
@@ -301,7 +302,7 @@ class BackgroundLoader(load.LoaderPlugin):
 
         print(container)
 
-        is_latest = is_representation_from_latest(representation)
+        is_latest = is_representation_from_latest(repre_doc)
         for layer in sorted(layers):
             file_to_import = [
                 os.path.join(bg_folder, layer).replace("\\", "/")
@@ -351,8 +352,11 @@ class BackgroundLoader(load.LoaderPlugin):
                 harmony.send({"function": func, "args": [node, "red"]})
 
         harmony.imprint(
-            container['name'], {"representation": str(representation["_id"]),
-                                "nodes": container['nodes']}
+            container['name'],
+            {
+                "representation": str(repre_doc["_id"]),
+                "nodes": container["nodes"]
+            }
         )
 
     def remove(self, container):
@@ -369,5 +373,5 @@ class BackgroundLoader(load.LoaderPlugin):
             )
             harmony.imprint(container['name'], {}, remove=True)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)

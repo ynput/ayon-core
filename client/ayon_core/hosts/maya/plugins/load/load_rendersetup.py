@@ -84,14 +84,15 @@ class RenderSetupLoader(load.LoaderPlugin):
             # Already implicitly deleted by Maya upon removing reference
             pass
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update RenderSetup setting by overwriting existing settings."""
         lib.show_message(
             "Render setup update",
             "Render setup setting will be overwritten by new version. All "
             "setting specified by user not included in loaded version "
             "will be lost.")
-        path = get_representation_path(representation)
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
         with open(path, "r") as file:
             try:
                 renderSetup.instance().decode(
@@ -103,10 +104,10 @@ class RenderSetupLoader(load.LoaderPlugin):
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
         self.log.info("... updated")
 
-    def switch(self, container, representation):
+    def switch(self, container, context):
         """Switch representations."""
-        self.update(container, representation)
+        self.update(container, context)
