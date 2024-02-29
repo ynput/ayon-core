@@ -363,7 +363,7 @@ class SequenceLoader(LoaderPlugin):
     ):
         pass
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update an existing `container`
         """
         pass
