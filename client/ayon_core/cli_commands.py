@@ -106,7 +106,7 @@ class Commands:
             context = get_global_context()
             env = get_app_environments_for_context(
                 context["project_name"],
-                context["asset_name"],
+                context["folder_path"],
                 context["task_name"],
                 app_full_name,
                 launch_type=LaunchTypes.farm_publish,

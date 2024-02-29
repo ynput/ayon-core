@@ -12,11 +12,11 @@ class CreateReview(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.review"
     label = "Review"
-    family = "review"
+    product_type = "review"
     icon = "video-camera"
     staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "opengl"})
@@ -24,7 +24,7 @@ class CreateReview(plugin.HoudiniCreator):
         instance_data["keepImages"] = pre_create_data.get("keepImages")
 
         instance = super(CreateReview, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -33,7 +33,7 @@ class CreateReview(plugin.HoudiniCreator):
         frame_range = hou.playbar.frameRange()
 
         filepath = self.staging_dir.format(
-            product={"name": subset_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=pre_create_data.get("image_format", "png") 
         )
 
@@ -89,7 +89,7 @@ class CreateReview(plugin.HoudiniCreator):
         if os.getenv("OCIO"):
             self.set_colorcorrect_to_default_view_space(instance_node)
 
-        to_lock = ["id", "family"]
+        to_lock = ["id", "productType"]
 
         self.lock_parameters(instance_node, to_lock)
 
@@ -134,7 +134,7 @@ class CreateReview(plugin.HoudiniCreator):
     def set_colorcorrect_to_default_view_space(self,
                                                instance_node):
         """Set ociocolorspace to the default output space."""
-        from openpype.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
+        from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
 
         # set Color Correction parameter to OpenColorIO
         instance_node.setParms({"colorcorrect": 2})

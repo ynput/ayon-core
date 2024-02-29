@@ -12,11 +12,11 @@ class CreateVDBCache(plugin.HoudiniCreator):
     identifier = "io.openpype.creators.houdini.vdbcache"
     name = "vbdcache"
     label = "VDB Cache"
-    family = "vdbcache"
+    product_type = "vdbcache"
     icon = "cloud"
     staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.vdb"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou
 
         instance_data.pop("active", None)
@@ -25,14 +25,14 @@ class CreateVDBCache(plugin.HoudiniCreator):
             "creator_attributes", dict())
         creator_attributes["farm"] = pre_create_data["farm"]
         instance = super(CreateVDBCache, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = self.staging_dir.format(
-            product={"name": subset_name}
+            product={"name": product_name}
         )
 
         parms = {

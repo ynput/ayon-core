@@ -9,7 +9,7 @@ from ayon_core.pipeline import (
     get_representation_path
 )
 from ayon_core.settings import get_project_settings
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class GpuCacheLoader(load.LoaderPlugin):
@@ -40,7 +40,7 @@ class GpuCacheLoader(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family("model", settings)
+        color = get_load_color_for_product_type("model", settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)

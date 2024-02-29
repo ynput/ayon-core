@@ -9,13 +9,13 @@ class CreateKarmaROP(plugin.HoudiniCreator):
     """Karma ROP"""
     identifier = "io.openpype.creators.houdini.karma_rop"
     label = "Karma ROP"
-    family = "karma_rop"
+    product_type = "karma_rop"
     icon = "magic"
     render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}"
     checkpoint_dir = "$HIP/ayon/{product[name]}/checkpoint/{product[name]}.$F4.checkpoint"
     usd_dir = "$HIP/ayon/{product_name}/usd/{product_name}_$RENDERID"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
 
         instance_data.pop("active", None)
@@ -26,7 +26,7 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateKarmaROP, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
@@ -35,16 +35,16 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
 
         filepath = self.render_staging_dir.format(
-            product={"name": subset_name},
+            product={"name": product_name},
             ext=ext
         )
 
         checkpoint = self.checkpoint_dir.format(
-            product={"name": subset_name}
+            product={"name": product_name}
         )
 
         usd_directory = self.usd_dir.format(
-            product={"name": subset_name}
+            product={"name": product_name}
         )
 
         parms = {
@@ -85,7 +85,7 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock some Avalon attributes
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_pre_create_attr_defs(self):

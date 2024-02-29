@@ -47,7 +47,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
             files.append(fname.parent.joinpath(remainder[0]).as_posix())
 
         asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        product_name = context["subset"]["name"]
 
         group_id = str(uuid.uuid4())
         read_node = harmony.send(
@@ -56,7 +56,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
                 "args": [
                     files,
                     asset,
-                    subset,
+                    product_name,
                     1,
                     group_id
                 ]
@@ -64,7 +64,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )["result"]
 
         return harmony.containerise(
-            f"{asset}_{subset}",
+            f"{asset}_{product_name}",
             namespace,
             read_node,
             context,

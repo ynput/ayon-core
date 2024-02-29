@@ -10,25 +10,25 @@ class CreateUSD(plugin.HoudiniCreator):
     """Universal Scene Description"""
     identifier = "io.openpype.creators.houdini.usd"
     label = "USD (experimental)"
-    family = "usd"
+    product_type = "usd"
     icon = "gears"
     enabled = False
     staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.usd"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "usd"})
 
         instance = super(CreateUSD, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = self.staging_dir.format(
-            product={"name": subset_name}
+            product={"name": product_name}
         )
 
         parms = {
@@ -45,7 +45,7 @@ class CreateUSD(plugin.HoudiniCreator):
         to_lock = [
             "fileperframe",
             # Lock some Avalon attributes
-            "family",
+            "productType",
             "id",
         ]
         self.lock_parameters(instance_node, to_lock)

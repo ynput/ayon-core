@@ -27,8 +27,8 @@ class ImportPaletteLoader(load.LoaderPlugin):
         )
 
     def load_palette(self, representation):
-        subset_name = representation["context"]["subset"]
-        name = subset_name.replace("palette", "")
+        product_name = representation["context"]["subset"]
+        name = product_name.replace("palette", "")
 
         # Overwrite palette on disk.
         scene_path = harmony.send(
@@ -44,7 +44,7 @@ class ImportPaletteLoader(load.LoaderPlugin):
 
         harmony.save_scene()
 
-        msg = "Updated {}.".format(subset_name)
+        msg = "Updated {}.".format(product_name)
         msg += " You need to reload the scene to see the changes.\n"
         msg += "Please save workfile when ready and use Workfiles "
         msg += "to reopen it."

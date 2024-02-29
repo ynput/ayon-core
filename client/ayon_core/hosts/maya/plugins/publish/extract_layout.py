@@ -67,10 +67,10 @@ class ExtractLayout(publish.Extractor):
             self.log.debug(representation)
 
             version_id = representation.get("parent")
-            family = representation.get("context").get("family")
+            product_type = representation.get("context").get("family")
 
             json_element = {
-                "family": family,
+                "product_type": product_type,
                 "instance_name": cmds.getAttr(
                     "{}.namespace".format(container)),
                 "representation": str(representation_id),

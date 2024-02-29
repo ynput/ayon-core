@@ -11,14 +11,14 @@ class PostStartTimerHook(PostLaunchHook):
 
     def execute(self):
         project_name = self.data.get("project_name")
-        asset_name = self.data.get("asset_name")
+        asset_name = self.data.get("folder_path")
         task_name = self.data.get("task_name")
 
         missing_context_keys = set()
         if not project_name:
             missing_context_keys.add("project_name")
         if not asset_name:
-            missing_context_keys.add("asset_name")
+            missing_context_keys.add("folder_path")
         if not task_name:
             missing_context_keys.add("task_name")
 
