@@ -11,13 +11,13 @@ class CreateYetiRig(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.yetirig"
     label = "Yeti Rig"
-    family = "yetiRig"
+    product_type = "yetiRig"
     icon = "usb"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         with lib.undo_chunk():
-            instance = super(CreateYetiRig, self).create(subset_name,
+            instance = super(CreateYetiRig, self).create(product_name,
                                                          instance_data,
                                                          pre_create_data)
             instance_node = instance.get("instance_node")

@@ -70,7 +70,7 @@ class CreateImage(photoshop.Creator):
 
     name = "imageDefault"
     label = "Image"
-    family = "image"
+    product_type = "image"
 
     def __init__(self, *args, **kwargs):
         super(CreateImage, self).__init__(*args, **kwargs)
@@ -130,7 +130,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
             instance.append(layer)
             instance.data.update(layer_data)
             instance.data["families"] = self.families_mapping[
-                layer_data["family"]
+                layer_data["productType"]
             ]
             instance.data["publish"] = layer.visible
 
