@@ -3,24 +3,24 @@ import copy
 from collections import defaultdict
 from typing import Union
 
-from openpype.client import (
+from ayon_core.client import (
     get_version_by_id,
     get_last_version_by_subset_id,
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     LoaderPlugin,
     get_representation_context,
     get_representation_path,
     registered_host
 )
-from openpype.pipeline.context_tools import get_current_project_name
-from openpype.hosts.resolve.api import lib
-from openpype.hosts.resolve.api.pipeline import AVALON_CONTAINER_ID
-from openpype.lib.transcoding import (
+from ayon_core.pipeline.context_tools import get_current_project_name
+from ayon_core.hosts.resolve.api import lib
+from ayon_core.hosts.resolve.api.pipeline import AVALON_CONTAINER_ID
+from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,
     IMAGE_EXTENSIONS
 )
-from openpype.lib import BoolDef
+from ayon_core.lib import BoolDef
 
 
 def find_clip_usage(media_pool_item, project=None):
@@ -48,13 +48,13 @@ def find_clip_usage(media_pool_item, project=None):
     matching_items = []
     unique_id = media_pool_item.GetUniqueId()
     for timeline_idx in range(project.GetTimelineCount()):
-        timeline = project.GetTimelineByIndex(timeline_idx+1)
+        timeline = project.GetTimelineByIndex(timeline_idx + 1)
 
         # Consider audio and video tracks
         for track_type in ["video", "audio"]:
             for track_idx in range(timeline.GetTrackCount(track_type)):
                 timeline_items = timeline.GetItemListInTrack(track_type,
-                                                             track_idx+1)
+                                                             track_idx + 1)
                 for timeline_item in timeline_items:
                     timeline_item_mpi = timeline_item.GetMediaPoolItem()
                     if not timeline_item_mpi:
