@@ -44,7 +44,7 @@ class CollectDataforCache(pyblish.api.InstancePlugin):
         # because ???
         for family in instance.data["families"]:
             if family == "bgeo" or "abc":
-                instance.data["family"] = "pointcache"
+                instance.data["productType"] = "pointcache"
                 break
         instance.data.update({
             "plugin": "Houdini",

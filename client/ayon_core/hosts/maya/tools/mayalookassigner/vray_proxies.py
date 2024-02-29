@@ -51,13 +51,13 @@ def assign_vrayproxy_shaders(vrayproxy, assignments):
             index += 1
 
 
-def vrayproxy_assign_look(vrayproxy, subset="lookDefault"):
+def vrayproxy_assign_look(vrayproxy, product_name="lookDefault"):
     # type: (str, str) -> None
     """Assign look to vray proxy.
 
     Args:
         vrayproxy (str): Name of vrayproxy to apply look to.
-        subset (str): Name of look subset.
+        product_name (str): Name of look product.
 
     Returns:
         None
@@ -82,13 +82,13 @@ def vrayproxy_assign_look(vrayproxy, subset="lookDefault"):
         # Get latest look version
         version = get_last_version_by_subset_name(
             project_name,
-            subset_name=subset,
+            subset_name=product_name,
             asset_id=asset_id,
             fields=["_id"]
         )
         if not version:
-            print("Didn't find last version for subset name {}".format(
-                subset
+            print("Didn't find last version for product name {}".format(
+                product_name
             ))
             continue
 

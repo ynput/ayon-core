@@ -103,9 +103,9 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         for instance_data in data.get("instances"):
 
             self.log.debug("  - processing instance for {}".format(
-                instance_data.get("subset")))
+                instance_data.get("productName")))
             instance = self._context.create_instance(
-                instance_data.get("subset")
+                instance_data.get("productName")
             )
 
             self._fill_staging_dir(instance_data, anatomy)

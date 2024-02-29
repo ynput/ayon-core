@@ -355,7 +355,7 @@ def get_global_context():
     Example:
         {
             "project_name": "Commercial",
-            "asset_name": "Bunny",
+            "folder_path": "Bunny",
             "task_name": "Animation",
         }
 
@@ -366,7 +366,7 @@ def get_global_context():
 
     return {
         "project_name": os.environ.get("AYON_PROJECT_NAME"),
-        "asset_name": os.environ.get("AYON_FOLDER_PATH"),
+        "folder_path": os.environ.get("AYON_FOLDER_PATH"),
         "task_name": os.environ.get("AYON_TASK_NAME"),
     }
 
@@ -389,7 +389,7 @@ def get_current_asset_name():
     host = registered_host()
     if isinstance(host, HostBase):
         return host.get_current_asset_name()
-    return get_global_context()["asset_name"]
+    return get_global_context()["folder_path"]
 
 
 def get_current_task_name():
@@ -460,14 +460,14 @@ def is_representation_from_latest(representation):
     return version_is_latest(project_name, representation["parent"])
 
 
-def get_template_data_from_session(session=None, system_settings=None):
+def get_template_data_from_session(session=None, settings=None):
     """Template data for template fill from session keys.
 
     Args:
         session (Union[Dict[str, str], None]): The Session to use. If not
             provided use the currently active global Session.
-        system_settings (Union[Dict[str, Any], Any]): Prepared system settings.
-            Optional are auto received if not passed.
+        settings (Optional[Dict[str, Any]]): Prepared studio or project
+            settings.
 
     Returns:
         Dict[str, Any]: All available data from session.
@@ -481,20 +481,21 @@ def get_template_data_from_session(session=None, system_settings=None):
     else:
         context = get_current_context()
         project_name = context["project_name"]
-        asset_name = context["asset_name"]
+        asset_name = context["folder_path"]
         task_name = context["task_name"]
         host_name = get_current_host_name()
 
     return get_template_data_with_names(
-        project_name, asset_name, task_name, host_name, system_settings
+        project_name, asset_name, task_name, host_name, settings
     )
 
 
-def get_current_context_template_data(system_settings=None):
+def get_current_context_template_data(settings=None):
     """Prepare template data for current context.
 
     Args:
-        system_settings (Optional[Dict[str, Any]]): Prepared system settings.
+        settings (Optional[Dict[str, Any]]): Prepared studio or
+            project settings.
 
     Returns:
         Dict[str, Any] Template data for current context.
@@ -502,12 +503,12 @@ def get_current_context_template_data(system_settings=None):
 
     context = get_current_context()
     project_name = context["project_name"]
-    asset_name = context["asset_name"]
+    asset_name = context["folder_path"]
     task_name = context["task_name"]
     host_name = get_current_host_name()
 
     return get_template_data_with_names(
-        project_name, asset_name, task_name, host_name, system_settings
+        project_name, asset_name, task_name, host_name, settings
     )
 
 
@@ -573,7 +574,7 @@ def get_custom_workfile_template_from_session(
     else:
         context = get_current_context()
         project_name = context["project_name"]
-        asset_name = context["asset_name"]
+        asset_name = context["folder_path"]
         task_name = context["task_name"]
         host_name = get_current_host_name()
 
@@ -634,7 +635,7 @@ def change_current_context(asset_doc, task_name, template_key=None):
 
     # Convert env keys to human readable keys
     data["project_name"] = project_name
-    data["asset_name"] = get_asset_name_identifier(asset_doc)
+    data["folder_path"] = get_asset_name_identifier(asset_doc)
     data["task_name"] = task_name
     data["workdir_path"] = workdir
 

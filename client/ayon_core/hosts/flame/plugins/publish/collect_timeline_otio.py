@@ -3,7 +3,7 @@ import pyblish.api
 from ayon_core.client import get_asset_name_identifier
 import ayon_core.hosts.flame.api as opfapi
 from ayon_core.hosts.flame.otio import flame_export
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 
 
 class CollecTimelineOTIO(pyblish.api.ContextPlugin):
@@ -14,7 +14,7 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
 
     def process(self, context):
         # plugin defined
-        family = "workfile"
+        product_type = "workfile"
         variant = "otioTimeline"
 
         # main
@@ -23,14 +23,14 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
         project = opfapi.get_current_project()
         sequence = opfapi.get_current_sequence(opfapi.CTX.selection)
 
-        # create subset name
-        subset_name = get_subset_name(
-            family,
-            variant,
-            task_name,
-            asset_doc,
+        # create product name
+        product_name = get_product_name(
             context.data["projectName"],
+            asset_doc,
+            task_name,
             context.data["hostName"],
+            product_type,
+            variant,
             project_settings=context.data["project_settings"]
         )
 
@@ -41,11 +41,12 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
             otio_timeline = flame_export.create_otio_timeline(sequence)
 
             instance_data = {
-                "name": subset_name,
+                "name": product_name,
                 "folderPath": folder_path,
-                "subset": subset_name,
-                "family": "workfile",
-                "families": []
+                "productName": product_name,
+                "productType": product_type,
+                "family": product_type,
+                "families": [product_type]
             }
 
             # create instance with workfile
