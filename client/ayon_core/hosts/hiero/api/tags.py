@@ -3,7 +3,8 @@ import re
 import os
 import hiero
 
-from ayon_core.client import get_project, get_assets
+import ayon_api
+from ayon_core.client import get_assets
 from ayon_core.lib import Logger
 from ayon_core.pipeline import get_current_project_name
 
@@ -143,18 +144,19 @@ def add_tags_to_workfile():
 
     # Get project task types.
     project_name = get_current_project_name()
-    project_doc = get_project(project_name)
-    tasks = project_doc["config"]["tasks"]
+    project_entity = ayon_api.get_project(project_name)
+    task_types = project_entity["taskType"]
     nks_pres_tags["[Tasks]"] = {}
-    log.debug("__ tasks: {}".format(tasks))
-    for task_type in tasks.keys():
-        nks_pres_tags["[Tasks]"][task_type.lower()] = {
+    log.debug("__ tasks: {}".format(task_types))
+    for task_type in task_types:
+        task_type_name = task_type["name"]
+        nks_pres_tags["[Tasks]"][task_type_name.lower()] = {
             "editable": "1",
-            "note": task_type,
+            "note": task_type_name,
             "icon": "icons:TagGood.png",
             "metadata": {
                 "productType": "task",
-                "type": task_type
+                "type": task_type_name
             }
         }
 

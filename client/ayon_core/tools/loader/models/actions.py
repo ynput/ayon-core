@@ -5,8 +5,9 @@ import copy
 import collections
 import uuid
 
+import ayon_api
+
 from ayon_core.client import (
-    get_project,
     get_assets,
     get_subsets,
     get_versions,
@@ -443,8 +444,7 @@ class LoaderActionsModel:
         _folder_docs = get_assets(project_name, asset_ids=_folder_ids)
         folder_docs_by_id = {f["_id"]: f for f in _folder_docs}
 
-        project_doc = get_project(project_name)
-        project_doc["code"] = project_doc["data"]["code"]
+        project_entity = ayon_api.get_project(project_name)
 
         for version_doc in version_docs:
             version_id = version_doc["_id"]
@@ -453,7 +453,7 @@ class LoaderActionsModel:
             folder_id = product_doc["parent"]
             folder_doc = folder_docs_by_id[folder_id]
             version_context_by_id[version_id] = {
-                "project": project_doc,
+                "project": project_entity,
                 "asset": folder_doc,
                 "subset": product_doc,
                 "version": version_doc,
@@ -470,7 +470,7 @@ class LoaderActionsModel:
             folder_doc = folder_docs_by_id[folder_id]
 
             repre_context_by_id[repre_doc["_id"]] = {
-                "project": project_doc,
+                "project": project_entity,
                 "asset": folder_doc,
                 "subset": product_doc,
                 "version": version_doc,
@@ -524,14 +524,13 @@ class LoaderActionsModel:
             f["_id"]: f for f in folder_docs
         }
 
-        project_doc = get_project(project_name)
-        project_doc["code"] = project_doc["data"]["code"]
+        project_entity = ayon_api.get_project(project_name)
 
         for product_id, product_doc in product_docs_by_id.items():
             folder_id = product_doc["parent"]
             folder_doc = folder_docs_by_id[folder_id]
             product_context_by_id[product_id] = {
-                "project": project_doc,
+                "project": project_entity,
                 "asset": folder_doc,
                 "subset": product_doc,
             }
@@ -545,7 +544,7 @@ class LoaderActionsModel:
             folder_doc = folder_docs_by_id[folder_id]
 
             repre_context_by_id[repre_doc["_id"]] = {
-                "project": project_doc,
+                "project": project_entity,
                 "asset": folder_doc,
                 "subset": product_doc,
                 "version": version_doc,
@@ -660,8 +659,7 @@ class LoaderActionsModel:
             version_ids (Iterable[str]): Version ids.
         """
 
-        project_doc = get_project(project_name)
-        project_doc["code"] = project_doc["data"]["code"]
+        project_entity = ayon_api.get_project(project_name)
 
         version_docs = self._get_version_docs(project_name, version_ids)
         product_ids = {v["parent"] for v in version_docs}
@@ -677,7 +675,7 @@ class LoaderActionsModel:
             folder_id = product_doc["parent"]
             folder_doc = folder_docs_by_id[folder_id]
             product_contexts.append({
-                "project": project_doc,
+                "project": project_entity,
                 "asset": folder_doc,
                 "subset": product_doc,
                 "version": version_doc,
@@ -707,8 +705,7 @@ class LoaderActionsModel:
             representation_ids (Iterable[str]): Representation ids.
         """
 
-        project_doc = get_project(project_name)
-        project_doc["code"] = project_doc["data"]["code"]
+        project_entity = ayon_api.get_project(project_name)
         repre_docs = list(get_representations(
             project_name, representation_ids=representation_ids
         ))
@@ -730,7 +727,7 @@ class LoaderActionsModel:
             folder_id = product_doc["parent"]
             folder_doc = folder_docs_by_id[folder_id]
             repre_contexts.append({
-                "project": project_doc,
+                "project": project_entity,
                 "asset": folder_doc,
                 "subset": product_doc,
                 "version": version_doc,

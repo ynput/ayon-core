@@ -1,4 +1,5 @@
-from ayon_core.client import get_project, get_asset_by_name
+import ayon_api
+from ayon_core.client import get_asset_by_name
 from ayon_core.settings import get_studio_settings
 from ayon_core.lib.local_settings import get_ayon_username
 
@@ -27,13 +28,13 @@ def get_general_template_data(settings=None):
     }
 
 
-def get_project_template_data(project_doc=None, project_name=None):
+def get_project_template_data(project_entity=None, project_name=None):
     """Extract data from project document that are used in templates.
 
     Project document must have 'name' and (at this moment) optional
         key 'data.code'.
 
-    One of 'project_name' or 'project_doc' must be passed. With prepared
+    One of 'project_name' or 'project_entity' must be passed. With prepared
     project document is function much faster because don't have to query.
 
     Output contains formatting keys:
@@ -41,7 +42,7 @@ def get_project_template_data(project_doc=None, project_name=None):
     - 'project[code]'   - Project code
 
     Args:
-        project_doc (Dict[str, Any]): Queried project document.
+        project_entity (Dict[str, Any]): Queried project entity.
         project_name (str): Name of project.
 
     Returns:
@@ -49,12 +50,12 @@ def get_project_template_data(project_doc=None, project_name=None):
     """
 
     if not project_name:
-        project_name = project_doc["name"]
+        project_name = project_entity["name"]
 
-    if not project_doc:
-        project_doc = get_project(project_name, fields=["data.code"])
+    if not project_entity:
+        project_entity = ayon_api.get_project(project_name, fields=["code"])
 
-    project_code = project_doc.get("data", {}).get("code")
+    project_code = project_entity["code"]
     return {
         "project": {
             "name": project_name,
@@ -120,15 +121,15 @@ def get_task_type(asset_doc, task_name):
     return asset_tasks_info.get(task_name, {}).get("type")
 
 
-def get_task_template_data(project_doc, asset_doc, task_name):
+def get_task_template_data(project_entity, asset_doc, task_name):
     """"Extract task specific data from project and asset documents.
 
     Required document fields:
-        Project: 'config.tasks'
+        Project: 'tasksTypes'
         Asset: 'data.tasks'.
 
     Args:
-        project_doc (Dict[str, Any]): Queried project document.
+        project_entity (Dict[str, Any]): Queried project entity.
         asset_doc (Dict[str, Any]): Queried asset document.
         task_name (str): Name of task for which data should be returned.
 
@@ -136,9 +137,10 @@ def get_task_template_data(project_doc, asset_doc, task_name):
         Dict[str, Dict[str, str]]: Template data
     """
 
-    project_task_types = project_doc["config"]["tasks"]
+    project_task_types = project_entity["taskTypes"]
+    task_types_by_name = {task["name"]: task for task in project_task_types}
     task_type = get_task_type(asset_doc, task_name)
-    task_code = project_task_types.get(task_type, {}).get("short_name")
+    task_code = task_types_by_name.get(task_type, {}).get("shortName")
 
     return {
         "task": {
@@ -150,7 +152,7 @@ def get_task_template_data(project_doc, asset_doc, task_name):
 
 
 def get_template_data(
-    project_doc,
+    project_entity,
     asset_doc=None,
     task_name=None,
     host_name=None,
@@ -166,11 +168,11 @@ def get_template_data(
     and their values won't be added to template data if are not passed.
 
     Required document fields:
-        Project: 'name', 'data.code', 'config.tasks'
+        Project: 'name', 'code', 'taskTypes.name'
         Asset: 'name', 'data.parents', 'data.tasks'
 
     Args:
-        project_doc (Dict[str, Any]): Mongo document of project from MongoDB.
+        project_entity (Dict[str, Any]): Project entity.
         asset_doc (Dict[str, Any]): Mongo document of asset from MongoDB.
         task_name (Union[str, None]): Task name under passed asset.
         host_name (Union[str, None]): Used to fill '{app}' key.
@@ -182,14 +184,14 @@ def get_template_data(
     """
 
     template_data = get_general_template_data(settings)
-    template_data.update(get_project_template_data(project_doc))
+    template_data.update(get_project_template_data(project_entity))
     if asset_doc:
         template_data.update(get_asset_template_data(
-            asset_doc, project_doc["name"]
+            asset_doc, project_entity["name"]
         ))
         if task_name:
             template_data.update(get_task_template_data(
-                project_doc, asset_doc, task_name
+                project_entity, asset_doc, task_name
             ))
 
     if host_name:
@@ -225,9 +227,7 @@ def get_template_data_with_names(
         Dict[str, Any]: Data prepared for filling workdir template.
     """
 
-    project_doc = get_project(
-        project_name, fields=["name", "data.code", "config.tasks"]
-    )
+    project_entity = ayon_api.get_project(project_name)
     asset_doc = None
     if asset_name:
         asset_doc = get_asset_by_name(
@@ -236,5 +236,5 @@ def get_template_data_with_names(
             fields=["name", "data.parents", "data.tasks"]
         )
     return get_template_data(
-        project_doc, asset_doc, task_name, host_name, settings
+        project_entity, asset_doc, task_name, host_name, settings
     )

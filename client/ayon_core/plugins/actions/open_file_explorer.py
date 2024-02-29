@@ -1,12 +1,11 @@
 import os
 import platform
 import subprocess
-
 from string import Formatter
-from ayon_core.client import (
-    get_project,
-    get_asset_by_name,
-)
+
+import ayon_api
+
+from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     Anatomy,
     LauncherAction,
@@ -63,10 +62,10 @@ class OpenTaskPath(LauncherAction):
         return path
 
     def _get_workdir(self, project_name, asset_name, task_name):
-        project = get_project(project_name)
-        asset = get_asset_by_name(project_name, asset_name)
+        project_entity = ayon_api.get_project(project_name)
+        asset_doc = get_asset_by_name(project_name, asset_name)
 
-        data = get_template_data(project, asset, task_name)
+        data = get_template_data(project_entity, asset_doc, task_name)
 
         anatomy = Anatomy(project_name)
         workdir = anatomy.templates_obj["work"]["folder"].format(data)

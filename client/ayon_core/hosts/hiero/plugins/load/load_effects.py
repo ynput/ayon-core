@@ -2,9 +2,7 @@ import json
 from collections import OrderedDict
 import six
 
-from ayon_core.client import (
-    get_version_by_id
-)
+from ayon_core.client import get_version_by_id
 
 from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,

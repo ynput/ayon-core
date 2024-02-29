@@ -240,7 +240,7 @@ def get_default_task_icon(color=None):
     return get_qta_icon_by_name_and_color("fa.male", color)
 
 
-def get_task_icon(project_doc, asset_doc, task_name):
+def get_task_icon(project_entity, asset_doc, task_name):
     """Get icon for a task.
 
     Icon should be defined by task type which is stored on project.
@@ -257,9 +257,12 @@ def get_task_icon(project_doc, asset_doc, task_name):
             return icon
 
     task_type = task_info.get("type")
-    task_types = project_doc["config"]["tasks"]
+    task_types_by_name = {
+        task_type["name"]: task_type
+        for task_type in project_entity["taskTypes"]
+    }
 
-    task_type_info = task_types.get(task_type) or {}
+    task_type_info = task_types_by_name.get(task_type) or {}
     task_type_icon = task_type_info.get("icon")
     if task_type_icon:
         icon = get_qta_icon_by_name_and_color(task_icon, color)

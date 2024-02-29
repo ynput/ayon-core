@@ -6,13 +6,13 @@ import logging
 import platform
 import uuid
 
+import ayon_api
 import pyblish.api
 from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import HostBase
 from ayon_core.client import (
-    get_project,
     get_asset_by_id,
     get_asset_by_name,
     version_is_latest,
@@ -399,7 +399,7 @@ def get_current_task_name():
     return get_global_context()["task_name"]
 
 
-def get_current_project(fields=None):
+def get_current_project_entity(fields=None):
     """Helper function to get project document based on global Session.
 
     This function should be called only in process where host is installed.
@@ -410,7 +410,7 @@ def get_current_project(fields=None):
     """
 
     project_name = get_current_project_name()
-    return get_project(project_name, fields=fields)
+    return ayon_api.get_project(project_name, fields=fields)
 
 
 def get_current_project_asset(asset_name=None, asset_id=None, fields=None):
@@ -605,10 +605,10 @@ def change_current_context(asset_doc, task_name, template_key=None):
     project_name = get_current_project_name()
     workdir = None
     if asset_doc:
-        project_doc = get_project(project_name)
+        project_entity = ayon_api.get_project(project_name)
         host_name = get_current_host_name()
         workdir = get_workdir(
-            project_doc,
+            project_entity,
             asset_doc,
             task_name,
             host_name,

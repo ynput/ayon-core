@@ -186,8 +186,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
     def fill_anatomy_data(self, context):
         self.log.debug("Storing anatomy data to instance data.")
 
-        project_doc = context.data["projectEntity"]
-        project_task_types = project_doc["config"]["tasks"]
+        project_entity = context.data["projectEntity"]
+        task_types_by_name = {
+            task_type["name"]: task_type
+            for task_type in project_entity["taskTypes"]
+        }
 
         for instance in context:
             anatomy_data = copy.deepcopy(context.data["anatomyData"])
@@ -202,8 +205,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 }
             })
 
-            self._fill_asset_data(instance, project_doc, anatomy_data)
-            self._fill_task_data(instance, project_task_types, anatomy_data)
+            self._fill_asset_data(instance, project_entity, anatomy_data)
+            self._fill_task_data(instance, task_types_by_name, anatomy_data)
 
             # Define version
             version_number = None
@@ -258,7 +261,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 anatomy_data["fps"] = float("{:0.2f}".format(float(fps)))
 
             # Store anatomy data
-            instance.data["projectEntity"] = project_doc
+            instance.data["projectEntity"] = project_entity
             instance.data["anatomyData"] = anatomy_data
             instance.data["version"] = version_number
 
@@ -272,14 +275,14 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 json.dumps(anatomy_data, indent=4)
             ))
 
-    def _fill_asset_data(self, instance, project_doc, anatomy_data):
+    def _fill_asset_data(self, instance, project_entity, anatomy_data):
         # QUESTION should we make sure that all asset data are poped if asset
         #   data cannot be found?
         # - 'asset', 'hierarchy', 'parent', 'folder'
         asset_doc = instance.data.get("assetEntity")
         if asset_doc:
             parents = asset_doc["data"].get("parents") or list()
-            parent_name = project_doc["name"]
+            parent_name = project_entity["name"]
             if parents:
                 parent_name = parents[-1]
 
@@ -298,7 +301,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             hierarchy = instance.data["hierarchy"]
             anatomy_data["hierarchy"] = hierarchy
 
-            parent_name = project_doc["name"]
+            parent_name = project_entity["name"]
             if hierarchy:
                 parent_name = hierarchy.split("/")[-1]
 
@@ -312,7 +315,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 },
             })
 
-    def _fill_task_data(self, instance, project_task_types, anatomy_data):
+    def _fill_task_data(self, instance, task_types_by_name, anatomy_data):
         # QUESTION should we make sure that all task data are poped if task
         #   data cannot be resolved?
         # - 'task'
@@ -325,7 +328,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         # Find task data based on asset entity
         asset_doc = instance.data.get("assetEntity")
         task_data = self._get_task_data_from_asset(
-            asset_doc, task_name, project_task_types
+            asset_doc, task_name, task_types_by_name
         )
         if task_data:
             # Fill task data
@@ -362,9 +365,9 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         task_info = tasks_info.get(task_name, {})
         task_type = task_info.get("type")
         task_code = (
-            project_task_types
+            task_types_by_name
             .get(task_type, {})
-            .get("short_name")
+            .get("shortName")
         )
         anatomy_data["task"] = {
             "name": task_name,
@@ -373,14 +376,14 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         }
 
     def _get_task_data_from_asset(
-        self, asset_doc, task_name, project_task_types
+        self, asset_doc, task_name, task_types_by_name
     ):
         """
 
         Args:
             asset_doc (Union[dict[str, Any], None]): Asset document.
             task_name (Union[str, None]): Task name.
-            project_task_types (dict[str, dict[str, Any]]): Project task
+            task_types_by_name (dict[str, dict[str, Any]]): Project task
                 types.
 
         Returns:
@@ -393,9 +396,9 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         asset_tasks = asset_doc["data"]["tasks"]
         task_type = asset_tasks.get(task_name, {}).get("type")
         task_code = (
-            project_task_types
+            task_types_by_name
             .get(task_type, {})
-            .get("short_name")
+            .get("shortName")
         )
         return {
             "name": task_name,

@@ -4,18 +4,7 @@ import re
 import contextlib
 
 from ayon_core.lib import Logger
-from ayon_core.client import (
-    get_asset_by_name,
-    get_subset_by_name,
-    get_last_version_by_subset_id,
-    get_representation_by_id,
-    get_representation_by_name,
-    get_representation_parents,
-)
-from ayon_core.pipeline import (
-    switch_container,
-    get_current_project_name,
-)
+
 from ayon_core.pipeline.context_tools import get_current_project_asset
 
 self = sys.modules[__name__]

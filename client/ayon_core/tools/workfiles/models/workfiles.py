@@ -6,7 +6,6 @@ import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
-from ayon_core.client import get_project
 from ayon_core.client.operations import (
     prepare_workfile_info_update_data,
 )
@@ -140,7 +139,9 @@ class WorkareaModel:
 
     def _get_base_data(self):
         if self._base_data is None:
-            base_data = get_template_data(get_project(self.project_name))
+            base_data = get_template_data(
+                ayon_api.get_project(self.project_name)
+            )
             base_data["app"] = self._controller.get_host_name()
             self._base_data = base_data
         return copy.deepcopy(self._base_data)

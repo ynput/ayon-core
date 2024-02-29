@@ -1381,7 +1381,7 @@ class EnvironmentPrepData(dict):
         data (dict): Data must contain required keys.
     """
     required_keys = (
-        "project_doc", "asset_doc", "task_name", "app", "anatomy"
+        "project_entity", "asset_doc", "task_name", "app", "anatomy"
     )
 
     def __init__(self, data):
@@ -1395,7 +1395,7 @@ class EnvironmentPrepData(dict):
         if data.get("env") is None:
             data["env"] = os.environ.copy()
 
-        project_name = data["project_doc"]["name"]
+        project_name = data["project_entity"]["name"]
         if "project_settings" not in data:
             data["project_settings"] = get_project_settings(project_name)
 
@@ -1674,10 +1674,10 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
     # Context environments
     log = data["log"]
 
-    project_doc = data["project_doc"]
+    project_entity = data["project_entity"]
     asset_doc = data["asset_doc"]
     task_name = data["task_name"]
-    if not project_doc:
+    if not project_entity:
         log.info(
             "Skipping context environments preparation."
             " Launch context does not contain required data."
@@ -1685,13 +1685,13 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
         return
 
     # Load project specific environments
-    project_name = project_doc["name"]
+    project_name = project_entity["name"]
     project_settings = get_project_settings(project_name)
     data["project_settings"] = project_settings
 
     app = data["app"]
     context_env = {
-        "AYON_PROJECT_NAME": project_doc["name"],
+        "AYON_PROJECT_NAME": project_entity["name"],
         "AYON_APP_NAME": app.full_name
     }
     if asset_doc:
@@ -1727,7 +1727,7 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
         )
 
     workdir_data = get_template_data(
-        project_doc, asset_doc, task_name, app.host_name, project_settings
+        project_entity, asset_doc, task_name, app.host_name, project_settings
     )
     data["workdir_data"] = workdir_data
 

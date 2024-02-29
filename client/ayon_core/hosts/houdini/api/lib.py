@@ -9,9 +9,10 @@ import json
 from contextlib import contextmanager
 
 import six
+import ayon_api
 
 from ayon_core.lib import StringTemplate
-from ayon_core.client import get_project, get_asset_by_name
+from ayon_core.client import get_asset_by_name
 from ayon_core.settings import get_current_project_settings
 from ayon_core.pipeline import (
     Anatomy,
@@ -839,8 +840,8 @@ def get_current_context_template_data_with_asset_data():
     task_name = context["task_name"]
     host_name = get_current_host_name()
 
-    anatomy = Anatomy(project_name)
-    project_doc = get_project(project_name)
+    project_entity = ayon_api.get_project(project_name)
+    anatomy = Anatomy(project_name, project_entity=project_entity)
     asset_doc = get_asset_by_name(project_name, asset_name)
 
     # get context specific vars
@@ -858,7 +859,7 @@ def get_current_context_template_data_with_asset_data():
         asset_data["frameEndHandle"] = frame_end + handle_end
 
     template_data = get_template_data(
-        project_doc, asset_doc, task_name, host_name
+        project_entity, asset_doc, task_name, host_name
     )
     template_data["root"] = anatomy.roots
     template_data["assetData"] = asset_data

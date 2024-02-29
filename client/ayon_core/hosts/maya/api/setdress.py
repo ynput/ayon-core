@@ -296,7 +296,7 @@ def update_package_version(container, version):
 
     assert current_representation is not None, "This is a bug"
 
-    version_doc, subset_doc, asset_doc, project_doc = (
+    version_doc, subset_doc, asset_doc, project_entity = (
         get_representation_parents(project_name, current_representation)
     )
 

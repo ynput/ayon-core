@@ -1,15 +1,15 @@
 import os
 import platform
 import copy
-import getpass
 import logging
 import inspect
 import collections
 import numbers
 
+import ayon_api
+
 from ayon_core.host import ILoadHost
 from ayon_core.client import (
-    get_project,
     get_assets,
     get_subsets,
     get_versions,
@@ -165,17 +165,14 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
         for asset_doc in asset_docs
     }
 
-    project_doc = get_project(project_name)
+    project_entity = ayon_api.get_project(project_name)
 
     for repre_id, repre_doc in repre_docs_by_id.items():
         version_doc = version_docs_by_id[repre_doc["parent"]]
         subset_doc = subset_docs_by_id[version_doc["parent"]]
         asset_doc = asset_docs_by_id[subset_doc["parent"]]
         context = {
-            "project": {
-                "name": project_doc["name"],
-                "code": project_doc["data"].get("code")
-            },
+            "project": project_entity,
             "asset": asset_doc,
             "subset": subset_doc,
             "version": version_doc,
@@ -218,15 +215,12 @@ def get_subset_contexts(subset_ids, project_name=None):
         for asset_doc in asset_docs
     }
 
-    project_doc = get_project(project_name)
+    project_entity = ayon_api.get_project(project_name)
 
     for subset_id, subset_doc in subset_docs_by_id.items():
         asset_doc = asset_docs_by_id[subset_doc["parent"]]
         context = {
-            "project": {
-                "name": project_doc["name"],
-                "code": project_doc["data"].get("code")
-            },
+            "project": project_entity,
             "asset": asset_doc,
             "subset": subset_doc
         }
@@ -557,10 +551,13 @@ def get_representation_path_from_context(context):
     from ayon_core.pipeline import get_current_project_name
 
     representation = context["representation"]
-    project_doc = context.get("project")
+    project_entity = context.get("project")
     root = None
-    if project_doc and project_doc["name"] != get_current_project_name():
-        anatomy = Anatomy(project_doc["name"])
+    if (
+        project_entity
+        and project_entity["name"] != get_current_project_name()
+    ):
+        anatomy = Anatomy(project_entity["name"])
         root = anatomy.roots
 
     return get_representation_path(representation, root)

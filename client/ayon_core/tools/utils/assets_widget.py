@@ -3,11 +3,9 @@ import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
+import ayon_api
 
-from ayon_core.client import (
-    get_project,
-    get_assets,
-)
+from ayon_core.client import get_assets
 from ayon_core.style import (
     get_default_tools_icon_color,
     get_default_entity_icon_color,
@@ -407,8 +405,8 @@ class _AssetModel(QtGui.QStandardItemModel):
         if not project_name:
             return []
 
-        project_doc = get_project(project_name, fields=["_id"])
-        if not project_doc:
+        project_entity = ayon_api.get_project(project_name, fields=["name"])
+        if not project_entity:
             return []
 
         # Get all assets sorted by name

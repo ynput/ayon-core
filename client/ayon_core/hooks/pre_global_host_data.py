@@ -1,4 +1,5 @@
-from ayon_core.client import get_project, get_asset_by_name
+from ayon_api import get_project, get_folder_by_path
+
 from ayon_core.lib.applications import (
     PreLaunchHook,
     EnvironmentPrepData,
@@ -27,7 +28,7 @@ class GlobalHostDataHook(PreLaunchHook):
 
             "app": app,
 
-            "project_doc": self.data["project_doc"],
+            "project_entity": self.data["project_entity"],
             "asset_doc": self.data["asset_doc"],
 
             "anatomy": self.data["anatomy"],
@@ -59,12 +60,15 @@ class GlobalHostDataHook(PreLaunchHook):
             return
 
         self.log.debug("Project name is set to \"{}\"".format(project_name))
-        # Anatomy
-        self.data["anatomy"] = Anatomy(project_name)
 
-        # Project document
-        project_doc = get_project(project_name)
-        self.data["project_doc"] = project_doc
+        # Project Entity
+        project_entity = get_project(project_name)
+        self.data["project_entity"] = project_entity
+
+        # Anatomy
+        self.data["anatomy"] = Anatomy(
+            project_name, project_entity=project_entity
+        )
 
         asset_name = self.data.get("folder_path")
         if not asset_name:
@@ -73,5 +77,5 @@ class GlobalHostDataHook(PreLaunchHook):
             )
             return
 
-        asset_doc = get_asset_by_name(project_name, asset_name)
-        self.data["asset_doc"] = asset_doc
+        folder_entity = get_folder_by_path(project_name, asset_name)
+        self.data["folder_entity"] = folder_entity

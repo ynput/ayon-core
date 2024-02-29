@@ -9,7 +9,9 @@ import six
 from ayon_core.pipeline import get_current_project_name, colorspace
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.context_tools import (
-    get_current_project, get_current_project_asset)
+    get_current_project_entity,
+    get_current_project_asset,
+)
 from ayon_core.style import load_stylesheet
 from pymxs import runtime as rt
 
@@ -220,16 +222,16 @@ def reset_scene_resolution():
     Returns:
         None
     """
-    data = ["data.resolutionWidth", "data.resolutionHeight"]
-    project_resolution = get_current_project(fields=data)
-    project_resolution_data = project_resolution["data"]
-    asset_resolution = get_current_project_asset(fields=data)
-    asset_resolution_data = asset_resolution["data"]
+    fields = ["attrib.resolutionWidth", "attrib.resolutionHeight"]
+    project_entity = get_current_project_entity(fields=fields)
+    project_attribs = project_entity["attrib"]
+    asset_doc = get_current_project_asset(fields=fields)
+    asset_data = asset_doc["data"]
     # Set project resolution
-    project_width = int(project_resolution_data.get("resolutionWidth", 1920))
-    project_height = int(project_resolution_data.get("resolutionHeight", 1080))
-    width = int(asset_resolution_data.get("resolutionWidth", project_width))
-    height = int(asset_resolution_data.get("resolutionHeight", project_height))
+    project_width = int(project_attribs.get("resolutionWidth", 1920))
+    project_height = int(project_attribs.get("resolutionHeight", 1080))
+    width = int(asset_data.get("resolutionWidth", project_width))
+    height = int(asset_data.get("resolutionHeight", project_height))
 
     set_scene_resolution(width, height)
 
