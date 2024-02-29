@@ -1,10 +1,6 @@
 from .utils import get_ayon_server_api_connection
 
 from .entities import (
-    get_projects,
-    get_project,
-    get_whole_project,
-
     get_asset_by_id,
     get_asset_by_name,
     get_assets,
@@ -58,10 +54,6 @@ from .operations import (
 
 __all__ = (
     "get_ayon_server_api_connection",
-
-    "get_projects",
-    "get_project",
-    "get_whole_project",
 
     "get_asset_by_id",
     "get_asset_by_name",
