@@ -180,27 +180,27 @@ class LoadClip(opfapi.ClipLoader):
         # unwrapping segment from input clip
         pass
 
-    # def switch(self, container, representation):
-    #     self.update(container, representation)
+    # def switch(self, container, context):
+    #     self.update(container, context)
 
-    # def update(self, container, representation):
+    # def update(self, container, context):
     #     """ Updating previously loaded clips
     #     """
-
     #     # load clip to timeline and get main variables
+    #     repre_doc = context['representation']
     #     name = container['name']
     #     namespace = container['namespace']
     #     track_item = phiero.get_track_items(
     #         track_item_name=namespace)
     #     version = io.find_one({
     #         "type": "version",
-    #         "_id": representation["parent"]
+    #         "_id": repre_doc["parent"]
     #     })
     #     version_data = version.get("data", {})
     #     version_name = version.get("name", None)
     #     colorspace = version_data.get("colorspace", None)
     #     object_name = "{}_{}".format(name, namespace)
-    #     file = get_representation_path(representation).replace("\\", "/")
+    #     file = get_representation_path(repre_doc).replace("\\", "/")
     #     clip = track_item.source()
 
     #     # reconnect media to new path
@@ -225,7 +225,7 @@ class LoadClip(opfapi.ClipLoader):
 
     #     # add variables related to version context
     #     data_imprint.update({
-    #         "representation": str(representation["_id"]),
+    #         "representation": str(repre_doc["_id"]),
     #         "version": version_name,
     #         "colorspace": colorspace,
     #         "objectName": object_name

@@ -57,19 +57,19 @@ class USDReferenceLoader(load.LoaderPlugin):
 
         return container
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_doc = context["representation"]
         node = container["node"]
 
         # Update the file path
-        file_path = get_representation_path(representation)
+        file_path = get_representation_path(repre_doc)
         file_path = file_path.replace("\\", "/")
 
         # Update attributes
         node.setParms(
             {
                 "filepath1": file_path,
-                "representation": str(representation["_id"]),
+                "representation": str(repre_doc["_id"]),
             }
         )
 
@@ -81,5 +81,5 @@ class USDReferenceLoader(load.LoaderPlugin):
         node = container["node"]
         node.destroy()
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)

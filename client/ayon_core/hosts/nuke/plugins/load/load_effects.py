@@ -146,7 +146,7 @@ class LoadEffects(load.LoaderPlugin):
             loader=self.__class__.__name__,
             data=data_imprint)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update the Loader's path
 
         Nuke automatically tries to reset some variables when changing
@@ -156,13 +156,14 @@ class LoadEffects(load.LoaderPlugin):
         """
         # get main variables
         # Get version from io
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
+        project_name = context["project"]["name"]
+        version_doc = context["version"]
+        repre_doc = context["representation"]
 
         # get corresponding node
         GN = container["node"]
 
-        file = get_representation_path(representation).replace("\\", "/")
+        file = get_representation_path(repre_doc).replace("\\", "/")
         name = container['name']
         version_data = version_doc.get("data", {})
         vname = version_doc.get("name", None)
@@ -177,7 +178,7 @@ class LoadEffects(load.LoaderPlugin):
                     "source", "author", "fps"]
 
         data_imprint = {
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "frameStart": first,
             "frameEnd": last,
             "version": vname,
@@ -344,8 +345,8 @@ class LoadEffects(load.LoaderPlugin):
         else:
             return input
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         node = container["node"]
