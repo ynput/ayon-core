@@ -42,6 +42,13 @@ class OCIOEnvHook(PreLaunchHook):
             env=self.launch_context.env,
         )
 
+        if template_data.get("asset"):
+            current_asset = template_data["asset"]
+            self.log.info(f"Setting BPC_SHOT to {current_asset}")
+            self.launch_context.env["BPC_SHOT"] = current_asset
+        else:
+            self.log.warning(f"No asset found in template data. Skipping to inject $BPC_SHOT. Except shot luts to not work.")
+
         if config_data:
             ocio_path = config_data["path"]
 
