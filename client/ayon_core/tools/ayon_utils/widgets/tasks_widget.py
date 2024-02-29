@@ -360,6 +360,20 @@ class TasksWidget(QtWidgets.QWidget):
         self._tasks_model.refresh()
 
     def get_selected_task_info(self):
+        """Get selected task info.
+
+        Example output::
+
+            {
+                "task_id": "5e7e3e3e3e3e3e3e3e3e3e3e",
+                "task_name": "modeling",
+                "task_type": "Modeling"
+            }
+
+        Returns:
+            dict[str, Union[str, None]]: Task info.
+
+        """
         _, task_id, task_name, task_type = self._get_selected_item_ids()
         return {
             "task_id": task_id,

@@ -82,6 +82,18 @@ class CreateSelectionModel(object):
 
 
 class CreateHierarchyController:
+    """Controller for hierarchy widgets.
+
+    Helper for handling hierarchy widgets in create tab. It handles selection
+    of folder and task to properly propagate it to other widgets.
+
+    At the same time handles expected selection so can pre-select folder and
+    task based on current context.
+
+    Args:
+        controller (PublisherController): Publisher controller.
+
+    """
     def __init__(self, controller):
         self._event_system = QueuedEventSystem()
         self._controller = controller
