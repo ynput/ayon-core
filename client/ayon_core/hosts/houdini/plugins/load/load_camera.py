@@ -132,17 +132,17 @@ class CameraLoader(load.LoaderPlugin):
                                      self.__class__.__name__,
                                      suffix="")
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_doc = context["representation"]
         node = container["node"]
 
         # Update the file path
-        file_path = get_representation_path(representation)
+        file_path = get_representation_path(repre_doc)
         file_path = file_path.replace("\\", "/")
 
         # Update attributes
         node.setParms({"fileName": file_path,
-                       "representation": str(representation["_id"])})
+                       "representation": str(repre_doc["_id"])})
 
         # Store the cam temporarily next to the Alembic Archive
         # so that we can preserve parm values the user set on it

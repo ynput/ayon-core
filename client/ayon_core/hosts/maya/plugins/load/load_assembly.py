@@ -49,9 +49,9 @@ class AssemblyLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
 
-        return setdress.update_package(container, representation)
+        return setdress.update_package(container, context)
 
     def remove(self, container):
         """Remove all sub containers"""

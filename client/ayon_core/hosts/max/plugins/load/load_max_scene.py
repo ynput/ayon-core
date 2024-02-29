@@ -48,10 +48,11 @@ class MaxSceneLoader(load.LoaderPlugin):
             name, max_container, context,
             namespace, loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         from pymxs import runtime as rt
 
-        path = get_representation_path(representation)
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
         node_name = container["instance_node"]
         node = rt.getNodeByName(node_name)
         namespace, _ = get_namespace(node_name)
@@ -86,11 +87,11 @@ class MaxSceneLoader(load.LoaderPlugin):
 
         update_custom_attribute_data(node, max_objects)
         lib.imprint(container["instance_node"], {
-            "representation": str(representation["_id"])
+            "representation": str(repre_doc["_id"])
         })
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         from pymxs import runtime as rt
