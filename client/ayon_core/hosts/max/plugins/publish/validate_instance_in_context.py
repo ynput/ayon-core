@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Validate if instance asset is the same as context asset."""
-from __future__ import absolute_import
-
 import pyblish.api
 from ayon_core.pipeline.publish import (
     RepairAction,
@@ -41,7 +39,7 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
             instance_label = "{} > {}".format(folderPath, task)
             message = (
                 "Instance '{}' publishes to different folderPath than current"
-                "context: {}. Current context:{}".format(
+                "context: {}. Current context: {}".format(
                     instance.name, instance_label, context_label
                 )
             )
