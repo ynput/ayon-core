@@ -46,12 +46,36 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
             return
         
         filepath = output_parm.eval()
-    
+        if not filepath:
+            self.log.warning("No filepath value to collect.")
+            return
+
+        files = []
+        # Non Render Products with frames
+        frames = instance.data.get("frames", [])
         staging_dir, _ = os.path.split(filepath)
-        files = instance.data.get("frames", [])
-        if files: 
-            files = ["{}/{}".format(staging_dir, f) for f in files]
+        if isinstance(frames, str):
+            files = ["{}/{}".format(staging_dir, frames)]
         else:
+            files = ["{}/{}".format(staging_dir, f) for f in frames]
+
+        # Render Products
+        expectedFiles = instance.data.get("expectedFiles", [])
+        for aov in expectedFiles:
+            for v in aov.values():
+                files += v
+
+        # Render Intermediate files.
+        # This doesn't cover all intermediate render products.
+        # E.g. Karma's USD and checkpoint.
+        # For some reason it's one file with $F4 evaluated as 0000
+        # So, we need to get all the frames.
+        ifdFile = instance.data.get("ifdFile")
+        if self.include_intermediate_files and ifdFile:
+            files += [ifdFile]
+        
+        # Non Render Products with no frames
+        if not files:
             files = [filepath]
 
         self.log.debug("Add directories to 'cleanupEmptyDir': {}".format(staging_dir))
