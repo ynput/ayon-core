@@ -33,32 +33,18 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
 
-        instance_node = rt.getNodeByName(instance.data.get(
-            "instance_node", ""))
-        if not instance_node:
-            return
-        asset = rt.getUserProp(instance_node, "folderPath")
-        context_asset = instance.context.data["folderPath"]
-        task = rt.getUserProp(instance_node, "task")
-        context_task = instance.context.data["task"]
-        invalid = []
-        if asset != context_asset:
-            invalid.append(
-                "Instance '{}' publishes to different asset than current "
-                "context: {}. Current context: {}".format(
-                    instance.name, asset, context_asset
+        folderPath = instance.data.get("folderPath")
+        task = instance.data.get("task")
+        context = self.get_context(instance)
+        if (folderPath, task) != context:
+            context_label = "{} > {}".format(*context)
+            instance_label = "{} > {}".format(folderPath, task)
+            message = (
+                "Instance '{}' publishes to different folderPath than current"
+                "context: {}. Current context:{}".format(
+                    instance.name, instance_label, context_label
                 )
             )
-        if task != context_task:
-            invalid.append(
-                "Instance '{}' publishes to different task than current "
-                "context: {}. Current context: {}".format(
-                    instance.name, task, context_task
-                )
-            )
-
-        if invalid:
-            message = "\n".join(invalid)
             raise PublishValidationError(
                 message=message,
                 description=(
@@ -75,16 +61,11 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
     @classmethod
     def get_invalid(cls, instance):
         invalid = []
-        node = rt.getNodeByName(instance.data["instance_node"])
-        asset = rt.getUserProp(node, "folderPath")
-        context_asset = instance.context.data["folderPath"]
-        if asset != context_asset:
-            invalid.append(node)
-        task = rt.getUserProp(node, "task")
-        context_task = instance.context.data["task"]
-        if task != context_task:
-            invalid.append(node)
-
+        folderPath = instance.data.get("folderPath")
+        task = instance.data.get("task")
+        context = cls.get_context(instance)
+        if (folderPath, task) != context:
+            invalid.append(rt.getNodeByName(instance.name))
         return invalid
 
     @classmethod
@@ -97,3 +78,9 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
             return
         rt.SetUserProp(instance_node, "folderPath", context_asset)
         rt.SetUserProp(instance_node, "task", context_task)
+
+    @staticmethod
+    def get_context(instance):
+        """Return asset, task from publishing context data"""
+        context = instance.context
+        return context.data["folderPath"], context.data["task"]
