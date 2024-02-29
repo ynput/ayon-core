@@ -21,7 +21,7 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
 
     checked_template_names = ["source"]
     # validate instances might have interim family, needs to be mapped to final
-    family_mapping = {
+    product_type_mapping = {
         "renderLayer": "render",
         "renderLocal": "render"
     }
@@ -39,7 +39,7 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
                 self,
                 "Instance meant for in place publishing."
                 " Its 'originalDirname' must be collected."
-                " Contact OP developer to modify collector."
+                " Contact AYON developer to modify collector."
             )
 
         anatomy = instance.context.data["anatomy"]
@@ -62,15 +62,17 @@ class ValidatePublishDir(pyblish.api.InstancePlugin):
         """Find template which will be used during integration."""
         project_name = instance.context.data["projectName"]
         host_name = instance.context.data["hostName"]
+        product_type = instance.data["productType"]
+        mapped_product_type = (
+            self.product_type_mapping.get(product_type) or product_type
+        )
         anatomy_data = instance.data["anatomyData"]
-        family = anatomy_data["family"]
-        family = self.family_mapping.get(family) or family
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
             project_name,
             host_name,
-            family,
+            mapped_product_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=instance.context.data["project_settings"],
