@@ -6,15 +6,15 @@
 [VarSet, offset, 0]
 
 [RoutineDef, write,
-  [VarAdd, offset, [MemWriteString, OpenpypePlugins,
+  [VarAdd, offset, [MemWriteString, AYONPlugins,
     [StrMerge, text, crlf], offset, 0]
   ]
 , text]
 
-[If, [MemGetSize, OpenpypePlugins],
-  [MemDelete, OpenpypePlugins]
+[If, [MemGetSize, AYONPlugins],
+  [MemDelete, AYONPlugins]
 ]
-[MemCreate, OpenpypePlugins, 1000]
+[MemCreate, AYONPlugins, 1000]
 
 [RoutineCall, write, "@echo off"]
 [RoutineCall, write, [StrMerge, "set ", quot, "_OUT=", txt, quot]]
@@ -49,21 +49,21 @@
 [RoutineCall, write, ")"]
 [RoutineCall, write, [StrMerge, "echo %~1>> ", quot, "%_OUT%", quot]]
 
-[MemResize, OpenpypePlugins, offset]
-[If, [MemSaveToFile, OpenpypePlugins, bat, 1] < 1,
+[MemResize, AYONPlugins, offset]
+[If, [MemSaveToFile, AYONPlugins, bat, 1] < 1,
   [Note, "Error preparing ZBrush for external plugins."]
 ,
   [VarDef, file, ""]
   [VarSet, offset, 0]
 
-  [MemDelete, OpenpypePlugins]
+  [MemDelete, AYONPlugins]
   [ShellExecute, [StrMerge, quot, bat, quot]]
   [FileDelete, bat]
-  [MemCreateFromFile, OpenpypePlugins, txt]
+  [MemCreateFromFile, AYONPlugins, txt]
   [FileDelete, txt]
 
   [Loop, 10000,
-    [VarSet, bytes, [MemReadString, OpenpypePlugins, file, offset, 1]]
+    [VarSet, bytes, [MemReadString, AYONPlugins, file, offset, 1]]
     [If, bytes,
       [VarAdd, offset, bytes]
       [FileNameSetNext, file]
@@ -74,4 +74,4 @@
     ]
   ]
 ]
-[MemDelete, OpenpypePlugins]
+[MemDelete, AYONPlugins]

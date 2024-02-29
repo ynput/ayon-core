@@ -1,8 +1,8 @@
 """Pre-launch to force zbrush startup script."""
 import os
-from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
-from openpype import AYON_SERVER_ENABLED
-from openpype.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_core.hosts.zbrush import ZBRUSH_HOST_DIR
+from ayon_core import AYON_SERVER_ENABLED
+from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 
 
 

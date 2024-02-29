@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """Pre-launch to force zbrush startup script."""
 import os
-from openpype.hosts.zbrush import ZBRUSH_HOST_DIR
-from openpype.lib import get_openpype_execute_args
-from openpype.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_core.hosts.zbrush import ZBRUSH_HOST_DIR
+from ayon_core.lib import get_openpype_execute_args
+from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 
 
 class ForceStartupScript(PreLaunchHook):
-    """Inject OpenPype environment to Zbrush.
+    """Inject AYON environment to Zbrush.
 
     Note that this works in combination whit Zbrush startup script that
-    is creating the environment variable for the Openpype Plugin
+    is creating the environment variable for the AYON Plugin
 
     Hook `GlobalHostDataHook` must be executed before this hook.
     """
@@ -46,6 +46,6 @@ class ForceStartupScript(PreLaunchHook):
 
 
     def launch_script_path(self):
-        from openpype.hosts.zbrush import get_launch_script_path
+        from ayon_core.hosts.zbrush import get_launch_script_path
 
         return get_launch_script_path()

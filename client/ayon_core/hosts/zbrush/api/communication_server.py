@@ -230,8 +230,18 @@ class BaseZbrushRpc(JsonRpc):
         return await super()._handle_rpc_msg(http_request, raw_msg)
 
     def client_connected(self):
-        return True
+        # TODO This is poor check. Add check it is client from TVPaint
+        if self.clients:
+            return True
+        return False
 
+    def send_notification(self, client, method, params=None):
+        if params is None:
+            params = []
+        asyncio.run_coroutine_threadsafe(
+            client.ws.send_str(encode_request(method, params=params)),
+            loop=self.loop
+        )
 
     def send_request(self, client, method, params=None, timeout=0):
         if params is None:
