@@ -30,20 +30,17 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
     actions = [SelectInvalidAction]
     optional = True
 
-
     @classmethod
     def get_invalid(cls, instance):
         invalid_mesh_type = [member for member in instance.data["members"]
-                             if not rt.isProperty(member, "mesh")]
+                             if rt.isProperty(member, "mesh")]
         if invalid_mesh_type:
-            cls.log.error("Non-mesh type objects detected")
-            return invalid_mesh_type
+            invalid_uv = [member for member in instance.data["members"]
+                        if not member.mesh.numTVerts > 0]
+            if invalid_uv:
+                cls.log.error("Meshes detected with invalid UVs")
 
-        invalid_uv = [member for member in instance.data["members"]
-                      if not member.mesh.numTVerts > 0]
-        if invalid_uv:
-            cls.log.error("Meshes detected with invalid UVs")
-        return invalid_uv
+            return invalid_uv
 
     def process(self, instance):
         invalid = self.get_invalid(instance)
@@ -53,14 +50,13 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
                 in invalid
             )
             report = (
-                "Non-mesh objects found or mesh objects"
-                " do not have UVs.\n\n"
+                "Model meshes are required to have UVs.\n\n"
                 "Meshes detected with invalid or missing UVs:\n"
                 f"{bullet_point_invalid_statement}\n"
             )
             raise PublishValidationError(
                 report,
                 description=(
-                "Non-mesh objects detected or the meshes do not have any UVs.\n\n"
+                "Model meshes are required to have UVs.\n\n"
                 "Meshes detected with no texture vertice or missing UVs"),
                 title="Non-mesh objects found or mesh has missing UVs")
