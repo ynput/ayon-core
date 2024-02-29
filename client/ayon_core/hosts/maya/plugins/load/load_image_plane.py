@@ -225,14 +225,14 @@ class ImagePlaneLoader(load.LoaderPlugin):
         version = get_version_by_id(
             project_name, representation["parent"], fields=["parent"]
         )
-        subset = get_subset_by_id(
+        subset_doc = get_subset_by_id(
             project_name, version["parent"], fields=["parent"]
         )
-        asset = get_asset_by_id(
-            project_name, subset["parent"], fields=["parent"]
+        asset_doc = get_asset_by_id(
+            project_name, subset_doc["parent"], fields=["parent"]
         )
-        start_frame = asset["data"]["frameStart"]
-        end_frame = asset["data"]["frameEnd"]
+        start_frame = asset_doc["data"]["frameStart"]
+        end_frame = asset_doc["data"]["frameEnd"]
 
         for attr, value in {
             "frameOffset": 0,

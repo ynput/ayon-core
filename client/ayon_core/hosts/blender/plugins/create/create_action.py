@@ -10,20 +10,20 @@ class CreateAction(plugin.BaseCreator):
 
     identifier = "io.openpype.creators.blender.action"
     label = "Action"
-    family = "action"
+    product_type = "action"
     icon = "male"
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
         # Run parent create method
         collection = super().create(
-            subset_name, instance_data, pre_create_data
+            product_name, instance_data, pre_create_data
         )
 
         # Get instance name
         name = plugin.prepare_scene_name(
-            instance_data["folderPath"], subset_name
+            instance_data["folderPath"], product_name
         )
 
         if pre_create_data.get("use_selection"):
