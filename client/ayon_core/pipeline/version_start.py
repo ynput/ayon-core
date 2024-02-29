@@ -7,8 +7,8 @@ def get_versioning_start(
     host_name,
     task_name=None,
     task_type=None,
-    family=None,
-    subset=None,
+    product_type=None,
+    product_name=None,
     project_settings=None,
 ):
     """Get anatomy versioning start"""
@@ -22,12 +22,14 @@ def get_versioning_start(
     if not profiles:
         return version_start
 
+    # TODO use 'product_types' and 'product_name' instead of
+    #   'families' and 'subsets'
     filtering_criteria = {
         "host_names": host_name,
-        "families": family,
+        "families": product_type,
         "task_names": task_name,
         "task_types": task_type,
-        "subsets": subset
+        "subsets": product_name
     }
     profile = filter_profiles(profiles, filtering_criteria)
 

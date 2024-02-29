@@ -1,9 +1,9 @@
 from ayon_core.client import get_project, get_asset_by_name
-from ayon_core.settings import get_system_settings
+from ayon_core.settings import get_studio_settings
 from ayon_core.lib.local_settings import get_ayon_username
 
 
-def get_general_template_data(system_settings=None):
+def get_general_template_data(settings=None):
     """General template data based on system settings or machine.
 
     Output contains formatting keys:
@@ -12,12 +12,12 @@ def get_general_template_data(system_settings=None):
     - 'user'            - User's name using 'get_ayon_username'
 
     Args:
-        system_settings (Dict[str, Any]): System settings.
+        settings (Dict[str, Any]): Studio or project settings.
     """
 
-    if not system_settings:
-        system_settings = get_system_settings()
-    core_settings = system_settings["core"]
+    if not settings:
+        settings = get_studio_settings()
+    core_settings = settings["core"]
     return {
         "studio": {
             "name": core_settings["studio_name"],
@@ -154,7 +154,7 @@ def get_template_data(
     asset_doc=None,
     task_name=None,
     host_name=None,
-    system_settings=None
+    settings=None
 ):
     """Prepare data for templates filling from entered documents and info.
 
@@ -174,14 +174,14 @@ def get_template_data(
         asset_doc (Dict[str, Any]): Mongo document of asset from MongoDB.
         task_name (Union[str, None]): Task name under passed asset.
         host_name (Union[str, None]): Used to fill '{app}' key.
-        system_settings (Union[Dict, None]): Prepared system settings.
+        settings (Union[Dict, None]): Prepared studio or project settings.
             They're queried if not passed (may be slower).
 
     Returns:
         Dict[str, Any]: Data prepared for filling workdir template.
     """
 
-    template_data = get_general_template_data(system_settings)
+    template_data = get_general_template_data(settings)
     template_data.update(get_project_template_data(project_doc))
     if asset_doc:
         template_data.update(get_asset_template_data(
@@ -203,7 +203,7 @@ def get_template_data_with_names(
     asset_name=None,
     task_name=None,
     host_name=None,
-    system_settings=None
+    settings=None
 ):
     """Prepare data for templates filling from entered entity names and info.
 
@@ -218,7 +218,7 @@ def get_template_data_with_names(
         task_name (Union[str, None]): Task name under passed asset.
         host_name (Union[str, None]):Used to fill '{app}' key.
             because workdir template may contain `{app}` key.
-        system_settings (Union[Dict, None]): Prepared system settings.
+        settings (Union[Dict, None]): Prepared studio or project settings.
             They're queried if not passed.
 
     Returns:
@@ -236,5 +236,5 @@ def get_template_data_with_names(
             fields=["name", "data.parents", "data.tasks"]
         )
     return get_template_data(
-        project_doc, asset_doc, task_name, host_name, system_settings
+        project_doc, asset_doc, task_name, host_name, settings
     )

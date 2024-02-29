@@ -22,7 +22,7 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class VRayProxyLoader(load.LoaderPlugin):
@@ -49,9 +49,9 @@ class VRayProxyLoader(load.LoaderPlugin):
         """
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "vrayproxy"
+            product_type = "vrayproxy"
 
         #  get all representations for this version
         filename = self._get_abc(context["version"]["_id"])
@@ -81,7 +81,7 @@ class VRayProxyLoader(load.LoaderPlugin):
         # colour the group node
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(group_node), 1)

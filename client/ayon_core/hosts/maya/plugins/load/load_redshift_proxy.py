@@ -16,7 +16,7 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class RedshiftProxyLoader(load.LoaderPlugin):
@@ -33,9 +33,9 @@ class RedshiftProxyLoader(load.LoaderPlugin):
     def load(self, context, name=None, namespace=None, options=None):
         """Plugin entry point."""
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "redshiftproxy"
+            product_type = "redshiftproxy"
 
         asset_name = context['asset']["name"]
         namespace = namespace or unique_namespace(
@@ -60,7 +60,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
         # colour the group node
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(group_node), 1)

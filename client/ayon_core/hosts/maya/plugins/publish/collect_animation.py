@@ -25,13 +25,14 @@ class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
     def process(self, instance):
         """Collect the hierarchy nodes"""
 
-        family = instance.data["family"]
+        product_type = instance.data["productType"]
         out_set = next((i for i in instance.data["setMembers"] if
                         i.endswith("out_SET")), None)
 
         if out_set is None:
-            warning = "Expecting out_SET for instance of family '%s'" % family
-            self.log.warning(warning)
+            self.log.warning((
+                "Expecting out_SET for instance of product type '{}'"
+            ).format(product_type))
             return
 
         members = cmds.ls(cmds.sets(out_set, query=True), long=True)

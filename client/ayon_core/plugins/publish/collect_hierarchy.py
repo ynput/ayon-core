@@ -28,11 +28,13 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
             # shot data dict
             shot_data = {}
-            family = instance.data["family"]
+            product_type = instance.data["productType"]
             families = instance.data["families"]
 
             # exclude other families then self.families with intersection
-            if not set(self.families).intersection(set(families + [family])):
+            if not set(self.families).intersection(
+                set(families + [product_type])
+            ):
                 continue
 
             # exclude if not masterLayer True

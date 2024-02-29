@@ -127,20 +127,22 @@ class BlendLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["asset"]["name"]
+        product_name = context["subset"]["name"]
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["subset"]["data"]["family"]
         except ValueError:
-            family = "model"
+            product_type = "model"
 
         representation = str(context["representation"]["_id"])
 
-        asset_name = plugin.prepare_scene_name(asset, subset)
-        unique_number = plugin.get_unique_number(asset, subset)
-        group_name = plugin.prepare_scene_name(asset, subset, unique_number)
-        namespace = namespace or f"{asset}_{unique_number}"
+        asset_name = plugin.prepare_scene_name(folder_name, product_name)
+        unique_number = plugin.get_unique_number(folder_name, product_name)
+        group_name = plugin.prepare_scene_name(
+            folder_name, product_name, unique_number
+        )
+        namespace = namespace or f"{folder_name}_{unique_number}"
 
         avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
         if not avalon_container:
@@ -149,8 +151,8 @@ class BlendLoader(plugin.AssetLoader):
 
         container, members = self._process_data(libpath, group_name)
 
-        if family == "layout":
-            self._post_process_layout(container, asset, representation)
+        if product_type == "layout":
+            self._post_process_layout(container, folder_name, representation)
 
         avalon_container.objects.link(container)
 
@@ -164,7 +166,7 @@ class BlendLoader(plugin.AssetLoader):
             "libpath": libpath,
             "asset_name": asset_name,
             "parent": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
+            "productType": context["subset"]["data"]["family"],
             "objectName": group_name,
             "members": members,
         }
