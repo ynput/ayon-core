@@ -205,32 +205,24 @@ class ImagePlaneLoader(load.LoaderPlugin):
             loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        asset_doc = context["asset"]
+        repre_doc = context["representation"]
 
         members = get_container_members(container)
         image_planes = cmds.ls(members, type="imagePlane")
         assert image_planes, "Image plane not found."
         image_plane_shape = image_planes[0]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_doc)
         cmds.setAttr("{}.imageName".format(image_plane_shape),
                      path,
                      type="string")
         cmds.setAttr("{}.representation".format(container["objectName"]),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
         # Set frame range.
-        project_name = get_current_project_name()
-        version = get_version_by_id(
-            project_name, representation["parent"], fields=["parent"]
-        )
-        subset_doc = get_subset_by_id(
-            project_name, version["parent"], fields=["parent"]
-        )
-        asset_doc = get_asset_by_id(
-            project_name, subset_doc["parent"], fields=["parent"]
-        )
         start_frame = asset_doc["data"]["frameStart"]
         end_frame = asset_doc["data"]["frameEnd"]
 
@@ -243,8 +235,8 @@ class ImagePlaneLoader(load.LoaderPlugin):
             plug = "{}.{}".format(image_plane_shape, attr)
             cmds.setAttr(plug, value)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)

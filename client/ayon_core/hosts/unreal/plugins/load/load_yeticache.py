@@ -139,9 +139,10 @@ class YetiLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_doc = context["representation"]
         name = container["asset_name"]
-        source_path = get_representation_path(representation)
+        source_path = get_representation_path(repre_doc)
         destination_path = container["namespace"]
 
         task = self.get_task(source_path, destination_path, name, True)
@@ -154,8 +155,8 @@ class YetiLoader(plugin.Loader):
         unreal_pipeline.imprint(
             container_path,
             {
-                "representation": str(representation["_id"]),
-                "parent": str(representation["parent"])
+                "representation": str(repre_doc["_id"]),
+                "parent": str(repre_doc["parent"])
             })
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

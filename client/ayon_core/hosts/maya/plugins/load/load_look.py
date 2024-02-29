@@ -43,10 +43,10 @@ class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
 
         self[:] = nodes
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """
             Called by Scene Inventory when look should be updated to current
             version.
@@ -56,7 +56,7 @@ class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
 
         Args:
             container: object that has look to be updated
-            representation: (dict): relationship data to get proper
+            context: (dict): relationship data to get proper
                                        representation from DB and persisted
                                        data in .json
         Returns:
@@ -72,15 +72,16 @@ class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
         orig_nodes = set(self._get_nodes_with_shader(shader_nodes))
 
         # Trigger the regular reference update on the ReferenceLoader
-        super(LookLoader, self).update(container, representation)
+        super(LookLoader, self).update(container, context)
 
         # get new applied shaders and nodes from new version
         shader_nodes = cmds.ls(members, type='shadingEngine')
         nodes = set(self._get_nodes_with_shader(shader_nodes))
 
+        version_doc = context["version"]
         project_name = get_current_project_name()
         json_representation = get_representation_by_name(
-            project_name, "json", representation["parent"]
+            project_name, "json", version_doc["_id"]
         )
 
         # Load relationships

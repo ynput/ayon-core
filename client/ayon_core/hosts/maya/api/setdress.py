@@ -315,16 +315,27 @@ def update_package_version(container, version):
     new_representation = get_representation_by_name(
         project_name, current_representation["name"], new_version["_id"]
     )
+    # TODO there is 'get_representation_context' to get the context which
+    #   could be possible to use here
+    new_context = {
+        "project": {
+            "name": project_doc["name"],
+            "code": project_doc["data"].get("code", "")
+        },
+        "asset": asset_doc,
+        "subset": subset_doc,
+        "version": version_doc,
+        "representation": new_representation,
+    }
+    update_package(container, new_context)
 
-    update_package(container, new_representation)
 
-
-def update_package(set_container, representation):
+def update_package(set_container, context):
     """Update any matrix changes in the scene based on the new data
 
     Args:
         set_container (dict): container data from `ls()`
-        representation (dict): the representation document from the database
+        context (dict): the representation document from the database
 
     Returns:
         None
@@ -332,7 +343,8 @@ def update_package(set_container, representation):
     """
 
     # Load the original package data
-    project_name = get_current_project_name()
+    project_name = context["project"]["name"]
+    repre_doc = context["representation"]
     current_representation = get_representation_by_id(
         project_name, set_container["representation"]
     )
@@ -343,7 +355,7 @@ def update_package(set_container, representation):
         current_data = json.load(fp)
 
     # Load the new package data
-    new_file = get_representation_path(representation)
+    new_file = get_representation_path(repre_doc)
     assert new_file.endswith(".json")
     with open(new_file, "r") as fp:
         new_data = json.load(fp)
@@ -354,7 +366,7 @@ def update_package(set_container, representation):
 
     # TODO: This should be handled by the pipeline itself
     cmds.setAttr(set_container['objectName'] + ".representation",
-                 str(representation['_id']), type="string")
+                 str(repre_doc['_id']), type="string")
 
 
 def update_scene(set_container, containers, current_data, new_data, new_file):

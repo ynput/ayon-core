@@ -146,23 +146,23 @@ class FileNodeLoader(load.LoaderPlugin):
             loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_doc = context["representation"]
 
         members = cmds.sets(container['objectName'], query=True)
         file_node = cmds.ls(members, type="file")[0]
 
-        context = get_representation_context(representation)
         self._apply_representation_context(context, file_node)
 
         # Update representation
         cmds.setAttr(
             container["objectName"] + ".representation",
-            str(representation["_id"]),
+            str(repre_doc["_id"]),
             type="string"
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)
