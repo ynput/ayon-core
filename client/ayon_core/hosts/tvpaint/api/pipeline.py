@@ -52,7 +52,7 @@ expected that there are also keys `["instances0", "instances1"]`.
 Workfile data looks like:
 ```
 [avalon]
-instances0=[{{__dq__}id{__dq__}: {__dq__}pyblish.avalon.instance{__dq__...
+instances0=[{{__dq__}id{__dq__}: {__dq__}ayon.create.instance{__dq__...
 instances1=...more data...
 instances=2
 ```
@@ -99,7 +99,7 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             Union[str, None]: Current asset name.
         """
 
-        return self.get_current_context().get("asset_name")
+        return self.get_current_context().get("folder_path")
 
     def get_current_task_name(self):
         """
@@ -115,11 +115,13 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             return get_global_context()
 
         if "project_name" in context:
+            if "asset_name" in context:
+                context["folder_path"] = context["asset_name"]
             return context
         # This is legacy way how context was stored
         return {
             "project_name": context.get("project"),
-            "asset_name": context.get("asset"),
+            "folder_path": context.get("asset"),
             "task_name": context.get("task")
         }
 

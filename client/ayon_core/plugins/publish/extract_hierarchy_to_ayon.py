@@ -45,7 +45,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                 continue
 
             # Skip if instance asset does not match
-            instance_asset_name = instance.data.get("asset")
+            instance_asset_name = instance.data.get("folderPath")
             instances_by_asset_name[instance_asset_name].append(instance)
 
         project_doc = context.data["projectEntity"]
@@ -189,7 +189,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         active_folder_paths = set()
         for instance in context:
             if instance.data.get("publish") is not False:
-                active_folder_paths.add(instance.data.get("asset"))
+                active_folder_paths.add(instance.data.get("folderPath"))
 
         active_folder_paths.discard(None)
 

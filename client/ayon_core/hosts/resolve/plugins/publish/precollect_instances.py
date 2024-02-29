@@ -2,6 +2,7 @@ from pprint import pformat
 
 import pyblish
 
+from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 from ayon_core.hosts.resolve.api.lib import (
     get_current_timeline_items,
     get_timeline_item_pype_tag,
@@ -39,7 +40,9 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             if not tag_data:
                 continue
 
-            if tag_data.get("id") != "pyblish.avalon.instance":
+            if tag_data.get("id") not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 continue
 
             media_pool_item = timeline_item.GetMediaPoolItem()
@@ -61,12 +64,33 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             })
 
             asset = tag_data["folder_path"]
-            subset = tag_data["subset"]
+
+            # TODO: remove backward compatibility
+            product_name = tag_data.get("productName")
+            if product_name is None:
+                # backward compatibility: subset -> productName
+                product_name = tag_data.get("subset")
+
+            # backward compatibility: product_name should not be missing
+            if not product_name:
+                self.log.error(
+                    "Product name is not defined for: {}".format(asset))
+
+            # TODO: remove backward compatibility
+            product_type = tag_data.get("productType")
+            if product_type is None:
+                # backward compatibility: family -> productType
+                product_type = tag_data.get("family")
+
+            # backward compatibility: product_type should not be missing
+            if not product_type:
+                self.log.error(
+                    "Product type is not defined for: {}".format(asset))
 
             data.update({
-                "name": "{}_{}".format(asset, subset),
-                "label": "{} {}".format(asset, subset),
-                "asset": asset,
+                "name": "{}_{}".format(asset, product_name),
+                "label": "{} {}".format(asset, product_name),
+                "folderPath": asset,
                 "item": timeline_item,
                 "publish": get_publish_attribute(timeline_item),
                 "fps": context.data["fps"],
@@ -74,6 +98,9 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 "handleEnd": handle_end,
                 "newAssetPublishing": True,
                 "families": ["clip"],
+                "productType": product_type,
+                "productName": product_name,
+                "family": product_type
             })
 
             # otio clip data
@@ -124,19 +151,20 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["asset"]
-        subset = "shotMain"
+        asset = data["folderPath"]
+        product_name = "shotMain"
 
         # insert family into families
-        family = "shot"
+        product_type = "shot"
 
         data.update({
-            "name": "{}_{}".format(asset, subset),
-            "label": "{} {}".format(asset, subset),
-            "subset": subset,
-            "asset": asset,
-            "family": family,
-            "families": [],
+            "name": "{}_{}".format(asset, product_name),
+            "label": "{} {}".format(asset, product_name),
+            "folderPath": asset,
+            "productName": product_name,
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
             "publish": get_publish_attribute(timeline_item)
         })
 

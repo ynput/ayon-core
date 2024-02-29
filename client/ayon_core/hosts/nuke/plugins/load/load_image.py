@@ -47,7 +47,7 @@ class LoadImage(load.LoaderPlugin):
     color = "white"
 
     # Loaded from settings
-    _representations = []
+    representations_include = []
 
     node_name_template = "{class_name}_{ext}"
 
@@ -64,7 +64,7 @@ class LoadImage(load.LoaderPlugin):
 
     @classmethod
     def get_representations(cls):
-        return cls._representations or cls.representations
+        return cls.representations_include or cls.representations
 
     def load(self, context, name, namespace, options):
         self.log.info("__ options: `{}`".format(options))

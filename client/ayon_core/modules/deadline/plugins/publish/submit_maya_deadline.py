@@ -116,7 +116,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
     strict_error_checking = True
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         settings = project_settings["deadline"]["publish"]["MayaSubmitDeadline"]  # noqa
 
         # Take some defaults from settings

@@ -5,8 +5,9 @@ def get_published_workfile_instance(context):
     """Find workfile instance in context"""
     for i in context:
         is_workfile = (
-            "workfile" in i.data.get("families", []) or
-            i.data["family"] == "workfile"
+            i.data["productType"] == "workfile"
+            or "workfile" in i.data.get("families", [])
+
         )
         if not is_workfile:
             continue

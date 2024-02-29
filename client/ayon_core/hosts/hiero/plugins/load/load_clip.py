@@ -14,7 +14,7 @@ import ayon_core.hosts.hiero.api as phiero
 
 
 class LoadClip(phiero.SequenceLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
@@ -42,7 +42,7 @@ class LoadClip(phiero.SequenceLoader):
     clip_name_template = "{asset}_{subset}_{representation}"
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         plugin_type_settings = (
             project_settings
             .get("hiero", {})
@@ -54,24 +54,35 @@ class LoadClip(phiero.SequenceLoader):
 
         plugin_name = cls.__name__
 
-        plugin_settings = None
         # Look for plugin settings in host specific settings
-        if plugin_name in plugin_type_settings:
-            plugin_settings = plugin_type_settings[plugin_name]
-
+        plugin_settings = plugin_type_settings.get(plugin_name)
         if not plugin_settings:
             return
 
         print(">>> We have preset for {}".format(plugin_name))
         for option, value in plugin_settings.items():
+            if option == "representations":
+                continue
+
+            if option == "product_types":
+                # TODO remove the key conversion when loaders can filter by
+                #   product types
+                # convert 'product_types' to 'families'
+                option = "families"
+
+            elif option == "clip_name_template":
+                # TODO remove the formatting replacement
+                value = (
+                    value
+                    .replace("{folder[name]}", "{asset}")
+                    .replace("{product[name]}", "{subset}")
+                )
+
             if option == "enabled" and value is False:
                 print("  - is disabled by preset")
-            elif option == "representations":
-                continue
             else:
                 print("  - setting `{}`: `{}`".format(option, value))
             setattr(cls, option, value)
-
 
     def load(self, context, name, namespace, options):
         # add clip name template to options

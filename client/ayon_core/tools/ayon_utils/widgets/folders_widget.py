@@ -91,6 +91,21 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             return QtCore.QModelIndex()
         return self.indexFromItem(item)
 
+    def get_item_id_by_path(self, folder_path):
+        """Get folder id by path.
+
+        Args:
+            folder_path (str): Folder path.
+
+        Returns:
+            Union[str, None]: Folder id or None if folder is not available.
+
+        """
+        for folder_id, item in self._items_by_id.values():
+            if item.data(FOLDER_PATH_ROLE) == folder_path:
+                return folder_id
+        return None
+
     def get_project_name(self):
         """Project name which model currently use.
 
@@ -431,8 +446,10 @@ class FoldersWidget(QtWidgets.QWidget):
 
         Args:
             folder_id (Union[str, None]): Folder id or None to deselect.
-        """
 
+        Returns:
+            bool: Requested folder was selected.
+        """
         if folder_id is None:
             self._folders_view.clearSelection()
             return True
@@ -452,6 +469,25 @@ class FoldersWidget(QtWidgets.QWidget):
             proxy_index, QtCore.QItemSelectionModel.SelectCurrent
         )
         return True
+
+    def set_selected_folder_path(self, folder_path):
+        """Set selected folder by path.
+
+        Args:
+            folder_path (str): Folder path.
+
+        Returns:
+            bool: Requested folder was selected.
+
+        """
+        if folder_path is None:
+            self._folders_view.clearSelection()
+            return True
+
+        folder_id = self._folders_model.get_item_id_by_path(folder_path)
+        if folder_id is None:
+            return False
+        return self.set_selected_folder(folder_id)
 
     def set_deselectable(self, enabled):
         """Set deselectable mode.

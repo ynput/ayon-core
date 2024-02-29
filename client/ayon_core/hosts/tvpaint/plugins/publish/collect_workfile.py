@@ -14,7 +14,7 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
         current_file = context.data["currentFile"]
 
         self.log.info(
-            "Workfile path used for workfile family: {}".format(current_file)
+            "Workfile path used for workfile product: {}".format(current_file)
         )
 
         dirpath, filename = os.path.split(current_file)
