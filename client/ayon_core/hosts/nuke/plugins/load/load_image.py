@@ -155,10 +155,10 @@ class LoadImage(load.LoaderPlugin):
                                 loader=self.__class__.__name__,
                                 data=data_imprint)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update the Loader's path
 
         Nuke automatically tries to reset some variables when changing
@@ -171,12 +171,16 @@ class LoadImage(load.LoaderPlugin):
 
         assert node.Class() == "Read", "Must be Read"
 
-        repr_cont = representation["context"]
+        project_name = context["project"]["name"]
+        version_doc = context["version"]
+        repre_doc = context["representation"]
 
-        file = get_representation_path(representation)
+        repr_cont = repre_doc["context"]
+
+        file = get_representation_path(repre_doc)
 
         if not file:
-            repr_id = representation["_id"]
+            repr_id = repre_doc["_id"]
             self.log.warning(
                 "Representation id `{}` is failing to load".format(repr_id))
             return
@@ -191,8 +195,6 @@ class LoadImage(load.LoaderPlugin):
                 format(frame_number, "0{}".format(padding)))
 
         # Get start frame from version data
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
         last_version_doc = get_last_version_by_subset_id(
             project_name, version_doc["parent"], fields=["_id"]
         )
@@ -210,7 +212,7 @@ class LoadImage(load.LoaderPlugin):
 
         updated_dict = {}
         updated_dict.update({
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "frameStart": str(first),
             "frameEnd": str(last),
             "version": str(version_doc.get("name")),
