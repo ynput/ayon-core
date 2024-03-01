@@ -793,14 +793,17 @@ class ReferenceLoader(Loader):
         """To be implemented by subclass"""
         raise NotImplementedError("Must be implemented by subclass")
 
-    def update(self, container, representation):
+    def update(self, container, context):
         from maya import cmds
 
         from ayon_core.hosts.maya.api.lib import get_container_members
 
         node = container["objectName"]
 
-        path = get_representation_path(representation)
+        project_name = context["project"]["name"]
+        repre_doc = context["representation"]
+
+        path = get_representation_path(repre_doc)
 
         # Get reference node from container members
         members = get_container_members(node)
@@ -813,9 +816,9 @@ class ReferenceLoader(Loader):
             "abc": "Alembic",
             "fbx": "FBX",
             "usd": "USD Import"
-        }.get(representation["name"])
+        }.get(repre_doc["name"])
 
-        assert file_type, "Unsupported representation: %s" % representation
+        assert file_type, "Unsupported representation: %s" % repre_doc
 
         assert os.path.exists(path), "%s does not exist." % path
 
@@ -823,7 +826,7 @@ class ReferenceLoader(Loader):
         # them to incoming data.
         alembic_attrs = ["speed", "offset", "cycleType", "time"]
         alembic_data = {}
-        if representation["name"] == "abc":
+        if repre_doc["name"] == "abc":
             alembic_nodes = cmds.ls(
                 "{}:*".format(namespace), type="AlembicNode"
             )
@@ -840,10 +843,7 @@ class ReferenceLoader(Loader):
                 self.log.debug("No alembic nodes found in {}".format(members))
 
         try:
-            path = self.prepare_root_value(path,
-                                           representation["context"]
-                                                         ["project"]
-                                                         ["name"])
+            path = self.prepare_root_value(path, project_name)
             content = cmds.file(path,
                                 loadReference=reference_node,
                                 type=file_type,
@@ -867,7 +867,7 @@ class ReferenceLoader(Loader):
         self._organize_containers(content, container["objectName"])
 
         # Reapply alembic settings.
-        if representation["name"] == "abc" and alembic_data:
+        if repre_doc["name"] == "abc" and alembic_data:
             alembic_nodes = cmds.ls(
                 "{}:*".format(namespace), type="AlembicNode"
             )
@@ -901,7 +901,7 @@ class ReferenceLoader(Loader):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
         # When an animation or pointcache gets connected to an Xgen container,
