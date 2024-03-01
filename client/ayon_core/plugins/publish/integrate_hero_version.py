@@ -46,8 +46,18 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
     # Can specify representation names that will be ignored (lower case)
     ignored_representation_names = []
     db_representation_context_keys = [
-        "project", "asset", "task", "subset", "representation",
-        "family", "hierarchy", "task", "username", "user"
+        "project",
+        "folder",
+        "asset",
+        "hierarchy",
+        "task",
+        "product",
+        "subset",
+        "family",
+        "representation",
+        "username",
+        "user",
+        "output"
     ]
     # QUESTION/TODO this process should happen on server if crashed due to
     # permissions error on files (files were used or user didn't have perms)
@@ -57,8 +67,8 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         self.log.debug(
-            "--- Integration of Hero version for subset `{}` begins.".format(
-                instance.data.get("subset", str(instance))
+            "--- Integration of Hero version for product `{}` begins.".format(
+                instance.data["productName"]
             )
         )
         published_repres = instance.data.get("published_representations")
@@ -503,10 +513,10 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
             raise
 
         self.log.debug((
-            "--- hero version integration for subset `{}`"
+            "--- hero version integration for product `{}`"
             " seems to be successful."
         ).format(
-            instance.data.get("subset", str(instance))
+            instance.data["productName"]
         ))
 
     def get_all_files_from_path(self, path):
@@ -558,27 +568,18 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         anatomy_data = instance.data["anatomyData"]
         task_info = anatomy_data.get("task") or {}
         host_name = instance.context.data["hostName"]
-
-        # TODO raise error if Hero not set?
-        family = self.main_family_from_instance(instance)
+        product_type = instance.data["productType"]
 
         return get_publish_template_name(
             project_name,
             host_name,
-            family,
+            product_type,
             task_info.get("name"),
             task_info.get("type"),
             project_settings=instance.context.data["project_settings"],
             hero=True,
             logger=self.log
         )
-
-    def main_family_from_instance(self, instance):
-        """Returns main family of entered instance."""
-        family = instance.data.get("family")
-        if not family:
-            family = instance.data["families"][0]
-        return family
 
     def copy_file(self, src_path, dst_path):
         # TODO check drives if are the same to check if cas hardlink

@@ -26,17 +26,17 @@ class ConnectYetiRig(InventoryAction):
             self.display_warning(message)
             return
 
-        # Categorize containers by family.
-        containers_by_family = defaultdict(list)
+        # Categorize containers by product type.
+        containers_by_product_type = defaultdict(list)
         for container in containers:
-            family = get_representation_context(
+            product_type = get_representation_context(
                 container["representation"]
             )["subset"]["data"]["family"]
-            containers_by_family[family].append(container)
+            containers_by_product_type[product_type].append(container)
 
         # Validate to only 1 source container.
-        source_containers = containers_by_family.get("animation", [])
-        source_containers += containers_by_family.get("pointcache", [])
+        source_containers = containers_by_product_type.get("animation", [])
+        source_containers += containers_by_product_type.get("pointcache", [])
         source_container_namespaces = [
             x["namespace"] for x in source_containers
         ]
@@ -57,7 +57,7 @@ class ConnectYetiRig(InventoryAction):
         target_ids = {}
         inputs = []
 
-        yeti_rig_containers = containers_by_family.get("yetiRig")
+        yeti_rig_containers = containers_by_product_type.get("yetiRig")
         if not yeti_rig_containers:
             self.display_warning(
                 "Select at least one yetiRig container"

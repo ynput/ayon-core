@@ -18,23 +18,25 @@ class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         project_name = instance.context.data["projectName"]
-        asset_name = instance.data["asset"]
-        subset = instance.data["subset"]
+        asset_name = instance.data["folderPath"]
+        product_name = instance.data["productName"]
 
         # Assume shading variation starts after a dot separator
-        shade_subset = subset.split(".", 1)[0]
-        model_subset = re.sub("^usdShade", "usdModel", shade_subset)
+        shade_product_name = product_name.split(".", 1)[0]
+        model_product_name = re.sub(
+            "^usdShade", "usdModel", shade_product_name
+        )
 
         asset_doc = instance.data.get("assetEntity")
         if not asset_doc:
             raise RuntimeError("Asset document is not filled on instance.")
 
         subset_doc = get_subset_by_name(
-            project_name, model_subset, asset_doc["_id"], fields=["_id"]
+            project_name, model_product_name, asset_doc["_id"], fields=["_id"]
         )
         if not subset_doc:
             raise PublishValidationError(
-                ("USD Model subset not found: "
-                 "{} ({})").format(model_subset, asset_name),
+                ("USD Model product not found: "
+                 "{} ({})").format(model_product_name, asset_name),
                 title=self.label
             )

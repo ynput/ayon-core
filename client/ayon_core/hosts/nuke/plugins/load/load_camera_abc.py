@@ -92,7 +92,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
             loader=self.__class__.__name__,
             data=data_imprint)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """
             Called by Scene Inventory when look should be updated to current
             version.
@@ -109,8 +109,8 @@ class AlembicCameraLoader(load.LoaderPlugin):
             None
         """
         # Get version from io
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
+        version_doc = context["version"]
+        repre_doc = context["representation"]
 
         # get main variables
         version_data = version_doc.get("data", {})
@@ -124,7 +124,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
         add_keys = ["source", "author", "fps"]
 
         data_imprint = {
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "frameStart": first,
             "frameEnd": last,
             "version": vname
@@ -134,7 +134,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
             data_imprint.update({k: version_data[k]})
 
         # getting file path
-        file = get_representation_path(representation).replace("\\", "/")
+        file = get_representation_path(repre_doc).replace("\\", "/")
 
         with maintained_selection():
             camera_node = container["node"]
@@ -191,8 +191,8 @@ class AlembicCameraLoader(load.LoaderPlugin):
             color_value = "0xd88467ff"
         node["tile_color"].setValue(int(color_value, 16))
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         node = container["node"]

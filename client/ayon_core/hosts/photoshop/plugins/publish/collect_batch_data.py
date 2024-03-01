@@ -2,7 +2,7 @@
 
 Provides:
     context -> Loaded batch file.
-        - asset
+        - folderPath
         - task  (task name)
         - taskType
         - project_name
@@ -71,7 +71,7 @@ class CollectBatchData(pyblish.api.ContextPlugin):
         os.environ["AYON_FOLDER_PATH"] = asset_name
         os.environ["AYON_TASK_NAME"] = task_name
 
-        context.data["asset"] = asset_name
+        context.data["folderPath"] = asset_name
         context.data["task"] = task_name
         context.data["taskType"] = task_type
         context.data["project_name"] = project_name
