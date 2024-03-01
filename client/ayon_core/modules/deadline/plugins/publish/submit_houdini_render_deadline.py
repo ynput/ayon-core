@@ -153,7 +153,9 @@ class HoudiniSubmitDeadline(
         if split_render_job and not is_export_job:
             # Convert from family to Deadline plugin name
             # i.e., arnold_rop -> Arnold
-            plugin = instance.data["family"].replace("_rop", "").capitalize()
+            plugin = (
+                instance.data["productType"].replace("_rop", "").capitalize()
+            )
         else:
             plugin = "Houdini"
             if split_render_job:
@@ -259,21 +261,21 @@ class HoudiniSubmitDeadline(
 
         # Output driver to render
         if job_type == "render":
-            family = instance.data.get("family")
-            if family == "arnold_rop":
+            product_type = instance.data.get("productType")
+            if product_type == "arnold_rop":
                 plugin_info = ArnoldRenderDeadlinePluginInfo(
                     InputFile=instance.data["ifdFile"]
                 )
-            elif family == "mantra_rop":
+            elif product_type == "mantra_rop":
                 plugin_info = MantraRenderDeadlinePluginInfo(
                     SceneFile=instance.data["ifdFile"],
                     Version=hou_major_minor,
                 )
-            elif family == "vray_rop":
+            elif product_type == "vray_rop":
                 plugin_info = VrayRenderPluginInfo(
                     InputFilename=instance.data["ifdFile"],
                 )
-            elif family == "redshift_rop":
+            elif product_type == "redshift_rop":
                 plugin_info = RedshiftRenderPluginInfo(
                     SceneFile=instance.data["ifdFile"]
                 )
@@ -294,8 +296,8 @@ class HoudiniSubmitDeadline(
 
             else:
                 self.log.error(
-                    "Family '%s' not supported yet to split render job",
-                    family
+                    "Product type '%s' not supported yet to split render job",
+                    product_type
                 )
                 return
         else:

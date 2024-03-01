@@ -27,6 +27,17 @@ class ValidateAttributesModel(BaseSettingsModel):
         return value
 
 
+class ValidateCameraAttributesModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    fov: float = SettingsField(0.0, title="Focal Length")
+    nearrange: float = SettingsField(0.0, title="Near Range")
+    farrange: float = SettingsField(0.0, title="Far Range")
+    nearclip: float = SettingsField(0.0, title="Near Clip")
+    farclip: float = SettingsField(0.0, title="Far Clip")
+
+
 class FamilyMappingItemModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
@@ -63,10 +74,21 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ValidateAttributesModel,
         title="Validate Attributes"
     )
-
+    ValidateCameraAttributes: ValidateCameraAttributesModel = SettingsField(
+        default_factory=ValidateCameraAttributesModel,
+        title="Validate Camera Attributes",
+        description=(
+            "If the value of the camera attributes set to 0, "
+            "the system automatically skips checking it"
+        )
+    )
     ValidateLoadedPlugin: ValidateLoadedPluginModel = SettingsField(
         default_factory=ValidateLoadedPluginModel,
         title="Validate Loaded Plugin"
+    )
+    ValidateMeshHasUVs: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Mesh Has UVs"
     )
     ExtractModelObj: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -101,10 +123,25 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False,
         "attributes": "{}"
     },
+    "ValidateCameraAttributes": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+        "fov": 45.0,
+        "nearrange": 0.0,
+        "farrange": 1000.0,
+        "nearclip": 1.0,
+        "farclip": 1000.0
+    },
     "ValidateLoadedPlugin": {
         "enabled": False,
         "optional": True,
         "family_plugins_mapping": []
+    },
+    "ValidateMeshHasUVs": {
+        "enabled": True,
+        "optional": True,
+        "active": False
     },
     "ExtractModelObj": {
         "enabled": True,

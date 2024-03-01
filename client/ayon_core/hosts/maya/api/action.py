@@ -15,7 +15,7 @@ class GenerateUUIDsOnInvalidAction(pyblish.api.Action):
     receive new UUIDs are actually invalid.
 
     Requires:
-        - instance.data["asset"]
+        - instance.data["folderPath"]
 
     """
 
@@ -78,7 +78,7 @@ class GenerateUUIDsOnInvalidAction(pyblish.api.Action):
         #   should be always available, but kept a way to query it by name.
         asset_doc = instance.data.get("assetEntity")
         if not asset_doc:
-            asset_name = instance.data["asset"]
+            asset_name = instance.data["folderPath"]
             project_name = instance.context.data["projectName"]
             self.log.info((
                 "Asset is not stored on instance."

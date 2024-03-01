@@ -99,8 +99,8 @@ class CollectNukeReads(pyblish.api.InstancePlugin):
             "frameStart": first_frame + handle_start,
             "frameEnd": last_frame - handle_end,
             "colorspace": colorspace,
-            "families": [instance.data["family"]],
-            "subset": instance.data["subset"],
+            "families": [instance.data["productType"]],
+            "productName": instance.data["productName"],
             "fps": instance.context.data["fps"]
         }
 

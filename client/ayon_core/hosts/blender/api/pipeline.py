@@ -26,6 +26,7 @@ from ayon_core.pipeline import (
     deregister_loader_plugin_path,
     deregister_creator_plugin_path,
     AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.lib import (
     Logger,
@@ -563,8 +564,9 @@ def ls() -> Iterator:
     called containers.
     """
 
-    for container in lib.lsattr("id", AVALON_CONTAINER_ID):
-        yield parse_container(container)
+    for id_type in {AYON_CONTAINER_ID, AVALON_CONTAINER_ID}:
+        for container in lib.lsattr("id", id_type):
+            yield parse_container(container)
 
 
 def publish():
