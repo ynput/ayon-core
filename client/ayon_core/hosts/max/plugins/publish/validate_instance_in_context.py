@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Validate if instance asset is the same as context asset."""
+"""Validate if instance context is the same as current context."""
 import pyblish.api
 from ayon_core.pipeline.publish import (
     RepairAction,
@@ -13,10 +13,10 @@ from pymxs import runtime as rt
 
 class ValidateInstanceInContext(pyblish.api.InstancePlugin,
                                 OptionalPyblishPluginMixin):
-    """Validator to check if instance asset match context asset.
+    """Validator to check if instance context match current context .
 
     When working in per-shot style you always publish data in context of
-    current asset (shot). This validator checks if this is so. It is optional
+    current context (shot). This validator checks if this is so. It is optional
     so it can be disabled when needed.
 
     Action on this validator will select invalid instances.
@@ -38,7 +38,7 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
             context_label = "{} > {}".format(*context)
             instance_label = "{} > {}".format(folderPath, task)
             message = (
-                "Instance '{}' publishes to different folderPath than current "
+                "Instance '{}' publishes to different context than current "
                 "context: {}. Current context: {}".format(
                     instance.name, instance_label, context_label
                 )
