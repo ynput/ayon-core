@@ -53,7 +53,7 @@ class CommunicationWrapper:
 
     @classmethod
     def execute_zscript(cls, zscript):
-        """Execute passed zscript script in Zbrush."""
+        """Execute passed goerge script in Zbrush."""
         if not cls.communicator:
             return
         return cls.communicator.execute_zscript(zscript)
@@ -111,7 +111,7 @@ class WebsocketServerThread(threading.Thread):
     """ Listener for websocket rpc requests.
 
         It would be probably better to "attach" this to main thread (as for
-        example Zbrush needs to run something on main thread), but currently
+        example Harmony needs to run something on main thread), but currently
         it creates separate thread and separate asyncio event loop
     """
     def __init__(self, module, port, loop):
@@ -230,10 +230,7 @@ class BaseZbrushRpc(JsonRpc):
         return await super()._handle_rpc_msg(http_request, raw_msg)
 
     def client_connected(self):
-        # TODO This is poor check. Add check it is client from TVPaint
-        if self.clients:
-            return True
-        return False
+        return True
 
     def send_notification(self, client, method, params=None):
         if params is None:
@@ -301,7 +298,7 @@ class QtZbrushRpc(BaseZbrushRpc):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        from ayon_core.tools.utils import host_tools
+        from openpype.tools.utils import host_tools
         self.tools_helper = host_tools.HostToolsHelper()
 
         route_name = self.route_name
@@ -667,6 +664,15 @@ class BaseCommunicator:
             return
 
         return self.websocket_rpc.send_request(
+            client, method, params
+        )
+
+    def send_notification(self, method, params=None):
+        client = self.client()
+        if not client:
+            return
+
+        self.websocket_rpc.send_notification(
             client, method, params
         )
 

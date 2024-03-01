@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
-from ayon_core.modules import AYONAddon, IHostAddon
+from aiohttp_json_rpc import JsonRpcClient
+import asyncio
+from ayon_core.modules import click_wrap, AYONAddon, IHostAddon
 
 ZBRUSH_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -45,6 +47,10 @@ class ZbrushAddon(AYONAddon, IHostAddon):
         # Remove auto screen scale factor for Qt
         env.pop("QT_AUTO_SCREEN_SCALE_FACTOR", None)
 
+    def cli(self, click_group):
+        click_group.add_command(cli_main.to_click_obj())
+
+
     def get_workfile_extensions(self):
         return [".zpr"]
 
@@ -54,3 +60,29 @@ class ZbrushAddon(AYONAddon, IHostAddon):
         return [
             os.path.join(ZBRUSH_HOST_DIR, "hooks")
         ]
+
+
+@click_wrap.group(ZbrushAddon.name, help="Zbrush related shell commands.")
+def cli_main():
+    pass
+
+
+async def host_tools_widget(launcher_type=None):
+    """Connect to WEBSOCKET_URL, call ping() and disconnect."""
+    rpc_client = JsonRpcClient()
+    ws_port = os.environ["WEBSOCKET_URL"].split(":")[-1]
+    try:
+        await rpc_client.connect('localhost', ws_port)
+        await rpc_client.call(launcher_type)
+    finally:
+        await rpc_client.disconnect()
+
+
+# def run_with_zscript(launcher_type):
+#     return asyncio.run(host_tools_widget(launcher_type))
+
+
+@cli_main.command(help="Call AYON plugins command")
+@click_wrap.option("--launcher", help="Type of Launcher", default="workfile")
+def run_with_zscript(launcher):
+    return asyncio.run(host_tools_widget(launcher))
