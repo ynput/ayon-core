@@ -46,11 +46,11 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
             raise PublishValidationError(
                 message=message,
                 description=(
-                    "## Publishing to a different asset\n"
+                    "## Publishing to a different context data\n"
                     "There are publish instances present which are publishing "
-                    "into a different asset or task than your current context.\n\n"
+                    "into a different folder path or task than your current context.\n\n"
                     "Usually this is not what you want but there can be cases "
-                    "where you might want to publish into another asset or "
+                    "where you might want to publish into another context or "
                     "shot. If that's the case you can disable the validation "
                     "on the instance to ignore it."
                 )
