@@ -28,11 +28,13 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
             # shot data dict
             shot_data = {}
-            family = instance.data["family"]
+            product_type = instance.data["productType"]
             families = instance.data["families"]
 
             # exclude other families then self.families with intersection
-            if not set(self.families).intersection(set(families + [family])):
+            if not set(self.families).intersection(
+                set(families + [product_type])
+            ):
                 continue
 
             # exclude if not masterLayer True
@@ -62,7 +64,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 "pixelAspect": instance.data["pixelAspect"]
             }
             # Split by '/' for AYON where asset is a path
-            name = instance.data["asset"].split("/")[-1]
+            name = instance.data["folderPath"].split("/")[-1]
             actual = {name: shot_data}
 
             for parent in reversed(instance.data["parents"]):

@@ -17,37 +17,37 @@ from ayon_core.lib import (
 )
 
 
-class IntegrateSubsetGroup(pyblish.api.InstancePlugin):
+class IntegrateProductGroup(pyblish.api.InstancePlugin):
     """Integrate Subset Group for publish."""
 
     # Run after CollectAnatomyInstanceData
     order = pyblish.api.IntegratorOrder - 0.1
-    label = "Subset Group"
+    label = "Product Group"
 
     # Attributes set by settings
-    subset_grouping_profiles = None
+    product_grouping_profiles = None
 
     def process(self, instance):
-        """Look into subset group profiles set by settings.
+        """Look into product group profiles set by settings.
 
-        Attribute 'subset_grouping_profiles' is defined by settings.
+        Attribute 'product_grouping_profiles' is defined by settings.
         """
 
-        # Skip if 'subset_grouping_profiles' is empty
-        if not self.subset_grouping_profiles:
+        # Skip if 'product_grouping_profiles' is empty
+        if not self.product_grouping_profiles:
             return
 
         if instance.data.get("subsetGroup"):
             # If subsetGroup is already set then allow that value to remain
             self.log.debug((
-                "Skipping collect subset group due to existing value: {}"
+                "Skipping collect product group due to existing value: {}"
             ).format(instance.data["subsetGroup"]))
             return
 
         # Skip if there is no matching profile
         filter_criteria = self.get_profile_filter_criteria(instance)
         profile = filter_profiles(
-            self.subset_grouping_profiles,
+            self.product_grouping_profiles,
             filter_criteria,
             logger=self.log
         )
@@ -56,12 +56,18 @@ class IntegrateSubsetGroup(pyblish.api.InstancePlugin):
             return
 
         template = profile["template"]
+        product_name = instance.data["productName"]
+        product_type = instance.data["productType"]
 
         fill_pairs = prepare_template_data({
-            "family": filter_criteria["families"],
+            "family": product_type,
             "task": filter_criteria["tasks"],
             "host": filter_criteria["hosts"],
-            "subset": instance.data["subset"],
+            "subset": product_name,
+            "product": {
+                "name": product_name,
+                "type": product_type,
+            },
             "renderlayer": instance.data.get("renderlayer")
         })
 
@@ -91,7 +97,7 @@ class IntegrateSubsetGroup(pyblish.api.InstancePlugin):
 
         # Return filter criteria
         return {
-            "families": anatomy_data["family"],
+            "product_types": instance.data["productType"],
             "tasks": task.get("name"),
             "hosts": instance.context.data["hostName"],
             "task_types": task.get("type")

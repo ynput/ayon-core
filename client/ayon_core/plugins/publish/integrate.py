@@ -6,7 +6,6 @@ import datetime
 
 import clique
 import six
-from bson.objectid import ObjectId
 import pyblish.api
 
 from ayon_core.client.operations import (
@@ -61,7 +60,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     """Register publish in the database and transfer files to destinations.
 
     Steps:
-        1) Register the subset and version
+        1) Register the product and version
         2) Transfer the representation files to the destination
         3) Register the representation
 
@@ -149,8 +148,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     # Representation context keys that should always be written to
     # the database even if not used by the destination template
     db_representation_context_keys = [
-        "project", "asset", "task", "subset", "version", "representation",
-        "family", "hierarchy", "username", "user", "output"
+        "project",
+        "asset",
+        "hierarchy",
+        "folder",
+        "task",
+        "product",
+        "subset",
+        "family",
+        "version",
+        "representation",
+        "username",
+        "user",
+        "output"
     ]
 
     def process(self, instance):
@@ -173,7 +183,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             self.log.warning((
                 "Skipping, there are no representations"
                 " to integrate for instance {}"
-            ).format(instance.data["family"]))
+            ).format(instance.data["productType"]))
             return
 
         file_transactions = FileTransaction(log=self.log,
@@ -206,7 +216,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if not repres:
             raise KnownPublishError(
                 "Instance {} has no representations to integrate".format(
-                    instance.data["family"]
+                    instance.data["productType"]
                 )
             )
 
@@ -308,9 +318,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # increase if the file transaction takes a long time.
         op_session.commit()
 
-        self.log.info("Subset '{subset[name]}' version {version[name]} "
-                      "written to database..".format(subset=subset,
-                                                     version=version))
+        self.log.info((
+            "Product '{}' version {} written to database.."
+        ).format(subset["name"], version["name"]))
 
         # Process all file transfers of all integrations now
         self.log.debug("Integrating source files to destination ...")
@@ -404,13 +414,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
     def prepare_subset(self, instance, op_session, project_name):
         asset_doc = instance.data["assetEntity"]
-        subset_name = instance.data["subset"]
-        family = instance.data["family"]
-        self.log.debug("Subset: {}".format(subset_name))
+        product_name = instance.data["productName"]
+        product_type = instance.data["productType"]
+        self.log.debug("Product: {}".format(product_name))
 
         # Get existing subset if it exists
         existing_subset_doc = get_subset_by_name(
-            project_name, subset_name, asset_doc["_id"]
+            project_name, product_name, asset_doc["_id"]
         )
 
         # Define subset data
@@ -431,12 +441,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if existing_subset_doc:
             subset_id = existing_subset_doc["_id"]
         subset_doc = new_subset_document(
-            subset_name, family, asset_doc["_id"], data, subset_id
+            product_name, product_type, asset_doc["_id"], data, subset_id
         )
 
         if existing_subset_doc is None:
             # Create a new subset
-            self.log.info("Subset '%s' not found, creating ..." % subset_name)
+            self.log.info(
+                "Product '%s' not found, creating ..." % product_name
+            )
             op_session.create_entity(
                 project_name, subset_doc["type"], subset_doc
             )
@@ -456,7 +468,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 update_data
             )
 
-        self.log.debug("Prepared subset: {}".format(subset_name))
+        self.log.debug("Prepared product: {}".format(product_name))
         return subset_doc
 
     def prepare_version(self, instance, op_session, subset_doc, project_name):
@@ -915,13 +927,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Task can be optional in anatomy data
         host_name = context.data["hostName"]
         anatomy_data = instance.data["anatomyData"]
-        family = anatomy_data["family"]
+        product_type = instance.data["productType"]
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
             project_name,
             host_name,
-            family,
+            product_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
@@ -988,7 +1000,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         """
 
         return {
-            "_id": ObjectId(),
             "path": self.get_rootless_path(anatomy, path),
             "size": os.path.getsize(path),
             "hash": source_hash(path),

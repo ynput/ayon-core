@@ -14,7 +14,7 @@ import pyblish.api
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 from ayon_core.settings import (
     get_current_project_settings,
-    get_system_settings
+    get_project_settings,
 )
 
 from ayon_core.pipeline.template_data import get_template_data_with_names
@@ -252,9 +252,9 @@ class SubstanceHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             project_name = self.get_current_project_name()
             asset_name = self.get_current_asset_name()
             task_name = self.get_current_asset_name()
-            system_settings = get_system_settings()
+            project_settings = get_project_settings(project_name)
             formatting_data = get_template_data_with_names(
-                project_name, asset_name, task_name, system_settings
+                project_name, asset_name, task_name, project_settings
             )
             anatomy = Anatomy(project_name)
             formatting_data["root"] = anatomy.roots

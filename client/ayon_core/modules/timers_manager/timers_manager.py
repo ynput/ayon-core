@@ -430,7 +430,7 @@ class TimersManager(
             return
         data = {
             "project_name": project_name,
-            "asset_name": asset_name,
+            "folder_path": asset_name,
             "task_name": task_name
         }
 
@@ -472,7 +472,7 @@ class TimersManager(
 
     def _on_host_task_change(self, event):
         project_name = event["project_name"]
-        asset_name = event["asset_name"]
+        asset_name = event["folder_path"]
         task_name = event["task_name"]
         self.log.debug((
             "Sending message that timer should change to"

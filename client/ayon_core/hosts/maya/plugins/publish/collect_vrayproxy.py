@@ -14,7 +14,7 @@ class CollectVrayProxy(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         """Collector entry point."""
-        if not instance.data.get('families'):
+        if not instance.data.get("families"):
             instance.data["families"] = []
 
         if instance.data.get("vrmesh"):
