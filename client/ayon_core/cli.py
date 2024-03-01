@@ -102,7 +102,7 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
 
 
 @main_cli.command()
-@click.argument("path", nargs=1)
+@click.argument("path", required=True)
 @click.option("-t", "--targets", help="Targets", default=None,
               multiple=True)
 @click.option("-g", "--gui", is_flag=True,
