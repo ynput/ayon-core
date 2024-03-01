@@ -56,16 +56,21 @@ class BackgroundLoader(api.AfterEffectsLoader):
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """ Switch asset or change version """
         stub = self.get_stub()
-        context = representation.get("context", {})
+        asset_doc = context["asset"]
+        subset_doc = context["subset"]
+        repre_doc = context["representation"]
+
+        folder_name = asset_doc["name"]
+        product_name = subset_doc["name"]
         _ = container.pop("layer")
 
         # without iterator number (_001, 002...)
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])
-        comp_name = "{}_{}".format(context["asset"], context["subset"])
+        comp_name = "{}_{}".format(folder_name, product_name)
 
         # switching assets
         if namespace_from_container != comp_name:
@@ -73,11 +78,11 @@ class BackgroundLoader(api.AfterEffectsLoader):
             existing_items = [layer.name for layer in items]
             comp_name = get_unique_layer_name(
                 existing_items,
-                "{}_{}".format(context["asset"], context["subset"]))
+                "{}_{}".format(folder_name, product_name))
         else:  # switching version - keep same name
             comp_name = container["namespace"]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_doc)
 
         layers = get_background_layers(path)
         comp = stub.reload_background(container["members"][1],
@@ -85,8 +90,8 @@ class BackgroundLoader(api.AfterEffectsLoader):
                                       layers)
 
         # update container
-        container["representation"] = str(representation["_id"])
-        container["name"] = context["subset"]
+        container["representation"] = str(repre_doc["_id"])
+        container["name"] = product_name
         container["namespace"] = comp_name
         container["members"] = comp.members
 
@@ -104,5 +109,5 @@ class BackgroundLoader(api.AfterEffectsLoader):
         stub.imprint(layer.id, {})
         stub.delete_item(layer.id)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)

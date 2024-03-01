@@ -611,11 +611,12 @@ class ImageSequenceLoader(load.LoaderPlugin):
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         node = container.pop("node")
 
+        repre_doc = context["representation"]
         project_name = get_current_project_name()
-        version = get_version_by_id(project_name, representation["parent"])
+        version = get_version_by_id(project_name, repre_doc["parent"])
         files = []
         for f in version["data"]["files"]:
             files.append(
@@ -632,7 +633,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )
 
         harmony.imprint(
-            node, {"representation": str(representation["_id"])}
+            node, {"representation": str(repre_doc["_id"])}
         )
 
     def remove(self, container):
@@ -648,8 +649,8 @@ class ImageSequenceLoader(load.LoaderPlugin):
             {"function": func, "args": [node]}
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 ```
 
 ## Resources
