@@ -30,9 +30,8 @@ class ForceStartupScript(PreLaunchHook):
             "run", self.launch_script_path(), executable_path
         )
 
-        # Append as whole list as these areguments should not be separated
+        # Append as whole list as these arguments should not be separated
         self.launch_context.launch_args.append(new_launch_args)
-
         startup_args = [
             os.path.join(ZBRUSH_HOST_DIR, "startup", "startup.txt"),
         ]

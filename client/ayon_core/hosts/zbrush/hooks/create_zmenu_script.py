@@ -37,32 +37,44 @@ class CreateZMenuScript(PreLaunchHook):
         python_exe = os.environ["AYON_ZBRUSH_CMD"]
         ayon_script = ("""
 [ISubPalette,"Zplugin:AYON"]
+[VarSet, addon, "addon"]
+[VarSet, zbrush, "zbrush"]
+[VarSet, zscript, "run-with-zscript"]
+[VarSet, arg, "--launcher"]
 [IButton,"Zplugin:AYON:Load","Loader",
 	[VarSet, loader, "loader_tool"]
     [VarSet, q, [StrFromAsc, 34]]
-	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}",#q, " ",#q, sc, #q]]
-	[VarSet, cmd, [StrMerge, cmd, " ", #loader, #q]]
+	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}", #q]]
+    [VarSet, cmd, [StrMerge, cmd, " ", #addon, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zbrush, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zscript, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #arg, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #loader, #q]]
 	[ShellExecute, cmd], 0, 120
 ]//end button
 [IButton,"Zplugin:AYON:Publish","Publish Tab for Publisher",
 	[VarSet, publisher, "publish_tool"]
     [VarSet, q, [StrFromAsc, 34]]
-	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}",#q, " ",#q, sc, #q]]
-	[VarSet, cmd, [StrMerge, cmd, " ", #publisher, #q]]
+	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}", #q]]
+    [VarSet, cmd, [StrMerge, cmd, " ", #addon, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zbrush, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zscript, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #arg, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #publisher, #q]]
 	[ShellExecute, cmd], 0, 120
 ]//end button
 [IButton,"Zplugin:AYON:Manage","Scene Inventory Manager",
 	[VarSet, sceneinventory, "scene_inventory_tool"]
-    [VarSet, q, [StrFromAsc, 34]]
-	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "$AYON_ZBRUSH_CMD",#q, " ",#q, sc, #q]]
-	[VarSet, cmd, [StrMerge, cmd, " ", #sceneinventory, #q]]
+	[VarSet, q, [StrFromAsc, 34]]
+	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}", #q]]
+    [VarSet, cmd, [StrMerge, cmd, " ", #addon, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zbrush, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zscript, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #arg, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #sceneinventory, #q]]
 	[ShellExecute, cmd], 0, 120
 ]//end button
 [IButton,"Zplugin:AYON:Workfile","Workfile",
-    [VarSet, addon, "addon"]
-    [VarSet, zbrush, "zbrush"]
-    [VarSet, zscript, "run-with-zscript"]
-    [VarSet, arg, "--launcher"]
 	[VarSet, workfiles, "workfiles_tool"]
 	[VarSet, q, [StrFromAsc, 34]]
 	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}", #q]]
@@ -70,6 +82,7 @@ class CreateZMenuScript(PreLaunchHook):
     [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zbrush, #q]]
     [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zscript, #q]]
     [VarSet, cmd, [StrMerge, cmd, #q,  " ", #arg, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #workfiles, #q]]
 	[ShellExecute, cmd], 0, 120
 ]//end button""").format(py=python_exe)
         return ayon_script
