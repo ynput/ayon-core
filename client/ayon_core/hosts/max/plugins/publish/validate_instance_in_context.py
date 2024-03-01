@@ -13,7 +13,7 @@ from pymxs import runtime as rt
 
 class ValidateInstanceInContext(pyblish.api.InstancePlugin,
                                 OptionalPyblishPluginMixin):
-    """Validator to check if instance context match current context .
+    """Validator to check if instance context match current context.
 
     When working in per-shot style you always publish data in context of
     current context (shot). This validator checks if this is so. It is optional
