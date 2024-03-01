@@ -74,7 +74,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         required = ["user", "comment",
                     "job", "instances", "version"]
 
-        if any(elem not in data.keys() for elem in required):
+        if any(elem not in data for elem in required):
             raise ValueError(data_err)
 
         if "folderPath" not in data and "asset" not in data:

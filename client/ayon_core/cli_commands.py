@@ -112,7 +112,7 @@ class Commands:
                 app_full_name,
                 launch_type=LaunchTypes.farm_publish,
             )
-            os.environ |= env
+            os.environ.update(env)
 
         pyblish.api.register_host("shell")
 
@@ -123,7 +123,7 @@ class Commands:
         else:
             pyblish.api.register_target("farm")
 
-        os.environ["AYON_PUBLISH_DATA"] = os.pathsep.join(path)
+        os.environ["AYON_PUBLISH_DATA"] = path
         os.environ["HEADLESS_PUBLISH"] = 'true'  # to use in app lib
 
         log.info("Running publish ...")
