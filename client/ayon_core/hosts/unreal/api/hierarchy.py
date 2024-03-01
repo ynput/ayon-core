@@ -1,3 +1,4 @@
+from pathlib import Path
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_api import get_folders_hierarchy
@@ -242,16 +243,19 @@ def _on_confirm_clicked(selected_root, sequence_path, project):
         raise ValueError(f"Could not find {sequence_root_name} in hierarchy")
 
     # Create the master level
-    master_level_path = f"{sequence_root}/{sequence_root_name}_map"
-    master_level_package = f"{master_level_path}.{sequence_root_name}_map"
+    master_level_name = sequence_root_name.split("/")[-1]
+    master_level_path = f"{sequence_root}/{master_level_name}_map"
+    master_level_package = f"{master_level_path}.{master_level_name}_map"
     unreal.EditorLevelLibrary.new_level(master_level_path)
 
     # Start creating sequences from the root element
-    _create_sequence(hierarchy_element, sequence_path, master_level_package)
+    _create_sequence(
+        hierarchy_element, Path(sequence_root).parent.as_posix(),
+        master_level_package)
 
     # List all the assets in the sequence path and save them
     asset_content = unreal.EditorAssetLibrary.list_assets(
-        sequence_path, recursive=True, include_folder=False
+        sequence_root, recursive=True, include_folder=False
     )
 
     for a in asset_content:
