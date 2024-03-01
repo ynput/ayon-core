@@ -75,9 +75,7 @@ class Commands:
         import pyblish.util
 
         if not isinstance(path, str):
-            warnings.warn(
-                "Passing list of paths is deprecated.",
-                DeprecationWarning)
+            raise RuntimeError("Path to JSON must be a string.")
 
         # Fix older jobs
         for src_key, dst_key in (
