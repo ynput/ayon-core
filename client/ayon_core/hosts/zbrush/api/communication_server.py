@@ -298,7 +298,7 @@ class QtZbrushRpc(BaseZbrushRpc):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        from openpype.tools.utils import host_tools
+        from ayon_core.tools.utils import host_tools
         self.tools_helper = host_tools.HostToolsHelper()
 
         route_name = self.route_name

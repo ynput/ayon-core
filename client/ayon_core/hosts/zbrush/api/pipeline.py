@@ -27,11 +27,6 @@ ZBRUSH_METADATA_CREATE_CONTEXT = "create_context"
 ZBRUSH_SECTION_NAME_INSTANCES = "instances"
 ZBRUSH_SECTION_NAME_CONTAINERS = "containers"
 
-PLUGINS_DIR = os.path.join(ZBRUSH_HOST_DIR, "plugins")
-PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
-LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
-CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
-INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 log = logging.getLogger("ayon.hosts.zbrush")
 
@@ -67,13 +62,13 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         return self.get_current_context().get("project_name")
 
-    def get_current_asset_name(self):
+    def get_current_folder_path(self):
         """
         Returns:
             Union[str, None]: Current asset name.
         """
 
-        return self.get_current_context().get("asset_name")
+        return self.get_current_context().get("folder_path")
 
     def get_current_task_name(self):
         """
@@ -92,7 +87,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         # This is legacy way how context was stored
         return {
             "project_name": context.get("project"),
-            "asset_name": context.get("asset"),
+            "folder_path": context.get("folder_path"),
             "task_name": context.get("task")
         }
     # --- Workfile ---
@@ -111,7 +106,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         set_current_file(filepath=filepath)
         return filepath
 
-    def save_workfile(self, filepath):
+    def save_workfile(self, filepath=None):
         if not filepath:
             filepath = self.get_current_workfile()
         filepath = filepath.replace("\\", "/")
@@ -139,9 +134,9 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def get_current_workfile(self):
         project_name = get_current_context()["project_name"]
-        asset_name = get_current_context()["asset_name"]
+        folder_path = get_current_context()["folder_path"]
         task_name = get_current_context()["task_name"]
-        work_dir = get_workdir(project_name, asset_name, task_name)
+        work_dir = get_workdir(project_name, folder_path, task_name)
         txt_dir = os.path.join(
             work_dir, ".zbrush_metadata").replace(
                 "\\", "/"
@@ -223,13 +218,13 @@ def write_workfile_metadata(metadata_key, data=None):
     if data is None:
         data = []
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
     current_file = get_current_file()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -248,9 +243,9 @@ def get_current_workfile_context():
 
 def get_current_context():
     return {
-        "project_name": os.environ.get("AVALON_PROJECT"),
-        "asset_name": os.environ.get("AVALON_ASSET"),
-        "task_name": os.environ.get("AVALON_TASK"),
+        "project_name": os.environ.get("AYON_PROJECT_NAME"),
+        "folder_path": os.environ.get("AYON_FOLDER_PATH"),
+        "task_name": os.environ.get("AYON_TASK_NAME")
     }
 
 
@@ -298,13 +293,13 @@ def get_containers():
 def write_load_metadata(metadata_key, data):
     #TODO: create temp json file
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
     current_file = get_current_file()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     name = next((d["name"] for d in data), None)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
@@ -326,13 +321,13 @@ def get_load_workfile_metadata(metadata_key):
     # load json files
     file_content = []
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
     current_file = get_current_file()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -358,13 +353,13 @@ def get_instance_workfile_metadata(metadata_key):
     # load json files
     file_content = []
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
     current_file = get_current_file()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -384,13 +379,13 @@ def get_instance_workfile_metadata(metadata_key):
 
 def remove_container_data(name):
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
     current_file = get_current_file()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, ZBRUSH_SECTION_NAME_CONTAINERS).replace(
@@ -405,9 +400,9 @@ def remove_container_data(name):
 
 def remove_tmp_data():
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     for name in [ZBRUSH_SECTION_NAME_CONTEXT,
                  ZBRUSH_METADATA_CREATE_CONTEXT,
                  ZBRUSH_SECTION_NAME_INSTANCES,
@@ -427,13 +422,13 @@ def remove_tmp_data():
 def copy_ayon_data(filepath):
     filename = os.path.splitext(os.path.basename(filepath))[0].strip()
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
     current_file = get_current_file()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     for name in [ZBRUSH_SECTION_NAME_CONTEXT,
                  ZBRUSH_METADATA_CREATE_CONTEXT,
                  ZBRUSH_SECTION_NAME_INSTANCES,
@@ -460,9 +455,9 @@ def copy_ayon_data(filepath):
 
 def set_current_file(filepath=None):
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     txt_dir = os.path.join(
         work_dir, ".zbrush_metadata").replace(
             "\\", "/"
@@ -485,13 +480,13 @@ def imprint(container, representation_id):
     data = {}
     name = container["objectName"]
     project_name = get_current_context()["project_name"]
-    asset_name = get_current_context()["asset_name"]
+    folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
     current_file = get_current_file()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, asset_name, task_name)
+    work_dir = get_workdir(project_name, folder_path, task_name)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, ZBRUSH_SECTION_NAME_CONTAINERS).replace(

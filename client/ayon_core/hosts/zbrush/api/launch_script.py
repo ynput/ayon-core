@@ -27,7 +27,7 @@ def main(launch_args):
     sys.excepthook = safe_excepthook
 
     # Create QtApplication for tools
-    # - QApplicaiton is also main thread/event loop of the server
+    # - QApplication is also main thread/event loop of the server
     qt_app = QtWidgets.QApplication([])
 
     zbrush_host = ZbrushHost()
@@ -37,7 +37,6 @@ def main(launch_args):
     # Create Communicator object and trigger launch
     # - this must be done before anything is processed
     communicator = CommunicationWrapper.create_qt_communicator(qt_app)
-    print(communicator)
     communicator.launch(launch_args)
 
     def process_in_main_thread():

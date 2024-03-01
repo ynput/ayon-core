@@ -78,11 +78,7 @@ async def host_tools_widget(launcher_type=None):
         await rpc_client.disconnect()
 
 
-# def run_with_zscript(launcher_type):
-#     return asyncio.run(host_tools_widget(launcher_type))
-
-
 @cli_main.command(help="Call AYON plugins command")
 @click_wrap.option("--launcher", help="Type of Launcher")
 def run_with_zscript(launcher):
-    return asyncio.run(host_tools_widget(launcher))
+    asyncio.run(host_tools_widget(launcher))

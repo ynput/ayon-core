@@ -27,14 +27,11 @@ class CreateZMenuScript(PreLaunchHook):
         with open(zscript_txt, "w") as zscript:
             zscript.write(self.ayon_menu())
             zscript.close()
-        self.launch_context.env["AYON_ZBRUSH_CMD"] = os.environ["AYON_ZBRUSH_CMD"]
+
     def ayon_menu(self):
         zclient_path = os.path.join(ZBRUSH_HOST_DIR, "api", "widgets.py")
         zclient_path = zclient_path.replace("\\", "/")
-        os.environ["AYON_ZBRUSH_CMD"] = subprocess.list2cmdline(
-            get_ayon_launcher_args()
-        )
-        python_exe = os.environ["AYON_ZBRUSH_CMD"]
+        python_exe = os.environ["AYON_EXECUTABLE"]
         ayon_script = ("""
 [ISubPalette,"Zplugin:AYON"]
 [VarSet, addon, "addon"]
