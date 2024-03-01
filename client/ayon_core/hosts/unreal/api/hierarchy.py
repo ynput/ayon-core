@@ -214,7 +214,8 @@ def _find_in_hierarchy(hierarchy, path):
     return None
 
 
-def _on_confirm_clicked(selected_root, sequence_path, project):
+def _on_confirm_clicked(folder_selector, sequence_path, project):
+    selected_root = folder_selector.get_selected_folder()
     sequence_root_name = selected_root.lstrip("/")
 
     sequence_root = f"{sequence_path}/{sequence_root_name}"
@@ -264,6 +265,8 @@ def _on_confirm_clicked(selected_root, sequence_path, project):
     # Load the master level
     unreal.EditorLevelLibrary.load_level(master_level_package)
 
+    folder_selector.close()
+
 
 def build_sequence_hierarchy():
     """
@@ -282,6 +285,5 @@ def build_sequence_hierarchy():
     folder_selector = FolderSelector(project=project)
 
     folder_selector.confirm_btn.clicked.connect(
-        lambda: _on_confirm_clicked(
-            folder_selector.get_selected_folder(), sequence_path, project)
+        lambda: _on_confirm_clicked(folder_selector, sequence_path, project)
     )
