@@ -48,11 +48,12 @@ class HdaLoader(load.LoaderPlugin):
             suffix="",
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         import hou
 
+        repre_doc = context["representation"]
         hda_node = container["node"]
-        file_path = get_representation_path(representation)
+        file_path = get_representation_path(repre_doc)
         file_path = file_path.replace("\\", "/")
         hou.hda.installFile(file_path)
         defs = hda_node.type().allInstalledDefinitions()
@@ -60,7 +61,7 @@ class HdaLoader(load.LoaderPlugin):
         new = def_paths.index(file_path)
         defs[new].setIsPreferred(True)
         hda_node.setParms({
-            "representation": str(representation["_id"])
+            "representation": str(repre_doc["_id"])
         })
 
     def remove(self, container):
