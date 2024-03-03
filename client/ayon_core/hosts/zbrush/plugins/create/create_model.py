@@ -7,6 +7,6 @@ class CreateModel(plugin.ZbrushCreator):
     """Creator plugin for Model."""
     identifier = "io.ayon.creators.zbrush.model"
     label = "Model"
-    family = "model"
+    product_type = "model"
     icon = "gear"
 
