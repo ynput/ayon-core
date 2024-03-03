@@ -365,12 +365,9 @@ def get_instance_workfile_metadata(metadata_key):
         current_file, metadata_key).replace(
             "\\", "/"
         )
-    if not os.path.exists(json_dir):
+    if not os.path.exists(json_dir) or not os.listdir(json_dir):
         return file_content
-    file_list = os.listdir(json_dir)
-    if not file_list:
-        return file_content
-    for file in file_list:
+    for file in os.listdir(json_dir):
         with open (f"{json_dir}/{file}", "r") as data:
             file_content = json.load(data)
 
