@@ -67,9 +67,9 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             # NOTE:
             # may have more then one representation that are same version
             version = {
-                "subsetName": con["name"],
-                "representation": repre_doc["_id"],
-                "version": repre_doc["parent"],
+                "container_name": con["name"],
+                "representation_id": repre_doc["_id"],
+                "version_id": repre_doc["parent"],
             }
             loaded_versions.append(version)
 

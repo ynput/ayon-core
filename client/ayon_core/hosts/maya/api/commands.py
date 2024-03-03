@@ -38,25 +38,6 @@ class ToolWindows:
         cls._windows[tool] = window
 
 
-def edit_shader_definitions():
-    from qtpy import QtWidgets
-    from ayon_core.hosts.maya.api.shader_definition_editor import (
-        ShaderDefinitionsEditor
-    )
-    from ayon_core.tools.utils import qt_app_context
-
-    top_level_widgets = QtWidgets.QApplication.topLevelWidgets()
-    main_window = next(widget for widget in top_level_widgets
-                       if widget.objectName() == "MayaWindow")
-
-    with qt_app_context():
-        window = ToolWindows.get_window("shader_definition_editor")
-        if not window:
-            window = ShaderDefinitionsEditor(parent=main_window)
-            ToolWindows.set_window("shader_definition_editor", window)
-        window.show()
-
-
 def _resolution_from_document(doc):
     if not doc or "data" not in doc:
         print("Entered document is not valid. \"{}\"".format(str(doc)))

@@ -79,7 +79,7 @@ def open_file(filepath):
 def current_file():
     pm = get_project_manager()
     file_ext = file_extensions()[0]
-    workdir_path = os.getenv("AVALON_WORKDIR")
+    workdir_path = os.getenv("AYON_WORKDIR")
     project = pm.GetCurrentProject()
     project_name = project.GetName()
     file_name = project_name + file_ext
@@ -93,4 +93,4 @@ def current_file():
 
 
 def work_root(session):
-    return os.path.normpath(session["AVALON_WORKDIR"]).replace("\\", "/")
+    return os.path.normpath(session["AYON_WORKDIR"]).replace("\\", "/")

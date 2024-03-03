@@ -16,7 +16,7 @@ from ayon_core.pipeline.publish import KnownPublishError
 from ayon_core.pipeline.farm.pyblish_functions import (
     create_skeleton_instance,
     create_instances_for_aov,
-    attach_instances_to_subset,
+    attach_instances_to_product,
     prepare_representations,
     create_metadata_path
 )
@@ -63,7 +63,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
         "FTRACK_API_USER",
         "FTRACK_API_KEY",
         "FTRACK_SERVER",
-        "AVALON_APP_NAME",
+        "AYON_APP_NAME",
         "AYON_USERNAME",
         "OPENPYPE_SG_USER",
     ]
@@ -113,9 +113,9 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
             instance_skeleton_data["representations"] += representations
             instances = [instance_skeleton_data]
 
-        # attach instances to subset
+        # attach instances to product
         if instance.data.get("attachTo"):
-            instances = attach_instances_to_subset(
+            instances = attach_instances_to_product(
                 instance.data.get("attachTo"), instances
             )
 
@@ -132,7 +132,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         # publish job file
         publish_job = {
-            "asset": instance_skeleton_data["asset"],
+            "folderPath": instance_skeleton_data["folderPath"],
             "frameStart": instance_skeleton_data["frameStart"],
             "frameEnd": instance_skeleton_data["frameEnd"],
             "fps": instance_skeleton_data["fps"],
@@ -168,8 +168,8 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         """
         data = instance.data.copy()
-        subset = data["subset"]
-        jobname = "Publish - {subset}".format(subset=subset)
+        product_name = data["productName"]
+        jobname = "Publish - {}".format(product_name)
 
         # Transfer the environment from the original job to this dependent
         # job, so they use the same environment
@@ -179,9 +179,9 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
         anatomy_data = instance.context.data["anatomyData"]
 
         environment = RREnvList({
-            "AVALON_PROJECT": anatomy_data["project"]["name"],
-            "AVALON_ASSET": instance.context.data["asset"],
-            "AVALON_TASK": anatomy_data["task"]["name"],
+            "AYON_PROJECT_NAME": anatomy_data["project"]["name"],
+            "AYON_FOLDER_PATH": instance.context.data["folderPath"],
+            "AYON_TASK_NAME": anatomy_data["task"]["name"],
             "AYON_USERNAME": anatomy_data["user"]
         })
 
@@ -216,7 +216,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
             SeqEnd=1,
             SeqStep=1,
             SeqFileOffset=0,
-            Version=self._sanitize_version(os.environ.get("OPENPYPE_VERSION")),
+            Version=os.environ["AYON_BUNDLE_NAME"],
             SceneName=abs_metadata_path,
             # command line arguments
             CustomAddCmdFlags=" ".join(args),
@@ -243,26 +243,3 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
             job.WaitForPreIDs += jobs_pre_ids
 
         return job
-
-    def _sanitize_version(self, version):
-        """Returns version in format MAJOR.MINORPATCH
-
-        3.15.7-nightly.2 >> 3.157
-        """
-        VERSION_REGEX = re.compile(
-            r"(?P<major>0|[1-9]\d*)"
-            r"\.(?P<minor>0|[1-9]\d*)"
-            r"\.(?P<patch>0|[1-9]\d*)"
-            r"(?:-(?P<prerelease>[a-zA-Z\d\-.]*))?"
-            r"(?:\+(?P<buildmetadata>[a-zA-Z\d\-.]*))?"
-        )
-
-        valid_parts = VERSION_REGEX.findall(version)
-        if len(valid_parts) != 1:
-            # Return invalid version with filled 'origin' attribute
-            return version
-
-        # Unpack found version
-        major, minor, patch, pre, post = valid_parts[0]
-
-        return "{}.{}{}".format(major, minor, patch)
