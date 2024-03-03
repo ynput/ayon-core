@@ -362,6 +362,14 @@ class ExtractLookModel(BaseSettingsModel):
     )
 
 
+class ValidateInstanceInContextModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    families: list[str] = SettingsField(
+        default_factory=list, title="Families")
+
+
 class ExtractGPUCacheModel(BaseSettingsModel):
     enabled: bool = True
     families: list[str] = SettingsField(default_factory=list, title="Families")
@@ -397,7 +405,7 @@ class PublishersModel(BaseSettingsModel):
         title="Collect Assets for GLB/GLTF export"
     )
     ValidateInstanceInContext: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+        default_factory=ValidateInstanceInContextModel,
         title="Validate Instance In Context",
         section="Validators"
     )
@@ -824,7 +832,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateInstanceInContext": {
         "enabled": True,
         "optional": True,
-        "active": True
+        "active": True,
+        "families": ["layout"]
     },
     "ValidateContainers": {
         "enabled": True,
