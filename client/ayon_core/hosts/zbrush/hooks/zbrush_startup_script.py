@@ -6,7 +6,7 @@ from ayon_core.lib import get_openpype_execute_args
 from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 
 
-class ForceStartupScript(PreLaunchHook):
+class ZBrushStartupScript(PreLaunchHook):
     """Inject AYON environment to Zbrush.
 
     Note that this works in combination whit Zbrush startup script that

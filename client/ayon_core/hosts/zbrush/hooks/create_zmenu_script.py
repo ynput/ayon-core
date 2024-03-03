@@ -1,8 +1,6 @@
 """Pre-launch to force zbrush startup script."""
 import os
-import subprocess
 from ayon_core.hosts.zbrush import ZBRUSH_HOST_DIR
-from ayon_core.lib import get_ayon_launcher_args
 from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 
 
@@ -29,8 +27,6 @@ class CreateZMenuScript(PreLaunchHook):
             zscript.close()
 
     def ayon_menu(self):
-        zclient_path = os.path.join(ZBRUSH_HOST_DIR, "api", "widgets.py")
-        zclient_path = zclient_path.replace("\\", "/")
         python_exe = os.environ["AYON_EXECUTABLE"]
         ayon_script = ("""
 [ISubPalette,"Zplugin:AYON"]

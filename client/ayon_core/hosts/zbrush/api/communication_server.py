@@ -740,5 +740,4 @@ class QtCommunicator(BaseCommunicator):
     def _exit(self, *args, **kwargs):
         super()._exit(*args, **kwargs)
         emit_event("application.exit")
-        # remove zscript menu
         self.qt_app.exit(self.exit_code)
