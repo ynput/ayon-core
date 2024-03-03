@@ -463,6 +463,7 @@ def set_current_file(filepath=None):
             "\\", "/"
     )
     txt_file = f"{txt_dir}/current_file.txt"
+    os.makedirs(txt_dir, exist_ok=True)
     if filepath is None:
         with open(txt_file, 'w'): pass
         return filepath
