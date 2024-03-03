@@ -29,12 +29,12 @@ class CreateZMenuScript(PreLaunchHook):
     def ayon_menu(self):
         python_exe = os.environ["AYON_EXECUTABLE"]
         ayon_script = ("""
-[ISubPalette,"Zplugin:AYON"]
+[IPalette,"AYON", 1]
 [VarSet, addon, "addon"]
 [VarSet, zbrush, "zbrush"]
 [VarSet, zscript, "run-with-zscript"]
 [VarSet, arg, "--launcher"]
-[IButton,"Zplugin:AYON:Load","Loader",
+[IButton,"AYON:Load","Loader",
 	[VarSet, loader, "loader_tool"]
     [VarSet, q, [StrFromAsc, 34]]
 	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}", #q]]
@@ -45,7 +45,7 @@ class CreateZMenuScript(PreLaunchHook):
     [VarSet, cmd, [StrMerge, cmd, #q,  " ", #loader, #q]]
 	[ShellExecute, cmd], 0, 120
 ]//end button
-[IButton,"Zplugin:AYON:Publish","Publish Tab for Publisher",
+[IButton,"AYON:Publish","Publish Tab for Publisher",
 	[VarSet, publisher, "publish_tool"]
     [VarSet, q, [StrFromAsc, 34]]
 	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}", #q]]
@@ -56,7 +56,7 @@ class CreateZMenuScript(PreLaunchHook):
     [VarSet, cmd, [StrMerge, cmd, #q,  " ", #publisher, #q]]
 	[ShellExecute, cmd], 0, 120
 ]//end button
-[IButton,"Zplugin:AYON:Manage","Scene Inventory Manager",
+[IButton,"AYON:Manage","Scene Inventory Manager",
 	[VarSet, sceneinventory, "scene_inventory_tool"]
 	[VarSet, q, [StrFromAsc, 34]]
 	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}", #q]]
@@ -67,7 +67,7 @@ class CreateZMenuScript(PreLaunchHook):
     [VarSet, cmd, [StrMerge, cmd, #q,  " ", #sceneinventory, #q]]
 	[ShellExecute, cmd], 0, 120
 ]//end button
-[IButton,"Zplugin:AYON:Workfile","Workfile",
+[IButton,"AYON:Workfile","Workfile",
 	[VarSet, workfiles, "workfiles_tool"]
 	[VarSet, q, [StrFromAsc, 34]]
 	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "{py}", #q]]

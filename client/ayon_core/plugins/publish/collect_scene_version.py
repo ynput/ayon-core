@@ -27,7 +27,8 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
         "nuke",
         "photoshop",
         "resolve",
-        "tvpaint"
+        "tvpaint",
+        "zbrush"
     ]
 
     # in some cases of headless publishing (for example webpublisher using PS)
