@@ -25,7 +25,10 @@ class FileLoader(api.AfterEffectsLoader):
         layers = stub.get_items(comps=True, folders=True, footages=True)
         existing_layers = [layer.name for layer in layers]
         comp_name = get_unique_layer_name(
-            existing_layers, "{}_{}".format(context["asset"]["name"], name))
+            existing_layers, "{}_{}".format(
+                context["folder"]["name"], name
+            )
+        )
 
         import_options = {}
 
@@ -69,11 +72,10 @@ class FileLoader(api.AfterEffectsLoader):
         stub = self.get_stub()
         layer = container.pop("layer")
 
-        asset_doc = context["asset"]
+        folder_name = context["folder"]["name"]
         subset_doc = context["subset"]
         repre_doc = context["representation"]
 
-        folder_name = asset_doc["name"]
         product_name = subset_doc["name"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
