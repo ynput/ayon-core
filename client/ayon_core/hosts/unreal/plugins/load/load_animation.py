@@ -128,7 +128,7 @@ class AnimationFBXLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -246,9 +246,10 @@ class AnimationFBXLoader(plugin.Loader):
         unreal.EditorLevelLibrary.save_current_level()
         unreal.EditorLevelLibrary.load_level(master_level)
 
-    def update(self, container, representation):
-        name = container["asset_name"]
-        source_path = get_representation_path(representation)
+    def update(self, container, context):
+        repre_doc = context["representation"]
+        folder_name = container["asset_name"]
+        source_path = get_representation_path(repre_doc)
         asset_doc = get_current_project_asset(fields=["data.fps"])
         destination_path = container["namespace"]
 
@@ -258,7 +259,7 @@ class AnimationFBXLoader(plugin.Loader):
         task.set_editor_property('filename', source_path)
         task.set_editor_property('destination_path', destination_path)
         # strip suffix
-        task.set_editor_property('destination_name', name)
+        task.set_editor_property('destination_name', folder_name)
         task.set_editor_property('replace_existing', True)
         task.set_editor_property('automated', True)
         task.set_editor_property('save', True)
@@ -305,8 +306,8 @@ class AnimationFBXLoader(plugin.Loader):
         unreal_pipeline.imprint(
             container_path,
             {
-                "representation": str(representation["_id"]),
-                "parent": str(representation["parent"])
+                "representation": str(repre_doc["_id"]),
+                "parent": str(repre_doc["parent"])
             })
 
         asset_content = EditorAssetLibrary.list_assets(

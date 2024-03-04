@@ -59,17 +59,20 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
             'files': base_name,
             "stagingDir": staging_dir,
         }
-        family = "workfile"
+        product_type = "workfile"
         instance_data = {
             "label": "{} - {}Main".format(
-                asset, family),
-            "name": "{}_{}".format(asset_name, family),
+                asset, product_type),
+            "name": "{}_{}".format(asset_name, product_type),
             "folderPath": context.data["folderPath"],
-            # TODO use 'get_subset_name'
-            "subset": "{}{}Main".format(asset_name, family.capitalize()),
+            # TODO use 'get_product_name'
+            "productName": "{}{}Main".format(
+                asset_name, product_type.capitalize()
+            ),
             "item": project,
-            "family": family,
-            "families": [],
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
             "representations": [workfile_representation, thumb_representation]
         }
 

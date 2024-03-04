@@ -29,7 +29,7 @@ class CollectCurrentContext(pyblish.api.ContextPlugin):
             context.data["projectName"] = current_context["project_name"]
 
         if not asset_name:
-            context.data["folderPath"] = current_context["asset_name"]
+            context.data["folderPath"] = current_context["folder_path"]
 
         if not task_name:
             context.data["task"] = current_context["task_name"]
