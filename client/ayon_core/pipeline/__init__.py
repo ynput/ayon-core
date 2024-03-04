@@ -31,7 +31,7 @@ from .load import (
     HeroVersionType,
     IncompatibleLoaderError,
     LoaderPlugin,
-    SubsetLoaderPlugin,
+    ProductLoaderPlugin,
 
     discover_loader_plugins,
     register_loader_plugin,
@@ -136,7 +136,7 @@ __all__ = (
     "HeroVersionType",
     "IncompatibleLoaderError",
     "LoaderPlugin",
-    "SubsetLoaderPlugin",
+    "ProductLoaderPlugin",
 
     "discover_loader_plugins",
     "register_loader_plugin",

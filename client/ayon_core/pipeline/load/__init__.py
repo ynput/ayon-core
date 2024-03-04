@@ -41,7 +41,7 @@ from .utils import (
 
 from .plugins import (
     LoaderPlugin,
-    SubsetLoaderPlugin,
+    ProductLoaderPlugin,
 
     discover_loader_plugins,
     register_loader_plugin,
@@ -94,7 +94,7 @@ __all__ = (
 
     # plugins.py
     "LoaderPlugin",
-    "SubsetLoaderPlugin",
+    "ProductLoaderPlugin",
 
     "discover_loader_plugins",
     "register_loader_plugin",
