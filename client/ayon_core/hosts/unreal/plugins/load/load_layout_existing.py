@@ -3,6 +3,7 @@ from pathlib import Path
 
 import unreal
 from unreal import EditorLevelLibrary
+import ayon_api
 
 from ayon_core.client import get_representations
 from ayon_core.pipeline import (
@@ -11,7 +12,6 @@ from ayon_core.pipeline import (
     load_container,
     get_representation_path,
     AYON_CONTAINER_ID,
-    get_current_project_name,
 )
 from ayon_core.hosts.unreal.api import plugin
 from ayon_core.hosts.unreal.api import pipeline as upipeline
@@ -43,11 +43,15 @@ class ExistingLayoutLoader(plugin.Loader):
 
     @staticmethod
     def _create_container(
-        asset_name, asset_dir, asset, representation, parent, family
+        asset_name,
+        asset_dir,
+        folder_path,
+        representation,
+        version_id,
+        product_type
     ):
         container_name = f"{asset_name}_CON"
 
-        container = None
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"
         ):
@@ -61,14 +65,16 @@ class ExistingLayoutLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "asset": folder_path,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             # "loader": str(self.__class__.__name__),
             "representation": representation,
-            "parent": parent,
-            "family": family
+            "parent": version_id,
+            "family": product_type,
+            "product_type": product_type,
         }
 
         upipeline.imprint(
@@ -248,17 +254,27 @@ class ExistingLayoutLoader(plugin.Loader):
             layout_data.append((repre_doc, element))
             version_ids.add(repre_doc["parent"])
 
+        repre_parents_by_id = ayon_api.get_representation_parents(
+            project_name, repre_docs_by_id.keys()
+        )
+
         # Prequery valid repre documents for all elements at once
         valid_repre_doc_by_version_id = self._get_valid_repre_docs(
             project_name, version_ids)
         containers = []
         actors_matched = []
 
-        for (repr_data, lasset) in layout_data:
+        for (repre_doc, lasset) in layout_data:
             # For every actor in the scene, check if it has a representation in
             # those we got from the JSON. If so, create a container for it.
             # Otherwise, remove it from the scene.
             found = False
+            repre_id = repre_doc["_id"]
+            repre_parents = repre_parents_by_id[repre_id]
+            folder_path = repre_parents.folder["path"]
+            folder_name = repre_parents.folder["name"]
+            product_name = repre_parents.product["name"]
+            product_type = repre_parents.product["productType"]
 
             for actor in actors:
                 if not actor.get_class().get_name() == 'StaticMeshActor':
@@ -275,7 +291,7 @@ class ExistingLayoutLoader(plugin.Loader):
                 path = Path(filename)
 
                 if (not path.name or
-                        path.name not in repr_data.get('data').get('path')):
+                        path.name not in repre_doc["data"]["path"]):
                     continue
 
                 actor.set_actor_label(lasset.get('instance_name'))
@@ -283,12 +299,13 @@ class ExistingLayoutLoader(plugin.Loader):
                 mesh_path = Path(mesh.get_path_name()).parent.as_posix()
 
                 # Create the container for the asset.
-                asset = repr_data.get('context').get('asset')
-                product_name = repr_data.get('context').get('subset')
                 container = self._create_container(
-                    f"{asset}_{product_name}", mesh_path, asset,
-                    repr_data.get('_id'), repr_data.get('parent'),
-                    repr_data.get('context').get('family')
+                    f"{folder_name}_{product_name}",
+                    mesh_path,
+                    folder_path,
+                    repre_doc["_id"],
+                    repre_doc["parent"],
+                    product_type
                 )
                 containers.append(container)
 
@@ -318,7 +335,7 @@ class ExistingLayoutLoader(plugin.Loader):
             for container in all_containers:
                 repr = container.get('representation')
 
-                if not repr == str(repr_data.get('_id')):
+                if not repr == repre_doc["_id"]:
                     continue
 
                 asset_dir = container.get('namespace')
@@ -370,9 +387,11 @@ class ExistingLayoutLoader(plugin.Loader):
     def load(self, context, name, namespace, options):
         print("Loading Layout and Match Assets")
 
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else name
-        container_name = f"{asset}_{name}_CON"
+        folder_name = context["folder"]["name"]
+        folder_path = context["folder"]["path"]
+        product_type = context["representation"]["context"]["family"]
+        asset_name = f"{folder_name}_{name}" if folder_name else name
+        container_name = f"{folder_name}_{name}_CON"
 
         curr_level = self._get_current_level()
 
@@ -395,14 +414,16 @@ class ExistingLayoutLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "asset": folder_path,
+            "folder_path": folder_path,
             "namespace": curr_level_path,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["_id"],
             "parent": context["representation"]["parent"],
-            "family": context["representation"]["context"]["family"],
+            "family": product_type,
+            "product_type": product_type,
             "loaded_assets": containers
         }
         upipeline.imprint(f"{curr_level_path}/{container_name}", data)

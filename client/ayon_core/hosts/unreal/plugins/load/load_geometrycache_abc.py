@@ -164,13 +164,12 @@ class PointCacheAlembicLoader(plugin.Loader):
         return asset_content
 
     def update(self, container, context):
-        asset_doc = context["asset"]
+        folder_name = context["asset"]["name"]
         subset_doc = context["subset"]
         version_doc = context["version"]
         repre_doc = context["representation"]
 
         # Create directory for asset and Ayon container
-        folder_name = asset_doc["name"]
         product_name = subset_doc["name"]
 
         suffix = "_CON"

@@ -70,10 +70,12 @@ class AnimationAlembicLoader(plugin.Loader):
 
         # Create directory for asset and ayon container
         root = unreal_pipeline.AYON_ASSET_DIR
-        asset = context.get('asset').get('name')
+        folder_name = context["folder"]["name"]
+        folder_path = context["folder"]["path"]
+        product_type = context["representation"]["context"]["family"]
         suffix = "_CON"
-        if asset:
-            asset_name = "{}_{}".format(asset, name)
+        if folder_name:
+            asset_name = "{}_{}".format(folder_name, name)
         else:
             asset_name = "{}".format(name)
         version = context.get('version')
@@ -85,7 +87,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{asset}/{name_version}", suffix="")
+            f"{root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
@@ -105,14 +107,16 @@ class AnimationAlembicLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "asset": folder_path,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["_id"],
             "parent": context["representation"]["parent"],
-            "family": context["representation"]["context"]["family"]
+            "family": product_type,
+            "product_type": product_type,
         }
         unreal_pipeline.imprint(
             f"{asset_dir}/{container_name}", data)
