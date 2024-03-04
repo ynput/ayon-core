@@ -149,9 +149,9 @@ class FusionLoadSequence(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-        # Fallback to asset name when namespace is None
+        # Fallback to folder name when namespace is None
         if namespace is None:
-            namespace = context["asset"]["name"]
+            namespace = context["folder"]["name"]
 
         # Use the first file for now
         path = self.filepath_from_context(context)
