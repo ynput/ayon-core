@@ -8,7 +8,6 @@ import uuid
 import ayon_api
 
 from ayon_core.client import (
-    get_assets,
     get_subsets,
     get_versions,
     get_representations,
@@ -441,8 +440,10 @@ class LoaderActionsModel:
         product_docs_by_id = {p["_id"]: p for p in _product_docs}
 
         _folder_ids = {p["parent"] for p in product_docs_by_id.values()}
-        _folder_docs = get_assets(project_name, asset_ids=_folder_ids)
-        folder_docs_by_id = {f["_id"]: f for f in _folder_docs}
+        _folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=_folder_ids
+        )
+        folder_entities_by_id = {f["id"]: f for f in _folder_entities}
 
         project_entity = ayon_api.get_project(project_name)
 
@@ -451,10 +452,10 @@ class LoaderActionsModel:
             product_id = version_doc["parent"]
             product_doc = product_docs_by_id[product_id]
             folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+            folder_entity = folder_entities_by_id[folder_id]
             version_context_by_id[version_id] = {
                 "project": project_entity,
-                "asset": folder_doc,
+                "folder": folder_entity,
                 "subset": product_doc,
                 "version": version_doc,
             }
@@ -467,11 +468,11 @@ class LoaderActionsModel:
             product_id = version_doc["parent"]
             product_doc = product_docs_by_id[product_id]
             folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+            folder_entity = folder_entities_by_id[folder_id]
 
             repre_context_by_id[repre_doc["_id"]] = {
                 "project": project_entity,
-                "asset": folder_doc,
+                "folder": folder_entity,
                 "subset": product_doc,
                 "version": version_doc,
                 "representation": repre_doc,
@@ -519,19 +520,21 @@ class LoaderActionsModel:
         }
 
         folder_ids = {p["parent"] for p in product_docs_by_id.values()}
-        folder_docs = get_assets(project_name, asset_ids=folder_ids)
-        folder_docs_by_id = {
-            f["_id"]: f for f in folder_docs
+        folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
+        folder_entities_by_id = {
+            f["id"]: f for f in folder_entities
         }
 
         project_entity = ayon_api.get_project(project_name)
 
         for product_id, product_doc in product_docs_by_id.items():
             folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+            folder_entity = folder_entities_by_id[folder_id]
             product_context_by_id[product_id] = {
                 "project": project_entity,
-                "asset": folder_doc,
+                "folder": folder_entity,
                 "subset": product_doc,
             }
 
@@ -541,11 +544,11 @@ class LoaderActionsModel:
             product_id = version_doc["parent"]
             product_doc = product_docs_by_id[product_id]
             folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+            folder_entity = folder_entities_by_id[folder_id]
 
             repre_context_by_id[repre_doc["_id"]] = {
                 "project": project_entity,
-                "asset": folder_doc,
+                "folder": folder_entity,
                 "subset": product_doc,
                 "version": version_doc,
                 "representation": repre_doc,
@@ -596,7 +599,7 @@ class LoaderActionsModel:
                     repre_ids.add(repre_context["representation"]["_id"])
                     repre_product_ids.add(repre_context["subset"]["_id"])
                     repre_version_ids.add(repre_context["version"]["_id"])
-                    repre_folder_ids.add(repre_context["asset"]["_id"])
+                    repre_folder_ids.add(repre_context["folder"]["id"])
 
                 item = self._create_loader_action_item(
                     loader,
@@ -616,7 +619,7 @@ class LoaderActionsModel:
         product_ids = set()
         for product_context in version_context_by_id.values():
             product_ids.add(product_context["subset"]["_id"])
-            product_folder_ids.add(product_context["asset"]["_id"])
+            product_folder_ids.add(product_context["folder"]["id"])
 
         version_contexts = list(version_context_by_id.values())
         for loader in product_loaders:
@@ -666,17 +669,19 @@ class LoaderActionsModel:
         product_docs = get_subsets(project_name, subset_ids=product_ids)
         product_docs_by_id = {f["_id"]: f for f in product_docs}
         folder_ids = {p["parent"] for p in product_docs_by_id.values()}
-        folder_docs = get_assets(project_name, asset_ids=folder_ids)
-        folder_docs_by_id = {f["_id"]: f for f in folder_docs}
+        folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
+        folder_entities_by_id = {f["id"]: f for f in folder_entities}
         product_contexts = []
         for version_doc in version_docs:
             product_id = version_doc["parent"]
             product_doc = product_docs_by_id[product_id]
             folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+            folder_entity = folder_entities_by_id[folder_id]
             product_contexts.append({
                 "project": project_entity,
-                "asset": folder_doc,
+                "folder": folder_entity,
                 "subset": product_doc,
                 "version": version_doc,
             })
@@ -716,8 +721,10 @@ class LoaderActionsModel:
         product_docs = get_subsets(project_name, subset_ids=product_ids)
         product_docs_by_id = {p["_id"]: p for p in product_docs}
         folder_ids = {p["parent"] for p in product_docs_by_id.values()}
-        folder_docs = get_assets(project_name, asset_ids=folder_ids)
-        folder_docs_by_id = {f["_id"]: f for f in folder_docs}
+        folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
+        folder_entities_by_id = {f["_id"]: f for f in folder_entities}
         repre_contexts = []
         for repre_doc in repre_docs:
             version_id = repre_doc["parent"]
@@ -725,10 +732,10 @@ class LoaderActionsModel:
             product_id = version_doc["parent"]
             product_doc = product_docs_by_id[product_id]
             folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+            folder_entity = folder_entities_by_id[folder_id]
             repre_contexts.append({
                 "project": project_entity,
-                "asset": folder_doc,
+                "folder": folder_entity,
                 "subset": product_doc,
                 "version": version_doc,
                 "representation": repre_doc,
@@ -744,7 +751,7 @@ class LoaderActionsModel:
         Args:
             loader (LoaderPlugin): Loader plugin to use.
             repre_contexts (list[dict]): Full info about selected
-                representations, containing repre, version, subset, asset and
+                representations, containing repre, version, subset, folder and
                 project documents.
             options (dict): Data from options.
         """
