@@ -1380,7 +1380,7 @@ class EnvironmentPrepData(dict):
         data (dict): Data must contain required keys.
     """
     required_keys = (
-        "project_entity", "folder_entity", "task_name", "app", "anatomy"
+        "project_entity", "folder_entity", "task_entity", "app", "anatomy"
     )
 
     def __init__(self, data):
