@@ -117,13 +117,13 @@ class CollectReview(pyblish.api.InstancePlugin):
 
         else:
             project_name = instance.context.data["projectName"]
-            asset_doc = instance.context.data['assetEntity']
+            folder_entity = instance.context.data["folderEntity"]
             task = instance.context.data["task"]
             legacy_product_name = task + 'Review'
             subset_doc = get_subset_by_name(
                 project_name,
                 legacy_product_name,
-                asset_doc["_id"],
+                folder_entity["id"],
                 fields=["_id"]
             )
             if subset_doc:

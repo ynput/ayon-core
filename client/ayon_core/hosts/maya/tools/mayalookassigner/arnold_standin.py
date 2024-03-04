@@ -136,20 +136,20 @@ def assign_look(standin, product_name):
 
     nodes_by_id = get_nodes_by_id(standin)
 
-    # Group by asset id so we run over the look per asset
-    node_ids_by_asset_id = defaultdict(set)
+    # Group by folder id so we run over the look per folder
+    node_ids_by_folder_id = defaultdict(set)
     for node_id in nodes_by_id:
-        asset_id = node_id.split(":", 1)[0]
-        node_ids_by_asset_id[asset_id].add(node_id)
+        folder_id = node_id.split(":", 1)[0]
+        node_ids_by_folder_id[folder_id].add(node_id)
 
     project_name = get_current_project_name()
-    for asset_id, node_ids in node_ids_by_asset_id.items():
+    for folder_id, node_ids in node_ids_by_folder_id.items():
 
         # Get latest look version
         version = get_last_version_by_subset_name(
             project_name,
             subset_name=product_name,
-            asset_id=asset_id,
+            asset_id=folder_id,
             fields=["_id"]
         )
         if not version:
@@ -162,7 +162,7 @@ def assign_look(standin, product_name):
         shader_nodes, container_node = lib.load_look(version["_id"])
         namespace = shader_nodes[0].split(":")[0]
 
-        # Get only the node ids and paths related to this asset
+        # Get only the node ids and paths related to this folder
         # And get the shader edits the look supplies
         asset_nodes_by_id = {
             node_id: nodes_by_id[node_id] for node_id in node_ids

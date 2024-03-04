@@ -37,10 +37,10 @@ class RenderSetupLoader(load.LoaderPlugin):
 
         # from ayon_core.hosts.maya.api.lib import namespaced
 
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or lib.unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
         path = self.filepath_from_context(context)

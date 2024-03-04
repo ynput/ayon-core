@@ -58,10 +58,10 @@ class VRayProxyLoader(load.LoaderPlugin):
         if not filename:
             filename = self.filepath_from_context(context)
 
-        asset_name = context['asset']["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset_name + "_",
-            prefix="_" if asset_name[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 

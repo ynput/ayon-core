@@ -29,10 +29,10 @@ class MultiverseUsdLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name=None, namespace=None, options=None):
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 

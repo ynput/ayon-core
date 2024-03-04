@@ -4,6 +4,7 @@ from abc import ABCMeta
 
 import qargparse
 import six
+import ayon_api
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup
 
@@ -28,7 +29,6 @@ from ayon_core.pipeline import (
     get_current_project_name,
 )
 from ayon_core.pipeline.load import LoadError
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline.create import get_product_name
 
 from . import lib
@@ -454,17 +454,23 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
                 # this instance will not have the `instance_node` data yet
                 # until it's been saved/persisted at least once.
                 project_name = self.create_context.get_current_project_name()
-                asset_name = self.create_context.get_current_folder_path()
+                folder_path = self.create_context.get_current_folder_path()
+                task_name = self.create_context.get_current_task_name()
                 instance_data = {
-                    "folderPath": asset_name,
-                    "task": self.create_context.get_current_task_name(),
+                    "folderPath": folder_path,
+                    "task": task_name,
                     "variant": layer.name(),
                 }
-                asset_doc = get_asset_by_name(project_name, asset_name)
+                folder_entity = ayon_api.get_folder_by_path(
+                    project_name, folder_path
+                )
+                task_entity = ayon_api.get_task_by_name(
+                    project_name, folder_entity["id"], task_name
+                )
                 product_name = self.get_product_name(
                     project_name,
-                    asset_doc,
-                    instance_data["task"],
+                    folder_entity,
+                    task_entity,
                     layer.name(),
                     host_name,
                 )
@@ -578,8 +584,8 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
     def get_product_name(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name=None,
         instance=None
@@ -587,13 +593,17 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         if host_name is None:
             host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
-            project_name, asset_doc, task_name, variant, host_name, instance
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance
         )
         # creator.product_type != 'render' as expected
         return get_product_name(
             project_name,
-            asset_doc,
-            task_name,
+            task_entity,
             host_name,
             self.layer_instance_prefix or self.product_type,
             variant,
@@ -668,17 +678,17 @@ class Loader(LoaderPlugin):
             self.log.debug("No custom group_name, no group will be created.")
             options["attach_to_root"] = False
 
-        asset_doc = context["asset"]
+        folder_entity = context["folder"]
         subset_doc = context["subset"]
         product_type = (
             subset_doc["data"].get("family")
             or subset_doc["data"]["families"][0]
         )
         formatting_data = {
-            "asset_name": asset_doc["name"],
-            "asset_type": asset_doc["type"],
+            "asset_name": folder_entity["name"],
+            "asset_type": "asset",
             "folder": {
-                "name": asset_doc["name"],
+                "name": folder_entity["name"],
             },
             "subset": subset_doc["name"],
             "product": {
