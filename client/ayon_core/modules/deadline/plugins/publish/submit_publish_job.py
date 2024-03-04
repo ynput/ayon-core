@@ -187,7 +187,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         output_dir = self._get_publish_folder(
             anatomy,
             deepcopy(instance.data["anatomyData"]),
-            instance.data.get("folderPath"),
+            instance.data.get("folderEntity"),
             instances[0]["productName"],
             instance.context,
             instances[0]["productType"],
@@ -501,7 +501,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             json.dump(publish_job, f, indent=4, sort_keys=True)
 
     def _get_publish_folder(self, anatomy, template_data,
-                            asset, product_name, context,
+                            folder_entity, product_name, context,
                             product_type, version=None):
         """
             Extracted logic to pre-calculate real publish folder, which is
@@ -515,7 +515,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         Args:
             anatomy (ayon_core.pipeline.anatomy.Anatomy):
             template_data (dict): pre-calculated collected data for process
-            asset (string): asset name
+            folder_entity (dict[str, Any]): Folder entity.
             product_name (string): Product name (actually group name
                 of product)
             product_type (string): for current deadline process it's always
@@ -533,10 +533,13 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         project_name = context.data["projectName"]
         host_name = context.data["hostName"]
         if not version:
+            folder_id = None
+            if folder_entity:
+                folder_id = folder_entity["id"]
             version = get_last_version_by_subset_name(
                 project_name,
                 product_name,
-                asset_name=asset
+                asset_id=folder_id
             )
             if version:
                 version = int(version["name"]) + 1
