@@ -20,7 +20,7 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()
         layer_name = get_unique_layer_name(
-            stub.get_layers(), context["asset"]["name"], name
+            stub.get_layers(), context["folder"]["name"], name
         )
         with photoshop.maintained_selection():
             path = self.filepath_from_context(context)
@@ -38,16 +38,13 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
         )
 
     def update(self, container, context):
-        """ Switch asset or change version """
+        """ Switch asset or change version."""
         stub = self.get_stub()
         layer = container.pop("layer")
 
-        asset_doc = context["asset"]
-        subset_doc = context["subset"]
+        folder_name = context["folder"]["name"]
+        product_name = context["subset"]["name"]
         repre_doc = context["representation"]
-
-        folder_name = asset_doc["name"]
-        product_name = subset_doc["name"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])
