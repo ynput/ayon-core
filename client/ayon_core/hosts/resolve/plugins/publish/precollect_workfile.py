@@ -14,8 +14,8 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder - 0.5
 
     def process(self, context):
-        current_asset_name = get_current_folder_path()
-        asset_name = current_asset_name.split("/")[-1]
+        current_folder_path = get_current_folder_path()
+        folder_name = current_folder_path.split("/")[-1]
 
         product_name = "workfileMain"
         project = rapi.get_current_project()
@@ -26,10 +26,10 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
         otio_timeline = davinci_export.create_otio_timeline(project)
 
         instance_data = {
-            "name": "{}_{}".format(asset_name, product_name),
-            "label": "{} {}".format(current_asset_name, product_name),
+            "name": "{}_{}".format(folder_name, product_name),
+            "label": "{} {}".format(current_folder_path, product_name),
             "item": project,
-            "folderPath": current_asset_name,
+            "folderPath": current_folder_path,
             "productName": product_name,
             "productType": "workfile",
             "family": "workfile",
