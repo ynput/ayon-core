@@ -18,12 +18,17 @@ import copy
 from abc import ABCMeta, abstractmethod
 
 import six
-from ayon_api import get_products, get_last_versions
+from ayon_api import (
+    get_folders,
+    get_folder_by_path,
+    get_folder_links,
+    get_task_by_name,
+    get_products,
+    get_last_versions,
+)
 from ayon_api.graphql_queries import folders_graphql_query
 
 from ayon_core.client import (
-    get_asset_by_name,
-    get_linked_assets,
     get_representations,
     get_ayon_server_api_connection,
 )
@@ -47,6 +52,8 @@ from ayon_core.pipeline.create import (
     discover_legacy_creator_plugins,
     CreateContext,
 )
+
+_NOT_SET = object()
 
 
 class TemplateNotFound(Exception):
@@ -117,9 +124,9 @@ class AbstractTemplateBuilder(object):
 
         self._project_settings = None
 
-        self._current_asset_doc = None
-        self._linked_asset_docs = None
-        self._task_type = None
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._linked_folder_entities = _NOT_SET
 
     @property
     def project_name(self):
@@ -155,33 +162,39 @@ class AbstractTemplateBuilder(object):
         return self._project_settings
 
     @property
-    def current_asset_doc(self):
-        if self._current_asset_doc is None:
-            self._current_asset_doc = get_asset_by_name(
+    def current_folder_entity(self):
+        if self._current_folder_entity is _NOT_SET:
+            self._current_folder_entity = get_folder_by_path(
                 self.project_name, self.current_folder_path
             )
-        return self._current_asset_doc
+        return self._current_folder_entity
 
     @property
-    def linked_asset_docs(self):
-        if self._linked_asset_docs is None:
-            self._linked_asset_docs = get_linked_assets(
-                self.project_name, self.current_asset_doc
-            )
-        return self._linked_asset_docs
+    def linked_folder_entities(self):
+        if self._linked_folder_entities is _NOT_SET:
+            self._linked_folder_entities = self._get_linked_folder_entities()
+        return self._linked_folder_entities
+
+    @property
+    def current_task_entity(self):
+        if self._current_task_entity is _NOT_SET:
+            task_entity = None
+            folder_entity = self.current_folder_entity
+            if folder_entity:
+                task_entity = get_task_by_name(
+                    self.project_name,
+                    folder_entity["id"],
+                    self.current_task_name
+                )
+            self._current_task_entity = task_entity
+        return self._current_task_entity
 
     @property
     def current_task_type(self):
-        asset_doc = self.current_asset_doc
-        if not asset_doc:
-            return None
-        return (
-            asset_doc
-            .get("data", {})
-            .get("tasks", {})
-            .get(self.current_task_name, {})
-            .get("type")
-        )
+        task_entity = self.current_task_entity
+        if task_entity:
+            return task_entity["taskType"]
+        return None
 
     @property
     def create_context(self):
@@ -242,9 +255,9 @@ class AbstractTemplateBuilder(object):
         self._loaders_by_name = None
         self._creators_by_name = None
 
-        self._current_asset_doc = None
-        self._linked_asset_docs = None
-        self._task_type = None
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._linked_folder_entities = _NOT_SET
 
         self._project_settings = None
 
@@ -255,6 +268,22 @@ class AbstractTemplateBuilder(object):
         if self._loaders_by_name is None:
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
+
+    def _get_linked_folder_entities(self):
+        project_name = self.project_name
+        folder_entity = self.current_folder_entity
+        if not folder_entity:
+            return []
+        links = get_folder_links(
+            project_name, folder_entity["id"], link_direction="in"
+        )
+        linked_folder_ids = {
+            link["entityId"]
+            for link in links
+            if link["entityType"] == "folder"
+        }
+
+        return list(get_folders(project_name, folder_ids=linked_folder_ids))
 
     def _collect_legacy_creators(self):
         creators_by_name = {}
@@ -305,8 +334,8 @@ class AbstractTemplateBuilder(object):
         different key or if the key is not already used for something else.
 
         Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        - wrong: 'folder'
+        - good: 'folder_name'
 
         Args:
             key (str): Key under which is key stored.
@@ -351,8 +380,8 @@ class AbstractTemplateBuilder(object):
         different key or if the key is not already used for something else.
 
         Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        - wrong: 'folder'
+        - good: 'folder_path'
 
         Args:
             key (str): Key under which is key stored.
@@ -371,8 +400,8 @@ class AbstractTemplateBuilder(object):
         different key or if the key is not already used for something else.
 
         Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        - wrong: 'folder'
+        - good: 'folder_path'
 
         Args:
             key (str): Key under which is key stored.
@@ -1021,8 +1050,8 @@ class PlaceholderPlugin(object):
         Using shared data from builder but stored under plugin identifier.
 
         Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        - wrong: 'folder'
+        - good: 'folder_path'
 
         Args:
             key (str): Key under which is key stored.
@@ -1061,8 +1090,8 @@ class PlaceholderPlugin(object):
         Using shared data from builder but stored under plugin identifier.
 
         Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        - wrong: 'folder'
+        - good: 'folder_path'
 
         Shared populate data are cleaned up during populate while loop.
 
@@ -1323,7 +1352,7 @@ class PlaceholderLoadMixin(object):
                 items=loader_items,
                 tooltip=(
                     "Loader"
-                    "\nDefines what OpenPype loader will be used to"
+                    "\nDefines what AYON loader will be used to"
                     " load assets."
                     "\nUseable loader depends on current host's loader list."
                     "\nField is case sensitive."
@@ -1480,7 +1509,7 @@ class PlaceholderLoadMixin(object):
             return []
 
         project_name = self.builder.project_name
-        current_asset_doc = self.builder.current_asset_doc
+        current_folder_entity = self.builder.current_folder_entity
 
         folder_path_regex = placeholder.data["folder_path"]
         product_name_regex_value = placeholder.data["product_name"]
@@ -1492,7 +1521,7 @@ class PlaceholderLoadMixin(object):
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
         if builder_type == "context_folder":
-            folder_ids = [current_asset_doc["_id"]]
+            folder_ids = [current_folder_entity["_id"]]
 
         elif builder_type == "all_folders":
             folder_ids = list(self._query_by_folder_regex(
@@ -1547,17 +1576,18 @@ class PlaceholderLoadMixin(object):
         """Reduce representations to last verison."""
 
         mapping = {}
+        # TODO use representation context with entities
         for repre_doc in representations:
             repre_context = repre_doc["context"]
 
-            asset_name = repre_context["asset"]
+            folder_name = repre_context["asset"]
             product_name = repre_context["subset"]
             version = repre_context.get("version", -1)
 
-            if asset_name not in mapping:
-                mapping[asset_name] = {}
+            if folder_name not in mapping:
+                mapping[folder_name] = {}
 
-            product_mapping = mapping[asset_name]
+            product_mapping = mapping[folder_name]
             if product_name not in product_mapping:
                 product_mapping[product_name] = collections.defaultdict(list)
 
@@ -1788,31 +1818,24 @@ class PlaceholderCreateMixin(object):
         # create product name
         context = self._builder.get_current_context()
         project_name = context["project_name"]
-        asset_name = context["folder_path"]
+        folder_path = context["folder_path"]
         task_name = context["task_name"]
+        host_name = self.builder.host_name
 
-        if legacy_create:
-            asset_doc = get_asset_by_name(
-                project_name, asset_name, fields=["_id"]
-            )
-            assert asset_doc, "No current asset found in Session"
-            product_name = creator_plugin.get_product_name(
-                project_name,
-                asset_doc["_id"],
-                task_name,
-                create_variant,
-            )
+        folder_entity = get_folder_by_path(project_name, folder_path)
+        if not folder_entity:
+            raise ValueError("Current context does not have set folder")
+        task_entity = get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
 
-        else:
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            assert asset_doc, "No current asset found in Session"
-            product_name = creator_plugin.get_product_name(
-                project_name,
-                asset_doc,
-                task_name,
-                create_variant,
-                self.builder.host_name
-            )
+        product_name = creator_plugin.get_product_name(
+            project_name,
+            folder_entity,
+            task_entity,
+            create_variant,
+            host_name
+        )
 
         creator_data = {
             "creator_name": creator_name,
@@ -1828,13 +1851,13 @@ class PlaceholderCreateMixin(object):
             if legacy_create:
                 creator_instance = creator_plugin(
                     product_name,
-                    asset_name
+                    folder_path
                 ).process()
             else:
                 creator_instance = self.builder.create_context.create(
                     creator_plugin.identifier,
                     create_variant,
-                    asset_doc,
+                    folder_entity,
                     task_name=task_name,
                     pre_create_data=pre_create_data
                 )

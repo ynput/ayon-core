@@ -13,12 +13,12 @@ import re
 import collections
 import json
 
+import ayon_api
+
 from ayon_core.client import (
-    get_asset_by_name,
     get_subsets,
     get_last_versions,
     get_representations,
-    get_linked_assets,
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import (
@@ -76,21 +76,21 @@ class BuildWorkfile:
     def build_workfile(self):
         """Prepares and load containers into workfile.
 
-        Loads latest versions of current and linked assets to workfile by logic
-        stored in Workfile profiles from presets. Profiles are set by host,
-        filtered by current task name and used by families.
+        Loads latest versions of current and linked folders to workfile by
+        logic stored in Workfile profiles from presets. Profiles are set
+        by host, filtered by current task name and used by families.
 
         Each product type can specify representation names and loaders for
         representations and first available and successful loaded
         representation is returned as container.
 
-        At the end you'll get list of loaded containers per each asset.
+        At the end you'll get list of loaded containers per each folder.
 
         loaded_containers [{
-            "asset_doc": <AssetEntity1>,
+            "folder_entity": <FolderEntity1>,
             "containers": [<Container1>, <Container2>, ...]
         }, {
-            "asset_doc": <AssetEntity2>,
+            "folder_entity": <FolderEntity2>,
             "containers": [<Container3>, ...]
         }, {
             ...
@@ -100,22 +100,21 @@ class BuildWorkfile:
             List[Dict[str, Any]]: Loaded containers during build.
         """
 
-        from ayon_core.pipeline.context_tools import (
-            get_current_project_name,
-            get_current_folder_path,
-            get_current_task_name,
-        )
+        from ayon_core.pipeline.context_tools import get_current_context
 
         loaded_containers = []
 
-        # Get current asset name and entity
-        project_name = get_current_project_name()
-        current_folder_path = get_current_folder_path()
-        current_asset_doc = get_asset_by_name(
+        # Get current folder and task entities
+        context = get_current_context()
+        project_name = context["project_name"]
+        current_folder_path = context["folder_path"]
+        current_task_name = context["task_name"]
+
+        current_folder_entity = ayon_api.get_folder_by_path(
             project_name, current_folder_path
         )
-        # Skip if asset was not found
-        if not current_asset_doc:
+        # Skip if folder was not found
+        if not current_folder_entity:
             print("Folder entity `{}` was not found".format(
                 current_folder_path
             ))
@@ -138,12 +137,9 @@ class BuildWorkfile:
             self.log.warning("There are no registered loaders.")
             return loaded_containers
 
-        # Get current task name
-        current_task_name = get_current_task_name()
-
         # Load workfile presets for task
         self.build_presets = self.get_build_presets(
-            current_task_name, current_asset_doc
+            current_task_name, current_folder_entity["id"]
         )
 
         # Skip if there are any presets for task
@@ -180,45 +176,53 @@ class BuildWorkfile:
                 "loading preset for it's linked folders."
             ).format(current_task_name))
 
-        # Prepare assets to process by workfile presets
-        asset_docs = []
+        # Prepare folders to process by workfile presets
+        folder_entities = []
         current_folder_id = None
         if current_context_profiles:
-            # Add current asset entity if preset has current context set
-            asset_docs.append(current_asset_doc)
-            current_folder_id = current_asset_doc["_id"]
+            # Add current folder entity if preset has current context set
+            folder_entities.append(current_folder_entity)
+            current_folder_id = current_folder_entity["_id"]
 
         if link_context_profiles:
-            # Find and append linked assets if preset has set linked mapping
-            link_assets = get_linked_assets(project_name, current_asset_doc)
-            if link_assets:
-                asset_docs.extend(link_assets)
+            # Find and append linked folders if preset has set linked mapping
+            linked_folder_entities = self._get_linked_folder_entities(
+                project_name, current_folder_entity["id"]
+            )
+            if linked_folder_entities:
+                folder_entities.extend(linked_folder_entities)
 
-        # Skip if there are no assets. This can happen if only linked mapping
-        # is set and there are no links for his asset.
-        if not asset_docs:
+        # Skip if there are no folders. This can happen if only linked mapping
+        # is set and there are no links for his folder.
+        if not folder_entities:
             self.log.warning(
-                "Asset does not have linked assets. Nothing to process."
+                "Folder does not have linked folders. Nothing to process."
             )
             return loaded_containers
 
-        # Prepare entities from database for assets
-        prepared_entities = self._collect_last_version_repres(asset_docs)
+        # Prepare entities from database for folders
+        prepared_entities = self._collect_last_version_repres(
+            folder_entities
+        )
 
         # Load containers by prepared entities and presets
-        # - Current asset containers
+        # - Current folder containers
         if current_folder_id and current_folder_id in prepared_entities:
             current_context_data = prepared_entities.pop(current_folder_id)
-            loaded_data = self.load_containers_by_asset_data(
-                current_context_data, current_context_profiles, loaders_by_name
+            loaded_data = self.load_containers_by_folder_data(
+                current_context_data,
+                current_context_profiles,
+                loaders_by_name
             )
             if loaded_data:
                 loaded_containers.append(loaded_data)
 
         # - Linked assets container
-        for linked_asset_data in prepared_entities.values():
-            loaded_data = self.load_containers_by_asset_data(
-                linked_asset_data, link_context_profiles, loaders_by_name
+        for linked_folder_data in prepared_entities.values():
+            loaded_data = self.load_containers_by_folder_data(
+                linked_folder_data,
+                link_context_profiles,
+                loaders_by_name
             )
             if loaded_data:
                 loaded_containers.append(loaded_data)
@@ -226,7 +230,7 @@ class BuildWorkfile:
         # Return list of loaded containers
         return loaded_containers
 
-    def get_build_presets(self, task_name, asset_doc):
+    def get_build_presets(self, task_name, folder_id):
         """ Returns presets to build workfile for task name.
 
         Presets are loaded for current project received by
@@ -235,6 +239,7 @@ class BuildWorkfile:
 
         Args:
             task_name (str): Task name used for filtering build presets.
+            folder_id (str): Folder id.
 
         Returns:
             Dict[str, Any]: preset per entered task name
@@ -245,10 +250,9 @@ class BuildWorkfile:
             get_current_project_name,
         )
 
+        project_name = get_current_project_name()
         host_name = get_current_host_name()
-        project_settings = get_project_settings(
-            get_current_project_name()
-        )
+        project_settings = get_project_settings(project_name)
 
         host_settings = project_settings.get(host_name) or {}
         # Get presets for host
@@ -261,13 +265,15 @@ class BuildWorkfile:
         if not builder_profiles:
             return None
 
-        task_type = (
-            asset_doc
-            .get("data", {})
-            .get("tasks", {})
-            .get(task_name, {})
-            .get("type")
+        task_entity = ayon_api.get_task_by_name(
+            project_name,
+            folder_id,
+            task_name,
         )
+        task_type = None
+        if task_entity:
+            task_type = task_entity["taskType"]
+
         filter_data = {
             "task_types": task_type,
             "tasks": task_name
@@ -349,6 +355,31 @@ class BuildWorkfile:
 
         return valid_profiles
 
+    def _get_linked_folder_entities(self, project_name, folder_id):
+        """Get linked folder entities for entered folder.
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder id.
+
+        Returns:
+            list[dict[str, Any]]: Linked folder entities.
+
+        """
+        links = ayon_api.get_folder_links(
+            project_name, folder_id, link_direction="in"
+        )
+        linked_folder_ids = {
+            link["entityId"]
+            for link in links
+            if link["entityType"] == "folder"
+        }
+        if not linked_folder_ids:
+            return []
+        return list(ayon_api.get_folders(
+            project_name, folder_ids=linked_folder_ids
+        ))
+
     def _prepare_profile_for_products(self, subset_docs, profiles):
         """Select profile for each product by it's data.
 
@@ -405,28 +436,28 @@ class BuildWorkfile:
                 break
         return profiles_by_product_id
 
-    def load_containers_by_asset_data(
-        self, asset_doc_data, build_profiles, loaders_by_name
+    def load_containers_by_folder_data(
+        self, linked_folder_data, build_profiles, loaders_by_name
     ):
-        """Load containers for entered asset entity by Build profiles.
+        """Load containers for entered folder entity by Build profiles.
 
         Args:
-            asset_doc_data (Dict[str, Any]): Prepared data with products,
-                last versions and representations for specific asset.
+            linked_folder_data (Dict[str, Any]): Prepared data with products,
+                last versions and representations for specific folder.
             build_profiles (Dict[str, Any]): Build profiles.
             loaders_by_name (Dict[str, LoaderPlugin]): Available loaders
                 per name.
 
         Returns:
-            Dict[str, Any]: Output contains asset document
+            Dict[str, Any]: Output contains folder entity
                 and loaded containers.
         """
 
         # Make sure all data are not empty
-        if not asset_doc_data or not build_profiles or not loaders_by_name:
+        if not linked_folder_data or not build_profiles or not loaders_by_name:
             return
 
-        asset_doc = asset_doc_data["asset_doc"]
+        folder_entity = linked_folder_data["folder_entity"]
 
         valid_profiles = self._filter_build_profiles(
             build_profiles, loaders_by_name
@@ -442,7 +473,7 @@ class BuildWorkfile:
         products_by_id = {}
         version_by_product_id = {}
         repres_by_version_id = {}
-        for product_id, in_data in asset_doc_data["subsets"].items():
+        for product_id, in_data in linked_folder_data["subsets"].items():
             subset_doc = in_data["subset_doc"]
             products_by_id[subset_doc["_id"]] = subset_doc
 
@@ -454,8 +485,8 @@ class BuildWorkfile:
             )
 
         if not products_by_id:
-            self.log.warning("There are not products for folder {0}".format(
-                asset_doc["name"]
+            self.log.warning("There are not products for folder {}".format(
+                folder_entity["path"]
             ))
             return
 
@@ -480,7 +511,7 @@ class BuildWorkfile:
 
         # DEBUG message
         msg = "Valid representations for Folder: `{}`".format(
-            asset_doc["name"]
+            folder_entity["path"]
         )
         for product_id, repres in valid_repres_by_product_id.items():
             subset_doc = products_by_id[product_id]
@@ -498,7 +529,7 @@ class BuildWorkfile:
         )
 
         return {
-            "asset_doc": asset_doc,
+            "folder_entity": folder_entity,
             "containers": containers
         }
 
@@ -628,11 +659,11 @@ class BuildWorkfile:
 
         return loaded_containers
 
-    def _collect_last_version_repres(self, asset_docs):
-        """Collect products, versions and representations for asset_entities.
+    def _collect_last_version_repres(self, folder_entities):
+        """Collect products, versions and representations for folder_entities.
 
         Args:
-            asset_docs (List[Dict[str, Any]]): Asset entities for which
+            folder_entities (List[Dict[str, Any]]): Folder entities for which
                 want to find data.
 
         Returns:
@@ -641,11 +672,11 @@ class BuildWorkfile:
         Example output:
         ```
         {
-            {Asset ID}: {
-                "asset_doc": <AssetEntity>,
+            <folder id>: {
+                "folder_entity": <dict[str, Any]>,
                 "subsets": {
-                    {Subset ID}: {
-                        "subset_doc": <SubsetEntity>,
+                    <product id>: {
+                        "subset_doc": <dict[str, Any]>,
                         "version": {
                             "version_doc": <VersionEntity>,
                             "repres": [
@@ -665,17 +696,17 @@ class BuildWorkfile:
         from ayon_core.pipeline.context_tools import get_current_project_name
 
         output = {}
-        if not asset_docs:
+        if not folder_entities:
             return output
 
-        asset_docs_by_ids = {
-            asset_doc["_id"]: asset_doc
-            for asset_doc in asset_docs
+        folder_entities_by_id = {
+            folder_entity["id"]: folder_entity
+            for folder_entity in folder_entities
         }
 
         project_name = get_current_project_name()
         subset_docs = list(get_subsets(
-            project_name, asset_ids=asset_docs_by_ids.keys()
+            project_name, asset_ids=folder_entities_by_id.keys()
         ))
         subset_docs_by_id = {
             subset_doc["_id"]: subset_doc
@@ -701,11 +732,11 @@ class BuildWorkfile:
             subset_doc = subset_docs_by_id[product_id]
 
             folder_id = subset_doc["parent"]
-            asset_doc = asset_docs_by_ids[folder_id]
+            folder_entity = folder_entities_by_id[folder_id]
 
             if folder_id not in output:
                 output[folder_id] = {
-                    "asset_doc": asset_doc,
+                    "folder_entity": folder_entity,
                     "subsets": {}
                 }
 
