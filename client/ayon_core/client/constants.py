@@ -17,8 +17,6 @@ REPRESENTATION_FILES_FIELDS = {
     "files.size",
 }
 
-CURRENT_PROJECT_SCHEMA = "openpype:project-3.0"
-CURRENT_PROJECT_CONFIG_SCHEMA = "openpype:config-2.0"
 CURRENT_ASSET_DOC_SCHEMA = "openpype:asset-3.0"
 CURRENT_SUBSET_SCHEMA = "openpype:subset-3.0"
 CURRENT_VERSION_SCHEMA = "openpype:version-3.0"

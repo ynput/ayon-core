@@ -7,7 +7,6 @@ import six
 
 from ayon_core.client.operations_base import REMOVED_VALUE
 from .constants import (
-    CURRENT_PROJECT_SCHEMA,
     CURRENT_ASSET_DOC_SCHEMA,
     CURRENT_SUBSET_SCHEMA,
     CURRENT_VERSION_SCHEMA,

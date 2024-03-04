@@ -4,14 +4,7 @@ import collections
 import uuid
 import datetime
 
-from ayon_api.server_api import (
-    PROJECT_NAME_ALLOWED_SYMBOLS,
-    PROJECT_NAME_REGEX,
-)
-
 from .constants import (
-    CURRENT_PROJECT_SCHEMA,
-    CURRENT_PROJECT_CONFIG_SCHEMA,
     CURRENT_ASSET_DOC_SCHEMA,
     CURRENT_SUBSET_SCHEMA,
     CURRENT_VERSION_SCHEMA,
@@ -53,41 +46,6 @@ def _create_or_convert_to_id(entity_id=None):
     # Validate if can be converted to uuid
     uuid.UUID(entity_id)
     return entity_id
-
-
-def new_project_document(
-    project_name, project_code, config, data=None, entity_id=None
-):
-    """Create skeleton data of project document.
-
-    Args:
-        project_name (str): Name of project. Used as identifier of a project.
-        project_code (str): Shorter version of projet without spaces and
-            special characters (in most of cases). Should be also considered
-            as unique name across projects.
-        config (Dic[str, Any]): Project config consist of roots, templates,
-            applications and other project Anatomy related data.
-        data (Dict[str, Any]): Project data with information about it's
-            attributes (e.g. 'fps' etc.) or integration specific keys.
-        entity_id (Union[str, ObjectId]): Predefined id of document. New id is
-            created if not passed.
-
-    Returns:
-        Dict[str, Any]: Skeleton of project document.
-    """
-
-    if data is None:
-        data = {}
-
-    data["code"] = project_code
-
-    return {
-        "_id": _create_or_convert_to_id(entity_id),
-        "name": project_name,
-        "type": CURRENT_PROJECT_SCHEMA,
-        "entity_data": data,
-        "config": config
-    }
 
 
 def new_asset_document(
