@@ -15,9 +15,8 @@ class ExtractModel(publish.Extractor):
     families = ["model"]
 
     def process(self, instance):
-
         stagingdir = self.staging_dir(instance)
-        filename = "{name}.obj".format(**instance.data)
+        filename = f"{instance.name}.obj"
         filepath = os.path.join(stagingdir, filename)
 
 

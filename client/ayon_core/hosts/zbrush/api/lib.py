@@ -77,6 +77,20 @@ def get_current_file():
     return host.get_current_workfile()
 
 
+def execute_publish_model_with_dialog(filepath):
+    import time
+    save_file_zscript = ("""
+[IFreeze,
+[VarSet, filepath, "{filepath}"]
+[FileNameSetNext, #filepath]
+[IKeyPress, 13, [IPress, Tool:Export]]]
+[Sleep, 2]
+]
+""").format(filepath=filepath)
+    execute_zscript(save_file_zscript)
+    time.sleep(8)
+
+
 def execute_publish_model(filepath):
     save_file_zscript = ("""
 [IFreeze,
