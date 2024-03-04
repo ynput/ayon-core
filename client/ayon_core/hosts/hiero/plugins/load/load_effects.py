@@ -35,7 +35,7 @@ class LoadEffects(load.LoaderPlugin):
         Arguments:
             context (dict): context of version
             name (str): name of the version
-            namespace (str): asset name
+            namespace (str): Folder name.
             data (dict): compulsory attribute > not used
 
         Returns:
@@ -46,10 +46,10 @@ class LoadEffects(load.LoaderPlugin):
             active_sequence, "Loaded_{}".format(name))
 
         # get main variables
-        namespace = namespace or context["asset"]["name"]
+        namespace = namespace or context["folder"]["name"]
         object_name = "{}_{}".format(name, namespace)
-        clip_in = context["asset"]["data"]["clipIn"]
-        clip_out = context["asset"]["data"]["clipOut"]
+        clip_in = context["folder"]["attrib"]["clipIn"]
+        clip_out = context["folder"]["attrib"]["clipOut"]
 
         data_imprint = {
             "objectName": object_name,

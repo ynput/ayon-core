@@ -409,8 +409,9 @@ class ClipLoader:
             "Cannot Load selected data, look into database "
             "or call your supervisor")
 
-        # inject asset data to representation dict
-        self._get_asset_data()
+        # inject folder data to representation dict
+        folder_entity = self.context["folder"]
+        self.data["folderAttributes"] = folder_entity["attrib"]
         log.info("__init__ self.data: `{}`".format(pformat(self.data)))
         log.info("__init__ options: `{}`".format(pformat(options)))
 
@@ -424,7 +425,7 @@ class ClipLoader:
                 self.active_sequence = lib.get_current_sequence(new=True)
                 self.active_sequence.setFramerate(
                     hiero.core.TimeBase.fromString(
-                        str(self.data["assetData"]["fps"])))
+                        str(self.data["folderAttributes"]["fps"])))
         else:
             self.active_sequence = lib.get_current_sequence()
 
@@ -447,7 +448,7 @@ class ClipLoader:
         # create name
         repr = self.context["representation"]
         repr_cntx = repr["context"]
-        asset = str(repr_cntx["asset"])
+        folder_name = str(repr_cntx["asset"])
         product_name = str(repr_cntx["subset"])
         representation = str(repr_cntx["representation"])
         self.data["clip_name"] = self.clip_name_template.format(**repr_cntx)
@@ -470,7 +471,7 @@ class ClipLoader:
         hierarchy = str("/".join((
             "Loader",
             repr_cntx["hierarchy"].replace("\\", "/"),
-            asset
+            folder_name
         )))
 
         self.data["binPath"] = hierarchy
@@ -486,16 +487,6 @@ class ClipLoader:
             padding = len(frame)
             file = file.replace(frame, "#" * padding)
         self.data["path"] = file
-
-    def _get_asset_data(self):
-        """ Get all available asset data
-
-        joint `data` key with asset.data dict into the representation
-
-        """
-
-        asset_doc = self.context["asset"]
-        self.data["assetData"] = asset_doc["data"]
 
     def _make_track_item(self, source_bin_item, audio=False):
         """ Create track item with """
@@ -533,9 +524,9 @@ class ClipLoader:
         self.handle_start = self.data["versionData"].get("handleStart")
         self.handle_end = self.data["versionData"].get("handleEnd")
         if self.handle_start is None:
-            self.handle_start = self.data["assetData"]["handleStart"]
+            self.handle_start = self.data["folderAttributes"]["handleStart"]
         if self.handle_end is None:
-            self.handle_end = self.data["assetData"]["handleEnd"]
+            self.handle_end = self.data["folderAttributes"]["handleEnd"]
 
         self.handle_start = int(self.handle_start)
         self.handle_end = int(self.handle_end)
@@ -552,11 +543,11 @@ class ClipLoader:
                 last_timeline_out = int(last_track_item.timelineOut()) + 1
             self.timeline_in = last_timeline_out
             self.timeline_out = last_timeline_out + int(
-                self.data["assetData"]["clipOut"]
-                - self.data["assetData"]["clipIn"])
+                self.data["folderAttributes"]["clipOut"]
+                - self.data["folderAttributes"]["clipIn"])
         else:
-            self.timeline_in = int(self.data["assetData"]["clipIn"])
-            self.timeline_out = int(self.data["assetData"]["clipOut"])
+            self.timeline_in = int(self.data["folderAttributes"]["clipIn"])
+            self.timeline_out = int(self.data["folderAttributes"]["clipOut"])
 
         log.debug("__ self.timeline_in: {}".format(self.timeline_in))
         log.debug("__ self.timeline_out: {}".format(self.timeline_out))
