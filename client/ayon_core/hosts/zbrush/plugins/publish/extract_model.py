@@ -17,7 +17,7 @@ class ExtractModelAbc(publish.Extractor):
     def process(self, instance):
 
         stagingdir = self.staging_dir(instance)
-        filename = "{name}.abc".format(**instance.data)
+        filename = "{name}.obj".format(**instance.data)
         filepath = os.path.join(stagingdir, filename)
 
 
@@ -27,8 +27,8 @@ class ExtractModelAbc(publish.Extractor):
         resolve_filepath = filepath.replace("\\", "/")
         execute_publish_model(resolve_filepath)
         representation = {
-            "name": "abc",
-            "ext": "abc",
+            "name": "obj",
+            "ext": "obj",
             "files": filename,
             "stagingDir": stagingdir,
         }

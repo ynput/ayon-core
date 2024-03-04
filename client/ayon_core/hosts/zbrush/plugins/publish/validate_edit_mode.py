@@ -5,7 +5,7 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishValidationError
 )
-from ayon_core.hosts.zbrush.api.lib import has_edit_mode
+from ayon_core.hosts.zbrush.api.lib import is_in_edit_mode
 
 
 class ValidateEditMode(pyblish.api.ContextPlugin,
@@ -21,7 +21,7 @@ class ValidateEditMode(pyblish.api.ContextPlugin,
     optional = True
 
     def process(self, context):
-        edit_mode = has_edit_mode()
+        edit_mode = is_in_edit_mode()
         if int(edit_mode) == 0:
             raise PublishValidationError(
                 "Zbrush is not in edit mode, "

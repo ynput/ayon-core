@@ -80,7 +80,6 @@ def get_current_file():
 def execute_publish_model(filepath):
     save_file_zscript = ("""
 [IFreeze,
-[IShowActions,0]
 [VarSet, filepath, "{filepath}"]
 [FileNameSetNext, #filepath]
 [IKeyPress, 13, [IPress, Tool:Export]]]
@@ -89,7 +88,15 @@ def execute_publish_model(filepath):
     execute_zscript(save_file_zscript)
 
 
-def has_edit_mode():
+def is_in_edit_mode():
+    """Return whether transform edit mode is currently enabled.
+
+    Certain actions can't be performed if Zbrush is currently within
+    edit mode, like exporting a model.
+
+    Returns:
+        bool: Whether Edit Mode is enabled.
+    """
     tmp_output_file = tempfile.NamedTemporaryFile(
         mode="w", prefix="a_zb_", suffix=".txt", delete=False
     )
