@@ -70,7 +70,7 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
             # aovs.values() is a list of lists
             files.extend(sum(aovs.values(), []))
 
-        # Intermediate render files.
+        # Intermediate exported render files.
         # TODO 1:For products with split render enabled,
         #   We need to calculate all exported frames. as.
         #   `ifdFile` should be a list of files.
@@ -78,7 +78,7 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
         #   Karma has more intermediate files 
         #   e.g. USD and checkpoint
         ifdFile = instance.data.get("ifdFile")
-        if self.include_intermediate_files and ifdFile:
+        if self.intermediate_exported_render and ifdFile:
             files.append(ifdFile)
         
         # Non Render Products with no frames
