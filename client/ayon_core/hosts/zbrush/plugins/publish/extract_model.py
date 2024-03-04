@@ -4,9 +4,9 @@ from ayon_core.pipeline import publish
 from ayon_core.hosts.zbrush.api.lib import execute_publish_model
 
 
-class ExtractModelAbc(publish.Extractor):
+class ExtractModel(publish.Extractor):
     """
-    Extract Geometry in Zbrush
+    Extract Geometry(.obj) in Zbrush
     """
 
     order = pyblish.api.ExtractorOrder - 0.05
