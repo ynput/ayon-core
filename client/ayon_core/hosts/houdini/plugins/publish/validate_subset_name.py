@@ -54,15 +54,14 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
         rop_node = hou.node(instance.data["instance_node"])
 
         # Check product name
-        asset_doc = instance.data["assetEntity"]
+        folder_entity = instance.data["folderEntity"]
         product_name = get_product_name(
             instance.context.data["projectName"],
-            asset_doc,
-            instance.data["task"],
+            instance.data["taskEntity"],
             instance.context.data["hostName"],
             instance.data["productType"],
             variant=instance.data["variant"],
-            dynamic_data={"asset": asset_doc["name"]}
+            dynamic_data={"asset": folder_entity["name"]}
         )
 
         if instance.data.get("productName") != product_name:
@@ -79,15 +78,15 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
         rop_node = hou.node(instance.data["instance_node"])
 
         # Check product name
-        asset_doc = instance.data["assetEntity"]
+        folder_entity = instance.data["folderEntity"]
         product_name = get_product_name(
             instance.context.data["projectName"],
-            asset_doc,
+            instance.data["taskEntity"],
             instance.data["task"],
             instance.context.data["hostName"],
             instance.data["productType"],
             variant=instance.data["variant"],
-            dynamic_data={"asset": asset_doc["name"]}
+            dynamic_data={"asset": folder_entity["name"]}
         )
 
         instance.data["productName"] = product_name

@@ -79,7 +79,7 @@ class FbxLoader(load.LoaderPlugin):
         """Define node name."""
 
         if not namespace:
-            namespace = context["asset"]["name"]
+            namespace = context["folder"]["name"]
 
         if namespace:
             node_name = "{}_{}".format(namespace, name)

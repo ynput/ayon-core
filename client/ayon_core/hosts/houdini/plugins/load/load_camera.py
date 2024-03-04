@@ -104,13 +104,13 @@ class CameraLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create a archive node
         node = self.create_and_connect(obj, "alembicarchive", node_name)
 
-        # TODO: add FPS of project / asset
+        # TODO: add FPS of project / folder
         node.setParms({"fileName": file_path, "channelRef": True})
 
         # Apply some magic
@@ -122,7 +122,7 @@ class CameraLoader(load.LoaderPlugin):
 
         camera = get_camera_from_container(node)
         self._match_maya_render_mask(camera)
-        set_camera_resolution(camera, asset_doc=context["asset"])
+        set_camera_resolution(camera, folder_entity=context["folder"])
         self[:] = nodes
 
         return pipeline.containerise(node_name,

@@ -30,7 +30,7 @@ class HdaLoader(load.LoaderPlugin):
 
         # Create a unique name
         counter = 1
-        namespace = namespace or context["asset"]["name"]
+        namespace = namespace or context["folder"]["name"]
         formatted = "{}_{}".format(namespace, name) if namespace else name
         node_name = "{0}_{1:03d}".format(formatted, counter)
 
