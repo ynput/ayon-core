@@ -16,7 +16,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
     icon = "magic"
     ext = "exr"
     render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$AOV.$F4.{ext}",
-    vrscene_dir = "$HIP/ayon/{product[name]}/vrscene/{product[name]}.$F4.vrscene"
+    vrscene_dir = "$HIP/ayon/{product[name]}/vrscene/{product[name]}.$F4.{ext}"
 
     # Default to split export and render jobs
     export_job = True
@@ -60,7 +60,8 @@ class CreateVrayROP(plugin.HoudiniCreator):
         if pre_create_data.get("export_job"):
 
             scene_filepath = self.vrscene_dir.format(
-                product={"name": product_name}
+                product={"name": product_name},
+                ext="vrscene"
             )
             # Setting render_export_mode to "2" because that's for
             # "Export only" ("1" is for "Export & Render")

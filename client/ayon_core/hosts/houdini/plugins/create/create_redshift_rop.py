@@ -15,7 +15,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
     icon = "magic"
     ext = "exr"
     render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$AOV.$F4.{ext}"
-    rs_dir = "$HIP/ayon/{product[name]}/rs/{product[name]}.$F4.rs"
+    rs_dir = "$HIP/ayon/{product[name]}/rs/{product[name]}.$F4.{ext}"
 
     # Default to split export and render jobs
     split_render = True
@@ -85,7 +85,8 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             parms["RS_renderCamera"] = camera or ""
 
         rs_filepath = self.rs_dir.format(
-            product={"name": product_name}
+            product={"name": product_name},
+            ext="rs"
         )
 
         parms["RS_archive_file"] = rs_filepath

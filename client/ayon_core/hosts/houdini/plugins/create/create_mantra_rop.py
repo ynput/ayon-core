@@ -12,7 +12,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
     product_type = "mantra_rop"
     icon = "magic"
     render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}"
-    ifd_dir = "$HIP/ayon/{product[name]}/ifd/{product[name]}.$F4.ifd"
+    ifd_dir = "$HIP/ayon/{product[name]}/ifd/{product[name]}.$F4.{ext}"
 
     # Default to split export and render jobs
     export_job = True
@@ -50,7 +50,8 @@ class CreateMantraROP(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             ifd_filepath = self.ifd_dir.format(
-                product={"name": product_name}
+                product={"name": product_name},
+                ext="ifd"
             )
             
             parms["soho_outputmode"] = 1

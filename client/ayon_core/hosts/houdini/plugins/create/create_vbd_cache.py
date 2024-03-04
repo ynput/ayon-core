@@ -14,7 +14,8 @@ class CreateVDBCache(plugin.HoudiniCreator):
     label = "VDB Cache"
     product_type = "vdbcache"
     icon = "cloud"
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.vdb"
+    ext = "vdb"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou
@@ -32,7 +33,8 @@ class CreateVDBCache(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = self.staging_dir.format(
-            product={"name": product_name}
+            product={"name": product_name},
+            ext=self.ext
         )
 
         parms = {
