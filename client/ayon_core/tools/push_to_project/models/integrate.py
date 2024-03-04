@@ -11,8 +11,6 @@ import uuid
 import ayon_api
 
 from ayon_core.client import (
-    get_assets,
-    get_asset_by_id,
     get_subset_by_id,
     get_subset_by_name,
     get_version_by_id,
@@ -22,7 +20,6 @@ from ayon_core.client import (
 )
 from ayon_core.client.operations import (
     OperationsSession,
-    new_asset_document,
     new_subset_document,
     new_version_doc,
     new_representation_doc,
@@ -449,15 +446,14 @@ class ProjectPushItemProcess:
         self._model = model
         self._item = item
 
-        self._src_asset_doc = None
+        self._src_folder_entity = None
         self._src_subset_doc = None
         self._src_version_doc = None
         self._src_repre_items = None
 
         self._project_entity = None
         self._anatomy = None
-        self._asset_doc = None
-        self._created_asset_doc = None
+        self._folder_entity = None
         self._task_info = None
         self._subset_doc = None
         self._version_doc = None
@@ -493,8 +489,8 @@ class ProjectPushItemProcess:
             self._log_info("Source entities were found")
             self._fill_destination_project()
             self._log_info("Destination project was found")
-            self._fill_or_create_destination_asset()
-            self._log_info("Destination asset was determined")
+            self._fill_or_create_destination_folder()
+            self._log_info("Destination folder was determined")
             self._determine_product_type()
             self._determine_publish_template_name()
             self._determine_product_name()
@@ -594,11 +590,13 @@ class ProjectPushItemProcess:
             ))
             raise PushToProjectError(self._status.fail_reason)
 
-        asset_id = subset_doc["parent"]
-        asset_doc = get_asset_by_id(src_project_name, asset_id)
-        if not asset_doc:
+        folder_id = subset_doc["parent"]
+        folder_entity = ayon_api.get_folder_by_id(
+            src_project_name, folder_id, own_attributes=True
+        )
+        if not folder_entity:
             self._status.set_failed((
-                f"Could find asset with id \"{asset_id}\""
+                f"Could find folder with id \"{folder_id}\""
                 f" in project \"{src_project_name}\""
             ))
             raise PushToProjectError(self._status.fail_reason)
@@ -624,7 +622,7 @@ class ProjectPushItemProcess:
             )
             raise PushToProjectError(self._status.fail_reason)
 
-        self._src_asset_doc = asset_doc
+        self._src_folder_entity = folder_entity
         self._src_subset_doc = subset_doc
         self._src_version_doc = version_doc
         self._src_repre_items = repre_items
@@ -652,50 +650,37 @@ class ProjectPushItemProcess:
             self._item.dst_project_name
         )
 
-    def _create_asset(
+    def _create_folder(
         self,
-        src_asset_doc,
+        src_folder_entity,
         project_entity,
-        parent_asset_doc,
-        asset_name
+        parent_folder_entity,
+        folder_name
     ):
         parent_id = None
-        parents = []
-        tools = []
-        if parent_asset_doc:
-            parent_id = parent_asset_doc["_id"]
-            parents = list(parent_asset_doc["data"]["parents"])
-            parents.append(parent_asset_doc["name"])
-            _tools = parent_asset_doc["data"].get("tools_env")
-            if _tools:
-                tools = list(_tools)
+        if parent_folder_entity:
+            parent_id = parent_folder_entity["id"]
 
-        asset_name_low = asset_name.lower()
-        other_asset_docs = get_assets(
+        folder_name_low = folder_name.lower()
+        other_folder_entities = ayon_api.get_folders(
             project_entity["name"],
-            fields=["_id", "name", "data.visualParent"]
+            parent_ids=[parent_id],
+            fields={"id", "name"}
         )
-        for other_asset_doc in other_asset_docs:
-            other_name = other_asset_doc["name"]
-            other_parent_id = other_asset_doc["data"].get("visualParent")
-            if other_name.lower() != asset_name_low:
+        for other_folder_entity in other_folder_entities:
+            other_name = other_folder_entity["name"]
+            if other_name.lower() != folder_name_low:
                 continue
 
-            if other_parent_id != parent_id:
-                self._status.set_failed((
-                    f"Asset with name \"{other_name}\" already"
-                    " exists in different hierarchy."
-                ))
-                raise PushToProjectError(self._status.fail_reason)
-
             self._log_debug((
-                f"Found already existing asset with name \"{other_name}\""
-                f" which match requested name \"{asset_name}\""
+                f"Found already existing folder with name \"{other_name}\""
+                f" which match requested name \"{folder_name}\""
             ))
-            return get_asset_by_id(
-                project_entity["name"], other_asset_doc["_id"]
+            return ayon_api.get_folder_by_id(
+                project_entity["name"], other_folder_entity["id"]
             )
 
+        # TODO should we hard pass attribute values?
         data_keys = (
             "clipIn",
             "clipOut",
@@ -708,87 +693,105 @@ class ProjectPushItemProcess:
             "fps",
             "pixelAspect",
         )
-        asset_data = {
-            "visualParent": parent_id,
-            "parents": parents,
-            "tasks": {},
-            "tools_env": tools
+        new_folder_attrib = {}
+        src_attrib = src_folder_entity["attrib"]
+        for attr_name, attr_value in src_attrib.items():
+            if attr_name in data_keys:
+                new_folder_attrib[attr_name] = attr_value
+
+        new_folder_name = ayon_api.slugify_string(folder_name)
+        folder_label = None
+        if new_folder_name != folder_name:
+            folder_label = folder_name
+        fodler_create_data = {
+            "name": folder_name,
+            # TODO use different folder type?
+            "folderType": "Folder",
         }
-        src_asset_data = src_asset_doc["data"]
-        for key in data_keys:
-            if key in src_asset_data:
-                asset_data[key] = src_asset_data[key]
+        if parent_id:
+            fodler_create_data["parentId"] = parent_id
 
-        asset_doc = new_asset_document(
-            asset_name,
-            project_entity["name"],
-            parent_id,
-            parents,
-            data=asset_data
+        if folder_label:
+            fodler_create_data["label"] = folder_label
+
+        if new_folder_attrib:
+            fodler_create_data["attrib"] = new_folder_attrib
+
+        project_name = project_entity["name"]
+        response = ayon_api.post(
+            f"projects/{project_name}/folders",
+            **fodler_create_data
         )
-        self._operations.create_entity(
-            project_entity["name"],
-            asset_doc["type"],
-            asset_doc
+        new_folder_entity = ayon_api.get_folder_by_id(
+            project_name, response.data["id"]
         )
+        # TODO use operations
+        # self._operations.create_entity(
+        #     project_entity["name"],
+        #     "folder",
+        #     fodler_create_data
+        # )
         self._log_info(
-            f"Creating new asset with name \"{asset_name}\""
+            f"Creating new folder with name \"{folder_name}\""
         )
-        self._created_asset_doc = asset_doc
-        return asset_doc
+        return new_folder_entity
 
-    def _fill_or_create_destination_asset(self):
+    def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
         dst_folder_id = self._item.dst_folder_id
         dst_task_name = self._item.dst_task_name
+        dst_task_name_low = dst_task_name.lower()
         new_folder_name = self._item.new_folder_name
         if not dst_folder_id and not new_folder_name:
             self._status.set_failed(
-                "Push item does not have defined destination asset"
+                "Push item does not have defined destination folder"
             )
             raise PushToProjectError(self._status.fail_reason)
 
-        # Get asset document
-        parent_asset_doc = None
+        # Get folder entity
+        parent_folder_entity = None
         if dst_folder_id:
-            parent_asset_doc = get_asset_by_id(
+            parent_folder_entity = ayon_api.get_folder_by_id(
                 self._item.dst_project_name, self._item.dst_folder_id
             )
-            if not parent_asset_doc:
+            if not parent_folder_entity:
                 self._status.set_failed(
-                    f"Could find asset with id \"{dst_folder_id}\""
+                    f"Could find folder with id \"{dst_folder_id}\""
                     f" in project \"{dst_project_name}\""
                 )
                 raise PushToProjectError(self._status.fail_reason)
 
         if not new_folder_name:
-            asset_doc = parent_asset_doc
+            folder_entity = parent_folder_entity
         else:
-            asset_doc = self._create_asset(
-                self._src_asset_doc,
+            folder_entity = self._create_folder(
+                self._src_folder_entity,
                 self._project_entity,
-                parent_asset_doc,
+                parent_folder_entity,
                 new_folder_name
             )
-        self._asset_doc = asset_doc
+        self._folder_entity = folder_entity
         if not dst_task_name:
             self._task_info = {}
             return
 
-        asset_path_parts = list(asset_doc["data"]["parents"])
-        asset_path_parts.append(asset_doc["name"])
-        asset_path = "/".join(asset_path_parts)
-        asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
-        task_info = asset_tasks.get(dst_task_name)
+        folder_path = folder_entity["path"]
+        folder_tasks = {
+            task_entity["name"].lower(): task_entity
+            for task_entity in ayon_api.get_tasks(
+                dst_project_name, folder_ids=[folder_entity["id"]]
+            )
+        }
+        task_info = folder_tasks.get(dst_task_name_low)
         if not task_info:
             self._status.set_failed(
                 f"Could find task with name \"{dst_task_name}\""
-                f" on asset \"{asset_path}\""
+                f" on folder \"{folder_path}\""
                 f" in project \"{dst_project_name}\""
             )
             raise PushToProjectError(self._status.fail_reason)
 
-        # Create copy of task info to avoid changing data in asset document
+        # Create copy of task info to avoid changing data in task entity
         task_info = copy.deepcopy(task_info)
         task_info["name"] = dst_task_name
         # Fill rest of task information based on task type
@@ -836,12 +839,12 @@ class ProjectPushItemProcess:
 
     def _determine_product_name(self):
         product_type = self._product_type
-        asset_doc = self._asset_doc
+        folder_entity = self._folder_entity
         task_info = self._task_info
         product_name = get_product_name(
             self._item.dst_project_name,
-            asset_doc,
-            task_info.get("name"),
+            folder_entity,
+            task_info,
             self.host_name,
             product_type,
             self._item.variant,
@@ -854,10 +857,10 @@ class ProjectPushItemProcess:
 
     def _make_sure_subset_exists(self):
         project_name = self._item.dst_project_name
-        asset_id = self._asset_doc["_id"]
+        folder_id = self._folder_entity["id"]
         product_name = self._product_name
         product_type = self._product_type
-        subset_doc = get_subset_by_name(project_name, product_name, asset_id)
+        subset_doc = get_subset_by_name(project_name, product_name, folder_id)
         if subset_doc:
             self._subset_doc = subset_doc
             return subset_doc
@@ -866,7 +869,7 @@ class ProjectPushItemProcess:
             "families": [product_type]
         }
         subset_doc = new_subset_document(
-            product_name, product_type, asset_id, data
+            product_name, product_type, folder_id, data
         )
         self._operations.create_entity(project_name, "subset", subset_doc)
         self._subset_doc = subset_doc
@@ -961,7 +964,7 @@ class ProjectPushItemProcess:
         anatomy = self._anatomy
         formatting_data = get_template_data(
             self._project_entity,
-            self._asset_doc,
+            self._folder_entity,
             self._task_info.get("name"),
             self.host_name
         )
