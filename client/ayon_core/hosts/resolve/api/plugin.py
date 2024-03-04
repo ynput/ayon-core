@@ -325,7 +325,7 @@ class ClipLoader:
             "or call your supervisor")
 
         # inject asset data to representation dict
-        self._get_asset_data()
+        self._get_folder_attributes()
 
         # add active components to class
         if self.new_timeline:
@@ -355,13 +355,16 @@ class ClipLoader:
             }
         """
         # create name
-        representation = self.context["representation"]
-        representation_context = representation["context"]
-        asset = str(representation_context["asset"])
-        product_name = str(representation_context["subset"])
-        representation_name = str(representation_context["representation"])
+        folder_entity = self.context["folder"]
+        product_name = self.context["subset"]["name"]
+        repre_doc = self.context["representation"]
+
+        folder_name = folder_entity["name"]
+        folder_path = folder_entity["path"]
+        representation_name = repre_doc["name"]
+
         self.data["clip_name"] = "_".join([
-            asset,
+            folder_name,
             product_name,
             representation_name
         ])
@@ -371,24 +374,22 @@ class ClipLoader:
             product_name, representation_name)
 
         # solve project bin structure path
-        hierarchy = str("/".join((
-            "Loader",
-            representation_context["hierarchy"].replace("\\", "/"),
-            asset
-        )))
+        hierarchy = "Loader{}".format(folder_path)
 
         self.data["binPath"] = hierarchy
 
         return True
 
-    def _get_asset_data(self):
+    def _get_folder_attributes(self):
         """ Get all available asset data
 
         joint `data` key with asset.data dict into the representation
 
         """
 
-        self.data["assetData"] = copy.deepcopy(self.context["asset"]["data"])
+        self.data["folderAttributes"] = copy.deepcopy(
+            self.context["folder"]["attrib"]
+        )
 
     def load(self, files):
         """Load clip into timeline
@@ -451,7 +452,7 @@ class ClipLoader:
         else:
             # set timeline start frame + original clip in frame
             timeline_in = int(
-                timeline_start + self.data["assetData"]["clipIn"])
+                timeline_start + self.data["folderAttributes"]["clipIn"])
 
         # make track item from source in bin as item
         timeline_item = lib.create_timeline_item(
