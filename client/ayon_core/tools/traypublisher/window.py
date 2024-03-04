@@ -41,7 +41,6 @@ class TrayPublisherController(QtPublisherController):
 
     def reset_hierarchy_cache(self):
         self._hierarchy_model.reset()
-        self._asset_docs_cache.reset()
 
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
