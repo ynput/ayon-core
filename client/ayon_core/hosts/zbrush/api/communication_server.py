@@ -53,7 +53,7 @@ class CommunicationWrapper:
 
     @classmethod
     def execute_zscript(cls, zscript):
-        """Execute passed goerge script in Zbrush."""
+        """Execute passed zscript in Zbrush."""
         if not cls.communicator:
             return
         return cls.communicator.execute_zscript(zscript)

@@ -1,5 +1,6 @@
 #zscript command etc.
 import os
+import tempfile
 import logging
 from ayon_core.client import (
     get_project,
@@ -85,3 +86,25 @@ def execute_publish_model(filepath):
 ]
 """).format(filepath=filepath)
     execute_zscript(save_file_zscript)
+
+
+def has_edit_mode():
+    tmp_output_file = tempfile.NamedTemporaryFile(
+        mode="w", prefix="a_zb_", suffix=".txt", delete=False
+    )
+    tmp_output_file.close()
+    temp_file = tmp_output_file.name.replace("\\", "/")
+
+    in_edit_mode = ("""
+[IFreeze,
+[MemCreate, EditMode, 20, 0]
+[VarSet, InEditMode, [IsEnabled, Transform:Edit]]
+[Note, InEditMode]
+[MemWriteString, EditMode, #InEditMode, 0]
+[MemSaveToFile, EditMode, "{temp_file}", 0]
+[MemDelete, EditMode]
+]
+""").format(temp_file=temp_file)
+    execute_zscript(in_edit_mode)
+    with open(temp_file, "r") as mode:
+        return int(mode.read().strip())
