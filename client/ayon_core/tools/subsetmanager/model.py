@@ -32,7 +32,11 @@ class InstanceModel(QtGui.QStandardItemModel):
         items = []
         for instance_data in instances:
             item_id = str(uuid.uuid4())
-            label = instance_data.get("label") or instance_data["subset"]
+            product_name = (
+                instance_data.get("productName")
+                or instance_data.get("subset")
+            )
+            label = instance_data.get("label") or product_name
             item = QtGui.QStandardItem(label)
             item.setEnabled(True)
             item.setEditable(False)

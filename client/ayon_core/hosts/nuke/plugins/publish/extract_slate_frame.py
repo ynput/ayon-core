@@ -115,7 +115,7 @@ class ExtractSlateFrame(publish.Extractor):
         """Slate frame renderer
 
         Args:
-            instance (PyblishInstance): Pyblish instance with subset data
+            instance (PyblishInstance): Pyblish instance with product data
             output_name (str, optional):
                 Slate variation name. Defaults to None.
             bake_viewer_process (bool, optional):

@@ -211,7 +211,7 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
 
         # Collect the looks we want to apply (by name)
         look_items = self.look_outliner.get_selected_items()
-        looks = {look["subset"] for look in look_items}
+        looks = {look["product"] for look in look_items}
 
         selection = self.assign_selected.isChecked()
         asset_nodes = self.asset_outliner.get_nodes(selection=selection)
@@ -225,22 +225,28 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
 
             # Assign the first matching look relevant for this asset
             # (since assigning multiple to the same nodes makes no sense)
-            assign_look = next((subset for subset in item["looks"]
-                                if subset["name"] in looks), None)
+            assign_look = next(
+                (
+                    subset_doc
+                    for subset_doc in item["looks"]
+                    if subset_doc["name"] in looks
+                ),
+                None
+            )
             if not assign_look:
                 self.echo(
                     "{} No matching selected look for {}".format(prefix, asset)
                 )
                 continue
 
-            # Get the latest version of this asset's look subset
+            # Get the latest version of this asset's look product
             version = get_last_version_by_subset_id(
                 project_name, assign_look["_id"], fields=["_id"]
             )
 
-            subset_name = assign_look["name"]
+            product_name = assign_look["name"]
             self.echo("{} Assigning {} to {}\t".format(
-                prefix, subset_name, asset
+                prefix, product_name, asset
             ))
             nodes = item["nodes"]
 
@@ -251,7 +257,7 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
 
                 for vp in vray_proxies:
                     if vp in nodes:
-                        vrayproxy_assign_look(vp, subset_name)
+                        vrayproxy_assign_look(vp, product_name)
 
                 nodes = list(set(nodes).difference(vray_proxies))
             else:
@@ -266,7 +272,7 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
 
                 for standin in arnold_standins:
                     if standin in nodes:
-                        arnold_standin.assign_look(standin, subset_name)
+                        arnold_standin.assign_look(standin, product_name)
 
                 nodes = list(set(nodes).difference(arnold_standins))
             else:

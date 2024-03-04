@@ -37,8 +37,8 @@ class SubmitJobsToRoyalRender(pyblish.api.ContextPlugin):
                         isinstance(job, RRJob)
                         for job in instance.data.get("rrJobs")):
                     jobs += instance.data.get("rrJobs")
-            if instance.data.get("rrPathName"):
-                instance_rr_path = instance.data["rrPathName"]
+            if instance.data.get("rr_root"):
+                instance_rr_path = instance.data["rr_root"]
 
         if jobs:
             self._rr_root = instance_rr_path

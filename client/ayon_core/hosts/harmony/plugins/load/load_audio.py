@@ -45,17 +45,17 @@ class ImportAudioLoader(load.LoaderPlugin):
             {"function": func, "args": [context["subset"]["name"], wav_file]}
         )
 
-        subset_name = context["subset"]["name"]
+        product_name = context["subset"]["name"]
 
         return harmony.containerise(
-            subset_name,
+            product_name,
             namespace,
-            subset_name,
+            product_name,
             context,
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         pass
 
     def remove(self, container):

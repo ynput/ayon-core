@@ -44,8 +44,8 @@ class IntegrateBatchGroup(pyblish.api.InstancePlugin):
                 ))
 
             # load plate to batch group
-            self.log.info("Loading subset `{}` into batch `{}`".format(
-                instance.data["subset"], bgroup.name.get_value()
+            self.log.info("Loading product `{}` into batch `{}`".format(
+                instance.data["productName"], bgroup.name.get_value()
             ))
             self._load_clip_to_context(instance, bgroup)
 

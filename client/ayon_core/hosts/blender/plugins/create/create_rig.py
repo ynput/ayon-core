@@ -10,15 +10,15 @@ class CreateRig(plugin.BaseCreator):
 
     identifier = "io.openpype.creators.blender.rig"
     label = "Rig"
-    family = "rig"
+    product_type = "rig"
     icon = "wheelchair"
 
     create_as_asset_group = True
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
-        asset_group = super().create(subset_name,
+        asset_group = super().create(product_name,
                                      instance_data,
                                      pre_create_data)
 
