@@ -80,9 +80,10 @@ def get_current_file():
 def execute_publish_model(filepath):
     save_file_zscript = ("""
 [IFreeze,
+[IShowActions,0]
 [VarSet, filepath, "{filepath}"]
 [FileNameSetNext, #filepath]
-[IKeyPress, 13, [IPress, Tool:Export:Export]]]
+[IKeyPress, 13, [IPress, Tool:Export]]]
 ]
 """).format(filepath=filepath)
     execute_zscript(save_file_zscript)
@@ -98,7 +99,7 @@ def has_edit_mode():
     in_edit_mode = ("""
 [IFreeze,
 [MemCreate, EditMode, 20, 0]
-[VarSet, InEditMode, [IsEnabled, Transform:Edit]]
+[VarSet, InEditMode, [IGet, Transform:Edit]]
 [Note, InEditMode]
 [MemWriteString, EditMode, #InEditMode, 0]
 [MemSaveToFile, EditMode, "{temp_file}", 0]
