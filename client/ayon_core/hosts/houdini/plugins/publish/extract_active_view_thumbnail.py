@@ -40,6 +40,11 @@ class ExtractActiveViewThumbnail(publish.Extractor):
     def get_view_thumbnail(self, instance):
 
         sceneview = lib.get_scene_viewer()
+        if sceneview is None:
+            self.log.warning("Skipping Extract Active View Thumbnail"
+                             " because no scene view was detected.")
+            return
+
         with tempfile.NamedTemporaryFile("w", suffix=".jpg", delete=False) as tmp:
             lib.sceneview_snapshot(sceneview, tmp.name)
             thumbnail_path = tmp.name
