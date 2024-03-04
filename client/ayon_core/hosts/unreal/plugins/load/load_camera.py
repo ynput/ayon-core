@@ -260,7 +260,7 @@ class CameraLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
+    def update(self, container, context):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         curr_level_sequence = LevelSequenceLib.get_current_level_sequence()
@@ -379,12 +379,13 @@ class CameraLoader(plugin.Loader):
 
         sub_scene.set_sequence(new_sequence)
 
+        repre_doc = context["representation"]
         self._import_camera(
             EditorLevelLibrary.get_editor_world(),
             new_sequence,
             new_sequence.get_bindings(),
             settings,
-            str(representation["data"]["path"])
+            str(repre_doc["data"]["path"])
         )
 
         # Set range of all sections
@@ -412,8 +413,8 @@ class CameraLoader(plugin.Loader):
                             key.set_time(unreal.FrameNumber(value=new_time))
 
         data = {
-            "representation": str(representation["_id"]),
-            "parent": str(representation["parent"])
+            "representation": str(repre_doc["_id"]),
+            "parent": str(repre_doc["parent"])
         }
         imprint(f"{asset_dir}/{container.get('container_name')}", data)
 

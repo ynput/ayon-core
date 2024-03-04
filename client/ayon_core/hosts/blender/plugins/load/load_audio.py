@@ -96,7 +96,7 @@ class AudioLoader(plugin.AssetLoader):
         self[:] = objects
         return [objects]
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """Update an audio strip in the sequence editor.
 
         Arguments:
@@ -105,14 +105,15 @@ class AudioLoader(plugin.AssetLoader):
             representation (openpype:representation-1.0): Representation to
                 update, from `host.ls()`.
         """
+        repre_doc = context["representation"]
         object_name = container["objectName"]
         asset_group = bpy.data.objects.get(object_name)
-        libpath = Path(get_representation_path(representation))
+        libpath = Path(get_representation_path(repre_doc))
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(representation, indent=2),
+            pformat(repre_doc, indent=2),
         )
 
         assert asset_group, (
@@ -175,8 +176,8 @@ class AudioLoader(plugin.AssetLoader):
         window_manager.windows[-1].screen.areas[0].type = old_type
 
         metadata["libpath"] = str(libpath)
-        metadata["representation"] = str(representation["_id"])
-        metadata["parent"] = str(representation["parent"])
+        metadata["representation"] = str(repre_doc["_id"])
+        metadata["parent"] = str(repre_doc["parent"])
         metadata["audio"] = new_audio
 
     def exec_remove(self, container: Dict) -> bool:
