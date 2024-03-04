@@ -24,7 +24,7 @@ class StartTimer(pyblish.api.ContextPlugin):
             return
 
         project_name = context.data["projectName"]
-        asset_name = context.data.get("asset")
+        asset_name = context.data.get("folderPath")
         task_name = context.data.get("task")
         if not project_name or not asset_name or not task_name:
             self.log.info((
