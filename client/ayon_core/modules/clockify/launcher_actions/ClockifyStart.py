@@ -1,4 +1,5 @@
-from ayon_core.client import get_asset_by_name
+import ayon_api
+
 from ayon_core.pipeline import LauncherAction
 from openpype_modules.clockify.clockify_api import ClockifyAPI
 
@@ -21,24 +22,18 @@ class ClockifyStart(LauncherAction):
         user_id = self.clockify_api.user_id
         workspace_id = self.clockify_api.workspace_id
         project_name = session["AYON_PROJECT_NAME"]
-        asset_name = session["AYON_FOLDER_PATH"]
+        folder_path = session["AYON_FOLDER_PATH"]
         task_name = session["AYON_TASK_NAME"]
-        description = asset_name
+        description = "/".join([folder_path.lstrip("/"), task_name])
 
-        # fetch asset docs
-        asset_doc = get_asset_by_name(project_name, asset_name)
+        # fetch folder entity
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
 
         # get task type to fill the timer tag
-        task_info = asset_doc["data"]["tasks"][task_name]
-        task_type = task_info["type"]
-
-        # check if the task has hierarchy and fill the
-        parents_data = asset_doc["data"]
-        if parents_data is not None:
-            description_items = parents_data.get("parents", [])
-            description_items.append(asset_name)
-            description_items.append(task_name)
-            description = "/".join(description_items)
+        task_type = task_entity["taskType"]
 
         project_id = self.clockify_api.get_project_id(
             project_name, workspace_id
