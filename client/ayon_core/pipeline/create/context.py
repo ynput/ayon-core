@@ -27,7 +27,11 @@ from ayon_core.lib.attribute_definitions import (
     get_default_values,
 )
 from ayon_core.host import IPublishHost, IWorkfileHost
-from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline import (
+    Anatomy,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
+)
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 
 from .creator_plugins import (
@@ -937,7 +941,11 @@ class CreatedInstance:
         # QUESTION Does it make sense to have data stored as ordered dict?
         self._data = collections.OrderedDict()
         # QUESTION Do we need this "id" information on instance?
-        self._data["id"] = "pyblish.avalon.instance"
+        item_id = data.get("id")
+        # TODO use only 'AYON_INSTANCE_ID' when all hosts support it
+        if item_id not in {AYON_INSTANCE_ID, AVALON_INSTANCE_ID}:
+            item_id = AVALON_INSTANCE_ID
+        self._data["id"] = item_id
         self._data["family"] = family
         self._data["subset"] = subset_name
         self._data["active"] = data.get("active", True)

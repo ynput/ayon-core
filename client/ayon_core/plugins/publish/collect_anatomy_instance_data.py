@@ -3,7 +3,7 @@ Requires:
     context     -> anatomyData
     context     -> projectEntity
     context     -> assetEntity
-    instance    -> asset
+    instance    -> folderPath
     instance    -> subset
     instance    -> family
 
@@ -68,7 +68,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         instances_with_missing_asset_doc = collections.defaultdict(list)
         for instance in context:
             instance_asset_doc = instance.data.get("assetEntity")
-            _asset_name = instance.data["asset"]
+            _asset_name = instance.data["folderPath"]
 
             # There is possibility that assetEntity on instance is already set
             # which can happen in standalone publisher
@@ -296,7 +296,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if hierarchy:
                 parent_name = hierarchy.split("/")[-1]
 
-            asset_name = instance.data["asset"].split("/")[-1]
+            asset_name = instance.data["folderPath"].split("/")[-1]
             anatomy_data.update({
                 "asset": asset_name,
                 "hierarchy": hierarchy,
@@ -337,7 +337,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         # Try to find task data based on hierarchy context and asset name
         hierarchy_context = instance.context.data.get("hierarchyContext")
-        asset_name = instance.data.get("asset")
+        asset_name = instance.data.get("folderPath")
         if not hierarchy_context or not asset_name:
             return
 

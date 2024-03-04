@@ -27,8 +27,8 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
 
         config = self.get_export_config(instance)
         asset_doc = get_asset_by_name(
-            project_name=instance.context.data["projectName"],
-            asset_name=instance.data["asset"]
+            instance.context.data["projectName"],
+            instance.data["folderPath"]
         )
 
         instance.data["exportConfig"] = config

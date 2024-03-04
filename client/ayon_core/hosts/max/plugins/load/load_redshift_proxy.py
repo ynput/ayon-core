@@ -9,7 +9,8 @@ from ayon_core.pipeline.load import LoadError
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     update_custom_attribute_data,
-    get_previous_loaded_object
+    get_previous_loaded_object,
+    remove_container_data
 )
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.lib import (
@@ -72,6 +73,5 @@ class RedshiftProxyLoader(load.LoaderPlugin):
 
     def remove(self, container):
         from pymxs import runtime as rt
-
-        node = rt.getNodeByName(container["instance_node"])
-        rt.delete(node)
+        node = rt.GetNodeByName(container["instance_node"])
+        remove_container_data(node)

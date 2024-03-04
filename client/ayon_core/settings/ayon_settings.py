@@ -62,34 +62,13 @@ def _convert_general(ayon_settings, output, default_settings):
     }
 
 
-def _convert_royalrender_system_settings(
-    ayon_settings, output, addon_versions, default_settings
-):
-    enabled = addon_versions.get("royalrender") is not None
-    rr_settings = default_settings["modules"]["royalrender"]
-    rr_settings["enabled"] = enabled
-    if enabled:
-        ayon_royalrender = ayon_settings["royalrender"]
-        rr_settings["rr_paths"] = {
-            item["name"]: item["value"]
-            for item in ayon_royalrender["rr_paths"]
-        }
-    output["modules"]["royalrender"] = rr_settings
-
-
 def _convert_modules_system(
     ayon_settings, output, addon_versions, default_settings
 ):
-    # TODO add all modules
-    # TODO add 'enabled' values
-    for func in (
-        _convert_royalrender_system_settings,
-    ):
-        func(ayon_settings, output, addon_versions, default_settings)
-
     for key in {
         "timers_manager",
         "clockify",
+        "royalrender",
         "deadline",
     }:
         if addon_versions.get(key):
@@ -154,221 +133,6 @@ def convert_system_settings(ayon_settings, default_settings, addon_versions):
 
 
 # --------- Project settings ---------
-def _convert_nuke_knobs(knobs):
-    new_knobs = []
-    for knob in knobs:
-        knob_type = knob["type"]
-
-        if knob_type == "boolean":
-            knob_type = "bool"
-
-        if knob_type != "bool":
-            value = knob[knob_type]
-        elif knob_type in knob:
-            value = knob[knob_type]
-        else:
-            value = knob["boolean"]
-
-        new_knob = {
-            "type": knob_type,
-            "name": knob["name"],
-        }
-        new_knobs.append(new_knob)
-
-        if knob_type == "formatable":
-            new_knob["template"] = value["template"]
-            new_knob["to_type"] = value["to_type"]
-            continue
-
-        value_key = "value"
-        if knob_type == "expression":
-            value_key = "expression"
-
-        elif knob_type == "color_gui":
-            value = _convert_color(value)
-
-        elif knob_type == "vector_2d":
-            value = [value["x"], value["y"]]
-
-        elif knob_type == "vector_3d":
-            value = [value["x"], value["y"], value["z"]]
-
-        elif knob_type == "box":
-            value = [value["x"], value["y"], value["r"], value["t"]]
-
-        new_knob[value_key] = value
-    return new_knobs
-
-
-def _convert_nuke_project_settings(ayon_settings, output):
-    if "nuke" not in ayon_settings:
-        return
-
-    ayon_nuke = ayon_settings["nuke"]
-
-    # --- Load ---
-    ayon_load = ayon_nuke["load"]
-    ayon_load["LoadClip"]["_representations"] = (
-        ayon_load["LoadClip"].pop("representations_include")
-    )
-    ayon_load["LoadImage"]["_representations"] = (
-        ayon_load["LoadImage"].pop("representations_include")
-    )
-
-    # --- Create ---
-    ayon_create = ayon_nuke["create"]
-    for creator_name in (
-        "CreateWritePrerender",
-        "CreateWriteImage",
-        "CreateWriteRender",
-    ):
-        create_plugin_settings = ayon_create[creator_name]
-        create_plugin_settings["temp_rendering_path_template"] = (
-            create_plugin_settings["temp_rendering_path_template"]
-            .replace("{product[name]}", "{subset}")
-            .replace("{product[type]}", "{family}")
-            .replace("{task[name]}", "{task}")
-            .replace("{folder[name]}", "{asset}")
-        )
-        new_prenodes = {}
-        for prenode in create_plugin_settings["prenodes"]:
-            name = prenode.pop("name")
-            prenode["knobs"] = _convert_nuke_knobs(prenode["knobs"])
-            new_prenodes[name] = prenode
-
-        create_plugin_settings["prenodes"] = new_prenodes
-
-    # --- Publish ---
-    ayon_publish = ayon_nuke["publish"]
-    slate_mapping = ayon_publish["ExtractSlateFrame"]["key_value_mapping"]
-    for key in tuple(slate_mapping.keys()):
-        value = slate_mapping[key]
-        slate_mapping[key] = [value["enabled"], value["template"]]
-
-    ayon_publish["ValidateKnobs"]["knobs"] = json.loads(
-        ayon_publish["ValidateKnobs"]["knobs"]
-    )
-
-    new_review_data_outputs = {}
-    outputs_settings = []
-    # Check deprecated ExtractReviewDataMov
-    # settings for backwards compatibility
-    deprecrated_review_settings = ayon_publish["ExtractReviewDataMov"]
-    current_review_settings = (
-        ayon_publish.get("ExtractReviewIntermediates")
-    )
-    if deprecrated_review_settings["enabled"]:
-        outputs_settings = deprecrated_review_settings["outputs"]
-    elif current_review_settings is None:
-        pass
-    elif current_review_settings["enabled"]:
-        outputs_settings = current_review_settings["outputs"]
-
-    for item in outputs_settings:
-        item_filter = item["filter"]
-        if "product_names" in item_filter:
-            item_filter["subsets"] = item_filter.pop("product_names")
-            item_filter["families"] = item_filter.pop("product_types")
-
-        reformat_nodes_config = item.get("reformat_nodes_config") or {}
-        reposition_nodes = reformat_nodes_config.get(
-            "reposition_nodes") or []
-
-        for reposition_node in reposition_nodes:
-            if "knobs" not in reposition_node:
-                continue
-            reposition_node["knobs"] = _convert_nuke_knobs(
-                reposition_node["knobs"]
-            )
-
-        name = item.pop("name")
-        new_review_data_outputs[name] = item
-
-    if deprecrated_review_settings["enabled"]:
-        deprecrated_review_settings["outputs"] = new_review_data_outputs
-    elif current_review_settings["enabled"]:
-        current_review_settings["outputs"] = new_review_data_outputs
-
-    collect_instance_data = ayon_publish["CollectInstanceData"]
-    if "sync_workfile_version_on_product_types" in collect_instance_data:
-        collect_instance_data["sync_workfile_version_on_families"] = (
-            collect_instance_data.pop(
-                "sync_workfile_version_on_product_types"))
-
-    # --- ImageIO ---
-    # NOTE 'monitorOutLut' is maybe not yet in v3 (ut should be)
-    ayon_imageio = ayon_nuke["imageio"]
-
-    # workfile
-    imageio_workfile = ayon_imageio["workfile"]
-    workfile_keys_mapping = (
-        ("color_management", "colorManagement"),
-        ("native_ocio_config", "OCIO_config"),
-        ("working_space", "workingSpaceLUT"),
-        ("thumbnail_space", "monitorLut"),
-    )
-    for src, dst in workfile_keys_mapping:
-        if (
-            src in imageio_workfile
-            and dst not in imageio_workfile
-        ):
-            imageio_workfile[dst] = imageio_workfile.pop(src)
-
-    # regex inputs
-    if "regex_inputs" in ayon_imageio:
-        ayon_imageio["regexInputs"] = ayon_imageio.pop("regex_inputs")
-
-    # nodes
-    ayon_imageio_nodes = ayon_imageio["nodes"]
-    if "required_nodes" in ayon_imageio_nodes:
-        ayon_imageio_nodes["requiredNodes"] = (
-            ayon_imageio_nodes.pop("required_nodes"))
-    if "override_nodes" in ayon_imageio_nodes:
-        ayon_imageio_nodes["overrideNodes"] = (
-            ayon_imageio_nodes.pop("override_nodes"))
-
-    for item in ayon_imageio_nodes["requiredNodes"]:
-        if "nuke_node_class" in item:
-            item["nukeNodeClass"] = item.pop("nuke_node_class")
-        item["knobs"] = _convert_nuke_knobs(item["knobs"])
-
-    for item in ayon_imageio_nodes["overrideNodes"]:
-        if "nuke_node_class" in item:
-            item["nukeNodeClass"] = item.pop("nuke_node_class")
-        item["knobs"] = _convert_nuke_knobs(item["knobs"])
-
-    output["nuke"] = ayon_nuke
-
-
-def _convert_hiero_project_settings(ayon_settings, output):
-    if "hiero" not in ayon_settings:
-        return
-
-    ayon_hiero = ayon_settings["hiero"]
-
-    new_gui_filters = {}
-    for item in ayon_hiero.pop("filters", []):
-        subvalue = {}
-        key = item["name"]
-        for subitem in item["value"]:
-            subvalue[subitem["name"]] = subitem["value"]
-        new_gui_filters[key] = subvalue
-    ayon_hiero["filters"] = new_gui_filters
-
-    ayon_load_clip = ayon_hiero["load"]["LoadClip"]
-    if "product_types" in ayon_load_clip:
-        ayon_load_clip["families"] = ayon_load_clip.pop("product_types")
-
-    ayon_load_clip = ayon_hiero["load"]["LoadClip"]
-    ayon_load_clip["clip_name_template"] = (
-        ayon_load_clip["clip_name_template"]
-        .replace("{folder[name]}", "{asset}")
-        .replace("{product[name]}", "{subset}")
-    )
-
-    output["hiero"] = ayon_hiero
-
-
 def _convert_royalrender_project_settings(ayon_settings, output):
     if "royalrender" not in ayon_settings:
         return
@@ -384,9 +148,6 @@ def _convert_royalrender_project_settings(ayon_settings, output):
 def convert_project_settings(ayon_settings, default_settings):
     default_settings = copy.deepcopy(default_settings)
     output = {}
-
-    _convert_nuke_project_settings(ayon_settings, output)
-    _convert_hiero_project_settings(ayon_settings, output)
 
     _convert_royalrender_project_settings(ayon_settings, output)
 

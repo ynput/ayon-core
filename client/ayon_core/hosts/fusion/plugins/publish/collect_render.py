@@ -68,7 +68,7 @@ class CollectFusionRender(
                 source=current_file,
                 label=inst.data["label"],
                 subset=subset_name,
-                asset=inst.data["asset"],
+                folderPath=inst.data["folderPath"],
                 task=task_name,
                 attachTo=False,
                 setMembers='',
