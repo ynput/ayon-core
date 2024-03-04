@@ -27,7 +27,7 @@ class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
                 instance
             )
 
-        # Find which asset + subset combination has more than one instance
+        # Find which folder + subset combination has more than one instance
         # Those are considered invalid because they'd integrate to the same
         # destination.
         invalid = []

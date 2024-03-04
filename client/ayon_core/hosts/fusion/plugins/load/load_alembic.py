@@ -24,9 +24,9 @@ class FusionLoadAlembicMesh(load.LoaderPlugin):
     tool_type = "SurfaceAlembicMesh"
 
     def load(self, context, name, namespace, data):
-        # Fallback to asset name when namespace is None
+        # Fallback to folder name when namespace is None
         if namespace is None:
-            namespace = context['asset']['name']
+            namespace = context["folder"]["name"]
 
         # Create the Loader with the filename path set
         comp = get_current_comp()
