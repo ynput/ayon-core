@@ -32,7 +32,7 @@ class CreateStaticMesh(plugin.HoudiniCreator):
 
         # prepare parms
         filepath = self.staging_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=self.ext
         )
 

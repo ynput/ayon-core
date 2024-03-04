@@ -60,7 +60,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
 
         filepath = self.render_staging_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=ext
         )
 
@@ -85,7 +85,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             parms["RS_renderCamera"] = camera or ""
 
         rs_filepath = self.rs_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext="rs"
         )
 

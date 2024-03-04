@@ -40,7 +40,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
         
         filepath = self.render_staging_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=ext
         )
 
@@ -55,7 +55,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             ass_filepath = self.ass_dir.format(
-                product={"name": product_name},
+                product={"name": "`chs(\"AYON_productName\")`"},
                 ext="ass"
             )
             

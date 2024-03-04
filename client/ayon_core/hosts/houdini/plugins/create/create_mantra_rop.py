@@ -37,7 +37,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
         
         filepath = self.render_staging_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=ext
         )
 
@@ -50,7 +50,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             ifd_filepath = self.ifd_dir.format(
-                product={"name": product_name},
+                product={"name": "`chs(\"AYON_productName\")`"},
                 ext="ifd"
             )
             

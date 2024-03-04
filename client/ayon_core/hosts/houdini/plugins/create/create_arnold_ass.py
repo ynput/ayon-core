@@ -41,7 +41,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         instance_node.setParmTemplateGroup(parm_template_group)
         
         filepath = self.staging_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=self.ext.lstrip(".")
         )
         

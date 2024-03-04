@@ -62,7 +62,7 @@ class CreateHDA(plugin.HoudiniCreator):
             # for consistency I'm using {subset} as it's
             # the same key used in other creators
             filepath = self.staging_dir.format(
-                product={"name": node_name},
+                product={"name": "`chs(\"AYON_productName\")`"},
                 ext=self.ext
             )
             

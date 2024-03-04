@@ -29,7 +29,7 @@ class CreateMantraIFD(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
         
         filepath = self.staging_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=self.ext
         )
 

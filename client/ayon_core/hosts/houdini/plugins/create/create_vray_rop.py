@@ -60,7 +60,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         if pre_create_data.get("export_job"):
 
             scene_filepath = self.vrscene_dir.format(
-                product={"name": product_name},
+                product={"name": "`chs(\"AYON_productName\")`"},
                 ext="vrscene"
             )
             # Setting render_export_mode to "2" because that's for
@@ -84,7 +84,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         if pre_create_data.get("render_element_enabled", True):
             # Vray has its own tag for AOV file output
             filepath = self.render_staging_dir.format(
-                product={"name": product_name},
+                product={"name": "`chs(\"AYON_productName\")`"},
                 ext=ext
             )
 
@@ -103,7 +103,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
         else:
             filepath = self.render_staging_dir.format(
-                product={"name": product_name},
+                product={"name": "`chs(\"AYON_productName\")`"},
                 ext=ext
             ).replace(".$AOV", "")
         
