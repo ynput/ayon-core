@@ -11,6 +11,8 @@ from ayon_core.client.operations import (
 )
 from ayon_core.pipeline.template_data import (
     get_template_data,
+    get_task_template_data,
+    get_folder_template_data,
 )
 from ayon_core.pipeline.workfile import (
     get_workdir_with_workdir_data,
@@ -23,42 +25,6 @@ from ayon_core.tools.workfiles.abstract import (
     FileItem,
     WorkfileInfo,
 )
-
-
-def get_folder_template_data(folder):
-    if not folder:
-        return {}
-    parts = folder["path"].split("/")
-    parts.pop(-1)
-    hierarchy = "/".join(parts)
-    return {
-        "asset": folder["name"],
-        "folder": {
-            "name": folder["name"],
-            "type": folder["folderType"],
-            "path": folder["path"],
-        },
-        "hierarchy": hierarchy,
-    }
-
-
-def get_task_template_data(project_entity, task):
-    if not task:
-        return {}
-    short_name = None
-    task_type_name = task["taskType"]
-    for task_type_info in project_entity["taskTypes"]:
-        if task_type_info["name"] == task_type_name:
-            short_name = task_type_info["shortName"]
-            break
-
-    return {
-        "task": {
-            "name": task["name"],
-            "type": task_type_name,
-            "short": short_name,
-        }
-    }
 
 
 class CommentMatcher(object):
@@ -152,7 +118,7 @@ class WorkareaModel:
             folder = self._controller.get_folder_entity(
                 self.project_name, folder_id
             )
-            fill_data = get_folder_template_data(folder)
+            fill_data = get_folder_template_data(folder, self.project_name)
             self._fill_data_by_folder_id[folder_id] = fill_data
         return copy.deepcopy(fill_data)
 
@@ -228,9 +194,9 @@ class WorkareaModel:
         task_type = fill_data.get("task", {}).get("type")
         # TODO cache
         return get_workfile_template_key(
+            self.project_name,
             task_type,
             self._controller.get_host_name(),
-            project_name=self.project_name
         )
 
     def _get_last_workfile_version(
@@ -618,7 +584,7 @@ class PublishWorkfilesModel:
     def get_file_items(self, folder_id, task_name):
         # TODO refactor to use less server API calls
         project_name = self._controller.get_current_project_name()
-        # Get subset docs of asset
+        # Get subset docs of folder
         product_entities = ayon_api.get_products(
             project_name,
             folder_ids=[folder_id],
