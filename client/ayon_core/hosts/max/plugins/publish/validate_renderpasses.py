@@ -76,7 +76,7 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
         if filename not in rt.rendOutputFilename:
             cls.log.error(
                 "Render output folder must include"
-                f"the max scene name {filename} "
+                f" the max scene name {filename} "
             )
             invalid_folder_name = os.path.dirname(
                 rt.rendOutputFilename).replace(
