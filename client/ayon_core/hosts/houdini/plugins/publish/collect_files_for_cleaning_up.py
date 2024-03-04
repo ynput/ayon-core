@@ -112,7 +112,10 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
                 result = lib.create_file_list(
                     match, int(start_frame), int(end_frame)
                 )
-                result = [os.path.join(parent_path, r) for r in result]
+                result = [
+                    os.path.join(parent_path, r).replace("\\", "/") 
+                    for r in result
+                ]
 
             return result 
         
