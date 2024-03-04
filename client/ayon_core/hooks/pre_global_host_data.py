@@ -1,4 +1,4 @@
-from ayon_api import get_project, get_folder_by_path
+from ayon_api import get_project, get_folder_by_path, get_task_by_name
 
 from ayon_core.lib.applications import (
     PreLaunchHook,
@@ -17,7 +17,7 @@ class GlobalHostDataHook(PreLaunchHook):
         """Prepare global objects to `data` that will be used for sure."""
         self.prepare_global_data()
 
-        if not self.data.get("asset_doc"):
+        if not self.data.get("folder_entity"):
             return
 
         app = self.launch_context.application
@@ -29,7 +29,8 @@ class GlobalHostDataHook(PreLaunchHook):
             "app": app,
 
             "project_entity": self.data["project_entity"],
-            "asset_doc": self.data["asset_doc"],
+            "folder_entity": self.data["folder_entity"],
+            "task_entity": self.data["task_entity"],
 
             "anatomy": self.data["anatomy"],
 
@@ -70,12 +71,27 @@ class GlobalHostDataHook(PreLaunchHook):
             project_name, project_entity=project_entity
         )
 
-        asset_name = self.data.get("folder_path")
-        if not asset_name:
+        folder_path = self.data.get("folder_path")
+        if not folder_path:
             self.log.warning(
-                "Asset name was not set. Skipping asset document query."
+                "Folder path is not set. Skipping folder query."
             )
             return
 
-        folder_entity = get_folder_by_path(project_name, asset_name)
+        folder_entity = get_folder_by_path(project_name, folder_path)
         self.data["folder_entity"] = folder_entity
+
+        task_name = self.data.get("task_name")
+        if not task_name:
+            self.log.warning(
+                "Task name is not set. Skipping task query."
+            )
+            return
+
+        if not folder_entity:
+            return
+
+        task_entity = get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+        self.data["task_entity"] = task_entity
