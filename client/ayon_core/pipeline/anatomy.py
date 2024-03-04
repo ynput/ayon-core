@@ -280,13 +280,13 @@ class BaseAnatomy(object):
         ```
 
         ## Entered filepath
-        "P:/projects/project/asset/task/animation_v001.ma"
+        "P:/projects/project/folder/task/animation_v001.ma"
 
         ## Entered template
         "<{}>"
 
         ## Output
-        "<AYON_PROJECT_ROOT_NAS>/project/asset/task/animation_v001.ma"
+        "<AYON_PROJECT_ROOT_NAS>/project/folder/task/animation_v001.ma"
 
         Args:
             filepath (str): Full file path where root should be replaced.

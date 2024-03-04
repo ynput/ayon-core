@@ -161,13 +161,13 @@ class HostBase(object):
         # Use current context to fill the context title
         current_context = self.get_current_context()
         project_name = current_context["project_name"]
-        asset_name = current_context["folder_path"]
+        folder_path = current_context["folder_path"]
         task_name = current_context["task_name"]
         items = []
         if project_name:
             items.append(project_name)
-            if asset_name:
-                items.append(asset_name.lstrip("/"))
+            if folder_path:
+                items.append(folder_path.lstrip("/"))
                 if task_name:
                     items.append(task_name)
         if items:
