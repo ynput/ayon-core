@@ -39,7 +39,11 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
 
         import hou
 
-        node = hou.node(instance.data["instance_node"])
+        node = hou.node(instance.data.get("instance_node", ""))
+        if not node:
+            self.log.debug("Skipping Collector. Instance has no instance_node")
+            return
+        
         output_parm = lib.get_output_parameter(node)
         if not output_parm:
             self.log.debug("ROP node type '{}' is not supported for cleaning up."
