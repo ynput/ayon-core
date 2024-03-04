@@ -240,37 +240,6 @@ def get_default_task_icon(color=None):
     return get_qta_icon_by_name_and_color("fa.male", color)
 
 
-def get_task_icon(project_entity, asset_doc, task_name):
-    """Get icon for a task.
-
-    Icon should be defined by task type which is stored on project.
-    """
-
-    color = get_default_entity_icon_color()
-
-    tasks_info = asset_doc.get("data", {}).get("tasks") or {}
-    task_info = tasks_info.get(task_name) or {}
-    task_icon = task_info.get("icon")
-    if task_icon:
-        icon = get_qta_icon_by_name_and_color(task_icon, color)
-        if icon is not None:
-            return icon
-
-    task_type = task_info.get("type")
-    task_types_by_name = {
-        task_type["name"]: task_type
-        for task_type in project_entity["taskTypes"]
-    }
-
-    task_type_info = task_types_by_name.get(task_type) or {}
-    task_type_icon = task_type_info.get("icon")
-    if task_type_icon:
-        icon = get_qta_icon_by_name_and_color(task_icon, color)
-        if icon is not None:
-            return icon
-    return get_default_task_icon(color)
-
-
 def iter_model_rows(model, column, include_root=False):
     """Iterate over all row indices in a model"""
     indices = [QtCore.QModelIndex()]  # start iteration at root
