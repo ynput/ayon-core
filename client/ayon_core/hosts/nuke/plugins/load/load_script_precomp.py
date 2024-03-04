@@ -39,9 +39,9 @@ class LinkAsGroup(load.LoaderPlugin):
         first = version_data.get("frameStart", None)
         last = version_data.get("frameEnd", None)
 
-        # Fallback to asset name when namespace is None
+        # Fallback to folder name when namespace is None
         if namespace is None:
-            namespace = context['asset']['name']
+            namespace = context["folder"]["name"]
 
         file = self.filepath_from_context(context).replace("\\", "/")
         self.log.info("file: {}\n".format(file))

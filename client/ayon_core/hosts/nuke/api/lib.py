@@ -15,7 +15,6 @@ from qtpy import QtCore, QtWidgets
 import ayon_api
 
 from ayon_core.client import (
-    get_asset_by_name,
     get_versions,
     get_last_versions,
     get_representations,
@@ -40,7 +39,6 @@ from ayon_core.settings import (
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline import (
-    discover_legacy_creator_plugins,
     Anatomy,
     get_current_host_name,
     get_current_project_name,
@@ -1005,11 +1003,11 @@ def format_anatomy(data):
         file = script_name()
         data["version"] = get_version_from_path(file)
 
-    asset_name = data["folderPath"]
+    folder_path = data["folderPath"]
     task_name = data["task"]
     host_name = get_current_host_name()
     context_data = get_template_data_with_names(
-        project_name, asset_name, task_name, host_name
+        project_name, folder_path, task_name, host_name
     )
     data.update(context_data)
     data.update({
@@ -1462,8 +1460,10 @@ class WorkfileSettings(object):
 
         Context._project_entity = project_entity
         self._project_name = project_name
-        self._asset = get_current_folder_path()
-        self._asset_entity = get_asset_by_name(project_name, self._asset)
+        self._folder_path = get_current_folder_path()
+        self._folder_entity = ayon_api.get_folder_by_path(
+            project_name, self._folder_path
+        )
         self._root_node = root_node or nuke.root()
         self._nodes = self.get_nodes(nodes=nodes)
 
@@ -1957,39 +1957,43 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
             self.set_reads_colorspace(read_clrs_inputs)
 
     def reset_frame_range_handles(self):
-        """Set frame range to current asset"""
+        """Set frame range to current folder."""
 
-        if "data" not in self._asset_entity:
-            msg = "Asset {} don't have set any 'data'".format(self._asset)
+        if "attrib" not in self._folder_entity:
+            msg = "Folder {} don't have set any 'attrib'".format(
+                self._folder_path
+            )
             log.warning(msg)
             nuke.message(msg)
             return
 
-        asset_data = self._asset_entity["data"]
+        folder_attributes = self._folder_entity["attrib"]
 
         missing_cols = []
         check_cols = ["fps", "frameStart", "frameEnd",
                       "handleStart", "handleEnd"]
 
         for col in check_cols:
-            if col not in asset_data:
+            if col not in folder_attributes:
                 missing_cols.append(col)
 
         if len(missing_cols) > 0:
             missing = ", ".join(missing_cols)
-            msg = "'{}' are not set for asset '{}'!".format(
-                missing, self._asset)
+            msg = "'{}' are not set for folder '{}'!".format(
+                missing, self._folder_path)
             log.warning(msg)
             nuke.message(msg)
             return
 
         # get handles values
-        handle_start = asset_data["handleStart"]
-        handle_end = asset_data["handleEnd"]
+        handle_start = folder_attributes["handleStart"]
+        handle_end = folder_attributes["handleEnd"]
+        frame_start = folder_attributes["frameStart"]
+        frame_end = folder_attributes["frameEnd"]
 
-        fps = float(asset_data["fps"])
-        frame_start_handle = int(asset_data["frameStart"]) - handle_start
-        frame_end_handle = int(asset_data["frameEnd"]) + handle_end
+        fps = float(folder_attributes["fps"])
+        frame_start_handle = frame_start - handle_start
+        frame_end_handle = frame_end + handle_end
 
         self._root_node["lock_range"].setValue(False)
         self._root_node["fps"].setValue(fps)
@@ -2000,10 +2004,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         # update node graph so knobs are updated
         update_node_graph()
 
-        frame_range = '{0}-{1}'.format(
-            int(asset_data["frameStart"]),
-            int(asset_data["frameEnd"])
-        )
+        frame_range = '{0}-{1}'.format(frame_start, frame_end)
 
         for node in nuke.allNodes(filter="Viewer"):
             node['frame_range'].setValue(frame_range)
@@ -2030,18 +2031,12 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         """Set resolution to project resolution."""
         log.info("Resetting resolution")
         project_name = get_current_project_name()
-        asset_data = self._asset_entity["data"]
+        folder_attributes = self._folder_entity["attrib"]
 
         format_data = {
-            "width": int(asset_data.get(
-                'resolutionWidth',
-                asset_data.get('resolution_width'))),
-            "height": int(asset_data.get(
-                'resolutionHeight',
-                asset_data.get('resolution_height'))),
-            "pixel_aspect": asset_data.get(
-                'pixelAspect',
-                asset_data.get('pixel_aspect', 1)),
+            "width": folder_attributes["resolutionWidth"],
+            "height": folder_attributes["resolutionHeight"],
+            "pixel_aspect": folder_attributes["pixelAspect"],
             "name": project_name
         }
 
@@ -2108,7 +2103,11 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         from .utils import set_context_favorites
 
         work_dir = os.getenv("AYON_WORKDIR")
-        asset = get_current_folder_path()
+        # TODO validate functionality
+        # - does expect the structure is '{root}/{project}/{folder}'
+        # - this used asset name expecting it is unique in project
+        folder_path = get_current_folder_path()
+        folder_name = folder_path.split("/")[-1]
         favorite_items = OrderedDict()
 
         # project
@@ -2120,13 +2119,13 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         # add to favorites
         favorite_items.update({"Project dir": project_dir.replace("\\", "/")})
 
-        # asset
-        asset_root = os.path.normpath(work_dir.split(
-            asset)[0])
-        # add asset name
-        asset_dir = os.path.join(asset_root, asset) + "/"
+        # folder
+        folder_root = os.path.normpath(work_dir.split(
+            folder_name)[0])
+        # add folder name
+        folder_dir = os.path.join(folder_root, folder_name) + "/"
         # add to favorites
-        favorite_items.update({"Shot dir": asset_dir.replace("\\", "/")})
+        favorite_items.update({"Shot dir": folder_dir.replace("\\", "/")})
 
         # workdir
         favorite_items.update({"Work dir": work_dir.replace("\\", "/")})

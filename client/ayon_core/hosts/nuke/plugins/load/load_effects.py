@@ -40,7 +40,7 @@ class LoadEffects(load.LoaderPlugin):
         Arguments:
             context (dict): context of version
             name (str): name of the version
-            namespace (str): asset name
+            namespace (str): namespace name
             data (dict): compulsory attribute > not used
 
         Returns:
@@ -53,7 +53,7 @@ class LoadEffects(load.LoaderPlugin):
         first = version_data.get("frameStart", None)
         last = version_data.get("frameEnd", None)
         workfile_first_frame = int(nuke.root()["first_frame"].getValue())
-        namespace = namespace or context['asset']['name']
+        namespace = namespace or context["folder"]["name"]
         colorspace = version_data.get("colorspace", None)
         object_name = "{}_{}".format(name, namespace)
 
@@ -266,18 +266,18 @@ class LoadEffects(load.LoaderPlugin):
 
         self.log.info("updated to version: {}".format(version_doc.get("name")))
 
-    def connect_read_node(self, group_node, asset, subset):
+    def connect_read_node(self, group_node, namespace, subset):
         """
         Finds read node and selects it
 
         Arguments:
-            asset (str): asset name
+            namespace (str): namespace name
 
         Returns:
             nuke node: node is selected
             None: if nothing found
         """
-        search_name = "{0}_{1}".format(asset, subset)
+        search_name = "{0}_{1}".format(namespace, subset)
 
         node = [
             n for n in nuke.allNodes(filter="Read")

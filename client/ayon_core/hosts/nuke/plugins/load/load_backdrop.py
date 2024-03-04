@@ -43,7 +43,7 @@ class LoadBackdropNodes(load.LoaderPlugin):
         Arguments:
             context (dict): context of version
             name (str): name of the version
-            namespace (str): asset name
+            namespace (str): namespace name
             data (dict): compulsory attribute > not used
 
         Returns:
@@ -54,7 +54,7 @@ class LoadBackdropNodes(load.LoaderPlugin):
         version = context['version']
         version_data = version.get("data", {})
         vname = version.get("name", None)
-        namespace = namespace or context['asset']['name']
+        namespace = namespace or context["folder"]["name"]
         colorspace = version_data.get("colorspace", None)
         object_name = "{}_{}".format(name, namespace)
 
