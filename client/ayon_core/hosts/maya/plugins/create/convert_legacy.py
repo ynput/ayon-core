@@ -1,6 +1,6 @@
 import ayon_api
 
-from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
+from ayon_core.pipeline.create.creator_plugins import ProductConvertorPlugin
 from ayon_core.hosts.maya.api import plugin
 from ayon_core.hosts.maya.api.lib import read
 
@@ -8,7 +8,7 @@ from maya import cmds
 from maya.app.renderSetup.model import renderSetup
 
 
-class MayaLegacyConvertor(SubsetConvertorPlugin,
+class MayaLegacyConvertor(ProductConvertorPlugin,
                           plugin.MayaCreatorBase):
     """Find and convert any legacy products in the scene.
 
