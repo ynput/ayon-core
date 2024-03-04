@@ -18,7 +18,7 @@ class ImageLoader(photoshop.PhotoshopLoader):
         stub = self.get_stub()
         layer_name = get_unique_layer_name(
             stub.get_layers(),
-            context["asset"]["name"],
+            context["folder"]["name"],
             name
         )
         with photoshop.maintained_selection():
@@ -43,14 +43,16 @@ class ImageLoader(photoshop.PhotoshopLoader):
         layer = container.pop("layer")
 
         repre_doc = context["representation"]
+        folder_name = context["folder"]["name"]
+        product_name = context["subset"]["name"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])
-        layer_name = "{}_{}".format(context["asset"], context["subset"])
+        layer_name = "{}_{}".format(folder_name, product_name)
         # switching assets
         if namespace_from_container != layer_name:
             layer_name = get_unique_layer_name(
-                stub.get_layers(), context["asset"], context["subset"]
+                stub.get_layers(), folder_name, product_name
             )
         else:  # switching version - keep same name
             layer_name = container["namespace"]

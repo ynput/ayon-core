@@ -9,7 +9,7 @@ product is used instead.
 This plugin runs only in remote publishing (eg. Webpublisher).
 
 Requires:
-    context.data["assetEntity"]
+    context.data["folderEntity"]
 
 Provides:
     context["version"] - incremented latest published workfile version
@@ -42,11 +42,10 @@ class CollectPublishedVersion(pyblish.api.ContextPlugin):
             return
 
         project_name = context.data["projectName"]
-        asset_doc = context.data["assetEntity"]
-        asset_id = asset_doc["_id"]
+        folder_id = context.data["folderEntity"]["id"]
 
         version_doc = get_last_version_by_subset_name(
-            project_name, workfile_product_name, asset_id
+            project_name, workfile_product_name, folder_id
         )
 
         if version_doc:
