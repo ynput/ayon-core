@@ -64,7 +64,7 @@ class ImageLoader(load.LoaderPlugin):
         parent = get_image_avalon_container()
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         node = parent.createNode("file", node_name=node_name)

@@ -29,14 +29,14 @@ class AbcArchiveLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create an Alembic archive node
         node = obj.createNode("alembicarchive", node_name=node_name)
         node.moveToGoodPosition()
 
-        # TODO: add FPS of project / asset
+        # TODO: add FPS of project / folder
         node.setParms({"fileName": file_path,
                        "channelRef": True})
 

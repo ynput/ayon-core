@@ -4,8 +4,11 @@ import re
 import pyblish.api
 
 from ayon_core.client import get_subset_by_name
-from ayon_core.pipeline.publish import ValidateContentsOrder
-from ayon_core.pipeline import PublishValidationError
+from ayon_core.pipeline.publish import (
+    ValidateContentsOrder,
+    KnownPublishError,
+    PublishValidationError,
+)
 
 
 class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
@@ -18,7 +21,7 @@ class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         project_name = instance.context.data["projectName"]
-        asset_name = instance.data["folderPath"]
+        folder_path = instance.data["folderPath"]
         product_name = instance.data["productName"]
 
         # Assume shading variation starts after a dot separator
@@ -27,16 +30,21 @@ class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
             "^usdShade", "usdModel", shade_product_name
         )
 
-        asset_doc = instance.data.get("assetEntity")
-        if not asset_doc:
-            raise RuntimeError("Asset document is not filled on instance.")
+        folder_entity = instance.data.get("folderEntity")
+        if not folder_entity:
+            raise KnownPublishError(
+                "Folder entity is not filled on instance."
+            )
 
         subset_doc = get_subset_by_name(
-            project_name, model_product_name, asset_doc["_id"], fields=["_id"]
+            project_name,
+            model_product_name,
+            folder_entity["id"],
+            fields=["_id"]
         )
         if not subset_doc:
             raise PublishValidationError(
                 ("USD Model product not found: "
-                 "{} ({})").format(model_product_name, asset_name),
+                 "{} ({})").format(model_product_name, folder_path),
                 title=self.label
             )

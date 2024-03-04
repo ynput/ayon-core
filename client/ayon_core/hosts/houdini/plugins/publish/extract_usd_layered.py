@@ -4,10 +4,10 @@ import hou
 import sys
 from collections import deque
 
+import ayon_api
 import pyblish.api
 
 from ayon_core.client import (
-    get_asset_by_name,
     get_subset_by_name,
     get_last_version_by_subset_id,
     get_representation_by_name,
@@ -284,13 +284,13 @@ class ExtractUSDLayered(publish.Extractor):
         # Compare this dependency with the latest published version
         # to detect whether we should make this into a new publish
         # version. If not, skip it.
-        asset_doc = get_asset_by_name(
-            project_name, dependency.data["folderPath"], fields=["_id"]
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, dependency.data["folderPath"], fields={"id"}
         )
         subset_doc = get_subset_by_name(
             project_name,
             dependency.data["productName"],
-            asset_doc["_id"],
+            folder_entity["id"],
             fields=["_id"]
         )
         if not subset_doc:
