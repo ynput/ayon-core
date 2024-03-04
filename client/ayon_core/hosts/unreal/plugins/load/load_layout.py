@@ -661,7 +661,7 @@ class LayoutLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
+    def update(self, container, context):
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
 
@@ -677,9 +677,11 @@ class LayoutLoader(plugin.Loader):
         root = "/Game/Ayon"
 
         asset_dir = container.get('namespace')
-        context = representation.get("context")
 
-        hierarchy = context.get('hierarchy').split("/")
+        asset_doc = context["asset"]
+        repre_doc = context["representation"]
+
+        hierarchy = list(asset_doc["data"]["parents"])
 
         sequence = None
         master_level = None
@@ -728,13 +730,13 @@ class LayoutLoader(plugin.Loader):
 
         EditorAssetLibrary.delete_directory(f"{asset_dir}/animations/")
 
-        source_path = get_representation_path(representation)
+        source_path = get_representation_path(repre_doc)
 
         loaded_assets = self._process(source_path, asset_dir, sequence)
 
         data = {
-            "representation": str(representation["_id"]),
-            "parent": str(representation["parent"]),
+            "representation": str(repre_doc["_id"]),
+            "parent": str(repre_doc["parent"]),
             "loaded_assets": loaded_assets
         }
         imprint(
