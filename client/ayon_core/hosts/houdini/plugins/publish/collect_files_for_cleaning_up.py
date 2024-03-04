@@ -30,7 +30,8 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
         "review",
         "staticMesh",
         "usd",
-        "vdbcache"
+        "vdbcache",
+        "redshift_rop"
     ]
     label = "Collect Files For Cleaning Up"
 
@@ -61,9 +62,9 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
 
         # Render Products
         expectedFiles = instance.data.get("expectedFiles", [])
-        for aov in expectedFiles:
-            for v in aov.values():
-                files += v
+        for aovs in expectedFiles:
+            # aovs.values() is a list of lists
+            files.extend(sum(aovs.values(), []))
 
         # Render Intermediate files.
         # This doesn't cover all intermediate render products.
@@ -72,11 +73,11 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
         # So, we need to get all the frames.
         ifdFile = instance.data.get("ifdFile")
         if self.include_intermediate_files and ifdFile:
-            files += [ifdFile]
+            files.append(ifdFile)
         
         # Non Render Products with no frames
         if not files:
-            files = [filepath]
+            files.append(filepath)
 
         self.log.debug("Add directories to 'cleanupEmptyDir': {}".format(staging_dir))
         instance.context.data["cleanupEmptyDirs"].append(staging_dir)
