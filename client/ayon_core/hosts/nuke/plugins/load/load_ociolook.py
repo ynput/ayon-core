@@ -47,13 +47,13 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         Arguments:
             context (dict): context of version
             name (str): name of the version
-            namespace (str): asset name
+            namespace (str): namespace name
             data (dict): compulsory attribute > not used
 
         Returns:
             nuke.Node: containerized nuke.Node object
         """
-        namespace = namespace or context['asset']['name']
+        namespace = namespace or context["folder"]["name"]
         suffix = secrets.token_hex(nbytes=4)
         node_name = "{}_{}_{}".format(
             name, namespace, suffix)

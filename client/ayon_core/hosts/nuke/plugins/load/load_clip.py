@@ -131,16 +131,16 @@ class LoadClip(plugin.NukeLoader):
             first = 1
             last = first + duration
 
-        # Fallback to asset name when namespace is None
+        # Fallback to folder name when namespace is None
         if namespace is None:
-            namespace = context['asset']['name']
+            namespace = context["folder"]["name"]
 
         if not filepath:
             self.log.warning(
                 "Representation id `{}` is failing to load".format(repre_id))
             return
 
-        read_name = self._get_node_name(representation)
+        read_name = self._get_node_name(context)
 
         # Create the Loader with the filename path set
         read_node = nuke.createNode(
@@ -438,15 +438,26 @@ class LoadClip(plugin.NukeLoader):
             read_node['frame_mode'].setValue("start at")
             read_node['frame'].setValue(str(self.script_start))
 
-    def _get_node_name(self, representation):
+    def _get_node_name(self, context):
+        folder_entity = context["folder"]
+        subset_doc = context["subset"]
+        repre_doc = context["representation"]
 
-        repre_cont = representation["context"]
+        folder_name = folder_entity["name"]
+        product_name = subset_doc["name"]
+        repre_cont = repre_doc["context"]
         name_data = {
-            "asset": repre_cont["asset"],
-            "subset": repre_cont["subset"],
-            "representation": representation["name"],
+            "folder": {
+                "name": folder_name,
+            },
+            "product": {
+                "name": product_name,
+            },
+            "asset": folder_name,
+            "subset": product_name,
+            "representation": repre_doc["name"],
             "ext": repre_cont["representation"],
-            "id": representation["_id"],
+            "id": repre_doc["_id"],
             "class_name": self.__class__.__name__
         }
 

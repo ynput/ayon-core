@@ -39,7 +39,7 @@ class AlembicModelLoader(load.LoaderPlugin):
         first = version_data.get("frameStart", None)
         last = version_data.get("frameEnd", None)
         fps = version_data.get("fps") or nuke.root()["fps"].getValue()
-        namespace = namespace or context['asset']['name']
+        namespace = namespace or context["folder"]["name"]
         object_name = "{}_{}".format(name, namespace)
 
         # prepare data for imprinting
