@@ -44,7 +44,11 @@ class CollectFilesForCleaningUpModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
-    include_intermediate_files: bool = SettingsField(title="Include Intermediate Render Files")
+    intermediate_exported_render: bool = SettingsField(
+        title="Include Intermediate Exported Render Files",
+        description="Include intermediate exported render scenes for cleanup"
+                    " (.idf, .ass, .usd, .rs) for render instances.",
+    )
     families: list[str] = SettingsField(
         default_factory=list,
         enum_resolver=product_types_enum,
@@ -120,7 +124,7 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "enabled": False,
         "optional": True,
         "active": True,
-        "include_intermediate_files": False,
+        "intermediate_exported_render": False,
         "families" : []
     },
     "ValidateContainers": {
