@@ -1,5 +1,5 @@
 # TODO This plugin is not converted for AYON
-
+#
 # import collections
 # import os
 # import uuid
@@ -196,12 +196,14 @@
 #         msgBox.exec_()
 #
 #     def get_data(self, context, versions_count):
-#         subset = context["subset"]
-#         asset = context["asset"]
+#         subset_doc = context["subset"]
+#         folder_entity = context["folder"]
 #         project_name = context["project"]["name"]
 #         anatomy = Anatomy(project_name)
 #
-#         versions = list(get_versions(project_name, subset_ids=[subset["_id"]]))
+#         versions = list(get_versions(
+#             project_name, subset_ids=[subset_doc["_id"]]
+#         ))
 #
 #         versions_by_parent = collections.defaultdict(list)
 #         for ent in versions:
@@ -238,8 +240,10 @@
 #                 versions_to_pop.append(version)
 #
 #         for version in versions_to_pop:
-#             msg = "Asset: \"{}\" | Subset: \"{}\" | Version: \"{}\"".format(
-#                 asset["name"], subset["name"], version["name"]
+#             msg = "Folder: \"{}\" | Subset: \"{}\" | Version: \"{}\"".format(
+#                 folder_entity["path"],
+#                 subset_doc["name"],
+#                 version["name"]
 #             )
 #             self.log.debug((
 #                 "Skipping version. Already tagged as `deleted`. < {} >"
@@ -254,7 +258,7 @@
 #
 #         if not version_ids:
 #             msg = "Skipping processing. Nothing to delete on {}/{}".format(
-#                 asset["name"], subset["name"]
+#                 folder_entity["path"], subset_doc["name"]
 #             )
 #             self.log.info(msg)
 #             print(msg)
@@ -310,16 +314,14 @@
 #                 "Folder does not exist. Deleting it's files skipped: {}"
 #             ).format(paths_msg))
 #
-#         data = {
+#         return {
 #             "dir_paths": dir_paths,
 #             "file_paths_by_dir": file_paths_by_dir,
 #             "versions": versions,
-#             "asset": asset,
-#             "subset": subset,
+#             "folder": folder_entity,
+#             "subset": subset_doc,
 #             "archive_subset": versions_count == 0
 #         }
-#
-#         return data
 #
 #     def main(self, project_name, data, remove_publish_folder):
 #         # Size of files.
@@ -382,12 +384,12 @@
 #             data (dict): Data sent to subset loader with full context.
 #         """
 #
-#         # First check for ftrack id on asset document
+#         # First check for ftrack id on folder entity
 #         #   - skip if ther is none
-#         asset_ftrack_id = data["asset"]["data"].get("ftrackId")
-#         if not asset_ftrack_id:
+#         ftrack_id = data["folder"]["attrib"].get("ftrackId")
+#         if not ftrack_id:
 #             self.log.info((
-#                 "Asset does not have filled ftrack id. Skipped delete"
+#                 "Folder does not have filled ftrack id. Skipped delete"
 #                 " of ftrack version."
 #             ))
 #             return
@@ -413,7 +415,7 @@
 #                 " and asset.name is \"{}\""
 #                 " and version in ({})"
 #             ).format(
-#                 asset_ftrack_id,
+#                 ftrack_id,
 #                 product_name,
 #                 ",".join(versions)
 #             )

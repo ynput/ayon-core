@@ -41,7 +41,7 @@ class CollectFramesFixDef(
         instance.data["frames_to_fix"] = frames_to_fix
 
         product_name = instance.data["productName"]
-        asset_name = instance.data["folderPath"]
+        folder_path = instance.data["folderPath"]
 
         project_entity = instance.data["projectEntity"]
         project_name = project_entity["name"]
@@ -49,7 +49,7 @@ class CollectFramesFixDef(
         version = get_last_version_by_subset_name(
             project_name,
             product_name,
-            asset_name=asset_name
+            asset_name=folder_path
         )
         if not version:
             self.log.warning(

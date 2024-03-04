@@ -5,7 +5,6 @@ from string import Formatter
 
 import ayon_api
 
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     Anatomy,
     LauncherAction,
@@ -27,10 +26,10 @@ class OpenTaskPath(LauncherAction):
         from qtpy import QtCore, QtWidgets
 
         project_name = session["AYON_PROJECT_NAME"]
-        asset_name = session["AYON_FOLDER_PATH"]
+        folder_path = session["AYON_FOLDER_PATH"]
         task_name = session.get("AYON_TASK_NAME", None)
 
-        path = self._get_workdir(project_name, asset_name, task_name)
+        path = self._get_workdir(project_name, folder_path, task_name)
         if not path:
             return
 
@@ -61,11 +60,14 @@ class OpenTaskPath(LauncherAction):
             path = path.split(field, 1)[0]
         return path
 
-    def _get_workdir(self, project_name, asset_name, task_name):
+    def _get_workdir(self, project_name, folder_path, task_name):
         project_entity = ayon_api.get_project(project_name)
-        asset_doc = get_asset_by_name(project_name, asset_name)
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
 
-        data = get_template_data(project_entity, asset_doc, task_name)
+        data = get_template_data(project_entity, folder_entity, task_entity)
 
         anatomy = Anatomy(project_name)
         workdir = anatomy.templates_obj["work"]["folder"].format(data)

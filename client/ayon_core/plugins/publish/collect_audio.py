@@ -1,18 +1,18 @@
 import collections
+
+import ayon_api
 import pyblish.api
 
 from ayon_core.client import (
-    get_assets,
     get_subsets,
     get_last_versions,
     get_representations,
-    get_asset_name_identifier,
 )
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 
 class CollectAudio(pyblish.api.ContextPlugin):
-    """Collect asset's last published audio.
+    """Collect folders's last published audio.
 
     The audio product name searched for is defined in:
         project settings > Collect Audio
@@ -23,7 +23,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
             converted to context plugin which requires only 4 queries top.
     """
 
-    label = "Collect Asset Audio"
+    label = "Collect Folder Audio"
     order = pyblish.api.CollectorOrder + 0.1
     families = ["review"]
     hosts = [
@@ -64,30 +64,30 @@ class CollectAudio(pyblish.api.ContextPlugin):
             return
 
         # Add audio to instance if exists.
-        instances_by_asset_name = collections.defaultdict(list)
+        instances_by_folder_path = collections.defaultdict(list)
         for instance in filtered_instances:
-            asset_name = instance.data["folderPath"]
-            instances_by_asset_name[asset_name].append(instance)
+            folder_path = instance.data["folderPath"]
+            instances_by_folder_path[folder_path].append(instance)
 
-        asset_names = set(instances_by_asset_name.keys())
+        folder_paths = set(instances_by_folder_path.keys())
         self.log.debug((
-            "Searching for audio product '{product}' in assets {assets}"
+            "Searching for audio product '{product}' in folders {folders}"
         ).format(
             product=self.audio_product_name,
-            assets=", ".join([
-                '"{}"'.format(asset_name)
-                for asset_name in asset_names
+            folders=", ".join([
+                '"{}"'.format(folder_path)
+                for folder_path in folder_paths
             ])
         ))
 
         # Query all required documents
         project_name = context.data["projectName"]
         anatomy = context.data["anatomy"]
-        repre_docs_by_asset_names = self.query_representations(
-            project_name, asset_names)
+        repre_docs_by_folder_paths = self.query_representations(
+            project_name, folder_paths)
 
-        for asset_name, instances in instances_by_asset_name.items():
-            repre_docs = repre_docs_by_asset_names[asset_name]
+        for folder_path, instances in instances_by_folder_path.items():
+            repre_docs = repre_docs_by_folder_paths[folder_path]
             if not repre_docs:
                 continue
 
@@ -103,7 +103,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
                 self.log.debug("Audio Data added to instance ...")
 
     def query_representations(self, project_name, folder_paths):
-        """Query representations related to audio products for passed assets.
+        """Query representations related to audio products for passed folders.
 
         Args:
             project_name (str): Project in which we're looking for all
@@ -113,25 +113,26 @@ class CollectAudio(pyblish.api.ContextPlugin):
 
         Returns:
             collections.defaultdict[str, List[Dict[Str, Any]]]: Representations
-                related to audio products by asset name.
+                related to audio products by folder path.
         """
 
         output = collections.defaultdict(list)
-        # Query asset documents
-        asset_docs = get_assets(
+        # Query folder entities
+        folder_entities = ayon_api.get_folders(
             project_name,
-            asset_names=folder_paths,
-            fields=["_id", "name", "data.parents"]
+            folder_paths=folder_paths,
+            fields={"id", "path"}
         )
 
         folder_id_by_path = {
-            get_asset_name_identifier(asset_doc): asset_doc["_id"]
-            for asset_doc in asset_docs
+            folder_entity["path"]: folder_entity["id"]
+            for folder_entity in folder_entities
         }
         folder_ids = set(folder_id_by_path.values())
 
         # Query products with name define by 'audio_product_name' attr
-        # - one or none products with the name should be available on an asset
+        # - one or none products with the name should be available on
+        #   an folder
         subset_docs = get_subsets(
             project_name,
             subset_names=[self.audio_product_name],

@@ -191,9 +191,9 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 version_name, version_id
             ))
 
-            asset_entity = instance.data["assetEntity"]
+            folder_id = instance.data["folderEntity"]["id"]
             folder_path = instance.data["folderPath"]
-            thumbnail_info_by_entity_id[asset_entity["_id"]] = {
+            thumbnail_info_by_entity_id[folder_id] = {
                 "thumbnail_id": thumbnail_id,
                 "entity_type": "asset",
             }

@@ -413,14 +413,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         )
 
     def prepare_subset(self, instance, op_session, project_name):
-        asset_doc = instance.data["assetEntity"]
+        folder_entity = instance.data["folderEntity"]
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
         self.log.debug("Product: {}".format(product_name))
 
         # Get existing subset if it exists
         existing_subset_doc = get_subset_by_name(
-            project_name, product_name, asset_doc["_id"]
+            project_name, product_name, folder_entity["id"]
         )
 
         # Define subset data
@@ -441,7 +441,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if existing_subset_doc:
             subset_id = existing_subset_doc["_id"]
         subset_doc = new_subset_document(
-            product_name, product_type, asset_doc["_id"], data, subset_id
+            product_name, product_type, folder_entity["id"], data, subset_id
         )
 
         if existing_subset_doc is None:
