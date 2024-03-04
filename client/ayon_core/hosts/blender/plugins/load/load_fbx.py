@@ -131,7 +131,7 @@ class FbxModelLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        folder_name = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         product_name = context["subset"]["name"]
 
         asset_name = plugin.prepare_scene_name(folder_name, product_name)
