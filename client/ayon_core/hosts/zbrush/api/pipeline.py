@@ -238,7 +238,7 @@ def write_workfile_metadata(metadata_key, data=None):
 
 
 def get_current_workfile_context():
-    return get_load_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT)
+    return get_current_context_metadata(ZBRUSH_SECTION_NAME_CONTEXT)
 
 
 def get_current_context():
@@ -314,6 +314,35 @@ def write_load_metadata(metadata_key, data):
         value = json.dumps(data)
         file.write(value)
         file.close()
+
+
+def get_current_context_metadata(metadata_key):
+    # save zscript to the hidden folder
+    # load json files
+    file_content = {}
+    project_name = get_current_context()["project_name"]
+    asset_name = get_current_context()["asset_name"]
+    task_name = get_current_context()["task_name"]
+    current_file = get_current_file()
+    if current_file:
+        current_file = os.path.splitext(
+            os.path.basename(current_file))[0].strip()
+    work_dir = get_workdir(project_name, asset_name, task_name)
+    json_dir = os.path.join(
+        work_dir, ".zbrush_metadata",
+        current_file, metadata_key).replace(
+            "\\", "/"
+        )
+    if not os.path.exists(json_dir):
+        return file_content
+    file_list = os.listdir(json_dir)
+    if not file_list:
+        return file_content
+    for file in file_list:
+        with open (f"{json_dir}/{file}", "r") as data:
+            file_content = ast.literal_eval(str(data.read().strip()))
+
+    return file_content
 
 
 def get_load_workfile_metadata(metadata_key):
