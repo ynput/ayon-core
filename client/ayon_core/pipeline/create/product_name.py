@@ -1,4 +1,4 @@
-import os
+import ayon_api
 
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import filter_profiles, prepare_template_data
@@ -81,8 +81,7 @@ def get_product_name_template(
 
 def get_product_name(
     project_name,
-    asset_doc,
-    task_name,
+    task_entity,
     host_name,
     product_type,
     variant,
@@ -107,12 +106,10 @@ def get_product_name(
 
     Args:
         project_name (str): Project name.
+        task_entity (Optional[Dict[str, Any]]): Task entity.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
-        task_name (str): Task name on which context is instance created.
-        asset_doc (dict): Queried asset document with its tasks in data.
-            Used to get task type.
         default_template (Optional[str]): Default template if any profile does
             not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
             is used if is not passed.
@@ -132,9 +129,10 @@ def get_product_name(
     if not product_type:
         return ""
 
-    asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
-    task_info = asset_tasks.get(task_name) or {}
-    task_type = task_info.get("type")
+    task_name = task_type = None
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
 
     template = get_product_name_template(
         project_name,

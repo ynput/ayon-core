@@ -10,12 +10,8 @@ from contextlib import contextmanager
 
 import pyblish.logic
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import (
-    get_assets,
-    get_asset_by_name,
-    get_asset_name_identifier,
-)
 from ayon_core.settings import get_project_settings
 from ayon_core.lib.attribute_definitions import (
     UnknownDef,
@@ -854,7 +850,7 @@ class CreatedInstance:
     """Instance entity with data that will be stored to workfile.
 
     I think `data` must be required argument containing all minimum information
-    about instance like "asset" and "task" and all data used for filling
+    about instance like "folderPath" and "task" and all data used for filling
     product name as creators may have custom data for product name filling.
 
     Notes:
@@ -1713,12 +1709,12 @@ class CreateContext:
                 are stored. We should store the workfile (if is available) too.
         """
 
-        project_name, asset_name, task_name, workfile_path = (
+        project_name, folder_path, task_name, workfile_path = (
             self._get_current_host_context()
         )
 
         self._current_project_name = project_name
-        self._current_folder_path = asset_name
+        self._current_folder_path = folder_path
         self._current_task_name = task_name
         self._current_workfile_path = workfile_path
 
@@ -1950,24 +1946,25 @@ class CreateContext:
         self,
         creator_identifier,
         variant,
-        asset_doc=None,
-        task_name=None,
+        folder_entity=None,
+        task_entity=None,
         pre_create_data=None
     ):
         """Trigger create of plugins with standartized arguments.
 
-        Arguments 'asset_doc' and 'task_name' use current context as default
-        values. If only 'task_name' is provided it will be overriden by
-        task name from current context. If 'task_name' is not provided
-        when 'asset_doc' is, it is considered that task name is not specified,
-        which can lead to error if product name template requires task name.
+        Arguments 'folder_entity' and 'task_name' use current context as
+        default values. If only 'task_name' is provided it will be overriden
+        by task name from current context. If 'task_name' is not provided
+        when 'folder_entity' is, it is considered that task name is not
+        specified, which can lead to error if product name template requires
+        task name.
 
         Args:
             creator_identifier (str): Identifier of creator plugin.
             variant (str): Variant used for product name.
-            asset_doc (Dict[str, Any]): Asset document which define context of
-                creation (possible context of created instance/s).
-            task_name (str): Name of task to which is context related.
+            folder_entity (Dict[str, Any]): Folder entity which define context
+                of creation (possible context of created instance/s).
+            task_entity (Dict[str, Any]): Task entity.
             pre_create_data (Dict[str, Any]): Pre-create attribute values.
 
         Returns:
@@ -1980,14 +1977,20 @@ class CreateContext:
         creator = self._get_creator_in_create(creator_identifier)
 
         project_name = self.project_name
-        if asset_doc is None:
-            asset_name = self.get_current_asset_name()
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            task_name = self.get_current_task_name()
-            if asset_doc is None:
+        if folder_entity is None:
+            folder_path = self.get_current_folder_path()
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            if folder_entity is None:
                 raise CreatorError(
-                    "Asset with name {} was not found".format(asset_name)
+                    "Folder '{}' was not found".format(folder_path)
                 )
+        if task_entity is None:
+            task_name = self.get_current_task_name()
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -2005,15 +2008,14 @@ class CreateContext:
 
         product_name = creator.get_product_name(
             project_name,
-            asset_doc,
-            task_name,
+            folder_entity,
+            task_entity,
             variant,
             self.host_name,
         )
-        asset_name = get_asset_name_identifier(asset_doc)
 
         instance_data = {
-            "folderPath": asset_name,
+            "folderPath": folder_entity["path"],
             "task": task_name,
             "productType": creator.product_type,
             "variant": variant
@@ -2235,46 +2237,75 @@ class CreateContext:
         if not instances:
             return
 
-        task_names_by_asset_name = {}
+        project_name = self.project_name
+
+        task_names_by_folder_path = {}
         for instance in instances:
-            asset_name = instance.get("folderPath")
+            folder_path = instance.get("folderPath")
             task_name = instance.get("task")
-            if asset_name:
-                task_names_by_asset_name[asset_name] = set()
+            if folder_path:
+                task_names_by_folder_path[folder_path] = set()
                 if task_name:
-                    task_names_by_asset_name[asset_name].add(task_name)
+                    task_names_by_folder_path[folder_path].add(task_name)
 
-        asset_names = {
-            asset_name
-            for asset_name in task_names_by_asset_name.keys()
-            if asset_name is not None
-        }
-        asset_docs = list(get_assets(
-            self.project_name,
-            asset_names=asset_names,
-            fields={"name", "data.tasks", "data.parents"}
-        ))
+        # Backwards compatibility for cases where folder name is set instead
+        #   of folder path
+        folder_names = set()
+        folder_paths = set()
+        for folder_path in task_names_by_folder_path.keys():
+            if folder_path is None:
+                pass
+            elif "/" in folder_path:
+                folder_paths.add(folder_path)
+            else:
+                folder_names.add(folder_path)
 
-        task_names_by_asset_name = {}
-        asset_docs_by_name = collections.defaultdict(list)
-        for asset_doc in asset_docs:
-            asset_name = get_asset_name_identifier(asset_doc)
-            tasks = asset_doc.get("data", {}).get("tasks") or {}
-            task_names_by_asset_name[asset_name] = set(tasks.keys())
-            asset_docs_by_name[asset_doc["name"]].append(asset_doc)
+        folder_paths_by_id = {}
+        if folder_paths:
+            for folder_entity in ayon_api.get_folders(
+                project_name,
+                folder_paths=folder_paths,
+                fields={"id", "path"}
+            ):
+                folder_id = folder_entity["id"]
+                folder_paths_by_id[folder_id] = folder_entity["path"]
+
+        folder_entities_by_name = collections.defaultdict(list)
+        if folder_names:
+            for folder_entity in ayon_api.get_folders(
+                project_name,
+                folder_names=folder_names,
+                fields={"id", "name", "path"}
+            ):
+                folder_id = folder_entity["id"]
+                folder_name = folder_entity["name"]
+                folder_paths_by_id[folder_id] = folder_entity["path"]
+                folder_entities_by_name[folder_name].append(folder_entity)
+
+        tasks_entities = ayon_api.get_tasks(
+            project_name,
+            folder_ids=folder_paths_by_id.keys(),
+            fields={"name", "folderId"}
+        )
+
+        task_names_by_folder_path = collections.defaultdict(set)
+        for task_entity in tasks_entities:
+            folder_id = task_entity["folderId"]
+            folder_path = folder_paths_by_id[folder_id]
+            task_names_by_folder_path[folder_path].add(task_entity["name"])
 
         for instance in instances:
             if not instance.has_valid_asset or not instance.has_valid_task:
                 continue
 
-            asset_name = instance["folderPath"]
-            if asset_name and "/" not in asset_name:
-                asset_docs = asset_docs_by_name.get(asset_name)
-                if len(asset_docs) == 1:
-                    asset_name = get_asset_name_identifier(asset_docs[0])
-                    instance["folderPath"] = asset_name
+            folder_path = instance["folderPath"]
+            if folder_path and "/" not in folder_path:
+                folder_entities = folder_entities_by_name.get(folder_path)
+                if len(folder_entities) == 1:
+                    folder_path = folder_entities[0]["path"]
+                    instance["folderPath"] = folder_path
 
-            if asset_name not in task_names_by_asset_name:
+            if folder_path not in task_names_by_folder_path:
                 instance.set_asset_invalid(True)
                 continue
 
@@ -2282,7 +2313,7 @@ class CreateContext:
             if not task_name:
                 continue
 
-            if task_name not in task_names_by_asset_name[asset_name]:
+            if task_name not in task_names_by_folder_path[folder_path]:
                 instance.set_task_invalid(True)
 
     def save_changes(self):

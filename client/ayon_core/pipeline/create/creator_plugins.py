@@ -472,8 +472,8 @@ class BaseCreator:
     def get_dynamic_data(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name,
         instance
@@ -489,31 +489,21 @@ class BaseCreator:
     def get_product_name(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name=None,
         instance=None
     ):
         """Return product name for passed context.
 
-        CHANGES:
-        Argument `asset_id` was replaced with `asset_doc`. It is easier to
-        query asset before. In some cases would this method be called multiple
-        times and it would be too slow to query asset document on each
-        callback.
-
-        NOTE:
-        Asset document is not used yet but is required if would like to use
-        task type in product templates.
-
         Method is also called on product name update. In that case origin
         instance is passed in.
 
         Args:
             project_name (str): Project name.
-            asset_doc (dict): Asset document for which product is created.
-            task_name (str): For which task product is created.
+            folder_entity (dict): Folder entity.
+            task_entity (dict): Task entity.
             variant (str): Product name variant. In most of cases user input.
             host_name (Optional[str]): Which host creates product. Defaults
                 to host name on create context.
@@ -526,8 +516,8 @@ class BaseCreator:
             host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
             project_name,
-            asset_doc,
-            task_name,
+            folder_entity,
+            task_entity,
             variant,
             host_name,
             instance
@@ -535,8 +525,7 @@ class BaseCreator:
 
         return get_product_name(
             project_name,
-            asset_doc,
-            task_name,
+            task_entity,
             host_name,
             self.product_type,
             variant,

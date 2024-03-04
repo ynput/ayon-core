@@ -1,10 +1,10 @@
 import collections
 
+import ayon_api
+
 from ayon_core.client import (
-    get_assets,
     get_subsets,
     get_last_versions,
-    get_asset_name_identifier,
 )
 
 
@@ -54,14 +54,14 @@ def get_last_versions_for_instances(
     if not product_names:
         return output
 
-    asset_docs = get_assets(
+    folder_entities = ayon_api.get_folders(
         project_name,
-        asset_names=product_names_by_folder_path.keys(),
-        fields=["name", "_id", "data.parents"]
+        folder_paths=product_names_by_folder_path.keys(),
+        fields={"id", "path"}
     )
     folder_paths_by_id = {
-        asset_doc["_id"]: get_asset_name_identifier(asset_doc)
-        for asset_doc in asset_docs
+        folder_entity["id"]: folder_entity["path"]
+        for folder_entity in folder_entities
     }
     if not folder_paths_by_id:
         return output
