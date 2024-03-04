@@ -5,7 +5,6 @@ import click
 import speedcopy
 import ayon_api
 
-from ayon_core.client import get_asset_by_name
 from ayon_core.lib import Terminal
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
@@ -26,12 +25,12 @@ class TextureCopy:
                 if os.path.splitext(x)[1].lower() in texture_extensions)
         return textures
 
-    def _get_destination_path(self, asset_doc, project_entity):
+    def _get_destination_path(self, folder_entity, project_entity):
         project_name = project_entity["name"]
 
         product_name = "Main"
         product_type = "texture"
-        template_data = get_template_data(project_entity, asset_doc)
+        template_data = get_template_data(project_entity, folder_entity)
         template_data.update({
             "family": product_type,
             "subset": product_name,
@@ -68,9 +67,9 @@ class TextureCopy:
                 t.echo("!!! {}".format(e))
                 exit(1)
 
-    def process(self, asset_name, project_name, path):
+    def process(self, project_name, folder_path, path):
         """
-        Process all textures found in path and copy them to asset under
+        Process all textures found in path and copy them to folder under
         project.
         """
 
@@ -87,17 +86,19 @@ class TextureCopy:
             t.echo("!!! Project name [ {} ] not found.".format(project_name))
             exit(1)
 
-        asset_doc = get_asset_by_name(project_name, asset_name)
-        if not asset_doc:
-            t.echo("!!! Asset [ {} ] not found in project".format(asset_name))
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        if not folder_entity:
+            t.echo(
+                "!!! Folder [ {} ] not found in project".format(folder_path)
+            )
             exit(1)
         t.echo(
             (
                 ">>> Project [ {} ] and folder [ {} ] seems to be OK ..."
-            ).format(project_entity['name'], asset_doc['name'])
+            ).format(project_entity['name'], folder_entity['path'])
         )
 
-        dst_path = self._get_destination_path(asset_doc, project_entity)
+        dst_path = self._get_destination_path(folder_entity, project_entity)
         t.echo("--- Using [ {} ] as destination path".format(dst_path))
         if not os.path.exists(dst_path):
             try:
@@ -127,15 +128,15 @@ class TextureCopy:
 
 
 @click.command()
-@click.option('--asset', required=True)
 @click.option('--project', required=True)
+@click.option('--folder', required=True)
 @click.option('--path', required=True)
-def texture_copy(asset, project, path):
+def texture_copy(project, folder, path):
     t.echo("*** Running Texture tool ***")
     t.echo(">>> Initializing avalon session ...")
     os.environ["AYON_PROJECT_NAME"] = project
-    os.environ["AYON_FOLDER_PATH"] = asset
-    TextureCopy().process(asset, project, path)
+    os.environ["AYON_FOLDER_PATH"] = folder
+    TextureCopy().process(project, folder, path)
 
 
 if __name__ == '__main__':
