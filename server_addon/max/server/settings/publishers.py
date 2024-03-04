@@ -90,6 +90,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ValidateLoadedPluginModel,
         title="Validate Loaded Plugin"
     )
+    ValidateMeshHasUVs: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Mesh Has UVs"
+    )
     ExtractModelObj: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Extract OBJ",
@@ -142,6 +146,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False,
         "optional": True,
         "family_plugins_mapping": []
+    },
+    "ValidateMeshHasUVs": {
+        "enabled": True,
+        "optional": True,
+        "active": False
     },
     "ExtractModelObj": {
         "enabled": True,
