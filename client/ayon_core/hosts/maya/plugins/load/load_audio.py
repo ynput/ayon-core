@@ -30,10 +30,10 @@ class AudioLoader(load.LoaderPlugin):
             displaySound=True
         )
 
-        asset = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 

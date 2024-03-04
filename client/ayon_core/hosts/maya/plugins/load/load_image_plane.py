@@ -1,14 +1,8 @@
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.client import (
-    get_asset_by_id,
-    get_subset_by_id,
-    get_version_by_id,
-)
 from ayon_core.pipeline import (
     load,
     get_representation_path,
-    get_current_project_name,
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
 from ayon_core.hosts.maya.api.lib import (
@@ -102,10 +96,10 @@ class ImagePlaneLoader(load.LoaderPlugin):
     def load(self, context, name, namespace, data, options=None):
 
         image_plane_depth = 1000
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -206,7 +200,7 @@ class ImagePlaneLoader(load.LoaderPlugin):
         )
 
     def update(self, container, context):
-        asset_doc = context["asset"]
+        folder_entity = context["folder"]
         repre_doc = context["representation"]
 
         members = get_container_members(container)
@@ -223,8 +217,8 @@ class ImagePlaneLoader(load.LoaderPlugin):
                      type="string")
 
         # Set frame range.
-        start_frame = asset_doc["data"]["frameStart"]
-        end_frame = asset_doc["data"]["frameEnd"]
+        start_frame = folder_entity["attrib"]["frameStart"]
+        end_frame = folder_entity["attrib"]["frameEnd"]
 
         for attr, value in {
             "frameOffset": 0,

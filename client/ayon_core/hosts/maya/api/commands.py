@@ -2,9 +2,8 @@
 """OpenPype script commands to be used directly in Maya."""
 from maya import cmds
 
-from ayon_api import get_project
+from ayon_api import get_project, get_folder_by_path
 
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import get_current_project_name, get_current_folder_path
 
 
@@ -73,18 +72,18 @@ def reset_resolution():
     resolution_width = 1920
     resolution_height = 1080
 
-    # Get resolution from asset
+    # Get resolution from folder
     project_name = get_current_project_name()
-    asset_name = get_current_folder_path()
-    asset_doc = get_asset_by_name(project_name, asset_name)
-    resolution = _resolution_from_document(asset_doc)
+    folder_path = get_current_folder_path()
+    folder_entity = get_folder_by_path(project_name, folder_path)
+    resolution = _resolution_from_document(folder_entity)
     # Try get resolution from project
     if resolution is None:
         # TODO go through visualParents
         print((
-            "Asset \"{}\" does not have set resolution."
+            "Folder '{}' does not have set resolution."
             " Trying to get resolution from project"
-        ).format(asset_name))
+        ).format(folder_path))
         project_entity = get_project(project_name)
         resolution = _resolution_from_document(project_entity)
 

@@ -74,7 +74,7 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
             return True
 
         # update imported sets information
-        asset_name = get_current_folder_path()
+        folder_path = get_current_folder_path()
         for node in imported_sets:
             if not cmds.attributeQuery("id", node=node, exists=True):
                 continue
@@ -82,11 +82,11 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
                 AYON_INSTANCE_ID, AVALON_INSTANCE_ID
             }:
                 continue
-            if not cmds.attributeQuery("asset", node=node, exists=True):
+            if not cmds.attributeQuery("folderPath", node=node, exists=True):
                 continue
 
             cmds.setAttr(
-                "{}.asset".format(node), asset_name, type="string")
+                "{}.folderPath".format(node), folder_path, type="string")
 
         return True
 

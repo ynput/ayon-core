@@ -22,11 +22,9 @@ from maya.api import OpenMaya
 import ayon_api
 
 from ayon_core.client import (
-    get_asset_by_name,
     get_subsets,
     get_last_versions,
     get_representation_by_name,
-    get_asset_name_identifier,
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
@@ -44,7 +42,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_project_folder
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib.profiles_filtering import filter_profiles
 
@@ -285,16 +283,16 @@ def generate_capture_preset(instance, camera, path,
     width_preset = capture_preset["Resolution"]["width"]
     height_preset = capture_preset["Resolution"]["height"]
 
-    # Set resolution variables from asset values
-    asset_data = instance.data["assetEntity"]["data"]
-    asset_width = asset_data.get("resolutionWidth")
-    asset_height = asset_data.get("resolutionHeight")
+    # Set resolution variables from folder values
+    folder_attributes = instance.data["folderEntity"]["attrib"]
+    folder_width = folder_attributes.get("resolutionWidth")
+    folder_height = folder_attributes.get("resolutionHeight")
     review_instance_width = instance.data.get("review_width")
     review_instance_height = instance.data.get("review_height")
 
     # Use resolution from instance if review width/height is set
     # Otherwise use the resolution from preset if it has non-zero values
-    # Otherwise fall back to asset width x height
+    # Otherwise fall back to folder width x height
     # Else define no width, then `capture.capture` will use render resolution
     if review_instance_width and review_instance_height:
         preset["width"] = review_instance_width
@@ -302,9 +300,9 @@ def generate_capture_preset(instance, camera, path,
     elif width_preset and height_preset:
         preset["width"] = width_preset
         preset["height"] = height_preset
-    elif asset_width and asset_height:
-        preset["width"] = asset_width
-        preset["height"] = asset_height
+    elif folder_width and folder_height:
+        preset["width"] = folder_width
+        preset["height"] = folder_height
 
     # Isolate view is requested by having objects in the set besides a
     # camera. If there is only 1 member it'll be the camera because we
@@ -1639,7 +1637,7 @@ def get_id(node):
         return
 
 
-def generate_ids(nodes, asset_id=None):
+def generate_ids(nodes, folder_id=None):
     """Returns new unique ids for the given nodes.
 
     Note: This does not assign the new ids, it only generates the values.
@@ -1656,27 +1654,33 @@ def generate_ids(nodes, asset_id=None):
 
     Args:
         nodes (list): List of nodes.
-        asset_id (str or bson.ObjectId): The database id for the *asset* to
-            generate for. When None provided the current asset in the
-            active session is used.
+        folder_id (Optional[str]): Folder id to generate id for. When None
+            provided current folder is used.
 
     Returns:
         list: A list of (node, id) tuples.
 
     """
 
-    if asset_id is None:
-        # Get the asset ID from the database for the asset of current context
+    if folder_id is None:
+        # Get the folder id based on current context folder
         project_name = get_current_project_name()
-        asset_name = get_current_folder_path()
-        asset_doc = get_asset_by_name(project_name, asset_name, fields=["_id"])
-        assert asset_doc, "No current asset found in Session"
-        asset_id = asset_doc['_id']
+        folder_path = get_current_folder_path()
+        if not folder_path:
+            raise ValueError("Current folder path is not set")
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields=["id"]
+        )
+        if not folder_entity:
+            raise ValueError((
+                "Current folder '{}' was not found on the server"
+            ).format(folder_path))
+        folder_id = folder_entity["id"]
 
     node_ids = []
     for node in nodes:
         _, uid = str(uuid.uuid4()).rsplit("-", 1)
-        unique_id = "{}:{}".format(asset_id, uid)
+        unique_id = "{}:{}".format(folder_id, uid)
         node_ids.append((node, unique_id))
 
     return node_ids
@@ -1868,16 +1872,20 @@ def get_container_members(container):
 
 
 # region LOOKDEV
-def list_looks(project_name, asset_id):
-    """Return all look products for the given asset
+def list_looks(project_name, folder_id):
+    """Return all look products for the given folder.
 
     This assumes all look products start with "look*" in their names.
+
+    Returns:
+        list[dict[str, Any]]: List of look products.
+
     """
     # # get all products with look leading in
     # the name associated with the asset
     # TODO this should probably look for product type 'look' instead of
     #   checking product name that can not start with product type
-    subset_docs = get_subsets(project_name, asset_ids=[asset_id])
+    subset_docs = get_subsets(project_name, asset_ids=[folder_id])
     return [
         subset_doc
         for subset_doc in subset_docs
@@ -1946,7 +1954,7 @@ def assign_look_by_version(nodes, version_id):
 def assign_look(nodes, product_name="lookDefault"):
     """Assigns a look to a node.
 
-    Optimizes the nodes by grouping by asset id and finding
+    Optimizes the nodes by grouping by folder id and finding
     related product by name.
 
     Args:
@@ -1954,27 +1962,27 @@ def assign_look(nodes, product_name="lookDefault"):
         product_name (str): name of the product to find
     """
 
-    # Group all nodes per asset id
+    # Group all nodes per folder id
     grouped = defaultdict(list)
     for node in nodes:
-        pype_id = get_id(node)
-        if not pype_id:
+        hash_id = get_id(node)
+        if not hash_id:
             continue
 
-        parts = pype_id.split(":", 1)
+        parts = hash_id.split(":", 1)
         grouped[parts[0]].append(node)
 
     project_name = get_current_project_name()
     subset_docs = get_subsets(
         project_name, subset_names=[product_name], asset_ids=grouped.keys()
     )
-    subset_docs_by_asset_id = {
+    subset_docs_by_folder_id = {
         str(subset_doc["parent"]): subset_doc
         for subset_doc in subset_docs
     }
     product_ids = {
         subset_doc["_id"]
-        for subset_doc in subset_docs_by_asset_id.values()
+        for subset_doc in subset_docs_by_folder_id.values()
     }
     last_version_docs = get_last_versions(
         project_name,
@@ -1986,28 +1994,28 @@ def assign_look(nodes, product_name="lookDefault"):
         for last_version_doc in last_version_docs
     }
 
-    for asset_id, asset_nodes in grouped.items():
+    for folder_id, asset_nodes in grouped.items():
         # create objectId for database
-        subset_doc = subset_docs_by_asset_id.get(asset_id)
+        subset_doc = subset_docs_by_folder_id.get(folder_id)
         if not subset_doc:
             log.warning((
                 "No product '{}' found for {}"
-            ).format(product_name, asset_id))
+            ).format(product_name, folder_id))
             continue
 
         last_version = last_version_docs_by_product_id.get(subset_doc["_id"])
         if not last_version:
             log.warning((
-                "Not found last version for product '{}' on asset with id {}"
-            ).format(product_name, asset_id))
+                "Not found last version for product '{}' on folder with id {}"
+            ).format(product_name, folder_id))
             continue
 
         families = last_version.get("data", {}).get("families") or []
         if "look" not in families:
             log.warning((
-                "Last version for product '{}' on asset with id {}"
+                "Last version for product '{}' on folder with id {}"
                 " does not have look product type"
-            ).format(product_name, asset_id))
+            ).format(product_name, folder_id))
             continue
 
         log.debug("Assigning look '{}' <v{:03d}>".format(
@@ -2499,11 +2507,11 @@ def get_fps_for_current_context():
     """
 
     project_name = get_current_project_name()
-    asset_name = get_current_folder_path()
-    asset_doc = get_asset_by_name(
-        project_name, asset_name, fields=["data.fps"]
+    folder_path = get_current_folder_path()
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path, fields={"attrib.fps"}
     ) or {}
-    fps = asset_doc.get("data", {}).get("fps")
+    fps = folder_entity.get("attrib", {}).get("fps")
     if not fps:
         project_entity = ayon_api.get_project(
             project_name, fields=["attrib.fps"]
@@ -2517,7 +2525,7 @@ def get_fps_for_current_context():
 
 
 def get_frame_range(include_animation_range=False):
-    """Get the current assets frame range and handles.
+    """Get the current folder frame range and handles.
 
     Args:
         include_animation_range (bool, optional): Whether to include
@@ -2525,24 +2533,25 @@ def get_frame_range(include_animation_range=False):
             range of the timeline. It is excluded by default.
 
     Returns:
-        dict: Asset's expected frame range values.
+        dict: Folder's expected frame range values.
 
     """
 
     # Set frame start/end
     project_name = get_current_project_name()
-    asset_name = get_current_folder_path()
-    asset = get_asset_by_name(project_name, asset_name)
+    folder_path = get_current_folder_path()
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    folder_attributes = folder_entity["attrib"]
 
-    frame_start = asset["data"].get("frameStart")
-    frame_end = asset["data"].get("frameEnd")
+    frame_start = folder_attributes.get("frameStart")
+    frame_end = folder_attributes.get("frameEnd")
 
     if frame_start is None or frame_end is None:
-        cmds.warning("No edit information found for %s" % asset_name)
+        cmds.warning("No edit information found for '{}'".format(folder_path))
         return
 
-    handle_start = asset["data"].get("handleStart") or 0
-    handle_end = asset["data"].get("handleEnd") or 0
+    handle_start = folder_attributes.get("handleStart") or 0
+    handle_end = folder_attributes.get("handleEnd") or 0
 
     frame_range = {
         "frameStart": frame_start,
@@ -2558,15 +2567,21 @@ def get_frame_range(include_animation_range=False):
         # keys. That is why these are excluded by default.
         task_name = get_current_task_name()
         settings = get_project_settings(project_name)
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+        task_type = None
+        if task_entity:
+            task_type = task_entity["taskType"]
+
         include_handles_settings = settings["maya"]["include_handles"]
-        current_task = asset.get("data").get("tasks").get(task_name)
 
         animation_start = frame_start
         animation_end = frame_end
 
         include_handles = include_handles_settings["include_handles_default"]
         for item in include_handles_settings["per_task_type"]:
-            if current_task["type"] in item["task_type"]:
+            if task_type in item["task_type"]:
                 include_handles = item["include_handles"]
                 break
         if include_handles:
@@ -2580,7 +2595,7 @@ def get_frame_range(include_animation_range=False):
 
 
 def reset_frame_range(playback=True, render=True, fps=True):
-    """Set frame range to current asset
+    """Set frame range to current folder.
 
     Args:
         playback (bool, Optional): Whether to set the maya timeline playback
@@ -2594,7 +2609,7 @@ def reset_frame_range(playback=True, render=True, fps=True):
 
     frame_range = get_frame_range(include_animation_range=True)
     if not frame_range:
-        # No frame range data found for asset
+        # No frame range data found for folder
         return
 
     frame_start = frame_range["frameStart"]
@@ -2619,27 +2634,19 @@ def reset_frame_range(playback=True, render=True, fps=True):
 def reset_scene_resolution():
     """Apply the scene resolution  from the project definition
 
-    scene resolution can be overwritten by an asset if the asset.data contains
-    any information regarding scene resolution .
+    scene resolution can be overwritten by an folder if the folder.attrib
+    contains any information regarding scene resolution .
 
     Returns:
         None
     """
 
-    project_name = get_current_project_name()
-    project_entity = ayon_api.get_project(project_name)
-    project_attribs = project_entity["attrib"]
-    asset_data = get_current_project_asset()["data"]
+    folder_attributes = get_current_project_folder()["attrib"]
 
-    # Set project resolution
-    width_key = "resolutionWidth"
-    height_key = "resolutionHeight"
-    pixelAspect_key = "pixelAspect"
-
-    width = asset_data.get(width_key, project_attribs.get(width_key, 1920))
-    height = asset_data.get(height_key, project_attribs.get(height_key, 1080))
-    pixelAspect = asset_data.get(pixelAspect_key,
-                                 project_attribs.get(pixelAspect_key, 1))
+    # Set resolution
+    width = folder_attributes.get("resolutionWidth", 1920)
+    height = folder_attributes.get("resolutionHeight", 1080)
+    pixelAspect = folder_attributes.get("pixelAspect", 1)
 
     set_scene_resolution(width, height, pixelAspect)
 
@@ -2647,7 +2654,7 @@ def reset_scene_resolution():
 def set_context_settings():
     """Apply the project settings from the project definition
 
-    Settings can be overwritten by an asset if the asset.data contains
+    Settings can be overwritten by an folder if the folder.attrib contains
     any information regarding those settings.
 
     Examples of settings:
@@ -2657,9 +2664,8 @@ def set_context_settings():
 
     Returns:
         None
+
     """
-
-
     # Set project fps
     set_scene_fps(get_fps_for_current_context())
 
@@ -3161,9 +3167,9 @@ def update_content_on_context_change():
     This will update scene content to match new folder on context change
     """
     scene_sets = cmds.listSets(allSets=True)
-    asset_doc = get_current_project_asset()
-    new_folder_path = get_asset_name_identifier(asset_doc)
-    new_data = asset_doc["data"]
+    folder_entity = get_current_project_folder()
+    folder_attributes = folder_entity["attrib"]
+    new_folder_path = folder_entity["path"]
     for s in scene_sets:
         try:
             if cmds.getAttr("{}.id".format(s)) in {
@@ -3181,10 +3187,10 @@ def update_content_on_context_change():
                     )
                 if "frameStart" in attr:
                     cmds.setAttr("{}.frameStart".format(s),
-                                 new_data["frameStart"])
+                                 folder_attributes["frameStart"])
                 if "frameEnd" in attr:
                     cmds.setAttr("{}.frameEnd".format(s),
-                                 new_data["frameEnd"],)
+                                 folder_attributes["frameEnd"],)
         except ValueError:
             pass
 
@@ -4122,15 +4128,26 @@ def create_rig_animation_instance(
     )
     assert roots, "No root nodes in rig, this is a bug."
 
+    folder_entity = context["folder"]
+    product_type = (
+        context["subset"]["data"].get("family")
+        or context["subset"]["data"]["families"][0]
+    )
+    product_name = context["subset"]["name"]
+
     custom_product_name = options.get("animationProductName")
     if custom_product_name:
         formatting_data = {
-            "asset": context["asset"],
-            "subset": context['subset']['name'],
-            "family": (
-                context['subset']['data'].get('family') or
-                context['subset']['data']['families'][0]
-            )
+            "folder": {
+                "name": folder_entity["name"]
+            },
+            "product": {
+                "type": product_type,
+                "name": product_name,
+            },
+            "asset": folder_entity["name"],
+            "subset": product_name,
+            "family": product_type
         }
         namespace = get_custom_namespace(
             custom_product_name.format(**formatting_data)
