@@ -20,7 +20,7 @@
 # )
 #
 #
-# class DeleteOldVersions(load.SubsetLoaderPlugin):
+# class DeleteOldVersions(load.ProductLoaderPlugin):
 #     """Deletes specific number of old version"""
 #
 #     is_multiple_contexts_compatible = True

@@ -245,7 +245,7 @@ class LoaderPlugin(list):
             return self._fname
 
 
-class SubsetLoaderPlugin(LoaderPlugin):
+class ProductLoaderPlugin(LoaderPlugin):
     """Load product into host application
     Arguments:
         context (dict): avalon-core:context-1.0

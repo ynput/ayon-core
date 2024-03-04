@@ -14,7 +14,7 @@ from ayon_core.client import (
 )
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
-    SubsetLoaderPlugin,
+    ProductLoaderPlugin,
     filter_repre_contexts_by_loader,
     get_loader_identifier,
     load_with_repre_context,
@@ -317,7 +317,7 @@ class LoaderActionsModel:
                 we want to show loaders for?
 
         Returns:
-            tuple[list[SubsetLoaderPlugin], list[LoaderPlugin]]: Discovered
+            tuple[list[ProductLoaderPlugin], list[LoaderPlugin]]: Discovered
                 loader plugins.
         """
 
@@ -342,7 +342,7 @@ class LoaderActionsModel:
 
             identifier = get_loader_identifier(loader_cls)
             loaders_by_identifier[identifier] = loader_cls
-            if issubclass(loader_cls, SubsetLoaderPlugin):
+            if issubclass(loader_cls, ProductLoaderPlugin):
                 product_loaders.append(loader_cls)
             else:
                 repre_loaders.append(loader_cls)
@@ -404,7 +404,7 @@ class LoaderActionsModel:
     def _contexts_for_versions(self, project_name, version_ids):
         """Get contexts for given version ids.
 
-        Prepare version contexts for 'SubsetLoaderPlugin' and representation
+        Prepare version contexts for 'ProductLoaderPlugin' and representation
         contexts for 'LoaderPlugin' for all children representations of
         given versions.
 
@@ -483,7 +483,7 @@ class LoaderActionsModel:
     def _contexts_for_representations(self, project_name, repre_ids):
         """Get contexts for given representation ids.
 
-        Prepare version contexts for 'SubsetLoaderPlugin' and representation
+        Prepare version contexts for 'ProductLoaderPlugin' and representation
         contexts for 'LoaderPlugin' for all children representations of
         given versions.
 
@@ -645,18 +645,18 @@ class LoaderActionsModel:
     ):
         """Trigger version loader.
 
-        This triggers 'load' method of 'SubsetLoaderPlugin' for given version
+        This triggers 'load' method of 'ProductLoaderPlugin' for given version
         ids.
 
         Note:
-            Even when the plugin is 'SubsetLoaderPlugin' it actually expects
+            Even when the plugin is 'ProductLoaderPlugin' it actually expects
                 versions and should be named 'VersionLoaderPlugin'. Because it
                 is planned to refactor load system and introduce
                 'LoaderAction' plugins it is not relevant to change it
                 anymore.
 
         Args:
-            loader (SubsetLoaderPlugin): Loader plugin to use.
+            loader (ProductLoaderPlugin): Loader plugin to use.
             options (dict): Option values for loader.
             project_name (str): Project name.
             version_ids (Iterable[str]): Version ids.

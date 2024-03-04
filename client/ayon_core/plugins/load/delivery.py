@@ -22,7 +22,7 @@ from ayon_core.pipeline.delivery import (
 )
 
 
-class Delivery(load.SubsetLoaderPlugin):
+class Delivery(load.ProductLoaderPlugin):
     """Export selected versions to folder structure from Template"""
 
     is_multiple_contexts_compatible = True
