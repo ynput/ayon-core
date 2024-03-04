@@ -684,7 +684,6 @@ class BaseCommunicator:
         )
         output_file.close()
         output_filepath = output_file.name.replace("\\", "/")
-        print(output_filepath)
         with open(output_filepath, "wt") as tmp:
             tmp.write(zscript)
         subprocess.call([zbrush_exe, output_filepath],
