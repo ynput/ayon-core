@@ -31,7 +31,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
 
         comp_name = get_unique_layer_name(
             existing_items,
-            "{}_{}".format(context["asset"]["name"], name))
+            "{}_{}".format(context["folder"]["name"], name))
 
         path = self.filepath_from_context(context)
         layers = get_background_layers(path)
@@ -59,11 +59,10 @@ class BackgroundLoader(api.AfterEffectsLoader):
     def update(self, container, context):
         """ Switch asset or change version """
         stub = self.get_stub()
-        asset_doc = context["asset"]
+        folder_name = context["folder"]["name"]
         subset_doc = context["subset"]
         repre_doc = context["representation"]
 
-        folder_name = asset_doc["name"]
         product_name = subset_doc["name"]
         _ = container.pop("layer")
 
