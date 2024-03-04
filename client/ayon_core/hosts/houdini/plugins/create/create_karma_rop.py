@@ -12,7 +12,7 @@ class CreateKarmaROP(plugin.HoudiniCreator):
     product_type = "karma_rop"
     icon = "magic"
     render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}"
-    checkpoint_dir = "$HIP/ayon/{product[name]}/checkpoint/{product[name]}.$F4.checkpoint"
+    checkpoint_dir = "$HIP/ayon/{product[name]}/checkpoint/{product[name]}.$F4.{ext}"
     usd_dir = "$HIP/ayon/{product_name}/usd/{product_name}_$RENDERID"
 
     def create(self, product_name, instance_data, pre_create_data):
@@ -40,7 +40,8 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         )
 
         checkpoint = self.checkpoint_dir.format(
-            product={"name": product_name}
+            product={"name": product_name},
+            ext="checkpoint"
         )
 
         usd_directory = self.usd_dir.format(

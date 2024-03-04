@@ -13,7 +13,8 @@ class CreatePointCache(plugin.HoudiniCreator):
     label = "PointCache (Abc)"
     product_type = "pointcache"
     icon = "gears"
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.abc"
+    ext = "abc"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
@@ -30,7 +31,8 @@ class CreatePointCache(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = self.staging_dir.format(
-            product={"name": product_name}
+            product={"name": product_name},
+            ext=self.ext
         )
 
         parms = {

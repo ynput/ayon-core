@@ -11,7 +11,8 @@ class CreateRedshiftProxy(plugin.HoudiniCreator):
     label = "Redshift Proxy"
     product_type = "redshiftproxy"
     icon = "magic"
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.rs"
+    ext = "rs"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -39,6 +40,7 @@ class CreateRedshiftProxy(plugin.HoudiniCreator):
 
         filepath = self.staging_dir.format(
             product={"name": product_name},
+            ext=self.ext
         )
 
         parms = {

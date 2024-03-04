@@ -15,7 +15,8 @@ class CreateStaticMesh(plugin.HoudiniCreator):
     icon = "fa5s.cubes"
 
     default_variants = ["Main"]
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.fbx"
+    ext = "fbx"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -31,7 +32,8 @@ class CreateStaticMesh(plugin.HoudiniCreator):
 
         # prepare parms
         filepath = self.staging_dir.format(
-            product={"name": product_name}
+            product={"name": product_name},
+            ext=self.ext
         )
 
         parms = {

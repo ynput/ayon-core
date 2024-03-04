@@ -13,7 +13,8 @@ class CreateAlembicCamera(plugin.HoudiniCreator):
     label = "Camera (Abc)"
     product_type = "camera"
     icon = "camera"
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.abc"
+    ext = "abc"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou
@@ -29,7 +30,8 @@ class CreateAlembicCamera(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = self.staging_dir.format(
-            product={"name": product_name}
+            product={"name": product_name},
+            ext=self.ext
         )
 
         parms = {

@@ -148,7 +148,7 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
     "CreateAlembicCamera": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.abc"
+        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
     },
     "CreateArnoldAss": {
         "enabled": True,
@@ -176,24 +176,24 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
         "enabled": True,
         "default_variants": ["Main"],
         "render_staging_dir": "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}",
-        "checkpoint_dir": "$HIP/ayon/{product[name]}/checkpoint/{product[name]}.$F4.checkpoint",
+        "checkpoint_dir": "$HIP/ayon/{product[name]}/checkpoint/{product[name]}.$F4.{ext}",
         "usd_dir": "$HIP/ayon/{product[name]}/usd/{product[name]}_$RENDERID"
     },
     "CreateMantraIFD": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.$F4.ifd"
+        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
     },
     "CreateMantraROP": {
         "enabled": True,
         "default_variants": ["Main"],
         "render_staging_dir": "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}",
-        "ifd_dir": "$HIP/ayon/{product[name]}/ifd/{product[name]}.$F4.ifd"
+        "ifd_dir": "$HIP/ayon/{product[name]}/ifd/{product[name]}.$F4.{ext}"
     },
     "CreatePointCache": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.abc"
+        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
     },
     "CreateBGEO": {
         "enabled": True,
@@ -203,13 +203,13 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
     "CreateRedshiftProxy": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.$F4.rs"
+        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
     },
     "CreateRedshiftROP": {
         "enabled": True,
         "default_variants": ["Main"],
         "render_staging_dir": "$HIP/ayon/{product[name]}/render/{product[name]}.$AOV.$F4.{ext}",
-        "rs_dir": "$HIP/ayon/{product[name]}/rs/{product[name]}.$F4.rs"
+        "rs_dir": "$HIP/ayon/{product[name]}/rs/{product[name]}.$F4.{ext}"
     },
     "CreateReview": {
         "enabled": True,
@@ -228,12 +228,12 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
             "USP",
             "UCX"
         ],
-        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.fbx"
+        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
     },
     "CreateUSD": {
         "enabled": False,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.usd"
+        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
     },
     "CreateUSDRender": {
         "enabled": False,
@@ -243,12 +243,12 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
     "CreateVDBCache": {
         "enabled": True,
         "default_variants": ["Main"],
-        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.$F4.vdb"
+        "staging_dir": "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
     },
     "CreateVrayROP": {
         "enabled": True,
         "default_variants": ["Main"],
         "render_staging_dir": "$HIP/ayon/{product[name]}/render/{product[name]}.$AOV.$F4.{ext}",
-        "vrscene_dir": "$HIP/ayon/{product[name]}/vrscene/{product[name]}.$F4.vrscene"
+        "vrscene_dir": "$HIP/ayon/{product[name]}/vrscene/{product[name]}.$F4.{ext}"
     },
 }
