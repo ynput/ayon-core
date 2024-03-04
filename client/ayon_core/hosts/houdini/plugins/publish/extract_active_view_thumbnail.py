@@ -39,12 +39,10 @@ class ExtractActiveViewThumbnail(publish.Extractor):
 
     def get_view_thumbnail(self, instance):
 
-        with tempfile.NamedTemporaryFile("w", suffix=".jpg") as tmp:
+        sceneview = lib.get_scene_viewer()
+        with tempfile.NamedTemporaryFile("w", suffix=".jpg", delete=False) as tmp:
+            lib.sceneview_snapshot(sceneview, tmp.name)
             thumbnail_path = tmp.name
 
         instance.context.data["cleanupFullPaths"].append(thumbnail_path)
-
-        sceneview = lib.get_scene_viewer()
-        lib.sceneview_snapshot(sceneview, thumbnail_path)
-
         return thumbnail_path
