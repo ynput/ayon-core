@@ -82,9 +82,9 @@ class LoadImage(plugin.Loader):
             load_options_str += (load_option + " ")
 
         # Prepare layer name
-        asset_name = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         product_name = context["subset"]["name"]
-        layer_name = self.get_unique_layer_name(asset_name, product_name)
+        layer_name = self.get_unique_layer_name(folder_name, product_name)
 
         path = self.filepath_from_context(context)
 
