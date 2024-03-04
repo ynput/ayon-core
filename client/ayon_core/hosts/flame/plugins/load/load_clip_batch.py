@@ -59,14 +59,14 @@ class LoadClipBatch(opfapi.ClipLoader):
             layer_rename_template = layer_rename_template.replace(
                 "output", "representation")
 
-        asset_doc = context["asset"]
+        folder_entity = context["folder"]
         subset_doc = context["subset"]
         formatting_data = deepcopy(context["representation"]["context"])
         formatting_data["batch"] = self.batch.name.get_value()
         formatting_data.update({
-            "asset": asset_doc["name"],
+            "asset": folder_entity["name"],
             "folder": {
-                "name": asset_doc["name"],
+                "name": folder_entity["name"],
             },
             "subset": subset_doc["name"],
             "family": subset_doc["data"]["family"],

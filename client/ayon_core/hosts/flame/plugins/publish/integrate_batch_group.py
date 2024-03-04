@@ -247,7 +247,7 @@ class IntegrateBatchGroup(pyblish.api.InstancePlugin):
             os.makedirs(render_dir_path, mode=0o777)
 
         # TODO: add most of these to `imageio/flame/batch/write_node`
-        name = "{project[code]}_{asset}_{task[name]}".format(
+        name = "{project[code]}_{folder[name]}_{task[name]}".format(
             **anatomy_data
         )
 
@@ -322,15 +322,16 @@ class IntegrateBatchGroup(pyblish.api.InstancePlugin):
 
     def _get_shot_task_dir_path(self, instance, task_data):
         project_entity = instance.data["projectEntity"]
-        asset_entity = instance.data["assetEntity"]
+        folder_entity = instance.data["folderEntity"]
+        task_entity = instance.data["taskEntity"]
         anatomy = instance.context.data["anatomy"]
         project_settings = instance.context.data["project_settings"]
 
         return get_workdir(
             project_entity,
-            asset_entity,
-            task_data["name"],
+            folder_entity,
+            task_entity,
             "flame",
-            anatomy,
+            anatomy=anatomy,
             project_settings=project_settings
         )
