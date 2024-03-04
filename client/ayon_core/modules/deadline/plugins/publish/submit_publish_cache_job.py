@@ -110,7 +110,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         output_dir = self._get_publish_folder(
             anatomy,
             deepcopy(instance.data["anatomyData"]),
-            instance.data.get("folderPath"),
+            instance.data.get("folderEntity"),
             instance.data["productName"],
             instance.context,
             instance.data["productType"],
@@ -380,7 +380,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
             json.dump(publish_job, f, indent=4, sort_keys=True)
 
     def _get_publish_folder(self, anatomy, template_data,
-                            asset, product_name, context,
+                            folder_entity, product_name, context,
                             product_type, version=None):
         """
             Extracted logic to pre-calculate real publish folder, which is
@@ -394,7 +394,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         Args:
             anatomy (ayon_core.pipeline.anatomy.Anatomy):
             template_data (dict): pre-calculated collected data for process
-            asset (str): asset name
+            folder_entity (dict[str, Any]): Folder entity.
             product_name (str): Product name (actually group name of product).
             product_type (str): for current deadline process it's always
                 'render'
@@ -409,18 +409,22 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         """
 
         project_name = context.data["projectName"]
+        host_name = context.data["hostName"]
         if not version:
+            folder_id = None
+            if folder_entity:
+                folder_id = folder_entity["id"]
             version = get_last_version_by_subset_name(
                 project_name,
                 product_name,
-                asset_name=asset
+                asset_id=folder_id
             )
             if version:
                 version = int(version["name"]) + 1
             else:
                 version = get_versioning_start(
                     project_name,
-                    template_data["app"],
+                    host_name,
                     task_name=template_data["task"]["name"],
                     task_type=template_data["task"]["type"],
                     product_type="render",
@@ -428,7 +432,6 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
                     project_settings=context.data["project_settings"]
                 )
 
-        host_name = context.data["hostName"]
         task_info = template_data.get("task") or {}
 
         template_name = publish.get_publish_template_name(
