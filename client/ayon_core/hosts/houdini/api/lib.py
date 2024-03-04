@@ -1083,9 +1083,11 @@ def sceneview_snapshot(
     It works in different Houdini context e.g. Objects, Solaris
 
     Example:
-        from openpype.hosts.houdini.api import lib
-        sceneview = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
-        lib.sceneview_snapshot(sceneview)
+    	This is how the function can be used::
+    	
+        	from ayon_core.hosts.houdini.api import lib
+	        sceneview = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
+        	lib.sceneview_snapshot(sceneview)
 
     Notes:
         .png output will render poorly, so use .jpg.
