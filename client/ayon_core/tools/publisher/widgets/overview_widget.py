@@ -18,6 +18,7 @@ class OverviewWidget(QtWidgets.QFrame):
     instance_context_changed = QtCore.Signal()
     create_requested = QtCore.Signal()
     convert_requested = QtCore.Signal()
+    publish_tab_requested = QtCore.Signal()
 
     anim_end_value = 200
     anim_duration = 200
@@ -114,13 +115,13 @@ class OverviewWidget(QtWidgets.QFrame):
             self._on_product_change
         )
         product_list_view.double_clicked.connect(
-            self._on_double_clicked
+            self.publish_tab_requested
         )
         product_view_cards.selection_changed.connect(
             self._on_product_change
         )
         product_view_cards.double_clicked.connect(
-            self._on_double_clicked
+            self.publish_tab_requested
         )
         # Active instances changed
         product_list_view.active_changed.connect(
@@ -298,10 +299,6 @@ class OverviewWidget(QtWidgets.QFrame):
         self._product_attributes_widget.set_current_instances(
             instances, context_selected, convertor_identifiers
         )
-
-    def _on_double_clicked(self):
-        from ayon_core.tools.utils import host_tools
-        host_tools.show_publisher(tab="publish")
 
     def _on_active_changed(self):
         if self._refreshing_instances:
