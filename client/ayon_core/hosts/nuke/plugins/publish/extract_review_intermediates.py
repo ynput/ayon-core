@@ -50,13 +50,14 @@ class ExtractReviewIntermediates(publish.Extractor):
             cls.outputs = current_setting["outputs"]
 
     def process(self, instance):
+        # TODO 'families' should not be included for filtering of outputs
         families = set(instance.data["families"])
 
-        # add main family to make sure all families are compared
-        families.add(instance.data["family"])
+        # Add product type to families
+        families.add(instance.data["productType"])
 
         task_type = instance.context.data["taskType"]
-        subset = instance.data["subset"]
+        product_name = instance.data["productName"]
         self.log.debug("Creating staging dir...")
 
         if "representations" not in instance.data:
@@ -75,29 +76,33 @@ class ExtractReviewIntermediates(publish.Extractor):
         # generate data
         with maintained_selection():
             generated_repres = []
-            for o_name, o_data in self.outputs.items():
+            for o_data in self.outputs:
+                o_name = o_data["name"]
                 self.log.debug(
                     "o_name: {}, o_data: {}".format(o_name, pformat(o_data)))
-                f_families = o_data["filter"]["families"]
+                f_product_types = o_data["filter"]["product_types"]
                 f_task_types = o_data["filter"]["task_types"]
-                f_subsets = o_data["filter"]["subsets"]
+                product_names = o_data["filter"]["product_names"]
 
                 self.log.debug(
-                    "f_families `{}` > families: {}".format(
-                        f_families, families))
+                    "f_product_types `{}` > families: {}".format(
+                        f_product_types, families))
 
                 self.log.debug(
                     "f_task_types `{}` > task_type: {}".format(
                         f_task_types, task_type))
 
                 self.log.debug(
-                    "f_subsets `{}` > subset: {}".format(
-                        f_subsets, subset))
+                    "product_names `{}` > product: {}".format(
+                        product_names, product_name))
 
                 # test if family found in context
                 # using intersection to make sure all defined
                 # families are present in combination
-                if f_families and not families.intersection(f_families):
+                if (
+                    f_product_types
+                    and not families.intersection(f_product_types)
+                ):
                     continue
 
                 # test task types from filter
@@ -105,8 +110,9 @@ class ExtractReviewIntermediates(publish.Extractor):
                     continue
 
                 # test subsets from filter
-                if f_subsets and not any(
-                        re.search(s, subset) for s in f_subsets):
+                if product_names and not any(
+                    re.search(p, product_name) for p in product_names
+                ):
                     continue
 
                 self.log.debug(
@@ -117,7 +123,7 @@ class ExtractReviewIntermediates(publish.Extractor):
                 # check if settings have more then one preset
                 # so we dont need to add outputName to representation
                 # in case there is only one preset
-                multiple_presets = len(self.outputs.keys()) > 1
+                multiple_presets = len(self.outputs) > 1
 
                 # adding bake presets to instance data for other plugins
                 if not instance.data.get("bakePresets"):

@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
 
 
 class ValidateModelContent(pyblish.api.InstancePlugin):
-    """Adheres to the content of 'model' family
+    """Adheres to the content of 'model' product type
 
     - Must have one top group. (configurable)
     - Must only contain: transforms, meshes and groups
