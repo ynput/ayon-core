@@ -55,9 +55,9 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
         frames = instance.data.get("frames", [])
         staging_dir, _ = os.path.split(filepath)
         if isinstance(frames, str):
-            files = ["{}/{}".format(staging_dir, frames)]
+            files = [os.path.join(staging_dir, frames)]
         else:
-            files = ["{}/{}".format(staging_dir, f) for f in frames]
+            files = [os.path.join(staging_dir, f) for f in frames]
 
         # Render Products
         expectedFiles = instance.data.get("expectedFiles", [])
