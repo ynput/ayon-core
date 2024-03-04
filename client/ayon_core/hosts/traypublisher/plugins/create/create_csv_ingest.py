@@ -5,7 +5,7 @@ import clique
 from copy import deepcopy, copy
 
 from ayon_core.client import get_asset_by_name
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline import CreatedInstance
 from ayon_core.lib import FileDef, BoolDef
 from ayon_core.lib.transcoding import (
@@ -23,7 +23,7 @@ class IngestCSV(TrayPublishCreator):
     icon = "fa.file"
 
     label = "CSV Ingest"
-    family = "csv_ingest_file"
+    product_type = "csv_ingest_file"
     identifier = "io.ayon_core.creators.traypublisher.csv_ingest"
 
     default_variants = ["Main"]
@@ -40,7 +40,6 @@ configuration in project settings.
     # settings for this creator
     columns_config = {}
     representations_config = {}
-
 
     def create(self, subset_name, instance_data, pre_create_data):
         """Create an product from each row found in the CSV.
@@ -118,7 +117,7 @@ configuration in project settings.
                 version = product_data["version"]
 
                 # create subset/product name
-                product_name = get_subset_name(
+                product_name = get_product_name(
                     product_type,
                     variant,
                     task_name,

@@ -78,9 +78,11 @@ class ColumnConfigModel(BaseSettingsModel):
 
 
 class RepresentationItemModel(BaseSettingsModel):
-    """Allows to publish multiple video files in one go. <br />Name of matching
-     asset is parsed from file names ('asset.mov', 'asset_v001.mov',
-     'my_asset_to_publish.mov')"""
+    """Allows to publish multiple video files in one go.
+
+    Name of matching asset is parsed from file names
+    ('asset.mov', 'asset_v001.mov', 'my_asset_to_publish.mov')
+    """
 
     name: str = SettingsField(
         title="Name",
@@ -115,12 +117,12 @@ class RepresentationConfigModel(BaseSettingsModel):
         default_factory=list
     )
 
-    representation: list[RepresentationItemModel] = SettingsField(
-        title="Representation",
+    representations: list[RepresentationItemModel] = SettingsField(
+        title="Representations",
         default_factory=list
     )
 
-    @validator("representation")
+    @validator("representations")
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
         return value
@@ -141,9 +143,9 @@ class IngestCSVPluginModel(BaseSettingsModel):
         default_factory=ColumnConfigModel
     )
 
-    representations_config: dict = SettingsField(
+    representations_config: RepresentationConfigModel = SettingsField(
         title="Representations config",
-        default_factory=dict
+        default_factory=RepresentationConfigModel
     )
 
 
