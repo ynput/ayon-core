@@ -93,7 +93,7 @@ class BlendLookLoader(plugin.AssetLoader):
         """
 
         libpath = self.filepath_from_context(context)
-        folder_name = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         product_name = context["subset"]["name"]
 
         lib_container = plugin.prepare_scene_name(

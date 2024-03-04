@@ -228,7 +228,7 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
 
             json_data.append(json_element)
 
-        folder_name = instance.data["assetEntity"]["name"]
+        folder_name = instance.data["folderEntity"]["name"]
         product_name = instance.data["productName"]
         instance_name = f"{folder_name}_{product_name}"
         json_filename = f"{instance_name}.json"

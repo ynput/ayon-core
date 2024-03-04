@@ -49,7 +49,7 @@ def prepare_scene_name(
 def get_unique_number(
     folder_name: str, product_name: str
 ) -> str:
-    """Return a unique number based on the asset name."""
+    """Return a unique number based on the folder name."""
     avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
     if not avalon_container:
         return "01"
@@ -232,9 +232,9 @@ class BaseCreator(Creator):
             bpy.context.scene.collection.children.link(instances)
 
         # Create asset group
-        asset_name = instance_data["folderPath"].split("/")[-1]
+        folder_name = instance_data["folderPath"].split("/")[-1]
 
-        name = prepare_scene_name(asset_name, product_name)
+        name = prepare_scene_name(folder_name, product_name)
         if self.create_as_asset_group:
             # Create instance as empty
             instance_node = bpy.data.objects.new(name=name, object_data=None)
@@ -312,9 +312,9 @@ class BaseCreator(Creator):
                 "productName" in changes.changed_keys
                 or "folderPath" in changes.changed_keys
             ) and created_instance.product_type != "workfile":
-                asset_name = data["folderPath"].split("/")[-1]
+                folder_name = data["folderPath"].split("/")[-1]
                 name = prepare_scene_name(
-                    asset_name, data["productName"]
+                    folder_name, data["productName"]
                 )
                 node.name = name
 
@@ -465,7 +465,7 @@ class AssetLoader(LoaderPlugin):
         filepath = self.filepath_from_context(context)
         assert Path(filepath).exists(), f"{filepath} doesn't exist."
 
-        folder_name = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         product_name = context["subset"]["name"]
         unique_number = get_unique_number(
             folder_name, product_name
@@ -498,7 +498,7 @@ class AssetLoader(LoaderPlugin):
         #         loader=self.__class__.__name__,
         #     )
 
-        # folder_name = context["asset"]["name"]
+        # folder_name = context["folder"]["name"]
         # product_name = context["subset"]["name"]
         # instance_name = prepare_scene_name(
         #     folder_name, product_name, unique_number
