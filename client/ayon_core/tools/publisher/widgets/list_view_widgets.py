@@ -457,7 +457,7 @@ class InstanceListView(AbstractInstanceView):
         instance_view.collapsed.connect(self._on_collapse)
         instance_view.expanded.connect(self._on_expand)
         instance_view.toggle_requested.connect(self._on_toggle_request)
-        instance_view.doubleClicked.connect(self._on_double_clicked)
+        instance_view.doubleClicked.connect(self.double_clicked)
 
         self._group_items = {}
         self._group_widgets = {}
@@ -477,9 +477,6 @@ class InstanceListView(AbstractInstanceView):
         self._proxy_model = proxy_model
 
         self._active_toggle_enabled = True
-
-    def _on_double_clicked(self, event):
-        self.double_clicked.emit()
 
     def _on_expand(self, index):
         self._update_widget_expand_state(index, True)
