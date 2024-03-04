@@ -1,5 +1,6 @@
 import pyblish.api
 import os
+import re
 from ayon_core.pipeline import AYONPyblishPluginMixin
 from ayon_core.hosts.houdini.api import lib
 
@@ -34,6 +35,7 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
         "redshift_rop"
     ]
     label = "Collect Files For Cleaning Up"
+    intermediate_exported_render = False
 
     def process(self, instance):
 
@@ -71,15 +73,17 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
             files.extend(sum(aovs.values(), []))
 
         # Intermediate exported render files.
-        # TODO 1:For products with split render enabled,
-        #   We need to calculate all exported frames. as.
-        #   `ifdFile` should be a list of files.
-        # TODO 2: For products like Karma,
+        # TODO : For products like Karma,
         #   Karma has more intermediate files 
         #   e.g. USD and checkpoint
         ifdFile = instance.data.get("ifdFile")
         if self.intermediate_exported_render and ifdFile:
-            files.append(ifdFile)
+            start_frame = instance.data.get("frameStartHandle", None)
+            end_frame = instance.data.get("frameEndHandle", None)
+
+            ifd_files = self._get_ifd_file_list(ifdFile,
+                                                start_frame, end_frame)
+            files.extend(ifd_files)
         
         # Non Render Products with no frames
         if not files:
@@ -90,3 +94,26 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
         
         self.log.debug("Add files to 'cleanupFullPaths': {}".format(files))
         instance.context.data["cleanupFullPaths"] += files
+
+    @staticmethod
+    def _get_ifd_file_list(ifdFile, start_frame, end_frame):
+
+        file_name = os.path.basename(ifdFile)
+        parent_path = os.path.dirname(ifdFile)
+
+        pattern = r"\w+\.(0+).\w+"  # It's always (0000)
+        match = re.match(pattern, file_name)
+
+        if match and start_frame is not None:
+
+            # Check if frames are bigger than 1 (file collection)
+            # override the result
+            if end_frame - start_frame > 0:
+                result = lib.create_file_list(
+                    match, int(start_frame), int(end_frame)
+                )
+                result = [os.path.join(parent_path, r) for r in result]
+
+            return result 
+        
+        return []
