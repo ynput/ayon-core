@@ -61,9 +61,9 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         # Get workfile template key for current context
         workfile_template_key = get_workfile_template_key(
+            project_entity["name"],
             task_type,
             self.host_name,
-            project_name=project_entity["name"]
         )
         # Fill templates
         template_obj = anatomy.templates_obj[workfile_template_key]["file"]
