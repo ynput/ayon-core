@@ -46,7 +46,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         else:
             files.append(fname.parent.joinpath(remainder[0]).as_posix())
 
-        asset = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         product_name = context["subset"]["name"]
 
         group_id = str(uuid.uuid4())
@@ -55,7 +55,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
                 "function": f"PypeHarmony.Loaders.{self_name}.importFiles",  # noqa: E501
                 "args": [
                     files,
-                    asset,
+                    folder_name,
                     product_name,
                     1,
                     group_id
@@ -64,7 +64,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )["result"]
 
         return harmony.containerise(
-            f"{asset}_{product_name}",
+            f"{folder_name}_{product_name}",
             namespace,
             read_node,
             context,

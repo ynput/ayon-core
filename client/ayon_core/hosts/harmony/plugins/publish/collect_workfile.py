@@ -19,8 +19,7 @@ class CollectWorkfile(pyblish.api.ContextPlugin):
         basename = os.path.basename(context.data["currentFile"])
         product_name = get_product_name(
             context.data["projectName"],
-            context.data["assetEntity"],
-            context.data["task"],
+            context.data["taskEntity"],
             context.data["hostName"],
             product_type,
             "",
