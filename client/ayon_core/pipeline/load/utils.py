@@ -10,8 +10,6 @@ import ayon_api
 
 from ayon_core.host import ILoadHost
 from ayon_core.client import (
-    get_assets,
-    get_asset_by_id,
     get_subsets,
     get_subset_by_id,
     get_versions,
@@ -156,15 +154,16 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
 
     subset_docs = get_subsets(project_name, subset_ids)
     subset_docs_by_id = {}
-    asset_ids = set()
+    folder_ids = set()
     for subset_doc in subset_docs:
         subset_docs_by_id[subset_doc["_id"]] = subset_doc
-        asset_ids.add(subset_doc["parent"])
+        folder_ids.add(subset_doc["parent"])
 
-    asset_docs = get_assets(project_name, asset_ids)
-    asset_docs_by_id = {
-        asset_doc["_id"]: asset_doc
-        for asset_doc in asset_docs
+    folder_entities_by_id = {
+        folder_entity["id"]: folder_entity
+        for folder_entity in ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
     }
 
     project_entity = ayon_api.get_project(project_name)
@@ -172,10 +171,10 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
     for repre_id, repre_doc in repre_docs_by_id.items():
         version_doc = version_docs_by_id[repre_doc["parent"]]
         subset_doc = subset_docs_by_id[version_doc["parent"]]
-        asset_doc = asset_docs_by_id[subset_doc["parent"]]
+        folder_entity = folder_entities_by_id[subset_doc["parent"]]
         context = {
             "project": project_entity,
-            "asset": asset_doc,
+            "folder": folder_entity,
             "subset": subset_doc,
             "version": version_doc,
             "representation": repre_doc,
@@ -206,24 +205,25 @@ def get_subset_contexts(subset_ids, project_name=None):
         project_name = get_current_project_name()
     subset_docs = get_subsets(project_name, subset_ids)
     subset_docs_by_id = {}
-    asset_ids = set()
+    folder_ids = set()
     for subset_doc in subset_docs:
         subset_docs_by_id[subset_doc["_id"]] = subset_doc
-        asset_ids.add(subset_doc["parent"])
+        folder_ids.add(subset_doc["parent"])
 
-    asset_docs = get_assets(project_name, asset_ids)
-    asset_docs_by_id = {
-        asset_doc["_id"]: asset_doc
-        for asset_doc in asset_docs
+    folder_entities_by_id = {
+        folder_entity["id"]: folder_entity
+        for folder_entity in ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
     }
 
     project_entity = ayon_api.get_project(project_name)
 
     for subset_id, subset_doc in subset_docs_by_id.items():
-        asset_doc = asset_docs_by_id[subset_doc["parent"]]
+        folder_entity = folder_entities_by_id[subset_doc["parent"]]
         context = {
             "project": project_entity,
-            "asset": asset_doc,
+            "folder": folder_entity,
             "subset": subset_doc
         }
         contexts[subset_id] = context
@@ -254,26 +254,26 @@ def get_representation_context(representation):
     if not representation:
         raise AssertionError("Representation was not found in database")
 
-    version, subset, asset, project = get_representation_parents(
-        project_name, representation
-    )
-    if not version:
+    (
+        version_doc,
+        subset_doc,
+        folder_entity,
+        project_entity
+    ) = get_representation_parents(project_name, representation)
+    if not version_doc:
         raise AssertionError("Version was not found in database")
-    if not subset:
+    if not subset_doc:
         raise AssertionError("Subset was not found in database")
-    if not asset:
-        raise AssertionError("Asset was not found in database")
-    if not project:
+    if not folder_entity:
+        raise AssertionError("Folder was not found in database")
+    if not project_entity:
         raise AssertionError("Project was not found in database")
 
     context = {
-        "project": {
-            "name": project["name"],
-            "code": project["data"].get("code", '')
-        },
-        "asset": asset,
-        "subset": subset,
-        "version": version,
+        "project": project_entity,
+        "folder": folder_entity,
+        "subset": subset_doc,
+        "version": version_doc,
         "representation": representation,
     }
 
@@ -304,7 +304,7 @@ def load_with_repre_context(
 
     log.info(
         "Running '%s' on '%s'" % (
-            Loader.__name__, repre_context["asset"]["name"]
+            Loader.__name__, repre_context["folder"]["path"]
         )
     )
 
@@ -334,7 +334,7 @@ def load_with_subset_context(
 
     log.info(
         "Running '%s' on '%s'" % (
-            Loader.__name__, subset_context["asset"]["name"]
+            Loader.__name__, subset_context["folder"]["path"]
         )
     )
 
@@ -478,7 +478,9 @@ def update_container(container, version=-1):
             project_name, version, current_version["parent"], fields=["_id"]
         )
     subset_doc = get_subset_by_id(project_name, current_version["parent"])
-    asset_doc = get_asset_by_id(project_name, subset_doc["parent"])
+    folder_entity = ayon_api.get_folder_by_id(
+        project_name, subset_doc["parent"]
+    )
 
     assert new_version is not None, "This is a bug"
 
@@ -497,13 +499,10 @@ def update_container(container, version=-1):
             "Can't update container because loader '{}' was not found."
             .format(container.get("loader"))
         )
-    project_doc = get_project(project_name)
+    project_entity = ayon_api.get_project(project_name)
     context = {
-        "project": {
-            "name": project_doc["name"],
-            "code": project_doc["data"]["code"],
-        },
-        "asset": asset_doc,
+        "project": project_entity,
+        "folder": folder_entity,
         "subset": subset_doc,
         "version": new_version,
         "representation": new_representation,
