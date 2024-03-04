@@ -106,5 +106,7 @@ def has_edit_mode():
 ]
 """).format(temp_file=temp_file)
     execute_zscript(in_edit_mode)
-    with open(temp_file, "r") as mode:
-        return int(mode.read().strip())
+    with open(temp_file) as mode:
+        content = str(mode.read())
+        bool_mode = content.rstrip('\x00')
+        return bool_mode
