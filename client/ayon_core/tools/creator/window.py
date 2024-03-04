@@ -2,9 +2,10 @@ import sys
 import traceback
 import re
 
+import ayon_api
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.client import get_asset_by_name, get_subsets
+from ayon_core.client import get_subsets
 from ayon_core import style
 from ayon_core.settings import get_current_project_settings
 from ayon_core.tools.utils.lib import qt_app_context
@@ -216,20 +217,20 @@ class CreatorWindow(QtWidgets.QDialog):
         # Early exit if no folder path
         if not folder_path:
             self._build_menu()
-            self.echo("Asset name is required ..")
+            self.echo("Folder is required ..")
             self._set_valid_state(False)
             return
 
         project_name = get_current_project_name()
-        asset_doc = None
+        folder_entity = None
         if creator_plugin:
-            # Get the asset from the database which match with the name
-            asset_doc = get_asset_by_name(
-                project_name, folder_path, fields=["_id"]
+            # Get the folder from the database which match with the name
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path, fields={"id"}
             )
 
         # Get plugin
-        if not asset_doc or not creator_plugin:
+        if not folder_entity or not creator_plugin:
             self._build_menu()
 
             if not creator_plugin:
@@ -239,12 +240,16 @@ class CreatorWindow(QtWidgets.QDialog):
             self._set_valid_state(False)
             return
 
-        folder_id = asset_doc["_id"]
+        folder_id = folder_entity["id"]
+
         task_name = get_current_task_name()
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_id, task_name
+        )
 
         # Calculate product name with Creator plugin
         product_name = creator_plugin.get_product_name(
-            project_name, folder_id, task_name, user_input_text
+            project_name, folder_entity, task_entity, user_input_text
         )
         # Force replacement of prohibited symbols
         # QUESTION should Creator care about this and here should be only
