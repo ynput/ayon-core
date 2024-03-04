@@ -1603,12 +1603,12 @@ class CreateContext:
             bool: Context changed.
         """
 
-        project_name, asset_name, task_name, workfile_path = (
+        project_name, folder_path, task_name, workfile_path = (
             self._get_current_host_context()
         )
         return (
             self._current_project_name != project_name
-            or self._current_folder_path != asset_name
+            or self._current_folder_path != folder_path
             or self._current_task_name != task_name
             or self._current_workfile_path != workfile_path
         )
@@ -1679,18 +1679,18 @@ class CreateContext:
         self.refresh_thumbnails()
 
     def _get_current_host_context(self):
-        project_name = asset_name = task_name = workfile_path = None
+        project_name = folder_path = task_name = workfile_path = None
         if hasattr(self.host, "get_current_context"):
             host_context = self.host.get_current_context()
             if host_context:
                 project_name = host_context.get("project_name")
-                asset_name = host_context.get("folder_path")
+                folder_path = host_context.get("folder_path")
                 task_name = host_context.get("task_name")
 
         if isinstance(self.host, IWorkfileHost):
             workfile_path = self.host.get_current_workfile()
 
-        return project_name, asset_name, task_name, workfile_path
+        return project_name, folder_path, task_name, workfile_path
 
     def reset_current_context(self):
         """Refresh current context.
