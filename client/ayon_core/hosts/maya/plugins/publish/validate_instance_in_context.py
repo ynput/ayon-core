@@ -32,9 +32,15 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
     actions = [
         ayon_core.hosts.maya.api.action.SelectInvalidAction, RepairAction
     ]
+    excluded_families = []
 
     def process(self, instance):
-        return
+        families = instance.data["families"]
+        excluded_product_type = set(families).intersection(self.excluded_families)
+        if excluded_product_type:
+            self.log.debug("Skipping Validate Instance In Context")
+            return
+
         if not self.is_active(instance.data):
             return
 
