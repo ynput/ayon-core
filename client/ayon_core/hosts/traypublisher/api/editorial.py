@@ -1,7 +1,8 @@
 import re
 from copy import deepcopy
 
-from ayon_core.client import get_asset_by_id
+import ayon_api
+
 from ayon_core.pipeline.create import CreatorError
 
 
@@ -88,7 +89,7 @@ class ShotMetadataSolver:
         if not self.clip_name_tokenizer:
             return output_data
 
-        parent_name = source_data["selected_asset_doc"]["name"]
+        parent_name = source_data["selected_folder_entity"]["name"]
 
         search_text = parent_name + clip_name
 
@@ -157,11 +158,11 @@ class ShotMetadataSolver:
                     **_parent_tokens_formatting_data)
             except KeyError as _error:
                 raise CreatorError((
-                    "Make sure all keys in settings are correct : \n\n"
-                    f"`{_error}` from template string "
-                    f"{shot_hierarchy['parents_path']}, "
-                    f" has no equivalent in \n"
-                    f"{list(_parent_tokens_formatting_data.keys())} parents"
+                    "Make sure all keys in settings are correct:\n\n"
+                    f"`{_error}` from template string"
+                    f" {shot_hierarchy['parents_path']},"
+                    f" has no equivalent in"
+                    f"\n{list(_parent_tokens_formatting_data.keys())} parents"
                 ))
 
             parent_token_name = (
@@ -174,7 +175,8 @@ class ShotMetadataSolver:
             # find parent type
             parent_token_type = _parent_tokens_type[parent_token_name]
 
-            # in case selected context is set to the same asset
+            # in case selected context is set to the same folder
+            # TODO keep index with 'parents' - name check is not enough
             if (
                 _index == 0
                 and parents[-1]["entity_name"] == parent_name
@@ -213,50 +215,58 @@ class ShotMetadataSolver:
             ]
         ) if parents else ""
 
-    def _get_parents_from_selected_asset(
+    def _get_parents_from_selected_folder(
         self,
-        asset_doc,
-        project_entity
+        project_entity,
+        folder_entity,
     ):
-        """Returning parents from context on selected asset.
+        """Returning parents from context on selected folder.
 
         Context defined in Traypublisher project tree.
 
         Args:
-            asset_doc (db obj): selected asset doc
             project_entity (dict[str, Any]): Project entity.
+            folder_entity (dict[str, Any]): Selected folder entity.
 
         Returns:
-            list:  list of dict parent components
+            list: list of dict parent components
         """
+
         project_name = project_entity["name"]
-        visual_hierarchy = [asset_doc]
-        current_doc = asset_doc
+        path_entries = folder_entity["path"].split("/")
+        subpaths = []
+        subpath_items = []
+        for name in path_entries:
+            subpath_items.append(name)
+            if name:
+                subpaths.append("/".join(subpath_items))
+        # Remove last name because we already have folder entity
+        subpaths.pop(-1)
 
-        # looping through all available visual parents
-        # if they are not available anymore than it breaks
-        while True:
-            visual_parent_id = current_doc["data"]["visualParent"]
-            visual_parent = None
-            if visual_parent_id:
-                visual_parent = get_asset_by_id(project_name, visual_parent_id)
-
-            if not visual_parent:
-                break
-            visual_hierarchy.append(visual_parent)
-            current_doc = visual_parent
+        folder_entity_by_path = {}
+        if subpaths:
+            folder_entity_by_path = {
+                parent_folder["path"]: parent_folder
+                for parent_folder in ayon_api.get_folders(
+                    project_name, folder_paths=subpaths
+                )
+            }
+        folders_hierarchy = [
+            folder_entity_by_path[folder_path]
+            for folder_path in subpaths
+        ]
+        folders_hierarchy.append(folder_entity)
 
         # add current selection context hierarchy
-        output = []
-        for entity in reversed(visual_hierarchy):
-            output.append({
-                "entity_type": entity["data"]["entityType"],
-                "entity_name": entity["name"]
-            })
-        output.append({
+        output = [{
             "entity_type": "project",
             "entity_name": project_name,
-        })
+        }]
+        for entity in folders_hierarchy:
+            output.append({
+                "entity_type": entity["folderType"],
+                "entity_name": entity["name"]
+            })
         return output
 
     def _generate_tasks_from_settings(self, project_entity):
@@ -310,7 +320,7 @@ class ShotMetadataSolver:
         """
 
         tasks = {}
-        asset_doc = source_data["selected_asset_doc"]
+        folder_entity = source_data["selected_folder_entity"]
         project_entity = source_data["project_entity"]
 
         # match clip to shot name at start
@@ -319,9 +329,9 @@ class ShotMetadataSolver:
         # parse all tokens and generate formatting data
         formatting_data = self._generate_tokens(shot_name, source_data)
 
-        # generate parents from selected asset
-        parents = self._get_parents_from_selected_asset(
-            asset_doc, project_entity
+        # generate parents from selected folder
+        parents = self._get_parents_from_selected_folder(
+            project_entity, folder_entity
         )
 
         if self.shot_rename["enabled"]:

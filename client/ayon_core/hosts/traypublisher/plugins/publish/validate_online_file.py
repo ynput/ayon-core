@@ -23,9 +23,9 @@ class ValidateOnlineFile(OptionalPyblishPluginMixin,
         if not self.is_active(instance.data):
             return
         project_name = instance.context.data["projectName"]
-        asset_id = instance.data["assetEntity"]["_id"]
+        folder_id = instance.data["folderEntity"]["id"]
         subset_doc = get_subset_by_name(
-            project_name, instance.data["productName"], asset_id)
+            project_name, instance.data["productName"], folder_id)
 
         if subset_doc:
             raise PublishValidationError(
