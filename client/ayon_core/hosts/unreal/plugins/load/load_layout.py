@@ -15,8 +15,9 @@ from unreal import (
     MovieSceneSubTrack,
     LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
 )
+import ayon_api
 
-from ayon_core.client import get_asset_by_name, get_representations
+from ayon_core.client import get_representations
 from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
@@ -25,7 +26,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_project_folder
 from ayon_core.settings import get_current_project_settings
 from ayon_core.hosts.unreal.api import plugin
 from ayon_core.hosts.unreal.api.pipeline import (
@@ -169,7 +170,7 @@ class LayoutLoader(plugin.Loader):
 
         anim_path = f"{asset_dir}/animations/{anim_file_name}"
 
-        asset_doc = get_current_project_asset()
+        folder_entity = get_current_project_folder()
         # Import animation
         task = unreal.AssetImportTask()
         task.options = unreal.FbxImportUI()
@@ -204,7 +205,7 @@ class LayoutLoader(plugin.Loader):
         task.options.anim_sequence_import_data.set_editor_property(
             'use_default_sample_rate', False)
         task.options.anim_sequence_import_data.set_editor_property(
-            'custom_sample_rate', asset_doc.get("data", {}).get("fps"))
+            'custom_sample_rate', folder_entity.get("attrib", {}).get("fps"))
         task.options.anim_sequence_import_data.set_editor_property(
             'import_custom_attribute', True)
         task.options.anim_sequence_import_data.set_editor_property(
@@ -518,20 +519,25 @@ class LayoutLoader(plugin.Loader):
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
 
         # Create directory for asset and Ayon container
-        hierarchy = context.get('asset').get('data').get('parents')
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        # Remove folder name
+        folder_name = hierarchy.pop(-1)
         root = self.ASSET_ROOT
         hierarchy_dir = root
         hierarchy_dir_list = []
         for h in hierarchy:
             hierarchy_dir = f"{hierarchy_dir}/{h}"
             hierarchy_dir_list.append(hierarchy_dir)
-        asset = context.get('asset').get('name')
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else name
+        asset_name = f"{folder_name}_{name}" if folder_name else name
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            "{}/{}/{}".format(hierarchy_dir, asset, name), suffix="")
+            "{}/{}/{}".format(hierarchy_dir, folder_name, name),
+            suffix=""
+        )
 
         container_name += suffix
 
@@ -541,8 +547,8 @@ class LayoutLoader(plugin.Loader):
         shot = None
         sequences = []
 
-        level = f"{asset_dir}/{asset}_map.{asset}_map"
-        EditorLevelLibrary.new_level(f"{asset_dir}/{asset}_map")
+        level = f"{asset_dir}/{folder_name}_map.{folder_name}_map"
+        EditorLevelLibrary.new_level(f"{asset_dir}/{folder_name}_map")
 
         if create_sequences:
             # Create map for the shot, and create hierarchy of map. If the
@@ -591,7 +597,7 @@ class LayoutLoader(plugin.Loader):
                             e.get_asset().get_playback_end()))
 
             shot = tools.create_asset(
-                asset_name=asset,
+                asset_name=folder_name,
                 package_path=asset_dir,
                 asset_class=unreal.LevelSequence,
                 factory=unreal.LevelSequenceFactoryNew()
@@ -606,16 +612,24 @@ class LayoutLoader(plugin.Loader):
                     [level])
 
             project_name = get_current_project_name()
-            data = get_asset_by_name(project_name, asset)["data"]
+            folder_attributes = (
+                ayon_api.get_folder_by_path(project_name, folder_path)["attrib"]
+            )
             shot.set_display_rate(
-                unreal.FrameRate(data.get("fps"), 1.0))
+                unreal.FrameRate(folder_attributes.get("fps"), 1.0))
             shot.set_playback_start(0)
-            shot.set_playback_end(data.get('clipOut') - data.get('clipIn') + 1)
+            shot.set_playback_end(
+                folder_attributes.get('clipOut')
+                - folder_attributes.get('clipIn')
+                + 1
+            )
             if sequences:
                 set_sequence_hierarchy(
-                    sequences[-1], shot,
+                    sequences[-1],
+                    shot,
                     frame_ranges[-1][1],
-                    data.get('clipIn'), data.get('clipOut'),
+                    folder_attributes.get('clipIn'),
+                    folder_attributes.get('clipOut'),
                     [level])
 
             EditorLevelLibrary.load_level(level)
@@ -635,7 +649,8 @@ class LayoutLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "asset": folder_name,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
@@ -678,17 +693,18 @@ class LayoutLoader(plugin.Loader):
 
         asset_dir = container.get('namespace')
 
-        asset_doc = context["asset"]
+        folder_entity = context["folder"]
         repre_doc = context["representation"]
 
-        hierarchy = list(asset_doc["data"]["parents"])
+        hierarchy = folder_entity["path"].lstrip("/").split("/")
+        first_parent_name = hierarchy[0]
 
         sequence = None
         master_level = None
 
         if create_sequences:
-            h_dir = f"{root}/{hierarchy[0]}"
-            h_asset = hierarchy[0]
+            h_dir = f"{root}/{first_parent_name}"
+            h_asset = first_parent_name
             master_level = f"{h_dir}/{h_asset}_map.{h_asset}_map"
 
             filter = unreal.ARFilter(
@@ -744,7 +760,7 @@ class LayoutLoader(plugin.Loader):
 
         EditorLevelLibrary.save_current_level()
 
-        save_dir = f"{root}/{hierarchy[0]}" if create_sequences else asset_dir
+        save_dir = f"{root}/{first_parent_name}" if create_sequences else asset_dir
 
         asset_content = EditorAssetLibrary.list_assets(
             save_dir, recursive=True, include_folder=False)

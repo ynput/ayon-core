@@ -146,11 +146,10 @@ class StaticMeshAlembicLoader(plugin.Loader):
         return asset_content
 
     def update(self, container, context):
-        asset_doc = context["asset"]
+        folder_name = context["folder"]["name"]
         subset_doc = context["subset"]
         repre_doc = context["representation"]
 
-        folder_name = asset_doc["name"]
         product_name = subset_doc["name"]
 
         # Create directory for asset and Ayon container

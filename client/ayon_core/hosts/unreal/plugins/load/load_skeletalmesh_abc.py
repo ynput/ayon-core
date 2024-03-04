@@ -145,12 +145,11 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         return asset_content
 
     def update(self, container, context):
-        asset_doc = context["asset"]
+        folder_name = context["folder"]["name"]
         subset_doc = context["subset"]
         version_doc = context["version"]
         repre_doc = context["representation"]
 
-        folder_name = asset_doc["name"]
         product_name = subset_doc["name"]
 
         # Create directory for folder and Ayon container
