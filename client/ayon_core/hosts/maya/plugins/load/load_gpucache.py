@@ -74,8 +74,9 @@ class GpuCacheLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
-        path = get_representation_path(representation)
+    def update(self, container, context):
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
 
         # Update the cache
         members = cmds.sets(container['objectName'], query=True)
@@ -87,11 +88,11 @@ class GpuCacheLoader(load.LoaderPlugin):
             cmds.setAttr(cache + ".cacheFileName", path, type="string")
 
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)

@@ -71,7 +71,7 @@ class VRaySceneLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
 
         node = container['objectName']
         assert cmds.objExists(node), "Missing container"
@@ -80,7 +80,8 @@ class VRaySceneLoader(load.LoaderPlugin):
         vraymeshes = cmds.ls(members, type="VRayScene")
         assert vraymeshes, "Cannot find VRayScene in container"
 
-        filename = get_representation_path(representation)
+        repre_doc = context["representation"]
+        filename = get_representation_path(repre_doc)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.FilePath".format(vray_mesh),
@@ -89,7 +90,7 @@ class VRaySceneLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
     def remove(self, container):
@@ -109,8 +110,8 @@ class VRaySceneLoader(load.LoaderPlugin):
                 self.log.warning("Namespace not deleted because it "
                                  "still has members: %s", namespace)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def create_vray_scene(self, name, filename):
         """Re-create the structure created by VRay to support vrscenes
