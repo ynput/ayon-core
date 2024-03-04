@@ -1,7 +1,8 @@
 import threading
 
+import ayon_api
+
 from ayon_core.client import (
-    get_asset_by_id,
     get_subset_by_id,
     get_version_by_id,
     get_representations,
@@ -32,7 +33,8 @@ class PushToContextController:
 
         self._src_project_name = None
         self._src_version_id = None
-        self._src_asset_doc = None
+        self._src_folder_entity = None
+        self._src_folder_task_entities = {}
         self._src_subset_doc = None
         self._src_version_doc = None
         self._src_label = None
@@ -71,7 +73,8 @@ class PushToContextController:
         self._src_project_name = project_name
         self._src_version_id = version_id
         self._src_label = None
-        asset_doc = None
+        folder_entity = None
+        task_entities = {}
         subset_doc = None
         version_doc = None
         if project_name and version_id:
@@ -81,13 +84,24 @@ class PushToContextController:
             subset_doc = get_subset_by_id(project_name, version_doc["parent"])
 
         if subset_doc:
-            asset_doc = get_asset_by_id(project_name, subset_doc["parent"])
+            folder_entity = ayon_api.get_folder_by_id(
+                project_name, subset_doc["parent"]
+            )
 
-        self._src_asset_doc = asset_doc
+        if folder_entity:
+            task_entities = {
+                task_entity["name"]: task_entity
+                for task_entity in ayon_api.get_tasks(
+                    project_name, folder_ids=[folder_entity["id"]]
+                )
+            }
+
+        self._src_folder_entity = folder_entity
+        self._src_folder_task_entities = task_entities
         self._src_subset_doc = subset_doc
         self._src_version_doc = version_doc
-        if asset_doc:
-            self._user_values.set_new_folder_name(asset_doc["name"])
+        if folder_entity:
+            self._user_values.set_new_folder_name(folder_entity["name"])
             variant = self._get_src_variant()
             if variant:
                 self._user_values.set_variant(variant)
@@ -197,39 +211,35 @@ class PushToContextController:
         if not self._src_project_name or not self._src_version_id:
             return "Source is not defined"
 
-        asset_doc = self._src_asset_doc
-        if not asset_doc:
+        folder_entity = self._src_folder_entity
+        if not folder_entity:
             return "Source is invalid"
 
-        folder_path_parts = list(asset_doc["data"]["parents"])
-        folder_path_parts.append(asset_doc["name"])
-        folder_path = "/".join(folder_path_parts)
+        folder_path = folder_entity["path"]
         subset_doc = self._src_subset_doc
         version_doc = self._src_version_doc
-        return "Source: {}/{}/{}/v{:0>3}".format(
+        return "Source: {}{}/{}/v{:0>3}".format(
             self._src_project_name,
             folder_path,
             subset_doc["name"],
             version_doc["name"]
         )
 
-    def _get_task_info_from_repre_docs(self, asset_doc, repre_docs):
-        asset_tasks = asset_doc["data"].get("tasks") or {}
+    def _get_task_info_from_repre_docs(self, task_entities, repre_docs):
         found_comb = []
         for repre_doc in repre_docs:
             context = repre_doc["context"]
-            task_info = context.get("task")
-            if task_info is None:
+            repre_task_name = context.get("task")
+            if repre_task_name is None:
                 continue
+
+            if isinstance(repre_task_name, dict):
+                repre_task_name = repre_task_name.get("name")
 
             task_name = None
             task_type = None
-            if isinstance(task_info, str):
-                task_name = task_info
-                asset_task_info = asset_tasks.get(task_info) or {}
-                task_type = asset_task_info.get("type")
-
-            elif isinstance(task_info, dict):
+            if repre_task_name:
+                task_info = task_entities.get(repre_task_name) or {}
                 task_name = task_info.get("name")
                 task_type = task_info.get("type")
 
@@ -246,12 +256,12 @@ class PushToContextController:
     def _get_src_variant(self):
         project_name = self._src_project_name
         version_doc = self._src_version_doc
-        asset_doc = self._src_asset_doc
+        task_entities = self._src_folder_task_entities
         repre_docs = get_representations(
             project_name, version_ids=[version_doc["_id"]]
         )
         task_name, task_type = self._get_task_info_from_repre_docs(
-            asset_doc, repre_docs
+            task_entities, repre_docs
         )
 
         project_settings = get_project_settings(project_name)
