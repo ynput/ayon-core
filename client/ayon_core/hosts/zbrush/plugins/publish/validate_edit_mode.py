@@ -23,7 +23,7 @@ class ValidateEditMode(pyblish.api.ContextPlugin,
     def process(self, context):
         edit_mode = has_edit_mode()
         self.log.debug(f"{edit_mode}")
-        if edit_mode == 0:
+        if edit_mode == "0":
             raise PublishValidationError(
                 "Zbrush is not in edit mode, "
                 "please make sure it is in edit mode before extraction."
