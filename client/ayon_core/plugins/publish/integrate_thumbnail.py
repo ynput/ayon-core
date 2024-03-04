@@ -42,10 +42,6 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
     label = "Integrate Thumbnails to AYON"
     order = pyblish.api.IntegratorOrder + 0.01
 
-    required_context_keys = [
-        "project", "asset", "task", "subset", "version"
-    ]
-
     def process(self, context):
         # Filter instances which can be used for integration
         filtered_instance_items = self._prepare_instances(context)

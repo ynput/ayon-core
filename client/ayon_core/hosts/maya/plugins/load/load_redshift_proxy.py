@@ -16,7 +16,7 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class RedshiftProxyLoader(load.LoaderPlugin):
@@ -33,9 +33,9 @@ class RedshiftProxyLoader(load.LoaderPlugin):
     def load(self, context, name=None, namespace=None, options=None):
         """Plugin entry point."""
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "redshiftproxy"
+            product_type = "redshiftproxy"
 
         asset_name = context['asset']["name"]
         namespace = namespace or unique_namespace(
@@ -60,7 +60,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
         # colour the group node
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(group_node), 1)
@@ -75,7 +75,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
 
         node = container['objectName']
         assert cmds.objExists(node), "Missing container"
@@ -83,8 +83,8 @@ class RedshiftProxyLoader(load.LoaderPlugin):
         members = cmds.sets(node, query=True) or []
         rs_meshes = cmds.ls(members, type="RedshiftProxyMesh")
         assert rs_meshes, "Cannot find RedshiftProxyMesh in container"
-
-        filename = get_representation_path(representation)
+        repre_doc = context["representation"]
+        filename = get_representation_path(repre_doc)
 
         for rs_mesh in rs_meshes:
             cmds.setAttr("{}.fileName".format(rs_mesh),
@@ -93,7 +93,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
     def remove(self, container):
@@ -113,8 +113,8 @@ class RedshiftProxyLoader(load.LoaderPlugin):
                 self.log.warning("Namespace not deleted because it "
                                  "still has members: %s", namespace)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def create_rs_proxy(self, name, path):
         """Creates Redshift Proxies showing a proxy object.

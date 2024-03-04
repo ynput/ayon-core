@@ -49,31 +49,32 @@ class CollectFusionRender(
             if not inst.data.get("active", True):
                 continue
 
-            family = inst.data["family"]
-            if family not in ["render", "image"]:
+            product_type = inst.data["productType"]
+            if product_type not in ["render", "image"]:
                 continue
 
             task_name = context.data["task"]
             tool = inst.data["transientData"]["tool"]
 
             instance_families = inst.data.get("families", [])
-            subset_name = inst.data["subset"]
+            product_name = inst.data["productName"]
             instance = FusionRenderInstance(
-                family=family,
                 tool=tool,
                 workfileComp=comp,
+                productType=product_type,
+                family=product_type,
                 families=instance_families,
                 version=version,
                 time="",
                 source=current_file,
                 label=inst.data["label"],
-                subset=subset_name,
+                productName=product_name,
                 folderPath=inst.data["folderPath"],
                 task=task_name,
                 attachTo=False,
                 setMembers='',
                 publish=True,
-                name=subset_name,
+                name=product_name,
                 resolutionWidth=comp_frame_format_prefs.get("Width"),
                 resolutionHeight=comp_frame_format_prefs.get("Height"),
                 pixelAspect=aspect_x / aspect_y,

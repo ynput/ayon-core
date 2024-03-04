@@ -19,7 +19,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
     label = "Instances"
     order = pyblish.api.CollectorOrder
     hosts = ["harmony"]
-    families_mapping = {
+    product_type_mapping = {
         "render": ["review", "ftrack"],
         "harmony.template": [],
         "palette": ["palette", "ftrack"]
@@ -49,8 +49,14 @@ class CollectInstances(pyblish.api.ContextPlugin):
             if "container" in data["id"]:
                 continue
 
-            # skip render farm family as it is collected separately
-            if data["family"] == "renderFarm":
+            product_type = data.get("productType")
+            if product_type is None:
+                product_type = data["family"]
+                data["productType"] = product_type
+            data["family"] = product_type
+
+            # skip render farm product type as it is collected separately
+            if product_type == "renderFarm":
                 continue
 
             instance = context.create_instance(node.split("/")[-1])
@@ -59,11 +65,14 @@ class CollectInstances(pyblish.api.ContextPlugin):
             instance.data["publish"] = harmony.send(
                 {"function": "node.getEnable", "args": [node]}
             )["result"]
-            instance.data["families"] = self.families_mapping[data["family"]]
+
+            families = [product_type]
+            families.extend(self.product_type_mapping[product_type])
+            instance.data["families"] = families
 
             # If set in plugin, pair the scene Version in ftrack with
             # thumbnails and review media.
-            if (self.pair_media and instance.data["family"] == "scene"):
+            if (self.pair_media and product_type == "scene"):
                 context.data["scene_instance"] = instance
 
             # Produce diagnostic message for any graphical

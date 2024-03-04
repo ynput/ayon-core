@@ -14,7 +14,7 @@ import ayon_core.hosts.hiero.api as phiero
 
 
 class LoadClip(phiero.SequenceLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
@@ -42,7 +42,7 @@ class LoadClip(phiero.SequenceLoader):
     clip_name_template = "{asset}_{subset}_{representation}"
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         plugin_type_settings = (
             project_settings
             .get("hiero", {})
@@ -54,24 +54,35 @@ class LoadClip(phiero.SequenceLoader):
 
         plugin_name = cls.__name__
 
-        plugin_settings = None
         # Look for plugin settings in host specific settings
-        if plugin_name in plugin_type_settings:
-            plugin_settings = plugin_type_settings[plugin_name]
-
+        plugin_settings = plugin_type_settings.get(plugin_name)
         if not plugin_settings:
             return
 
         print(">>> We have preset for {}".format(plugin_name))
         for option, value in plugin_settings.items():
+            if option == "representations":
+                continue
+
+            if option == "product_types":
+                # TODO remove the key conversion when loaders can filter by
+                #   product types
+                # convert 'product_types' to 'families'
+                option = "families"
+
+            elif option == "clip_name_template":
+                # TODO remove the formatting replacement
+                value = (
+                    value
+                    .replace("{folder[name]}", "{asset}")
+                    .replace("{product[name]}", "{subset}")
+                )
+
             if option == "enabled" and value is False:
                 print("  - is disabled by preset")
-            elif option == "representations":
-                continue
             else:
                 print("  - setting `{}`: `{}`".format(option, value))
             setattr(cls, option, value)
-
 
     def load(self, context, name, namespace, options):
         # add clip name template to options
@@ -135,27 +146,25 @@ class LoadClip(phiero.SequenceLoader):
             self.__class__.__name__,
             data_imprint)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """ Updating previously loaded clips
         """
-
+        version_doc = context["version"]
+        repre_doc = context["representation"]
         # load clip to timeline and get main variables
         name = container['name']
         namespace = container['namespace']
         track_item = phiero.get_track_items(
             track_item_name=namespace).pop()
 
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
-
         version_data = version_doc.get("data", {})
         version_name = version_doc.get("name", None)
         colorspace = version_data.get("colorspace", None)
         object_name = "{}_{}".format(name, namespace)
-        file = get_representation_path(representation).replace("\\", "/")
+        file = get_representation_path(repre_doc).replace("\\", "/")
         clip = track_item.source()
 
         # reconnect media to new path
@@ -180,7 +189,7 @@ class LoadClip(phiero.SequenceLoader):
 
         # add variables related to version context
         data_imprint.update({
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "version": version_name,
             "colorspace": colorspace,
             "objectName": object_name

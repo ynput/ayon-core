@@ -13,7 +13,7 @@ class CreateProxyAlembic(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.proxyabc"
     label = "Proxy Alembic"
-    family = "proxyAbc"
+    product_type = "proxyAbc"
     icon = "gears"
     write_color_sets = False
     write_face_sets = False

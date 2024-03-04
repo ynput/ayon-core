@@ -62,7 +62,7 @@ class ValidateAttributes(pyblish.api.InstancePlugin,
 
         attributes_data = cls.get_attributes_data()
         # Filter families.
-        families = [instance.data["family"]]
+        families = [instance.data["productType"]]
         families += instance.data.get("families", [])
         families = set(families) & set(attributes_data.keys())
         if not families:
