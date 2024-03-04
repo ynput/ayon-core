@@ -31,7 +31,7 @@ class CreateBGEO(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = self.staging_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=pre_create_data.get("bgeo_type") or "bgeo.sc"
         )
 

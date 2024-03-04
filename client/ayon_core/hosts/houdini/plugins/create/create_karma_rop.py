@@ -35,17 +35,17 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
 
         filepath = self.render_staging_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext=ext
         )
 
         checkpoint = self.checkpoint_dir.format(
-            product={"name": product_name},
+            product={"name": "`chs(\"AYON_productName\")`"},
             ext="checkpoint"
         )
 
         usd_directory = self.usd_dir.format(
-            product={"name": product_name}
+            product={"name": "`chs(\"AYON_productName\")`"},
         )
 
         parms = {
