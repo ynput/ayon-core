@@ -246,15 +246,27 @@ configuration in project settings.
                             "stagingDir": thumb_dir,
                             "outputName": explicit_output_name,
                         })
-                        new_instance["prepared_data_for_repres"].append(
-                            ("_thumbnail_", thumbnail_repr_data)
-                        )
+                        new_instance["prepared_data_for_repres"].append({
+                            "type": "thumbnail",
+                            "colorspace": None,
+                            "representation": thumbnail_repr_data,
+                        })
+                        # also add thumbnailPath for ayon to integrate
+                        if not new_instance.get("thumbnailPath"):
+                            new_instance["thumbnailPath"] = (
+                                os.path.join(thumb_dir, thumb_file)
+                            )
                     elif (
                         thumbnails
                         and not multiple_thumbnails
                         and not thumbnails_processed
                         or not reviewable
                     ):
+                        """
+                        For case where we have only one thumbnail
+                        and not reviewable medias. This needs to be processed
+                        only once per instance.
+                        """
                         if not thumbnails:
                             continue
                         # here we will use only one thumbnail for
@@ -273,9 +285,17 @@ configuration in project settings.
                             "files": thumb_file,
                             "stagingDir": thumb_dir
                         })
-                        new_instance["prepared_data_for_repres"].append(
-                            ("_thumbnail_", thumbnail_repr_data)
-                        )
+                        new_instance["prepared_data_for_repres"].append({
+                            "type": "thumbnail",
+                            "colorspace": None,
+                            "representation": thumbnail_repr_data,
+                        })
+                        # also add thumbnailPath for ayon to integrate
+                        if not new_instance.get("thumbnailPath"):
+                            new_instance["thumbnailPath"] = (
+                                os.path.join(thumb_dir, thumb_file)
+                            )
+
                         thumbnails_processed = True
 
                     # get representation data
@@ -284,9 +304,11 @@ configuration in project settings.
                         explicit_output_name
                     )
 
-                    new_instance["prepared_data_for_repres"].append(
-                        (repre_data["colorspace"], representation_data)
-                    )
+                    new_instance["prepared_data_for_repres"].append({
+                        "type": "media",
+                        "colorspace": repre_data["colorspace"],
+                        "representation": representation_data,
+                    })
 
     def _get_refactor_thumbnail_path(
             self, staging_dir, relative_thumbnail_path):
