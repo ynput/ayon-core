@@ -1451,7 +1451,6 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
     def _input_value_changed(self, value, attr_id):
         instances = self._attr_def_id_to_instances.get(attr_id)
         attr_def = self._attr_def_id_to_attr_def.get(attr_id)
-        # print("attr_def", attr_def, attr_def.convert_value(), attr_def.deserialize()
         if not instances or not attr_def:
             return
 
