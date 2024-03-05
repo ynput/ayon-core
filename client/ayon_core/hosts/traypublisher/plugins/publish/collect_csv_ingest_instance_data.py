@@ -32,4 +32,3 @@ class CollectCSVIngestInstancesData(
 
             instance.data["representations"].append(repre_data)
 
-        self.log.debug(pformat(instance.data))
