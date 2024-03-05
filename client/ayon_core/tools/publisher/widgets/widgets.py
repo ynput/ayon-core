@@ -1464,12 +1464,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             if isinstance(_value, int):
                 _value = float(_value)
             is_default = _value == attr_def.default
-            font = label_widget.font()
             if is_default:
                 label_widget.setStyleSheet("")
             else:
                 label_widget.setStyleSheet("font: bold")
-            label_widget.setFont(font)
 
         for instance in instances:
             creator_attributes = instance["creator_attributes"]
@@ -1648,12 +1646,10 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
             if isinstance(_value, int):
                 _value = float(_value)
             is_default = _value == attr_def.default
-            font = label_widget.font()
             if is_default:
                 label_widget.setStyleSheet("")
             else:
                 label_widget.setStyleSheet("font: bold")
-            label_widget.setFont(font)
 
         for instance in instances:
             plugin_val = instance.publish_attributes[plugin_name]
