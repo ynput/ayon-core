@@ -597,7 +597,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         read_node = harmony.send(
             {
                 "function": copy_files + import_files,
-                "args": ["Top", files, context["version"]["data"]["subset"], 1]
+                "args": ["Top", files, context["product"]["name"], 1]
             }
         )["result"]
 

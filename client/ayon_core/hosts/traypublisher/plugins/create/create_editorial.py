@@ -569,7 +569,7 @@ or updating already created. Publishing will create OTIO file.
         return c_instance
 
     def _make_product_naming(self, product_type_preset, instance_data):
-        """Subset name maker
+        """Product name maker
 
         Args:
             product_type_preset (dict): single preset item

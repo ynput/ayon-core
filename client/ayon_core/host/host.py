@@ -18,7 +18,7 @@ class HostBase(object):
     Compared to 'avalon' concept:
     What was before considered as functions in host implementation folder. The
     host implementation should primarily care about adding ability of creation
-    (mark subsets to be published) and optionally about referencing published
+    (mark products to be published) and optionally about referencing published
     representations as containers.
 
     Host may need extend some functionality like working with workfiles

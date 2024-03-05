@@ -220,7 +220,7 @@ class CreateRenderlayer(TVPaintCreator):
         creator_attributes["group_id"] = group_id
         creator_attributes["mark_for_review"] = mark_for_review
 
-        self.log.info(f"Subset name is {product_name}")
+        self.log.info(f"Product name is {product_name}")
         new_instance = CreatedInstance(
             self.product_type,
             product_name,

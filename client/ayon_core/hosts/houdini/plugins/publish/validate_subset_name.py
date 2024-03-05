@@ -15,21 +15,21 @@ from ayon_core.pipeline.create import get_product_name
 import hou
 
 
-class FixSubsetNameAction(RepairAction):
-    label = "Fix Subset Name"
+class FixProductNameAction(RepairAction):
+    label = "Fix Product Name"
 
 
 class ValidateSubsetName(pyblish.api.InstancePlugin,
                          OptionalPyblishPluginMixin):
-    """Validate Subset name.
+    """Validate Product name.
 
     """
 
     families = ["staticMesh"]
     hosts = ["houdini"]
-    label = "Validate Subset Name"
+    label = "Validate Product Name"
     order = ValidateContentsOrder + 0.1
-    actions = [FixSubsetNameAction, SelectInvalidAction]
+    actions = [FixProductNameAction, SelectInvalidAction]
 
     optional = True
 
