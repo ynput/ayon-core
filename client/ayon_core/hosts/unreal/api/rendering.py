@@ -56,7 +56,7 @@ def start_rendering():
 
     for i in instances:
         data = pipeline.parse_container(i.get_path_name())
-        if data["family"] == "render":
+        if data["productType"] == "render":
             inst_data.append(data)
 
     try:

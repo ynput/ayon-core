@@ -39,11 +39,12 @@ class TyCacheLoader(load.LoaderPlugin):
             name, [obj], context,
             namespace, loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """update the container"""
         from pymxs import runtime as rt
 
-        path = get_representation_path(representation)
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
         node = rt.GetNodeByName(container["instance_node"])
         node_list = get_previous_loaded_object(node)
         update_custom_attribute_data(node, node_list)
@@ -51,11 +52,11 @@ class TyCacheLoader(load.LoaderPlugin):
             for tyc in node_list:
                 tyc.filename = path
         lib.imprint(container["instance_node"], {
-            "representation": str(representation["_id"])
+            "representation": str(repre_doc["_id"])
         })
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         """remove the container"""

@@ -17,7 +17,7 @@ class CollectFramesFixDef(
 ):
     """Provides text field to insert frame(s) to be rerendered.
 
-    Published files of last version of an instance subset are collected into
+    Published files of last version of an instance product are collected into
     instance.data["last_version_published_files"]. All these but frames
     mentioned in text field will be reused for new version.
     """
@@ -40,7 +40,7 @@ class CollectFramesFixDef(
 
         instance.data["frames_to_fix"] = frames_to_fix
 
-        subset_name = instance.data["subset"]
+        product_name = instance.data["productName"]
         asset_name = instance.data["folderPath"]
 
         project_entity = instance.data["projectEntity"]
@@ -48,7 +48,7 @@ class CollectFramesFixDef(
 
         version = get_last_version_by_subset_name(
             project_name,
-            subset_name,
+            product_name,
             asset_name=asset_name
         )
         if not version:

@@ -91,7 +91,7 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
 
         if otio_review_clips:
             # add review track to instance and change label to reflect it
-            label = instance.data.get("label", instance.data["subset"])
+            label = instance.data.get("label", instance.data["productName"])
             instance.data["label"] = label + " (review)"
             instance.data["families"] += ["review", "ftrack"]
             instance.data["otioReviewClips"] = otio_review_clips

@@ -401,7 +401,7 @@
 #         import ftrack_api
 #
 #         session = ftrack_api.Session()
-#         subset_name = data["subset"]["name"]
+#         product_name = data["subset"]["name"]
 #         versions = {
 #             '"{}"'.format(version_doc["name"])
 #             for version_doc in data["versions"]
@@ -414,7 +414,7 @@
 #                 " and version in ({})"
 #             ).format(
 #                 asset_ftrack_id,
-#                 subset_name,
+#                 product_name,
 #                 ",".join(versions)
 #             )
 #         ).all()

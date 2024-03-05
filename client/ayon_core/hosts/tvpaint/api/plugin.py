@@ -3,7 +3,7 @@ import re
 from ayon_core.pipeline import LoaderPlugin
 from ayon_core.pipeline.create import (
     CreatedInstance,
-    get_subset_name,
+    get_product_name,
     AutoCreator,
     Creator,
 )
@@ -17,8 +17,8 @@ SHARED_DATA_KEY = "openpype.tvpaint.instances"
 
 class TVPaintCreatorCommon:
     @property
-    def subset_template_family_filter(self):
-        return self.family
+    def product_template_product_type(self):
+        return self.product_type
 
     def _cache_and_get_instances(self):
         return cache_and_get_instances(
@@ -53,29 +53,29 @@ class TVPaintCreatorCommon:
             cur_instance_data.update(instance_data)
         self.host.write_instances(cur_instances)
 
-    def _custom_get_subset_name(
+    def _custom_get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        asset_doc,
+        task_name,
+        variant,
         host_name=None,
         instance=None
     ):
         dynamic_data = self.get_dynamic_data(
-            variant, task_name, asset_doc, project_name, host_name, instance
+            project_name, asset_doc, task_name, variant, host_name, instance
         )
 
-        return get_subset_name(
-            self.family,
-            variant,
-            task_name,
-            asset_doc,
+        return get_product_name(
             project_name,
+            asset_doc,
+            task_name,
             host_name,
+            self.product_type,
+            variant,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings,
-            family_filter=self.subset_template_family_filter
+            product_type_filter=self.product_template_product_type
         )
 
 
@@ -118,8 +118,8 @@ class TVPaintCreator(Creator, TVPaintCreatorCommon):
                 output["task"] = task_name
         return output
 
-    def get_subset_name(self, *args, **kwargs):
-        return self._custom_get_subset_name(*args, **kwargs)
+    def get_product_name(self, *args, **kwargs):
+        return self._custom_get_product_name(*args, **kwargs)
 
     def _store_new_instance(self, new_instance):
         instances_data = self.host.list_instances()
@@ -135,8 +135,8 @@ class TVPaintAutoCreator(AutoCreator, TVPaintCreatorCommon):
     def update_instances(self, update_list):
         self._update_create_instances(update_list)
 
-    def get_subset_name(self, *args, **kwargs):
-        return self._custom_get_subset_name(*args, **kwargs)
+    def get_product_name(self, *args, **kwargs):
+        return self._custom_get_product_name(*args, **kwargs)
 
 
 class Loader(LoaderPlugin):
@@ -161,8 +161,8 @@ class Loader(LoaderPlugin):
         `0` is used ase base.
 
         Args:
-            asset_name (str): Name of subset's parent asset document.
-            name (str): Name of loaded subset.
+            asset_name (str): Name of product's parent asset document.
+            name (str): Name of loaded product.
 
         Returns:
             (str): `{asset_name}_{name}_{higher suffix + 1}`
