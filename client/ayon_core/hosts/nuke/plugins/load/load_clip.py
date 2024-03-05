@@ -502,8 +502,6 @@ class LoadClip(plugin.NukeLoader):
             f"Colorspace from representation colorspaceData: {colorspace}"
         )
 
-        print(f"Colorspace found: {colorspace}")
-
         # check if any filerules are not applicable
         new_parsed_colorspace = get_imageio_file_rules_colorspace_from_filepath( # noqa
             filepath, "nuke", get_current_project_name()
