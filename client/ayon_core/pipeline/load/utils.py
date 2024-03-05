@@ -10,8 +10,6 @@ import ayon_api
 
 from ayon_core.host import ILoadHost
 from ayon_core.client import (
-    get_subsets,
-    get_subset_by_id,
     get_versions,
     get_version_by_id,
     get_last_version_by_subset_id,
@@ -97,8 +95,8 @@ def get_repres_contexts(representation_ids, project_name=None):
 
     Returns:
         dict: The full representation context by representation id.
-            keys are repre_id, value is dictionary with full documents of
-            asset, subset, version and representation.
+            keys are repre_id, value is dictionary with entities of
+            folder, product, version and representation.
     """
     from ayon_core.pipeline import get_current_project_name
 
@@ -131,13 +129,13 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
     version_docs_by_id = {}
     hero_version_docs = []
     versions_for_hero = set()
-    subset_ids = set()
+    product_ids = set()
     for version_doc in version_docs:
         if version_doc["type"] == "hero_version":
             hero_version_docs.append(version_doc)
             versions_for_hero.add(version_doc["version_id"])
         version_docs_by_id[version_doc["_id"]] = version_doc
-        subset_ids.add(version_doc["parent"])
+        product_ids.add(version_doc["parent"])
 
     if versions_for_hero:
         _version_docs = get_versions(project_name, versions_for_hero)
@@ -152,12 +150,14 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
             version_data = copy.deepcopy(_version_data_by_id[version_id])
             version_docs_by_id[hero_version_id]["data"] = version_data
 
-    subset_docs = get_subsets(project_name, subset_ids)
-    subset_docs_by_id = {}
+    product_entities = ayon_api.get_products(
+        project_name, product_ids=product_ids
+    )
+    product_entities_by_id = {}
     folder_ids = set()
-    for subset_doc in subset_docs:
-        subset_docs_by_id[subset_doc["_id"]] = subset_doc
-        folder_ids.add(subset_doc["parent"])
+    for product_entity in product_entities:
+        product_entities_by_id[product_entity["id"]] = product_entity
+        folder_ids.add(product_entity["folderId"])
 
     folder_entities_by_id = {
         folder_entity["id"]: folder_entity
@@ -170,12 +170,12 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
 
     for repre_id, repre_doc in repre_docs_by_id.items():
         version_doc = version_docs_by_id[repre_doc["parent"]]
-        subset_doc = subset_docs_by_id[version_doc["parent"]]
-        folder_entity = folder_entities_by_id[subset_doc["parent"]]
+        product_entity = product_entities_by_id[version_doc["parent"]]
+        folder_entity = folder_entities_by_id[product_entity["folderId"]]
         context = {
             "project": project_entity,
             "folder": folder_entity,
-            "subset": subset_doc,
+            "product": product_entity,
             "version": version_doc,
             "representation": repre_doc,
         }
@@ -184,13 +184,13 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
     return contexts
 
 
-def get_subset_contexts(subset_ids, project_name=None):
-    """Return parenthood context for subset.
+def get_product_contexts(product_ids, project_name=None):
+    """Return parenthood context for product.
 
-        Provides context on subset granularity - less detail than
+        Provides context on product granularity - less detail than
         'get_repre_contexts'.
     Args:
-        subset_ids (list): The subset ids.
+        product_ids (list): The product ids.
         project_name (Optional[str]): Project name.
     Returns:
         dict: The full representation context by representation id.
@@ -198,17 +198,19 @@ def get_subset_contexts(subset_ids, project_name=None):
     from ayon_core.pipeline import get_current_project_name
 
     contexts = {}
-    if not subset_ids:
+    if not product_ids:
         return contexts
 
     if not project_name:
         project_name = get_current_project_name()
-    subset_docs = get_subsets(project_name, subset_ids)
-    subset_docs_by_id = {}
+    product_entities = ayon_api.get_products(
+        project_name, product_ids=product_ids
+    )
+    product_entities_by_id = {}
     folder_ids = set()
-    for subset_doc in subset_docs:
-        subset_docs_by_id[subset_doc["_id"]] = subset_doc
-        folder_ids.add(subset_doc["parent"])
+    for product_entity in product_entities:
+        product_entities_by_id[product_entity["id"]] = product_entity
+        folder_ids.add(product_entity["folderId"])
 
     folder_entities_by_id = {
         folder_entity["id"]: folder_entity
@@ -219,14 +221,14 @@ def get_subset_contexts(subset_ids, project_name=None):
 
     project_entity = ayon_api.get_project(project_name)
 
-    for subset_id, subset_doc in subset_docs_by_id.items():
-        folder_entity = folder_entities_by_id[subset_doc["parent"]]
+    for product_id, product_entity in product_entities_by_id.items():
+        folder_entity = folder_entities_by_id[product_entity["folderId"]]
         context = {
             "project": project_entity,
             "folder": folder_entity,
-            "subset": subset_doc
+            "product": product_entity
         }
-        contexts[subset_id] = context
+        contexts[product_id] = context
 
     return contexts
 
@@ -256,14 +258,14 @@ def get_representation_context(representation):
 
     (
         version_doc,
-        subset_doc,
+        product_entity,
         folder_entity,
         project_entity
     ) = get_representation_parents(project_name, representation)
     if not version_doc:
         raise AssertionError("Version was not found in database")
-    if not subset_doc:
-        raise AssertionError("Subset was not found in database")
+    if not product_entity:
+        raise AssertionError("Product was not found in database")
     if not folder_entity:
         raise AssertionError("Folder was not found in database")
     if not project_entity:
@@ -272,7 +274,7 @@ def get_representation_context(representation):
     context = {
         "project": project_entity,
         "folder": folder_entity,
-        "subset": subset_doc,
+        "product": product_entity,
         "version": version_doc,
         "representation": representation,
     }
@@ -288,7 +290,7 @@ def load_with_repre_context(
     if not is_compatible_loader(Loader, repre_context):
         raise IncompatibleLoaderError(
             "Loader {} is incompatible with {}".format(
-                Loader.__name__, repre_context["subset"]["name"]
+                Loader.__name__, repre_context["product"]["name"]
             )
         )
 
@@ -298,9 +300,9 @@ def load_with_repre_context(
 
     assert isinstance(options, dict), "Options must be a dictionary"
 
-    # Fallback to subset when name is None
+    # Fallback to product when name is None
     if name is None:
-        name = repre_context["subset"]["name"]
+        name = repre_context["product"]["name"]
 
     log.info(
         "Running '%s' on '%s'" % (
@@ -318,8 +320,8 @@ def load_with_repre_context(
     return loader.load(repre_context, name, namespace, options)
 
 
-def load_with_subset_context(
-    Loader, subset_context, namespace=None, name=None, options=None, **kwargs
+def load_with_product_context(
+    Loader, product_context, namespace=None, name=None, options=None, **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -328,21 +330,21 @@ def load_with_subset_context(
 
     assert isinstance(options, dict), "Options must be a dictionary"
 
-    # Fallback to subset when name is None
+    # Fallback to product when name is None
     if name is None:
-        name = subset_context["subset"]["name"]
+        name = product_context["product"]["name"]
 
     log.info(
         "Running '%s' on '%s'" % (
-            Loader.__name__, subset_context["folder"]["path"]
+            Loader.__name__, product_context["folder"]["path"]
         )
     )
 
-    return Loader().load(subset_context, name, namespace, options)
+    return Loader().load(product_context, name, namespace, options)
 
 
-def load_with_subset_contexts(
-    Loader, subset_contexts, namespace=None, name=None, options=None, **kwargs
+def load_with_product_contexts(
+    Loader, product_contexts, namespace=None, name=None, options=None, **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -351,19 +353,21 @@ def load_with_subset_contexts(
 
     assert isinstance(options, dict), "Options must be a dictionary"
 
-    # Fallback to subset when name is None
-    joined_subset_names = " | ".join(
-        context["subset"]["name"]
-        for context in subset_contexts
+    # Fallback to product when name is None
+    joined_product_names = " | ".join(
+        context["product"]["name"]
+        for context in product_contexts
     )
     if name is None:
-        name = joined_subset_names
+        name = joined_product_names
 
     log.info(
-        "Running '{}' on '{}'".format(Loader.__name__, joined_subset_names)
+        "Running '{}' on '{}'".format(
+            Loader.__name__, joined_product_names
+        )
     )
 
-    return Loader().load(subset_contexts, name, namespace, options)
+    return Loader().load(product_contexts, name, namespace, options)
 
 
 def load_container(
@@ -376,7 +380,7 @@ def load_container(
         representation (str or ObjectId or dict): The representation id
             or full representation as returned by the database.
         namespace (str, Optional): The namespace to assign. Defaults to None.
-        name (str, Optional): The name to assign. Defaults to subset name.
+        name (str, Optional): The name to assign. Defaults to product name.
         options (dict, Optional): Additional options to pass on to the loader.
 
     Returns:
@@ -477,9 +481,11 @@ def update_container(container, version=-1):
         new_version = get_version_by_name(
             project_name, version, current_version["parent"], fields=["_id"]
         )
-    subset_doc = get_subset_by_id(project_name, current_version["parent"])
+    product_entity = ayon_api.get_product_by_id(
+        project_name, current_version["parent"]
+    )
     folder_entity = ayon_api.get_folder_by_id(
-        project_name, subset_doc["parent"]
+        project_name, product_entity["folderId"]
     )
 
     assert new_version is not None, "This is a bug"
@@ -503,7 +509,7 @@ def update_container(container, version=-1):
     context = {
         "project": project_entity,
         "folder": folder_entity,
-        "subset": subset_doc,
+        "product": product_entity,
         "version": new_version,
         "representation": new_representation,
     }
@@ -551,7 +557,7 @@ def switch_container(container, representation, loader_plugin=None):
     if not is_compatible_loader(loader_plugin, new_context):
         raise IncompatibleLoaderError(
             "Loader {} is incompatible with {}".format(
-                loader_plugin.__name__, new_context["subset"]["name"]
+                loader_plugin.__name__, new_context["product"]["name"]
             )
         )
 
@@ -849,7 +855,7 @@ def filter_containers(containers, project_name):
         repre_docs_by_str_id[repre_id] = repre_doc
         repre_docs_by_version_id[version_id].append(repre_doc)
 
-    # Query version docs to get it's subset ids
+    # Query version docs to get it's product ids
     # - also query hero version to be able identify if representation
     #   belongs to existing version
     version_docs = get_versions(
@@ -859,29 +865,29 @@ def filter_containers(containers, project_name):
         fields=["_id", "parent", "type"]
     )
     verisons_by_id = {}
-    versions_by_subset_id = collections.defaultdict(list)
+    versions_by_product_id = collections.defaultdict(list)
     hero_version_ids = set()
     for version_doc in version_docs:
         version_id = version_doc["_id"]
         # Store versions by their ids
         verisons_by_id[version_id] = version_doc
-        # There's no need to query subsets for hero versions
+        # There's no need to query products for hero versions
         #   - they are considered as latest?
         if version_doc["type"] == "hero_version":
             hero_version_ids.add(version_id)
             continue
-        subset_id = version_doc["parent"]
-        versions_by_subset_id[subset_id].append(version_doc)
+        product_id = version_doc["parent"]
+        versions_by_product_id[product_id].append(version_doc)
 
     last_versions = get_last_versions(
         project_name,
-        subset_ids=versions_by_subset_id.keys(),
+        subset_ids=versions_by_product_id.keys(),
         fields=["_id"]
     )
     # Figure out which versions are outdated
     outdated_version_ids = set()
-    for subset_id, last_version_doc in last_versions.items():
-        for version_doc in versions_by_subset_id[subset_id]:
+    for product_id, last_version_doc in last_versions.items():
+        for version_doc in versions_by_product_id[product_id]:
             version_id = version_doc["_id"]
             if version_id != last_version_doc["_id"]:
                 outdated_version_ids.add(version_id)

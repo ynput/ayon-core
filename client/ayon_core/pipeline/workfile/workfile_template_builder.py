@@ -1577,6 +1577,8 @@ class PlaceholderLoadMixin(object):
 
         mapping = {}
         # TODO use representation context with entities
+        # - using 'asset', 'subset' and 'version' from context on
+        #   representation is danger
         for repre_doc in representations:
             repre_context = repre_doc["context"]
 
@@ -1652,16 +1654,17 @@ class PlaceholderLoadMixin(object):
 
         failed = False
         for repre_load_context in repre_load_contexts.values():
+            folder_path = repre_load_context["folder"]["path"]
+            product_name = repre_load_context["product"]["name"]
             representation = repre_load_context["representation"]
-            repre_context = representation["context"]
             self._before_repre_load(
                 placeholder, representation
             )
             self.log.info(
                 "Loading {} from {} with loader {}\n"
                 "Loader arguments used : {}".format(
-                    repre_context["subset"],
-                    repre_context["asset"],
+                    product_name,
+                    folder_path,
                     loader_name,
                     placeholder.data["loader_args"],
                 )

@@ -9,12 +9,12 @@ from .utils import (
 
     get_repres_contexts,
     get_contexts_for_repre_docs,
-    get_subset_contexts,
+    get_product_contexts,
     get_representation_context,
 
     load_with_repre_context,
-    load_with_subset_context,
-    load_with_subset_contexts,
+    load_with_product_context,
+    load_with_product_contexts,
 
     load_container,
     remove_container,
@@ -63,12 +63,12 @@ __all__ = (
 
     "get_repres_contexts",
     "get_contexts_for_repre_docs",
-    "get_subset_contexts",
+    "get_product_contexts",
     "get_representation_context",
 
     "load_with_repre_context",
-    "load_with_subset_context",
-    "load_with_subset_contexts",
+    "load_with_product_context",
+    "load_with_product_contexts",
 
     "load_container",
     "remove_container",

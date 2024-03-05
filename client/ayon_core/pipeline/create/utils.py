@@ -2,10 +2,7 @@ import collections
 
 import ayon_api
 
-from ayon_core.client import (
-    get_subsets,
-    get_last_versions,
-)
+from ayon_core.client import get_last_versions
 
 
 def get_last_versions_for_instances(
@@ -66,35 +63,36 @@ def get_last_versions_for_instances(
     if not folder_paths_by_id:
         return output
 
-    subset_docs = get_subsets(
+    product_entities = ayon_api.get_products(
         project_name,
-        asset_ids=folder_paths_by_id.keys(),
-        subset_names=product_names,
-        fields=["_id", "name", "parent"]
+        folder_ids=folder_paths_by_id.keys(),
+        product_names=product_names,
+        fields={"id", "name", "folderId"}
     )
-    subset_docs_by_id = {}
-    for subset_doc in subset_docs:
-        # Filter subset docs by subset names under parent
-        folder_id = subset_doc["parent"]
+    product_entities_by_id = {}
+    for product_entity in product_entities:
+        # Filter product entities by names under parent
+        folder_id = product_entity["folderId"]
+        product_name = product_entity["name"]
         folder_path = folder_paths_by_id[folder_id]
-        product_name = subset_doc["name"]
         if product_name not in product_names_by_folder_path[folder_path]:
             continue
-        subset_docs_by_id[subset_doc["_id"]] = subset_doc
+        product_entities_by_id[product_entity["id"]] = product_entity
 
-    if not subset_docs_by_id:
+    if not product_entities_by_id:
         return output
 
     last_versions_by_product_id = get_last_versions(
         project_name,
-        subset_docs_by_id.keys(),
+        product_entities_by_id.keys(),
         fields=["name", "parent"]
     )
-    for subset_id, version_doc in last_versions_by_product_id.items():
-        subset_doc = subset_docs_by_id[subset_id]
-        folder_id = subset_doc["parent"]
+    for product_id, version_doc in last_versions_by_product_id.items():
+        product_entity = product_entities_by_id[product_id]
+        product_name = product_entity["name"]
+        folder_id = product_entity["folderId"]
         folder_path = folder_paths_by_id[folder_id]
-        _instances = instances_by_hierarchy[folder_path][subset_doc["name"]]
+        _instances = instances_by_hierarchy[folder_path][product_name]
         for instance in _instances:
             output[instance.id] = version_doc["name"]
 
