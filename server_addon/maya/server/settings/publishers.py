@@ -833,7 +833,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": True,
-        "families": ["layout"]
+        "excluded_families": ["layout"]
     },
     "ValidateContainers": {
         "enabled": True,
