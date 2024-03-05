@@ -12,10 +12,8 @@ from abc import ABCMeta, abstractmethod
 import six
 import arrow
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import (
-    get_subsets,
-)
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import (
     UIDef,
@@ -1775,14 +1773,14 @@ class PublisherController(BasePublisherController):
         if not folder_item:
             return None
 
-        subset_docs = get_subsets(
+        product_entities = ayon_api.get_products(
             project_name,
-            asset_ids=[folder_item.entity_id],
-            fields=["name"]
+            folder_ids={folder_item.entity_id},
+            fields={"name"}
         )
         return {
-            subset_doc["name"]
-            for subset_doc in subset_docs
+            product_entity["name"]
+            for product_entity in product_entities
         }
 
     def reset(self):
