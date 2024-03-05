@@ -109,7 +109,7 @@ class ExtractReviewIntermediates(publish.Extractor):
                 if f_task_types and task_type not in f_task_types:
                     continue
 
-                # test subsets from filter
+                # test products from filter
                 if product_names and not any(
                     re.search(p, product_name) for p in product_names
                 ):

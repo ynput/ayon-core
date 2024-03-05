@@ -10,7 +10,7 @@ class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
     """Ensure all instances have a unique product name"""
 
     order = pyblish.api.ValidatorOrder
-    label = "Validate Unique Subsets"
+    label = "Validate Unique Products"
     families = ["render", "image"]
     hosts = ["fusion"]
     actions = [SelectInvalidAction]

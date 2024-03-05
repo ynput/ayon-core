@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateSubsetUniqueness(pyblish.api.ContextPlugin):
+class ValidateProductUniqueness(pyblish.api.ContextPlugin):
     """Validate all product names are unique.
 
     This only validates whether the instances currently set to publish from
@@ -23,7 +23,7 @@ class ValidateSubsetUniqueness(pyblish.api.ContextPlugin):
 
     """
 
-    label = "Validate Subset Uniqueness"
+    label = "Validate Product Uniqueness"
     order = pyblish.api.ValidatorOrder
     families = ["*"]
 
