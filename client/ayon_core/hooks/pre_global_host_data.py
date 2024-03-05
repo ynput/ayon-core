@@ -22,7 +22,7 @@ class GlobalHostDataHook(PreLaunchHook):
         app = self.launch_context.application
         temp_data = EnvironmentPrepData({
             "project_name": self.data["project_name"],
-            "asset_name": self.data["asset_name"],
+            "folder_path": self.data["folder_path"],
             "task_name": self.data["task_name"],
 
             "app": app,
@@ -66,7 +66,7 @@ class GlobalHostDataHook(PreLaunchHook):
         project_doc = get_project(project_name)
         self.data["project_doc"] = project_doc
 
-        asset_name = self.data.get("asset_name")
+        asset_name = self.data.get("folder_path")
         if not asset_name:
             self.log.warning(
                 "Asset name was not set. Skipping asset document query."

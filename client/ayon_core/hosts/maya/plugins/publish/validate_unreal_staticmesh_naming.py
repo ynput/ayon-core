@@ -81,7 +81,7 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
                 ("_" + cls.static_mesh_prefix) or "", cls.regex_mesh
             )
             sm_r = re.compile(regex_mesh)
-            if not sm_r.match(instance.data.get("subset")):
+            if not sm_r.match(instance.data.get("productName")):
                 cls.log.error("Mesh doesn't comply with name validation.")
                 return True
 

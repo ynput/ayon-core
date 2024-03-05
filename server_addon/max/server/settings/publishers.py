@@ -65,10 +65,14 @@ class BasicValidateModel(BaseSettingsModel):
 
 
 class PublishersModel(BaseSettingsModel):
+    ValidateInstanceInContext: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Instance In Context",
+        section="Validators"
+    )
     ValidateFrameRange: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Frame Range",
-        section="Validators"
+        title="Validate Frame Range"
     )
     ValidateAttributes: ValidateAttributesModel = SettingsField(
         default_factory=ValidateAttributesModel,
@@ -89,6 +93,10 @@ class PublishersModel(BaseSettingsModel):
     ValidateLoadedPlugin: ValidateLoadedPluginModel = SettingsField(
         default_factory=ValidateLoadedPluginModel,
         title="Validate Loaded Plugin"
+    )
+    ValidateMeshHasUVs: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Mesh Has UVs"
     )
     ExtractModelObj: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -114,6 +122,11 @@ class PublishersModel(BaseSettingsModel):
 
 
 DEFAULT_PUBLISH_SETTINGS = {
+    "ValidateInstanceInContext": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
     "ValidateFrameRange": {
         "enabled": True,
         "optional": True,
@@ -137,6 +150,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False,
         "optional": True,
         "family_plugins_mapping": []
+    },
+    "ValidateMeshHasUVs": {
+        "enabled": True,
+        "optional": True,
+        "active": False
     },
     "ValidateNoAnimation": {
         "enabled": True,

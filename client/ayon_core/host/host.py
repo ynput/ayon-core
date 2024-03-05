@@ -134,12 +134,12 @@ class HostBase(object):
 
         Returns:
             Dict[str, Union[str, None]]: Context with 3 keys 'project_name',
-                'asset_name' and 'task_name'. All of them can be 'None'.
+                'folder_path' and 'task_name'. All of them can be 'None'.
         """
 
         return {
             "project_name": self.get_current_project_name(),
-            "asset_name": self.get_current_asset_name(),
+            "folder_path": self.get_current_asset_name(),
             "task_name": self.get_current_task_name()
         }
 
@@ -161,7 +161,7 @@ class HostBase(object):
         # Use current context to fill the context title
         current_context = self.get_current_context()
         project_name = current_context["project_name"]
-        asset_name = current_context["asset_name"]
+        asset_name = current_context["folder_path"]
         task_name = current_context["task_name"]
         items = []
         if project_name:

@@ -8,8 +8,11 @@ class CollectModelData(pyblish.api.InstancePlugin):
 
     Ensures always only a single frame is extracted (current frame).
 
+    Todo:
+        Validate if is this plugin still useful.
+
     Note:
-        This is a workaround so that the `pype.model` family can use the
+        This is a workaround so that the `model` product type can use the
         same pointcache extractor implementation as animation and pointcaches.
         This always enforces the "current" frame to be published.
 

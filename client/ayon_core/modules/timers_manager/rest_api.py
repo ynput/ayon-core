@@ -45,12 +45,12 @@ class TimersManagerModuleRestApi:
         data = await request.json()
         try:
             project_name = data["project_name"]
-            asset_name = data["asset_name"]
+            asset_name = data["folder_path"]
             task_name = data["task_name"]
         except KeyError:
             msg = (
                 "Payload must contain fields 'project_name,"
-                " 'asset_name' and 'task_name'"
+                " 'folder_path' and 'task_name'"
             )
             self.log.error(msg)
             return Response(status=400, message=msg)
@@ -71,11 +71,11 @@ class TimersManagerModuleRestApi:
         data = await request.json()
         try:
             project_name = data['project_name']
-            asset_name = data['asset_name']
+            asset_name = data['folder_path']
             task_name = data['task_name']
         except KeyError:
             message = (
-                "Payload must contain fields 'project_name, 'asset_name',"
+                "Payload must contain fields 'project_name, 'folder_path',"
                 " 'task_name'"
             )
             self.log.warning(message)

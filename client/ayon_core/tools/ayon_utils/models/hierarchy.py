@@ -191,12 +191,12 @@ def _get_folder_item_from_hierarchy_item(item):
     name = item["name"]
     path_parts = list(item["parents"])
     path_parts.append(name)
-
+    path = "/" + "/".join(path_parts)
     return FolderItem(
         item["id"],
         item["parentId"],
         name,
-        "/".join(path_parts),
+        path,
         item["folderType"],
         item["label"],
         None,
@@ -307,8 +307,44 @@ class HierarchyModel(object):
         })
         return output
 
+    def get_folder_items_by_paths(self, project_name, folder_paths):
+        """Get folder items by ids.
+
+        This function will query folders if they are not in cache. But the
+        queried items are not added to cache back.
+
+        Args:
+            project_name (str): Name of project where to look for folders.
+            folder_paths (Iterable[str]): Folder paths.
+
+        Returns:
+            dict[str, Union[FolderItem, None]]: Folder items by id.
+        """
+
+        folder_paths = set(folder_paths)
+        output = {folder_path: None for folder_path in folder_paths}
+        if not folder_paths:
+            return output
+
+        if self._folders_items[project_name].is_valid:
+            cache_data = self._folders_items[project_name].get_data()
+            for folder_item in cache_data.values():
+                if folder_item.path in folder_paths:
+                    output[folder_item.path] = folder_item
+            return output
+        folders = ayon_api.get_folders(
+            project_name,
+            folder_paths=folder_paths,
+            fields=["id", "name", "label", "parentId", "path", "folderType"]
+        )
+        # Make sure all folder ids are in output
+        for folder in folders:
+            item = _get_folder_item_from_entity(folder)
+            output[item.path] = item
+        return output
+
     def get_folder_item(self, project_name, folder_id):
-        """Get folder items by id.
+        """Get folder item by id.
 
         This function will query folder if they is not in cache. But the
         queried items are not added to cache back.
@@ -324,6 +360,25 @@ class HierarchyModel(object):
             project_name, [folder_id]
         )
         return items.get(folder_id)
+
+    def get_folder_item_by_path(self, project_name, folder_path):
+        """Get folder item by path.
+
+        This function will query folder if they is not in cache. But the
+        queried items are not added to cache back.
+
+        Args:
+            project_name (str): Name of project where to look for folders.
+            folder_path (str): Folder path.
+
+        Returns:
+            Union[FolderItem, None]: Folder item.
+
+        """
+        items = self.get_folder_items_by_paths(
+            project_name, [folder_path]
+        )
+        return items.get(folder_path)
 
     def get_task_items(self, project_name, folder_id, sender):
         if not project_name or not folder_id:

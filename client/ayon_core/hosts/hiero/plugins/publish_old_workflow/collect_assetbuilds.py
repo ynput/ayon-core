@@ -8,7 +8,7 @@ class CollectAssetBuilds(api.ContextPlugin):
 
     Tag is expected to have name of the asset and metadata:
         {
-            "family": "assetbuild"
+            "productType": "assetbuild"
         }
     """
 
@@ -29,7 +29,7 @@ class CollectAssetBuilds(api.ContextPlugin):
             asset_builds[asset_name] = asset_doc
 
         for instance in context:
-            if instance.data["family"] != "clip":
+            if instance.data["productType"] != "clip":
                 continue
 
             # Exclude non-tagged instances.
@@ -38,9 +38,11 @@ class CollectAssetBuilds(api.ContextPlugin):
 
             for tag in instance.data["tags"]:
                 t_metadata = dict(tag.metadata())
-                t_family = t_metadata.get("tag.family", "")
+                t_product_type = t_metadata.get("tag.productType")
+                if t_product_type is None:
+                    t_product_type = t_metadata.get("tag.family", "")
 
-                if t_family.lower() == "assetbuild":
+                if t_product_type.lower() == "assetbuild":
                     asset_names.append(tag["name"])
                     tagged = True
 

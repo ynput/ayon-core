@@ -56,7 +56,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -126,12 +126,15 @@ class AnimationAlembicLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
-        name = container["asset_name"]
-        source_path = get_representation_path(representation)
+    def update(self, container, context):
+        folder_name = container["asset_name"]
+        repre_doc = context["representation"]
+        source_path = get_representation_path(repre_doc)
         destination_path = container["namespace"]
 
-        task = self.get_task(source_path, destination_path, name, True)
+        task = self.get_task(
+            source_path, destination_path, folder_name, True
+        )
 
         # do import fbx and replace existing data
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -143,8 +146,8 @@ class AnimationAlembicLoader(plugin.Loader):
         unreal_pipeline.imprint(
             container_path,
             {
-                "representation": str(representation["_id"]),
-                "parent": str(representation["parent"])
+                "representation": str(repre_doc["_id"]),
+                "parent": str(repre_doc["parent"])
             })
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
