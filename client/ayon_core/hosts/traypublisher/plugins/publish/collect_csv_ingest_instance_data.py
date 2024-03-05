@@ -17,7 +17,6 @@ class CollectCSVIngestInstancesData(
     families = ["csv_ingest"]
 
     def process(self, instance):
-        self.log.info(f"Collecting {instance.name}")
 
         # expecting [(colorspace, repre_data), ...]
         prepared_repres_data_items = instance.data[
@@ -33,4 +32,3 @@ class CollectCSVIngestInstancesData(
 
             instance.data["representations"].append(repre_data)
 
-        self.log.debug(pformat(instance.data))
