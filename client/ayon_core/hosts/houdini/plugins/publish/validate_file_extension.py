@@ -45,9 +45,9 @@ class ValidateFileExtension(pyblish.api.InstancePlugin):
 
         # Create lookup for current family in instance
         families = []
-        family = instance.data.get("family", None)
-        if family:
-            families.append(family)
+        product_type = instance.data.get("productType")
+        if product_type:
+            families.append(product_type)
         families = set(families)
 
         # Perform extension check

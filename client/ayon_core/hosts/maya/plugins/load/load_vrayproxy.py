@@ -22,7 +22,7 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class VRayProxyLoader(load.LoaderPlugin):
@@ -49,9 +49,9 @@ class VRayProxyLoader(load.LoaderPlugin):
         """
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "vrayproxy"
+            product_type = "vrayproxy"
 
         #  get all representations for this version
         filename = self._get_abc(context["version"]["_id"])
@@ -81,7 +81,7 @@ class VRayProxyLoader(load.LoaderPlugin):
         # colour the group node
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(group_node), 1)
@@ -96,7 +96,7 @@ class VRayProxyLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
         node = container['objectName']
@@ -107,9 +107,10 @@ class VRayProxyLoader(load.LoaderPlugin):
         assert vraymeshes, "Cannot find VRayMesh in container"
 
         #  get all representations for this version
+        repre_doc = context["representation"]
         filename = (
-            self._get_abc(representation["parent"])
-            or get_representation_path(representation)
+            self._get_abc(repre_doc["parent"])
+            or get_representation_path(repre_doc)
         )
 
         for vray_mesh in vraymeshes:
@@ -119,7 +120,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
     def remove(self, container):
@@ -140,10 +141,10 @@ class VRayProxyLoader(load.LoaderPlugin):
                 self.log.warning("Namespace not deleted because it "
                                  "still has members: %s", namespace)
 
-    def switch(self, container, representation):
+    def switch(self, container, context):
         # type: (dict, dict) -> None
         """Switch loaded representation."""
-        self.update(container, representation)
+        self.update(container, context)
 
     def create_vray_proxy(self, name, filename):
         # type: (str, str) -> (list, str)

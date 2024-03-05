@@ -1,7 +1,6 @@
 import os
 import platform
 import copy
-import getpass
 import logging
 import inspect
 import collections
@@ -11,7 +10,9 @@ from ayon_core.host import ILoadHost
 from ayon_core.client import (
     get_project,
     get_assets,
+    get_asset_by_id,
     get_subsets,
+    get_subset_by_id,
     get_versions,
     get_version_by_id,
     get_last_version_by_subset_id,
@@ -481,6 +482,8 @@ def update_container(container, version=-1):
         new_version = get_version_by_name(
             project_name, version, current_version["parent"], fields=["_id"]
         )
+    subset_doc = get_subset_by_id(project_name, current_version["parent"])
+    asset_doc = get_asset_by_id(project_name, subset_doc["parent"])
 
     assert new_version is not None, "This is a bug"
 
@@ -499,8 +502,19 @@ def update_container(container, version=-1):
             "Can't update container because loader '{}' was not found."
             .format(container.get("loader"))
         )
+    project_doc = get_project(project_name)
+    context = {
+        "project": {
+            "name": project_doc["name"],
+            "code": project_doc["data"]["code"],
+        },
+        "asset": asset_doc,
+        "subset": subset_doc,
+        "version": new_version,
+        "representation": new_representation,
+    }
 
-    return Loader().update(container, new_representation)
+    return Loader().update(container, context)
 
 
 def switch_container(container, representation, loader_plugin=None):
@@ -549,7 +563,7 @@ def switch_container(container, representation, loader_plugin=None):
 
     loader = loader_plugin(new_context)
 
-    return loader.switch(container, new_representation)
+    return loader.switch(container, new_context)
 
 
 def get_representation_path_from_context(context):

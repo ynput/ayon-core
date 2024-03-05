@@ -71,7 +71,7 @@ class MultiverseUsdOverLoader(load.LoaderPlugin):
 
         return container
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
 
@@ -88,13 +88,14 @@ class MultiverseUsdOverLoader(load.LoaderPlugin):
         mvShape = container['mvUsdCompoundShape']
         assert mvShape, "Missing mv source"
 
-        project_name = representation["context"]["project"]["name"]
+        project_name = context["project"]["name"]
+        repre_doc = context["representation"]
         prev_representation_id = cmds.getAttr("{}.representation".format(node))
         prev_representation = get_representation_by_id(project_name,
                                                        prev_representation_id)
         prev_path = os.path.normpath(prev_representation["data"]["path"])
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_doc)
 
         for shape in shapes:
             asset_paths = multiverse.GetUsdCompoundAssetPaths(shape)
@@ -107,12 +108,12 @@ class MultiverseUsdOverLoader(load.LoaderPlugin):
             multiverse.SetUsdCompoundAssetPaths(shape, asset_paths)
 
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
         mel.eval('refreshEditorTemplates;')
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         # type: (dict) -> None

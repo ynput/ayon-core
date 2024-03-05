@@ -83,8 +83,8 @@ class LoadImage(plugin.Loader):
 
         # Prepare layer name
         asset_name = context["asset"]["name"]
-        subset_name = context["subset"]["name"]
-        layer_name = self.get_unique_layer_name(asset_name, subset_name)
+        product_name = context["subset"]["name"]
+        layer_name = self.get_unique_layer_name(asset_name, product_name)
 
         path = self.filepath_from_context(context)
 
@@ -210,15 +210,17 @@ class LoadImage(plugin.Loader):
     def switch(self, container, representation):
         self.update(container, representation)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Replace container with different version.
 
         New layers are loaded as first step. Then is tried to change data in
         new layers with data from old layers. When that is done old layers are
         removed.
         """
+
+        repre_doc = context["representation"]
         # Create new containers first
-        context = get_representation_context(representation)
+        context = get_representation_context(repre_doc)
 
         # Get layer ids from previous container
         old_layer_names = self.get_members_from_container(container)

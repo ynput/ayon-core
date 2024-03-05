@@ -86,7 +86,7 @@ class ImageFromSequenceLoader(photoshop.PhotoshopLoader):
             )
         ]
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """No update possible, not containerized."""
         pass
 

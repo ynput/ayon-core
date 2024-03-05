@@ -1,7 +1,7 @@
 import os
 import logging
 
-from ayon_core.settings import get_system_settings, get_project_settings
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import schema
 from ayon_core.pipeline.plugin_discover import (
     discover,
@@ -37,7 +37,7 @@ class LoaderPlugin(list):
     log.propagate = True
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         host_name = os.environ.get("AYON_HOST_NAME")
         plugin_type = "load"
         plugin_type_settings = (
@@ -192,13 +192,13 @@ class LoaderPlugin(list):
         raise NotImplementedError("Loader.load() must be "
                                   "implemented by subclass")
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update `container` to `representation`
 
-        Arguments:
+        Args:
             container (avalon-core:container-1.0): Container to update,
                 from `host.ls()`.
-            representation (dict): Update the container to this representation.
+            context (dict): Update the container to this representation.
 
         """
         raise NotImplementedError("Loader.update() must be "
@@ -225,7 +225,7 @@ class LoaderPlugin(list):
             Returns static (cls) options or could collect from 'contexts'.
 
             Args:
-                contexts (list): of repre or subset contexts
+                contexts (list): of repre or product contexts
             Returns:
                 (list)
         """
@@ -246,7 +246,7 @@ class LoaderPlugin(list):
 
 
 class SubsetLoaderPlugin(LoaderPlugin):
-    """Load subset into host application
+    """Load product into host application
     Arguments:
         context (dict): avalon-core:context-1.0
         name (str, optional): Use pre-defined name
@@ -262,11 +262,10 @@ def discover_loader_plugins(project_name=None):
     plugins = discover(LoaderPlugin)
     if not project_name:
         project_name = get_current_project_name()
-    system_settings = get_system_settings()
     project_settings = get_project_settings(project_name)
     for plugin in plugins:
         try:
-            plugin.apply_settings(project_settings, system_settings)
+            plugin.apply_settings(project_settings)
         except Exception:
             log.warning(
                 "Failed to apply settings to loader {}".format(

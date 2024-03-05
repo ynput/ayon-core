@@ -88,7 +88,7 @@ ImageSequenceLoader.getUniqueColumnName = function(columnPrefix) {
  * var args = [
  *    files, // Files in file sequences.
  *    asset, // Asset name.
- *    subset, // Subset name.
+ *    productName, // Product name.
  *    startFrame, // Sequence starting frame.
  *    groupId // Unique group ID (uuid4).
  * ];
@@ -106,7 +106,7 @@ ImageSequenceLoader.prototype.importFiles = function(args) {
     var doc = $.scn;
     var files = args[0];
     var asset = args[1];
-    var subset = args[2];
+    var productName = args[2];
     var startFrame = args[3];
     var groupId = args[4];
     var vectorFormat = null;
@@ -124,7 +124,7 @@ ImageSequenceLoader.prototype.importFiles = function(args) {
     var num = 0;
     var name = '';
     do {
-        name = asset + '_' + (num++) + '_' + subset;
+        name = asset + '_' + (num++) + '_' + productName;
     } while (currentGroup.getNodeByName(name) != null);
 
     extension = filename.substr(pos+1).toLowerCase();

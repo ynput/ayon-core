@@ -104,7 +104,7 @@ class FusionSubmitDeadline(
         # Collect all saver instances in context that are to be rendered
         saver_instances = []
         for instance in context:
-            if instance.data["family"] != "render":
+            if instance.data["productType"] != "render":
                 # Allow only saver family instances
                 continue
 

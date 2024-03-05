@@ -104,10 +104,10 @@ class LinkAsGroup(load.LoaderPlugin):
                      loader=self.__class__.__name__,
                      data=data_imprint)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update the Loader's path
 
         Nuke automatically tries to reset some variables when changing
@@ -117,11 +117,13 @@ class LinkAsGroup(load.LoaderPlugin):
         """
         node = container["node"]
 
-        root = get_representation_path(representation).replace("\\", "/")
+        project_name = context["project"]["name"]
+        version_doc = context["version"]
+        repre_doc = context["representation"]
+
+        root = get_representation_path(repre_doc).replace("\\", "/")
 
         # Get start frame from version data
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
         last_version_doc = get_last_version_by_subset_id(
             project_name, version_doc["parent"], fields=["_id"]
         )
@@ -129,7 +131,7 @@ class LinkAsGroup(load.LoaderPlugin):
         updated_dict = {}
         version_data = version_doc["data"]
         updated_dict.update({
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "frameEnd": version_data.get("frameEnd"),
             "version": version_doc.get("name"),
             "colorspace": version_data.get("colorspace"),

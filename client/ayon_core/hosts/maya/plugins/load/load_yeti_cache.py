@@ -13,7 +13,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.hosts.maya.api import lib
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 # Do not reset these values on update but only apply on first load
@@ -57,9 +57,9 @@ class YetiCacheLoader(load.LoaderPlugin):
         """
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "yeticache"
+            product_type = "yeticache"
 
         # Build namespace
         asset = context["asset"]
@@ -82,7 +82,7 @@ class YetiCacheLoader(load.LoaderPlugin):
         project_name = context["project"]["name"]
 
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(group_node + ".useOutlinerColor", 1)
@@ -122,12 +122,12 @@ class YetiCacheLoader(load.LoaderPlugin):
 
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_doc = context["representation"]
         namespace = container["namespace"]
         container_node = container["objectName"]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_doc)
         settings = self.read_settings(path)
 
         # Collect scene information of asset
@@ -216,11 +216,11 @@ class YetiCacheLoader(load.LoaderPlugin):
                         set_attribute(attr, value, yeti_node)
 
         cmds.setAttr("{}.representation".format(container_node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      typ="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     # helper functions
     def create_namespace(self, asset):

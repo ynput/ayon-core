@@ -21,8 +21,8 @@ class ExtractClipEffects(publish.Extractor):
         if not effects:
             return
 
-        subset = instance.data.get("subset")
-        family = instance.data["family"]
+        product_name = instance.data.get("productName")
+        product_type = instance.data["productType"]
 
         self.log.debug("creating staging dir")
         staging_dir = self.staging_dir(instance)
@@ -32,7 +32,7 @@ class ExtractClipEffects(publish.Extractor):
             instance.data["transfers"] = list()
 
         ext = "json"
-        file = subset + "." + ext
+        file = product_name + "." + ext
 
         # when instance is created during collection part
         resources_dir = instance.data["resourcesDir"]
@@ -68,8 +68,10 @@ class ExtractClipEffects(publish.Extractor):
         version_data.update({
             "colorspace": item.sourceMediaColourTransform(),
             "colorspaceScript": instance.context.data["colorspace"],
-            "families": [family, "plate"],
-            "subset": subset,
+            "families": [product_type, "plate"],
+            # TODO find out if 'subset' is needed (and 'productName')
+            "subset": product_name,
+            "productName": product_name,
             "fps": instance.context.data["fps"]
         })
         instance.data["versionData"] = version_data
@@ -77,7 +79,7 @@ class ExtractClipEffects(publish.Extractor):
         representation = {
             'files': file,
             'stagingDir': staging_dir,
-            'name': family + ext.title(),
+            'name': product_type + ext.title(),
             'ext': ext
         }
         instance.data["representations"].append(representation)

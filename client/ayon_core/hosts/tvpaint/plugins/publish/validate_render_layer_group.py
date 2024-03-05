@@ -4,7 +4,7 @@ from ayon_core.pipeline import PublishXmlValidationError
 
 
 class ValidateRenderLayerGroups(pyblish.api.ContextPlugin):
-    """Validate group ids of renderLayer subsets.
+    """Validate group ids of renderLayer products.
 
     Validate that there are not 2 render layers using the same group.
     """
@@ -46,19 +46,21 @@ class ValidateRenderLayerGroups(pyblish.api.ContextPlugin):
                 group["name"],
                 group["group_id"],
             )
-            line_join_subset_names = "\n".join([
-                f"    - {instance['subset']}"
+            line_join_product_names = "\n".join([
+                f"    - {instance['productName']}"
                 for instance in instances
             ])
-            joined_subset_names = ", ".join([
-                f"\"{instance['subset']}\""
+            joined_product_names = ", ".join([
+                f"\"{instance['productName']}\""
                 for instance in instances
             ])
             per_group_msgs.append(
-                "{} < {} >".format(group_label, joined_subset_names)
+                "{} < {} >".format(group_label, joined_product_names)
             )
             groups_information_lines.append(
-                "<b>{}</b>\n{}".format(group_label, line_join_subset_names)
+                "<b>{}</b>\n{}".format(
+                    group_label, line_join_product_names
+                )
             )
 
         # Raise an error

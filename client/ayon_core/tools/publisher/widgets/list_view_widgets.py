@@ -123,8 +123,8 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
         instance_label = html_escape(instance_label)
 
-        subset_name_label = QtWidgets.QLabel(instance_label, self)
-        subset_name_label.setObjectName("ListViewSubsetName")
+        product_name_label = QtWidgets.QLabel(instance_label, self)
+        product_name_label.setObjectName("ListViewProductName")
 
         active_checkbox = NiceCheckbox(parent=self)
         active_checkbox.setChecked(instance["active"])
@@ -132,17 +132,17 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         content_margins = layout.contentsMargins()
         layout.setContentsMargins(content_margins.left() + 2, 0, 2, 0)
-        layout.addWidget(subset_name_label)
+        layout.addWidget(product_name_label)
         layout.addStretch(1)
         layout.addWidget(active_checkbox)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        subset_name_label.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        product_name_label.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         active_checkbox.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         active_checkbox.stateChanged.connect(self._on_active_change)
 
-        self._instance_label_widget = subset_name_label
+        self._instance_label_widget = product_name_label
         self._active_checkbox = active_checkbox
 
         self._has_valid_context = None
@@ -185,7 +185,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
     def update_instance_values(self):
         """Update instance data propagated to widgets."""
-        # Check subset name
+        # Check product name
         label = self.instance.label
         if label != self._instance_label_widget.text():
             self._instance_label_widget.setText(html_escape(label))
@@ -631,8 +631,8 @@ class InstanceListView(AbstractInstanceView):
 
                 # Create new item and store it as new
                 item = QtGui.QStandardItem()
-                item.setData(instance["subset"], SORT_VALUE_ROLE)
-                item.setData(instance["subset"], GROUP_ROLE)
+                item.setData(instance["productName"], SORT_VALUE_ROLE)
+                item.setData(instance["productName"], GROUP_ROLE)
                 item.setData(instance_id, INSTANCE_ID_ROLE)
                 new_items.append(item)
                 new_items_with_instance.append((item, instance))
