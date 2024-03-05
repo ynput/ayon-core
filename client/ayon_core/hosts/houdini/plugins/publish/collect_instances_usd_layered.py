@@ -89,7 +89,7 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
 
         # For now group ALL of them into USD Layer product group
         # Allow this product to be grouped into a USD Layer on creation
-        data["subsetGroup"] = "USD Layer"
+        data["productGroup"] = "USD Layer"
 
         instances = list()
         dependencies = []
