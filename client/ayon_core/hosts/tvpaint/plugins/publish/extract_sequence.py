@@ -31,7 +31,7 @@ class ExtractSequence(pyblish.api.Extractor):
     families = ["review", "render"]
 
     # Modifiable with settings
-    review_bg = [255, 255, 255, 255]
+    review_bg = [255, 255, 255, 1.0]
 
     def process(self, instance):
         self.log.info(
@@ -111,7 +111,7 @@ class ExtractSequence(pyblish.api.Extractor):
             "Files will be rendered to folder: {}".format(output_dir)
         )
 
-        if instance.data["family"] == "review":
+        if instance.data["productType"] == "review":
             result = self.render_review(
                 output_dir, mark_in, mark_out, scene_bg_color
             )

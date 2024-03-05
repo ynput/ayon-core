@@ -183,11 +183,13 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
                     b_job_response.json()["_id"])
 
         # redefinition of families
-        if "render" in instance.data["family"]:
-            instance.data['family'] = 'write'
+        if "render" in instance.data["productType"]:
+            instance.data["family"] = "write"
+            instance.data["productType"] = "write"
             families.insert(0, "render2d")
-        elif "prerender" in instance.data["family"]:
-            instance.data['family'] = 'write'
+        elif "prerender" in instance.data["productType"]:
+            instance.data["family"] = "write"
+            instance.data["productType"] = "write"
             families.insert(0, "prerender")
         instance.data["families"] = families
 
@@ -196,7 +198,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         AbstractSubmitDeadline"""
         for instance in context:
             if (
-                instance.data["family"] != "workfile"
+                instance.data["productType"] != "workfile"
                 # Disabled instances won't be integrated
                 or instance.data("publish") is False
             ):
@@ -373,10 +375,10 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         keys = [
             "PYTHONPATH",
             "PATH",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_APP_NAME",
             "FTRACK_API_KEY",
             "FTRACK_API_USER",
             "FTRACK_SERVER",

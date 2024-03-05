@@ -104,7 +104,7 @@ class FusionSubmitDeadline(
         # Collect all saver instances in context that are to be rendered
         saver_instances = []
         for instance in context:
-            if instance.data["family"] != "render":
+            if instance.data["productType"] != "render":
                 # Allow only saver family instances
                 continue
 
@@ -220,11 +220,11 @@ class FusionSubmitDeadline(
             "FTRACK_API_KEY",
             "FTRACK_API_USER",
             "FTRACK_SERVER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_WORKDIR",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "AYON_LOG_NO_COLORS",
             "IS_TEST",
             "AYON_BUNDLE_NAME",

@@ -121,6 +121,11 @@ class CoreSettings(BaseSettingsModel):
         widget="textarea",
         scope=["studio"],
     )
+    update_check_interval: int = SettingsField(
+        5,
+        title="Update check interval (minutes)",
+        ge=0
+    )
     disk_mapping: DiskMappingModel = SettingsField(
         default_factory=DiskMappingModel,
         title="Disk mapping",

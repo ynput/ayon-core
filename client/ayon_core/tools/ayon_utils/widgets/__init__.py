@@ -3,12 +3,17 @@ from .projects_widget import (
     ProjectsCombobox,
     ProjectsQtModel,
     ProjectSortFilterProxy,
+    PROJECT_NAME_ROLE,
+    PROJECT_IS_CURRENT_ROLE,
+    PROJECT_IS_ACTIVE_ROLE,
+    PROJECT_IS_LIBRARY_ROLE,
 )
 
 from .folders_widget import (
     FoldersWidget,
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
+    SimpleFoldersWidget,
 )
 
 from .tasks_widget import (
@@ -27,10 +32,15 @@ __all__ = (
     "ProjectsCombobox",
     "ProjectsQtModel",
     "ProjectSortFilterProxy",
+    "PROJECT_NAME_ROLE",
+    "PROJECT_IS_CURRENT_ROLE",
+    "PROJECT_IS_ACTIVE_ROLE",
+    "PROJECT_IS_LIBRARY_ROLE",
 
     "FoldersWidget",
     "FoldersQtModel",
     "FOLDERS_MODEL_SENDER_NAME",
+    "SimpleFoldersWidget",
 
     "TasksWidget",
     "TasksQtModel",

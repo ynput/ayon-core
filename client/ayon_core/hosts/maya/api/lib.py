@@ -24,7 +24,8 @@ from ayon_core.client import (
     get_asset_by_name,
     get_subsets,
     get_last_versions,
-    get_representation_by_name
+    get_representation_by_name,
+    get_asset_name_identifier,
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
@@ -35,7 +36,11 @@ from ayon_core.pipeline import (
     loaders_from_representation,
     get_representation_path,
     load_container,
-    registered_host
+    registered_host,
+    AVALON_CONTAINER_ID,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_project_asset
@@ -1863,14 +1868,14 @@ def get_container_members(container):
 
 # region LOOKDEV
 def list_looks(project_name, asset_id):
-    """Return all look subsets for the given asset
+    """Return all look products for the given asset
 
-    This assumes all look subsets start with "look*" in their names.
+    This assumes all look products start with "look*" in their names.
     """
-    # # get all subsets with look leading in
+    # # get all products with look leading in
     # the name associated with the asset
-    # TODO this should probably look for family 'look' instead of checking
-    #   subset name that can not start with family
+    # TODO this should probably look for product type 'look' instead of
+    #   checking product name that can not start with product type
     subset_docs = get_subsets(project_name, asset_ids=[asset_id])
     return [
         subset_doc
@@ -1937,15 +1942,15 @@ def assign_look_by_version(nodes, version_id):
     apply_shaders(relationships, shader_nodes, nodes)
 
 
-def assign_look(nodes, subset="lookDefault"):
+def assign_look(nodes, product_name="lookDefault"):
     """Assigns a look to a node.
 
     Optimizes the nodes by grouping by asset id and finding
-    related subset by name.
+    related product by name.
 
     Args:
         nodes (list): all nodes to assign the look to
-        subset (str): name of the subset to find
+        product_name (str): name of the product to find
     """
 
     # Group all nodes per asset id
@@ -1960,22 +1965,22 @@ def assign_look(nodes, subset="lookDefault"):
 
     project_name = get_current_project_name()
     subset_docs = get_subsets(
-        project_name, subset_names=[subset], asset_ids=grouped.keys()
+        project_name, subset_names=[product_name], asset_ids=grouped.keys()
     )
     subset_docs_by_asset_id = {
         str(subset_doc["parent"]): subset_doc
         for subset_doc in subset_docs
     }
-    subset_ids = {
+    product_ids = {
         subset_doc["_id"]
         for subset_doc in subset_docs_by_asset_id.values()
     }
     last_version_docs = get_last_versions(
         project_name,
-        subset_ids=subset_ids,
+        subset_ids=product_ids,
         fields=["_id", "name", "data.families"]
     )
-    last_version_docs_by_subset_id = {
+    last_version_docs_by_product_id = {
         last_version_doc["parent"]: last_version_doc
         for last_version_doc in last_version_docs
     }
@@ -1984,26 +1989,28 @@ def assign_look(nodes, subset="lookDefault"):
         # create objectId for database
         subset_doc = subset_docs_by_asset_id.get(asset_id)
         if not subset_doc:
-            log.warning("No subset '{}' found for {}".format(subset, asset_id))
+            log.warning((
+                "No product '{}' found for {}"
+            ).format(product_name, asset_id))
             continue
 
-        last_version = last_version_docs_by_subset_id.get(subset_doc["_id"])
+        last_version = last_version_docs_by_product_id.get(subset_doc["_id"])
         if not last_version:
             log.warning((
-                "Not found last version for subset '{}' on asset with id {}"
-            ).format(subset, asset_id))
+                "Not found last version for product '{}' on asset with id {}"
+            ).format(product_name, asset_id))
             continue
 
         families = last_version.get("data", {}).get("families") or []
         if "look" not in families:
             log.warning((
-                "Last version for subset '{}' on asset with id {}"
-                " does not have look family"
-            ).format(subset, asset_id))
+                "Last version for product '{}' on asset with id {}"
+                " does not have look product type"
+            ).format(product_name, asset_id))
             continue
 
         log.debug("Assigning look '{}' <v{:03d}>".format(
-            subset, last_version["name"]))
+            product_name, last_version["name"]))
 
         assign_look_by_version(asset_nodes, last_version["_id"])
 
@@ -2100,7 +2107,7 @@ def get_related_sets(node):
     """Return objectSets that are relationships for a look for `node`.
 
     Filters out based on:
-    - id attribute is NOT `pyblish.avalon.container`
+    - id attribute is NOT `AVALON_CONTAINER_ID`
     - shapes and deformer shapes (alembic creates meshShapeDeformed)
     - set name ends with any from a predefined list
     - set in not in viewport set (isolate selected for example)
@@ -2120,7 +2127,12 @@ def get_related_sets(node):
     defaults = {"defaultLightSet", "defaultObjectSet"}
 
     # Ids to ignore
-    ignored = {"pyblish.avalon.instance", "pyblish.avalon.container"}
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
 
     view_sets = get_isolate_view_sets()
 
@@ -3143,21 +3155,27 @@ def fix_incompatible_containers():
 
 def update_content_on_context_change():
     """
-    This will update scene content to match new asset on context change
+    This will update scene content to match new folder on context change
     """
     scene_sets = cmds.listSets(allSets=True)
     asset_doc = get_current_project_asset()
-    new_asset = asset_doc["name"]
+    new_folder_path = get_asset_name_identifier(asset_doc)
     new_data = asset_doc["data"]
     for s in scene_sets:
         try:
-            if cmds.getAttr("{}.id".format(s)) == "pyblish.avalon.instance":
+            if cmds.getAttr("{}.id".format(s)) in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 attr = cmds.listAttr(s)
                 print(s)
-                if "asset" in attr:
-                    print("  - setting asset to: [ {} ]".format(new_asset))
-                    cmds.setAttr("{}.asset".format(s),
-                                 new_asset, type="string")
+                if "folderPath" in attr:
+                    print(
+                        "  - setting folder to: [ {} ]".format(new_folder_path)
+                    )
+                    cmds.setAttr(
+                        "{}.folderPath".format(s),
+                        new_folder_path, type="string"
+                    )
                 if "frameStart" in attr:
                     cmds.setAttr("{}.frameStart".format(s),
                                  new_data["frameStart"])
@@ -3939,7 +3957,9 @@ def get_all_children(nodes):
     return list(traversed)
 
 
-def get_capture_preset(task_name, task_type, subset, project_settings, log):
+def get_capture_preset(
+    task_name, task_type, product_name, project_settings, log
+):
     """Get capture preset for playblasting.
 
     Logic for transitioning from old style capture preset to new capture preset
@@ -3948,17 +3968,15 @@ def get_capture_preset(task_name, task_type, subset, project_settings, log):
     Args:
         task_name (str): Task name.
         task_type (str): Task type.
-        subset (str): Subset name.
+        product_name (str): Subset name.
         project_settings (dict): Project settings.
         log (logging.Logger): Logging object.
     """
     capture_preset = None
     filtering_criteria = {
-        "hosts": "maya",
-        "families": "review",
         "task_names": task_name,
         "task_types": task_type,
-        "subset": subset
+        "product_names": product_name
     }
 
     plugin_settings = project_settings["maya"]["publish"]["ExtractPlayblast"]
@@ -4101,8 +4119,8 @@ def create_rig_animation_instance(
     )
     assert roots, "No root nodes in rig, this is a bug."
 
-    custom_subset = options.get("animationSubsetName")
-    if custom_subset:
+    custom_product_name = options.get("animationProductName")
+    if custom_product_name:
         formatting_data = {
             "asset": context["asset"],
             "subset": context['subset']['name'],
@@ -4112,13 +4130,11 @@ def create_rig_animation_instance(
             )
         }
         namespace = get_custom_namespace(
-            custom_subset.format(
-                **formatting_data
-            )
+            custom_product_name.format(**formatting_data)
         )
 
     if log:
-        log.info("Creating subset: {}".format(namespace))
+        log.info("Creating product: {}".format(namespace))
 
     # Fill creator identifier
     creator_identifier = "io.openpype.creators.maya.animation"

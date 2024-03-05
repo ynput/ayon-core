@@ -10,7 +10,7 @@ from ayon_core.lib.transcoding import (
 )
 
 class LoadClipBatch(opfapi.ClipLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
@@ -29,14 +29,14 @@ class LoadClipBatch(opfapi.ClipLoader):
 
     # settings
     reel_name = "OP_LoadedReel"
-    clip_name_template = "{batch}_{asset}_{subset}<_{output}>"
+    clip_name_template = "{batch}_{folder[name]}_{product[name]}<_{output}>"
 
     """ Anatomy keys from version context data and dynamically added:
         - {layerName} - original layer name token
         - {layerUID} - original layer UID token
         - {originalBasename} - original clip name taken from file
     """
-    layer_rename_template = "{asset}_{subset}<_{output}>"
+    layer_rename_template = "{folder[name]}_{product[name]}<_{output}>"
     layer_rename_patterns = []
 
     def load(self, context, name, namespace, options):
@@ -50,17 +50,8 @@ class LoadClipBatch(opfapi.ClipLoader):
         version_name = version.get("name", None)
         colorspace = self.get_colorspace(context)
 
-        # TODO remove '{folder[name]}' and '{product[name]}' replacement
-        clip_name_template = (
-            self.clip_name_template
-            .replace("{folder[name]}", "{asset}")
-            .replace("{product[name]}", "{subset}")
-        )
-        layer_rename_template = (
-            self.layer_rename_template
-            .replace("{folder[name]}", "{asset}")
-            .replace("{product[name]}", "{subset}")
-        )
+        clip_name_template = self.clip_name_template
+        layer_rename_template = self.layer_rename_template
         # in case output is not in context replace key to representation
         if not context["representation"]["context"].get("output"):
             clip_name_template = clip_name_template.replace(
@@ -68,8 +59,22 @@ class LoadClipBatch(opfapi.ClipLoader):
             layer_rename_template = layer_rename_template.replace(
                 "output", "representation")
 
+        asset_doc = context["asset"]
+        subset_doc = context["subset"]
         formatting_data = deepcopy(context["representation"]["context"])
         formatting_data["batch"] = self.batch.name.get_value()
+        formatting_data.update({
+            "asset": asset_doc["name"],
+            "folder": {
+                "name": asset_doc["name"],
+            },
+            "subset": subset_doc["name"],
+            "family": subset_doc["data"]["family"],
+            "product": {
+                "name": subset_doc["name"],
+                "type": subset_doc["data"]["family"],
+            }
+        })
 
         clip_name = StringTemplate(clip_name_template).format(
             formatting_data)
@@ -80,7 +85,7 @@ class LoadClipBatch(opfapi.ClipLoader):
         self.log.info("Loading with colorspace: `{}`".format(colorspace))
 
         # create workfile path
-        workfile_dir = options.get("workdir") or os.environ["AVALON_WORKDIR"]
+        workfile_dir = options.get("workdir") or os.environ["AYON_WORKDIR"]
         openclip_dir = os.path.join(
             workfile_dir, clip_name
         )

@@ -12,7 +12,7 @@ class CreateSaver(GenericCreateSaver):
     identifier = "io.openpype.creators.fusion.saver"
     label = "Render (saver)"
     name = "render"
-    family = "render"
+    product_type = "render"
     description = "Fusion Saver to generate image sequence"
 
     default_frame_range_option = "asset_db"

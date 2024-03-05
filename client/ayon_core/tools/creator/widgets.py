@@ -5,7 +5,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 import qtawesome
 
-from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
 from ayon_core.tools.utils import ErrorMessageBox
 
 if hasattr(QtGui, "QRegularExpressionValidator"):
@@ -19,16 +19,16 @@ else:
 class CreateErrorMessageBox(ErrorMessageBox):
     def __init__(
         self,
-        family,
-        subset_name,
-        asset_name,
+        product_type,
+        product_name,
+        folder_path,
         exc_msg,
         formatted_traceback,
         parent
     ):
-        self._family = family
-        self._subset_name = subset_name
-        self._asset_name = asset_name
+        self._product_type = product_type
+        self._product_name = product_name
+        self._folder_path = folder_path
         self._exc_msg = exc_msg
         self._formatted_traceback = formatted_traceback
         super(CreateErrorMessageBox, self).__init__("Creation failed", parent)
@@ -42,14 +42,14 @@ class CreateErrorMessageBox(ErrorMessageBox):
 
     def _get_report_data(self):
         report_message = (
-            "Failed to create Product: \"{subset}\""
-            " Type: \"{family}\""
-            " in Asset: \"{asset}\""
+            "Failed to create Product: \"{product_name}\""
+            " Type: \"{product_type}\""
+            " in Folder: \"{folder_path}\""
             "\n\nError: {message}"
         ).format(
-            subset=self._subset_name,
-            family=self._family,
-            asset=self._asset_name,
+            product_name=self._product_name,
+            product_type=self._product_type,
+            folder_path=self._folder_path,
             message=self._exc_msg
         )
         if self._formatted_traceback:
@@ -74,7 +74,7 @@ class CreateErrorMessageBox(ErrorMessageBox):
         item_name_widget = QtWidgets.QLabel(self)
         item_name_widget.setText(
             item_name_template.format(
-                self._family, self._subset_name, self._asset_name
+                self._product_type, self._product_name, self._folder_path
             )
         )
         content_layout.addWidget(item_name_widget)
@@ -94,16 +94,16 @@ class CreateErrorMessageBox(ErrorMessageBox):
             content_layout.addWidget(tb_widget)
 
 
-class SubsetNameValidator(RegularExpressionValidatorClass):
+class ProductNameValidator(RegularExpressionValidatorClass):
     invalid = QtCore.Signal(set)
-    pattern = "^[{}]*$".format(SUBSET_NAME_ALLOWED_SYMBOLS)
+    pattern = "^[{}]*$".format(PRODUCT_NAME_ALLOWED_SYMBOLS)
 
     def __init__(self):
         reg = RegularExpressionClass(self.pattern)
-        super(SubsetNameValidator, self).__init__(reg)
+        super(ProductNameValidator, self).__init__(reg)
 
     def validate(self, text, pos):
-        results = super(SubsetNameValidator, self).validate(text, pos)
+        results = super(ProductNameValidator, self).validate(text, pos)
         if results[0] == self.Invalid:
             self.invalid.emit(self.invalid_chars(text))
         return results
@@ -131,7 +131,7 @@ class VariantLineEdit(QtWidgets.QLineEdit):
     def __init__(self, *args, **kwargs):
         super(VariantLineEdit, self).__init__(*args, **kwargs)
 
-        validator = SubsetNameValidator()
+        validator = ProductNameValidator()
         self.setValidator(validator)
         self.setToolTip("Only alphanumeric characters (A-Z a-z 0-9), "
                         "'_' and '.' are allowed.")
@@ -183,24 +183,24 @@ class VariantLineEdit(QtWidgets.QLineEdit):
     )
 
 
-class FamilyDescriptionWidget(QtWidgets.QWidget):
-    """A family description widget.
+class ProductTypeDescriptionWidget(QtWidgets.QWidget):
+    """A product type description widget.
 
-    Shows a family icon, family name and a help description.
+    Shows a product type icon, name and a help description.
     Used in creator header.
 
-     _________________
-    |  ____           |
-    | |icon| FAMILY   |
-    | |____| help     |
-    |_________________|
+     _______________________
+    |  ____                 |
+    | |icon| PRODUCT TYPE   |
+    | |____| help           |
+    |_______________________|
 
     """
 
     SIZE = 35
 
     def __init__(self, parent=None):
-        super(FamilyDescriptionWidget, self).__init__(parent=parent)
+        super(ProductTypeDescriptionWidget, self).__init__(parent=parent)
 
         icon_label = QtWidgets.QLabel(self)
         icon_label.setSizePolicy(
@@ -215,14 +215,14 @@ class FamilyDescriptionWidget(QtWidgets.QWidget):
         label_layout = QtWidgets.QVBoxLayout()
         label_layout.setSpacing(0)
 
-        family_label = QtWidgets.QLabel(self)
-        family_label.setObjectName("CreatorFamilyLabel")
-        family_label.setAlignment(QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft)
+        product_type_label = QtWidgets.QLabel(self)
+        product_type_label.setObjectName("CreatorProductTypeLabel")
+        product_type_label.setAlignment(QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft)
 
         help_label = QtWidgets.QLabel(self)
         help_label.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
 
-        label_layout.addWidget(family_label)
+        label_layout.addWidget(product_type_label)
         label_layout.addWidget(help_label)
 
         layout = QtWidgets.QHBoxLayout(self)
@@ -232,14 +232,15 @@ class FamilyDescriptionWidget(QtWidgets.QWidget):
         layout.addLayout(label_layout)
 
         self._help_label = help_label
-        self._family_label = family_label
+        self._product_type_label = product_type_label
         self._icon_label = icon_label
 
     def set_item(self, creator_plugin):
-        """Update elements to display information of a family item.
+        """Update elements to display information of a product type item.
 
         Args:
-            item (dict): A family item as registered with name, help and icon
+            creator_plugin (dict): A product type item as registered with
+                name, help and icon.
 
         Returns:
             None
@@ -247,7 +248,7 @@ class FamilyDescriptionWidget(QtWidgets.QWidget):
         """
         if not creator_plugin:
             self._icon_label.setPixmap(None)
-            self._family_label.setText("")
+            self._product_type_label.setText("")
             self._help_label.setText("")
             return
 
@@ -268,5 +269,5 @@ class FamilyDescriptionWidget(QtWidgets.QWidget):
         creator_help = docstring.splitlines()[0] if docstring else ""
 
         self._icon_label.setPixmap(pixmap)
-        self._family_label.setText(creator_plugin.family)
+        self._product_type_label.setText(creator_plugin.product_type)
         self._help_label.setText(creator_help)

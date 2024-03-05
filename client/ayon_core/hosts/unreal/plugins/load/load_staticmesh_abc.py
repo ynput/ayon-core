@@ -95,7 +95,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -145,34 +145,36 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
-        context = representation.get("context", {})
+    def update(self, container, context):
+        asset_doc = context["asset"]
+        subset_doc = context["subset"]
+        repre_doc = context["representation"]
 
-        if not context:
-            raise RuntimeError("No context found in representation")
+        folder_name = asset_doc["name"]
+        product_name = subset_doc["name"]
 
         # Create directory for asset and Ayon container
-        asset = context.get('asset')
-        name = context.get('subset')
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
+        asset_name = product_name
+        if folder_name:
+            asset_name = f"{folder_name}_{product_name}"
         version = context.get('version')
         # Check if version is hero version and use different name
-        name_version = f"{name}_v{version:03d}" if version else f"{name}_hero"
+        name_version = f"{product_name}_v{version:03d}" if version else f"{product_name}_hero"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{asset}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(representation)
+            path = get_representation_path(repre_doc)
 
             self.import_and_containerize(path, asset_dir, asset_name,
                                          container_name)
 
         self.imprint(
-            asset, asset_dir, container_name, asset_name, representation)
+            folder_name, asset_dir, container_name, asset_name, repre_doc)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False

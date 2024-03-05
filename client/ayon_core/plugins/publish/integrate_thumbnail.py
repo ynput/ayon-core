@@ -42,10 +42,6 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
     label = "Integrate Thumbnails to AYON"
     order = pyblish.api.IntegratorOrder + 0.01
 
-    required_context_keys = [
-        "project", "asset", "task", "subset", "version"
-    ]
-
     def process(self, context):
         # Filter instances which can be used for integration
         filtered_instance_items = self._prepare_instances(context)
@@ -196,12 +192,13 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             ))
 
             asset_entity = instance.data["assetEntity"]
+            folder_path = instance.data["folderPath"]
             thumbnail_info_by_entity_id[asset_entity["_id"]] = {
                 "thumbnail_id": thumbnail_id,
                 "entity_type": "asset",
             }
-            self.log.debug("Setting thumbnail for asset \"{}\" <{}>".format(
-                asset_entity["name"], version_id
+            self.log.debug("Setting thumbnail for folder \"{}\" <{}>".format(
+                folder_path, version_id
             ))
 
         op_session = OperationsSession()

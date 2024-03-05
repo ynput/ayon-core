@@ -47,6 +47,22 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
     def has_content(self):
         return len(self._project_items) > 0
 
+    def get_index_by_project_name(self, project_name):
+        """Get index of project by name.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            QtCore.QModelIndex: Index of project item. Index is not valid
+                if project is not found.
+
+        """
+        item = self._project_items.get(project_name)
+        if item is None:
+            return QtCore.QModelIndex()
+        return self.indexFromItem(item)
+
     def set_select_item_visible(self, visible):
         if self._select_item_visible is visible:
             return
