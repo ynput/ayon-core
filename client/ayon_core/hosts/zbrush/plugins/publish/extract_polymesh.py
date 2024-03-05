@@ -28,7 +28,6 @@ class ExtractPolyMesh(publish.Extractor,
         filename = f"{instance.name}.{export_format}"
         filepath = os.path.join(stagingdir, filename)
 
-
         if "representations" not in instance.data:
             instance.data["representations"] = []
 

@@ -41,7 +41,7 @@ class ZbrushCreator(Creator, ZbrushCreatorBase):
     def create(self, subset_name, instance_data, pre_create_data):
         # TODO: use selection
         new_instance = CreatedInstance(
-        self.family,
+        self.product_type,
         subset_name,
         instance_data,
         self

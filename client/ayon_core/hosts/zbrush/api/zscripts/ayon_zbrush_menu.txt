@@ -1,0 +1,50 @@
+
+[IPalette,"AYON", 1]
+[VarSet, addon, "addon"]
+[VarSet, zbrush, "zbrush"]
+[VarSet, zscript, "run-with-zscript"]
+[VarSet, arg, "--launcher"]
+[IButton,"AYON:Load","Loader",
+	[VarSet, loader, "loader_tool"]
+    [VarSet, q, [StrFromAsc, 34]]
+	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "D:\ayon_launcher\ayon-launcher\build\output\ayon_console.exe", #q]]
+    [VarSet, cmd, [StrMerge, cmd, " ", #addon, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zbrush, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zscript, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #arg, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #loader, #q]]
+	[ShellExecute, cmd], 0, 120
+]//end button
+[IButton,"AYON:Publish","Publish Tab for Publisher",
+	[VarSet, publisher, "publish_tool"]
+    [VarSet, q, [StrFromAsc, 34]]
+	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "D:\ayon_launcher\ayon-launcher\build\output\ayon_console.exe", #q]]
+    [VarSet, cmd, [StrMerge, cmd, " ", #addon, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zbrush, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zscript, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #arg, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #publisher, #q]]
+	[ShellExecute, cmd], 0, 120
+]//end button
+[IButton,"AYON:Manage","Scene Inventory Manager",
+	[VarSet, sceneinventory, "scene_inventory_tool"]
+	[VarSet, q, [StrFromAsc, 34]]
+	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "D:\ayon_launcher\ayon-launcher\build\output\ayon_console.exe", #q]]
+    [VarSet, cmd, [StrMerge, cmd, " ", #addon, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zbrush, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zscript, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #arg, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #sceneinventory, #q]]
+	[ShellExecute, cmd], 0, 120
+]//end button
+[IButton,"AYON:Workfile","Workfile",
+	[VarSet, workfiles, "workfiles_tool"]
+	[VarSet, q, [StrFromAsc, 34]]
+	[VarSet, cmd, [StrMerge, start, " ",#q, #q, "  ",#q, "D:\ayon_launcher\ayon-launcher\build\output\ayon_console.exe", #q]]
+    [VarSet, cmd, [StrMerge, cmd, " ", #addon, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zbrush, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #zscript, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #arg, #q]]
+    [VarSet, cmd, [StrMerge, cmd, #q,  " ", #workfiles, #q]]
+	[ShellExecute, cmd], 0, 120
+]//end button

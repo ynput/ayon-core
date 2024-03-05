@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import contextlib
 import subprocess
 import collections
 import asyncio
@@ -24,6 +25,16 @@ from ayon_core.hosts.zbrush import ZBRUSH_HOST_DIR
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
+
+
+@contextlib.contextmanager
+def delete_after(path):
+    """Delete path after context"""
+    try:
+        yield
+    finally:
+        os.remove(path)
+
 
 class CommunicationWrapper:
     # TODO add logs and exceptions
@@ -679,17 +690,13 @@ class BaseCommunicator:
     def execute_zscript(self, zscript):
         """Execute passed zscript in Zbrush."""
         zbrush_exe = os.environ["ZBRUSH_EXE"]
-        output_file = tempfile.NamedTemporaryFile(
-            mode="w", prefix="a_zb_", suffix=".txt", delete=False
-        )
-        output_file.close()
-        output_filepath = output_file.name.replace("\\", "/")
-        with open(output_filepath, "wt") as tmp:
-            tmp.write(zscript)
-        subprocess.call([zbrush_exe, output_filepath],
-                        shell=True)
-        # remove the temp file
-        os.remove(output_filepath)
+        with tempfile.NamedTemporaryFile(
+            mode="wt", prefix="a_zb_", suffix=".txt", delete=False
+        ) as f:
+            f.write(zscript)
+
+        with delete_after(f.name):
+            subprocess.call([zbrush_exe, f.name], shell=True)
 
 class QtCommunicator(BaseCommunicator):
 

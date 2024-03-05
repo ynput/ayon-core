@@ -1,12 +1,14 @@
 #zscript command etc.
 import os
+import uuid
+import time
 import tempfile
 import logging
 from ayon_core.client import (
     get_project,
     get_asset_by_name,
 )
-from ayon_core.pipeline import Anatomy, registered_host
+from ayon_core.pipeline import Anatomy
 from string import Formatter
 from . import CommunicationWrapper
 from ayon_core.pipeline.template_data import get_template_data
@@ -72,13 +74,22 @@ def get_workdir(project_name, asset_name, task_name):
             return valid_workdir
 
 
-def get_current_file():
-    host = registered_host()
-    return host.get_current_workfile()
+def execute_zscript_and_wait(zscript, path, wait=0.1, timeout=20):
+    """Execute zscript and wait until zscript finished processing"""
+    execute_zscript(zscript)
 
+    # Wait around until the zscript finished
+    time_taken = 0
+    while not os.path.exists(path):
+        time.sleep(wait)
+        time_taken += wait
+        if time_taken > timeout:
+            raise RuntimeError(
+                f"Timeout. Zscript took longer than "
+                "{timeout}s to run."
+            )
 
 def execute_publish_model_with_dialog(filepath):
-    import time
     save_file_zscript = ("""
 [IFreeze,
 [VarSet, filepath, "{filepath}"]
@@ -87,8 +98,7 @@ def execute_publish_model_with_dialog(filepath):
 [Sleep, 2]
 ]
 """).format(filepath=filepath)
-    execute_zscript(save_file_zscript)
-    time.sleep(8)
+    execute_zscript_and_wait(save_file_zscript, filepath)
 
 
 def execute_publish_model(filepath):
@@ -111,11 +121,13 @@ def is_in_edit_mode():
     Returns:
         bool: Whether Edit Mode is enabled.
     """
-    tmp_output_file = tempfile.NamedTemporaryFile(
-        mode="w", prefix="a_zb_", suffix=".txt", delete=False
+    identifier = uuid.uuid4()
+    temp_path = os.path.join(
+        tempfile.gettempdir(),
+        f"{tempfile.gettempprefix()}_{identifier}.txt"
     )
-    tmp_output_file.close()
-    temp_file = tmp_output_file.name.replace("\\", "/")
+    temp_path = temp_path.replace("\\", "/")
+    assert not os.path.exists(temp_path)
 
     in_edit_mode = ("""
 [IFreeze,
@@ -123,12 +135,15 @@ def is_in_edit_mode():
 [VarSet, InEditMode, [IGet, Transform:Edit]]
 [Note, InEditMode]
 [MemWriteString, EditMode, #InEditMode, 0]
-[MemSaveToFile, EditMode, "{temp_file}", 0]
+[MemSaveToFile, EditMode, "{temp_file}", 1]
 [MemDelete, EditMode]
 ]
-""").format(temp_file=temp_file)
-    execute_zscript(in_edit_mode)
-    with open(temp_file) as mode:
+""").format(temp_file=temp_path)
+    execute_zscript_and_wait(in_edit_mode, temp_path)
+    with open(temp_path) as mode:
         content = str(mode.read())
         bool_mode = content.rstrip('\x00')
         return bool_mode
+
+# TODO: add the zscript code
+# Current file
