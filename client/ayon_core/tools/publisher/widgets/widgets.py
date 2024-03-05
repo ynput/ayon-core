@@ -1411,8 +1411,6 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             self._attr_def_id_to_instances[attr_def.id] = attr_instances
             self._attr_def_id_to_attr_def[attr_def.id] = attr_def
 
-            widget.value_changed
-
             if attr_def.hidden:
                 continue
 
@@ -1518,6 +1516,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
         self._attr_def_id_to_plugin_name = {}
+        self._attr_def_id_to_label = {}
 
         # Store content of scroll area to prevent garbage collection
         self._content_widget = None
@@ -1544,6 +1543,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
         self._attr_def_id_to_plugin_name = {}
+        self._attr_def_id_to_label = {}
 
         result = self._controller.get_publish_attribute_definitions(
             instances, context_selected
@@ -1588,6 +1588,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                         label = attr_def.label or attr_def.key
                     if label:
                         label_widget = QtWidgets.QLabel(label, content_widget)
+                        self._attr_def_id_to_label[attr_def.id] = label_widget
                         tooltip = attr_def.tooltip
                         if tooltip:
                             label_widget.setToolTip(tooltip)
@@ -1637,6 +1638,23 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         plugin_name = self._attr_def_id_to_plugin_name.get(attr_id)
         if not instances or not attr_def or not plugin_name:
             return
+
+        # Update the styling of the associated label if is default or override
+        label_widget = self._attr_def_id_to_label.get(attr_id)
+        if label_widget:
+            # NOTE: The default returned by attr_def.default is returning a
+            # float, when it should be a int. So lets cast the widget value
+            # (argument to this method) to a float to match the type.
+            _value = value
+            if isinstance(_value, int):
+                _value = float(_value)
+            is_default = _value == attr_def.default
+            font = label_widget.font()
+            if is_default:
+                label_widget.setStyleSheet("")
+            else:
+                label_widget.setStyleSheet("font: bold")
+            label_widget.setFont(font)
 
         for instance in instances:
             plugin_val = instance.publish_attributes[plugin_name]
