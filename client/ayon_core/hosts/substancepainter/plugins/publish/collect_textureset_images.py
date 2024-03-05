@@ -132,7 +132,7 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         image_instance.data["representations"] = [representation]
 
         # Group the textures together in the loader
-        image_instance.data["subsetGroup"] = image_product_name
+        image_instance.data["productGroup"] = image_product_name
 
         # Store the texture set name and stack name on the instance
         image_instance.data["textureSetName"] = texture_set_name

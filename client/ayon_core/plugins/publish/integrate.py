@@ -428,14 +428,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             "families": get_instance_families(instance)
         }
 
-        subset_group = instance.data.get("subsetGroup")
+        subset_group = instance.data.get("productGroup")
         if subset_group:
-            data["subsetGroup"] = subset_group
+            data["productGroup"] = subset_group
         elif existing_subset_doc:
             # Preserve previous subset group if new version does not set it
-            if "subsetGroup" in existing_subset_doc.get("data", {}):
-                subset_group = existing_subset_doc["data"]["subsetGroup"]
-                data["subsetGroup"] = subset_group
+            if "productGroup" in existing_subset_doc.get("data", {}):
+                subset_group = existing_subset_doc["data"]["productGroup"]
+                data["productGroup"] = subset_group
 
         subset_id = None
         if existing_subset_doc:
