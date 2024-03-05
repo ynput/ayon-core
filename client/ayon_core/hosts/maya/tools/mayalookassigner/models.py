@@ -88,7 +88,7 @@ class LookModel(models.TreeModel):
 
         An item exists of:
             {
-                "subset": 'name of subset',
+                "product": 'name of product',
                 "asset": asset_document
             }
 
@@ -102,26 +102,30 @@ class LookModel(models.TreeModel):
         self.beginResetModel()
 
         # Collect the assets per look name (from the items of the AssetModel)
-        look_subsets = defaultdict(list)
+        look_products = defaultdict(list)
         for asset_item in items:
             asset = asset_item["asset"]
             for look in asset_item["looks"]:
-                look_subsets[look["name"]].append(asset)
+                look_products[look["name"]].append(asset)
 
-        for subset in sorted(look_subsets.keys()):
-            assets = look_subsets[subset]
+        for product_name in sorted(look_products.keys()):
+            assets = look_products[product_name]
 
             # Define nice label without "look" prefix for readability
-            label = subset if not subset.startswith("look") else subset[4:]
+            label = (
+                product_name
+                if not product_name.startswith("look")
+                else product_name[4:]
+            )
 
             item_node = models.Item()
             item_node["label"] = label
-            item_node["subset"] = subset
+            item_node["product"] = product_name
 
             # Amount of matching assets for this look
             item_node["match"] = len(assets)
 
-            # Store the assets that have this subset available
+            # Store the assets that have this product available
             item_node["assets"] = assets
 
             self.add_child(item_node)

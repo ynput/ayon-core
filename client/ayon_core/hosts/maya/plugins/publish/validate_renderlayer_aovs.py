@@ -8,7 +8,7 @@ from ayon_core.pipeline.publish import PublishValidationError
 class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
     """Validate created AOVs / RenderElement is registered in the database
 
-    Each render element is registered as a subset which is formatted based on
+    Each render element is registered as a product which is formatted based on
     the render layer and the render element, example:
 
         <render layer>.<render element>
@@ -31,7 +31,7 @@ class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                "Found unregistered subsets: {}".format(invalid))
+                "Found unregistered products: {}".format(invalid))
 
     def get_invalid(self, instance):
         invalid = []
@@ -40,7 +40,7 @@ class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
         asset_doc = instance.data["assetEntity"]
         render_passes = instance.data.get("renderPasses", [])
         for render_pass in render_passes:
-            is_valid = self.validate_subset_registered(
+            is_valid = self.validate_product_registered(
                 project_name, asset_doc, render_pass
             )
             if not is_valid:
@@ -48,9 +48,11 @@ class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
 
         return invalid
 
-    def validate_subset_registered(self, project_name, asset_doc, subset_name):
-        """Check if subset is registered in the database under the asset"""
+    def validate_product_registered(
+        self, project_name, asset_doc, product_name
+    ):
+        """Check if product is registered in the database under the asset"""
 
         return get_subset_by_name(
-            project_name, subset_name, asset_doc["_id"], fields=["_id"]
+            project_name, product_name, asset_doc["_id"], fields=["_id"]
         )

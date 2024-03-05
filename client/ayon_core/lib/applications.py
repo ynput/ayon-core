@@ -13,10 +13,7 @@ import six
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.client import get_asset_name_identifier
-from ayon_core.settings import (
-    get_system_settings,
-    get_project_settings,
-)
+from ayon_core.settings import get_project_settings, get_studio_settings
 from .log import Logger
 from .profiles_filtering import filter_profiles
 from .local_settings import get_ayon_username
@@ -405,7 +402,7 @@ class ApplicationManager:
         if self._studio_settings is not None:
             settings = copy.deepcopy(self._studio_settings)
         else:
-            settings = get_system_settings(
+            settings = get_studio_settings(
                 clear_metadata=False, exclude_locals=False
             )
 
@@ -1398,8 +1395,9 @@ class EnvironmentPrepData(dict):
         if data.get("env") is None:
             data["env"] = os.environ.copy()
 
-        if "system_settings" not in data:
-            data["system_settings"] = get_system_settings()
+        project_name = data["project_doc"]["name"]
+        if "project_settings" not in data:
+            data["project_settings"] = get_project_settings(project_name)
 
         super(EnvironmentPrepData, self).__init__(data)
 
@@ -1524,8 +1522,8 @@ def prepare_app_environments(
     # Use environments from local settings
     filtered_local_envs = {}
     # NOTE Overrides for environment variables are not implemented in AYON.
-    # system_settings = data["system_settings"]
-    # whitelist_envs = system_settings["general"].get("local_env_white_list")
+    # project_settings = data["project_settings"]
+    # whitelist_envs = project_settings["general"].get("local_env_white_list")
     # if whitelist_envs:
     #     local_settings = get_local_settings()
     #     local_envs = local_settings.get("environments") or {}
@@ -1689,9 +1687,7 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
     # Load project specific environments
     project_name = project_doc["name"]
     project_settings = get_project_settings(project_name)
-    system_settings = get_system_settings()
     data["project_settings"] = project_settings
-    data["system_settings"] = system_settings
 
     app = data["app"]
     context_env = {
@@ -1731,7 +1727,7 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
         )
 
     workdir_data = get_template_data(
-        project_doc, asset_doc, task_name, app.host_name, system_settings
+        project_doc, asset_doc, task_name, app.host_name, project_settings
     )
     data["workdir_data"] = workdir_data
 
