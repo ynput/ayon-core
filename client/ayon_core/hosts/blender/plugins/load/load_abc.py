@@ -135,7 +135,7 @@ class CacheModelLoader(plugin.AssetLoader):
 
         libpath = self.filepath_from_context(context)
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
 
         asset_name = plugin.prepare_scene_name(folder_name, product_name)
         unique_number = plugin.get_unique_number(folder_name, product_name)
@@ -161,7 +161,7 @@ class CacheModelLoader(plugin.AssetLoader):
 
         self._link_objects(objects, asset_group, containers, asset_group)
 
-        product_type = context["subset"]["data"]["family"]
+        product_type = context["product"]["productType"]
         asset_group[AVALON_PROPERTY] = {
             "schema": "openpype:container-2.0",
             "id": AVALON_CONTAINER_ID,

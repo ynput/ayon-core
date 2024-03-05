@@ -101,10 +101,8 @@ class UAssetLoader(plugin.Loader):
 
         asset_dir = container["namespace"]
 
-        subset_doc = context["subset"]
+        product_name = context["product"]["name"]
         repre_doc = context["representation"]
-
-        product_name = subset_doc["name"]
 
         unique_number = container["container_name"].split("_")[-2]
 

@@ -3977,7 +3977,7 @@ def get_capture_preset(
     Args:
         task_name (str): Task name.
         task_type (str): Task type.
-        product_name (str): Subset name.
+        product_name (str): Product name.
         project_settings (dict): Project settings.
         log (logging.Logger): Logging object.
     """
@@ -4129,11 +4129,9 @@ def create_rig_animation_instance(
     assert roots, "No root nodes in rig, this is a bug."
 
     folder_entity = context["folder"]
-    product_type = (
-        context["subset"]["data"].get("family")
-        or context["subset"]["data"]["families"][0]
-    )
-    product_name = context["subset"]["name"]
+    product_entity = context["product"]
+    product_type = product_entity["productType"]
+    product_name = product_entity["name"]
 
     custom_product_name = options.get("animationProductName")
     if custom_product_name:

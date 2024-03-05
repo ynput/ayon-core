@@ -254,7 +254,7 @@ class BackgroundLoader(load.LoaderPlugin):
 
         bg_folder = os.path.dirname(path)
 
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
         # read_node_name += "_{}".format(uuid.uuid4())
         container_nodes = []
 

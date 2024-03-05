@@ -60,7 +60,7 @@ class LoadClipBatch(opfapi.ClipLoader):
                 "output", "representation")
 
         folder_entity = context["folder"]
-        subset_doc = context["subset"]
+        product_entity = context["product"]
         formatting_data = deepcopy(context["representation"]["context"])
         formatting_data["batch"] = self.batch.name.get_value()
         formatting_data.update({
@@ -68,11 +68,11 @@ class LoadClipBatch(opfapi.ClipLoader):
             "folder": {
                 "name": folder_entity["name"],
             },
-            "subset": subset_doc["name"],
-            "family": subset_doc["data"]["family"],
+            "subset": product_entity["name"],
+            "family": product_entity["productType"],
             "product": {
-                "name": subset_doc["name"],
-                "type": subset_doc["data"]["family"],
+                "name": product_entity["name"],
+                "type": product_entity["productType"],
             }
         })
 

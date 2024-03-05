@@ -27,9 +27,8 @@ class ImportPaletteLoader(load.LoaderPlugin):
         )
 
     def load_palette(self, context):
-        subset_doc = context["subset"]
+        product_name = context["product"]["name"]
         repre_doc = context["representation"]
-        product_name = subset_doc["name"]
         name = product_name.replace("palette", "")
 
         # Overwrite palette on disk.

@@ -266,7 +266,7 @@ class LoadEffects(load.LoaderPlugin):
 
         self.log.info("updated to version: {}".format(version_doc.get("name")))
 
-    def connect_read_node(self, group_node, namespace, subset):
+    def connect_read_node(self, group_node, namespace, product_name):
         """
         Finds read node and selects it
 
@@ -277,7 +277,7 @@ class LoadEffects(load.LoaderPlugin):
             nuke node: node is selected
             None: if nothing found
         """
-        search_name = "{0}_{1}".format(namespace, subset)
+        search_name = "{0}_{1}".format(namespace, product_name)
 
         node = [
             n for n in nuke.allNodes(filter="Read")

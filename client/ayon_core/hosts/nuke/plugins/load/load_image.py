@@ -245,11 +245,10 @@ class LoadImage(load.LoaderPlugin):
 
     def _get_node_name(self, context):
         folder_entity = context["folder"]
-        subset_doc = context["subset"]
+        product_name = context["product"]["name"]
         repre_doc = context["representation"]
 
         folder_name = folder_entity["name"]
-        product_name = subset_doc["name"]
         repre_cont = repre_doc["context"]
         name_data = {
             "folder": {

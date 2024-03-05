@@ -128,10 +128,10 @@ class BlendLoader(plugin.AssetLoader):
         """
         libpath = self.filepath_from_context(context)
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
 
         try:
-            product_type = context["subset"]["data"]["family"]
+            product_type = context["product"]["productType"]
         except ValueError:
             product_type = "model"
 
@@ -166,7 +166,7 @@ class BlendLoader(plugin.AssetLoader):
             "libpath": libpath,
             "asset_name": asset_name,
             "parent": str(context["representation"]["parent"]),
-            "productType": context["subset"]["data"]["family"],
+            "productType": context["product"]["productType"],
             "objectName": group_name,
             "members": members,
         }

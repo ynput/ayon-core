@@ -73,10 +73,8 @@ class FileLoader(api.AfterEffectsLoader):
         layer = container.pop("layer")
 
         folder_name = context["folder"]["name"]
-        subset_doc = context["subset"]
+        product_name = context["product"]["name"]
         repre_doc = context["representation"]
-
-        product_name = subset_doc["name"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])

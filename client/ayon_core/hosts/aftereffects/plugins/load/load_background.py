@@ -60,10 +60,9 @@ class BackgroundLoader(api.AfterEffectsLoader):
         """ Switch asset or change version """
         stub = self.get_stub()
         folder_name = context["folder"]["name"]
-        subset_doc = context["subset"]
+        product_name = context["product"]["name"]
         repre_doc = context["representation"]
 
-        product_name = subset_doc["name"]
         _ = container.pop("layer")
 
         # without iterator number (_001, 002...)

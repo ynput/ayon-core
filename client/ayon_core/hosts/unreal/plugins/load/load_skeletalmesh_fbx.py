@@ -148,11 +148,9 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
     def update(self, container, context):
         folder_name = context["folder"]["name"]
-        subset_doc = context["subset"]
+        product_name = context["product"]["name"]
         version_doc = context["version"]
         repre_doc = context["representation"]
-
-        product_name = subset_doc["name"]
 
         # Create directory for asset and Ayon container
         suffix = "_CON"

@@ -448,9 +448,10 @@ class ClipLoader:
         # create name
         repr = self.context["representation"]
         repr_cntx = repr["context"]
-        folder_name = str(repr_cntx["asset"])
-        product_name = str(repr_cntx["subset"])
-        representation = str(repr_cntx["representation"])
+        folder_path = self.context["folder"]["path"]
+        folder_name = self.context["folder"]["name"]
+        product_name = self.context["product"]["name"]
+        representation = repr["name"]
         self.data["clip_name"] = self.clip_name_template.format(**repr_cntx)
         self.data["track_name"] = "_".join([product_name, representation])
         self.data["versionData"] = self.context["version"]["data"]
@@ -468,11 +469,7 @@ class ClipLoader:
             self._fix_path_hashes()
 
         # solve project bin structure path
-        hierarchy = str("/".join((
-            "Loader",
-            repr_cntx["hierarchy"].replace("\\", "/"),
-            folder_name
-        )))
+        hierarchy = "Loader{}".format(folder_path)
 
         self.data["binPath"] = hierarchy
 
