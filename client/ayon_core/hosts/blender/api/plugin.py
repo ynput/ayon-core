@@ -10,6 +10,8 @@ from ayon_core.pipeline import (
     Creator,
     CreatedInstance,
     LoaderPlugin,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
 )
 from ayon_core.lib import BoolDef
 
@@ -28,13 +30,13 @@ VALID_EXTENSIONS = [".blend", ".json", ".abc", ".fbx"]
 
 
 def prepare_scene_name(
-    asset: str, subset: str, namespace: Optional[str] = None
+    folder_name: str, product_name: str, namespace: Optional[str] = None
 ) -> str:
     """Return a consistent name for an asset."""
-    name = f"{asset}"
+    name = f"{folder_name}"
     if namespace:
         name = f"{name}_{namespace}"
-    name = f"{name}_{subset}"
+    name = f"{name}_{product_name}"
 
     # Blender name for a collection or object cannot be longer than 63
     # characters. If the name is longer, it will raise an error.
@@ -45,7 +47,7 @@ def prepare_scene_name(
 
 
 def get_unique_number(
-    asset: str, subset: str
+    folder_name: str, product_name: str
 ) -> str:
     """Return a unique number based on the asset name."""
     avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
@@ -62,10 +64,10 @@ def get_unique_number(
         if c.get(AVALON_PROPERTY)}
     container_names = obj_group_names.union(coll_group_names)
     count = 1
-    name = f"{asset}_{count:0>2}_{subset}"
+    name = f"{folder_name}_{count:0>2}_{product_name}"
     while name in container_names:
         count += 1
-        name = f"{asset}_{count:0>2}_{subset}"
+        name = f"{folder_name}_{count:0>2}_{product_name}"
     return f"{count:0>2}"
 
 
@@ -159,24 +161,22 @@ class BaseCreator(Creator):
     create_as_asset_group = False
 
     @staticmethod
-    def cache_subsets(shared_data):
+    def cache_instance_data(shared_data):
         """Cache instances for Creators shared data.
 
-        Create `blender_cached_subsets` key when needed in shared data and
+        Create `blender_cached_instances` key when needed in shared data and
         fill it with all collected instances from the scene under its
         respective creator identifiers.
 
         If legacy instances are detected in the scene, create
-        `blender_cached_legacy_subsets` key and fill it with
-        all legacy subsets from this family as a value.  # key or value?
+        `blender_cached_legacy_instances` key and fill it with
+        all legacy products from this family as a value.  # key or value?
 
         Args:
             shared_data(Dict[str, Any]): Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data with cached subsets.
         """
-        if not shared_data.get('blender_cached_subsets'):
+        if not shared_data.get('blender_cached_instances'):
             cache = {}
             cache_legacy = {}
 
@@ -193,7 +193,9 @@ class BaseCreator(Creator):
                 if not avalon_prop:
                     continue
 
-                if avalon_prop.get('id') != 'pyblish.avalon.instance':
+                if avalon_prop.get('id') not in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }:
                     continue
 
                 creator_id = avalon_prop.get('creator_identifier')
@@ -206,19 +208,19 @@ class BaseCreator(Creator):
                         # Legacy creator instance
                         cache_legacy.setdefault(family, []).append(obj_or_col)
 
-            shared_data["blender_cached_subsets"] = cache
-            shared_data["blender_cached_legacy_subsets"] = cache_legacy
+            shared_data["blender_cached_instances"] = cache
+            shared_data["blender_cached_legacy_instances"] = cache_legacy
 
         return shared_data
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
         """Override abstract method from Creator.
         Create new instance and store it.
 
         Args:
-            subset_name(str): Subset name of created instance.
+            product_name(str): Subset name of created instance.
             instance_data(dict): Instance base data.
             pre_create_data(dict): Data based on pre creation attributes.
                 Those may affect how creator works.
@@ -232,7 +234,7 @@ class BaseCreator(Creator):
         # Create asset group
         asset_name = instance_data["folderPath"].split("/")[-1]
 
-        name = prepare_scene_name(asset_name, subset_name)
+        name = prepare_scene_name(asset_name, product_name)
         if self.create_as_asset_group:
             # Create instance as empty
             instance_node = bpy.data.objects.new(name=name, object_data=None)
@@ -243,10 +245,10 @@ class BaseCreator(Creator):
             instance_node = bpy.data.collections.new(name=name)
             instances.children.link(instance_node)
 
-        self.set_instance_data(subset_name, instance_data)
+        self.set_instance_data(product_name, instance_data)
 
         instance = CreatedInstance(
-            self.family, subset_name, instance_data, self
+            self.product_type, product_name, instance_data, self
         )
         instance.transient_data["instance_node"] = instance_node
         self._add_instance_to_context(instance)
@@ -259,18 +261,18 @@ class BaseCreator(Creator):
         """Override abstract method from BaseCreator.
         Collect existing instances related to this creator plugin."""
 
-        # Cache subsets in shared data
-        self.cache_subsets(self.collection_shared_data)
+        # Cache instances in shared data
+        self.cache_instance_data(self.collection_shared_data)
 
-        # Get cached subsets
-        cached_subsets = self.collection_shared_data.get(
-            "blender_cached_subsets"
+        # Get cached instances
+        cached_instances = self.collection_shared_data.get(
+            "blender_cached_instances"
         )
-        if not cached_subsets:
+        if not cached_instances:
             return
 
         # Process only instances that were created by this creator
-        for instance_node in cached_subsets.get(self.identifier, []):
+        for instance_node in cached_instances.get(self.identifier, []):
             property = instance_node.get(AVALON_PROPERTY)
             # Create instance object from existing data
             instance = CreatedInstance.from_existing(
@@ -302,16 +304,17 @@ class BaseCreator(Creator):
                 )
                 return
 
-            # Rename the instance node in the scene if subset or asset changed.
+            # Rename the instance node in the scene if product
+            #   or folder changed.
             # Do not rename the instance if the family is workfile, as the
             # workfile instance is included in the AVALON_CONTAINER collection.
             if (
-                "subset" in changes.changed_keys
+                "productName" in changes.changed_keys
                 or "folderPath" in changes.changed_keys
-            ) and created_instance.family != "workfile":
+            ) and created_instance.product_type != "workfile":
                 asset_name = data["folderPath"].split("/")[-1]
                 name = prepare_scene_name(
-                    asset=asset_name, subset=data["subset"]
+                    asset_name, data["productName"]
                 )
                 node.name = name
 
@@ -337,13 +340,13 @@ class BaseCreator(Creator):
 
     def set_instance_data(
         self,
-        subset_name: str,
+        product_name: str,
         instance_data: dict
     ):
         """Fill instance data with required items.
 
         Args:
-            subset_name(str): Subset name of created instance.
+            product_name(str): Subset name of created instance.
             instance_data(dict): Instance base data.
             instance_node(bpy.types.ID): Instance node in blender scene.
         """
@@ -352,9 +355,9 @@ class BaseCreator(Creator):
 
         instance_data.update(
             {
-                "id": "pyblish.avalon.instance",
+                "id": AVALON_INSTANCE_ID,
                 "creator_identifier": self.identifier,
-                "subset": subset_name,
+                "productName": product_name,
             }
         )
 
@@ -462,14 +465,14 @@ class AssetLoader(LoaderPlugin):
         filepath = self.filepath_from_context(context)
         assert Path(filepath).exists(), f"{filepath} doesn't exist."
 
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["asset"]["name"]
+        product_name = context["subset"]["name"]
         unique_number = get_unique_number(
-            asset, subset
+            folder_name, product_name
         )
-        namespace = namespace or f"{asset}_{unique_number}"
+        namespace = namespace or f"{folder_name}_{unique_number}"
         name = name or prepare_scene_name(
-            asset, subset, unique_number
+            folder_name, product_name, unique_number
         )
 
         nodes = self.process_asset(
@@ -495,21 +498,21 @@ class AssetLoader(LoaderPlugin):
         #         loader=self.__class__.__name__,
         #     )
 
-        # asset = context["asset"]["name"]
-        # subset = context["subset"]["name"]
+        # folder_name = context["asset"]["name"]
+        # product_name = context["subset"]["name"]
         # instance_name = prepare_scene_name(
-        #     asset, subset, unique_number
+        #     folder_name, product_name, unique_number
         # ) + '_CON'
 
         # return self._get_instance_collection(instance_name, nodes)
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """Must be implemented by a sub-class"""
         raise NotImplementedError("Must be implemented by a sub-class")
 
-    def update(self, container: Dict, representation: Dict):
+    def update(self, container: Dict, context: Dict):
         """ Run the update on Blender main thread"""
-        mti = MainThreadItem(self.exec_update, container, representation)
+        mti = MainThreadItem(self.exec_update, container, context)
         execute_in_main_thread(mti)
 
     def exec_remove(self, container: Dict) -> bool:

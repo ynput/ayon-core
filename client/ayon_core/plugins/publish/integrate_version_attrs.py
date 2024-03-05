@@ -82,6 +82,6 @@ class IntegrateVersionAttributes(pyblish.api.ContextPlugin):
         return (
             instance.data.get("label")
             or instance.data.get("name")
-            or instance.data.get("subset")
+            or instance.data.get("productName")
             or str(instance)
         )

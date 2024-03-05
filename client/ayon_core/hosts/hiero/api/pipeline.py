@@ -15,6 +15,7 @@ from ayon_core.pipeline import (
     deregister_creator_plugin_path,
     deregister_loader_plugin_path,
     AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.tools.utils import host_tools
 from . import lib, menu, events
@@ -158,7 +159,9 @@ def parse_container(item, validate=True):
     def data_to_container(item, data):
         if (
             not data
-            or data.get("id") != "pyblish.avalon.container"
+            or data.get("id") not in {
+                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
+            }
         ):
             return
 
