@@ -11,8 +11,6 @@ import uuid
 import ayon_api
 
 from ayon_core.client import (
-    get_subset_by_id,
-    get_subset_by_name,
     get_version_by_id,
     get_last_version_by_subset_id,
     get_version_by_name,
@@ -20,7 +18,6 @@ from ayon_core.client import (
 )
 from ayon_core.client.operations import (
     OperationsSession,
-    new_subset_document,
     new_version_doc,
     new_representation_doc,
     prepare_version_update_data,
@@ -447,7 +444,7 @@ class ProjectPushItemProcess:
         self._item = item
 
         self._src_folder_entity = None
-        self._src_subset_doc = None
+        self._src_product_entity = None
         self._src_version_doc = None
         self._src_repre_items = None
 
@@ -455,7 +452,7 @@ class ProjectPushItemProcess:
         self._anatomy = None
         self._folder_entity = None
         self._task_info = None
-        self._subset_doc = None
+        self._product_entity = None
         self._version_doc = None
 
         self._product_type = None
@@ -494,7 +491,7 @@ class ProjectPushItemProcess:
             self._determine_product_type()
             self._determine_publish_template_name()
             self._determine_product_name()
-            self._make_sure_subset_exists()
+            self._make_sure_product_exists()
             self._make_sure_version_exists()
             self._log_info("Prerequirements were prepared")
             self._integrate_representations()
@@ -582,15 +579,15 @@ class ProjectPushItemProcess:
             raise PushToProjectError(self._status.fail_reason)
 
         product_id = version_doc["parent"]
-        subset_doc = get_subset_by_id(src_project_name, product_id)
-        if not subset_doc:
+        product_entity = ayon_api.get_product_by_id(src_project_name, product_id)
+        if not product_entity:
             self._status.set_failed((
                 f"Could find product with id \"{product_id}\""
                 f" in project \"{src_project_name}\""
             ))
             raise PushToProjectError(self._status.fail_reason)
 
-        folder_id = subset_doc["parent"]
+        folder_id = product_entity["folderId"]
         folder_entity = ayon_api.get_folder_by_id(
             src_project_name, folder_id, own_attributes=True
         )
@@ -623,7 +620,7 @@ class ProjectPushItemProcess:
             raise PushToProjectError(self._status.fail_reason)
 
         self._src_folder_entity = folder_entity
-        self._src_subset_doc = subset_doc
+        self._src_product_entity = product_entity
         self._src_version_doc = version_doc
         self._src_repre_items = repre_items
 
@@ -805,12 +802,8 @@ class ProjectPushItemProcess:
         self._task_info = task_info
 
     def _determine_product_type(self):
-        subset_doc = self._src_subset_doc
-        product_type = subset_doc["data"].get("family")
-        families = subset_doc["data"].get("families")
-        if not product_type and families:
-            product_type = families[0]
-
+        product_entity = self._src_product_entity
+        product_type = product_entity["productType"]
         if not product_type:
             self._status.set_failed(
                 "Couldn't figure out product type from source product"
@@ -855,24 +848,34 @@ class ProjectPushItemProcess:
         )
         self._product_name = product_name
 
-    def _make_sure_subset_exists(self):
+    def _make_sure_product_exists(self):
         project_name = self._item.dst_project_name
         folder_id = self._folder_entity["id"]
         product_name = self._product_name
         product_type = self._product_type
-        subset_doc = get_subset_by_name(project_name, product_name, folder_id)
-        if subset_doc:
-            self._subset_doc = subset_doc
-            return subset_doc
-
-        data = {
-            "families": [product_type]
-        }
-        subset_doc = new_subset_document(
-            product_name, product_type, folder_id, data
+        product_entity = ayon_api.get_product_by_name(
+            project_name, product_name, folder_id
         )
-        self._operations.create_entity(project_name, "subset", subset_doc)
-        self._subset_doc = subset_doc
+        if product_entity:
+            self._product_entity = product_entity
+            return product_entity
+
+        create_data = {
+            "name": product_name,
+            "productType": product_type,
+            "folderId": folder_id,
+        }
+        response = ayon_api.post(
+            "projects/{}/products".format(project_name),
+            **create_data
+        )
+        product_entity = ayon_api.get_product_by_id(
+            project_name, response.data["id"]
+        )
+        # self._operations.create_entity(
+        #     project_name, "product", data
+        # )
+        self._product_entity = product_entity
 
     def _make_sure_version_exists(self):
         """Make sure version document exits in database."""
@@ -880,15 +883,13 @@ class ProjectPushItemProcess:
         project_name = self._item.dst_project_name
         version = self._item.dst_version
         src_version_doc = self._src_version_doc
-        subset_doc = self._subset_doc
-        product_id = subset_doc["_id"]
+        product_entity = self._product_entity
+        product_id = product_entity["id"]
         src_data = src_version_doc["data"]
-        families = subset_doc["data"].get("families")
-        if not families:
-            families = [subset_doc["data"]["family"]]
+        product_type = product_entity["productType"]
 
         version_data = {
-            "families": list(families),
+            "families": [product_type],
             "fps": src_data.get("fps"),
             "source": src_data.get("source"),
             "machine": socket.gethostname(),
@@ -908,8 +909,8 @@ class ProjectPushItemProcess:
                     self.host_name,
                     task_name=self._task_info["name"],
                     task_type=self._task_info["type"],
-                    product_type=families[0],
-                    product_name=subset_doc["name"]
+                    product_type=product_type,
+                    product_name=product_entity["name"]
                 )
 
         existing_version_doc = get_version_by_name(

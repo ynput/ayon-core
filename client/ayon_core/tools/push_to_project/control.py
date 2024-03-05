@@ -3,7 +3,6 @@ import threading
 import ayon_api
 
 from ayon_core.client import (
-    get_subset_by_id,
     get_version_by_id,
     get_representations,
 )
@@ -35,7 +34,7 @@ class PushToContextController:
         self._src_version_id = None
         self._src_folder_entity = None
         self._src_folder_task_entities = {}
-        self._src_subset_doc = None
+        self._src_product_entity = None
         self._src_version_doc = None
         self._src_label = None
 
@@ -75,17 +74,19 @@ class PushToContextController:
         self._src_label = None
         folder_entity = None
         task_entities = {}
-        subset_doc = None
+        product_entity = None
         version_doc = None
         if project_name and version_id:
             version_doc = get_version_by_id(project_name, version_id)
 
         if version_doc:
-            subset_doc = get_subset_by_id(project_name, version_doc["parent"])
+            product_entity = ayon_api.get_product_by_id(
+                project_name, version_doc["parent"]
+            )
 
-        if subset_doc:
+        if product_entity:
             folder_entity = ayon_api.get_folder_by_id(
-                project_name, subset_doc["parent"]
+                project_name, product_entity["folderId"]
             )
 
         if folder_entity:
@@ -98,7 +99,7 @@ class PushToContextController:
 
         self._src_folder_entity = folder_entity
         self._src_folder_task_entities = task_entities
-        self._src_subset_doc = subset_doc
+        self._src_product_entity = product_entity
         self._src_version_doc = version_doc
         if folder_entity:
             self._user_values.set_new_folder_name(folder_entity["name"])
@@ -216,12 +217,12 @@ class PushToContextController:
             return "Source is invalid"
 
         folder_path = folder_entity["path"]
-        subset_doc = self._src_subset_doc
+        product_entity = self._src_product_entity
         version_doc = self._src_version_doc
         return "Source: {}{}/{}/v{:0>3}".format(
             self._src_project_name,
             folder_path,
-            subset_doc["name"],
+            product_entity["name"],
             version_doc["name"]
         )
 
@@ -265,10 +266,7 @@ class PushToContextController:
         )
 
         project_settings = get_project_settings(project_name)
-        subset_doc = self._src_subset_doc
-        product_type = subset_doc["data"].get("family")
-        if not product_type:
-            product_type = subset_doc["data"]["families"][0]
+        product_type = self._src_product_entity["productType"]
         template = get_product_name_template(
             self._src_project_name,
             product_type,
@@ -302,7 +300,7 @@ class PushToContextController:
             print("Failed format", exc)
             return ""
 
-        product_name = self._src_subset_doc["name"]
+        product_name = self._src_product_entity["name"]
         if (
             (product_s and not product_name.startswith(product_s))
             or (product_e and not product_name.endswith(product_e))
