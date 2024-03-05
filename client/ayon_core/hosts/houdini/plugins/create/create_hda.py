@@ -2,7 +2,6 @@
 """Creator plugin for creating publishable Houdini Digital Assets."""
 import ayon_api
 
-from ayon_core.client import get_subsets
 from ayon_core.hosts.houdini.api import plugin
 import hou
 
@@ -24,12 +23,12 @@ class CreateHDA(plugin.HoudiniCreator):
         folder_entity = ayon_api.get_folder_by_path(
             project_name, folder_path, fields={"id"}
         )
-        subset_docs = get_subsets(
-            project_name, asset_ids=[folder_entity["id"]], fields=["name"]
+        product_entities = ayon_api.get_products(
+            project_name, folder_ids={folder_entity["id"]}, fields={"name"}
         )
         existing_product_names_low = {
-            subset_doc["name"].lower()
-            for subset_doc in subset_docs
+            product_entity["name"].lower()
+            for product_entity in product_entities
         }
         return product_name.lower() in existing_product_names_low
 

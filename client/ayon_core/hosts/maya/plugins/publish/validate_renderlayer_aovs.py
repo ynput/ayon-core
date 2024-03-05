@@ -1,7 +1,7 @@
+import ayon_api
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.client import get_subset_by_name
 from ayon_core.pipeline.publish import PublishValidationError
 
 
@@ -53,6 +53,6 @@ class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
     ):
         """Check if product is registered in the database under the folder"""
 
-        return get_subset_by_name(
-            project_name, product_name, folder_entity["id"], fields=["_id"]
+        return ayon_api.get_product_by_name(
+            project_name, product_name, folder_entity["id"], fields={"id"}
         )

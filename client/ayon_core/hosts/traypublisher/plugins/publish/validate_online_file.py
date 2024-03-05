@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ayon_api
 import pyblish.api
 
 from ayon_core.pipeline.publish import (
@@ -6,7 +7,6 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin,
 )
-from ayon_core.client import get_subset_by_name
 
 
 class ValidateOnlineFile(OptionalPyblishPluginMixin,
@@ -24,11 +24,11 @@ class ValidateOnlineFile(OptionalPyblishPluginMixin,
             return
         project_name = instance.context.data["projectName"]
         folder_id = instance.data["folderEntity"]["id"]
-        subset_doc = get_subset_by_name(
+        product_entity = ayon_api.get_product_by_name(
             project_name, instance.data["productName"], folder_id)
 
-        if subset_doc:
+        if product_entity:
             raise PublishValidationError(
-                "Subset to be published already exists.",
+                "Product to be published already exists.",
                 title=self.label
             )

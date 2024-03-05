@@ -299,18 +299,18 @@ def update_package_version(container, version):
 
     (
         version_doc,
-        subset_doc,
+        product_entity,
         folder_entity,
         project_entity
     ) = get_representation_parents(project_name, current_representation)
 
     if version == -1:
         new_version = get_last_version_by_subset_id(
-            project_name, subset_doc["_id"]
+            project_name, product_entity["id"]
         )
     else:
         new_version = get_version_by_name(
-            project_name, version, subset_doc["_id"]
+            project_name, version, product_entity["id"]
         )
 
     assert new_version is not None, "This is a bug"
@@ -324,7 +324,7 @@ def update_package_version(container, version):
     new_context = {
         "project": project_entity,
         "folder": folder_entity,
-        "subset": subset_doc,
+        "product": product_entity,
         "version": version_doc,
         "representation": new_representation,
     }

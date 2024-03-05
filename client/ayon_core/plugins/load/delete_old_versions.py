@@ -196,13 +196,13 @@
 #         msgBox.exec_()
 #
 #     def get_data(self, context, versions_count):
-#         subset_doc = context["subset"]
+#         product_entity = context["product"]
 #         folder_entity = context["folder"]
 #         project_name = context["project"]["name"]
 #         anatomy = Anatomy(project_name)
 #
 #         versions = list(get_versions(
-#             project_name, subset_ids=[subset_doc["_id"]]
+#             project_name, subset_ids=[product_entity["id"]]
 #         ))
 #
 #         versions_by_parent = collections.defaultdict(list)
@@ -240,9 +240,9 @@
 #                 versions_to_pop.append(version)
 #
 #         for version in versions_to_pop:
-#             msg = "Folder: \"{}\" | Subset: \"{}\" | Version: \"{}\"".format(
+#             msg = "Folder: \"{}\" | Product: \"{}\" | Version: \"{}\"".format(
 #                 folder_entity["path"],
-#                 subset_doc["name"],
+#                 product_entity["name"],
 #                 version["name"]
 #             )
 #             self.log.debug((
@@ -258,7 +258,7 @@
 #
 #         if not version_ids:
 #             msg = "Skipping processing. Nothing to delete on {}/{}".format(
-#                 folder_entity["path"], subset_doc["name"]
+#                 folder_entity["path"], product_entity["name"]
 #             )
 #             self.log.info(msg)
 #             print(msg)
@@ -319,8 +319,8 @@
 #             "file_paths_by_dir": file_paths_by_dir,
 #             "versions": versions,
 #             "folder": folder_entity,
-#             "subset": subset_doc,
-#             "archive_subset": versions_count == 0
+#             "product": product_entity,
+#             "archive_product": versions_count == 0
 #         }
 #
 #     def main(self, project_name, data, remove_publish_folder):
@@ -350,10 +350,10 @@
 #             update_data = {"$set": {"data.tags": version_tags}}
 #             mongo_changes_bulk.append(UpdateOne(update_query, update_data))
 #
-#         if data["archive_subset"]:
+#         if data["archive_product"]:
 #             mongo_changes_bulk.append(UpdateOne(
 #                 {
-#                     "_id": data["subset"]["_id"],
+#                     "id": data["product"]["id"],
 #                     "type": "subset"
 #                 },
 #                 {"$set": {"type": "archived_subset"}}
@@ -381,7 +381,7 @@
 #                 "not published" which cause that they're invisible.
 #
 #         Args:
-#             data (dict): Data sent to subset loader with full context.
+#             data (dict): Data sent to product loader with full context.
 #         """
 #
 #         # First check for ftrack id on folder entity
@@ -403,7 +403,7 @@
 #         import ftrack_api
 #
 #         session = ftrack_api.Session()
-#         product_name = data["subset"]["name"]
+#         product_name = data["product"]["name"]
 #         versions = {
 #             '"{}"'.format(version_doc["name"])
 #             for version_doc in data["versions"]

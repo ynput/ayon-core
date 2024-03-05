@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import re
 
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_subset_by_name
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     KnownPublishError,
@@ -36,13 +36,13 @@ class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
                 "Folder entity is not filled on instance."
             )
 
-        subset_doc = get_subset_by_name(
+        product_entity = ayon_api.get_product_by_name(
             project_name,
             model_product_name,
             folder_entity["id"],
-            fields=["_id"]
+            fields={"id"}
         )
-        if not subset_doc:
+        if not product_entity:
             raise PublishValidationError(
                 ("USD Model product not found: "
                  "{} ({})").format(model_product_name, folder_path),

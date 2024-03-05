@@ -8,7 +8,6 @@ import ayon_api
 import pyblish.api
 
 from ayon_core.client import (
-    get_subset_by_name,
     get_last_version_by_subset_id,
     get_representation_by_name,
 )
@@ -287,19 +286,19 @@ class ExtractUSDLayered(publish.Extractor):
         folder_entity = ayon_api.get_folder_by_path(
             project_name, dependency.data["folderPath"], fields={"id"}
         )
-        subset_doc = get_subset_by_name(
+        product_entity = ayon_api.get_product_by_name(
             project_name,
             dependency.data["productName"],
             folder_entity["id"],
-            fields=["_id"]
+            fields={"id"}
         )
-        if not subset_doc:
+        if not product_entity:
             # Subset doesn't exist yet. Definitely new file
             self.log.debug("No existing product..")
             return False
 
         version_doc = get_last_version_by_subset_id(
-            project_name, subset_doc["_id"], fields=["_id"]
+            project_name, product_entity["id"], fields=["_id"]
         )
         if not version_doc:
             self.log.debug("No existing version..")

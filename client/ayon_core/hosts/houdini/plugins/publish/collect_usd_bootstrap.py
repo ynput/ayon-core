@@ -1,7 +1,6 @@
 import pyblish.api
 import ayon_api
 
-from ayon_core.client import get_subset_by_name
 from ayon_core.pipeline import usdlib, KnownPublishError
 
 
@@ -117,8 +116,8 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
 
         # Or, if they already exist in the database we can
         # skip them too.
-        if get_subset_by_name(
-            project_name, product_name, folder_entity["id"], fields=["_id"]
+        if ayon_api.get_product_by_name(
+            project_name, product_name, folder_entity["id"], fields={"id"}
         ):
             return True
         return False
