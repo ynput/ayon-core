@@ -899,6 +899,8 @@ PublisherTabsWidget {
     background: {color:publisher:tab-bg};
 }
 
+*[nondefault=true] { font: bold }
+
 PublisherTabBtn {
     border-radius: 0px;
     background: {color:bg-inputs};
