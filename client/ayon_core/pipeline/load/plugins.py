@@ -33,7 +33,7 @@ class LoaderPlugin(list):
 
     options = []
 
-    log = logging.getLogger("SubsetLoader")
+    log = logging.getLogger("ProductLoader")
     log.propagate = True
 
     @classmethod
@@ -130,10 +130,10 @@ class LoaderPlugin(list):
         """
 
         plugin_repre_names = cls.get_representations()
-        plugin_families = cls.families
+        plugin_product_types = cls.families
         if (
             not plugin_repre_names
-            or not plugin_families
+            or not plugin_product_types
             or not cls.extensions
         ):
             return False
@@ -152,24 +152,14 @@ class LoaderPlugin(list):
         if not cls.has_valid_extension(repre_doc):
             return False
 
-        plugin_families = set(plugin_families)
-        if "*" in plugin_families:
+        plugin_product_types = set(plugin_product_types)
+        if "*" in plugin_product_types:
             return True
 
-        subset_doc = context["subset"]
-        maj_version, _ = schema.get_schema_version(subset_doc["schema"])
-        if maj_version < 3:
-            families = context["version"]["data"].get("families")
-        else:
-            families = subset_doc["data"].get("families")
-            if families is None:
-                family = subset_doc["data"].get("family")
-                if family:
-                    families = [family]
+        product_entity = context["product"]
+        product_type = product_entity["productType"]
 
-        if not families:
-            return False
-        return any(family in plugin_families for family in families)
+        return product_type in plugin_product_types
 
     @classmethod
     def get_representations(cls):

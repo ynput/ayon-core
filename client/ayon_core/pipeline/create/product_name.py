@@ -33,7 +33,7 @@ def get_product_name_template(
 
     Args:
         project_name (str): Project on which the context lives.
-        product_type (str): Product type for which the subset name is
+        product_type (str): Product type for which the product name is
             calculated.
         host_name (str): Name of host in which the product name is calculated.
         task_name (str): Name of task in which context the product is created.

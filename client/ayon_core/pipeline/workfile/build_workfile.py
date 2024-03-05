@@ -16,7 +16,6 @@ import json
 import ayon_api
 
 from ayon_core.client import (
-    get_subsets,
     get_last_versions,
     get_representations,
 )
@@ -48,17 +47,11 @@ class BuildWorkfile:
         return self._log
 
     @staticmethod
-    def map_products_by_type(subset_docs):
+    def map_products_by_type(product_entities):
         products_by_type = collections.defaultdict(list)
-        for subset_doc in subset_docs:
-            product_type = subset_doc["data"].get("family")
-            if not product_type:
-                families = subset_doc["data"].get("families")
-                if not families:
-                    continue
-                product_type = families[0]
-
-            products_by_type[product_type].append(subset_doc)
+        for product_entity in product_entities:
+            product_type = product_entity["productType"]
+            products_by_type[product_type].append(product_entity)
         return products_by_type
 
     def process(self):
@@ -380,7 +373,7 @@ class BuildWorkfile:
             project_name, folder_ids=linked_folder_ids
         ))
 
-    def _prepare_profile_for_products(self, subset_docs, profiles):
+    def _prepare_profile_for_products(self, product_entities, profiles):
         """Select profile for each product by it's data.
 
         Profiles are filtered for each product individually.
@@ -391,7 +384,7 @@ class BuildWorkfile:
         matching profile.
 
         Args:
-            subset_docs (List[Dict[str, Any]]): Subset documents.
+            product_entities (List[Dict[str, Any]]): product entities.
             profiles (List[Dict[str, Any]]): Build profiles.
 
         Returns:
@@ -399,10 +392,10 @@ class BuildWorkfile:
         """
 
         # Prepare products
-        products_by_type = self.map_products_by_type(subset_docs)
+        products_by_type = self.map_products_by_type(product_entities)
 
         profiles_by_product_id = {}
-        for product_type, subset_docs in products_by_type.items():
+        for product_type, product_entities in products_by_type.items():
             product_type_low = product_type.lower()
             for profile in profiles:
                 # Skip profile if does not contain product type
@@ -418,19 +411,19 @@ class BuildWorkfile:
                     profile_regexes = _profile_regexes
 
                 # TODO prepare regex compilation
-                for subset_doc in subset_docs:
+                for product_entity in product_entities:
                     # Verify regex filtering (optional)
                     if profile_regexes:
                         valid = False
                         for pattern in profile_regexes:
-                            if re.match(pattern, subset_doc["name"]):
+                            if re.match(pattern, product_entity["name"]):
                                 valid = True
                                 break
 
                         if not valid:
                             continue
 
-                    profiles_by_product_id[subset_doc["_id"]] = profile
+                    profiles_by_product_id[product_entity["id"]] = profile
 
                 # break profiles loop on finding the first matching profile
                 break
@@ -473,9 +466,9 @@ class BuildWorkfile:
         products_by_id = {}
         version_by_product_id = {}
         repres_by_version_id = {}
-        for product_id, in_data in linked_folder_data["subsets"].items():
-            subset_doc = in_data["subset_doc"]
-            products_by_id[subset_doc["_id"]] = subset_doc
+        for product_id, in_data in linked_folder_data["products"].items():
+            product_entity = in_data["product_entity"]
+            products_by_id[product_entity["id"]] = product_entity
 
             version_data = in_data["version"]
             version_doc = version_data["version_doc"]
@@ -514,9 +507,9 @@ class BuildWorkfile:
             folder_entity["path"]
         )
         for product_id, repres in valid_repres_by_product_id.items():
-            subset_doc = products_by_id[product_id]
+            product_entity = products_by_id[product_id]
             msg += "\n# Product Name/ID: `{}`/{}".format(
-                subset_doc["name"], product_id
+                product_entity["name"], product_id
             )
             for repre in repres:
                 msg += "\n## Repre name: `{}`".format(repre["name"])
@@ -545,13 +538,13 @@ class BuildWorkfile:
         If product has representation matching representation name each loader
         is tried to load it until any is successful. If none of them was
         successful then next representation name is tried.
-        Subset process loop ends when any representation is loaded or
+        Product process loop ends when any representation is loaded or
         all matching representations were already tried.
 
         Args:
             repres_by_product_id (Dict[str, Dict[str, Any]]): Available
                 representations mapped by their parent (product) id.
-            products_by_id (Dict[str, Dict[str, Any]]): Subset documents
+            products_by_id (Dict[str, Dict[str, Any]]): Product entities
                 mapped by their id.
             profiles_by_product_id (Dict[str, Dict[str, Any]]): Build profiles
                 mapped by product id.
@@ -570,9 +563,9 @@ class BuildWorkfile:
         product_ids_ordered = []
         for preset in build_presets:
             for product_type in preset["product_types"]:
-                for product_id, subset_doc in products_by_id.items():
+                for product_id, product_entity in products_by_id.items():
                     # TODO 'families' is not available on product
-                    families = subset_doc["data"].get("families") or []
+                    families = product_entity["data"].get("families") or []
                     if product_type not in families:
                         continue
 
@@ -674,9 +667,9 @@ class BuildWorkfile:
         {
             <folder id>: {
                 "folder_entity": <dict[str, Any]>,
-                "subsets": {
+                "products": {
                     <product id>: {
-                        "subset_doc": <dict[str, Any]>,
+                        "product_entity": <dict[str, Any]>,
                         "version": {
                             "version_doc": <VersionEntity>,
                             "repres": [
@@ -689,7 +682,7 @@ class BuildWorkfile:
             },
             ...
         }
-        output[folder_id]["subsets"][product_id]["version"]["repres"]
+        output[folder_id]["products"][product_id]["version"]["repres"]
         ```
         """
 
@@ -705,16 +698,16 @@ class BuildWorkfile:
         }
 
         project_name = get_current_project_name()
-        subset_docs = list(get_subsets(
-            project_name, asset_ids=folder_entities_by_id.keys()
+        product_entities = list(ayon_api.get_products(
+            project_name, folder_ids=folder_entities_by_id.keys()
         ))
-        subset_docs_by_id = {
-            subset_doc["_id"]: subset_doc
-            for subset_doc in subset_docs
+        product_entities_by_id = {
+            product_entity["id"]: product_entity
+            for product_entity in product_entities
         }
 
         last_version_by_product_id = get_last_versions(
-            project_name, subset_docs_by_id.keys()
+            project_name, product_entities_by_id.keys()
         )
         last_version_docs_by_id = {
             version["_id"]: version
@@ -729,27 +722,27 @@ class BuildWorkfile:
             version_doc = last_version_docs_by_id[version_id]
 
             product_id = version_doc["parent"]
-            subset_doc = subset_docs_by_id[product_id]
+            product_entity = product_entities_by_id[product_id]
 
-            folder_id = subset_doc["parent"]
+            folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
 
             if folder_id not in output:
                 output[folder_id] = {
                     "folder_entity": folder_entity,
-                    "subsets": {}
+                    "products": {}
                 }
 
-            if product_id not in output[folder_id]["subsets"]:
-                output[folder_id]["subsets"][product_id] = {
-                    "subset_doc": subset_doc,
+            if product_id not in output[folder_id]["products"]:
+                output[folder_id]["products"][product_id] = {
+                    "product_entity": product_entity,
                     "version": {
                         "version_doc": version_doc,
                         "repres": []
                     }
                 }
 
-            output[folder_id]["subsets"][product_id]["version"]["repres"].append(
+            output[folder_id]["products"][product_id]["version"]["repres"].append(
                 repre_doc
             )
 
