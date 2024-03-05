@@ -4,7 +4,6 @@ import ayon_api
 import pyblish.api
 
 from ayon_core.client import (
-    get_subsets,
     get_last_versions,
     get_representations,
 )
@@ -133,16 +132,16 @@ class CollectAudio(pyblish.api.ContextPlugin):
         # Query products with name define by 'audio_product_name' attr
         # - one or none products with the name should be available on
         #   an folder
-        subset_docs = get_subsets(
+        product_entities = ayon_api.get_products(
             project_name,
-            subset_names=[self.audio_product_name],
-            asset_ids=folder_ids,
-            fields=["_id", "parent"]
+            product_names=[self.audio_product_name],
+            folder_ids=folder_ids,
+            fields={"id", "folderId"}
         )
         product_id_by_folder_id = {}
-        for subset_doc in subset_docs:
-            folder_id = subset_doc["parent"]
-            product_id_by_folder_id[folder_id] = subset_doc["_id"]
+        for product_entity in product_entities:
+            folder_id = product_entity["folderId"]
+            product_id_by_folder_id[folder_id] = product_entity["id"]
 
         product_ids = set(product_id_by_folder_id.values())
         if not product_ids:

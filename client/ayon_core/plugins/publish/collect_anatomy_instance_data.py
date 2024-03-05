@@ -34,7 +34,6 @@ import pyblish.api
 import ayon_api
 
 from ayon_core.client import (
-    get_subsets,
     get_last_versions,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -261,28 +260,28 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             hierarchy[folder_id][product_name].append(instance)
             names_by_folder_ids[folder_id].add(product_name)
 
-        subset_docs = []
+        product_entities = []
         if names_by_folder_ids:
-            subset_docs = list(get_subsets(
-                project_name, names_by_asset_ids=names_by_folder_ids
+            product_entities = list(ayon_api.get_products(
+                project_name, names_by_folder_ids=names_by_folder_ids
             ))
 
         product_ids = {
-            subset_doc["_id"]
-            for subset_doc in subset_docs
+            product_entity["id"]
+            for product_entity in product_entities
         }
 
         last_version_docs_by_product_id = get_last_versions(
             project_name, product_ids, fields=["name"]
         )
-        for subset_doc in subset_docs:
-            product_id = subset_doc["_id"]
+        for product_entity in product_entities:
+            product_id = product_entity["id"]
             last_version_doc = last_version_docs_by_product_id.get(product_id)
             if last_version_doc is None:
                 continue
 
-            folder_id = subset_doc["parent"]
-            product_name = subset_doc["name"]
+            folder_id = product_entity["folderId"]
+            product_name = product_entity["name"]
             _instances = hierarchy[folder_id][product_name]
             for _instance in _instances:
                 _instance.data["latestVersion"] = last_version_doc["name"]

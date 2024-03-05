@@ -626,7 +626,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
         new_instance = deepcopy(skeleton)
         new_instance["productName"] = product_name
-        new_instance["subsetGroup"] = group_name
+        new_instance["productGroup"] = group_name
 
         # explicitly disable review by user
         preview = preview and not do_not_add_review
@@ -1088,8 +1088,8 @@ def attach_instances_to_product(attach_to, instances):
             new_inst["productType"] = attach_instance.get("productType")
             new_inst["family"] = attach_instance.get("family")
             new_inst["append"] = True
-            # don't set subsetGroup if we are attaching
-            new_inst.pop("subsetGroup")
+            # don't set productGroup if we are attaching
+            new_inst.pop("productGroup")
             new_instances.append(new_inst)
     return new_instances
 

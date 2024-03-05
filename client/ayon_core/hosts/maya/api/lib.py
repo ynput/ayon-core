@@ -22,7 +22,6 @@ from maya.api import OpenMaya
 import ayon_api
 
 from ayon_core.client import (
-    get_subsets,
     get_last_versions,
     get_representation_by_name,
 )
@@ -1885,11 +1884,13 @@ def list_looks(project_name, folder_id):
     # the name associated with the asset
     # TODO this should probably look for product type 'look' instead of
     #   checking product name that can not start with product type
-    subset_docs = get_subsets(project_name, asset_ids=[folder_id])
+    product_entities = ayon_api.get_products(
+        project_name, folder_ids=[folder_id]
+    )
     return [
-        subset_doc
-        for subset_doc in subset_docs
-        if subset_doc["name"].startswith("look")
+        product_entity
+        for product_entity in product_entities
+        if product_entity["name"].startswith("look")
     ]
 
 
@@ -1973,16 +1974,16 @@ def assign_look(nodes, product_name="lookDefault"):
         grouped[parts[0]].append(node)
 
     project_name = get_current_project_name()
-    subset_docs = get_subsets(
-        project_name, subset_names=[product_name], asset_ids=grouped.keys()
+    product_entities = ayon_api.get_products(
+        project_name, product_names=[product_name], folder_ids=grouped.keys()
     )
-    subset_docs_by_folder_id = {
-        str(subset_doc["parent"]): subset_doc
-        for subset_doc in subset_docs
+    product_entities_by_folder_id = {
+        product_entity["folderId"]: product_entity
+        for product_entity in product_entities
     }
     product_ids = {
-        subset_doc["_id"]
-        for subset_doc in subset_docs_by_folder_id.values()
+        product_entity["id"]
+        for product_entity in product_entities_by_folder_id.values()
     }
     last_version_docs = get_last_versions(
         project_name,
@@ -1995,15 +1996,15 @@ def assign_look(nodes, product_name="lookDefault"):
     }
 
     for folder_id, asset_nodes in grouped.items():
-        # create objectId for database
-        subset_doc = subset_docs_by_folder_id.get(folder_id)
-        if not subset_doc:
+        product_entity = product_entities_by_folder_id.get(folder_id)
+        if not product_entity:
             log.warning((
                 "No product '{}' found for {}"
             ).format(product_name, folder_id))
             continue
 
-        last_version = last_version_docs_by_product_id.get(subset_doc["_id"])
+        product_id = product_entity["id"]
+        last_version = last_version_docs_by_product_id.get(product_id)
         if not last_version:
             log.warning((
                 "Not found last version for product '{}' on folder with id {}"

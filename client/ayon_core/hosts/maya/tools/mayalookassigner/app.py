@@ -227,9 +227,9 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
             # (since assigning multiple to the same nodes makes no sense)
             assign_look = next(
                 (
-                    subset_doc
-                    for subset_doc in item["looks"]
-                    if subset_doc["name"] in looks
+                    product_entity
+                    for product_entity in item["looks"]
+                    if product_entity["name"] in looks
                 ),
                 None
             )

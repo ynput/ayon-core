@@ -9,7 +9,6 @@ from pathlib import Path
 
 # import ayon_api
 
-# from ayon_core.client import get_subset_by_name
 from ayon_core.lib.attribute_definitions import FileDef, BoolDef
 from ayon_core.pipeline import (
     CreatedInstance,
@@ -57,9 +56,9 @@ class OnlineCreator(TrayPublishCreator):
         folder_entity = ayon_api.get_folder_by_path(
             self.project_name, instance_data["folderPath"], fields={"id"})
 
-        if get_subset_by_name(
+        if ayon_api.get_product_by_name(
                 self.project_name, origin_basename, folder_entity["id"],
-                fields=["_id"]):
+                fields={"id"}):
             raise CreatorError(f"product with {origin_basename} already "
                                "exists in selected folder")
         """

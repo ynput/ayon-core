@@ -1,9 +1,6 @@
 import ayon_api
 
-from ayon_core.client import (
-    get_subsets,
-    get_last_versions,
-)
+from ayon_core.client import get_last_versions
 from ayon_core.lib.attribute_definitions import (
     FileDef,
     BoolDef,
@@ -118,9 +115,9 @@ class SettingsCreator(TrayPublishCreator):
         # Fill 'version_to_use' if version control is enabled
         if self.allow_version_control:
             folder_path = data["folderPath"]
-            subset_docs_by_folder_path = self._prepare_next_versions(
+            product_entities_by_folder_path = self._prepare_next_versions(
                 [folder_path], [product_name])
-            version = subset_docs_by_folder_path[folder_path].get(
+            version = product_entities_by_folder_path[folder_path].get(
                 product_name
             )
             pre_create_data["version_to_use"] = version
@@ -157,7 +154,7 @@ class SettingsCreator(TrayPublishCreator):
 
         # Prepare all versions for all combinations to '1'
         # TODO use 'ayon_core.pipeline.version_start' logic
-        subset_docs_by_folder_path = {
+        product_entities_by_folder_path = {
             folder_path: {
                 product_name: 1
                 for product_name in product_names
@@ -165,7 +162,7 @@ class SettingsCreator(TrayPublishCreator):
             for folder_path in folder_paths
         }
         if not folder_paths or not product_names:
-            return subset_docs_by_folder_path
+            return product_entities_by_folder_path
 
         folder_entities = ayon_api.get_folders(
             self.project_name,
@@ -176,30 +173,32 @@ class SettingsCreator(TrayPublishCreator):
             folder_entity["id"]: folder_entity["path"]
             for folder_entity in folder_entities
         }
-        subset_docs = list(get_subsets(
+        product_entities = list(ayon_api.get_products(
             self.project_name,
-            asset_ids=folder_paths_by_id.keys(),
-            subset_names=product_names,
-            fields=["_id", "name", "parent"]
+            folder_ids=folder_paths_by_id.keys(),
+            product_names=product_names,
+            fields={"id", "name", "folderId"}
         ))
 
-        product_ids = {subset_doc["_id"] for subset_doc in subset_docs}
+        product_ids = {p["id"] for p in product_entities}
         last_versions = get_last_versions(
             self.project_name,
             product_ids,
             fields=["name", "parent"])
 
-        for subset_doc in subset_docs:
-            folder_id = subset_doc["parent"]
+        for product_entity in product_entities:
+            product_id = product_entity["id"]
+            product_name = product_entity["name"]
+            folder_id = product_entity["folderId"]
             folder_path = folder_paths_by_id[folder_id]
-            product_name = subset_doc["name"]
-            product_id = subset_doc["_id"]
             last_version = last_versions.get(product_id)
             version = 0
             if last_version is not None:
                 version = last_version["name"]
-            subset_docs_by_folder_path[folder_path][product_name] += version
-        return subset_docs_by_folder_path
+            product_entities_by_folder_path[folder_path][product_name] += (
+                version
+            )
+        return product_entities_by_folder_path
 
     def _fill_next_versions(self, instances_data):
         """Fill next version for instances.
@@ -231,13 +230,13 @@ class SettingsCreator(TrayPublishCreator):
         product_names = {
             instance["productName"]
             for instance in filtered_instance_data}
-        subset_docs_by_folder_path = self._prepare_next_versions(
+        product_entities_by_folder_path = self._prepare_next_versions(
             folder_paths, product_names
         )
         for instance in filtered_instance_data:
             folder_path = instance["folderPath"]
             product_name = instance["productName"]
-            version = subset_docs_by_folder_path[folder_path][product_name]
+            version = product_entities_by_folder_path[folder_path][product_name]
             instance["creator_attributes"]["version_to_use"] = version
             instance["_previous_last_version"] = version
 
