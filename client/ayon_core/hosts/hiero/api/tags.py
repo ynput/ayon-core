@@ -1,10 +1,9 @@
 import json
 import re
-import os
 import hiero
 
 import ayon_api
-from ayon_core.client import get_assets
+
 from ayon_core.lib import Logger
 from ayon_core.pipeline import get_current_project_name
 
@@ -159,25 +158,6 @@ def add_tags_to_workfile():
                 "type": task_type_name
             }
         }
-
-    # Get project assets. Currently Ftrack specific to differentiate between
-    # asset builds and shots.
-    if int(os.getenv("TAG_ASSETBUILD_STARTUP", 0)) == 1:
-        nks_pres_tags["[AssetBuilds]"] = {}
-        for asset in get_assets(
-            project_name, fields=["name", "data.entityType"]
-        ):
-            if asset["data"]["entityType"] == "AssetBuild":
-                nks_pres_tags["[AssetBuilds]"][asset["name"]] = {
-                    "editable": "1",
-                    "note": "",
-                    "icon": {
-                        "path": "icons:TagActor.png"
-                    },
-                    "metadata": {
-                        "productType": "assetbuild"
-                    }
-                }
 
     # loop through tag data dict and create deep tag structure
     for _k, _val in nks_pres_tags.items():

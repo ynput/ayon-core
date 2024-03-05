@@ -41,11 +41,6 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             if not instance.data.get("heroTrack"):
                 continue
 
-            # get asset build data if any available
-            shot_data["inputs"] = [
-                x["_id"] for x in instance.data.get("assetbuilds", [])
-            ]
-
             # suppose that all instances are Shots
             shot_data['entity_type'] = 'Shot'
             shot_data['tasks'] = instance.data.get("tasks") or {}
