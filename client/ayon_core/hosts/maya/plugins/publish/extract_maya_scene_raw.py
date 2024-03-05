@@ -5,7 +5,11 @@ import os
 from maya import cmds
 
 from ayon_core.hosts.maya.api.lib import maintained_selection
-from ayon_core.pipeline import AVALON_CONTAINER_ID, publish
+from ayon_core.pipeline import (
+    AYON_CONTAINER_ID,
+    AVALON_CONTAINER_ID,
+    publish,
+)
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_core.lib import BoolDef
 
@@ -79,7 +83,7 @@ class ExtractMayaSceneRaw(publish.Extractor, AYONPyblishPluginMixin):
         selection = members
         if set(self.add_for_families).intersection(
                 set(instance.data.get("families", []))) or \
-                instance.data.get("family") in self.add_for_families:
+                instance.data.get("productType") in self.add_for_families:
             selection += self._get_loaded_containers(members)
 
         # Perform extraction
@@ -136,7 +140,9 @@ class ExtractMayaSceneRaw(publish.Extractor, AYONPyblishPluginMixin):
                 continue
 
             id_attr = "{}.id".format(obj_set)
-            if cmds.getAttr(id_attr) != AVALON_CONTAINER_ID:
+            if cmds.getAttr(id_attr) not in {
+                AYON_CONTAINER_ID, AVALON_CONTAINER_ID
+            }:
                 continue
 
             set_content = set(cmds.sets(obj_set, query=True))

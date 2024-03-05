@@ -13,7 +13,8 @@ from ayon_core.hosts.max.api.lib import maintained_selection
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
-    update_custom_attribute_data
+    update_custom_attribute_data,
+    remove_container_data
 )
 from ayon_core.pipeline import get_representation_path, load
 
@@ -64,8 +65,9 @@ class ModelUSDLoader(load.LoaderPlugin):
             name, usd_objects, context,
             namespace, loader=self.__class__.__name__)
 
-    def update(self, container, representation):
-        path = get_representation_path(representation)
+    def update(self, container, context):
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
         node_name = container["instance_node"]
         node = rt.GetNodeByName(node_name)
         namespace, name = get_namespace(node_name)
@@ -106,12 +108,13 @@ class ModelUSDLoader(load.LoaderPlugin):
             rt.Select(node)
 
         lib.imprint(node_name, {
-            "representation": str(representation["_id"])
+            "representation": str(repre_doc["_id"])
         })
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
+        from pymxs import runtime as rt
         node = rt.GetNodeByName(container["instance_node"])
-        rt.Delete(node)
+        remove_container_data(node)

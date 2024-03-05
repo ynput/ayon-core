@@ -53,7 +53,7 @@ class LoadClip(plugin.NukeLoader):
     color = "white"
 
     # Loaded from settings
-    _representations = []
+    representations_include = []
 
     script_start = int(nuke.root()["first_frame"].value())
 
@@ -82,7 +82,7 @@ class LoadClip(plugin.NukeLoader):
 
     @classmethod
     def get_representations(cls):
-        return cls._representations or cls.representations
+        return cls.representations_include or cls.representations
 
     def load(self, context, name, namespace, options):
         """Load asset via database
@@ -206,8 +206,8 @@ class LoadClip(plugin.NukeLoader):
 
         return container
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def _representation_with_hash_in_frame(self, representation):
         """Convert frame key value to padded hash
@@ -238,7 +238,7 @@ class LoadClip(plugin.NukeLoader):
         representation["context"]["frame"] = hashed_frame
         return representation
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update the Loader's path
 
         Nuke automatically tries to reset some variables when changing
@@ -247,16 +247,18 @@ class LoadClip(plugin.NukeLoader):
 
         """
 
-        is_sequence = len(representation["files"]) > 1
+        repre_doc = context["representation"]
+
+        is_sequence = len(repre_doc["files"]) > 1
 
         read_node = container["node"]
 
         if is_sequence:
-            representation = self._representation_with_hash_in_frame(
-                representation
+            repre_doc = self._representation_with_hash_in_frame(
+                repre_doc
             )
 
-        filepath = get_representation_path(representation).replace("\\", "/")
+        filepath = get_representation_path(repre_doc).replace("\\", "/")
         self.log.debug("_ filepath: {}".format(filepath))
 
         start_at_workfile = "start at" in read_node['frame_mode'].value()
@@ -267,13 +269,13 @@ class LoadClip(plugin.NukeLoader):
         ]
 
         project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
+        version_doc = get_version_by_id(project_name, repre_doc["parent"])
 
         version_data = version_doc.get("data", {})
-        repre_id = representation["_id"]
+        repre_id = repre_doc["_id"]
 
         # colorspace profile
-        colorspace = representation["data"].get("colorspace")
+        colorspace = repre_doc["data"].get("colorspace")
         colorspace = colorspace or version_data.get("colorspace")
 
         self.handle_start = version_data.get("handleStart", 0)
@@ -300,12 +302,13 @@ class LoadClip(plugin.NukeLoader):
         # we will switch off undo-ing
         with viewer_update_and_undo_stop():
             self.set_colorspace_to_node(
-                read_node, filepath, version_doc, representation)
+                read_node, filepath, version_doc, repre_doc
+            )
 
             self._set_range_to_node(read_node, first, last, start_at_workfile)
 
             updated_dict = {
-                "representation": str(representation["_id"]),
+                "representation": str(repre_doc["_id"]),
                 "frameStart": str(first),
                 "frameEnd": str(last),
                 "version": str(version_doc.get("name")),

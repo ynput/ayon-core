@@ -33,9 +33,9 @@ class ExistingLayoutLoader(plugin.Loader):
     delete_unmatched_assets = True
 
     @classmethod
-    def apply_settings(cls, project_settings, *args, **kwargs):
+    def apply_settings(cls, project_settings):
         super(ExistingLayoutLoader, cls).apply_settings(
-            project_settings, *args, **kwargs
+            project_settings
         )
         cls.delete_unmatched_assets = (
             project_settings["unreal"]["delete_unmatched_assets"]
@@ -284,9 +284,9 @@ class ExistingLayoutLoader(plugin.Loader):
 
                 # Create the container for the asset.
                 asset = repr_data.get('context').get('asset')
-                subset = repr_data.get('context').get('subset')
+                product_name = repr_data.get('context').get('subset')
                 container = self._create_container(
-                    f"{asset}_{subset}", mesh_path, asset,
+                    f"{asset}_{product_name}", mesh_path, asset,
                     repr_data.get('_id'), repr_data.get('parent'),
                     repr_data.get('context').get('family')
                 )
@@ -407,16 +407,18 @@ class ExistingLayoutLoader(plugin.Loader):
         }
         upipeline.imprint(f"{curr_level_path}/{container_name}", data)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         asset_dir = container.get('namespace')
 
-        source_path = get_representation_path(representation)
-        project_name = get_current_project_name()
+        project_name = context["project"]["name"]
+        repre_doc = context["representation"]
+
+        source_path = get_representation_path(repre_doc)
         containers = self._process(source_path, project_name)
 
         data = {
-            "representation": str(representation["_id"]),
-            "parent": str(representation["parent"]),
+            "representation": str(repre_doc["_id"]),
+            "parent": str(repre_doc["parent"]),
             "loaded_assets": containers
         }
         upipeline.imprint(
