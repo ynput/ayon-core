@@ -272,6 +272,8 @@ configuration in project settings.
                         # here we will use only one thumbnail for
                         # all representations
                         relative_thumbnail_path = repre_data["thumbnailPath"]
+                        # popping last thumbnail from list since it is only one
+                        # and we do not need to iterate again over it
                         if not relative_thumbnail_path:
                             relative_thumbnail_path = thumbnails.pop()
                         thumb_dir, thumb_file = \
