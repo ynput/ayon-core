@@ -45,7 +45,7 @@ class BlendActionLoader(plugin.AssetLoader):
 
         libpath = self.filepath_from_context(context)
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
         lib_container = plugin.prepare_scene_name(folder_name, product_name)
         container_name = plugin.prepare_scene_name(
             folder_name, product_name, namespace

@@ -47,7 +47,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
             files.append(fname.parent.joinpath(remainder[0]).as_posix())
 
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
 
         group_id = str(uuid.uuid4())
         read_node = harmony.send(

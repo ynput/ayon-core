@@ -53,7 +53,7 @@ class TemplateLoader(load.LoaderPlugin):
                 "function": f"PypeHarmony.Loaders.{self_name}.loadContainer",
                 "args": [template_path,
                          context["folder"]["name"],
-                         context["subset"]["name"],
+                         context["product"]["name"],
                          group_id]
             }
         )["result"]

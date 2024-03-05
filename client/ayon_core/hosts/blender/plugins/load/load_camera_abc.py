@@ -85,7 +85,7 @@ class AbcCameraLoader(plugin.AssetLoader):
         libpath = self.filepath_from_context(context)
 
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
 
         asset_name = plugin.prepare_scene_name(folder_name, product_name)
         unique_number = plugin.get_unique_number(folder_name, product_name)
@@ -123,7 +123,7 @@ class AbcCameraLoader(plugin.AssetLoader):
             "libpath": libpath,
             "asset_name": asset_name,
             "parent": str(context["representation"]["parent"]),
-            "productType": context["subset"]["data"]["family"],
+            "productType": context["product"]["productType"],
             "objectName": group_name,
         }
 

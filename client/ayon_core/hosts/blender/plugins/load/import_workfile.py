@@ -5,7 +5,7 @@ from ayon_core.hosts.blender.api import plugin
 
 def append_workfile(context, fname, do_import):
     folder_name = context["folder"]["name"]
-    product_name = context["subset"]["name"]
+    product_name = context["product"]["name"]
 
     group_name = plugin.prepare_scene_name(folder_name, product_name)
 

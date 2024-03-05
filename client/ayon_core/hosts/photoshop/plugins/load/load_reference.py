@@ -43,7 +43,7 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
         layer = container.pop("layer")
 
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
         repre_doc = context["representation"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',

@@ -220,9 +220,9 @@ class BaseCreator(Creator):
         Create new instance and store it.
 
         Args:
-            product_name(str): Subset name of created instance.
-            instance_data(dict): Instance base data.
-            pre_create_data(dict): Data based on pre creation attributes.
+            product_name (str): Product name of created instance.
+            instance_data (dict): Instance base data.
+            pre_create_data (dict): Data based on pre creation attributes.
                 Those may affect how creator works.
         """
         # Get Instance Container or create it if it does not exist
@@ -346,7 +346,7 @@ class BaseCreator(Creator):
         """Fill instance data with required items.
 
         Args:
-            product_name(str): Subset name of created instance.
+            product_name(str): Product name of created instance.
             instance_data(dict): Instance base data.
             instance_node(bpy.types.ID): Instance node in blender scene.
         """
@@ -466,7 +466,7 @@ class AssetLoader(LoaderPlugin):
         assert Path(filepath).exists(), f"{filepath} doesn't exist."
 
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
         unique_number = get_unique_number(
             folder_name, product_name
         )
@@ -499,7 +499,7 @@ class AssetLoader(LoaderPlugin):
         #     )
 
         # folder_name = context["folder"]["name"]
-        # product_name = context["subset"]["name"]
+        # product_name = context["product"]["name"]
         # instance_name = prepare_scene_name(
         #     folder_name, product_name, unique_number
         # ) + '_CON'

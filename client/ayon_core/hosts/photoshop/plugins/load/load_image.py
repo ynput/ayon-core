@@ -44,7 +44,7 @@ class ImageLoader(photoshop.PhotoshopLoader):
 
         repre_doc = context["representation"]
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])

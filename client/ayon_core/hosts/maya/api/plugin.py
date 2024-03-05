@@ -679,20 +679,18 @@ class Loader(LoaderPlugin):
             options["attach_to_root"] = False
 
         folder_entity = context["folder"]
-        subset_doc = context["subset"]
-        product_type = (
-            subset_doc["data"].get("family")
-            or subset_doc["data"]["families"][0]
-        )
+        product_entity = context["product"]
+        product_name = product_entity["name"]
+        product_type = product_entity["productType"]
         formatting_data = {
             "asset_name": folder_entity["name"],
             "asset_type": "asset",
             "folder": {
                 "name": folder_entity["name"],
             },
-            "subset": subset_doc["name"],
+            "subset": product_name,
             "product": {
-                "name": subset_doc["name"],
+                "name": product_name,
                 "type": product_type,
             },
             "family": product_type

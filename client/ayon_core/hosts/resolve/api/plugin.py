@@ -356,7 +356,7 @@ class ClipLoader:
         """
         # create name
         folder_entity = self.context["folder"]
-        product_name = self.context["subset"]["name"]
+        product_name = self.context["product"]["name"]
         repre_doc = self.context["representation"]
 
         folder_name = folder_entity["name"]

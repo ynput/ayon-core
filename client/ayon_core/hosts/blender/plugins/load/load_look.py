@@ -94,7 +94,7 @@ class BlendLookLoader(plugin.AssetLoader):
 
         libpath = self.filepath_from_context(context)
         folder_name = context["folder"]["name"]
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
 
         lib_container = plugin.prepare_scene_name(
             folder_name, product_name
@@ -131,7 +131,7 @@ class BlendLookLoader(plugin.AssetLoader):
         metadata["materials"] = materials
 
         metadata["parent"] = str(context["representation"]["parent"])
-        metadata["product_type"] = context["subset"]["data"]["family"]
+        metadata["product_type"] = context["product"]["productType"]
 
         nodes = list(container.objects)
         nodes.append(container)
