@@ -121,7 +121,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 ]
 """).format(filepath=filepath)
         context = get_global_context()
-        save_current_workfile_context(context)
+        # save_current_workfile_context(context)
         # # move the json data to the files
         # # shutil.copy
         copy_ayon_data(filepath)
