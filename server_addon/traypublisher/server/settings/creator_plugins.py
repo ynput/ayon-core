@@ -199,11 +199,39 @@ DEFAULT_CREATORS = {
                     "validation_pattern": "^(.*)$"
                 },
                 {
+                    "name": "Product Type",
+                    "type": "text",
+                    "default": "",
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
+                },
+                {
+                    "name": "Variant",
+                    "type": "text",
+                    "default": "",
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
+                },
+                {
                     "name": "Version",
                     "type": "number",
                     "default": 1,
                     "required_column": True,
                     "validation_pattern": "^(\\d{1,3})$"
+                },
+                {
+                    "name": "Version Comment",
+                    "type": "text",
+                    "default": "",
+                    "required_column": False,
+                    "validation_pattern": "^(.*)$"
+                },
+                {
+                    "name": "Version Thumbnail",
+                    "type": "text",
+                    "default": "",
+                    "required_column": False,
+                    "validation_pattern": "^([a-zA-Z0-9#._\\/]*)$"
                 },
                 {
                     "name": "Frame Start",
@@ -241,25 +269,11 @@ DEFAULT_CREATORS = {
                     "validation_pattern": "^[0-9]*\\.[0-9]+$|^[0-9]+$"
                 },
                 {
-                    "name": "Thumbnail",
-                    "type": "text",
-                    "default": "",
+                    "name": "Slate Exists",
+                    "type": "bool",
+                    "default": True,
                     "required_column": False,
-                    "validation_pattern": "^([a-z0-9#._\\/]*)$"
-                },
-                {
-                    "name": "Colorspace",
-                    "type": "text",
-                    "default": "",
-                    "required_column": False,
-                    "validation_pattern": "^(.*)$"
-                },
-                {
-                    "name": "Version Comment",
-                    "type": "text",
-                    "default": "",
-                    "required_column": False,
-                    "validation_pattern": "^(.*)$"
+                    "validation_pattern": "(True|False)"
                 },
                 {
                     "name": "Representation",
@@ -269,25 +283,11 @@ DEFAULT_CREATORS = {
                     "validation_pattern": "^(.*)$"
                 },
                 {
-                    "name": "Product Type",
+                    "name": "Representation Colorspace",
                     "type": "text",
                     "default": "",
                     "required_column": False,
                     "validation_pattern": "^(.*)$"
-                },
-                {
-                    "name": "Variant",
-                    "type": "text",
-                    "default": "",
-                    "required_column": False,
-                    "validation_pattern": "^(.*)$"
-                },
-                {
-                    "name": "Slate Exists",
-                    "type": "bool",
-                    "default": True,
-                    "required_column": False,
-                    "validation_pattern": "(True|False)"
                 },
                 {
                     "name": "Representation Tags",

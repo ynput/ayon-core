@@ -545,9 +545,9 @@ configuration in project settings.
 
         # Get optional columns
         thumbnail_path = self._get_row_value_with_validation(
-            "Thumbnail", row_data)
+            "Version Thumbnail", row_data)
         colorspace = self._get_row_value_with_validation(
-            "Colorspace", row_data)
+            "Representation Colorspace", row_data)
         comment = self._get_row_value_with_validation(
             "Version Comment", row_data)
         repre = self._get_row_value_with_validation(
@@ -583,7 +583,6 @@ configuration in project settings.
             "handleEnd": int(handle_end),
             "fps": float(fps),
         }
-
         return file_path, representation_data
 
     def _get_row_value_with_validation(
