@@ -5,7 +5,6 @@ import re
 import ayon_api
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.client import get_subsets
 from ayon_core import style
 from ayon_core.settings import get_current_project_settings
 from ayon_core.tools.utils.lib import qt_app_context
@@ -277,12 +276,12 @@ class CreatorWindow(QtWidgets.QDialog):
         self._product_name_input.setText(product_name)
 
         # Get all products of the current folder
-        subset_docs = get_subsets(
-            project_name, asset_ids=[folder_id], fields=["name"]
+        product_entities = ayon_api.get_products(
+            project_name, folder_ids={folder_id}, fields={"name"}
         )
         existing_product_names = {
-            subset_doc["name"]
-            for subset_doc in subset_docs
+            product_entity["name"]
+            for product_entity in product_entities
         }
         existing_product_names_low = set(
             _name.lower()
