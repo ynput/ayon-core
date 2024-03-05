@@ -366,7 +366,7 @@ class ValidateInstanceInContextModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
-    families: list[str] = SettingsField(
+    excluded_families: list[str] = SettingsField(
         default_factory=list, title="Families")
 
 
