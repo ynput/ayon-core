@@ -117,6 +117,6 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
                     for r in result
                 ]
 
-            return result 
+                return result 
         
         return []
