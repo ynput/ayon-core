@@ -35,14 +35,6 @@ def csvpublish(
     # setting host context into project
     host.set_project_name(project_name)
 
-    # add asset context to environment
-    # TODO: perhaps this can be done in a better way?
-    os.environ.update({
-        "AVALON_PROJECT": project_name,
-        "AVALON_ASSET": asset_name,
-        "AVALON_TASK": task_name or ""
-    })
-
     # form precreate data with field values
     file_field = FileDefItem.from_paths([csv_filepath], False).pop().to_dict()
     precreate_data = {
@@ -57,7 +49,7 @@ def csvpublish(
     )
 
     create_context.create(
-        "io.openpype.creators.traypublisher.csv_ingest",
+        "io.ayon_core.creators.traypublisher.csv_ingest",
         "Main",
         asset_doc=asset_doc,
         task_name=task_name,

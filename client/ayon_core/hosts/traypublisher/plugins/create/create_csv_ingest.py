@@ -79,7 +79,7 @@ configuration in project settings.
         )
 
         csv_instance = CreatedInstance(
-            self.family, subset_name, instance_data, self
+            self.product_type, subset_name, instance_data, self
         )
         self._store_new_instance(csv_instance)
 
@@ -106,6 +106,7 @@ configuration in project settings.
         """Create instances from csv data"""
 
         for asset_name, _data in csv_data_for_instances.items():
+            project_name = self.create_context.get_current_project_name()
             asset_doc = _data["asset_doc"]
             products = _data["products"]
 
@@ -118,10 +119,12 @@ configuration in project settings.
 
                 # create subset/product name
                 product_name = get_product_name(
-                    product_type,
-                    variant,
-                    task_name,
+                    project_name,
                     asset_doc,
+                    task_name,
+                    self.host_name,
+                    product_type,
+                    variant
                 )
 
                 # make sure frame start/end is inherited from csv columns
@@ -419,7 +422,7 @@ configuration in project settings.
         # make sure csv file contains columns from following list
         required_columns = [
             column["name"] for column in self.columns_config["columns"]
-            if column["required"]
+            if column["required_column"]
         ]
         # get data from csv file
         with open(csv_file_path, "r") as csv_file:
