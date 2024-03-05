@@ -6,7 +6,13 @@ import six
 from pymxs import runtime as rt
 
 from ayon_core.lib import BoolDef
-from ayon_core.pipeline import CreatedInstance, Creator, CreatorError
+from ayon_core.pipeline import (
+    CreatedInstance,
+    Creator,
+    CreatorError,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
+)
 
 from .lib import imprint, lsattr, read
 
@@ -157,19 +163,23 @@ class OpenPypeCreatorError(CreatorError):
 class MaxCreatorBase(object):
 
     @staticmethod
-    def cache_subsets(shared_data):
-        if shared_data.get("max_cached_subsets") is not None:
+    def cache_instance_data(shared_data):
+        if shared_data.get("max_cached_instances") is not None:
             return shared_data
 
-        shared_data["max_cached_subsets"] = {}
-        cached_instances = lsattr("id", "pyblish.avalon.instance")
+        shared_data["max_cached_instances"] = {}
+
+        cached_instances = []
+        for id_type in [AYON_INSTANCE_ID, AVALON_INSTANCE_ID]:
+            cached_instances.extend(lsattr("id", id_type))
+
         for i in cached_instances:
             creator_id = rt.GetUserProp(i, "creator_identifier")
-            if creator_id not in shared_data["max_cached_subsets"]:
-                shared_data["max_cached_subsets"][creator_id] = [i.name]
+            if creator_id not in shared_data["max_cached_instances"]:
+                shared_data["max_cached_instances"][creator_id] = [i.name]
             else:
                 shared_data[
-                    "max_cached_subsets"][creator_id].append(i.name)
+                    "max_cached_instances"][creator_id].append(i.name)
         return shared_data
 
     @staticmethod
@@ -201,17 +211,17 @@ class MaxCreatorBase(object):
 class MaxCreator(Creator, MaxCreatorBase):
     selected_nodes = []
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         if pre_create_data.get("use_selection"):
             self.selected_nodes = rt.GetCurrentSelection()
-        if rt.getNodeByName(subset_name):
-            raise CreatorError(f"'{subset_name}' is already created..")
+        if rt.getNodeByName(product_name):
+            raise CreatorError(f"'{product_name}' is already created..")
 
-        instance_node = self.create_instance_node(subset_name)
+        instance_node = self.create_instance_node(product_name)
         instance_data["instance_node"] = instance_node.name
         instance = CreatedInstance(
-            self.family,
-            subset_name,
+            self.product_type,
+            product_name,
             instance_data,
             self
         )
@@ -238,8 +248,8 @@ class MaxCreator(Creator, MaxCreatorBase):
         return instance
 
     def collect_instances(self):
-        self.cache_subsets(self.collection_shared_data)
-        for instance in self.collection_shared_data["max_cached_subsets"].get(self.identifier, []):  # noqa
+        self.cache_instance_data(self.collection_shared_data)
+        for instance in self.collection_shared_data["max_cached_instances"].get(self.identifier, []):  # noqa
             created_instance = CreatedInstance.from_existing(
                 read(rt.GetNodeByName(instance)), self
             )
@@ -252,15 +262,15 @@ class MaxCreator(Creator, MaxCreatorBase):
                 key: changes[key].new_value
                 for key in changes.changed_keys
             }
-            subset = new_values.get("subset", "")
-            if subset and instance_node != subset:
+            product_name = new_values.get("productName", "")
+            if product_name and instance_node != product_name:
                 node = rt.getNodeByName(instance_node)
-                new_subset_name = new_values["subset"]
-                if rt.getNodeByName(new_subset_name):
+                new_product_name = new_values["productName"]
+                if rt.getNodeByName(new_product_name):
                     raise CreatorError(
-                        "The subset '{}' already exists.".format(
-                            new_subset_name))
-                instance_node = new_subset_name
+                        "The product '{}' already exists.".format(
+                            new_product_name))
+                instance_node = new_product_name
                 created_inst["instance_node"] = instance_node
                 node.name = instance_node
 

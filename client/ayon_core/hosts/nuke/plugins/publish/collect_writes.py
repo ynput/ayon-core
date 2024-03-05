@@ -138,14 +138,14 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             render_target (str): render target
             colorspace (str): colorspace
         """
-        family = instance.data["family"]
+        product_type = instance.data["productType"]
 
         # add targeted family to families
         instance.data["families"].append(
-            "{}.{}".format(family, render_target)
+            "{}.{}".format(product_type, render_target)
         )
         self.log.debug("Appending render target to families: {}.{}".format(
-            family, render_target)
+            product_type, render_target)
         )
 
         write_node = self._write_node_helper(instance)
@@ -175,7 +175,7 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             "colorspace": colorspace
         })
 
-        if family == "render":
+        if product_type == "render":
             instance.data.update({
                 "handleStart": handle_start,
                 "handleEnd": handle_end,

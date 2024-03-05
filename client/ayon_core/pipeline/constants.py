@@ -1,5 +1,9 @@
 # Metadata ID of loaded container into scene
-AVALON_CONTAINER_ID = AYON_CONTAINER_ID = "pyblish.avalon.container"
+AYON_CONTAINER_ID = "ayon.load.container"
+AYON_INSTANCE_ID = "ayon.create.instance"
+# Backwards compatibility
+AVALON_CONTAINER_ID = "pyblish.avalon.container"
+AVALON_INSTANCE_ID = "pyblish.avalon.instance"
 
 # TODO get extensions from host implementations
 HOST_WORKFILE_EXTENSIONS = {

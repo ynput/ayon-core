@@ -20,7 +20,7 @@ class FixAssetNames(pyblish.api.Action):
     on = "failed"
 
     def process(self, context, plugin):
-        context_asset_name = context.data["asset"]
+        context_asset_name = context.data["folderPath"]
         old_instance_items = list_instances()
         new_instance_items = []
         for instance_item in old_instance_items:
@@ -51,9 +51,9 @@ class ValidateAssetName(
     def process(self, context):
         if not self.is_active(context.data):
             return
-        context_asset_name = context.data["asset"]
+        context_asset_name = context.data["folderPath"]
         for instance in context:
-            asset_name = instance.data.get("asset")
+            asset_name = instance.data.get("folderPath")
             if asset_name and asset_name == context_asset_name:
                 continue
 

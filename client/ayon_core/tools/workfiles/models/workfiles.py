@@ -246,7 +246,7 @@ class WorkareaModel:
                 self._controller.get_host_name(),
                 task_name=task_info.get("name"),
                 task_type=task_info.get("type"),
-                family="workfile",
+                product_type="workfile",
                 project_settings=self._controller.project_settings,
             )
         else:
@@ -630,7 +630,7 @@ class PublishWorkfilesModel:
         if not product_ids:
             return output
 
-        # Get version docs of subsets with their families
+        # Get version docs of products with their families
         version_entities = ayon_api.get_versions(
             project_name,
             product_ids=product_ids,
