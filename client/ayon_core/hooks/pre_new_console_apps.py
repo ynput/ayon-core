@@ -14,7 +14,9 @@ class LaunchNewConsoleApps(PreLaunchHook):
     # Should be as last hook because must change launch arguments to string
     order = 1000
     app_groups = {
-        "nuke", "nukeassist", "nukex", "hiero", "nukestudio", "mayapy"
+        "nuke", "nukeassist", "nukex", "hiero", "nukestudio", "mayapy",
+        # TODO: Remove zbrush - this is solely here for debugging
+        "zbrush"
     }
     platforms = {"windows"}
     launch_types = {LaunchTypes.local}
