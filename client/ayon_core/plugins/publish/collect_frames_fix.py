@@ -1,14 +1,12 @@
 import pyblish.api
+import ayon_api
+
 from ayon_core.lib.attribute_definitions import (
     TextDef,
     BoolDef
 )
-
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
-from ayon_core.client.entities import (
-    get_last_version_by_subset_name,
-    get_representations
-)
+from ayon_core.client.entities import get_representations
 
 
 class CollectFramesFixDef(
@@ -41,24 +39,24 @@ class CollectFramesFixDef(
         instance.data["frames_to_fix"] = frames_to_fix
 
         product_name = instance.data["productName"]
-        folder_path = instance.data["folderPath"]
+        folder_entity = instance.data["folderEntity"]
 
         project_entity = instance.data["projectEntity"]
         project_name = project_entity["name"]
 
-        version = get_last_version_by_subset_name(
+        version_entity = ayon_api.get_last_version_by_product_name(
             project_name,
             product_name,
-            asset_name=folder_path
+            folder_entity["id"]
         )
-        if not version:
+        if not version_entity:
             self.log.warning(
                 "No last version found, re-render not possible"
             )
             return
 
         representations = get_representations(
-            project_name, version_ids=[version["_id"]]
+            project_name, version_ids=[version_entity["id"]]
         )
         published_files = []
         for repre in representations:
@@ -73,7 +71,7 @@ class CollectFramesFixDef(
             instance.data["last_version_published_files"]))
 
         if self.rewrite_version_enable and rewrite_version:
-            instance.data["version"] = version["name"]
+            instance.data["version"] = version_entity["version"]
             # limits triggering version validator
             instance.data.pop("latestVersion")
 

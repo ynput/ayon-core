@@ -61,7 +61,7 @@ class IntegrateVersionAttributes(pyblish.api.ContextPlugin):
             op_session.update_entity(
                 project_name,
                 "version",
-                version_entity["_id"],
+                version_entity["id"],
                 {"attrib": filtered_attributes}
             )
 
