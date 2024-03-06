@@ -79,10 +79,10 @@ def execute_zscript_and_wait(zscript,
         check_filepath = get_tempfile_path()
         check_filepath = check_filepath.replace("\\", "/")
         zscript += (f"""
-        [MemWriteString, EditMode, "1", 0]
-        [MemSaveToFile, EditMode, "{check_filepath}", 0]
-        [MemDelete, EditMode]
-        ]
+[MemCreate, AYON_TempFileCheck, 1, 0]
+[MemWriteString, AYON_TempFileCheck, "1", 0]
+[MemSaveToFile, AYON_TempFileCheck, "{check_filepath}", 0]
+[MemDelete, AYON_TempFileCheck]
         """)
 
     execute_zscript(zscript)
