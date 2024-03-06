@@ -26,12 +26,8 @@ from ayon_api import (
     get_products,
     get_last_versions,
 )
-from ayon_api.graphql_queries import folders_graphql_query
 
-from ayon_core.client import (
-    get_representations,
-    get_ayon_server_api_connection,
-)
+from ayon_core.client import get_representations
 from ayon_core.settings import get_project_settings
 from ayon_core.host import IWorkfileHost, HostBase
 from ayon_core.lib import (
@@ -1437,50 +1433,6 @@ class PlaceholderLoadMixin(object):
 
         return {}
 
-    def _query_by_folder_regex(self, project_name, folder_regex):
-        """Query folders by folder path regex.
-
-        WARNING:
-            This method will be removed once the same functionality is
-                available in ayon-python-api.
-
-        Args:
-            project_name (str): Project name.
-            folder_regex (str): Regex for folder path.
-
-        Returns:
-            list[str]: List of folder paths.
-        """
-
-        query = folders_graphql_query({"id"})
-
-        folders_field = None
-        for child in query._children:
-            if child.path != "project":
-                continue
-
-            for project_child in child._children:
-                if project_child.path == "project/folders":
-                    folders_field = project_child
-                    break
-            if folders_field:
-                break
-
-        if "folderPathRegex" not in query._variables:
-            folder_path_regex_var = query.add_variable(
-                "folderPathRegex", "String!"
-            )
-            folders_field.set_filter("pathEx", folder_path_regex_var)
-
-        query.set_variable_value("projectName", project_name)
-        if folder_regex:
-            query.set_variable_value("folderPathRegex", folder_regex)
-
-        api = get_ayon_server_api_connection()
-        for parsed_data in query.continuous_query(api):
-            for folder in parsed_data["project"]["folders"]:
-                yield folder["id"]
-
     def _get_representations(self, placeholder):
         """Prepared query of representations based on load options.
 
@@ -1524,9 +1476,14 @@ class PlaceholderLoadMixin(object):
             folder_ids = [current_folder_entity["_id"]]
 
         elif builder_type == "all_folders":
-            folder_ids = list(self._query_by_folder_regex(
-                project_name, folder_path_regex
-            ))
+            folder_ids = {
+                folder_entity["id"]
+                for folder_entity in get_folders(
+                    project_name,
+                    folder_path_regex=folder_path_regex,
+                    fields={"id"}
+                )
+            }
 
         if not folder_ids:
             return []
