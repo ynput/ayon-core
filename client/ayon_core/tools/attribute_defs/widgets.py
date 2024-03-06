@@ -313,13 +313,28 @@ class NumberAttrWidget(_BaseAttrDefWidget):
         self.main_layout.addWidget(multisel_widget, 0)
 
     def eventFilter(self, obj, event):
-        if (
+        if event.type() == QtCore.QEvent.Type.ContextMenu:
+            QtCore.QTimer.singleShot(0, self._on_menu_timeout)
+            super(NumberAttrWidget, self).contextMenuEvent(event)
+        elif (
             self._multivalue
             and obj is self._input_widget
             and event.type() == QtCore.QEvent.FocusOut
         ):
             self._set_multiselection_visible(True)
         return False
+
+    def _on_menu_timeout(self):
+        menu = self.findChild(QtWidgets.QMenu, "qt_edit_menu")
+        if menu is not None:
+            first_action = menu.actionAt(QtCore.QPoint())
+            action = QtWidgets.QAction(menu)
+            action.setText("Reset to default")
+            action.triggered.connect(self.reset_to_default_requested)
+            menu.insertAction(first_action, action)
+
+    def reset_to_default_requested(self):
+        self.set_value(self.attr_def.default)
 
     def current_value(self):
         return self._input_widget.value()
@@ -403,9 +418,29 @@ class TextAttrWidget(_BaseAttrDefWidget):
 
         input_widget.textChanged.connect(self._on_value_change)
 
+        input_widget.installEventFilter(self)
+
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.Type.ContextMenu:
+            QtCore.QTimer.singleShot(0, self._on_menu_timeout)
+            super(TextAttrWidget, self).contextMenuEvent(event)
+        return False
+
+    def _on_menu_timeout(self):
+        menu = self.findChild(QtWidgets.QMenu, "qt_edit_menu")
+        if menu is not None:
+            first_action = menu.actionAt(QtCore.QPoint())
+            action = QtWidgets.QAction(menu)
+            action.setText("Reset to default")
+            action.triggered.connect(self.reset_to_default_requested)
+            menu.insertAction(first_action, action)
+
+    def reset_to_default_requested(self):
+        self.set_value(self.attr_def.default)
 
     def _on_value_change(self):
         if self.multiline:
@@ -459,6 +494,24 @@ class BoolAttrWidget(_BaseAttrDefWidget):
         self.main_layout.addWidget(input_widget, 0)
         self.main_layout.addStretch(1)
 
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_context_menu)
+
+    def _on_context_menu(self, pos):
+        print("_on_context_menu", pos)
+        self._menu = QtWidgets.QMenu(self)
+
+        action = QtWidgets.QAction(self._menu)
+        action.setText("Reset to default")
+        action.triggered.connect(self.reset_to_default_requested)
+        self._menu.addAction(action)
+
+        global_pos = self.mapToGlobal(pos)
+        self._menu.exec_(global_pos)
+
+    def reset_to_default_requested(self):
+        self.set_value(self.attr_def.default)
+
     def _on_value_change(self):
         new_value = self._input_widget.isChecked()
         self.value_changed.emit(new_value, self.attr_def.id)
@@ -488,6 +541,29 @@ class EnumAttrWidget(_BaseAttrDefWidget):
     def __init__(self, *args, **kwargs):
         self._multivalue = False
         super(EnumAttrWidget, self).__init__(*args, **kwargs)
+
+        self._input_widget.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.Type.ContextMenu:
+            print("eventFilter QtCore.QEvent.Type.ContextMenu")
+            self._on_context_menu(event.pos())
+        return False
+
+    def _on_context_menu(self, pos):
+        print("_on_context_menu", pos)
+        self._menu = QtWidgets.QMenu(self)
+
+        self._action = QtWidgets.QAction(self._menu)
+        self._action.setText("Reset to default")
+        self._action.triggered.connect(self.reset_to_default_requested)
+        self._menu.addAction(self._action)
+
+        global_pos = self.mapToGlobal(pos)
+        self._menu.exec_(global_pos)
+
+    def reset_to_default_requested(self):
+        self.set_value(self.attr_def.default)
 
     @property
     def multiselection(self):
