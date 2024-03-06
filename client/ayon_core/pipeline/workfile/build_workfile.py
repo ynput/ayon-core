@@ -15,10 +15,7 @@ import json
 
 import ayon_api
 
-from ayon_core.client import (
-    get_last_versions,
-    get_representations,
-)
+from ayon_core.client import get_representations
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import (
     filter_profiles,
@@ -471,9 +468,9 @@ class BuildWorkfile:
             products_by_id[product_entity["id"]] = product_entity
 
             version_data = in_data["version"]
-            version_doc = version_data["version_doc"]
-            version_by_product_id[product_id] = version_doc
-            repres_by_version_id[version_doc["_id"]] = (
+            version_entity = version_data["version_entity"]
+            version_by_product_id[product_id] = version_entity
+            repres_by_version_id[version_entity["id"]] = (
                 version_data["repres"]
             )
 
@@ -494,8 +491,8 @@ class BuildWorkfile:
         for product_id, profile in profiles_by_product_id.items():
             profile_repre_names = profile["repre_names_lowered"]
 
-            version_doc = version_by_product_id[product_id]
-            version_id = version_doc["_id"]
+            version_entity = version_by_product_id[product_id]
+            version_id = version_entity["id"]
             repres = repres_by_version_id[version_id]
             for repre in repres:
                 repre_name_low = repre["name"].lower()
@@ -671,7 +668,7 @@ class BuildWorkfile:
                     <product id>: {
                         "product_entity": <dict[str, Any]>,
                         "version": {
-                            "version_doc": <VersionEntity>,
+                            "version_entity": <VersionEntity>,
                             "repres": [
                                 <RepreEntity1>, <RepreEntity2>, ...
                             ]
@@ -706,22 +703,22 @@ class BuildWorkfile:
             for product_entity in product_entities
         }
 
-        last_version_by_product_id = get_last_versions(
+        last_version_by_product_id = ayon_api.get_last_versions(
             project_name, product_entities_by_id.keys()
         )
-        last_version_docs_by_id = {
-            version["_id"]: version
-            for version in last_version_by_product_id.values()
+        last_version_entities_by_id = {
+            version_entity["id"]: version_entity
+            for version_entity in last_version_by_product_id.values()
         }
         repre_docs = get_representations(
-            project_name, version_ids=last_version_docs_by_id.keys()
+            project_name, version_ids=last_version_entities_by_id.keys()
         )
 
         for repre_doc in repre_docs:
             version_id = repre_doc["parent"]
-            version_doc = last_version_docs_by_id[version_id]
+            version_entity = last_version_entities_by_id[version_id]
 
-            product_id = version_doc["parent"]
+            product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
 
             folder_id = product_entity["folderId"]
@@ -737,7 +734,7 @@ class BuildWorkfile:
                 output[folder_id]["products"][product_id] = {
                     "product_entity": product_entity,
                     "version": {
-                        "version_doc": version_doc,
+                        "version_entity": version_entity,
                         "repres": []
                     }
                 }

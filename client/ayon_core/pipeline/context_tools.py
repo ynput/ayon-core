@@ -12,10 +12,7 @@ from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import HostBase
-from ayon_core.client import (
-    version_is_latest,
-    get_ayon_server_api_connection,
-)
+from ayon_core.client import get_ayon_server_api_connection
 from ayon_core.lib import is_in_tests
 from ayon_core.lib.events import emit_event
 from ayon_core.addon import load_addons, AddonsManager
@@ -460,7 +457,7 @@ def is_representation_from_latest(representation):
     """
 
     project_name = get_current_project_name()
-    return version_is_latest(project_name, representation["parent"])
+    return ayon_api.version_is_latest(project_name, representation["parent"])
 
 
 def get_template_data_from_session(session=None, settings=None):

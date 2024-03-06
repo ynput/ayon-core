@@ -2,8 +2,6 @@ import collections
 
 import ayon_api
 
-from ayon_core.client import get_last_versions
-
 
 def get_last_versions_for_instances(
     project_name, instances, use_value_for_missing=False
@@ -82,19 +80,19 @@ def get_last_versions_for_instances(
     if not product_entities_by_id:
         return output
 
-    last_versions_by_product_id = get_last_versions(
+    last_versions_by_product_id = ayon_api.get_last_versions(
         project_name,
         product_entities_by_id.keys(),
-        fields=["name", "parent"]
+        fields={"version", "productId"}
     )
-    for product_id, version_doc in last_versions_by_product_id.items():
+    for product_id, version_entity in last_versions_by_product_id.items():
         product_entity = product_entities_by_id[product_id]
         product_name = product_entity["name"]
         folder_id = product_entity["folderId"]
         folder_path = folder_paths_by_id[folder_id]
         _instances = instances_by_hierarchy[folder_path][product_name]
         for instance in _instances:
-            output[instance.id] = version_doc["name"]
+            output[instance.id] = version_entity["version"]
 
     return output
 
