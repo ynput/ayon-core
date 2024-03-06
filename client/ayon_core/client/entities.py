@@ -558,8 +558,8 @@ def get_representations_parents(project_name, representations):
     for repre_id, parents in parents_by_repre_id.items():
         version, subset, folder, project = parents
         new_parents[repre_id] = (
-            convert_v4_version_to_v3(version),
-            convert_v4_subset_to_v3(subset),
+            version,
+            subset,
             folder,
             project
         )
