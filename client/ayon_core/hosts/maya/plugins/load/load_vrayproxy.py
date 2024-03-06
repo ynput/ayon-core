@@ -54,7 +54,9 @@ class VRayProxyLoader(load.LoaderPlugin):
             product_type = "vrayproxy"
 
         #  get all representations for this version
-        filename = self._get_abc(context["version"]["_id"])
+        filename = self._get_abc(
+            context["project"]["name"], context["version"]["id"]
+        )
         if not filename:
             filename = self.filepath_from_context(context)
 
@@ -108,10 +110,11 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         #  get all representations for this version
         repre_doc = context["representation"]
-        filename = (
-            self._get_abc(repre_doc["parent"])
-            or get_representation_path(repre_doc)
+        filename = self._get_abc(
+            context["project"]["name"], context["version"]["id"]
         )
+        if not filename:
+            filename = get_representation_path(repre_doc)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.fileName".format(vray_mesh),
@@ -170,7 +173,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         return [parent, proxy], parent
 
-    def _get_abc(self, version_id):
+    def _get_abc(self, project_name, version_id):
         # type: (str) -> str
         """Get abc representation file path if present.
 
@@ -178,6 +181,7 @@ class VRayProxyLoader(load.LoaderPlugin):
         vray proxy, get is file path.
 
         Args:
+            project_name (str): Project name.
             version_id (str): Version hash id.
 
         Returns:
@@ -187,7 +191,6 @@ class VRayProxyLoader(load.LoaderPlugin):
         """
         self.log.debug(
             "Looking for abc in published representations of this version.")
-        project_name = get_current_project_name()
         abc_rep = get_representation_by_name(project_name, "abc", version_id)
         if abc_rep:
             self.log.debug("Found, we'll link alembic to vray proxy.")

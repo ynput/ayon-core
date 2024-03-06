@@ -266,17 +266,17 @@ class FusionLoadSequence(load.LoaderPlugin):
         with comp_lock_and_undo_chunk(comp, "Remove Loader"):
             tool.Delete()
 
-    def _get_start(self, version_doc, tool):
+    def _get_start(self, version_entity, tool):
         """Return real start frame of published files (incl. handles)"""
-        data = version_doc["data"]
+        attributes = version_entity["attrib"]
 
         # Get start frame directly with handle if it's in data
-        start = data.get("frameStartHandle")
+        start = attributes.get("frameStartHandle")
         if start is not None:
             return start
 
         # Get frame start without handles
-        start = data.get("frameStart")
+        start = attributes.get("frameStart")
         if start is None:
             self.log.warning(
                 "Missing start frame for version "
@@ -286,7 +286,7 @@ class FusionLoadSequence(load.LoaderPlugin):
             return 0
 
         # Use `handleStart` if the data is available
-        handle_start = data.get("handleStart")
+        handle_start = attributes.get("handleStart")
         if handle_start:
             start -= handle_start
 

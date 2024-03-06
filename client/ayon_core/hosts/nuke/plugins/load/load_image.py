@@ -1,14 +1,10 @@
 import nuke
 
 import qargparse
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api.lib import (
@@ -72,13 +68,13 @@ class LoadImage(load.LoaderPlugin):
             "frame_number", int(nuke.root()["first_frame"].getValue())
         )
 
-        version = context['version']
-        version_data = version.get("data", {})
-        repr_id = context["representation"]["_id"]
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        repre_doc = context["representation"]
+        repre_id = repre_doc["_id"]
 
-        self.log.info("version_data: {}\n".format(version_data))
         self.log.debug(
-            "Representation id `{}` ".format(repr_id))
+            "Representation id `{}` ".format(repre_id))
 
         last = first = int(frame_number)
 
@@ -89,16 +85,13 @@ class LoadImage(load.LoaderPlugin):
         file = self.filepath_from_context(context)
 
         if not file:
-            repr_id = context["representation"]["_id"]
             self.log.warning(
-                "Representation id `{}` is failing to load".format(repr_id))
+                "Representation id `{}` is failing to load".format(repre_id))
             return
 
         file = file.replace("\\", "/")
 
-        representation = context["representation"]
-        repr_cont = representation["context"]
-        frame = repr_cont.get("frame")
+        frame = repre_doc["context"].get("frame")
         if frame:
             padding = len(frame)
             file = file.replace(
@@ -118,7 +111,7 @@ class LoadImage(load.LoaderPlugin):
             r["file"].setValue(file)
 
             # Set colorspace defined in version data
-            colorspace = context["version"]["data"].get("colorspace")
+            colorspace = version_entity["attrib"].get("colorSpace")
             if colorspace:
                 r["colorspace"].setValue(str(colorspace))
 
@@ -132,19 +125,16 @@ class LoadImage(load.LoaderPlugin):
             r["origlast"].setValue(last)
             r["last"].setValue(last)
 
-            # add additional metadata from the version to imprint Avalon knob
-            add_keys = ["source", "colorspace", "author", "fps", "version"]
-
+            # add attributes from the version to imprint metadata knob
+            colorspace = version_attributes["colorSpace"]
             data_imprint = {
                 "frameStart": first,
-                "frameEnd": last
+                "frameEnd": last,
+                "version": version_entity["version"],
+                "colorspace": colorspace,
             }
-            for k in add_keys:
-                if k == 'version':
-                    data_imprint.update({k: context["version"]['name']})
-                else:
-                    data_imprint.update(
-                        {k: context["version"]['data'].get(k, str(None))})
+            for k in ["source", "author", "fps"]:
+                data_imprint[k] = version_attributes.get(k, str(None))
 
             r["tile_color"].setValue(int("0x4ecd25ff", 16))
 
@@ -172,7 +162,7 @@ class LoadImage(load.LoaderPlugin):
         assert node.Class() == "Read", "Must be Read"
 
         project_name = context["project"]["name"]
-        version_doc = context["version"]
+        version_entity = context["version"]
         repre_doc = context["representation"]
 
         repr_cont = repre_doc["context"]
@@ -180,9 +170,9 @@ class LoadImage(load.LoaderPlugin):
         file = get_representation_path(repre_doc)
 
         if not file:
-            repr_id = repre_doc["_id"]
+            repre_id = repre_doc["_id"]
             self.log.warning(
-                "Representation id `{}` is failing to load".format(repr_id))
+                "Representation id `{}` is failing to load".format(repre_id))
             return
 
         file = file.replace("\\", "/")
@@ -195,11 +185,9 @@ class LoadImage(load.LoaderPlugin):
                 format(frame_number, "0{}".format(padding)))
 
         # Get start frame from version data
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version_doc["parent"], fields=["_id"]
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
-
-        version_data = version_doc.get("data", {})
 
         last = first = int(frame_number)
 
@@ -210,31 +198,30 @@ class LoadImage(load.LoaderPlugin):
         node["origlast"].setValue(last)
         node["last"].setValue(last)
 
-        updated_dict = {}
-        updated_dict.update({
+        version_attributes = version_entity["attrib"]
+        updated_dict = {
             "representation": str(repre_doc["_id"]),
             "frameStart": str(first),
             "frameEnd": str(last),
-            "version": str(version_doc.get("name")),
-            "colorspace": version_data.get("colorspace"),
-            "source": version_data.get("source"),
-            "fps": str(version_data.get("fps")),
-            "author": version_data.get("author")
-        })
+            "version": str(version_entity["version"]),
+            "colorspace": version_attributes.get("colorSpace"),
+            "source": version_attributes.get("source"),
+            "fps": str(version_attributes.get("fps")),
+            "author": version_attributes.get("author")
+        }
 
         # change color of node
-        if version_doc["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = "0x4ecd25ff"
         else:
             color_value = "0xd84f20ff"
         node["tile_color"].setValue(int(color_value, 16))
 
         # Update the imprinted representation
-        update_container(
-            node,
-            updated_dict
-        )
-        self.log.info("updated to version: {}".format(version_doc.get("name")))
+        update_container(node, updated_dict)
+        self.log.info("updated to version: {}".format(
+            version_entity["version"]
+        ))
 
     def remove(self, container):
         node = container["node"]

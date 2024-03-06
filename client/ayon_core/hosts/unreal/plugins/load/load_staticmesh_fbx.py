@@ -137,7 +137,7 @@ class StaticMeshFBXLoader(plugin.Loader):
     def update(self, container, context):
         folder_name = context["folder"]["name"]
         product_name = context["product"]["name"]
-        version_doc = context["version"]
+        version = context["version"]["version"]
         repre_doc = context["representation"]
 
         # Create directory for asset and Ayon container
@@ -146,7 +146,6 @@ class StaticMeshFBXLoader(plugin.Loader):
         if folder_name:
             asset_name = f"{folder_name}_{product_name}"
         # Check if version is hero version and use different name
-        version = version_doc.get("name", -1)
         if version < 0:
             name_version = f"{product_name}_hero"
         else:

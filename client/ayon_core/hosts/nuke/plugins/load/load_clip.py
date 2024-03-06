@@ -1,14 +1,11 @@
+from copy import deepcopy
+
 import nuke
 import qargparse
-from pprint import pformat
-from copy import deepcopy
+import ayon_api
+
 from ayon_core.lib import Logger
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
 from ayon_core.pipeline import (
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api.lib import (
@@ -88,6 +85,10 @@ class LoadClip(plugin.NukeLoader):
         """Load asset via database
         """
         representation = context["representation"]
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        version_data = version_entity["data"]
+
         # reset container id so it is always unique for each instance
         self.reset_container_id()
 
@@ -109,20 +110,16 @@ class LoadClip(plugin.NukeLoader):
         add_retime = options.get(
             "add_retime", self.options_defaults["add_retime"])
 
-        version = context['version']
-        version_data = version.get("data", {})
         repre_id = representation["_id"]
 
-        self.log.debug("_ version_data: {}\n".format(
-            pformat(version_data)))
         self.log.debug(
             "Representation id `{}` ".format(repre_id))
 
-        self.handle_start = version_data.get("handleStart", 0)
-        self.handle_end = version_data.get("handleEnd", 0)
+        self.handle_start = version_attributes.get("handleStart", 0)
+        self.handle_end = version_attributes.get("handleEnd", 0)
 
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
         first -= self.handle_start
         last += self.handle_end
 
@@ -149,47 +146,50 @@ class LoadClip(plugin.NukeLoader):
             inpanel=False
         )
 
+        # get colorspace
+        colorspace = (
+            representation["data"].get("colorspace")
+            or version_attributes.get("colorSpace")
+        )
+
         # to avoid multiple undo steps for rest of process
         # we will switch off undo-ing
         with viewer_update_and_undo_stop():
             read_node["file"].setValue(filepath)
 
             used_colorspace = self._set_colorspace(
-                read_node, version_data, representation["data"], filepath)
+                read_node, colorspace, filepath
+            )
 
             self._set_range_to_node(read_node, first, last, start_at_workfile)
 
-            # add additional metadata from the version to imprint Avalon knob
-            add_keys = ["frameStart", "frameEnd",
-                        "source", "colorspace", "author", "fps", "version",
-                        "handleStart", "handleEnd"]
+            version_name = version_entity["version"]
+            if version_name < 0:
+                version_name = "hero"
 
-            data_imprint = {}
-            for key in add_keys:
-                if key == 'version':
-                    version_doc = context["version"]
-                    if version_doc["type"] == "hero_version":
-                        version = "hero"
-                    else:
-                        version = version_doc.get("name")
+            data_imprint = {
+                "version": version_name,
+                "db_colorspace": colorspace
+            }
+            if used_colorspace:
+                data_imprint["used_colorspace"] = used_colorspace
 
-                    if version:
-                        data_imprint[key] = version
+            # add attributes from the version to imprint metadata knob
+            for key in [
+                "frameStart",
+                "frameEnd",
+                "source",
+                "author",
+                "fps",
+                "handleStart",
+                "handleEnd",
+            ]:
+                value = version_attributes.get(key, str(None))
+                if isinstance(value, str):
+                    value = value.replace("\\", "/")
+                data_imprint[key] = value
 
-                elif key == 'colorspace':
-                    colorspace = representation["data"].get(key)
-                    colorspace = colorspace or version_data.get(key)
-                    data_imprint["db_colorspace"] = colorspace
-                    if used_colorspace:
-                        data_imprint["used_colorspace"] = used_colorspace
-                else:
-                    value_ = context["version"]['data'].get(
-                        key, str(None))
-                    if isinstance(value_, (str)):
-                        value_ = value_.replace("\\", "/")
-                    data_imprint[key] = value_
-
-            if add_retime and version_data.get("retime", None):
+            if add_retime and version_data.get("retime"):
                 data_imprint["addRetime"] = True
 
             read_node["tile_color"].setValue(int("0x4ecd25ff", 16))
@@ -202,7 +202,7 @@ class LoadClip(plugin.NukeLoader):
                 loader=self.__class__.__name__,
                 data=data_imprint)
 
-        if add_retime and version_data.get("retime", None):
+        if add_retime and version_data.get("retime"):
             self._make_retimes(read_node, version_data)
 
         self.set_as_member(read_node)
@@ -250,7 +250,12 @@ class LoadClip(plugin.NukeLoader):
 
         """
 
+        project_name = context["project"]["name"]
+        version_entity = context["version"]
         repre_doc = context["representation"]
+
+        version_attributes = version_entity["attrib"]
+        version_data = version_entity["data"]
 
         is_sequence = len(repre_doc["files"]) > 1
 
@@ -271,21 +276,19 @@ class LoadClip(plugin.NukeLoader):
             if "addRetime" in key
         ]
 
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, repre_doc["parent"])
-
-        version_data = version_doc.get("data", {})
         repre_id = repre_doc["_id"]
 
         # colorspace profile
-        colorspace = repre_doc["data"].get("colorspace")
-        colorspace = colorspace or version_data.get("colorspace")
+        colorspace = (
+            repre_doc["data"].get("colorspace")
+            or version_attributes.get("colorSpace")
+        )
 
-        self.handle_start = version_data.get("handleStart", 0)
-        self.handle_end = version_data.get("handleEnd", 0)
+        self.handle_start = version_attributes.get("handleStart", 0)
+        self.handle_end = version_attributes.get("handleEnd", 0)
 
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
         first -= self.handle_start
         last += self.handle_end
 
@@ -305,7 +308,7 @@ class LoadClip(plugin.NukeLoader):
         # we will switch off undo-ing
         with viewer_update_and_undo_stop():
             used_colorspace = self._set_colorspace(
-                read_node, version_data, repre_doc["data"], filepath)
+                read_node, colorspace, filepath)
 
             self._set_range_to_node(read_node, first, last, start_at_workfile)
 
@@ -313,39 +316,36 @@ class LoadClip(plugin.NukeLoader):
                 "representation": str(repre_doc["_id"]),
                 "frameStart": str(first),
                 "frameEnd": str(last),
-                "version": str(version_doc.get("name")),
+                "version": str(version_entity["version"]),
                 "db_colorspace": colorspace,
-                "source": version_data.get("source"),
+                "source": version_attributes.get("source"),
                 "handleStart": str(self.handle_start),
                 "handleEnd": str(self.handle_end),
-                "fps": str(version_data.get("fps")),
-                "author": version_data.get("author")
+                "fps": str(version_attributes.get("fps")),
+                "author": version_attributes.get("author")
             }
 
             # add used colorspace if found any
             if used_colorspace:
                 updated_dict["used_colorspace"] = used_colorspace
 
-            last_version_doc = get_last_version_by_subset_id(
-                project_name, version_doc["parent"], fields=["_id"]
+            last_version_entity = ayon_api.get_last_version_by_product_id(
+                project_name, version_entity["productId"], fields={"id"}
             )
             # change color of read_node
-            if version_doc["_id"] == last_version_doc["_id"]:
+            if version_entity["id"] == last_version_entity["id"]:
                 color_value = "0x4ecd25ff"
             else:
                 color_value = "0xd84f20ff"
             read_node["tile_color"].setValue(int(color_value, 16))
 
             # Update the imprinted representation
-            update_container(
-                read_node,
-                updated_dict
-            )
+            update_container(read_node, updated_dict)
             self.log.info(
-                "updated to version: {}".format(version_doc.get("name"))
+                "updated to version: {}".format(version_entity["version"])
             )
 
-        if add_retime and version_data.get("retime", None):
+        if add_retime and version_data.get("retime"):
             self._make_retimes(read_node, version_data)
         else:
             self.clear_members(read_node)
@@ -462,12 +462,9 @@ class LoadClip(plugin.NukeLoader):
 
         return self.node_name_template.format(**name_data)
 
-    def _set_colorspace(self, node, version_data, repre_data, path):
+    def _set_colorspace(self, node, colorspace, path):
         output_color = None
         path = path.replace("\\", "/")
-        # get colorspace
-        colorspace = repre_data.get("colorspace")
-        colorspace = colorspace or version_data.get("colorspace")
 
         # colorspace from `project_settings/nuke/imageio/regex_inputs`
         iio_colorspace = get_imageio_input_colorspace(path)
