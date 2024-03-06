@@ -190,7 +190,7 @@ def is_in_edit_mode():
 [MemDelete, EditMode]
 ]
 """).format(temp_file=temp_path)
-    execute_zscript_and_wait(in_edit_mode, temp_path)
+    execute_zscript_and_wait(in_edit_mode, temp_path, timeout=3)
     with open(temp_path, "r") as mode:
         content = str(mode.read())
         bool_mode = content.rstrip('\x00')
