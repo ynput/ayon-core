@@ -120,12 +120,12 @@ def paint_image_with_color(image, color):
     return pixmap
 
 
-def format_version(value, hero_version=False):
+def format_version(value):
     """Formats integer to displayable version name"""
-    label = "v{0:03d}".format(value)
-    if not hero_version:
-        return label
-    return "[{}]".format(label)
+    label = "v{0:03d}".format(abs(value))
+    if value < 0:
+        return "[{}]".format(label)
+    return label
 
 
 @contextlib.contextmanager

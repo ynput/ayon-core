@@ -2,10 +2,7 @@ import threading
 
 import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_representations,
-)
+from ayon_core.client import get_representations
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
@@ -35,7 +32,7 @@ class PushToContextController:
         self._src_folder_entity = None
         self._src_folder_task_entities = {}
         self._src_product_entity = None
-        self._src_version_doc = None
+        self._src_version_entity = None
         self._src_label = None
 
         self._submission_enabled = False
@@ -75,13 +72,15 @@ class PushToContextController:
         folder_entity = None
         task_entities = {}
         product_entity = None
-        version_doc = None
+        version_entity = None
         if project_name and version_id:
-            version_doc = get_version_by_id(project_name, version_id)
+            version_entity = ayon_api.get_version_by_id(
+                project_name, version_id
+            )
 
-        if version_doc:
+        if version_entity:
             product_entity = ayon_api.get_product_by_id(
-                project_name, version_doc["parent"]
+                project_name, version_entity["productId"]
             )
 
         if product_entity:
@@ -100,14 +99,14 @@ class PushToContextController:
         self._src_folder_entity = folder_entity
         self._src_folder_task_entities = task_entities
         self._src_product_entity = product_entity
-        self._src_version_doc = version_doc
+        self._src_version_entity = version_entity
         if folder_entity:
             self._user_values.set_new_folder_name(folder_entity["name"])
             variant = self._get_src_variant()
             if variant:
                 self._user_values.set_variant(variant)
 
-            comment = version_doc["data"].get("comment")
+            comment = version_entity["attrib"].get("comment")
             if comment:
                 self._user_values.set_comment(comment)
 
@@ -218,12 +217,12 @@ class PushToContextController:
 
         folder_path = folder_entity["path"]
         product_entity = self._src_product_entity
-        version_doc = self._src_version_doc
+        version_entity = self._src_version_entity
         return "Source: {}{}/{}/v{:0>3}".format(
             self._src_project_name,
             folder_path,
             product_entity["name"],
-            version_doc["name"]
+            version_entity["version"]
         )
 
     def _get_task_info_from_repre_docs(self, task_entities, repre_docs):
@@ -256,10 +255,10 @@ class PushToContextController:
 
     def _get_src_variant(self):
         project_name = self._src_project_name
-        version_doc = self._src_version_doc
+        version_entity = self._src_version_entity
         task_entities = self._src_folder_task_entities
         repre_docs = get_representations(
-            project_name, version_ids=[version_doc["_id"]]
+            project_name, version_ids=[version_entity["id"]]
         )
         task_name, task_type = self._get_task_info_from_repre_docs(
             task_entities, repre_docs
