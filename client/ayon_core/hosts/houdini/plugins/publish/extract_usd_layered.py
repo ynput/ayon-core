@@ -7,10 +7,7 @@ from collections import deque
 import ayon_api
 import pyblish.api
 
-from ayon_core.client import (
-    get_last_version_by_subset_id,
-    get_representation_by_name,
-)
+from ayon_core.client import get_representation_by_name
 from ayon_core.pipeline import (
     get_representation_path,
     publish,
@@ -297,15 +294,15 @@ class ExtractUSDLayered(publish.Extractor):
             self.log.debug("No existing product..")
             return False
 
-        version_doc = get_last_version_by_subset_id(
-            project_name, product_entity["id"], fields=["_id"]
+        version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, product_entity["id"], fields={"id"}
         )
-        if not version_doc:
+        if not version_entity:
             self.log.debug("No existing version..")
             return False
 
         representation = get_representation_by_name(
-            project_name, ext.lstrip("."), version_doc["_id"]
+            project_name, ext.lstrip("."), version_entity["id"]
         )
         if not representation:
             self.log.debug("No existing representation..")
