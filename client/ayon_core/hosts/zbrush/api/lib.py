@@ -1,4 +1,3 @@
-#zscript command etc.
 import os
 import uuid
 import time
@@ -151,42 +150,22 @@ def get_workdir(project_name, asset_name, task_name):
             return valid_workdir
 
 
-def execute_zscript_and_wait(zscript, path, wait=0.1, timeout=20):
-    """Execute zscript and wait until zscript finished processing"""
-    execute_zscript(zscript)
-
-    # Wait around until the zscript finished
-    time_taken = 0
-    while not os.path.exists(path):
-        time.sleep(wait)
-        time_taken += wait
-        if time_taken > timeout:
-            raise RuntimeError(
-                f"Timeout. Zscript took longer than "
-                "{timeout}s to run."
-            )
-
-def execute_publish_model_with_dialog(filepath):
-    save_file_zscript = ("""
+def export_tool(filepath: str):
+    """Export active zbrush tool to filepath."""
+    filepath = filepath.replace("\\", "/")
+    export_tool_zscript = ("""
 [IFreeze,
-[VarSet, filepath, "{filepath}"]
-[FileNameSetNext, #filepath]
-[IKeyPress, 13, [IPress, Tool:Export]]]
-[Sleep, 2]
-]
-""").format(filepath=filepath)
-    execute_zscript_and_wait(save_file_zscript, filepath)
-
-
-def execute_publish_model(filepath):
-    save_file_zscript = ("""
-[IFreeze,
-[VarSet, filepath, "{filepath}"]
-[FileNameSetNext, #filepath]
+[FileNameSetNext, "{filepath}"]
 [IKeyPress, 13, [IPress, Tool:Export]]]
 ]
 """).format(filepath=filepath)
-    execute_zscript(save_file_zscript)
+
+    # We do not check for the export file's existence because Zbrush might
+    # write the file in chunks, as such the file might exist before the writing
+    # to it has finished
+    execute_zscript_and_wait(export_tool_zscript)
+    if not os.path.exists(filepath):
+        raise RuntimeError(f"Export file was not created: {filepath}")
 
 
 def is_in_edit_mode():

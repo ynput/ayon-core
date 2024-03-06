@@ -2,7 +2,7 @@ import os
 import pyblish.api
 from ayon_core.lib import EnumDef
 from ayon_core.pipeline import publish, OptionalPyblishPluginMixin
-from ayon_core.hosts.zbrush.api.lib import execute_publish_model_with_dialog
+from ayon_core.hosts.zbrush.api.lib import export_tool
 
 
 class ExtractPolyMesh(publish.Extractor,
@@ -31,8 +31,7 @@ class ExtractPolyMesh(publish.Extractor,
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        resolve_filepath = filepath.replace("\\", "/")
-        execute_publish_model_with_dialog(resolve_filepath)
+        export_tool(filepath)
         representation = {
             "name": export_format,
             "ext": export_format,
