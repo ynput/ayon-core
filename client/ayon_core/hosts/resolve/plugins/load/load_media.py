@@ -7,6 +7,7 @@ from ayon_core.client import (
     get_version_by_id,
     get_last_version_by_subset_id,
 )
+from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import (
     LoaderPlugin,
     get_representation_context,
@@ -108,32 +109,12 @@ class LoadMedia(LoaderPlugin):
 
     # presets
     clip_color_last = "Olive"
-    clip_color = "Orange"
+    clip_color_old = "Orange"
 
-    bin_path = "Loader/{representation[context][hierarchy]}/{asset[name]}"
+    media_pool_bin_path = (
+        "Loader/{representation[context][hierarchy]}/{asset[name]}")
 
-    metadata = [
-        {
-            "name": "Comments",
-            "value": "{version[data][comment]}"
-        },
-        {
-            "name": "Shot",
-            "value": "{asset[name]}"
-        },
-        {
-            "name": "Take",
-            "value": "{subset[name]} v{version[name]:03d}"
-        },
-        {
-            "name": "Clip Name",
-            "value": (
-                "{asset[name]} {subset[name]} "
-                "v{version[name]:03d} ({representation[name]})"
-            )
-        }
-    ]
-
+    metadata = []
 
     def load(self, context, name, namespace, options):
 
@@ -165,10 +146,11 @@ class LoadMedia(LoaderPlugin):
         if item is None:
             # Create or set the bin folder, we add it in there
             # If bin path is not set we just add into the current active bin
-            if self.bin_path:
-                bin_path = self.bin_path.format(**context)
+            if self.media_pool_bin_path:
+                media_pool_bin_path = StringTemplate(
+                    self.media_pool_bin_path).format_strict(context)
                 folder = lib.create_bin(
-                    name=bin_path,
+                    name=media_pool_bin_path,
                     root=media_pool.GetRootFolder(),
                     set_as_current=False
                 )
@@ -315,7 +297,7 @@ class LoadMedia(LoaderPlugin):
         if version.get("name") == last_version.get("name"):
             return cls.clip_color_last
         else:
-            return cls.clip_color
+            return cls.clip_color_old
 
     def _set_metadata(self, media_pool_item, context: dict):
         """Set Media Pool Item Clip Properties"""
@@ -324,8 +306,9 @@ class LoadMedia(LoaderPlugin):
         for meta_item in self.metadata:
             clip_property = meta_item["name"]
             value = meta_item["value"]
-            media_pool_item.SetClipProperty(clip_property,
-                                            value.format_map(context))
+            value_formatted = StringTemplate(value).format_strict(context)
+            media_pool_item.SetClipProperty(
+                clip_property, value_formatted)
 
     def _get_filepath(self, representation: dict) -> Union[str, dict]:
 
