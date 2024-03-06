@@ -498,7 +498,6 @@ class BoolAttrWidget(_BaseAttrDefWidget):
         self.customContextMenuRequested.connect(self._on_context_menu)
 
     def _on_context_menu(self, pos):
-        print("_on_context_menu", pos)
         self._menu = QtWidgets.QMenu(self)
 
         action = QtWidgets.QAction(self._menu)
@@ -546,12 +545,10 @@ class EnumAttrWidget(_BaseAttrDefWidget):
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.Type.ContextMenu:
-            print("eventFilter QtCore.QEvent.Type.ContextMenu")
             self._on_context_menu(event.pos())
         return False
 
     def _on_context_menu(self, pos):
-        print("_on_context_menu", pos)
         self._menu = QtWidgets.QMenu(self)
 
         self._action = QtWidgets.QAction(self._menu)
