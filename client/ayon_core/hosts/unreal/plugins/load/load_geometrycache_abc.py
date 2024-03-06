@@ -163,25 +163,30 @@ class PointCacheAlembicLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
-        context = representation.get("context", {})
-
-        unreal.log_warning(context)
-
-        if not context:
-            raise RuntimeError("No context found in representation")
+    def update(self, container, context):
+        asset_doc = context["asset"]
+        subset_doc = context["subset"]
+        version_doc = context["version"]
+        repre_doc = context["representation"]
 
         # Create directory for asset and Ayon container
-        asset = context.get('asset')
-        name = context.get('subset')
+        folder_name = asset_doc["name"]
+        product_name = subset_doc["name"]
+
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
-        version = context.get('version')
+        asset_name = product_name
+        if folder_name:
+            asset_name = f"{folder_name}_{product_name}"
+
         # Check if version is hero version and use different name
-        name_version = f"{name}_v{version:03d}" if version else f"{name}_hero"
+        version = version_doc.get("name", -1)
+        if version < 0:
+            name_version = f"{product_name}_hero"
+        else:
+            name_version = f"{product_name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{asset}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
@@ -189,14 +194,14 @@ class PointCacheAlembicLoader(plugin.Loader):
         frame_end = int(container.get("frame_end"))
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(representation)
+            path = get_representation_path(repre_doc)
 
             self.import_and_containerize(
                 path, asset_dir, asset_name, container_name,
                 frame_start, frame_end)
 
         self.imprint(
-            asset, asset_dir, container_name, asset_name, representation,
+            folder_name, asset_dir, container_name, asset_name, repre_doc,
             frame_start, frame_end)
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

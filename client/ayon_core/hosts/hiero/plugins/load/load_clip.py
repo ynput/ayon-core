@@ -146,27 +146,25 @@ class LoadClip(phiero.SequenceLoader):
             self.__class__.__name__,
             data_imprint)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """ Updating previously loaded clips
         """
-
+        version_doc = context["version"]
+        repre_doc = context["representation"]
         # load clip to timeline and get main variables
         name = container['name']
         namespace = container['namespace']
         track_item = phiero.get_track_items(
             track_item_name=namespace).pop()
 
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
-
         version_data = version_doc.get("data", {})
         version_name = version_doc.get("name", None)
         colorspace = version_data.get("colorspace", None)
         object_name = "{}_{}".format(name, namespace)
-        file = get_representation_path(representation).replace("\\", "/")
+        file = get_representation_path(repre_doc).replace("\\", "/")
         clip = track_item.source()
 
         # reconnect media to new path
@@ -191,7 +189,7 @@ class LoadClip(phiero.SequenceLoader):
 
         # add variables related to version context
         data_imprint.update({
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "version": version_name,
             "colorspace": colorspace,
             "objectName": object_name
