@@ -11,8 +11,6 @@ import ayon_api
 from maya import cmds
 
 from ayon_core.client import (
-    get_version_by_name,
-    get_last_version_by_subset_id,
     get_representation_by_id,
     get_representation_by_name,
     get_representation_parents,
@@ -298,26 +296,27 @@ def update_package_version(container, version):
     assert current_representation is not None, "This is a bug"
 
     (
-        version_doc,
+        version_entity,
         product_entity,
         folder_entity,
         project_entity
     ) = get_representation_parents(project_name, current_representation)
 
     if version == -1:
-        new_version = get_last_version_by_subset_id(
+        new_version = ayon_api.get_last_version_by_product_id(
             project_name, product_entity["id"]
         )
     else:
-        new_version = get_version_by_name(
+        new_version = ayon_api.get_version_by_name(
             project_name, version, product_entity["id"]
         )
 
-    assert new_version is not None, "This is a bug"
+    if new_version is None:
+        raise ValueError("Version not found: {}".format(version))
 
     # Get the new representation (new file)
     new_representation = get_representation_by_name(
-        project_name, current_representation["name"], new_version["_id"]
+        project_name, current_representation["name"], new_version["id"]
     )
     # TODO there is 'get_representation_context' to get the context which
     #   could be possible to use here
@@ -325,7 +324,7 @@ def update_package_version(container, version):
         "project": project_entity,
         "folder": folder_entity,
         "product": product_entity,
-        "version": version_doc,
+        "version": version_entity,
         "representation": new_representation,
     }
     update_package(container, new_context)

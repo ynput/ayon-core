@@ -4,11 +4,11 @@ import os
 import json
 import re
 from copy import deepcopy
-import requests
 
+import requests
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_last_version_by_subset_name
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -411,16 +411,16 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         project_name = context.data["projectName"]
         host_name = context.data["hostName"]
         if not version:
-            folder_id = None
+            version_entity = None
             if folder_entity:
-                folder_id = folder_entity["id"]
-            version = get_last_version_by_subset_name(
-                project_name,
-                product_name,
-                asset_id=folder_id
-            )
-            if version:
-                version = int(version["name"]) + 1
+                version_entity = ayon_api.get_last_version_by_product_name(
+                    project_name,
+                    product_name,
+                    folder_entity["id"]
+                )
+
+            if version_entity:
+                version = int(version_entity["version"]) + 1
             else:
                 version = get_versioning_start(
                     project_name,

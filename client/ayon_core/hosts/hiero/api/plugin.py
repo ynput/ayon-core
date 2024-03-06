@@ -454,7 +454,7 @@ class ClipLoader:
         representation = repr["name"]
         self.data["clip_name"] = self.clip_name_template.format(**repr_cntx)
         self.data["track_name"] = "_".join([product_name, representation])
-        self.data["versionData"] = self.context["version"]["data"]
+        self.data["versionAttributes"] = self.context["version"]["attrib"]
         # gets file path
         file = get_representation_path_from_context(self.context)
         if not file:
@@ -518,8 +518,9 @@ class ClipLoader:
         self.media_duration = int(self.media.duration())
 
         # get handles
-        self.handle_start = self.data["versionData"].get("handleStart")
-        self.handle_end = self.data["versionData"].get("handleEnd")
+        version_attributes = self.data["versionAttributes"]
+        self.handle_start = version_attributes.get("handleStart")
+        self.handle_end = version_attributes.get("handleEnd")
         if self.handle_start is None:
             self.handle_start = self.data["folderAttributes"]["handleStart"]
         if self.handle_end is None:

@@ -14,11 +14,7 @@ import nuke
 from qtpy import QtCore, QtWidgets
 import ayon_api
 
-from ayon_core.client import (
-    get_versions,
-    get_last_versions,
-    get_representations,
-)
+from ayon_core.client import get_representations
 
 from ayon_core.host import HostDirmap
 from ayon_core.tools.utils import host_tools
@@ -864,19 +860,21 @@ def check_inventory_versions():
         repre_docs_by_id[repre_id] = repre_doc
         version_ids.add(repre_doc["parent"])
 
-    version_docs = get_versions(
-        project_name, version_ids, fields=["_id", "name", "parent"]
+    version_entities = ayon_api.get_versions(
+        project_name,
+        version_ids=version_ids,
+        fields={"id", "version", "productId"},
     )
     # Store versions by id and collect product ids
-    version_docs_by_id = {}
+    version_entities_by_id = {}
     product_ids = set()
-    for version_doc in version_docs:
-        version_docs_by_id[version_doc["_id"]] = version_doc
-        product_ids.add(version_doc["parent"])
+    for version_entity in version_entities:
+        version_entities_by_id[version_entity["id"]] = version_entity
+        product_ids.add(version_entity["productId"])
 
     # Query last versions based on product ids
-    last_versions_by_product_id = get_last_versions(
-        project_name, subset_ids=product_ids, fields=["_id", "parent"]
+    last_versions_by_product_id = ayon_api.get_last_versions(
+        project_name, product_ids=product_ids, fields={"id", "productId"}
     )
 
     # Loop through collected container nodes and their representation ids
@@ -892,18 +890,18 @@ def check_inventory_versions():
             continue
 
         version_id = repre_doc["parent"]
-        version_doc = version_docs_by_id.get(version_id)
-        if not version_doc:
+        version_entity = version_entities_by_id.get(version_id)
+        if not version_entity:
             log.warning((
                 "Could not find the version on node \"{}\""
             ).format(node.name()))
             continue
 
         # Get last version based on product id
-        product_id = version_doc["parent"]
+        product_id = version_entity["productId"]
         last_version = last_versions_by_product_id[product_id]
         # Check if last version is same as current version
-        if last_version["_id"] == version_doc["_id"]:
+        if last_version["id"] == version_entity["id"]:
             color_value = "0x4ecd25ff"
         else:
             color_value = "0xd84f20ff"

@@ -21,10 +21,7 @@ from maya.api import OpenMaya
 
 import ayon_api
 
-from ayon_core.client import (
-    get_last_versions,
-    get_representation_by_name,
-)
+from ayon_core.client import get_representation_by_name
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
@@ -1985,14 +1982,13 @@ def assign_look(nodes, product_name="lookDefault"):
         product_entity["id"]
         for product_entity in product_entities_by_folder_id.values()
     }
-    last_version_docs = get_last_versions(
+    last_version_entities = ayon_api.get_last_versions(
         project_name,
-        subset_ids=product_ids,
-        fields=["_id", "name", "data.families"]
+        product_ids
     )
-    last_version_docs_by_product_id = {
-        last_version_doc["parent"]: last_version_doc
-        for last_version_doc in last_version_docs
+    last_version_entities_by_product_id = {
+        last_version_entity["productId"]: last_version_entity
+        for last_version_entity in last_version_entities
     }
 
     for folder_id, asset_nodes in grouped.items():
@@ -2004,14 +2000,14 @@ def assign_look(nodes, product_name="lookDefault"):
             continue
 
         product_id = product_entity["id"]
-        last_version = last_version_docs_by_product_id.get(product_id)
+        last_version = last_version_entities_by_product_id.get(product_id)
         if not last_version:
             log.warning((
                 "Not found last version for product '{}' on folder with id {}"
             ).format(product_name, folder_id))
             continue
 
-        families = last_version.get("data", {}).get("families") or []
+        families = last_version.get("attrib", {}).get("families") or []
         if "look" not in families:
             log.warning((
                 "Last version for product '{}' on folder with id {}"
@@ -2020,9 +2016,9 @@ def assign_look(nodes, product_name="lookDefault"):
             continue
 
         log.debug("Assigning look '{}' <v{:03d}>".format(
-            product_name, last_version["name"]))
+            product_name, last_version["version"]))
 
-        assign_look_by_version(asset_nodes, last_version["_id"])
+        assign_look_by_version(asset_nodes, last_version["id"])
 
 
 def apply_shaders(relationships, shadernodes, nodes):

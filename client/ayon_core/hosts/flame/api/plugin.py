@@ -748,11 +748,9 @@ class ClipLoader(LoaderPlugin):
         Returns:
             str: colorspace name or None
         """
-        version = context['version']
-        version_data = version.get("data", {})
-        colorspace = version_data.get(
-            "colorspace", None
-        )
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        colorspace = version_attributes.get("colorSpace")
 
         if (
             not colorspace

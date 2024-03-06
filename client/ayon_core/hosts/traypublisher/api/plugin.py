@@ -1,6 +1,5 @@
 import ayon_api
 
-from ayon_core.client import get_last_versions
 from ayon_core.lib.attribute_definitions import (
     FileDef,
     BoolDef,
@@ -181,10 +180,10 @@ class SettingsCreator(TrayPublishCreator):
         ))
 
         product_ids = {p["id"] for p in product_entities}
-        last_versions = get_last_versions(
+        last_versions = ayon_api.get_last_versions(
             self.project_name,
             product_ids,
-            fields=["name", "parent"])
+            fields={"version", "productId"})
 
         for product_entity in product_entities:
             product_id = product_entity["id"]
@@ -194,7 +193,7 @@ class SettingsCreator(TrayPublishCreator):
             last_version = last_versions.get(product_id)
             version = 0
             if last_version is not None:
-                version = last_version["name"]
+                version = last_version["version"]
             product_entities_by_folder_path[folder_path][product_name] += (
                 version
             )
