@@ -40,10 +40,8 @@ class PushToLibraryProject(load.ProductLoaderPlugin):
             "main.py"
         )
 
-        project_entity = context["project"]
-        version_doc = context["version"]
-        project_name = project_entity["name"]
-        version_id = str(version_doc["_id"])
+        project_name = context["project"]["name"]
+        version_id = context["version"]["id"]
 
         args = get_ayon_launcher_args(
             "run",

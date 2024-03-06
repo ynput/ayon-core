@@ -5,12 +5,13 @@
 # import uuid
 #
 # import clique
+# import ayon_api
 # from pymongo import UpdateOne
 # import qargparse
 # from qtpy import QtWidgets, QtCore
 #
 # from ayon_core import style
-# from ayon_core.client import get_versions, get_representations
+# from ayon_core.client import get_representations
 # from ayon_core.addon import AddonsManager
 # from ayon_core.lib import format_file_size
 # from ayon_core.pipeline import load, Anatomy
@@ -201,16 +202,16 @@
 #         project_name = context["project"]["name"]
 #         anatomy = Anatomy(project_name)
 #
-#         versions = list(get_versions(
-#             project_name, subset_ids=[product_entity["id"]]
+#         versions = list(ayon_api.get_versions(
+#             project_name, product_ids=[product_entity["id"]]
 #         ))
 #
 #         versions_by_parent = collections.defaultdict(list)
 #         for ent in versions:
-#             versions_by_parent[ent["parent"]].append(ent)
+#             versions_by_parent[ent["productId"]].append(ent)
 #
 #         def sort_func(ent):
-#             return int(ent["name"])
+#             return int(ent["version"])
 #
 #         all_last_versions = []
 #         for _parent_id, _versions in versions_by_parent.items():
@@ -230,7 +231,7 @@
 #         # Update versions_by_parent without filtered versions
 #         versions_by_parent = collections.defaultdict(list)
 #         for ent in versions:
-#             versions_by_parent[ent["parent"]].append(ent)
+#             versions_by_parent[ent["productId"]].append(ent)
 #
 #         # Filter already deleted versions
 #         versions_to_pop = []
@@ -243,14 +244,14 @@
 #             msg = "Folder: \"{}\" | Product: \"{}\" | Version: \"{}\"".format(
 #                 folder_entity["path"],
 #                 product_entity["name"],
-#                 version["name"]
+#                 version["version"]
 #             )
 #             self.log.debug((
 #                 "Skipping version. Already tagged as `deleted`. < {} >"
 #             ).format(msg))
 #             versions.remove(version)
 #
-#         version_ids = [ent["_id"] for ent in versions]
+#         version_ids = [ent["id"] for ent in versions]
 #
 #         self.log.debug(
 #             "Filtered versions to delete ({})".format(len(version_ids))
@@ -346,7 +347,7 @@
 #             if version_tags == orig_version_tags:
 #                 continue
 #
-#             update_query = {"_id": version["_id"]}
+#             update_query = {"_id": version["id"]}
 #             update_data = {"$set": {"data.tags": version_tags}}
 #             mongo_changes_bulk.append(UpdateOne(update_query, update_data))
 #

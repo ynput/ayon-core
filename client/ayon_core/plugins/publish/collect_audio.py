@@ -3,10 +3,7 @@ import collections
 import ayon_api
 import pyblish.api
 
-from ayon_core.client import (
-    get_last_versions,
-    get_representations,
-)
+from ayon_core.client import get_representations
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 
@@ -148,12 +145,14 @@ class CollectAudio(pyblish.api.ContextPlugin):
             return output
 
         # Find all latest versions for the products
-        version_docs_by_product_id = get_last_versions(
-            project_name, subset_ids=product_ids, fields=["_id", "parent"]
+        last_versions_by_product_id = ayon_api.get_last_versions(
+            project_name, product_ids=product_ids, fields={"id", "productId"}
         )
         version_id_by_product_id = {
-            product_id: version_doc["_id"]
-            for product_id, version_doc in version_docs_by_product_id.items()
+            product_id: version_entity["id"]
+            for product_id, version_entity in (
+                last_versions_by_product_id.items()
+            )
         }
         version_ids = set(version_id_by_product_id.values())
         if not version_ids:

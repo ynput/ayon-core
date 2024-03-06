@@ -26,8 +26,8 @@ import os
 import collections
 
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import get_versions
 from ayon_core.client.operations import OperationsSession
 
 InstanceFilterResult = collections.namedtuple(
@@ -59,20 +59,20 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             for instance_items in filtered_instance_items
         }
         # Query versions
-        version_docs = get_versions(
+        version_entities = ayon_api.get_versions(
             project_name,
             version_ids=version_ids,
             hero=True,
-            fields=["_id", "type", "name"]
+            fields={"id", "version"}
         )
         # Store version by their id (converted to string)
-        version_docs_by_str_id = {
-            str(version_doc["_id"]): version_doc
-            for version_doc in version_docs
+        version_entities_by_id = {
+            version_entity["id"]: version_entity
+            for version_entity in version_entities
         }
         self._integrate_thumbnails(
             filtered_instance_items,
-            version_docs_by_str_id,
+            version_entities_by_id,
             project_name
         )
 
@@ -159,7 +159,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
     def _integrate_thumbnails(
         self,
         filtered_instance_items,
-        version_docs_by_str_id,
+        version_entities_by_id,
         project_name
     ):
         from ayon_core.client.operations import create_thumbnail
@@ -169,8 +169,8 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         for instance_item in filtered_instance_items:
             instance, thumbnail_path, version_id = instance_item
             instance_label = self._get_instance_label(instance)
-            version_doc = version_docs_by_str_id.get(version_id)
-            if not version_doc:
+            version_entity = version_entities_by_id.get(version_id)
+            if not version_entity:
                 self.log.warning((
                     "Version entity for instance \"{}\" was not found."
                 ).format(instance_label))
@@ -181,12 +181,11 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             # Set thumbnail id for version
             thumbnail_info_by_entity_id[version_id] = {
                 "thumbnail_id": thumbnail_id,
-                "entity_type": version_doc["type"],
+                "entity_type": "version",
             }
-            if version_doc["type"] == "hero_version":
+            version_name = version_entity["version"]
+            if version_name < 0:
                 version_name = "Hero"
-            else:
-                version_name = version_doc["name"]
             self.log.debug("Setting thumbnail for version \"{}\" <{}>".format(
                 version_name, version_id
             ))

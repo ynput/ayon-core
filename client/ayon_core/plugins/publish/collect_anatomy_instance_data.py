@@ -33,9 +33,6 @@ import collections
 import pyblish.api
 import ayon_api
 
-from ayon_core.client import (
-    get_last_versions,
-)
 from ayon_core.pipeline.version_start import get_versioning_start
 
 
@@ -271,20 +268,21 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             for product_entity in product_entities
         }
 
-        last_version_docs_by_product_id = get_last_versions(
-            project_name, product_ids, fields=["name"]
+        last_versions_by_product_id = ayon_api.get_last_versions(
+            project_name, product_ids, fields={"version"}
         )
         for product_entity in product_entities:
             product_id = product_entity["id"]
-            last_version_doc = last_version_docs_by_product_id.get(product_id)
-            if last_version_doc is None:
+            last_version_entity = last_versions_by_product_id.get(product_id)
+            if last_version_entity is None:
                 continue
 
+            last_version = last_version_entity["version"]
             folder_id = product_entity["folderId"]
             product_name = product_entity["name"]
             _instances = hierarchy[folder_id][product_name]
             for _instance in _instances:
-                _instance.data["latestVersion"] = last_version_doc["name"]
+                _instance.data["latestVersion"] = last_version
 
     def fill_anatomy_data(self, context):
         self.log.debug("Storing anatomy data to instance data.")
