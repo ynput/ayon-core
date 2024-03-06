@@ -3,6 +3,7 @@ from ayon_core.pipeline.create.creator_plugins import cache_and_get_instances
 
 SHARED_DATA_KEY = "ayon.zbrush.instances"
 
+
 class ZbrushCreatorBase:
     def _cache_and_get_instances(self):
         return cache_and_get_instances(
@@ -92,6 +93,7 @@ class ZbrushCreator(Creator, ZbrushCreatorBase):
         instances_data.append(new_instance.data_to_store())
         self.host.write_instances(instances_data)
         self._add_instance_to_context(new_instance)
+
 
 class ZbrushAutoCreator(AutoCreator, ZbrushCreatorBase):
     def collect_instances(self):

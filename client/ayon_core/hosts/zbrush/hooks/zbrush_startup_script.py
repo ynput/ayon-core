@@ -2,6 +2,7 @@
 """Pre-launch to force zbrush startup script."""
 import os
 from ayon_core.hosts.zbrush import ZBRUSH_HOST_DIR
+from ayon_core.hosts.zbrush import get_launch_script_path
 from ayon_core.lib import get_openpype_execute_args
 from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 
@@ -27,7 +28,7 @@ class ZBrushStartupScript(PreLaunchHook):
             remainders.append(self.launch_context.launch_args.pop(0))
 
         new_launch_args = get_openpype_execute_args(
-            "run", self.launch_script_path(), executable_path
+            "run", get_launch_script_path(), executable_path
         )
 
         # Append as whole list as these arguments should not be separated
@@ -42,9 +43,3 @@ class ZBrushStartupScript(PreLaunchHook):
                 "There are unexpected launch arguments in Zbrush launch. {}"
             ).format(str(remainders)))
             self.launch_context.launch_args.extend(remainders)
-
-
-    def launch_script_path(self):
-        from ayon_core.hosts.zbrush import get_launch_script_path
-
-        return get_launch_script_path()

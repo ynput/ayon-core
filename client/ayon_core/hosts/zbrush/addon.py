@@ -50,7 +50,6 @@ class ZbrushAddon(AYONAddon, IHostAddon):
     def cli(self, click_group):
         click_group.add_command(cli_main.to_click_obj())
 
-
     def get_workfile_extensions(self):
         return [".zpr"]
 

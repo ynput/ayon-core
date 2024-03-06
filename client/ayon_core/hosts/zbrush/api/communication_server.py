@@ -493,7 +493,7 @@ class BaseCommunicator:
         from win32comext.shell import shell
 
         # Create temp folder where plugin files are temporary copied
-        # - reason is that copy to Zbrush requires administartion permissions
+        # - reason is that copy to Zbrush requires administrator permissions
         #   but admin may not have access to source folder
         tmp_dir = os.path.normpath(
             tempfile.mkdtemp(prefix="Zbrush_copy_")
@@ -697,6 +697,7 @@ class BaseCommunicator:
 
         with delete_after(f.name):
             subprocess.call([zbrush_exe, f.name], shell=True)
+
 
 class QtCommunicator(BaseCommunicator):
 
