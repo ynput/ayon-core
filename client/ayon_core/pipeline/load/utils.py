@@ -1,6 +1,5 @@
 import os
 import platform
-import copy
 import logging
 import inspect
 import collections
@@ -10,12 +9,6 @@ import ayon_api
 
 from ayon_core.host import ILoadHost
 from ayon_core.client import (
-    get_versions,
-    get_version_by_id,
-    get_last_version_by_subset_id,
-    get_hero_version_by_subset_id,
-    get_version_by_name,
-    get_last_versions,
     get_representations,
     get_representation_by_id,
     get_representation_by_name,
@@ -122,33 +115,15 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
         version_ids.add(repre_doc["parent"])
         repre_docs_by_id[repre_doc["_id"]] = repre_doc
 
-    version_docs = get_versions(
-        project_name, version_ids, hero=True
+    version_entities = ayon_api.get_versions(
+        project_name, version_ids=version_ids
     )
 
-    version_docs_by_id = {}
-    hero_version_docs = []
-    versions_for_hero = set()
+    version_entities_by_id = {}
     product_ids = set()
-    for version_doc in version_docs:
-        if version_doc["type"] == "hero_version":
-            hero_version_docs.append(version_doc)
-            versions_for_hero.add(version_doc["version_id"])
-        version_docs_by_id[version_doc["_id"]] = version_doc
-        product_ids.add(version_doc["parent"])
-
-    if versions_for_hero:
-        _version_docs = get_versions(project_name, versions_for_hero)
-        _version_data_by_id = {
-            version_doc["_id"]: version_doc["data"]
-            for version_doc in _version_docs
-        }
-
-        for hero_version_doc in hero_version_docs:
-            hero_version_id = hero_version_doc["_id"]
-            version_id = hero_version_doc["version_id"]
-            version_data = copy.deepcopy(_version_data_by_id[version_id])
-            version_docs_by_id[hero_version_id]["data"] = version_data
+    for version_entity in version_entities:
+        version_entities_by_id[version_entity["id"]] = version_entity
+        product_ids.add(version_entity["productId"])
 
     product_entities = ayon_api.get_products(
         project_name, product_ids=product_ids
@@ -169,14 +144,14 @@ def get_contexts_for_repre_docs(project_name, repre_docs):
     project_entity = ayon_api.get_project(project_name)
 
     for repre_id, repre_doc in repre_docs_by_id.items():
-        version_doc = version_docs_by_id[repre_doc["parent"]]
-        product_entity = product_entities_by_id[version_doc["parent"]]
+        version_entity = version_entities_by_id[repre_doc["parent"]]
+        product_entity = product_entities_by_id[version_entity["productId"]]
         folder_entity = folder_entities_by_id[product_entity["folderId"]]
         context = {
             "project": project_entity,
             "folder": folder_entity,
             "product": product_entity,
-            "version": version_doc,
+            "version": version_entity,
             "representation": repre_doc,
         }
         contexts[repre_id] = context
@@ -257,12 +232,12 @@ def get_representation_context(representation):
         raise AssertionError("Representation was not found in database")
 
     (
-        version_doc,
+        version_entity,
         product_entity,
         folder_entity,
         project_entity
     ) = get_representation_parents(project_name, representation)
-    if not version_doc:
+    if not version_entity:
         raise AssertionError("Version was not found in database")
     if not product_entity:
         raise AssertionError("Product was not found in database")
@@ -275,7 +250,7 @@ def get_representation_context(representation):
         "project": project_entity,
         "folder": folder_entity,
         "product": product_entity,
-        "version": version_doc,
+        "version": version_entity,
         "representation": representation,
     }
 
@@ -464,39 +439,48 @@ def update_container(container, version=-1):
 
     assert current_representation is not None, "This is a bug"
 
-    current_version = get_version_by_id(
-        project_name, current_representation["parent"], fields=["parent"]
+    current_version_id = current_representation["parent"]
+    current_version = ayon_api.get_version_by_id(
+        project_name, current_version_id, fields={"productId"}
     )
-    if version == -1:
-        new_version = get_last_version_by_subset_id(
-            project_name, current_version["parent"], fields=["_id"]
+    if isinstance(version, HeroVersionType):
+        new_version = ayon_api.get_hero_version_by_product_id(
+            project_name, current_version["productId"], fields={"id"}
         )
-
-    elif isinstance(version, HeroVersionType):
-        new_version = get_hero_version_by_subset_id(
-            project_name, current_version["parent"], fields=["_id"]
+    elif version == -1:
+        new_version = ayon_api.get_last_version_by_product_id(
+            project_name, current_version["productId"], fields={"id"}
         )
 
     else:
-        new_version = get_version_by_name(
-            project_name, version, current_version["parent"], fields=["_id"]
+        new_version = ayon_api.get_version_by_name(
+            project_name, version, current_version["productId"], fields={"id"}
         )
+
+    if new_version is None:
+        raise ValueError("Failed to find matching version")
+
     product_entity = ayon_api.get_product_by_id(
-        project_name, current_version["parent"]
+        project_name, current_version["productId"]
     )
     folder_entity = ayon_api.get_folder_by_id(
         project_name, product_entity["folderId"]
     )
 
-    assert new_version is not None, "This is a bug"
-
+    repre_name = current_representation["name"]
     new_representation = get_representation_by_name(
-        project_name, current_representation["name"], new_version["_id"]
+        project_name, repre_name, new_version["id"]
     )
-    assert new_representation is not None, "Representation wasn't found"
+    if new_representation is None:
+        raise ValueError(
+            "Representation '{}' wasn't found on requested version".format(
+                repre_name
+            )
+        )
 
     path = get_representation_path(new_representation)
-    assert os.path.exists(path), "Path {} doesn't exist".format(path)
+    if not path or not os.path.exists(path):
+        raise ValueError("Path {} doesn't exist".format(path))
 
     # Run update on the Loader for this container
     Loader = _get_container_loader(container)
@@ -858,38 +842,40 @@ def filter_containers(containers, project_name):
     # Query version docs to get it's product ids
     # - also query hero version to be able identify if representation
     #   belongs to existing version
-    version_docs = get_versions(
+    version_entities = ayon_api.get_versions(
         project_name,
         version_ids=repre_docs_by_version_id.keys(),
         hero=True,
-        fields=["_id", "parent", "type"]
+        fields={"id", "productId", "version"}
     )
     verisons_by_id = {}
     versions_by_product_id = collections.defaultdict(list)
     hero_version_ids = set()
-    for version_doc in version_docs:
-        version_id = version_doc["_id"]
+    for version_entity in version_entities:
+        version_id = version_entity["id"]
         # Store versions by their ids
-        verisons_by_id[version_id] = version_doc
+        verisons_by_id[version_id] = version_entity
         # There's no need to query products for hero versions
         #   - they are considered as latest?
-        if version_doc["type"] == "hero_version":
+        if version_entity["version"] < 0:
             hero_version_ids.add(version_id)
             continue
-        product_id = version_doc["parent"]
-        versions_by_product_id[product_id].append(version_doc)
+        product_id = version_entity["productId"]
+        versions_by_product_id[product_id].append(version_entity)
 
-    last_versions = get_last_versions(
+    last_versions = ayon_api.get_last_versions(
         project_name,
-        subset_ids=versions_by_product_id.keys(),
-        fields=["_id"]
+        versions_by_product_id.keys(),
+        fields={"id"}
     )
     # Figure out which versions are outdated
     outdated_version_ids = set()
-    for product_id, last_version_doc in last_versions.items():
-        for version_doc in versions_by_product_id[product_id]:
-            version_id = version_doc["_id"]
-            if version_id != last_version_doc["_id"]:
+    for product_id, last_version_entity in last_versions.items():
+        for version_entity in versions_by_product_id[product_id]:
+            version_id = version_entity["id"]
+            if version_id in hero_version_ids:
+                continue
+            if version_id != last_version_entity["id"]:
                 outdated_version_ids.add(version_id)
 
     # Based on all collected data figure out which containers are outdated
