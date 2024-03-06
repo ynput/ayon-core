@@ -94,8 +94,8 @@ def execute_zscript_and_wait(zscript,
         time_taken += wait
         if time_taken > timeout:
             raise RuntimeError(
-                f"Timeout. Zscript took longer than "
-                "{timeout}s to run."
+                "Timeout. Zscript took longer than "
+                f"{timeout}s to run."
             )
 
 
