@@ -39,7 +39,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
                 "yeticache"]
     optional = True
     actions = [RepairAction]
-    exclude_families = []
+    exclude_product_types = []
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -73,8 +73,10 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
 
         # compare with data on instance
         errors = []
-        if [ef for ef in self.exclude_families
-                if instance.data["family"] in ef]:
+        # QUESTION shouldn't this be just:
+        #   'if instance.data["productType"] in self.exclude_product_types:'
+        if [ef for ef in self.exclude_product_types
+                if instance.data["productType"] in ef]:
             return
         if (inst_start != frame_start_handle):
             errors.append("Instance start frame [ {} ] doesn't "

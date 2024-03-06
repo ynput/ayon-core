@@ -7,6 +7,7 @@ from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
+    PublishValidationError
 )
 
 
@@ -38,7 +39,8 @@ class ValidateRigJointsHidden(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
 
         if invalid:
-            raise ValueError("Visible joints found: {0}".format(invalid))
+            raise PublishValidationError(
+                "Visible joints found: {0}".format(invalid))
 
     @classmethod
     def repair(cls, instance):

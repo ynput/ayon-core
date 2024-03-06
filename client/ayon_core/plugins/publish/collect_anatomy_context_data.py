@@ -4,9 +4,9 @@ Requires:
     context -> anatomy
     context -> projectEntity
     context -> assetEntity
+    context -> task
     context -> username
     context -> datetimeData
-    session -> AVALON_TASK
 
 Provides:
     context -> anatomyData
@@ -47,7 +47,7 @@ class CollectAnatomyContextData(pyblish.api.ContextPlugin):
 
     def process(self, context):
         host_name = context.data["hostName"]
-        system_settings = context.data["system_settings"]
+        project_settings = context.data["project_settings"]
         project_entity = context.data["projectEntity"]
         asset_entity = context.data.get("assetEntity")
         task_name = None
@@ -55,7 +55,11 @@ class CollectAnatomyContextData(pyblish.api.ContextPlugin):
             task_name = context.data["task"]
 
         anatomy_data = get_template_data(
-            project_entity, asset_entity, task_name, host_name, system_settings
+            project_entity,
+            asset_entity,
+            task_name,
+            host_name,
+            project_settings
         )
         anatomy_data.update(context.data.get("datetimeData") or {})
 

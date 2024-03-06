@@ -15,10 +15,12 @@ class CreateNukeRoyalRenderJob(lib.BaseCreateRoyalRenderJob):
         super(CreateNukeRoyalRenderJob, self).process(instance)
 
         # redefinition of families
-        if "render" in instance.data["family"]:
+        if "render" in instance.data["productType"]:
+            instance.data["productType"] = "write"
             instance.data["family"] = "write"
             instance.data["families"].insert(0, "render2d")
-        elif "prerender" in instance.data["family"]:
+        elif "prerender" in instance.data["productType"]:
+            instance.data["productType"] = "write"
             instance.data["family"] = "write"
             instance.data["families"].insert(0, "prerender")
 

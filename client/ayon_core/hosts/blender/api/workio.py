@@ -82,7 +82,7 @@ def file_extensions() -> List[str]:
 def work_root(session: dict) -> str:
     """Return the default root to browse for work files."""
 
-    work_dir = session["AVALON_WORKDIR"]
+    work_dir = session["AYON_WORKDIR"]
     scene_dir = session.get("AVALON_SCENEDIR")
     if scene_dir:
         return str(Path(work_dir, scene_dir))

@@ -9,6 +9,7 @@ from ayon_core.pipeline import (
     get_representation_path
 )
 from ayon_core.settings import get_project_settings
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class GpuCacheLoader(load.LoaderPlugin):
@@ -39,13 +40,12 @@ class GpuCacheLoader(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-        c = colors.get('model')
-        if c is not None:
+        color = get_load_color_for_product_type("model", settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
             cmds.setAttr(
-                root + ".outlinerColor",
-                (float(c[0]) / 255), (float(c[1]) / 255), (float(c[2]) / 255)
+                root + ".outlinerColor", red, green, blue
             )
 
         # Create transform with shape
@@ -74,8 +74,9 @@ class GpuCacheLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
-        path = get_representation_path(representation)
+    def update(self, container, context):
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
 
         # Update the cache
         members = cmds.sets(container['objectName'], query=True)
@@ -87,11 +88,11 @@ class GpuCacheLoader(load.LoaderPlugin):
             cmds.setAttr(cache + ".cacheFileName", path, type="string")
 
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)

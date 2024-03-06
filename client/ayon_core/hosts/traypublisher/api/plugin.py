@@ -111,7 +111,7 @@ class SettingsCreator(TrayPublishCreator):
 
     extensions = []
 
-    def create(self, subset_name, data, pre_create_data):
+    def create(self, product_name, data, pre_create_data):
         # Pass precreate data to creator attributes
         thumbnail_path = pre_create_data.pop(PRE_CREATE_THUMBNAIL_KEY, None)
 
@@ -119,8 +119,8 @@ class SettingsCreator(TrayPublishCreator):
         if self.allow_version_control:
             asset_name = data["folderPath"]
             subset_docs_by_asset_id = self._prepare_next_versions(
-                [asset_name], [subset_name])
-            version = subset_docs_by_asset_id[asset_name].get(subset_name)
+                [asset_name], [product_name])
+            version = subset_docs_by_asset_id[asset_name].get(product_name)
             pre_create_data["version_to_use"] = version
             data["_previous_last_version"] = version
 
@@ -128,38 +128,41 @@ class SettingsCreator(TrayPublishCreator):
         data["settings_creator"] = True
 
         # Create new instance
-        new_instance = CreatedInstance(self.family, subset_name, data, self)
+        new_instance = CreatedInstance(
+            self.product_type, product_name, data, self
+        )
 
         self._store_new_instance(new_instance)
 
         if thumbnail_path:
             self.set_instance_thumbnail_path(new_instance.id, thumbnail_path)
 
-    def _prepare_next_versions(self, asset_names, subset_names):
-        """Prepare next versions for given asset and subset names.
+    def _prepare_next_versions(self, asset_names, product_names):
+        """Prepare next versions for given asset and product names.
 
         Todos:
-            Expect combination of subset names by asset name to avoid
-                unnecessary server calls for unused subsets.
+            Expect combination of product names by asset name to avoid
+                unnecessary server calls for unused products.
 
         Args:
             asset_names (Iterable[str]): Asset names.
-            subset_names (Iterable[str]): Subset names.
+            product_names (Iterable[str]): Subset names.
 
         Returns:
             dict[str, dict[str, int]]: Last versions by asset
-                and subset names.
+                and product names.
         """
 
         # Prepare all versions for all combinations to '1'
+        # TODO use 'ayon_core.pipeline.version_start' logic
         subset_docs_by_asset_id = {
             asset_name: {
-                subset_name: 1
-                for subset_name in subset_names
+                product_name: 1
+                for product_name in product_names
             }
             for asset_name in asset_names
         }
-        if not asset_names or not subset_names:
+        if not asset_names or not product_names:
             return subset_docs_by_asset_id
 
         asset_docs = get_assets(
@@ -174,26 +177,26 @@ class SettingsCreator(TrayPublishCreator):
         subset_docs = list(get_subsets(
             self.project_name,
             asset_ids=asset_names_by_id.keys(),
-            subset_names=subset_names,
+            subset_names=product_names,
             fields=["_id", "name", "parent"]
         ))
 
-        subset_ids = {subset_doc["_id"] for subset_doc in subset_docs}
+        product_ids = {subset_doc["_id"] for subset_doc in subset_docs}
         last_versions = get_last_versions(
             self.project_name,
-            subset_ids,
+            product_ids,
             fields=["name", "parent"])
 
         for subset_doc in subset_docs:
             asset_id = subset_doc["parent"]
             asset_name = asset_names_by_id[asset_id]
-            subset_name = subset_doc["name"]
-            subset_id = subset_doc["_id"]
-            last_version = last_versions.get(subset_id)
+            product_name = subset_doc["name"]
+            product_id = subset_doc["_id"]
+            last_version = last_versions.get(product_id)
             version = 0
             if last_version is not None:
                 version = last_version["name"]
-            subset_docs_by_asset_id[asset_name][subset_name] += version
+            subset_docs_by_asset_id[asset_name][product_name] += version
         return subset_docs_by_asset_id
 
     def _fill_next_versions(self, instances_data):
@@ -223,16 +226,16 @@ class SettingsCreator(TrayPublishCreator):
             instance["folderPath"]
             for instance in filtered_instance_data
         }
-        subset_names = {
-            instance["subset"]
+        product_names = {
+            instance["productName"]
             for instance in filtered_instance_data}
         subset_docs_by_asset_id = self._prepare_next_versions(
-            asset_names, subset_names
+            asset_names, product_names
         )
         for instance in filtered_instance_data:
             asset_name = instance["folderPath"]
-            subset_name = instance["subset"]
-            version = subset_docs_by_asset_id[asset_name][subset_name]
+            product_name = instance["productName"]
+            version = subset_docs_by_asset_id[asset_name][product_name]
             instance["creator_attributes"]["version_to_use"] = version
             instance["_previous_last_version"] = version
 
@@ -311,14 +314,14 @@ class SettingsCreator(TrayPublishCreator):
     @classmethod
     def from_settings(cls, item_data):
         identifier = item_data["identifier"]
-        family = item_data["family"]
+        product_type = item_data["product_type"]
         if not identifier:
-            identifier = "settings_{}".format(family)
+            identifier = "settings_{}".format(product_type)
         return type(
             "{}{}".format(cls.__name__, identifier),
             (cls, ),
             {
-                "family": family,
+                "product_type": product_type,
                 "identifier": identifier,
                 "label": item_data["label"].strip(),
                 "icon": item_data["icon"],

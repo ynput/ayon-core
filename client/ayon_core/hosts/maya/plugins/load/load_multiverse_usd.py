@@ -60,7 +60,7 @@ class MultiverseUsdLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
         node = container['objectName']
@@ -70,7 +70,9 @@ class MultiverseUsdLoader(load.LoaderPlugin):
         shapes = cmds.ls(members, type="mvUsdCompoundShape")
         assert shapes, "Cannot find mvUsdCompoundShape in container"
 
-        project_name = representation["context"]["project"]["name"]
+        project_name = context["project"]["name"]
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
         prev_representation_id = cmds.getAttr("{}.representation".format(node))
         prev_representation = get_representation_by_id(project_name,
                                                        prev_representation_id)
@@ -89,18 +91,17 @@ class MultiverseUsdLoader(load.LoaderPlugin):
                 "Couldn't find matching path (or too many)"
             prev_path_idx = asset_paths.index(prev_path)
 
-            path = get_representation_path(representation)
             asset_paths[prev_path_idx] = path
 
             multiverse.SetUsdCompoundAssetPaths(shape, asset_paths)
 
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
         mel.eval('refreshEditorTemplates;')
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         # type: (dict) -> None

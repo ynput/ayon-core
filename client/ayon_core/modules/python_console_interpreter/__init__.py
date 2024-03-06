@@ -1,4 +1,4 @@
-from .module import (
+from .addon import (
     PythonInterpreterAction
 )
 

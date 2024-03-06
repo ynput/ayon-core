@@ -8,18 +8,17 @@ publishing on farm.
 Requires:
     instance    -> families
     instance    -> setMembers
+    instance    -> folderPath
 
     context     -> currentFile
     context     -> workspaceDir
     context     -> user
 
-    session     -> AVALON_ASSET
-
 Optional:
 
 Provides:
     instance    -> label
-    instance    -> subset
+    instance    -> productName
     instance    -> attachTo
     instance    -> setMembers
     instance    -> publish
@@ -27,9 +26,6 @@ Provides:
     instance    -> frameEnd
     instance    -> byFrameStep
     instance    -> renderer
-    instance    -> family
-    instance    -> families
-    instance    -> asset
     instance    -> time
     instance    -> author
     instance    -> source
@@ -91,18 +87,18 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
             )
             self.log.warning(msg)
 
-        # detect if there are sets (subsets) to attach render to
+        # detect if there are sets (products) to attach render to
         sets = cmds.sets(objset, query=True) or []
         attach_to = []
         for s in sets:
-            if not cmds.attributeQuery("family", node=s, exists=True):
+            if not cmds.attributeQuery("productType", node=s, exists=True):
                 continue
 
             attach_to.append(
                 {
                     "version": None,  # we need integrator for that
-                    "subset": s,
-                    "family": cmds.getAttr("{}.family".format(s)),
+                    "productName": s,
+                    "productType": cmds.getAttr("{}.productType".format(s)),
                 }
             )
             self.log.debug(" -> attach render to: {}".format(s))
@@ -146,13 +142,13 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
             )
         )
 
-        # if we want to attach render to subset, check if we have AOV's
+        # if we want to attach render to product, check if we have AOV's
         # in expectedFiles. If so, raise error as we cannot attach AOV
-        # (considered to be subset on its own) to another subset
+        # (considered to be product on its own) to another product
         if attach_to:
             assert isinstance(expected_files, list), (
                 "attaching multiple AOVs or renderable cameras to "
-                "subset is not supported"
+                "product is not supported"
             )
 
         # append full path
@@ -294,9 +290,7 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
             "colorspaceView": colorspace_data["view"],
         }
 
-        rr_settings = (
-            context.data["system_settings"]["modules"]["royalrender"]
-        )
+        rr_settings = context.data["project_settings"]["royalrender"]
         if rr_settings["enabled"]:
             data["rrPathName"] = instance.data.get("rrPathName")
             self.log.debug(data["rrPathName"])
@@ -304,11 +298,11 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
         if self.sync_workfile_version:
             data["version"] = context.data["version"]
             for _instance in context:
-                if _instance.data['family'] == "workfile":
+                if _instance.data["productType"] == "workfile":
                     _instance.data["version"] = context.data["version"]
 
         # Define nice label
-        label = "{0} ({1})".format(layer_name, instance.data["asset"])
+        label = "{0} ({1})".format(layer_name, instance.data["folderPath"])
         label += "  [{0}-{1}]".format(
             int(data["frameStartHandle"]), int(data["frameEndHandle"])
         )

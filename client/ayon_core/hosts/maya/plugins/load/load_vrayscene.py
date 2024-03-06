@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import maya.cmds as cmds  # noqa
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
@@ -12,6 +11,7 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class VRaySceneLoader(load.LoaderPlugin):
@@ -26,12 +26,10 @@ class VRaySceneLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-
-
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "vrayscene_layer"
+            product_type = "vrayscene_layer"
 
         asset_name = context['asset']["name"]
         namespace = namespace or unique_namespace(
@@ -58,14 +56,12 @@ class VRaySceneLoader(load.LoaderPlugin):
         # colour the group node
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-        c = colors.get(family)
-        if c is not None:
+        color = get_load_color_for_product_type(product_type, settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(root_node), 1)
-            cmds.setAttr("{0}.outlinerColor".format(root_node),
-                (float(c[0])/255),
-                (float(c[1])/255),
-                (float(c[2])/255)
+            cmds.setAttr(
+                "{0}.outlinerColor".format(root_node), red, green, blue
             )
 
         return containerise(
@@ -75,7 +71,7 @@ class VRaySceneLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
 
         node = container['objectName']
         assert cmds.objExists(node), "Missing container"
@@ -84,7 +80,8 @@ class VRaySceneLoader(load.LoaderPlugin):
         vraymeshes = cmds.ls(members, type="VRayScene")
         assert vraymeshes, "Cannot find VRayScene in container"
 
-        filename = get_representation_path(representation)
+        repre_doc = context["representation"]
+        filename = get_representation_path(repre_doc)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.FilePath".format(vray_mesh),
@@ -93,7 +90,7 @@ class VRaySceneLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
     def remove(self, container):
@@ -113,8 +110,8 @@ class VRaySceneLoader(load.LoaderPlugin):
                 self.log.warning("Namespace not deleted because it "
                                  "still has members: %s", namespace)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def create_vray_scene(self, name, filename):
         """Re-create the structure created by VRay to support vrscenes

@@ -2,6 +2,7 @@ import hou
 
 import pyblish.api
 
+from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 from ayon_core.hosts.houdini.api import lib
 
 
@@ -12,11 +13,11 @@ class CollectInstances(pyblish.api.ContextPlugin):
     an specific node and marked with a unique identifier;
 
     Identifier:
-        id (str): "pyblish.avalon.instance
+        id (str): "ayon.create.instance"
 
     Specific node:
         The specific node is important because it dictates in which way the
-        subset is being exported.
+        product is being exported.
 
         alembic: will export Alembic file which supports cascading attributes
                  like 'cbId' and 'path'
@@ -44,7 +45,9 @@ class CollectInstances(pyblish.api.ContextPlugin):
             if not node.parm("id"):
                 continue
 
-            if node.evalParm("id") != "pyblish.avalon.instance":
+            if node.evalParm("id") not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 continue
 
             # instance was created by new creator code, skip it as
@@ -72,12 +75,14 @@ class CollectInstances(pyblish.api.ContextPlugin):
 
             # Create nice name if the instance has a frame range.
             label = data.get("name", node.name())
-            label += " (%s)" % data["asset"]  # include asset in name
+            label += " (%s)" % data["folderPath"]  # include folder in name
 
             instance = context.create_instance(label)
 
             # Include `families` using `family` data
-            instance.data["families"] = [instance.data["family"]]
+            product_type = data["family"]
+            data["productType"] = product_type
+            instance.data["families"] = [product_type]
 
             instance[:] = [node]
             instance.data["instance_node"] = node.path()
@@ -85,7 +90,9 @@ class CollectInstances(pyblish.api.ContextPlugin):
 
         def sort_by_family(instance):
             """Sort by family"""
-            return instance.data.get("families", instance.data.get("family"))
+            return instance.data.get(
+                "families", instance.data.get("productType")
+            )
 
         # Sort/grouped by family (preserving local index)
         context[:] = sorted(context, key=sort_by_family)

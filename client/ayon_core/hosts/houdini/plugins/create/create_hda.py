@@ -13,14 +13,14 @@ class CreateHDA(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.hda"
     label = "Houdini Digital Asset (Hda)"
-    family = "hda"
+    product_type = "hda"
     icon = "gears"
     maintain_selection = False
 
-    def _check_existing(self, asset_name, subset_name):
+    def _check_existing(self, asset_name, product_name):
         # type: (str) -> bool
-        """Check if existing subset name versions already exists."""
-        # Get all subsets of the current asset
+        """Check if existing product name versions already exists."""
+        # Get all products of the current folder
         project_name = self.project_name
         asset_doc = get_asset_by_name(
             project_name, asset_name, fields=["_id"]
@@ -28,11 +28,11 @@ class CreateHDA(plugin.HoudiniCreator):
         subset_docs = get_subsets(
             project_name, asset_ids=[asset_doc["_id"]], fields=["name"]
         )
-        existing_subset_names_low = {
+        existing_product_names_low = {
             subset_doc["name"].lower()
             for subset_doc in subset_docs
         }
-        return subset_name.lower() in existing_subset_names_low
+        return product_name.lower() in existing_product_names_low
 
     def create_instance_node(
         self, asset_name, node_name, parent, node_type="geometry"
@@ -64,7 +64,7 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_node.layoutChildren()
         elif self._check_existing(asset_name, node_name):
             raise plugin.OpenPypeCreatorError(
-                ("subset {} is already published with different HDA"
+                ("product {} is already published with different HDA"
                  "definition.").format(node_name))
         else:
             hda_node = to_hda
@@ -73,11 +73,11 @@ class CreateHDA(plugin.HoudiniCreator):
         self.customize_node_look(hda_node)
         return hda_node
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
 
         instance = super(CreateHDA, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: plugin.CreatedInstance
 

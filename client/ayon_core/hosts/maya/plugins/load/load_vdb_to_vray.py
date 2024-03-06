@@ -5,6 +5,7 @@ from ayon_core.pipeline import (
     load,
     get_representation_path
 )
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 from maya import cmds
 
@@ -94,9 +95,9 @@ class LoadVDBtoVRay(load.LoaderPlugin):
         )
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "vdbcache"
+            product_type = "vdbcache"
 
         # Ensure V-ray is loaded with the vrayvolumegrid
         if not cmds.pluginInfo("vrayformaya", query=True, loaded=True):
@@ -129,15 +130,11 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-
-        c = colors.get(family)
-        if c is not None:
+        color = get_load_color_for_product_type(product_type, settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
-            cmds.setAttr(root + ".outlinerColor",
-                         float(c[0]) / 255,
-                         float(c[1]) / 255,
-                         float(c[2]) / 255)
+            cmds.setAttr(root + ".outlinerColor", red, green, blue)
 
         # Create VRayVolumeGrid
         grid_node = cmds.createNode("VRayVolumeGrid",
@@ -257,9 +254,10 @@ class LoadVDBtoVRay(load.LoaderPlugin):
                              restored_mapping,
                              type="string")
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_doc = context["representation"]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_doc)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
@@ -272,11 +270,11 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
 

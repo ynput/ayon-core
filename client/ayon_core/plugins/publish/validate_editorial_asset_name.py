@@ -113,7 +113,7 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
     def get_parents(self, context):
         return_dict = {}
         for instance in context:
-            asset = instance.data["asset"]
+            asset = instance.data["folderPath"]
             families = instance.data.get("families", []) + [
                 instance.data["family"]
             ]

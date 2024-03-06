@@ -1,15 +1,12 @@
 import os
-from ayon_core.modules import OpenPypeModule, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon
 
 MAYA_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class MayaAddon(OpenPypeModule, IHostAddon):
+class MayaAddon(AYONAddon, IHostAddon):
     name = "maya"
     host_name = "maya"
-
-    def initialize(self, module_settings):
-        self.enabled = True
 
     def add_implementation_envs(self, env, _app):
         # Add requirements to PYTHONPATH

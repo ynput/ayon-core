@@ -5,8 +5,6 @@ import re
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.pipeline import legacy_io
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
@@ -83,7 +81,7 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
                 ("_" + cls.static_mesh_prefix) or "", cls.regex_mesh
             )
             sm_r = re.compile(regex_mesh)
-            if not sm_r.match(instance.data.get("subset")):
+            if not sm_r.match(instance.data.get("productName")):
                 cls.log.error("Mesh doesn't comply with name validation.")
                 return True
 
