@@ -1356,9 +1356,15 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
+        self._attr_def_id_to_widget = {}
 
         # To store content of scroll area to prevent garbage collection
         self._content_widget = None
+
+    def reset_attributes(self):
+        for _id, attr_def in self._attr_def_id_to_attr_def.items():
+            widget = self._attr_def_id_to_widget.get(_id)
+            widget.set_value(attr_def.default)
 
     def set_instances_valid(self, valid):
         """Change valid state of current instances."""
@@ -1381,6 +1387,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._content_widget = None
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
+        self._attr_def_id_to_widget = {}
 
         result = self._controller.get_creator_attribute_definitions(
             instances
@@ -1397,6 +1404,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         row = 0
         for attr_def, attr_instances, values in result:
             widget = create_widget_for_attr_def(attr_def, content_widget)
+
             if attr_def.is_value_def:
                 if len(values) == 1:
                     value = values[0]
@@ -1408,6 +1416,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             widget.value_changed.connect(self._input_value_changed)
             self._attr_def_id_to_instances[attr_def.id] = attr_instances
             self._attr_def_id_to_attr_def[attr_def.id] = attr_def
+            self._attr_def_id_to_widget[attr_def.id] = widget
 
             if attr_def.hidden:
                 continue
@@ -1495,9 +1504,15 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
         self._attr_def_id_to_plugin_name = {}
+        self._attr_def_id_to_widget = {}
 
         # Store content of scroll area to prevent garbage collection
         self._content_widget = None
+
+    def reset_attributes(self):
+        for _id, attr_def in self._attr_def_id_to_attr_def.items():
+            widget = self._attr_def_id_to_widget.get(_id)
+            widget.set_value(attr_def.default)
 
     def set_instances_valid(self, valid):
         """Change valid state of current instances."""
@@ -1521,6 +1536,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
         self._attr_def_id_to_plugin_name = {}
+        self._attr_def_id_to_widget = {}
 
         result = self._controller.get_publish_attribute_definitions(
             instances, context_selected
@@ -1599,6 +1615,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 self._attr_def_id_to_attr_def[attr_def.id] = attr_def
                 self._attr_def_id_to_instances[attr_def.id] = instances
                 self._attr_def_id_to_plugin_name[attr_def.id] = plugin_name
+                self._attr_def_id_to_widget[attr_def.id] = widget
 
                 if multivalue:
                     widget.set_value(values, multivalue)
@@ -1717,10 +1734,18 @@ class ProductAttributesWidget(QtWidgets.QWidget):
         top_bottom.setObjectName("Separator")
         top_bottom.setMinimumHeight(1)
 
+        publish_actions_layout = QtWidgets.QHBoxLayout()
+        publish_actions_layout.addStretch(1)
+        push_button = QtWidgets.QPushButton(self)
+        push_button.setText("Reset attributes to default")
+        push_button.clicked.connect(self._reset_attributes)
+        publish_actions_layout.addWidget(push_button)
+
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(top_widget, 0)
         layout.addWidget(top_bottom, 0)
         layout.addWidget(bottom_widget, 1)
+        layout.addLayout(publish_actions_layout)
 
         self._convertor_identifiers = None
         self._current_instances = None
@@ -1750,6 +1775,10 @@ class ProductAttributesWidget(QtWidgets.QWidget):
 
         self.top_bottom = top_bottom
         self.bottom_separator = bottom_separator
+
+    def _reset_attributes(self):
+        self.creator_attrs_widget.reset_attributes()
+        self.publish_attrs_widget.reset_attributes()
 
     def _on_instance_context_changed(self):
         all_valid = True
