@@ -40,6 +40,7 @@ def execute_zscript(zscript, communicator=None):
     """
     if not communicator:
         communicator = CommunicationWrapper.communicator
+    print(f"Executing ZScript: {zscript}")
     return communicator.execute_zscript(zscript)
 
 
