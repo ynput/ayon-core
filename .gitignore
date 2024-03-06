@@ -83,3 +83,5 @@ dump.sql
 mypy.ini
 
 .github_changelog_generator
+client/ayon_core/hosts/photoshop/api/.rnd
+client/ayon_core/hosts/photoshop/api/extension.p12
