@@ -242,23 +242,23 @@ class ImageLoader(load.LoaderPlugin):
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         layer = container.pop("layer")
-
+        repre_doc = context["representation"]
         with photoshop.maintained_selection():
             stub.replace_smart_object(
-                layer, get_representation_path(representation)
+                layer, get_representation_path(repre_doc)
             )
 
         stub.imprint(
-            layer, {"representation": str(representation["_id"])}
+            layer, {"representation": str(repre_doc["_id"])}
         )
 
     def remove(self, container):
         container["layer"].Delete()
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 ```
 
 For easier debugging of Javascript:
