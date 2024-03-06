@@ -8,6 +8,23 @@ from ayon_core.pipeline import (
 from ayon_core.hosts.max.api.action import SelectInvalidAction
 
 
+def get_invalid_keys(obj):
+    """function to check on whether there is keyframe in
+
+    Args:
+        obj (str): object needed to check if there is a keyframe
+
+    Returns:
+        bool: whether invalid object(s) exist
+    """
+    for transform in ["Position", "Rotation", "Scale"]:
+        num_of_key = rt.NumKeys(rt.getPropertyController(
+            obj.controller, transform))
+        if num_of_key > 0:
+            return True
+    return False
+
+
 class ValidateNoAnimation(pyblish.api.InstancePlugin,
                           OptionalPyblishPluginMixin):
     """Validates No Animation
@@ -45,6 +62,6 @@ class ValidateNoAnimation(pyblish.api.InstancePlugin,
             list: list of invalid objects
         """
         invalid = [invalid for invalid in instance.data["members"]
-                   if invalid.isAnimated]
+                   if invalid.isAnimated or get_invalid_keys(invalid)]
 
         return invalid
