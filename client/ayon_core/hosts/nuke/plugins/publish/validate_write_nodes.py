@@ -86,7 +86,10 @@ class ValidateNukeWriteNode(
         # Collect key values of same type in a list.
         values_by_name = defaultdict(list)
         for knob_data in correct_data["knobs"]:
-            values_by_name[knob_data["name"]].append(knob_data["value"])
+            knob_type = knob_data["type"]
+            knob_value = knob_data[knob_type]
+
+            values_by_name[knob_data["name"]].append(knob_value)
 
         for knob_data in correct_data["knobs"]:
             knob_type = knob_data["type"]
@@ -97,7 +100,7 @@ class ValidateNukeWriteNode(
                 raise PublishXmlValidationError(
                     self, (
                         "Please update data in settings 'project_settings"
-                        "/nuke/imageio/nodes/requiredNodes'"
+                        "/nuke/imageio/nodes/required_nodes'"
                     ),
                     key="legacy"
                 )
@@ -129,7 +132,7 @@ class ValidateNukeWriteNode(
                 and key != "file"
                 and key != "tile_color"
             ):
-                check.append([key, node_value, write_node[key].value()])
+                check.append([key, fixed_values, write_node[key].value()])
 
         if check:
             self._make_error(check)
@@ -137,7 +140,7 @@ class ValidateNukeWriteNode(
     def _make_error(self, check):
         # sourcery skip: merge-assign-and-aug-assign, move-assign-in-block
         dbg_msg = "Write node's knobs values are not correct!\n"
-        msg_add = "Knob '{0}' > Correct: `{1}` > Wrong: `{2}`"
+        msg_add = "Knob '{0}' > Expected: `{1}` > Current: `{2}`"
 
         details = [
             msg_add.format(item[0], item[1], item[2])

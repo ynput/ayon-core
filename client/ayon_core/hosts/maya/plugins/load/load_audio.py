@@ -45,7 +45,8 @@ class AudioLoader(load.LoaderPlugin):
             loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_doc = context["representation"]
 
         members = get_container_members(container)
         audio_nodes = cmds.ls(members, type="audio")
@@ -60,7 +61,7 @@ class AudioLoader(load.LoaderPlugin):
         )
         activate_sound = current_sound == audio_node
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_doc)
 
         cmds.sound(
             audio_node,
@@ -93,12 +94,12 @@ class AudioLoader(load.LoaderPlugin):
 
         cmds.setAttr(
             container["objectName"] + ".representation",
-            str(representation["_id"]),
+            str(repre_doc["_id"]),
             type="string"
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)

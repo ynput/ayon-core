@@ -16,25 +16,31 @@ class ShotMetadataSolver:
 
     NO_DECOR_PATERN = re.compile(r"\{([a-z]*?)\}")
 
-    # presets
-    clip_name_tokenizer = None
-    shot_rename = True
-    shot_hierarchy = None
-    shot_add_tasks = None
+    def __init__(self, logger):
+        self.clip_name_tokenizer = []
+        self.shot_rename = {
+            "enabled": False,
+            "shot_rename_template": "",
+        }
+        self.shot_hierarchy = {
+            "enabled": False,
+            "parents": [],
+            "parents_path": "",
+        }
+        self.shot_add_tasks = []
+        self.log = logger
 
-    def __init__(
+    def update_data(
         self,
         clip_name_tokenizer,
         shot_rename,
         shot_hierarchy,
-        shot_add_tasks,
-        logger
+        shot_add_tasks
     ):
         self.clip_name_tokenizer = clip_name_tokenizer
         self.shot_rename = shot_rename
         self.shot_hierarchy = shot_hierarchy
         self.shot_add_tasks = shot_add_tasks
-        self.log = logger
 
     def _rename_template(self, data):
         """Shot renaming function
@@ -86,7 +92,9 @@ class ShotMetadataSolver:
 
         search_text = parent_name + clip_name
 
-        for token_key, pattern in self.clip_name_tokenizer.items():
+        for clip_name_item in self.clip_name_tokenizer:
+            token_key = clip_name_item["name"]
+            pattern = clip_name_item["regex"]
             p = re.compile(pattern)
             match = p.findall(search_text)
             if not match:
@@ -137,11 +145,11 @@ class ShotMetadataSolver:
             ))
 
         _parent_tokens_type = {
-            parent_token["name"]: parent_token["type"]
+            parent_token["name"]: parent_token["parent_type"]
             for parent_token in hierarchy_parents
         }
         for _index, _parent in enumerate(
-                shot_hierarchy["parents_path"].split("/")
+            shot_hierarchy["parents_path"].split("/")
         ):
             # format parent token with value which is formatted
             try:
@@ -262,22 +270,22 @@ class ShotMetadataSolver:
         """
         tasks_to_add = {}
 
-        project_tasks = project_doc["config"]["tasks"]
-        for task_name, task_data in self.shot_add_tasks.items():
-            _task_data = deepcopy(task_data)
+        project_task_types = project_doc["config"]["tasks"]
+        for task_item in self.shot_add_tasks:
+            task_name = task_item["name"]
+            task_type = task_item["task_type"]
 
             # check if task type in project task types
-            if _task_data["type"] in project_tasks.keys():
-                tasks_to_add[task_name] = _task_data
-            else:
+            if task_type not in project_task_types.keys():
                 raise KeyError(
                     "Missing task type `{}` for `{}` is not"
                     " existing in `{}``".format(
-                        _task_data["type"],
+                        task_type,
                         task_name,
-                        list(project_tasks.keys())
+                        list(project_task_types.keys())
                     )
                 )
+            tasks_to_add[task_name] = {"type": task_type}
 
         return tasks_to_add
 

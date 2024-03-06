@@ -10,11 +10,10 @@ from ayon_core.lib import (
     BoolDef,
     NumberDef,
     TextDef,
+    is_in_tests,
 )
-from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_core.pipeline.farm.tools import iter_expected_files
-from ayon_core.tests.lib import is_in_tests
 
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
@@ -103,15 +102,19 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "IS_TEST"
         ]
 
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **legacy_io.Session)
+        environment = {
+            key: os.environ[key]
+            for key in keys
+            if key in os.environ
+        }
 
         for key in keys:
             value = environment.get(key)

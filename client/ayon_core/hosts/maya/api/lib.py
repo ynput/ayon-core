@@ -24,7 +24,8 @@ from ayon_core.client import (
     get_asset_by_name,
     get_subsets,
     get_last_versions,
-    get_representation_by_name
+    get_representation_by_name,
+    get_asset_name_identifier,
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
@@ -35,7 +36,11 @@ from ayon_core.pipeline import (
     loaders_from_representation,
     get_representation_path,
     load_container,
-    registered_host
+    registered_host,
+    AVALON_CONTAINER_ID,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline.context_tools import get_current_project_asset
@@ -329,7 +334,7 @@ def generate_capture_preset(instance, camera, path,
 
     # Update preset with current panel setting
     # if override_viewport_options is turned off
-    if not capture_preset["Viewport Options"]["override_viewport_options"]:
+    if not capture_preset["ViewportOptions"]["override_viewport_options"]:
         panel_preset = capture.parse_view(preset["panel"])
         panel_preset.pop("camera")
         preset.update(panel_preset)
@@ -1863,14 +1868,14 @@ def get_container_members(container):
 
 # region LOOKDEV
 def list_looks(project_name, asset_id):
-    """Return all look subsets for the given asset
+    """Return all look products for the given asset
 
-    This assumes all look subsets start with "look*" in their names.
+    This assumes all look products start with "look*" in their names.
     """
-    # # get all subsets with look leading in
+    # # get all products with look leading in
     # the name associated with the asset
-    # TODO this should probably look for family 'look' instead of checking
-    #   subset name that can not start with family
+    # TODO this should probably look for product type 'look' instead of
+    #   checking product name that can not start with product type
     subset_docs = get_subsets(project_name, asset_ids=[asset_id])
     return [
         subset_doc
@@ -1937,15 +1942,15 @@ def assign_look_by_version(nodes, version_id):
     apply_shaders(relationships, shader_nodes, nodes)
 
 
-def assign_look(nodes, subset="lookDefault"):
+def assign_look(nodes, product_name="lookDefault"):
     """Assigns a look to a node.
 
     Optimizes the nodes by grouping by asset id and finding
-    related subset by name.
+    related product by name.
 
     Args:
         nodes (list): all nodes to assign the look to
-        subset (str): name of the subset to find
+        product_name (str): name of the product to find
     """
 
     # Group all nodes per asset id
@@ -1960,22 +1965,22 @@ def assign_look(nodes, subset="lookDefault"):
 
     project_name = get_current_project_name()
     subset_docs = get_subsets(
-        project_name, subset_names=[subset], asset_ids=grouped.keys()
+        project_name, subset_names=[product_name], asset_ids=grouped.keys()
     )
     subset_docs_by_asset_id = {
         str(subset_doc["parent"]): subset_doc
         for subset_doc in subset_docs
     }
-    subset_ids = {
+    product_ids = {
         subset_doc["_id"]
         for subset_doc in subset_docs_by_asset_id.values()
     }
     last_version_docs = get_last_versions(
         project_name,
-        subset_ids=subset_ids,
+        subset_ids=product_ids,
         fields=["_id", "name", "data.families"]
     )
-    last_version_docs_by_subset_id = {
+    last_version_docs_by_product_id = {
         last_version_doc["parent"]: last_version_doc
         for last_version_doc in last_version_docs
     }
@@ -1984,26 +1989,28 @@ def assign_look(nodes, subset="lookDefault"):
         # create objectId for database
         subset_doc = subset_docs_by_asset_id.get(asset_id)
         if not subset_doc:
-            log.warning("No subset '{}' found for {}".format(subset, asset_id))
+            log.warning((
+                "No product '{}' found for {}"
+            ).format(product_name, asset_id))
             continue
 
-        last_version = last_version_docs_by_subset_id.get(subset_doc["_id"])
+        last_version = last_version_docs_by_product_id.get(subset_doc["_id"])
         if not last_version:
             log.warning((
-                "Not found last version for subset '{}' on asset with id {}"
-            ).format(subset, asset_id))
+                "Not found last version for product '{}' on asset with id {}"
+            ).format(product_name, asset_id))
             continue
 
         families = last_version.get("data", {}).get("families") or []
         if "look" not in families:
             log.warning((
-                "Last version for subset '{}' on asset with id {}"
-                " does not have look family"
-            ).format(subset, asset_id))
+                "Last version for product '{}' on asset with id {}"
+                " does not have look product type"
+            ).format(product_name, asset_id))
             continue
 
         log.debug("Assigning look '{}' <v{:03d}>".format(
-            subset, last_version["name"]))
+            product_name, last_version["name"]))
 
         assign_look_by_version(asset_nodes, last_version["_id"])
 
@@ -2100,7 +2107,7 @@ def get_related_sets(node):
     """Return objectSets that are relationships for a look for `node`.
 
     Filters out based on:
-    - id attribute is NOT `pyblish.avalon.container`
+    - id attribute is NOT `AVALON_CONTAINER_ID`
     - shapes and deformer shapes (alembic creates meshShapeDeformed)
     - set name ends with any from a predefined list
     - set in not in viewport set (isolate selected for example)
@@ -2120,7 +2127,12 @@ def get_related_sets(node):
     defaults = {"defaultLightSet", "defaultObjectSet"}
 
     # Ids to ignore
-    ignored = {"pyblish.avalon.instance", "pyblish.avalon.container"}
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
 
     view_sets = get_isolate_view_sets()
 
@@ -2937,14 +2949,15 @@ def load_capture_preset(data):
     options.update(data["Generic"])
     options.update(data["Resolution"])
 
-    camera_options.update(data['Camera Options'])
+    camera_options.update(data["CameraOptions"])
     viewport_options.update(data["Renderer"])
 
     # DISPLAY OPTIONS
     disp_options = {}
-    for key, value in data['Display Options'].items():
-        if key.startswith('background'):
+    for key, value in data["DisplayOptions"].items():
+        if key.startswith("background"):
             # Convert background, backgroundTop, backgroundBottom colors
+
             if len(value) == 4:
                 # Ignore alpha + convert RGB to float
                 value = [
@@ -2956,7 +2969,7 @@ def load_capture_preset(data):
         elif key == "displayGradient":
             disp_options[key] = value
 
-    options['display_options'] = disp_options
+    options["display_options"] = disp_options
 
     # Viewport Options has a mixture of Viewport2 Options and Viewport Options
     # to pass along to capture. So we'll need to differentiate between the two
@@ -2981,7 +2994,7 @@ def load_capture_preset(data):
         "motionBlurShutterOpenFraction",
         "lineAAEnable"
     }
-    for key, value in data['Viewport Options'].items():
+    for key, value in data["ViewportOptions"].items():
 
         # There are some keys we want to ignore
         if key in {"override_viewport_options", "high_quality"}:
@@ -3140,136 +3153,29 @@ def fix_incompatible_containers():
                          "ReferenceLoader", type="string")
 
 
-def _null(*args):
-    pass
-
-
-class shelf():
-    '''A simple class to build shelves in maya. Since the build method is empty,
-    it should be extended by the derived class to build the necessary shelf
-    elements. By default it creates an empty shelf called "customShelf".'''
-
-    ###########################################################################
-    '''This is an example shelf.'''
-    # class customShelf(_shelf):
-    #     def build(self):
-    #         self.addButon(label="button1")
-    #         self.addButon("button2")
-    #         self.addButon("popup")
-    #         p = cmds.popupMenu(b=1)
-    #         self.addMenuItem(p, "popupMenuItem1")
-    #         self.addMenuItem(p, "popupMenuItem2")
-    #         sub = self.addSubMenu(p, "subMenuLevel1")
-    #         self.addMenuItem(sub, "subMenuLevel1Item1")
-    #         sub2 = self.addSubMenu(sub, "subMenuLevel2")
-    #         self.addMenuItem(sub2, "subMenuLevel2Item1")
-    #         self.addMenuItem(sub2, "subMenuLevel2Item2")
-    #         self.addMenuItem(sub, "subMenuLevel1Item2")
-    #         self.addMenuItem(p, "popupMenuItem3")
-    #         self.addButon("button3")
-    # customShelf()
-    ###########################################################################
-
-    def __init__(self, name="customShelf", iconPath="", preset={}):
-        self.name = name
-
-        self.iconPath = iconPath
-
-        self.labelBackground = (0, 0, 0, 0)
-        self.labelColour = (.9, .9, .9)
-
-        self.preset = preset
-
-        self._cleanOldShelf()
-        cmds.setParent(self.name)
-        self.build()
-
-    def build(self):
-        '''This method should be overwritten in derived classes to actually
-        build the shelf elements. Otherwise, nothing is added to the shelf.'''
-        for item in self.preset['items']:
-            if not item.get('command'):
-                item['command'] = self._null
-            if item['type'] == 'button':
-                self.addButon(item['name'],
-                              command=item['command'],
-                              icon=item['icon'])
-            if item['type'] == 'menuItem':
-                self.addMenuItem(item['parent'],
-                                 item['name'],
-                                 command=item['command'],
-                                 icon=item['icon'])
-            if item['type'] == 'subMenu':
-                self.addMenuItem(item['parent'],
-                                 item['name'],
-                                 command=item['command'],
-                                 icon=item['icon'])
-
-    def addButon(self, label, icon="commandButton.png",
-                 command=_null, doubleCommand=_null):
-        '''
-            Adds a shelf button with the specified label, command,
-            double click command and image.
-        '''
-        cmds.setParent(self.name)
-        if icon:
-            icon = os.path.join(self.iconPath, icon)
-            print(icon)
-        cmds.shelfButton(width=37, height=37, image=icon, label=label,
-                         command=command, dcc=doubleCommand,
-                         imageOverlayLabel=label, olb=self.labelBackground,
-                         olc=self.labelColour)
-
-    def addMenuItem(self, parent, label, command=_null, icon=""):
-        '''
-            Adds a shelf button with the specified label, command,
-            double click command and image.
-        '''
-        if icon:
-            icon = os.path.join(self.iconPath, icon)
-            print(icon)
-        return cmds.menuItem(p=parent, label=label, c=command, i="")
-
-    def addSubMenu(self, parent, label, icon=None):
-        '''
-            Adds a sub menu item with the specified label and icon to
-            the specified parent popup menu.
-        '''
-        if icon:
-            icon = os.path.join(self.iconPath, icon)
-            print(icon)
-        return cmds.menuItem(p=parent, label=label, i=icon, subMenu=1)
-
-    def _cleanOldShelf(self):
-        '''
-            Checks if the shelf exists and empties it if it does
-            or creates it if it does not.
-        '''
-        if cmds.shelfLayout(self.name, ex=1):
-            if cmds.shelfLayout(self.name, q=1, ca=1):
-                for each in cmds.shelfLayout(self.name, q=1, ca=1):
-                    cmds.deleteUI(each)
-        else:
-            cmds.shelfLayout(self.name, p="ShelfLayout")
-
-
 def update_content_on_context_change():
     """
-    This will update scene content to match new asset on context change
+    This will update scene content to match new folder on context change
     """
     scene_sets = cmds.listSets(allSets=True)
     asset_doc = get_current_project_asset()
-    new_asset = asset_doc["name"]
+    new_folder_path = get_asset_name_identifier(asset_doc)
     new_data = asset_doc["data"]
     for s in scene_sets:
         try:
-            if cmds.getAttr("{}.id".format(s)) == "pyblish.avalon.instance":
+            if cmds.getAttr("{}.id".format(s)) in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 attr = cmds.listAttr(s)
                 print(s)
-                if "asset" in attr:
-                    print("  - setting asset to: [ {} ]".format(new_asset))
-                    cmds.setAttr("{}.asset".format(s),
-                                 new_asset, type="string")
+                if "folderPath" in attr:
+                    print(
+                        "  - setting folder to: [ {} ]".format(new_folder_path)
+                    )
+                    cmds.setAttr(
+                        "{}.folderPath".format(s),
+                        new_folder_path, type="string"
+                    )
                 if "frameStart" in attr:
                     cmds.setAttr("{}.frameStart".format(s),
                                  new_data["frameStart"])
@@ -4051,7 +3957,9 @@ def get_all_children(nodes):
     return list(traversed)
 
 
-def get_capture_preset(task_name, task_type, subset, project_settings, log):
+def get_capture_preset(
+    task_name, task_type, product_name, project_settings, log
+):
     """Get capture preset for playblasting.
 
     Logic for transitioning from old style capture preset to new capture preset
@@ -4059,18 +3967,16 @@ def get_capture_preset(task_name, task_type, subset, project_settings, log):
 
     Args:
         task_name (str): Task name.
-        take_type (str): Task type.
-        subset (str): Subset name.
+        task_type (str): Task type.
+        product_name (str): Subset name.
         project_settings (dict): Project settings.
-        log (object): Logging object.
+        log (logging.Logger): Logging object.
     """
     capture_preset = None
     filtering_criteria = {
-        "hosts": "maya",
-        "families": "review",
         "task_names": task_name,
         "task_types": task_type,
-        "subset": subset
+        "product_names": product_name
     }
 
     plugin_settings = project_settings["maya"]["publish"]["ExtractPlayblast"]
@@ -4091,8 +3997,18 @@ def get_capture_preset(task_name, task_type, subset, project_settings, log):
             "Falling back to deprecated Extract Playblast capture preset "
             "because no new style playblast profiles are defined."
         )
-        capture_preset = plugin_settings["capture_preset"]
+        capture_preset = plugin_settings.get("capture_preset")
 
+    if capture_preset:
+        # Create deepcopy of preset as we'll change the values
+        capture_preset = copy.deepcopy(capture_preset)
+
+        viewport_options = capture_preset["ViewportOptions"]
+        # Change 'list' to 'dict' for 'capture.py'
+        viewport_options["pluginObjects"] = {
+            item["name"]: item["value"]
+            for item in viewport_options["pluginObjects"]
+        }
     return capture_preset or {}
 
 
@@ -4203,8 +4119,8 @@ def create_rig_animation_instance(
     )
     assert roots, "No root nodes in rig, this is a bug."
 
-    custom_subset = options.get("animationSubsetName")
-    if custom_subset:
+    custom_product_name = options.get("animationProductName")
+    if custom_product_name:
         formatting_data = {
             "asset": context["asset"],
             "subset": context['subset']['name'],
@@ -4214,13 +4130,11 @@ def create_rig_animation_instance(
             )
         }
         namespace = get_custom_namespace(
-            custom_subset.format(
-                **formatting_data
-            )
+            custom_product_name.format(**formatting_data)
         )
 
     if log:
-        log.info("Creating subset: {}".format(namespace))
+        log.info("Creating product: {}".format(namespace))
 
     # Fill creator identifier
     creator_identifier = "io.openpype.creators.maya.animation"

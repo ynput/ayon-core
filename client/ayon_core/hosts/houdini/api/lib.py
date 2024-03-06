@@ -6,6 +6,7 @@ import re
 import uuid
 import logging
 import json
+from contextlib import contextmanager
 
 import six
 
@@ -834,7 +835,7 @@ def get_current_context_template_data_with_asset_data():
 
     context = get_current_context()
     project_name = context["project_name"]
-    asset_name = context["asset_name"]
+    asset_name = context["folder_path"]
     task_name = context["task_name"]
     host_name = get_current_host_name()
 

@@ -9,7 +9,6 @@ from ayon_core.lib import (
     NumberDef,
 )
 from ayon_core.pipeline import (
-    legacy_io,
     AYONPyblishPluginMixin
 )
 from ayon_core.pipeline.publish.lib import (
@@ -49,7 +48,7 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
     group = None
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         settings = project_settings["deadline"]["publish"]["MaxSubmitDeadline"]  # noqa
 
         # Take some defaults from settings
@@ -107,15 +106,19 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "IS_TEST"
         ]
 
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **legacy_io.Session)
+        environment = {
+            key: os.environ[key]
+            for key in keys
+            if key in os.environ
+        }
 
         for key in keys:
             value = environment.get(key)

@@ -112,17 +112,17 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         loaded_hero_versions = []
         versions_by_parent_id = collections.defaultdict(list)
-        subset_ids = set()
+        product_ids = set()
         for version in loaded_versions:
             if version["type"] == "hero_version":
                 loaded_hero_versions.append(version)
             else:
                 parent_id = version["parent"]
                 versions_by_parent_id[parent_id].append(version)
-                subset_ids.add(parent_id)
+                product_ids.add(parent_id)
 
         all_versions = get_versions(
-            project_name, subset_ids=subset_ids, hero=True
+            project_name, subset_ids=product_ids, hero=True
         )
         hero_versions = []
         versions = []

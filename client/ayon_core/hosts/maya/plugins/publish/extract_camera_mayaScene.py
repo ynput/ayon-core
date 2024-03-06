@@ -93,8 +93,8 @@ class ExtractCameraMayaScene(publish.Extractor,
     The cameras gets baked to world space by default. Only when the instance's
     `bakeToWorldSpace` is set to False it will include its full hierarchy.
 
-    'camera' family expects only single camera, if multiple cameras are needed,
-    'matchmove' is better choice.
+    'camera' product type expects only single camera, if multiple cameras are
+    needed, 'matchmove' is better choice.
 
     Note:
         The extracted Maya ascii file gets "massaged" removing the uuid values
@@ -112,9 +112,11 @@ class ExtractCameraMayaScene(publish.Extractor,
     def process(self, instance):
         """Plugin entry point."""
         # get settings
-        ext_mapping = (
-            instance.context.data["project_settings"]["maya"]["ext_mapping"]
-        )
+        maya_settings = instance.context.data["project_settings"]["maya"]
+        ext_mapping = {
+            item["name"]: item["value"]
+            for item in maya_settings["ext_mapping"]
+        }
         if ext_mapping:
             self.log.debug("Looking in settings for scene type ...")
             # use extension mapping for first family found

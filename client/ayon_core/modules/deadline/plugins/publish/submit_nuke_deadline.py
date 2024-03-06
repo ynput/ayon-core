@@ -7,12 +7,11 @@ from datetime import datetime
 import requests
 import pyblish.api
 
-from ayon_core.pipeline import legacy_io
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
-from ayon_core.tests.lib import is_in_tests
 from ayon_core.lib import (
+    is_in_tests,
     BoolDef,
     NumberDef
 )
@@ -40,10 +39,10 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
     concurrent_tasks = 1
     group = ""
     department = ""
-    limit_groups = {}
+    limit_groups = []
     use_gpu = False
     env_allowed_keys = []
-    env_search_replace_values = {}
+    env_search_replace_values = []
     workfile_dependency = True
     use_published_workfile = True
 
@@ -184,11 +183,13 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
                     b_job_response.json()["_id"])
 
         # redefinition of families
-        if "render" in instance.data["family"]:
-            instance.data['family'] = 'write'
+        if "render" in instance.data["productType"]:
+            instance.data["family"] = "write"
+            instance.data["productType"] = "write"
             families.insert(0, "render2d")
-        elif "prerender" in instance.data["family"]:
-            instance.data['family'] = 'write'
+        elif "prerender" in instance.data["productType"]:
+            instance.data["family"] = "write"
+            instance.data["productType"] = "write"
             families.insert(0, "prerender")
         instance.data["families"] = families
 
@@ -197,7 +198,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         AbstractSubmitDeadline"""
         for instance in context:
             if (
-                instance.data["family"] != "workfile"
+                instance.data["productType"] != "workfile"
                 # Disabled instances won't be integrated
                 or instance.data("publish") is False
             ):
@@ -374,10 +375,10 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         keys = [
             "PYTHONPATH",
             "PATH",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_APP_NAME",
             "FTRACK_API_KEY",
             "FTRACK_API_USER",
             "FTRACK_SERVER",
@@ -393,8 +394,11 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         if self.env_allowed_keys:
             keys += self.env_allowed_keys
 
-        environment = dict({key: os.environ[key] for key in keys
-                            if key in os.environ}, **legacy_io.Session)
+        environment = {
+            key: os.environ[key]
+            for key in keys
+            if key in os.environ
+        }
 
         # to recognize render jobs
         environment["AYON_RENDER_JOB"] = "1"
@@ -402,8 +406,10 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         # finally search replace in values of any key
         if self.env_search_replace_values:
             for key, value in environment.items():
-                for _k, _v in self.env_search_replace_values.items():
-                    environment[key] = value.replace(_k, _v)
+                for item in self.env_search_replace_values:
+                    environment[key] = value.replace(
+                        item["name"], item["value"]
+                    )
 
         payload["JobInfo"].update({
             "EnvironmentKeyValue%d" % index: "{key}={value}".format(
@@ -539,8 +545,10 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         import nuke
 
         captured_groups = []
-        for lg_name, list_node_class in self.limit_groups.items():
-            for node_class in list_node_class:
+        for limit_group in self.limit_groups:
+            lg_name = limit_group["name"]
+
+            for node_class in limit_group["value"]:
                 for node in nuke.allNodes(recurseGroups=True):
                     # ignore all nodes not member of defined class
                     if node.Class() not in node_class:

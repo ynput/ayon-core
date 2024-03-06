@@ -14,7 +14,7 @@ import pyblish.api
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 from ayon_core.settings import (
     get_current_project_settings,
-    get_system_settings
+    get_project_settings,
 )
 
 from ayon_core.pipeline.template_data import get_template_data_with_names
@@ -240,33 +240,34 @@ class SubstanceHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def _install_shelves(self, project_settings):
 
-        shelves = project_settings["substancepainter"].get("shelves", {})
+        shelves = project_settings["substancepainter"].get("shelves", [])
         if not shelves:
             return
 
         # Prepare formatting data if we detect any path which might have
         # template tokens like {asset} in there.
         formatting_data = {}
-        has_formatting_entries = any("{" in path for path in shelves.values())
+        has_formatting_entries = any("{" in item["value"] for item in shelves)
         if has_formatting_entries:
             project_name = self.get_current_project_name()
             asset_name = self.get_current_asset_name()
             task_name = self.get_current_asset_name()
-            system_settings = get_system_settings()
-            formatting_data = get_template_data_with_names(project_name,
-                                                           asset_name,
-                                                           task_name,
-                                                           system_settings)
+            project_settings = get_project_settings(project_name)
+            formatting_data = get_template_data_with_names(
+                project_name, asset_name, task_name, project_settings
+            )
             anatomy = Anatomy(project_name)
             formatting_data["root"] = anatomy.roots
 
-        for name, path in shelves.items():
-            shelf_name = None
+        for shelve_item in shelves:
 
             # Allow formatting with anatomy for the paths
+            path = shelve_item["value"]
             if "{" in path:
                 path = StringTemplate.format_template(path, formatting_data)
 
+            name = shelve_item["name"]
+            shelf_name = None
             try:
                 shelf_name = lib.load_shelf(path, name=name)
             except ValueError as exc:

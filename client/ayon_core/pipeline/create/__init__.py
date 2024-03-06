@@ -1,6 +1,6 @@
 from .constants import (
-    SUBSET_NAME_ALLOWED_SYMBOLS,
-    DEFAULT_SUBSET_TEMPLATE,
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
+    DEFAULT_PRODUCT_TEMPLATE,
     PRE_CREATE_THUMBNAIL_KEY,
     DEFAULT_VARIANT_VALUE,
 )
@@ -10,10 +10,10 @@ from .utils import (
     get_next_versions_for_instances,
 )
 
-from .subset_name import (
+from .product_name import (
     TaskNotSetError,
-    get_subset_name_template,
-    get_subset_name,
+    get_product_name,
+    get_product_name_template,
 )
 
 from .creator_plugins import (
@@ -48,8 +48,8 @@ from .legacy_create import (
 
 
 __all__ = (
-    "SUBSET_NAME_ALLOWED_SYMBOLS",
-    "DEFAULT_SUBSET_TEMPLATE",
+    "PRODUCT_NAME_ALLOWED_SYMBOLS",
+    "DEFAULT_PRODUCT_TEMPLATE",
     "PRE_CREATE_THUMBNAIL_KEY",
     "DEFAULT_VARIANT_VALUE",
 
@@ -57,8 +57,8 @@ __all__ = (
     "get_next_versions_for_instances",
 
     "TaskNotSetError",
-    "get_subset_name_template",
-    "get_subset_name",
+    "get_product_name",
+    "get_product_name_template",
 
     "CreatorError",
 

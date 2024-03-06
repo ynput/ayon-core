@@ -49,7 +49,6 @@ class HostBase(object):
     Todo:
         - move content of 'install_host' as method of this class
             - register host object
-            - install legacy_io
             - install global plugin paths
         - store registered plugin paths to this object
         - handle current context (project, asset, task)
@@ -107,7 +106,7 @@ class HostBase(object):
             Union[str, None]: Current project name.
         """
 
-        return os.environ.get("AVALON_PROJECT")
+        return os.environ.get("AYON_PROJECT_NAME")
 
     def get_current_asset_name(self):
         """
@@ -115,7 +114,7 @@ class HostBase(object):
             Union[str, None]: Current asset name.
         """
 
-        return os.environ.get("AVALON_ASSET")
+        return os.environ.get("AYON_FOLDER_PATH")
 
     def get_current_task_name(self):
         """
@@ -123,7 +122,7 @@ class HostBase(object):
             Union[str, None]: Current task name.
         """
 
-        return os.environ.get("AVALON_TASK")
+        return os.environ.get("AYON_TASK_NAME")
 
     def get_current_context(self):
         """Get current context information.
@@ -133,16 +132,14 @@ class HostBase(object):
         can be opened multiple workfiles at one moment and change of context
         can't be caught properly.
 
-        Default implementation returns values from 'legacy_io.Session'.
-
         Returns:
             Dict[str, Union[str, None]]: Context with 3 keys 'project_name',
-                'asset_name' and 'task_name'. All of them can be 'None'.
+                'folder_path' and 'task_name'. All of them can be 'None'.
         """
 
         return {
             "project_name": self.get_current_project_name(),
-            "asset_name": self.get_current_asset_name(),
+            "folder_path": self.get_current_asset_name(),
             "task_name": self.get_current_task_name()
         }
 
@@ -164,7 +161,7 @@ class HostBase(object):
         # Use current context to fill the context title
         current_context = self.get_current_context()
         project_name = current_context["project_name"]
-        asset_name = current_context["asset_name"]
+        asset_name = current_context["folder_path"]
         task_name = current_context["task_name"]
         items = []
         if project_name:

@@ -5,6 +5,7 @@ from ayon_core.pipeline import (
     load,
     get_representation_path
 )
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class LoadVDBtoRedShift(load.LoaderPlugin):
@@ -31,9 +32,9 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
         from ayon_core.hosts.maya.api.lib import unique_namespace
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["representation"]["context"]["family"]
         except ValueError:
-            family = "vdbcache"
+            product_type = "vdbcache"
 
         # Check if the plugin for redshift is available on the pc
         try:
@@ -69,16 +70,11 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-
-        c = colors.get(family)
-        if c is not None:
+        color = get_load_color_for_product_type(product_type, settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
-            cmds.setAttr(root + ".outlinerColor",
-                (float(c[0])/255),
-                (float(c[1])/255),
-                (float(c[2])/255)
-            )
+            cmds.setAttr(root + ".outlinerColor", red, green, blue)
 
         # Create VR
         volume_node = cmds.createNode("RedshiftVolumeShape",
@@ -99,10 +95,11 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         from maya import cmds
 
-        path = get_representation_path(representation)
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
@@ -110,11 +107,11 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
         assert len(grid_nodes) == 1, "This is a bug"
 
         # Update the VRayVolumeGrid
-        self._set_path(grid_nodes[0], path=path, representation=representation)
+        self._set_path(grid_nodes[0], path=path, representation=repre_doc)
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
     def remove(self, container):
@@ -133,8 +130,8 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
         except RuntimeError:
             pass
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     @staticmethod
     def _set_path(grid_node,

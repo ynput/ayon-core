@@ -48,18 +48,18 @@ class BuildWorkfile:
         return self._log
 
     @staticmethod
-    def map_subsets_by_family(subsets):
-        subsets_by_family = collections.defaultdict(list)
-        for subset in subsets:
-            family = subset["data"].get("family")
-            if not family:
-                families = subset["data"].get("families")
+    def map_products_by_type(subset_docs):
+        products_by_type = collections.defaultdict(list)
+        for subset_doc in subset_docs:
+            product_type = subset_doc["data"].get("family")
+            if not product_type:
+                families = subset_doc["data"].get("families")
                 if not families:
                     continue
-                family = families[0]
+                product_type = families[0]
 
-            subsets_by_family[family].append(subset)
-        return subsets_by_family
+            products_by_type[product_type].append(subset_doc)
+        return products_by_type
 
     def process(self):
         """Main method of this wrapper.
@@ -80,17 +80,17 @@ class BuildWorkfile:
         stored in Workfile profiles from presets. Profiles are set by host,
         filtered by current task name and used by families.
 
-        Each family can specify representation names and loaders for
+        Each product type can specify representation names and loaders for
         representations and first available and successful loaded
         representation is returned as container.
 
         At the end you'll get list of loaded containers per each asset.
 
         loaded_containers [{
-            "asset_entity": <AssetEntity1>,
+            "asset_doc": <AssetEntity1>,
             "containers": [<Container1>, <Container2>, ...]
         }, {
-            "asset_entity": <AssetEntity2>,
+            "asset_doc": <AssetEntity2>,
             "containers": [<Container3>, ...]
         }, {
             ...
@@ -110,14 +110,14 @@ class BuildWorkfile:
 
         # Get current asset name and entity
         project_name = get_current_project_name()
-        current_asset_name = get_current_asset_name()
-        current_asset_entity = get_asset_by_name(
-            project_name, current_asset_name
+        current_folder_path = get_current_asset_name()
+        current_asset_doc = get_asset_by_name(
+            project_name, current_folder_path
         )
         # Skip if asset was not found
-        if not current_asset_entity:
-            print("Asset entity with name `{}` was not found".format(
-                current_asset_name
+        if not current_asset_doc:
+            print("Folder entity `{}` was not found".format(
+                current_folder_path
             ))
             return loaded_containers
 
@@ -143,7 +143,7 @@ class BuildWorkfile:
 
         # Load workfile presets for task
         self.build_presets = self.get_build_presets(
-            current_task_name, current_asset_entity
+            current_task_name, current_asset_doc
         )
 
         # Skip if there are any presets for task
@@ -155,9 +155,9 @@ class BuildWorkfile:
             )
             return loaded_containers
 
-        # Get presets for loading current asset
+        # Get presets for loading current folder
         current_context_profiles = self.build_presets.get("current_context")
-        # Get presets for loading linked assets
+        # Get presets for loading linked folders
         link_context_profiles = self.build_presets.get("linked_assets")
         # Skip if both are missing
         if not current_context_profiles and not link_context_profiles:
@@ -177,38 +177,38 @@ class BuildWorkfile:
         elif not link_context_profiles:
             self.log.warning((
                 "Current task `{}` doesn't have any"
-                "loading preset for it's linked assets."
+                "loading preset for it's linked folders."
             ).format(current_task_name))
 
         # Prepare assets to process by workfile presets
-        assets = []
-        current_asset_id = None
+        asset_docs = []
+        current_folder_id = None
         if current_context_profiles:
             # Add current asset entity if preset has current context set
-            assets.append(current_asset_entity)
-            current_asset_id = current_asset_entity["_id"]
+            asset_docs.append(current_asset_doc)
+            current_folder_id = current_asset_doc["_id"]
 
         if link_context_profiles:
             # Find and append linked assets if preset has set linked mapping
-            link_assets = get_linked_assets(project_name, current_asset_entity)
+            link_assets = get_linked_assets(project_name, current_asset_doc)
             if link_assets:
-                assets.extend(link_assets)
+                asset_docs.extend(link_assets)
 
         # Skip if there are no assets. This can happen if only linked mapping
         # is set and there are no links for his asset.
-        if not assets:
+        if not asset_docs:
             self.log.warning(
                 "Asset does not have linked assets. Nothing to process."
             )
             return loaded_containers
 
         # Prepare entities from database for assets
-        prepared_entities = self._collect_last_version_repres(assets)
+        prepared_entities = self._collect_last_version_repres(asset_docs)
 
         # Load containers by prepared entities and presets
         # - Current asset containers
-        if current_asset_id and current_asset_id in prepared_entities:
-            current_context_data = prepared_entities.pop(current_asset_id)
+        if current_folder_id and current_folder_id in prepared_entities:
+            current_context_data = prepared_entities.pop(current_folder_id)
             loaded_data = self.load_containers_by_asset_data(
                 current_context_data, current_context_profiles, loaders_by_name
             )
@@ -229,8 +229,8 @@ class BuildWorkfile:
     def get_build_presets(self, task_name, asset_doc):
         """ Returns presets to build workfile for task name.
 
-        Presets are loaded for current project set in
-        io.Session["AVALON_PROJECT"], filtered by registered host
+        Presets are loaded for current project received by
+        'get_current_project_name', filtered by registered host
         and entered task name.
 
         Args:
@@ -281,7 +281,7 @@ class BuildWorkfile:
         with valid values.
         - "loaders" expects list of strings representing possible loaders.
         - "families" expects list of strings for filtering
-                     by main subset family.
+                     by product type.
         - "repre_names" expects list of strings for filtering by
                         representation name.
 
@@ -321,7 +321,7 @@ class BuildWorkfile:
                 continue
 
             # Check families
-            profile_families = profile.get("families")
+            profile_families = profile.get("product_types")
             if not profile_families:
                 self.log.warning((
                     "Build profile is missing families configuration: {0}"
@@ -338,7 +338,7 @@ class BuildWorkfile:
                 continue
 
             # Prepare lowered families and representation names
-            profile["families_lowered"] = [
+            profile["product_types_lowered"] = [
                 fam.lower() for fam in profile_families
             ]
             profile["repre_names_lowered"] = [
@@ -349,37 +349,37 @@ class BuildWorkfile:
 
         return valid_profiles
 
-    def _prepare_profile_for_subsets(self, subsets, profiles):
-        """Select profile for each subset by it's data.
+    def _prepare_profile_for_products(self, subset_docs, profiles):
+        """Select profile for each product by it's data.
 
-        Profiles are filtered for each subset individually.
-        Profile is filtered by subset's family, optionally by name regex and
+        Profiles are filtered for each product individually.
+        Profile is filtered by product type, optionally by name regex and
         representation names set in profile.
-        It is possible to not find matching profile for subset, in that case
-        subset is skipped and it is possible that none of subsets have
+        It is possible to not find matching profile for product, in that case
+        product is skipped and it is possible that none of products have
         matching profile.
 
         Args:
-            subsets (List[Dict[str, Any]]): Subset documents.
+            subset_docs (List[Dict[str, Any]]): Subset documents.
             profiles (List[Dict[str, Any]]): Build profiles.
 
         Returns:
-            Dict[str, Any]: Profile by subset's id.
+            Dict[str, Any]: Profile by product id.
         """
 
-        # Prepare subsets
-        subsets_by_family = self.map_subsets_by_family(subsets)
+        # Prepare products
+        products_by_type = self.map_products_by_type(subset_docs)
 
-        profiles_per_subset_id = {}
-        for family, subsets in subsets_by_family.items():
-            family_low = family.lower()
+        profiles_by_product_id = {}
+        for product_type, subset_docs in products_by_type.items():
+            product_type_low = product_type.lower()
             for profile in profiles:
-                # Skip profile if does not contain family
-                if family_low not in profile["families_lowered"]:
+                # Skip profile if does not contain product type
+                if product_type_low not in profile["product_types_lowered"]:
                     continue
 
                 # Precompile name filters as regexes
-                profile_regexes = profile.get("subset_name_filters")
+                profile_regexes = profile.get("product_name_filters")
                 if profile_regexes:
                     _profile_regexes = []
                     for regex in profile_regexes:
@@ -387,31 +387,31 @@ class BuildWorkfile:
                     profile_regexes = _profile_regexes
 
                 # TODO prepare regex compilation
-                for subset in subsets:
+                for subset_doc in subset_docs:
                     # Verify regex filtering (optional)
                     if profile_regexes:
                         valid = False
                         for pattern in profile_regexes:
-                            if re.match(pattern, subset["name"]):
+                            if re.match(pattern, subset_doc["name"]):
                                 valid = True
                                 break
 
                         if not valid:
                             continue
 
-                    profiles_per_subset_id[subset["_id"]] = profile
+                    profiles_by_product_id[subset_doc["_id"]] = profile
 
                 # break profiles loop on finding the first matching profile
                 break
-        return profiles_per_subset_id
+        return profiles_by_product_id
 
     def load_containers_by_asset_data(
-        self, asset_entity_data, build_profiles, loaders_by_name
+        self, asset_doc_data, build_profiles, loaders_by_name
     ):
         """Load containers for entered asset entity by Build profiles.
 
         Args:
-            asset_entity_data (Dict[str, Any]): Prepared data with subsets,
+            asset_doc_data (Dict[str, Any]): Prepared data with products,
                 last versions and representations for specific asset.
             build_profiles (Dict[str, Any]): Build profiles.
             loaders_by_name (Dict[str, LoaderPlugin]): Available loaders
@@ -423,10 +423,10 @@ class BuildWorkfile:
         """
 
         # Make sure all data are not empty
-        if not asset_entity_data or not build_profiles or not loaders_by_name:
+        if not asset_doc_data or not build_profiles or not loaders_by_name:
             return
 
-        asset_entity = asset_entity_data["asset_entity"]
+        asset_doc = asset_doc_data["asset_doc"]
 
         valid_profiles = self._filter_build_profiles(
             build_profiles, loaders_by_name
@@ -439,53 +439,53 @@ class BuildWorkfile:
 
         self.log.debug("Valid Workfile profiles: {}".format(valid_profiles))
 
-        subsets_by_id = {}
-        version_by_subset_id = {}
+        products_by_id = {}
+        version_by_product_id = {}
         repres_by_version_id = {}
-        for subset_id, in_data in asset_entity_data["subsets"].items():
-            subset_entity = in_data["subset_entity"]
-            subsets_by_id[subset_entity["_id"]] = subset_entity
+        for product_id, in_data in asset_doc_data["subsets"].items():
+            subset_doc = in_data["subset_doc"]
+            products_by_id[subset_doc["_id"]] = subset_doc
 
             version_data = in_data["version"]
-            version_entity = version_data["version_entity"]
-            version_by_subset_id[subset_id] = version_entity
-            repres_by_version_id[version_entity["_id"]] = (
+            version_doc = version_data["version_doc"]
+            version_by_product_id[product_id] = version_doc
+            repres_by_version_id[version_doc["_id"]] = (
                 version_data["repres"]
             )
 
-        if not subsets_by_id:
-            self.log.warning("There are not subsets for asset {0}".format(
-                asset_entity["name"]
+        if not products_by_id:
+            self.log.warning("There are not products for folder {0}".format(
+                asset_doc["name"]
             ))
             return
 
-        profiles_per_subset_id = self._prepare_profile_for_subsets(
-            subsets_by_id.values(), valid_profiles
+        profiles_by_product_id = self._prepare_profile_for_products(
+            products_by_id.values(), valid_profiles
         )
-        if not profiles_per_subset_id:
-            self.log.warning("There are not valid subsets.")
+        if not profiles_by_product_id:
+            self.log.warning("There are not valid products.")
             return
 
-        valid_repres_by_subset_id = collections.defaultdict(list)
-        for subset_id, profile in profiles_per_subset_id.items():
+        valid_repres_by_product_id = collections.defaultdict(list)
+        for product_id, profile in profiles_by_product_id.items():
             profile_repre_names = profile["repre_names_lowered"]
 
-            version_entity = version_by_subset_id[subset_id]
-            version_id = version_entity["_id"]
+            version_doc = version_by_product_id[product_id]
+            version_id = version_doc["_id"]
             repres = repres_by_version_id[version_id]
             for repre in repres:
                 repre_name_low = repre["name"].lower()
                 if repre_name_low in profile_repre_names:
-                    valid_repres_by_subset_id[subset_id].append(repre)
+                    valid_repres_by_product_id[product_id].append(repre)
 
         # DEBUG message
-        msg = "Valid representations for Asset: `{}`".format(
-            asset_entity["name"]
+        msg = "Valid representations for Folder: `{}`".format(
+            asset_doc["name"]
         )
-        for subset_id, repres in valid_repres_by_subset_id.items():
-            subset = subsets_by_id[subset_id]
-            msg += "\n# Subset Name/ID: `{}`/{}".format(
-                subset["name"], subset_id
+        for product_id, repres in valid_repres_by_product_id.items():
+            subset_doc = products_by_id[product_id]
+            msg += "\n# Product Name/ID: `{}`/{}".format(
+                subset_doc["name"], product_id
             )
             for repre in repres:
                 msg += "\n## Repre name: `{}`".format(repre["name"])
@@ -493,37 +493,37 @@ class BuildWorkfile:
         self.log.debug(msg)
 
         containers = self._load_containers(
-            valid_repres_by_subset_id, subsets_by_id,
-            profiles_per_subset_id, loaders_by_name
+            valid_repres_by_product_id, products_by_id,
+            profiles_by_product_id, loaders_by_name
         )
 
         return {
-            "asset_entity": asset_entity,
+            "asset_doc": asset_doc,
             "containers": containers
         }
 
     def _load_containers(
-        self, repres_by_subset_id, subsets_by_id,
-        profiles_per_subset_id, loaders_by_name
+        self, repres_by_product_id, products_by_id,
+        profiles_by_product_id, loaders_by_name
     ):
         """Real load by collected data happens here.
 
-        Loading of representations per subset happens here. Each subset can
+        Loading of representations per product happens here. Each product can
         loads one representation. Loading is tried in specific order.
         Representations are tried to load by names defined in configuration.
-        If subset has representation matching representation name each loader
+        If product has representation matching representation name each loader
         is tried to load it until any is successful. If none of them was
         successful then next representation name is tried.
         Subset process loop ends when any representation is loaded or
         all matching representations were already tried.
 
         Args:
-            repres_by_subset_id (Dict[str, Dict[str, Any]]): Available
-                representations mapped by their parent (subset) id.
-            subsets_by_id (Dict[str, Dict[str, Any]]): Subset documents
+            repres_by_product_id (Dict[str, Dict[str, Any]]): Available
+                representations mapped by their parent (product) id.
+            products_by_id (Dict[str, Dict[str, Any]]): Subset documents
                 mapped by their id.
-            profiles_per_subset_id (Dict[str, Dict[str, Any]]): Build profiles
-                mapped by subset id.
+            profiles_by_product_id (Dict[str, Dict[str, Any]]): Build profiles
+                mapped by product id.
             loaders_by_name (Dict[str, LoaderPlugin]): Available loaders
                 per name.
 
@@ -533,38 +533,40 @@ class BuildWorkfile:
 
         loaded_containers = []
 
-        # Get subset id order from build presets.
+        # Get product id order from build presets.
         build_presets = self.build_presets.get("current_context", [])
         build_presets += self.build_presets.get("linked_assets", [])
-        subset_ids_ordered = []
+        product_ids_ordered = []
         for preset in build_presets:
-            for preset_family in preset["families"]:
-                for id, subset in subsets_by_id.items():
-                    if preset_family not in subset["data"].get("families", []):
+            for product_type in preset["product_types"]:
+                for product_id, subset_doc in products_by_id.items():
+                    # TODO 'families' is not available on product
+                    families = subset_doc["data"].get("families") or []
+                    if product_type not in families:
                         continue
 
-                    subset_ids_ordered.append(id)
+                    product_ids_ordered.append(product_id)
 
-        # Order representations from subsets.
-        print("repres_by_subset_id", repres_by_subset_id)
+        # Order representations from products.
+        print("repres_by_product_id", repres_by_product_id)
         representations_ordered = []
         representations = []
-        for id in subset_ids_ordered:
-            for subset_id, repres in repres_by_subset_id.items():
+        for ordered_product_id in product_ids_ordered:
+            for product_id, repres in repres_by_product_id.items():
                 if repres in representations:
                     continue
 
-                if id == subset_id:
-                    representations_ordered.append((subset_id, repres))
+                if ordered_product_id == product_id:
+                    representations_ordered.append((product_id, repres))
                     representations.append(repres)
 
         print("representations", representations)
 
         # Load ordered representations.
-        for subset_id, repres in representations_ordered:
-            subset_name = subsets_by_id[subset_id]["name"]
+        for product_id, repres in representations_ordered:
+            product_name = products_by_id[product_id]["name"]
 
-            profile = profiles_per_subset_id[subset_id]
+            profile = profiles_by_product_id[product_id]
             loaders_last_idx = len(profile["loaders"]) - 1
             repre_names_last_idx = len(profile["repre_names_lowered"]) - 1
 
@@ -595,7 +597,7 @@ class BuildWorkfile:
                         container = load_container(
                             loader,
                             repre["_id"],
-                            name=subset_name
+                            name=product_name
                         )
                         loaded_containers.append(container)
                         is_loaded = True
@@ -618,8 +620,8 @@ class BuildWorkfile:
                             msg += " Trying next loader."
                         elif repre_name_idx < repre_names_last_idx:
                             msg += (
-                                " Loading of subset `{}` was not successful."
-                            ).format(subset_name)
+                                " Loading of product `{}` was not successful."
+                            ).format(product_name)
                         else:
                             msg += " Trying next representation."
                         self.log.info(msg)
@@ -627,7 +629,7 @@ class BuildWorkfile:
         return loaded_containers
 
     def _collect_last_version_repres(self, asset_docs):
-        """Collect subsets, versions and representations for asset_entities.
+        """Collect products, versions and representations for asset_entities.
 
         Args:
             asset_docs (List[Dict[str, Any]]): Asset entities for which
@@ -640,12 +642,12 @@ class BuildWorkfile:
         ```
         {
             {Asset ID}: {
-                "asset_entity": <AssetEntity>,
+                "asset_doc": <AssetEntity>,
                 "subsets": {
                     {Subset ID}: {
-                        "subset_entity": <SubsetEntity>,
+                        "subset_doc": <SubsetEntity>,
                         "version": {
-                            "version_entity": <VersionEntity>,
+                            "version_doc": <VersionEntity>,
                             "repres": [
                                 <RepreEntity1>, <RepreEntity2>, ...
                             ]
@@ -656,7 +658,7 @@ class BuildWorkfile:
             },
             ...
         }
-        output[asset_id]["subsets"][subset_id]["version"]["repres"]
+        output[folder_id]["subsets"][product_id]["version"]["repres"]
         ```
         """
 
@@ -666,20 +668,26 @@ class BuildWorkfile:
         if not asset_docs:
             return output
 
-        asset_docs_by_ids = {asset["_id"]: asset for asset in asset_docs}
+        asset_docs_by_ids = {
+            asset_doc["_id"]: asset_doc
+            for asset_doc in asset_docs
+        }
 
         project_name = get_current_project_name()
-        subsets = list(get_subsets(
+        subset_docs = list(get_subsets(
             project_name, asset_ids=asset_docs_by_ids.keys()
         ))
-        subset_entity_by_ids = {subset["_id"]: subset for subset in subsets}
+        subset_docs_by_id = {
+            subset_doc["_id"]: subset_doc
+            for subset_doc in subset_docs
+        }
 
-        last_version_by_subset_id = get_last_versions(
-            project_name, subset_entity_by_ids.keys()
+        last_version_by_product_id = get_last_versions(
+            project_name, subset_docs_by_id.keys()
         )
         last_version_docs_by_id = {
             version["_id"]: version
-            for version in last_version_by_subset_id.values()
+            for version in last_version_by_product_id.values()
         }
         repre_docs = get_representations(
             project_name, version_ids=last_version_docs_by_id.keys()
@@ -689,28 +697,28 @@ class BuildWorkfile:
             version_id = repre_doc["parent"]
             version_doc = last_version_docs_by_id[version_id]
 
-            subset_id = version_doc["parent"]
-            subset_doc = subset_entity_by_ids[subset_id]
+            product_id = version_doc["parent"]
+            subset_doc = subset_docs_by_id[product_id]
 
-            asset_id = subset_doc["parent"]
-            asset_doc = asset_docs_by_ids[asset_id]
+            folder_id = subset_doc["parent"]
+            asset_doc = asset_docs_by_ids[folder_id]
 
-            if asset_id not in output:
-                output[asset_id] = {
-                    "asset_entity": asset_doc,
+            if folder_id not in output:
+                output[folder_id] = {
+                    "asset_doc": asset_doc,
                     "subsets": {}
                 }
 
-            if subset_id not in output[asset_id]["subsets"]:
-                output[asset_id]["subsets"][subset_id] = {
-                    "subset_entity": subset_doc,
+            if product_id not in output[folder_id]["subsets"]:
+                output[folder_id]["subsets"][product_id] = {
+                    "subset_doc": subset_doc,
                     "version": {
-                        "version_entity": version_doc,
+                        "version_doc": version_doc,
                         "repres": []
                     }
                 }
 
-            output[asset_id]["subsets"][subset_id]["version"]["repres"].append(
+            output[folder_id]["subsets"][product_id]["version"]["repres"].append(
                 repre_doc
             )
 

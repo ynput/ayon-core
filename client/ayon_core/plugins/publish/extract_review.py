@@ -74,7 +74,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
     alpha_exts = ["exr", "png", "dpx"]
 
     # Preset attributes
-    profiles = None
+    profiles = []
 
     def process(self, instance):
         self.log.debug(str(instance.data["representations"]))
@@ -103,38 +103,38 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
     def _get_outputs_for_instance(self, instance):
         host_name = instance.context.data["hostName"]
-        family = self.main_family_from_instance(instance)
+        product_type = instance.data["productType"]
 
         self.log.debug("Host: \"{}\"".format(host_name))
-        self.log.debug("Family: \"{}\"".format(family))
+        self.log.debug("Product type: \"{}\"".format(product_type))
 
         profile = filter_profiles(
             self.profiles,
             {
                 "hosts": host_name,
-                "families": family,
+                "product_types": product_type,
             },
             logger=self.log)
         if not profile:
             self.log.info((
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Family: \"{}\""
-            ).format(host_name, family))
+                " Host: \"{}\" | Product type: \"{}\""
+            ).format(host_name, product_type))
             return
 
         self.log.debug("Matching profile: \"{}\"".format(json.dumps(profile)))
 
-        subset_name = instance.data.get("subset")
+        product_name = instance.data.get("productName")
         instance_families = self.families_from_instance(instance)
         filtered_outputs = self.filter_output_defs(
-            profile, subset_name, instance_families
+            profile, product_name, instance_families
         )
         if not filtered_outputs:
             self.log.info((
                 "Skipped instance. All output definitions from selected"
                 " profile do not match instance families \"{}\" or"
-                " subset name \"{}\"."
-            ).format(str(instance_families), subset_name))
+                " product name \"{}\"."
+            ).format(str(instance_families), product_name))
 
         # Store `filename_suffix` to save arguments
         profile_outputs = []
@@ -719,12 +719,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
         lut_filters = self.lut_filters(new_repre, instance, ffmpeg_input_args)
         ffmpeg_video_filters.extend(lut_filters)
 
-        bg_alpha = 0
+        bg_alpha = 0.0
         bg_color = output_def.get("bg_color")
         if bg_color:
             bg_red, bg_green, bg_blue, bg_alpha = bg_color
 
-        if bg_alpha > 0:
+        if bg_alpha > 0.0:
             if not temp_data["input_allow_bg"]:
                 self.log.info((
                     "Output definition has defined BG color input was"
@@ -734,8 +734,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 bg_color_hex = "#{0:0>2X}{1:0>2X}{2:0>2X}".format(
                     bg_red, bg_green, bg_blue
                 )
-                bg_color_alpha = float(bg_alpha) / 255
-                bg_color_str = "{}@{}".format(bg_color_hex, bg_color_alpha)
+                bg_color_str = "{}@{}".format(bg_color_hex, bg_alpha)
 
                 self.log.info("Applying BG color {}".format(bg_color_str))
                 color_args = [
@@ -1079,7 +1078,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         fill_color_hex = "{0:0>2X}{1:0>2X}{2:0>2X}".format(
             f_red, f_green, f_blue
         )
-        fill_color_alpha = float(f_alpha) / 255
+        fill_color_alpha = f_alpha
 
         line_thickness = letter_box_def["line_thickness"]
         line_color = letter_box_def["line_color"]
@@ -1087,7 +1086,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         line_color_hex = "{0:0>2X}{1:0>2X}{2:0>2X}".format(
             l_red, l_green, l_blue
         )
-        line_color_alpha = float(l_alpha) / 255
+        line_color_alpha = l_alpha
 
         # test ratios and define if pillar or letter boxes
         output_ratio = float(output_width) / float(output_height)
@@ -1281,10 +1280,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "FFprobe couldn't read resolution from input file: \"{}\""
             ).format(full_input_path_single_file))
 
-        # NOTE Setting only one of `width` or `heigth` is not allowed
+        # NOTE Setting only one of `width` or `height` is not allowed
         # - settings value can't have None but has value of 0
-        output_width = output_def.get("width") or output_width or None
-        output_height = output_def.get("height") or output_height or None
+        output_width = output_def["width"] or output_width or None
+        output_height = output_def["height"] or output_height or None
+
         # Force to use input resolution if output resolution was not defined
         #   in settings. Resolution from instance is not used when
         #   'use_input_res' is set to 'True'.
@@ -1294,7 +1294,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
         overscan_color_value = "black"
         overscan_color = output_def.get("overscan_color")
         if overscan_color:
-            bg_red, bg_green, bg_blue, _ = overscan_color
+            if len(overscan_color) == 3:
+                bg_red, bg_green, bg_blue = overscan_color
+            else:
+                # Backwards compatibility
+                bg_red, bg_green, bg_blue, _  = overscan_color
+
             overscan_color_value = "#{0:0>2X}{1:0>2X}{2:0>2X}".format(
                 bg_red, bg_green, bg_blue
             )
@@ -1458,13 +1463,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         return filters
 
-    def main_family_from_instance(self, instance):
-        """Returns main family of entered instance."""
-        family = instance.data.get("family")
-        if not family:
-            family = instance.data["families"][0]
-        return family
-
     def families_from_instance(self, instance):
         """Returns all families of entered instance."""
         families = []
@@ -1492,7 +1490,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         return any(family.lower() in families_filter_lower
                    for family in families)
 
-    def filter_output_defs(self, profile, subset_name, families):
+    def filter_output_defs(self, profile, product_name, families):
         """Return outputs matching input instance families.
 
         Output definitions without families filter are marked as valid.
@@ -1500,17 +1498,19 @@ class ExtractReview(pyblish.api.InstancePlugin):
         Args:
             profile (dict): Profile from presets matching current context.
             families (list): All families of current instance.
-            subset_name (str): name of subset
+            product_name (str): Product name.
 
         Returns:
-            list: Containg all output definitions matching entered families.
+            dict[str, Any]: Containing all output definitions matching entered
+                families.
         """
-        outputs = profile.get("outputs") or {}
-        if not outputs:
-            return outputs
-
         filtered_outputs = {}
-        for filename_suffix, output_def in outputs.items():
+        outputs = profile.get("outputs")
+        if not outputs:
+            return filtered_outputs
+
+        for output_def in outputs:
+            filename_suffix = output_def["name"]
             output_filters = output_def.get("filter")
             # If no filter on output preset, skip filtering and add output
             # profile for farther processing
@@ -1523,17 +1523,17 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 continue
 
             # Subsets name filters
-            subset_filters = [
-                subset_filter
-                for subset_filter in output_filters.get("subsets", [])
+            product_name_filters = [
+                name_filter
+                for name_filter in output_filters.get("product_names", [])
                 # Skip empty strings
-                if subset_filter
+                if name_filter
             ]
-            if subset_name and subset_filters:
+            if product_name and product_name_filters:
                 match = False
-                for subset_filter in subset_filters:
-                    compiled = re.compile(subset_filter)
-                    if compiled.search(subset_name):
+                for product_name_filter in product_name_filters:
+                    compiled = re.compile(product_name_filter)
+                    if compiled.search(product_name):
                         match = True
                         break
 

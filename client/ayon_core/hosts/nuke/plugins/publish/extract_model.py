@@ -40,7 +40,7 @@ class ExtractModel(publish.Extractor):
         model_node = instance.data["transientData"]["node"]
 
         self.log.debug("Creating additional nodes for Extract Model")
-        subset = instance.data["subset"]
+        product_name = instance.data["productName"]
         staging_dir = self.staging_dir(instance)
 
         extension = next((k[1] for k in self.write_geo_knobs
@@ -51,7 +51,7 @@ class ExtractModel(publish.Extractor):
                 "Talk to your supervisor or pipeline admin")
 
         # create file name and path
-        filename = subset + ".{}".format(extension)
+        filename = product_name + ".{}".format(extension)
         file_path = os.path.join(staging_dir, filename).replace("\\", "/")
 
         with maintained_selection():

@@ -14,8 +14,7 @@ from .models import SiteSyncModel
 class SceneInventoryController:
     """This is a temporary controller for AYON.
 
-    Goal of this temporary controller is to provide a way to get current
-    context instead of using 'AvalonMongoDB' object (or 'legacy_io').
+    Goal of this controller is to provide a way to get current context.
 
     Also provides (hopefully) cleaner api for site sync.
     """
@@ -70,10 +69,10 @@ class SceneInventoryController:
 
         context = self.get_current_context()
         project_name = context["project_name"]
-        folder_name = context.get("asset_name")
+        folder_path = context.get("folder_path")
         folder_id = None
-        if folder_name:
-            folder = ayon_api.get_folder_by_path(project_name, folder_name)
+        if folder_path:
+            folder = ayon_api.get_folder_by_path(project_name, folder_path)
             if folder:
                 folder_id = folder["id"]
 

@@ -6,7 +6,7 @@ import speedcopy
 
 from ayon_core.client import get_project, get_asset_by_name
 from ayon_core.lib import Terminal
-from ayon_core.pipeline import legacy_io, Anatomy
+from ayon_core.pipeline import Anatomy
 
 
 t = Terminal()
@@ -16,11 +16,6 @@ texture_extensions = ['.tif', '.tiff', '.jpg', '.jpeg', '.tx', '.png', '.tga',
 
 
 class TextureCopy:
-
-    def __init__(self):
-        if not legacy_io.Session:
-            legacy_io.install()
-
     def _get_textures(self, path):
         textures = []
         for dir, subdir, files in os.walk(path):
@@ -36,14 +31,23 @@ class TextureCopy:
         if parents and len(parents) > 0:
             hierarchy = os.path.join(*parents)
 
+        product_name = "Main"
+        product_type = "texture"
         template_data = {
             "project": {
                 "name": project_name,
                 "code": project['data']['code']
             },
-            "asset": asset['name'],
-            "family": 'texture',
-            "subset": 'Main',
+            "asset": asset["name"],
+            "family": product_type,
+            "subset": product_name,
+            "folder": {
+                "name": asset["name"],
+            },
+            "product": {
+                "name": product_name,
+                "type": product_type,
+            },
             "hierarchy": hierarchy
         }
         anatomy = Anatomy(project_name)
@@ -137,8 +141,8 @@ class TextureCopy:
 def texture_copy(asset, project, path):
     t.echo("*** Running Texture tool ***")
     t.echo(">>> Initializing avalon session ...")
-    os.environ["AVALON_PROJECT"] = project
-    os.environ["AVALON_ASSET"] = asset
+    os.environ["AYON_PROJECT_NAME"] = project
+    os.environ["AYON_FOLDER_PATH"] = asset
     TextureCopy().process(asset, project, path)
 
 

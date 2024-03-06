@@ -69,7 +69,7 @@ class MayaUsdLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
         node = container['objectName']
@@ -78,16 +78,17 @@ class MayaUsdLoader(load.LoaderPlugin):
         members = cmds.sets(node, query=True) or []
         shapes = cmds.ls(members, type="mayaUsdProxyShape")
 
-        path = get_representation_path(representation)
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
         for shape in shapes:
             cmds.setAttr("{}.filePath".format(shape), path, type="string")
 
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     str(repre_doc["_id"]),
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         # type: (dict) -> None
