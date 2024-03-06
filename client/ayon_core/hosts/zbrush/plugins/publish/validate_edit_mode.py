@@ -3,9 +3,10 @@ import pyblish.api
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     ValidateContentsOrder,
-    PublishValidationError
+    PublishValidationError,
+    RepairContextAction
 )
-from ayon_core.hosts.zbrush.api.lib import is_in_edit_mode
+from ayon_core.hosts.zbrush.api.lib import is_in_edit_mode, execute_zscript
 
 
 class ValidateEditMode(pyblish.api.ContextPlugin,
@@ -19,6 +20,7 @@ class ValidateEditMode(pyblish.api.ContextPlugin,
     families = ["model"]
     hosts = ["zbrush"]
     optional = True
+    actions = [RepairContextAction]
 
     def process(self, context):
         edit_mode = is_in_edit_mode()
@@ -27,3 +29,8 @@ class ValidateEditMode(pyblish.api.ContextPlugin,
                 "Zbrush is not in edit mode, "
                 "please make sure it is in edit mode before extraction."
             )
+
+    @classmethod
+    def repair(cls, context):
+        # Enable Transform:Edit state
+        execute_zscript("[ISet, Transform:Edit, 1]")
