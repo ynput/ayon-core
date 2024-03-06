@@ -45,9 +45,9 @@ class LoadClipBatch(opfapi.ClipLoader):
         self.batch = options.get("batch") or flame.batch
 
         # load clip to timeline and get main variables
-        version = context['version']
-        version_data = version.get("data", {})
-        version_name = version.get("name", None)
+        version_entity = context["version"]
+        version_attributes =version_entity["attrib"]
+        version_name = version_entity["version"]
         colorspace = self.get_colorspace(context)
 
         clip_name_template = self.clip_name_template
@@ -129,7 +129,7 @@ class LoadClipBatch(opfapi.ClipLoader):
 
         # move all version data keys to tag data
         data_imprint = {
-            key: version_data.get(key, str(None))
+            key: version_attributes.get(key, str(None))
             for key in add_keys
         }
         # add variables related to version context

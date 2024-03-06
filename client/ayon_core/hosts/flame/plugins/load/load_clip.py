@@ -48,9 +48,9 @@ class LoadClip(opfapi.ClipLoader):
         self.fpd = fproject.current_workspace.desktop
 
         # load clip to timeline and get main variables
-        version = context['version']
-        version_data = version.get("data", {})
-        version_name = version.get("name", None)
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        version_name = version_entity["version"]
         colorspace = self.get_colorspace(context)
 
         # in case output is not in context replace key to representation
@@ -112,11 +112,10 @@ class LoadClip(opfapi.ClipLoader):
         ]
 
         # move all version data keys to tag data
-        data_imprint = {}
-        for key in add_keys:
-            data_imprint.update({
-                key: version_data.get(key, str(None))
-            })
+        data_imprint = {
+            key: version_attributes.get(key, str(None))
+            for key in add_keys
+        }
 
         # add variables related to version context
         data_imprint.update({
@@ -198,7 +197,7 @@ class LoadClip(opfapi.ClipLoader):
     #     })
     #     version_data = version.get("data", {})
     #     version_name = version.get("name", None)
-    #     colorspace = version_data.get("colorspace", None)
+    #     colorspace = version_data.get("colorSpace", None)
     #     object_name = "{}_{}".format(name, namespace)
     #     file = get_representation_path(repre_doc).replace("\\", "/")
     #     clip = track_item.source()

@@ -368,7 +368,7 @@ class ClipLoader:
             product_name,
             representation_name
         ])
-        self.data["versionData"] = self.context["version"]["data"]
+        self.data["versionAttributes"] = self.context["version"]["attrib"]
 
         self.data["timeline_basename"] = "timeline_{}_{}".format(
             product_name, representation_name)
@@ -415,13 +415,11 @@ class ClipLoader:
             # Load file without the handles of the source media
             # We remove the handles from the source in and source out
             # so that the handles are excluded in the timeline
-            handle_start = 0
-            handle_end = 0
 
             # get version data frame data from db
-            version_data = self.data["versionData"]
-            frame_start = version_data.get("frameStart")
-            frame_end = version_data.get("frameEnd")
+            version_attributes = self.data["versionAttributes"]
+            frame_start = version_attributes.get("frameStart")
+            frame_end = version_attributes.get("frameEnd")
 
             # The version data usually stored the frame range + handles of the
             # media however certain representations may be shorter because they
@@ -433,8 +431,8 @@ class ClipLoader:
             # from source and out
             if frame_start is not None and frame_end is not None:
                 # Version has frame range data, so we can compare media length
-                handle_start = version_data.get("handleStart", 0)
-                handle_end = version_data.get("handleEnd", 0)
+                handle_start = version_attributes.get("handleStart", 0)
+                handle_end = version_attributes.get("handleEnd", 0)
                 frame_start_handle = frame_start - handle_start
                 frame_end_handle = frame_start + handle_end
                 database_frame_duration = int(

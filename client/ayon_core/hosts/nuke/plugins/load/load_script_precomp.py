@@ -1,11 +1,7 @@
 import nuke
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
 from ayon_core.pipeline import (
-    get_current_project_name,
     load,
     get_representation_path,
 )
@@ -32,12 +28,12 @@ class LinkAsGroup(load.LoaderPlugin):
     def load(self, context, name, namespace, data):
         # for k, v in context.items():
         #     log.info("key: `{}`, value: {}\n".format(k, v))
-        version = context['version']
-        version_data = version.get("data", {})
+        version_entity = context["version"]
 
-        vname = version.get("name", None)
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
+        version_attributes = version_entity["attrib"]
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
+        colorspace = version_attributes.get("colorSpace")
 
         # Fallback to folder name when namespace is None
         if namespace is None:
@@ -46,20 +42,23 @@ class LinkAsGroup(load.LoaderPlugin):
         file = self.filepath_from_context(context).replace("\\", "/")
         self.log.info("file: {}\n".format(file))
 
-        self.log.info("versionData: {}\n".format(context["version"]["data"]))
-
-        # add additional metadata from the version to imprint to Avalon knob
-        add_keys = ["frameStart", "frameEnd", "handleStart", "handleEnd",
-                    "source", "author", "fps"]
-
         data_imprint = {
-                "startingFrame": first,
-                "frameStart": first,
-                "frameEnd": last,
-                "version": vname
+            "startingFrame": first,
+            "frameStart": first,
+            "frameEnd": last,
+            "version": version_entity["version"]
         }
-        for k in add_keys:
-            data_imprint.update({k: context["version"]['data'][k]})
+        # add additional metadata from the version to imprint to Avalon knob
+        for k in [
+            "frameStart",
+            "frameEnd",
+            "handleStart",
+            "handleEnd",
+            "source",
+            "author",
+            "fps"
+        ]:
+            data_imprint[k] = version_attributes[k]
 
         # group context is set to precomp, so back up one level.
         nuke.endGroup()
@@ -72,7 +71,6 @@ class LinkAsGroup(load.LoaderPlugin):
         )
 
         # Set colorspace defined in version data
-        colorspace = context["version"]["data"].get("colorspace", None)
         self.log.info("colorspace: {}\n".format(colorspace))
 
         P["name"].setValue("{}_{}".format(name, namespace))
@@ -118,27 +116,23 @@ class LinkAsGroup(load.LoaderPlugin):
         node = container["node"]
 
         project_name = context["project"]["name"]
-        version_doc = context["version"]
+        version_entity = context["version"]
         repre_doc = context["representation"]
 
         root = get_representation_path(repre_doc).replace("\\", "/")
 
         # Get start frame from version data
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version_doc["parent"], fields=["_id"]
-        )
 
-        updated_dict = {}
-        version_data = version_doc["data"]
-        updated_dict.update({
+        version_attributes = version_entity["attrib"]
+        updated_dict = {
             "representation": str(repre_doc["_id"]),
-            "frameEnd": version_data.get("frameEnd"),
-            "version": version_doc.get("name"),
-            "colorspace": version_data.get("colorspace"),
-            "source": version_data.get("source"),
-            "fps": version_data.get("fps"),
-            "author": version_data.get("author")
-        })
+            "frameEnd": version_attributes.get("frameEnd"),
+            "version": version_entity["version"],
+            "colorspace": version_attributes.get("colorSpace"),
+            "source": version_attributes.get("source"),
+            "fps": version_attributes.get("fps"),
+            "author": version_attributes.get("author")
+        }
 
         # Update the imprinted representation
         update_container(
@@ -148,14 +142,19 @@ class LinkAsGroup(load.LoaderPlugin):
 
         node["file"].setValue(root)
 
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
+        )
         # change color of node
-        if version_doc["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = "0xff0ff0ff"
         else:
             color_value = "0xd84f20ff"
         node["tile_color"].setValue(int(color_value, 16))
 
-        self.log.info("updated to version: {}".format(version_doc.get("name")))
+        self.log.info(
+            "updated to version: {}".format(version_entity["version"])
+        )
 
     def remove(self, container):
         node = container["node"]

@@ -1,16 +1,13 @@
 import os
 import json
 import secrets
+
 import nuke
 import six
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id
-)
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api import (
@@ -68,7 +65,11 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         # renaming group node
         group_node["name"].setValue(node_name)
 
-        self._node_version_color(context["version"], group_node)
+        self._node_version_color(
+            context["project"]["name"],
+            context["version"],
+            group_node
+        )
 
         self.log.info(
             "Loaded lut setup: `{}`".format(group_node["name"].value()))
@@ -220,7 +221,6 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         return group_node
 
     def update(self, container, context):
-        version_doc = context["version"]
         repre_doc = context["representation"]
 
         group_node = container["node"]
@@ -235,7 +235,9 @@ class LoadOcioLookNodes(load.LoaderPlugin):
             group_node
         )
 
-        self._node_version_color(version_doc, group_node)
+        self._node_version_color(
+            context["project"]["name"], context["version"], group_node
+        )
 
         self.log.info("Updated lut setup: `{}`".format(
             group_node["name"].value()))
@@ -287,16 +289,15 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         with viewer_update_and_undo_stop():
             nuke.delete(node)
 
-    def _node_version_color(self, version, node):
+    def _node_version_color(self, project_name, version_entity, node):
         """ Coloring a node by correct color by actual version"""
 
-        project_name = get_current_project_name()
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version["parent"], fields=["_id"]
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
 
         # change color of node
-        if version["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = self.current_node_color
         else:
             color_value = self.old_node_color

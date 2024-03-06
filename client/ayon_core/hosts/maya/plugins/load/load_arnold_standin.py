@@ -49,10 +49,9 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         import mtoa.ui.arnoldmenu
 
-        version = context['version']
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        self.log.info("version_data: {}\n".format(version_data))
+        self.log.info("version_attributes: {}\n".format(version_attributes))
 
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
@@ -95,7 +94,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
 
-            fps = float(version["data"].get("fps")) or 25
+            fps = float(version_attributes.get("fps")) or 25
             cmds.setAttr(standin_shape + ".abcFPS", fps)
 
         nodes = [root, standin, standin_shape]

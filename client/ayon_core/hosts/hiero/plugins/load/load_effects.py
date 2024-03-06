@@ -2,13 +2,10 @@ import json
 from collections import OrderedDict
 import six
 
-from ayon_core.client import get_version_by_id
-
 from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     load,
     get_representation_path,
-    get_current_project_name
 )
 from ayon_core.hosts.hiero import api as phiero
 from ayon_core.lib import Logger
@@ -158,7 +155,7 @@ class LoadEffects(load.LoaderPlugin):
     def update(self, container, context):
         """ Updating previously loaded effects
         """
-        version_doc = context["version"]
+        version_entity = context["version"]
         repre_doc = context["representation"]
         active_track = container["_item"]
         file = get_representation_path(repre_doc).replace("\\", "/")
@@ -168,9 +165,9 @@ class LoadEffects(load.LoaderPlugin):
         namespace = container['namespace']
 
         # get timeline in out data
-        version_data = version_doc["data"]
-        clip_in = version_data["clipIn"]
-        clip_out = version_data["clipOut"]
+        version_attributes = version_entity["attrib"]
+        clip_in = version_attributes["clipIn"]
+        clip_out = version_attributes["clipOut"]
 
         object_name = "{}_{}".format(name, namespace)
 
