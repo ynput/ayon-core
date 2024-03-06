@@ -156,7 +156,7 @@ def export_tool(filepath: str):
     export_tool_zscript = ("""
 [IFreeze,
 [FileNameSetNext, "{filepath}"]
-[IKeyPress, 13, [IPress, Tool:Export]]]
+[IKeyPress, 13, [IPress, Tool:Export]]
 ]
 """).format(filepath=filepath)
 
