@@ -112,6 +112,29 @@ class LoadMedia(LoaderPlugin):
 
     bin_path = "Loader/{representation[context][hierarchy]}/{asset[name]}"
 
+    metadata = [
+        {
+            "name": "Comments",
+            "value": "{version[data][comment]}"
+        },
+        {
+            "name": "Shot",
+            "value": "{asset[name]}"
+        },
+        {
+            "name": "Take",
+            "value": "{subset[name]} v{version[name]:03d}"
+        },
+        {
+            "name": "Clip Name",
+            "value": (
+                "{asset[name]} {subset[name]} "
+                "v{version[name]:03d} ({representation[name]})"
+            )
+        }
+    ]
+
+
     def load(self, context, name, namespace, options):
 
         # For loading multiselection, we store timeline before first load
@@ -297,35 +320,10 @@ class LoadMedia(LoaderPlugin):
     def _set_metadata(self, media_pool_item, context: dict):
         """Set Media Pool Item Clip Properties"""
 
-        # Set the timecode for the loaded clip if Resolve doesn't parse it
-        # correctly from the input. An image sequence will have timecode
-        # parsed from its frame range, we will want to preserve that.
-        # TODO: Setting the Start TC breaks existing clips on update
-        #   See: https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=197327
-        #   Once that's resolved we should enable this
-        # start_tc = media_pool_item.GetClipProperty("Start TC")
-        # if start_tc == "00:00:00:00":
-        #     from openpype.pipeline.editorial import frames_to_timecode
-        #     # Assume no timecode was detected from the source media
-        #
-        #     fps = float(media_pool_item.GetClipProperty("FPS"))
-        #     handle_start = context["version"]["data"].get("handleStart", 0)
-        #     frame_start = context["version"]["data"].get("frameStart", 0)
-        #     frame_start_handle = frame_start - handle_start
-        #     timecode = frames_to_timecode(frame_start_handle, fps)
-        #
-        #     if timecode != start_tc:
-        #         media_pool_item.SetClipProperty("Start TC", timecode)
-
         # Set more clip metadata based on the loaded clip's context
-        metadata = {
-            "Clip Name": "{asset[name]} {subset[name]} "
-                         "v{version[name]:03d} ({representation[name]})",
-            "Shot": "{asset[name]}",
-            "Take": "{subset[name]} v{version[name]:03d}",
-            "Comments": "{version[data][comment]}"
-        }
-        for clip_property, value in metadata.items():
+        for meta_item in self.metadata:
+            clip_property = meta_item["name"]
+            value = meta_item["value"]
             media_pool_item.SetClipProperty(clip_property,
                                             value.format_map(context))
 
