@@ -1,8 +1,10 @@
 import collections
 
 from ayon_core.lib import Logger
-from ayon_core.client.entities import get_representations
-from ayon_core.client import get_linked_representation_id
+from ayon_core.client import (
+    get_representations,
+    get_linked_representation_id,
+)
 from ayon_core.addon import AddonsManager
 from ayon_core.tools.ayon_utils.models import NestedCacheItem
 from ayon_core.tools.loader.abstract import ActionItem

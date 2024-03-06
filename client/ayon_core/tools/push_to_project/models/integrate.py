@@ -1,7 +1,6 @@
 import os
 import re
 import copy
-import socket
 import itertools
 import datetime
 import sys
@@ -10,24 +9,15 @@ import uuid
 
 import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-    get_version_by_name,
-    get_representations,
-)
+from ayon_core.client import get_representations
 from ayon_core.client.operations import (
     OperationsSession,
-    new_version_doc,
     new_representation_doc,
-    prepare_version_update_data,
     prepare_representation_update_data,
 )
 from ayon_core.addon import AddonsManager
 from ayon_core.lib import (
     StringTemplate,
-    get_ayon_username,
-    get_formatted_current_time,
     source_hash,
 )
 
@@ -445,7 +435,7 @@ class ProjectPushItemProcess:
 
         self._src_folder_entity = None
         self._src_product_entity = None
-        self._src_version_doc = None
+        self._src_version_entity = None
         self._src_repre_items = None
 
         self._project_entity = None
@@ -453,7 +443,7 @@ class ProjectPushItemProcess:
         self._folder_entity = None
         self._task_info = None
         self._product_entity = None
-        self._version_doc = None
+        self._version_entity = None
 
         self._product_type = None
         self._product_name = None
@@ -570,16 +560,20 @@ class ProjectPushItemProcess:
 
         self._log_debug(f"Project '{src_project_name}' found")
 
-        version_doc = get_version_by_id(src_project_name, src_version_id)
-        if not version_doc:
+        version_entity = ayon_api.get_version_by_id(
+            src_project_name, src_version_id
+        )
+        if not version_entity:
             self._status.set_failed((
                 f"Source version with id \"{src_version_id}\""
                 f" was not found in project \"{src_project_name}\""
             ))
             raise PushToProjectError(self._status.fail_reason)
 
-        product_id = version_doc["parent"]
-        product_entity = ayon_api.get_product_by_id(src_project_name, product_id)
+        product_id = version_entity["productId"]
+        product_entity = ayon_api.get_product_by_id(
+            src_project_name, product_id
+        )
         if not product_entity:
             self._status.set_failed((
                 f"Could find product with id \"{product_id}\""
@@ -621,7 +615,7 @@ class ProjectPushItemProcess:
 
         self._src_folder_entity = folder_entity
         self._src_product_entity = product_entity
-        self._src_version_doc = version_doc
+        self._src_version_entity = version_entity
         self._src_repre_items = repre_items
 
     def _fill_destination_project(self):
@@ -882,27 +876,42 @@ class ProjectPushItemProcess:
 
         project_name = self._item.dst_project_name
         version = self._item.dst_version
-        src_version_doc = self._src_version_doc
+        src_version_entity = self._src_version_entity
         product_entity = self._product_entity
         product_id = product_entity["id"]
-        src_data = src_version_doc["data"]
         product_type = product_entity["productType"]
+        src_attrib = src_version_entity["attrib"]
 
-        version_data = {
-            "families": [product_type],
-            "fps": src_data.get("fps"),
-            "source": src_data.get("source"),
-            "machine": socket.gethostname(),
-            "comment": self._item.comment or "",
-            "author": get_ayon_username(),
-            "time": get_formatted_current_time(),
-        }
+        dst_attrib = {}
+        for key in {
+            "productType",
+            "productTypes",
+            "families",
+            "fps",
+            "pixelAspect",
+            "clipIn",
+            "clipOut",
+            "frameStart",
+            "frameEnd",
+            "handleStart",
+            "handleEnd",
+            "resolutionWidth",
+            "resolutionHeight",
+            "colorSpace",
+            "source",
+            "comment",
+            "description",
+            "intent",
+        }:
+            if key in src_attrib:
+                dst_attrib[key] = src_attrib[key]
+
         if version is None:
-            last_version_doc = get_last_version_by_subset_id(
+            last_version_entity = ayon_api.get_last_version_by_product_id(
                 project_name, product_id
             )
-            if last_version_doc:
-                version = int(last_version_doc["name"]) + 1
+            if last_version_entity:
+                version = int(last_version_entity["version"]) + 1
             else:
                 version = get_versioning_start(
                     project_name,
@@ -913,34 +922,50 @@ class ProjectPushItemProcess:
                     product_name=product_entity["name"]
                 )
 
-        existing_version_doc = get_version_by_name(
+        existing_version_entity = ayon_api.get_version_by_name(
             project_name, version, product_id
         )
         # Update existing version
-        if existing_version_doc:
-            version_doc = new_version_doc(
-                version, product_id, version_data, existing_version_doc["_id"]
+        if existing_version_entity:
+            ayon_api.patch(
+                "projects/{}/versions/{}".format(
+                    project_name, existing_version_entity["id"]
+                ),
+                **{"attrib": dst_attrib}
             )
-            update_data = prepare_version_update_data(
-                existing_version_doc, version_doc
+            version_entity = ayon_api.get_version_by_id(
+                project_name, existing_version_entity["id"]
             )
-            if update_data:
-                self._operations.update_entity(
-                    project_name,
-                    "version",
-                    existing_version_doc["_id"],
-                    update_data
-                )
-            self._version_doc = version_doc
+            # TODO use operations
+            # self._operations.update_entity(
+            #     project_name,
+            #     "version",
+            #     existing_version_entity["id"],
+            #     update_data
+            # )
+            self._version_entity = version_entity
 
             return
 
-        version_doc = new_version_doc(
-            version, product_id, version_data
+        response = ayon_api.post(
+            "projects/{}/versions/{}".format(
+                project_name, existing_version_entity["id"]
+            ),
+            **{
+                "version": version,
+                "productId": product_id,
+                "attrib": dst_attrib,
+            }
         )
-        self._operations.create_entity(project_name, "version", version_doc)
+        version_entity = ayon_api.get_version_by_id(
+            project_name, response.data["id"]
+        )
+        # TODO use operations
+        # self._operations.create_entity(
+        #     project_name, "version", version_entity
+        # )
 
-        self._version_doc = version_doc
+        self._version_entity = version_entity
 
     def _integrate_representations(self):
         try:
@@ -951,8 +976,8 @@ class ProjectPushItemProcess:
             raise
 
     def _real_integrate_representations(self):
-        version_doc = self._version_doc
-        version_id = version_doc["_id"]
+        version_entity = self._version_entity
+        version_id = version_entity["id"]
         existing_repres = get_representations(
             self._item.dst_project_name,
             version_ids=[version_id]
@@ -976,7 +1001,7 @@ class ProjectPushItemProcess:
                 "name": self._product_name,
                 "type": self._product_type,
             },
-            "version": version_doc["name"]
+            "version": version_entity["version"]
         })
 
         path_template = anatomy.templates[template_name]["path"].replace(

@@ -7,10 +7,7 @@ import uuid
 
 import ayon_api
 
-from ayon_core.client import (
-    get_versions,
-    get_representations,
-)
+from ayon_core.client import get_representations
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     ProductLoaderPlugin,
@@ -34,12 +31,12 @@ class LoaderActionsModel:
 
     This is probably only part of models that requires to use codebase from
     'ayon_core.client' because of backwards compatibility with loaders logic
-    which are expecting mongo documents.
+    which are expecting entities.
 
     TODOs:
         Deprecate 'qargparse' usage in loaders and implement conversion
             of 'ActionItem' to data (and 'from_data').
-        Use controller to get entities (documents) -> possible only when
+        Use controller to get entities -> possible only when
             loaders are able to handle AYON vs. OpenPype logic.
         Add missing site sync logic, and if possible remove it from loaders.
         Implement loader actions to replace load plugins.
@@ -367,39 +364,6 @@ class LoaderActionsModel:
 
         return action_item.order, action_item.label
 
-    def _get_version_docs(self, project_name, version_ids):
-        """Get version documents for given version ids.
-
-        This function also handles hero versions and copies data from
-        source version to it.
-
-        Todos:
-            Remove this function when this is completely rewritten to
-                use AYON calls.
-        """
-
-        version_docs = list(get_versions(
-            project_name, version_ids=version_ids, hero=True
-        ))
-        hero_versions_by_src_id = collections.defaultdict(list)
-        src_hero_version = set()
-        for version_doc in version_docs:
-            if version_doc["type"] != "hero":
-                continue
-            version_id = ""
-            src_hero_version.add(version_id)
-            hero_versions_by_src_id[version_id].append(version_doc)
-
-        src_versions = []
-        if src_hero_version:
-            src_versions = get_versions(project_name, version_ids=version_ids)
-        for src_version in src_versions:
-            src_version_id = src_version["_id"]
-            for hero_version in hero_versions_by_src_id[src_version_id]:
-                hero_version["data"] = copy.deepcopy(src_version["data"])
-
-        return version_docs
-
     def _contexts_for_versions(self, project_name, version_ids):
         """Get contexts for given version ids.
 
@@ -408,7 +372,7 @@ class LoaderActionsModel:
         given versions.
 
         This method is very similar to '_contexts_for_representations' but the
-        queries of documents are called in a different order.
+        queries of entities are called in a different order.
 
         Args:
             project_name (str): Project name.
@@ -425,16 +389,18 @@ class LoaderActionsModel:
         if not project_name and not version_ids:
             return version_context_by_id, repre_context_by_id
 
-        version_docs = self._get_version_docs(project_name, version_ids)
-        version_docs_by_id = {}
-        version_docs_by_product_id = collections.defaultdict(list)
-        for version_doc in version_docs:
-            version_id = version_doc["_id"]
-            product_id = version_doc["parent"]
-            version_docs_by_id[version_id] = version_doc
-            version_docs_by_product_id[product_id].append(version_doc)
+        version_entities = ayon_api.get_versions(
+            project_name, version_ids=version_ids
+        )
+        version_entities_by_id = {}
+        version_entities_by_product_id = collections.defaultdict(list)
+        for version_entity in version_entities:
+            version_id = version_entity["id"]
+            product_id = version_entity["productId"]
+            version_entities_by_id[version_id] = version_entity
+            version_entities_by_product_id[product_id].append(version_entity)
 
-        _product_ids = set(version_docs_by_product_id.keys())
+        _product_ids = set(version_entities_by_product_id.keys())
         _product_entities = ayon_api.get_products(
             project_name, product_ids=_product_ids
         )
@@ -448,9 +414,9 @@ class LoaderActionsModel:
 
         project_entity = ayon_api.get_project(project_name)
 
-        for version_doc in version_docs:
-            version_id = version_doc["_id"]
-            product_id = version_doc["parent"]
+        for version_entity in version_entities_by_id:
+            version_id = version_entity["id"]
+            product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
@@ -458,15 +424,15 @@ class LoaderActionsModel:
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
-                "version": version_doc,
+                "version": version_entity,
             }
 
         repre_docs = get_representations(
             project_name, version_ids=version_ids)
         for repre_doc in repre_docs:
             version_id = repre_doc["parent"]
-            version_doc = version_docs_by_id[version_id]
-            product_id = version_doc["parent"]
+            version_entity = version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
@@ -475,7 +441,7 @@ class LoaderActionsModel:
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
-                "version": version_doc,
+                "version": version_entity,
                 "representation": repre_doc,
             }
 
@@ -489,7 +455,7 @@ class LoaderActionsModel:
         given versions.
 
         This method is very similar to '_contexts_for_versions' but the
-        queries of documents are called in a different order.
+        queries of entities are called in a different order.
 
         Args:
             project_name (str): Project name.
@@ -509,12 +475,14 @@ class LoaderActionsModel:
             project_name, representation_ids=repre_ids
         ))
         version_ids = {r["parent"] for r in repre_docs}
-        version_docs = self._get_version_docs(project_name, version_ids)
-        version_docs_by_id = {
-            v["_id"]: v for v in version_docs
+        version_entities = ayon_api.get_versions(
+            project_name, version_ids=version_ids
+        )
+        version_entities_by_id = {
+            v["id"]: v for v in version_entities
         }
 
-        product_ids = {v["parent"] for v in version_docs_by_id.values()}
+        product_ids = {v["productId"] for v in version_entities_by_id.values()}
         product_entities = ayon_api.get_products(
             project_name, product_ids=product_ids
         )
@@ -543,8 +511,8 @@ class LoaderActionsModel:
 
         for repre_doc in repre_docs:
             version_id = repre_doc["parent"]
-            version_doc = version_docs_by_id[version_id]
-            product_id = version_doc["parent"]
+            version_entity = version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
@@ -553,7 +521,7 @@ class LoaderActionsModel:
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
-                "version": version_doc,
+                "version": version_entity,
                 "representation": repre_doc,
             }
         return product_context_by_id, repre_context_by_id
@@ -667,8 +635,10 @@ class LoaderActionsModel:
 
         project_entity = ayon_api.get_project(project_name)
 
-        version_docs = self._get_version_docs(project_name, version_ids)
-        product_ids = {v["parent"] for v in version_docs}
+        version_entities = list(ayon_api.get_versions(
+            project_name, version_ids=version_ids
+        ))
+        product_ids = {v["productId"] for v in version_entities}
         product_entities = ayon_api.get_products(
             project_name, product_ids=product_ids
         )
@@ -679,8 +649,8 @@ class LoaderActionsModel:
         )
         folder_entities_by_id = {f["id"]: f for f in folder_entities}
         product_contexts = []
-        for version_doc in version_docs:
-            product_id = version_doc["parent"]
+        for version_entity in version_entities:
+            product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
@@ -688,7 +658,7 @@ class LoaderActionsModel:
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
-                "version": version_doc,
+                "version": version_entity,
             })
 
         return self._load_products_by_loader(
@@ -706,7 +676,7 @@ class LoaderActionsModel:
 
         This triggers 'load' method of 'LoaderPlugin' for given representation
             ids. For that are prepared contexts for each representation, with
-            all parent documents.
+            all parent entities.
 
         Args:
             loader (LoaderPlugin): Loader plugin to use.
@@ -720,9 +690,13 @@ class LoaderActionsModel:
             project_name, representation_ids=representation_ids
         ))
         version_ids = {r["parent"] for r in repre_docs}
-        version_docs = self._get_version_docs(project_name, version_ids)
-        version_docs_by_id = {v["_id"]: v for v in version_docs}
-        product_ids = {v["parent"] for v in version_docs_by_id.values()}
+        version_entities = ayon_api.get_versions(
+            project_name, version_ids=version_ids
+        )
+        version_entities_by_id = {v["id"]: v for v in version_entities}
+        product_ids = {
+            v["productId"] for v in version_entities_by_id.values()
+        }
         product_entities = ayon_api.get_products(
             project_name, product_ids=product_ids
         )
@@ -735,8 +709,8 @@ class LoaderActionsModel:
         repre_contexts = []
         for repre_doc in repre_docs:
             version_id = repre_doc["parent"]
-            version_doc = version_docs_by_id[version_id]
-            product_id = version_doc["parent"]
+            version_entity = version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
@@ -744,7 +718,7 @@ class LoaderActionsModel:
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
-                "version": version_doc,
+                "version": version_entity,
                 "representation": repre_doc,
             })
 
@@ -758,18 +732,17 @@ class LoaderActionsModel:
         Args:
             loader (LoaderPlugin): Loader plugin to use.
             repre_contexts (list[dict]): Full info about selected
-                representations, containing repre, version, product, folder and
-                project documents.
+                representations, containing repre, version, product, folder
+                and project entities.
             options (dict): Data from options.
         """
 
         error_info = []
         for repre_context in repre_contexts:
-            version_doc = repre_context["version"]
-            if version_doc["type"] == "hero_version":
-                version_name = "Hero"
-            else:
-                version_name = version_doc.get("name")
+            version_entity = repre_context["version"]
+            version = version_entity["version"]
+            if version < 0:
+                version = "Hero"
             try:
                 load_with_repre_context(
                     loader,
@@ -784,7 +757,7 @@ class LoaderActionsModel:
                     None,
                     repre_context["representation"]["name"],
                     repre_context["product"]["name"],
-                    version_name
+                    version
                 ))
 
             except Exception as exc:
@@ -800,7 +773,7 @@ class LoaderActionsModel:
                     formatted_traceback,
                     repre_context["representation"]["name"],
                     repre_context["product"]["name"],
-                    version_name
+                    version
                 ))
         return error_info
 
