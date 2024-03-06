@@ -175,10 +175,10 @@ class FusionLoadSequence(load.LoaderPlugin):
                 loader=self.__class__.__name__,
             )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update the Loader's path
 
         Fusion automatically tries to reset some variables when changing
@@ -224,7 +224,8 @@ class FusionLoadSequence(load.LoaderPlugin):
         assert tool.ID == "Loader", "Must be Loader"
         comp = tool.Comp()
 
-        context = get_representation_context(representation)
+        repre_doc = context["representation"]
+        context = get_representation_context(repre_doc)
         path = self.filepath_from_context(context)
 
         # Get start frame from version data
@@ -255,7 +256,7 @@ class FusionLoadSequence(load.LoaderPlugin):
                 )
 
             # Update the imprinted representation
-            tool.SetData("avalon.representation", str(representation["_id"]))
+            tool.SetData("avalon.representation", str(repre_doc["_id"]))
 
     def remove(self, container):
         tool = container["_tool"]

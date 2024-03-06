@@ -26,15 +26,17 @@ class ImportPaletteLoader(load.LoaderPlugin):
             self.__class__.__name__
         )
 
-    def load_palette(self, representation):
-        product_name = representation["context"]["subset"]
+    def load_palette(self, context):
+        subset_doc = context["subset"]
+        repre_doc = context["representation"]
+        product_name = subset_doc["name"]
         name = product_name.replace("palette", "")
 
         # Overwrite palette on disk.
         scene_path = harmony.send(
             {"function": "scene.currentProjectPath"}
         )["result"]
-        src = get_representation_path(representation)
+        src = get_representation_path(repre_doc)
         dst = os.path.join(
             scene_path,
             "palette-library",
@@ -59,13 +61,14 @@ class ImportPaletteLoader(load.LoaderPlugin):
     def remove(self, container):
         harmony.remove(container["name"])
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         self.remove(container)
-        name = self.load_palette(representation)
+        name = self.load_palette(context)
 
-        container["representation"] = str(representation["_id"])
+        repre_doc = context["representation"]
+        container["representation"] = str(repre_doc["_id"])
         container["name"] = name
         harmony.imprint(name, container)

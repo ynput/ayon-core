@@ -231,12 +231,12 @@ class ReferenceLoader(plugin.ReferenceLoader):
                                  *options["translate"])
             return new_nodes
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         with preserve_modelpanel_cameras(container, log=self.log):
-            super(ReferenceLoader, self).update(container, representation)
+            super(ReferenceLoader, self).update(container, context)
 
         # We also want to lock camera transforms on any new cameras in the
         # reference or for a camera which might have changed names.
