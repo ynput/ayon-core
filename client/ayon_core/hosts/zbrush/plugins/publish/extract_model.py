@@ -1,7 +1,7 @@
 import os
 import pyblish.api
 from ayon_core.pipeline import publish
-from ayon_core.hosts.zbrush.api.lib import execute_publish_model
+from ayon_core.hosts.zbrush.api.lib import export_tool
 
 
 class ExtractModel(publish.Extractor):
@@ -19,12 +19,10 @@ class ExtractModel(publish.Extractor):
         filename = f"{instance.name}.obj"
         filepath = os.path.join(stagingdir, filename)
 
-
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
-        resolve_filepath = filepath.replace("\\", "/")
-        execute_publish_model(resolve_filepath)
+        export_tool(filepath)
         representation = {
             "name": "obj",
             "ext": "obj",

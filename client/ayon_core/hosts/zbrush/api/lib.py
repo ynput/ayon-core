@@ -1,4 +1,3 @@
-#zscript command etc.
 import os
 import uuid
 import time
@@ -17,10 +16,88 @@ from ayon_core.pipeline.template_data import get_template_data
 log = logging.getLogger("zbrush.lib")
 
 
+def get_tempfile_path() -> str:
+    """Return a path valid to write a tempfile to that does not exist yet.
+
+    This can be, for example, used as temporary path to allow a ZScript to
+    to store variable values into as a return value to Python.
+    """
+    identifier = uuid.uuid4()
+    temp_path = os.path.join(
+        tempfile.gettempdir(),
+        f"{tempfile.gettempprefix()}_{identifier}.txt"
+    )
+    assert not os.path.exists(temp_path)
+    return temp_path
+
+
 def execute_zscript(zscript, communicator=None):
+    """Execute ZScript.
+
+    Note that this will *not* wait around for the ZScript to run or for its
+    completion. Nor will errors in the script be detected or raised.
+
+    """
     if not communicator:
         communicator = CommunicationWrapper.communicator
+    print(f"Executing ZScript: {zscript}")
     return communicator.execute_zscript(zscript)
+
+
+def execute_zscript_and_wait(zscript,
+                             check_filepath=None,
+                             wait=0.1,
+                             timeout=20):
+    """Execute ZScript and wait until ZScript finished processing.
+
+    This actually waits until a particular file exists on disk. If your ZScript
+    is solely intended to write out to a file to return a variable value from
+    ZBrush then you can set `check_filepath` to that file you'll be writing to.
+    As soon as that file is found this function will assume the script has
+    finished. If no `check_filepath` is provided a few extra lines of ZScript
+    will be appended to your
+
+    Warning: If your script errors in Zbrush and thus does not continue to
+        write the file then this function will wait around until the timeout.
+
+    Raises:
+        RuntimeError: When timeout is reached.
+
+    Args:
+        zscript (str): The ZScript to run.
+        check_filepath (str): Wait until this filepath exists, otherwise
+            wait until the timeout is reached if never found.
+        wait (float): The amount of seconds to wait in-between each file
+            existence check.
+        timeout (float): The amount of seconds after which the script will be
+            assumed to have failed and raise an error.
+
+    """
+    # At the end of the zscript write
+    # temporary file to confirm the zscript
+    # has run to the end of the script
+    if check_filepath is None:
+        check_filepath = get_tempfile_path()
+        check_filepath = check_filepath.replace("\\", "/")
+        zscript += (f"""
+[MemCreate, AYON_TempFileCheck, 1, 0]
+[MemWriteString, AYON_TempFileCheck, "1", 0]
+[MemSaveToFile, AYON_TempFileCheck, "{check_filepath}", 0]
+[MemDelete, AYON_TempFileCheck]
+        """)
+
+    execute_zscript(zscript)
+
+    # Wait around until the zscript finished
+    time_taken = 0
+    while not os.path.exists(check_filepath):
+        time.sleep(wait)
+        time_taken += wait
+        if time_taken > timeout:
+            raise RuntimeError(
+                "Timeout. Zscript took longer than "
+                f"{timeout}s to run."
+            )
 
 
 def find_first_filled_path(path):
@@ -74,76 +151,48 @@ def get_workdir(project_name, asset_name, task_name):
             return valid_workdir
 
 
-def execute_zscript_and_wait(zscript, path, wait=0.1, timeout=20):
-    """Execute zscript and wait until zscript finished processing"""
-    execute_zscript(zscript)
-
-    # Wait around until the zscript finished
-    time_taken = 0
-    while not os.path.exists(path):
-        time.sleep(wait)
-        time_taken += wait
-        if time_taken > timeout:
-            raise RuntimeError(
-                f"Timeout. Zscript took longer than "
-                "{timeout}s to run."
-            )
-
-def execute_publish_model_with_dialog(filepath):
-    save_file_zscript = ("""
+def export_tool(filepath: str):
+    """Export active zbrush tool to filepath."""
+    filepath = filepath.replace("\\", "/")
+    export_tool_zscript = ("""
 [IFreeze,
-[VarSet, filepath, "{filepath}"]
-[FileNameSetNext, #filepath]
-[IKeyPress, 13, [IPress, Tool:Export]]]
-[Sleep, 2]
+[FileNameSetNext, "{filepath}"]
+[IKeyPress, 13, [IPress, Tool:Export]]
 ]
 """).format(filepath=filepath)
-    execute_zscript_and_wait(save_file_zscript, filepath)
 
-
-def execute_publish_model(filepath):
-    save_file_zscript = ("""
-[IFreeze,
-[VarSet, filepath, "{filepath}"]
-[FileNameSetNext, #filepath]
-[IKeyPress, 13, [IPress, Tool:Export]]]
-]
-""").format(filepath=filepath)
-    execute_zscript(save_file_zscript)
+    # We do not check for the export file's existence because Zbrush might
+    # write the file in chunks, as such the file might exist before the writing
+    # to it has finished
+    execute_zscript_and_wait(export_tool_zscript)
+    if not os.path.exists(filepath):
+        raise RuntimeError(f"Export file was not created: {filepath}")
 
 
 def is_in_edit_mode():
     """Return whether transform edit mode is currently enabled.
 
-    Certain actions can't be performed if Zbrush is currently within
+    Certain actions can't be performed if Zbrush is currently not within
     edit mode, like exporting a model.
 
     Returns:
         bool: Whether Edit Mode is enabled.
     """
-    identifier = uuid.uuid4()
-    temp_path = os.path.join(
-        tempfile.gettempdir(),
-        f"{tempfile.gettempprefix()}_{identifier}.txt"
-    )
+    temp_path = get_tempfile_path()
     temp_path = temp_path.replace("\\", "/")
-    assert not os.path.exists(temp_path)
 
+    # Write Transform:Edit state to temp file
     in_edit_mode = ("""
 [IFreeze,
 [MemCreate, EditMode, 20, 0]
-[VarSet, InEditMode, [IGet, Transform:Edit]]
-[Note, InEditMode]
-[MemWriteString, EditMode, #InEditMode, 0]
+[MemWriteString, EditMode, [IGet, Transform:Edit], 0]
 [MemSaveToFile, EditMode, "{temp_file}", 1]
 [MemDelete, EditMode]
 ]
 """).format(temp_file=temp_path)
-    execute_zscript_and_wait(in_edit_mode, temp_path)
-    with open(temp_path) as mode:
+    execute_zscript_and_wait(in_edit_mode, temp_path, timeout=3)
+    with open(temp_path, "r") as mode:
         content = str(mode.read())
         bool_mode = content.rstrip('\x00')
-        return bool_mode
 
-# TODO: add the zscript code
-# Current file
+    return bool_mode
