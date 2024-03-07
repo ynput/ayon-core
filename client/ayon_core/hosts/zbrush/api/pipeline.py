@@ -120,8 +120,6 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 [MemDelete, currentfile]
 ]
 """).format(filepath=filepath)
-        context = get_global_context()
-        # save_current_workfile_context(context)
         # # move the json data to the files
         # # shutil.copy
         copy_ayon_data(filepath)
@@ -169,6 +167,8 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def initial_app_launch(self):
         #TODO: figure out how to deal with the last workfile issue
         set_current_file()
+        context = get_global_context()
+        save_current_workfile_context(context)
 
     def application_exit(self):
         """Logic related to TimerManager.
@@ -214,7 +214,30 @@ def containerise(
 
 
 def save_current_workfile_context(context):
-    return write_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT, context)
+    return write_context_metadata(ZBRUSH_SECTION_NAME_CONTEXT, context)
+
+
+def write_context_metadata(metadata_key, context):
+    project_name = get_current_context()["project_name"]
+    folder_path = get_current_context()["folder_path"]
+    task_name = get_current_context()["task_name"]
+    work_dir = get_workdir(project_name, folder_path, task_name)
+    json_dir = os.path.join(
+        work_dir, ".zbrush_metadata", metadata_key).replace(
+            "\\", "/"
+        )
+    os.makedirs(json_dir, exist_ok=True)
+    json_file = f"{json_dir}/{metadata_key}.json"
+    if os.path.exists(json_file):
+        with open (json_file, "r") as file:
+            value = json.load(file)
+            if value == context:
+                return
+    with open (json_file, "w") as file:
+        value = json.dumps(context)
+        file.write(value)
+        file.close()
+
 
 def write_workfile_metadata(metadata_key, data=None):
     if data is None:
@@ -240,7 +263,7 @@ def write_workfile_metadata(metadata_key, data=None):
 
 
 def get_current_workfile_context():
-    return get_load_workfile_metadata(ZBRUSH_SECTION_NAME_CONTEXT)
+    return get_load_context_metadata(ZBRUSH_SECTION_NAME_CONTEXT)
 
 
 def get_current_context():
@@ -312,6 +335,28 @@ def write_load_metadata(metadata_key, data):
         value = json.dumps(data)
         file.write(value)
         file.close()
+
+
+def get_load_context_metadata(metadata_key):
+    file_content = []
+    project_name = get_current_context()["project_name"]
+    folder_path = get_current_context()["folder_path"]
+    task_name = get_current_context()["task_name"]
+    work_dir = get_workdir(project_name, folder_path, task_name)
+    json_dir = os.path.join(
+        work_dir, ".zbrush_metadata", metadata_key).replace(
+            "\\", "/"
+        )
+    if not os.path.exists(json_dir):
+        return file_content
+    file_list = os.listdir(json_dir)
+    if not file_list:
+        return file_content
+    for file in file_list:
+        with open (f"{json_dir}/{file}", "r") as data:
+            content = ast.literal_eval(str(data.read().strip()))
+            file_content.extend(content)
+            data.close()
 
 
 def get_load_workfile_metadata(metadata_key):
@@ -396,8 +441,7 @@ def remove_tmp_data():
     folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
     work_dir = get_workdir(project_name, folder_path, task_name)
-    for name in [ZBRUSH_SECTION_NAME_CONTEXT,
-                 ZBRUSH_METADATA_CREATE_CONTEXT,
+    for name in [ZBRUSH_METADATA_CREATE_CONTEXT,
                  ZBRUSH_SECTION_NAME_INSTANCES,
                  ZBRUSH_SECTION_NAME_CONTAINERS]:
         json_dir = os.path.join(
@@ -422,8 +466,7 @@ def copy_ayon_data(filepath):
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
     work_dir = get_workdir(project_name, folder_path, task_name)
-    for name in [ZBRUSH_SECTION_NAME_CONTEXT,
-                 ZBRUSH_METADATA_CREATE_CONTEXT,
+    for name in [ZBRUSH_METADATA_CREATE_CONTEXT,
                  ZBRUSH_SECTION_NAME_INSTANCES,
                  ZBRUSH_SECTION_NAME_CONTAINERS]:
         src_json_dir = os.path.join(
