@@ -49,6 +49,20 @@ class FamilyMappingItemModel(BaseSettingsModel):
     )
 
 
+class ValidateModelNameModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    regex: str = SettingsField(
+        "(.*)_(?P<subset>.*)_(GEO)",
+        title="Validation regex",
+        description=(
+            "Regex for validating model name. You can use named "
+            " capturing groups:(?P<asset>.*) for Asset name"
+        )
+    )
+
+
 class ValidateLoadedPluginModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -98,6 +112,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Mesh Has UVs"
     )
+    ValidateModelName: ValidateModelNameModel = SettingsField(
+        default_factory=ValidateModelNameModel,
+        title="Validate Model Name"
+    )
     ExtractModelObj: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Extract OBJ",
@@ -145,6 +163,12 @@ DEFAULT_PUBLISH_SETTINGS = {
         "farrange": 1000.0,
         "nearclip": 1.0,
         "farclip": 1000.0
+    },
+    "ValidateModelName": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+        "regex": "(.*)_(?P<subset>.*)_(GEO)"
     },
     "ValidateLoadedPlugin": {
         "enabled": False,
