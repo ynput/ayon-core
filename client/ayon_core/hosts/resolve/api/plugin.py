@@ -12,7 +12,7 @@ from ayon_core.pipeline import (
     Creator as NewCreator
 )
 
-from . import lib
+from . import lib, constants
 
 
 class ClipLoader:
@@ -436,7 +436,7 @@ class PublishableClip:
         else:
             self.tag_data["asset"] = self.ti_name
 
-        if not lib.ayon_marker_workflow:
+        if not constants.ayon_marker_workflow:
             # create compound clip workflow
             lib.create_compound_clip(
                 self.timeline_item_data,

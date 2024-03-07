@@ -1,6 +1,6 @@
 import copy
 
-from ayon_core.hosts.resolve.api import plugin, lib
+from ayon_core.hosts.resolve.api import plugin, lib, constants
 from ayon_core.hosts.resolve.api.lib import (
     get_video_track_names,
     create_bin,
@@ -262,7 +262,7 @@ class CreateShotClip(plugin.ResolveCreator):
                 # from `PublishableClip.convert`
                 continue
 
-            track_item.SetClipColor(lib.publish_clip_color)
+            track_item.SetClipColor(constants.publish_clip_color)
 
             instance_data = copy.deepcopy(instance_data)
             # TODO: here we need to replicate Traypublisher Editorial workflow
@@ -287,7 +287,7 @@ class CreateShotClip(plugin.ResolveCreator):
     def collect_instances(self):
         """Collect all created instances from current timeline."""
         selected_timeline_items = lib.get_current_timeline_items(
-            filter=True, selecting_color=lib.publish_clip_color)
+            filter=True, selecting_color=constants.publish_clip_color)
 
         instances = []
         for timeline_item_data in selected_timeline_items:

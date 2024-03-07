@@ -15,7 +15,6 @@ from .pipeline import (
 
 from .lib import (
     maintain_current_timeline,
-    publish_clip_color,
     get_project_manager,
     get_current_resolve_project,
     get_current_project, # backward compatibility
@@ -93,7 +92,6 @@ __all__ = [
 
     # lib
     "maintain_current_timeline",
-    "publish_clip_color",
     "get_project_manager",
     "get_current_resolve_project",
     "get_current_project", # backward compatibility
