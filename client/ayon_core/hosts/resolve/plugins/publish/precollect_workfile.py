@@ -18,17 +18,17 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
         asset_name = current_asset_name.split("/")[-1]
 
         product_name = "workfileMain"
-        project = rapi.get_current_project()
-        fps = project.GetSetting("timelineFrameRate")
+        resolve_project = rapi.get_current_resolve_project()
+        fps = resolve_project.GetSetting("timelineFrameRate")
         video_tracks = rapi.get_video_track_names()
 
         # adding otio timeline to context
-        otio_timeline = davinci_export.create_otio_timeline(project)
+        otio_timeline = davinci_export.create_otio_timeline(resolve_project)
 
         instance_data = {
             "name": "{}_{}".format(asset_name, product_name),
             "label": "{} {}".format(current_asset_name, product_name),
-            "item": project,
+            "item": resolve_project,
             "folderPath": current_asset_name,
             "productName": product_name,
             "productType": "workfile",
@@ -41,10 +41,10 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
 
         # update context with main project attributes
         context_data = {
-            "activeProject": project,
+            "activeProject": resolve_project,
             "otioTimeline": otio_timeline,
             "videoTracks": video_tracks,
-            "currentFile": project.GetName(),
+            "currentFile": resolve_project.GetName(),
             "fps": fps,
         }
         context.data.update(context_data)

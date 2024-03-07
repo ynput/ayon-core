@@ -146,7 +146,7 @@ def containerise(timeline_item,
     if data:
         data_imprint.update(data)
 
-    lib.set_timeline_item_pype_tag(timeline_item, data_imprint)
+    lib.set_timeline_item_ayon_tag(timeline_item, data_imprint)
 
     return timeline_item
 
@@ -184,7 +184,7 @@ def parse_container(timeline_item, validate=True):
 
     """
     # convert tag metadata to normal keys names
-    data = lib.get_timeline_item_pype_tag(timeline_item)
+    data = lib.get_timeline_item_ayon_tag(timeline_item)
 
     if validate and data and data.get("schema"):
         schema.validate(data)
@@ -220,9 +220,9 @@ def update_container(timeline_item, data=None):
         bool: True if container was updated correctly
 
     """
-    data = data or dict()
+    data = data or {}
 
-    container = lib.get_timeline_item_pype_tag(timeline_item)
+    container = lib.get_timeline_item_ayon_tag(timeline_item)
 
     for _key, _value in container.items():
         try:
@@ -231,7 +231,7 @@ def update_container(timeline_item, data=None):
             pass
 
     log.info("Updating container: `{}`".format(timeline_item))
-    return bool(lib.set_timeline_item_pype_tag(timeline_item, container))
+    return bool(lib.set_timeline_item_ayon_tag(timeline_item, container))
 
 
 @contextlib.contextmanager

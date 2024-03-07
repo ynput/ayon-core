@@ -57,9 +57,9 @@ def _close_window(event):
 
 def _export_button(event):
     pm = resolve.GetProjectManager()
-    project = pm.GetCurrentProject()
-    timeline = project.GetCurrentTimeline()
-    otio_timeline = otio_export.create_otio_timeline(project)
+    resolve_project = pm.GetCurrentProject()
+    timeline = resolve_project.GetCurrentTimeline()
+    otio_timeline = otio_export.create_otio_timeline(resolve_project)
     otio_path = os.path.join(
         itm["exportfilebttn"].Text,
         timeline.GetName() + ".otio")
