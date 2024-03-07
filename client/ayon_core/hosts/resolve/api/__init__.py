@@ -50,8 +50,10 @@ from .menu import launch_pype_menu
 from .plugin import (
     ClipLoader,
     TimelineItemLoader,
-    Creator,
-    PublishClip
+    ResolveCreator,
+    Creator,  # backward compatibility
+    PublishableClip,
+    PublishClip,  # backward compatibility
 )
 
 from .workio import (
@@ -125,8 +127,10 @@ __all__ = [
     # plugin
     "ClipLoader",
     "TimelineItemLoader",
-    "Creator",
-    "PublishClip",
+    "ResolveCreator",
+    "Creator",  # backward compatibility
+    "PublishableClip",
+    "PublishClip",  # backward compatibility
 
     # workio
     "open_file",
