@@ -11,6 +11,9 @@ from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
 )
+from ayon_core.pipeline.colorspace import (
+    get_imageio_file_rules_colorspace_from_filepath
+)
 from ayon_core.hosts.nuke.api.lib import (
     get_imageio_input_colorspace,
     maintained_selection
