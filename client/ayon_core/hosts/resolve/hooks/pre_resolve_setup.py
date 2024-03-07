@@ -18,12 +18,12 @@ class PreLaunchResolveSetup(PreLaunchHook):
     It adds $RESOLVE_SCRIPT_API/Modules to PYTHONPATH.
 
     Additionally it sets up the Python home for Python 3 based on the
-    RESOLVE_PYTHON3_HOME in the environment (usually defined in OpenPype's
+    RESOLVE_PYTHON3_HOME in the environment (usually defined in Ayon's
     Application environment for Resolve by the admin). For this it sets
     PYTHONHOME and PATH variables.
 
     It also defines:
-    - `RESOLVE_UTILITY_SCRIPTS_DIR`: Destination directory for OpenPype
+    - `RESOLVE_UTILITY_SCRIPTS_DIR`: Destination directory for Ayon
         Fusion scripts to be copied to for Resolve to pick them up.
     - `AYON_LOG_NO_COLORS` to True to ensure OP doesn't try to
         use logging with terminal colors as it fails in Resolve.

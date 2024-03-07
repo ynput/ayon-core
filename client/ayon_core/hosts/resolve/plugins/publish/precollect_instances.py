@@ -33,7 +33,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             data = {}
             timeline_item = timeline_item_data["clip"]["item"]
 
-            # get pype tag data
+            # get ayon tag data
             tag_data = get_timeline_item_ayon_tag(timeline_item)
             self.log.debug(f"__ tag_data: {pformat(tag_data)}")
 

@@ -30,8 +30,6 @@ class CreateShotClip(plugin.ResolveCreator):
     {_clip_}: name of used clip
     {_track_}: name of parent track layer
     {_sequence_}: name of parent sequence (timeline)"""
-        # gui_name = "OpenPype publish attributes creator"
-        # gui_info = "Define sequential rename and fill hierarchy data."
         gui_tracks = get_video_track_names()
 
         # Project settings might be applied to this creator via

@@ -521,9 +521,11 @@ def set_timeline_item_ayon_tag(timeline_item, data=None):
             tag_data = data
             # if ayon tag available then update with input data
             # add it to the input track item
-            timeline_item.SetMetadata(constants.ayon_tag_name, json.dumps(tag_data))
+            timeline_item.SetMetadata(
+                constants.ayon_tag_name, json.dumps(tag_data))
 
     return tag_data
+
 
 # alias for backward compatibility
 set_timeline_item_pype_tag = set_timeline_item_ayon_tag
@@ -531,13 +533,13 @@ set_timeline_item_pype_tag = set_timeline_item_ayon_tag
 
 def imprint(timeline_item, data=None):
     """
-    Adding `Avalon data` into a hiero track item tag.
+    Adding `Ayon data` into a timeline item track item tag.
 
     Also including publish attribute into tag.
 
     Arguments:
-        timeline_item (hiero.core.TrackItem): hiero track item object
-        data (dict): Any data which needst to be imprinted
+        timeline_item (resolve.TimelineItem): resolve's object
+        data (dict): Any data which needs to be imprinted
 
     Examples:
         data = {
@@ -555,11 +557,10 @@ def imprint(timeline_item, data=None):
 
 
 def set_publish_attribute(timeline_item, value):
-    """ Set Publish attribute in input Tag object
+    """ Set Publish attribute to marker on timeline item
 
     Attribute:
-        tag (hiero.core.Tag): a tag object
-        value (bool): True or False
+        timeline_item (resolve.TimelineItem): resolve's object
     """
     tag_data = get_timeline_item_ayon_tag(timeline_item)
     tag_data["publish"] = value
@@ -568,11 +569,10 @@ def set_publish_attribute(timeline_item, value):
 
 
 def get_publish_attribute(timeline_item):
-    """ Get Publish attribute from input Tag object
+    """ Get Publish attribute from marker on timeline item
 
     Attribute:
-        tag (hiero.core.Tag): a tag object
-        value (bool): True or False
+        timeline_item (resolve.TimelineItem): resolve's object
     """
     tag_data = get_timeline_item_ayon_tag(timeline_item)
     return tag_data["publish"]

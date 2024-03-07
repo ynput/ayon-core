@@ -95,19 +95,9 @@ class ResolveHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return ls()
 
     def get_context_data(self):
-        # data = cmds.fileInfo("OpenPypeContext", query=True)
-        # if not data:
-        #     return {}
-        #
-        # data = data[0]  # Maya seems to return a list
-        # decoded = base64.b64decode(data).decode("utf-8")
-        # return json.loads(decoded)
         return {}
 
     def update_context_data(self, data, changes):
-        # json_str = json.dumps(data)
-        # encoded = base64.b64encode(json_str.encode("utf-8"))
-        # return cmds.fileInfo("OpenPypeContext", encoded)
         pass
 
 
@@ -117,20 +107,20 @@ def containerise(timeline_item,
                  context,
                  loader=None,
                  data=None):
-    """Bundle Hiero's object into an assembly and imprint it with metadata
+    """Bundle Resolve's object into an assembly and imprint it with metadata
 
-    Containerisation enables a tracking of version, author and origin
+    Containerization enables a tracking of version, author and origin
     for loaded assets.
 
     Arguments:
-        timeline_item (hiero.core.TrackItem): object to imprint as container
+        timeline_item (resolve.TimelineItem): The object to containerise
         name (str): Name of resulting assembly
         namespace (str): Namespace under which to host container
         context (dict): Asset information
         loader (str, optional): Name of node used to produce this container.
 
     Returns:
-        timeline_item (hiero.core.TrackItem): containerised object
+        timeline_item (resolve.TimelineItem): containerized object
 
     """
 
@@ -173,10 +163,10 @@ def ls():
 
 
 def parse_container(timeline_item, validate=True):
-    """Return container data from timeline_item's openpype tag.
+    """Return container data from timeline_item's marker data.
 
     Args:
-        timeline_item (hiero.core.TrackItem): A containerised track item.
+        timeline_item (resolve.TimelineItem): A containerized track item.
         validate (bool)[optional]: validating with avalon scheme
 
     Returns:
@@ -210,11 +200,11 @@ def parse_container(timeline_item, validate=True):
 
 
 def update_container(timeline_item, data=None):
-    """Update container data to input timeline_item's openpype tag.
+    """Update container data to input timeline_item's ayon marker data.
 
     Args:
-        timeline_item (hiero.core.TrackItem): A containerised track item.
-        data (dict)[optional]: dictionery with data to be updated
+        timeline_item (resolve.TimelineItem): A containerized track item.
+        data (dict)[optional]: dictionary with data to be updated
 
     Returns:
         bool: True if container was updated correctly
