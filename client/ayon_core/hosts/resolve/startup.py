@@ -35,7 +35,7 @@ def ensure_installed_host():
 def launch_menu():
     print("Launching Resolve AYON menu..")
     ensure_installed_host()
-    ayon_core.hosts.resolve.api.launch_pype_menu()
+    ayon_core.hosts.resolve.api.launch_ayon_menu()
 
 
 def open_workfile(path):

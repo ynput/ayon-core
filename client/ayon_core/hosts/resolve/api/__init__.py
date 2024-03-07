@@ -29,7 +29,8 @@ from .lib import (
     get_timeline_item,
     get_video_track_names,
     get_current_timeline_items,
-    get_pype_timeline_item_by_name,
+    get_timeline_item_by_name,
+    get_pype_timeline_item_by_name,  # backward compatibility
     get_timeline_item_ayon_tag,
     get_timeline_item_pype_tag,  # backward compatibility
     set_timeline_item_ayon_tag,
@@ -45,7 +46,7 @@ from .lib import (
     get_reformated_path
 )
 
-from .menu import launch_pype_menu
+from .menu import launch_ayon_menu
 
 from .plugin import (
     ClipLoader,
@@ -106,7 +107,8 @@ __all__ = [
     "get_timeline_item",
     "get_video_track_names",
     "get_current_timeline_items",
-    "get_pype_timeline_item_by_name",
+    "get_timeline_item_by_name",
+    "get_pype_timeline_item_by_name",  # backward compatibility
     "get_timeline_item_ayon_tag",
     "get_timeline_item_pype_tag",  # backward compatibility
     "set_timeline_item_ayon_tag",
@@ -122,7 +124,7 @@ __all__ = [
     "get_reformated_path",
 
     # menu
-    "launch_pype_menu",
+    "launch_ayon_menu",
 
     # plugin
     "ClipLoader",

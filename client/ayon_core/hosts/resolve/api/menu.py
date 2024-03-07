@@ -125,14 +125,14 @@ class AyonMenu(QtWidgets.QWidget):
         print("Clicked Set Resolution")
 
 
-def launch_pype_menu():
+def launch_ayon_menu():
     app = QtWidgets.QApplication(sys.argv)
 
-    pype_menu = AyonMenu()
+    ayon_menu = AyonMenu()
 
     stylesheet = load_stylesheet()
-    pype_menu.setStyleSheet(stylesheet)
+    ayon_menu.setStyleSheet(stylesheet)
 
-    pype_menu.show()
+    ayon_menu.show()
 
     sys.exit(app.exec_())

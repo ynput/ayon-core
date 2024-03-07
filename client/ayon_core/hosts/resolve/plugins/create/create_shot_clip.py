@@ -296,7 +296,7 @@ class CreateShotClip(plugin.ResolveCreator):
             timeline_item = timeline_item_data["clip"]["item"]
 
             # get openpype tag data
-            tag_data = lib.get_timeline_item_pype_tag(timeline_item)
+            tag_data = lib.get_timeline_item_ayon_tag(timeline_item)
             if not tag_data:
                 continue
 
