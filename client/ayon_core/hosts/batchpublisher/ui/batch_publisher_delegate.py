@@ -76,7 +76,7 @@ class BatchPublisherTableDelegate(QtWidgets.QStyledItemDelegate):
             return editor
 
         elif index.column() == BatchPublisherModel.COLUMN_OF_PRODUCT_TYPE:
-            from openpype.plugins.publish import integrate
+            from ayon_core.plugins.publish import integrate
             product_types = sorted(integrate.IntegrateAsset.families)
             editor = QtWidgets.QComboBox(parent)
             editor.addItems(product_types)
@@ -154,7 +154,7 @@ class BatchPublisherTableDelegate(QtWidgets.QStyledItemDelegate):
                 parent_item.appendRows(new_rows)
 
     def _on_choose_context(self, folder_path):
-        from openpype.tools.context_dialog import ContextDialog
+        from ayon_core.tools.context_dialog import ContextDialog
         project_name = self._controller.get_selected_project_name()
         dialog = ContextDialog()
         dialog._project_combobox.hide()

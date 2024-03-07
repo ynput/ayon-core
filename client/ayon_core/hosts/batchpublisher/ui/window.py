@@ -1,8 +1,8 @@
-from openpype import style
+from ayon_core import style
 
 from qtpy import QtWidgets
 
-from openpype.hosts.batchpublisher import controller
+from ayon_core.hosts.batchpublisher import controller
 from .batch_publisher_model import BatchPublisherModel
 from .batch_publisher_delegate import BatchPublisherTableDelegate
 from .batch_publisher_view import BatchPublisherTableView

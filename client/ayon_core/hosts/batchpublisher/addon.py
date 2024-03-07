@@ -2,10 +2,11 @@ import click
 
 # from openpype.lib import get_openpype_execute_args
 # from openpype.lib.execute import run_detached_process
-from openpype.modules import OpenPypeModule, ITrayAction, IHostAddon
+# from openpype.modules import OpenPypeModule, ITrayAction, IHostAddon
+from ayon_core.addon import AYONAddon, IHostAddon, ITrayAction
 
 
-class BatchPublishAddon(OpenPypeModule, IHostAddon, ITrayAction):
+class BatchPublishAddon(AYONAddon, IHostAddon, ITrayAction):
     label = "Batch Publisher"
     name = "batchpublisher"
     host_name = "batchpublisher"
@@ -45,31 +46,23 @@ class BatchPublishAddon(OpenPypeModule, IHostAddon, ITrayAction):
 
         from importlib import reload
 
-        import openpype.hosts.batchpublisher.controller
-        import openpype.hosts.batchpublisher.ui.batch_publisher_model
-        import openpype.hosts.batchpublisher.ui.batch_publisher_delegate
-        import openpype.hosts.batchpublisher.ui.batch_publisher_view
-        import openpype.hosts.batchpublisher.ui.window
+        import ayon_core.hosts.batchpublisher.controller
+        import ayon_core.hosts.batchpublisher.ui.batch_publisher_model
+        import ayon_core.hosts.batchpublisher.ui.batch_publisher_delegate
+        import ayon_core.hosts.batchpublisher.ui.batch_publisher_view
+        import ayon_core.hosts.batchpublisher.ui.window
 
-        # TODO: These lines are only for testing current branch
-        reload(openpype.hosts.batchpublisher.controller)
-        reload(openpype.hosts.batchpublisher.ui.batch_publisher_model)
-        reload(
-            openpype.hosts.batchpublisher.ui.batch_publisher_delegate)
-        reload(openpype.hosts.batchpublisher.ui.batch_publisher_view)
-        reload(openpype.hosts.batchpublisher.ui.window)
+        # # TODO: These lines are only for testing current branch
+        # reload(ayon_core.hosts.batchpublisher.controller)
+        # reload(ayon_core.hosts.batchpublisher.ui.batch_publisher_model)
+        # reload(
+        #     ayon_core.hosts.batchpublisher.ui.batch_publisher_delegate)
+        # reload(ayon_core.hosts.batchpublisher.ui.batch_publisher_view)
+        # reload(ayon_core.hosts.batchpublisher.ui.window)
 
-        import openpype.hosts.batchpublisher.deadline
-        import openpype.hosts.batchpublisher.publish
-        import openpype.hosts.batchpublisher.utils
-
-        reload(openpype.hosts.batchpublisher.deadline)
-        reload(openpype.hosts.batchpublisher.publish)
-        reload(openpype.hosts.batchpublisher.utils)
-
-        # from openpype.hosts.batchpublisher.ui.window \
+        # from ayon_core.hosts.batchpublisher.ui.window \
         #     import BatchPublisherWindow
-        self._dialog = openpype.hosts.batchpublisher.ui.window. \
+        self._dialog = ayon_core.hosts.batchpublisher.ui.window. \
             BatchPublisherWindow()
 
     def show_dialog(self):
@@ -93,5 +86,5 @@ def cli_main():
 def launch():
     """Launch BatchPublisher tool UI."""
     print("LAUNCHING BATCH PUBLISHER")
-    from openpype.hosts.batchpublisher.ui import window
+    from ayon_core.hosts.batchpublisher.ui import window
     window.main()

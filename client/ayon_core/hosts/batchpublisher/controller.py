@@ -4,11 +4,11 @@ import os
 import re
 
 # from openpype.settings import get_project_settings
-from openpype.client.entities import (
+from ayon_core.client.entities import (
     get_projects,
     get_assets,
 )
-from openpype.hosts.batchpublisher import publish
+from ayon_core.hosts.batchpublisher import publish
 
 
 # List that contains dictionary including glob statement to check for match.
