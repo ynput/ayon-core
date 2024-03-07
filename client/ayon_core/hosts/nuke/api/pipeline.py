@@ -14,6 +14,7 @@ from ayon_core.host import (
 )
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import register_event_callback, Logger
+from ayon_core.lib.applications import ApplicationManager
 from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
@@ -23,6 +24,7 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     get_current_asset_name,
     get_current_task_name,
+    get_current_context,
     registered_host,
 )
 from ayon_core.pipeline.workfile import BuildWorkfile
@@ -228,6 +230,15 @@ def get_context_label():
         get_current_task_name()
     )
 
+def open_rv():
+    # get application object
+    app_manager = ApplicationManager()
+    openrv_app = app_manager.find_latest_available_variant_for_group("openrv")
+    
+    # launch application
+    # TODO: gotta inject "-network" flag to launch, currently this is set globally
+    openrv_app.launch(**get_current_context())
+
 
 def _install_menu():
     """Install Avalon menu into Nuke's main menu bar."""
@@ -249,6 +260,9 @@ def _install_menu():
 
         # add separator after context label
         menu.addSeparator()
+
+    menu.addCommand("RV/Open RV", lambda: open_rv())
+    menu.addSeparator()
 
     menu.addCommand(
         "Work Files...",
