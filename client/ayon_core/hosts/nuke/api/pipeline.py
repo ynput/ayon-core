@@ -242,7 +242,8 @@ def open_rv():
 
 def _install_menu():
     """Install Avalon menu into Nuke's main menu bar."""
-
+    nuke_addon_settings = get_current_project_settings()["nuke"]
+    
     # uninstall original avalon menu
     main_window = get_main_window()
     menubar = nuke.menu("Nuke")
@@ -261,8 +262,10 @@ def _install_menu():
         # add separator after context label
         menu.addSeparator()
 
-    menu.addCommand("RV/Open RV", lambda: open_rv())
-    menu.addSeparator()
+    if nuke_addon_settings["general"]["openrv"]:
+        menu.addCommand("RV/Open RV", lambda: open_rv())
+        menu.addCommand("RV/Play In RV", lambda: view_read_in_rv())
+        menu.addSeparator()
 
     menu.addCommand(
         "Work Files...",
