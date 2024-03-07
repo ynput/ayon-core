@@ -21,7 +21,7 @@ PUBLISH_TO_SG_FAMILIES = {
 
 def publish_version_pyblish(
         project_name,
-        asset_name,
+        folder_path,
         task_name,
         family_name,
         subset_name,
@@ -59,7 +59,7 @@ def publish_version_pyblish(
         {
             # "project": project_name,
             "productType": family_name,
-            "asset": asset_name,
+            "folderPath": folder_path,
             "task": task_name,
             "productName": subset_name,
             "publish": True,
