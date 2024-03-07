@@ -383,7 +383,7 @@ def get_load_workfile_metadata(metadata_key):
         return file_content
     for file in file_list:
         with open (f"{json_dir}/{file}", "r") as data:
-            content = ast.literal_eval(str(data.read().strip()))
+            content = json.load(data)
             file_content.extend(content)
             data.close()
     return file_content
