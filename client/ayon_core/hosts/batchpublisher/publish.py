@@ -30,7 +30,8 @@ def publish_version_pyblish(
         frame_start=None,
         frame_end=None):
 
-    os.environ['AVALON_PROJECT'] = project_name
+    # os.environ["AVALON_PROJECT"] = project_name
+    os.environ["AYON_PROJECT_NAME"] = project_name
 
     representation_name = list(expected_representations.keys())[0]
     file_path = list(expected_representations.values())[0]
@@ -56,10 +57,11 @@ def publish_version_pyblish(
         family=family_name)
     instance.data.update(
         {
-            "family": family_name,
+            # "project": project_name,
+            "productType": family_name,
             "asset": asset_name,
             "task": task_name,
-            "subset": subset_name,
+            "productName": subset_name,
             "publish": True,
             "active": True,
             # "source": file_path,

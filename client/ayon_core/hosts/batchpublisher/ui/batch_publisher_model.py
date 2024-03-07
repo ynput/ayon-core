@@ -1,6 +1,6 @@
 from qtpy import QtCore, QtGui
 
-from openpype.plugins.publish import integrate
+from ayon_core.plugins.publish import integrate
 
 
 class BatchPublisherModel(QtCore.QAbstractTableModel):

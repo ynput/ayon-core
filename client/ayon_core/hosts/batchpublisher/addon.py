@@ -52,13 +52,13 @@ class BatchPublishAddon(AYONAddon, IHostAddon, ITrayAction):
         import ayon_core.hosts.batchpublisher.ui.batch_publisher_view
         import ayon_core.hosts.batchpublisher.ui.window
 
-        # # TODO: These lines are only for testing current branch
-        # reload(ayon_core.hosts.batchpublisher.controller)
-        # reload(ayon_core.hosts.batchpublisher.ui.batch_publisher_model)
-        # reload(
-        #     ayon_core.hosts.batchpublisher.ui.batch_publisher_delegate)
-        # reload(ayon_core.hosts.batchpublisher.ui.batch_publisher_view)
-        # reload(ayon_core.hosts.batchpublisher.ui.window)
+        # TODO: These lines are only for testing current branch
+        reload(ayon_core.hosts.batchpublisher.controller)
+        reload(ayon_core.hosts.batchpublisher.ui.batch_publisher_model)
+        reload(
+            ayon_core.hosts.batchpublisher.ui.batch_publisher_delegate)
+        reload(ayon_core.hosts.batchpublisher.ui.batch_publisher_view)
+        reload(ayon_core.hosts.batchpublisher.ui.window)
 
         # from ayon_core.hosts.batchpublisher.ui.window \
         #     import BatchPublisherWindow

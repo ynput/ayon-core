@@ -23,7 +23,8 @@ class BatchPublisherTableDelegate(QtWidgets.QStyledItemDelegate):
             # NOTE: Project name has been disabled to change from this dialog
             accepted, _project_name, folder_path, task_name = \
                 self._on_choose_context(ingest_file.folder_path)
-            if accepted and folder_path:
+            # if accepted and folder_path:
+            if folder_path:
                 for _index in view.selectedIndexes():
                     model.setData(
                         model.index(_index.row(), model.COLUMN_OF_FOLDER),
@@ -161,19 +162,16 @@ class BatchPublisherTableDelegate(QtWidgets.QStyledItemDelegate):
         dialog.set_context(
             project_name=project_name)
         accepted = dialog.exec_()
-        if accepted:
-            context = dialog.get_context()
-            project = context["project"]
-            asset = context["asset"]
-            # AYON version of dialog stores the folder path
-            folder_path = context.get("folder_path")
-            if folder_path:
-                # Folder path returned by ContextDialog is missing slash
-                folder_path = "/" + folder_path
-            folder_path = folder_path or asset
-            task_name = context["task"]
-            return accepted, project, folder_path, task_name
-        return accepted, None, None, None
+        # if accepted:
+        context = dialog.get_context()
+        project = context["project"]
+        asset = context["asset"]
+        # AYON version of dialog stores the folder path
+        folder_path = context.get("folder_path")
+        folder_path = folder_path or asset
+        task_name = context["task"]
+        return accepted, project, folder_path, task_name
+        # return accepted, None, None, None
 
 
 class ComboBox(QtWidgets.QComboBox):
