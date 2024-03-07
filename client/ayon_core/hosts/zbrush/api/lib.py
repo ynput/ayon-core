@@ -73,19 +73,6 @@ def execute_zscript_and_wait(zscript,
             assumed to have failed and raise an error.
 
     """
-    # At the end of the zscript write
-    # temporary file to confirm the zscript
-    # has run to the end of the script
-    if check_filepath is None:
-        check_filepath = get_tempfile_path()
-        check_filepath = check_filepath.replace("\\", "/")
-        zscript += (f"""
-[MemCreate, AYON_TempFileCheck, 1, 0]
-[MemWriteString, AYON_TempFileCheck, "1", 0]
-[MemSaveToFile, AYON_TempFileCheck, "{check_filepath}", 0]
-[MemDelete, AYON_TempFileCheck]
-        """)
-
     execute_zscript(zscript)
 
     # Wait around until the zscript finished
@@ -164,7 +151,7 @@ def export_tool(filepath: str):
     # We do not check for the export file's existence because Zbrush might
     # write the file in chunks, as such the file might exist before the writing
     # to it has finished
-    execute_zscript_and_wait(export_tool_zscript)
+    execute_zscript_and_wait(export_tool_zscript, filepath)
     if not os.path.exists(filepath):
         raise RuntimeError(f"Export file was not created: {filepath}")
 
