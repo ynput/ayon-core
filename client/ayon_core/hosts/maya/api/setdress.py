@@ -10,11 +10,6 @@ import ayon_api
 
 from maya import cmds
 
-from ayon_core.client import (
-    get_representation_by_id,
-    get_representation_by_name,
-    get_representation_parents,
-)
 from ayon_core.pipeline import (
     schema,
     discover_loader_plugins,
@@ -289,8 +284,9 @@ def update_package_version(container, version):
 
     # Versioning (from `core.maya.pipeline`)
     project_name = get_current_project_name()
-    current_representation = get_representation_by_id(
-        project_name, container["representation"]
+    repre_id = container["representation"]
+    current_representation = ayon_api.get_representation_by_id(
+        project_name, repre_id
     )
 
     assert current_representation is not None, "This is a bug"
@@ -300,7 +296,7 @@ def update_package_version(container, version):
         product_entity,
         folder_entity,
         project_entity
-    ) = get_representation_parents(project_name, current_representation)
+    ) = ayon_api.get_representation_parents(project_name, repre_id)
 
     if version == -1:
         new_version = ayon_api.get_last_version_by_product_id(
@@ -315,7 +311,7 @@ def update_package_version(container, version):
         raise ValueError("Version not found: {}".format(version))
 
     # Get the new representation (new file)
-    new_representation = get_representation_by_name(
+    new_representation = ayon_api.get_representation_by_name(
         project_name, current_representation["name"], new_version["id"]
     )
     # TODO there is 'get_representation_context' to get the context which
@@ -344,8 +340,8 @@ def update_package(set_container, context):
 
     # Load the original package data
     project_name = context["project"]["name"]
-    repre_doc = context["representation"]
-    current_representation = get_representation_by_id(
+    repre_entity = context["representation"]
+    current_representation = ayon_api.get_representation_by_id(
         project_name, set_container["representation"]
     )
 
@@ -355,7 +351,7 @@ def update_package(set_container, context):
         current_data = json.load(fp)
 
     # Load the new package data
-    new_file = get_representation_path(repre_doc)
+    new_file = get_representation_path(repre_entity)
     assert new_file.endswith(".json")
     with open(new_file, "r") as fp:
         new_data = json.load(fp)
@@ -366,7 +362,7 @@ def update_package(set_container, context):
 
     # TODO: This should be handled by the pipeline itself
     cmds.setAttr(set_container['objectName'] + ".representation",
-                 str(repre_doc['_id']), type="string")
+                 context["representation"]["id"], type="string")
 
 
 def update_scene(set_container, containers, current_data, new_data, new_file):

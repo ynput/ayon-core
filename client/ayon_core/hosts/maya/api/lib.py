@@ -21,7 +21,6 @@ from maya.api import OpenMaya
 
 import ayon_api
 
-from ayon_core.client import get_representation_by_name
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
@@ -1907,16 +1906,16 @@ def assign_look_by_version(nodes, version_id):
     project_name = get_current_project_name()
 
     # Get representations of shader file and relationships
-    look_representation = get_representation_by_name(
+    look_representation = ayon_api.get_representation_by_name(
         project_name, "ma", version_id
     )
-    json_representation = get_representation_by_name(
+    json_representation = ayon_api.get_representation_by_name(
         project_name, "json", version_id
     )
 
     # See if representation is already loaded, if so reuse it.
     host = registered_host()
-    representation_id = str(look_representation['_id'])
+    representation_id = look_representation["id"]
     for container in host.ls():
         if (container['loader'] == "LookLoader" and
                 container['representation'] == representation_id):
