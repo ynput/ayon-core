@@ -26,11 +26,10 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 
         import hou
 
-        version = context["version"]
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        start = version_attributes.get("frameStart")
+        end = version_attributes.get("frameEnd")
 
         if start is None or end is None:
             print(
@@ -64,11 +63,10 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
 
         import hou
 
-        version = context["version"]
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        start = version_attributes.get("frameStart")
+        end = version_attributes.get("frameEnd")
 
         if start is None or end is None:
             print(
