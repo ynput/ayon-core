@@ -1,7 +1,6 @@
 import contextlib
 
 import ayon_core.pipeline.load as load
-from ayon_core.pipeline.load import get_representation_context
 from ayon_core.hosts.fusion.api import (
     imprint_container,
     get_current_comp,
@@ -224,8 +223,7 @@ class FusionLoadSequence(load.LoaderPlugin):
         assert tool.ID == "Loader", "Must be Loader"
         comp = tool.Comp()
 
-        repre_doc = context["representation"]
-        context = get_representation_context(repre_doc)
+        repre_entity = context["representation"]
         path = self.filepath_from_context(context)
 
         # Get start frame from version data
@@ -256,7 +254,7 @@ class FusionLoadSequence(load.LoaderPlugin):
                 )
 
             # Update the imprinted representation
-            tool.SetData("avalon.representation", str(repre_doc["_id"]))
+            tool.SetData("avalon.representation", repre_entity["id"])
 
     def remove(self, container):
         tool = container["_tool"]
