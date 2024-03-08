@@ -11,7 +11,7 @@ class ExtractModel(publish.Extractor):
     """
 
     order = pyblish.api.ExtractorOrder - 0.05
-    label = "Extract MOdel"
+    label = "Extract Model"
     hosts = ["zbrush"]
     families = ["model"]
     export_format = "obj"
