@@ -35,7 +35,10 @@ class CollectAudio(pyblish.api.ContextPlugin):
         "webpublisher",
         "aftereffects",
         "flame",
-        "unreal"
+        "unreal",
+        "blender",
+        "houdini",
+        "max",
     ]
 
     audio_product_name = "audioMain"
