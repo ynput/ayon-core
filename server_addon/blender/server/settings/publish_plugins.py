@@ -44,6 +44,14 @@ class ExtractBlendModel(BaseSettingsModel):
         default_factory=list,
         title="Families"
     )
+    compress: bool = SettingsField(True, title="Compress")
+
+
+class ExtractBlendAnimationModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    compress: bool = SettingsField(False, title="Compress")
 
 
 class ExtractPlayblastModel(BaseSettingsModel):
@@ -51,6 +59,7 @@ class ExtractPlayblastModel(BaseSettingsModel):
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     presets: str = SettingsField("", title="Presets", widget="textarea")
+    compress: bool = SettingsField(False, title="Compress")
 
     @validator("presets")
     def validate_json(cls, value):
@@ -110,8 +119,8 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidatePluginModel,
         title="Extract ABC"
     )
-    ExtractBlendAnimation: ValidatePluginModel = SettingsField(
-        default_factory=ValidatePluginModel,
+    ExtractBlendAnimation: ExtractBlendAnimationModel = SettingsField(
+        default_factory=ExtractBlendAnimationModel,
         title="Extract Blend Animation"
     )
     ExtractAnimationFBX: ValidatePluginModel = SettingsField(
@@ -198,7 +207,8 @@ DEFAULT_BLENDER_PUBLISH_SETTINGS = {
             "action",
             "layout",
             "blendScene"
-        ]
+        ],
+        "compress": False
     },
     "ExtractFBX": {
         "enabled": False,
@@ -213,7 +223,8 @@ DEFAULT_BLENDER_PUBLISH_SETTINGS = {
     "ExtractBlendAnimation": {
         "enabled": True,
         "optional": True,
-        "active": True
+        "active": True,
+        "compress": False
     },
     "ExtractAnimationFBX": {
         "enabled": False,
