@@ -410,6 +410,11 @@ class ClipLoader:
         source_out = int(_clip_property("End"))
         source_duration = int(_clip_property("Frames"))
 
+        # Trim clip start if slate is present
+        if "slate" in self.data["versionData"]["families"]:
+            source_in += 1
+            source_duration = source_out - source_in + 1
+
         if not self.with_handles:
             # Load file without the handles of the source media
             # We remove the handles from the source in and source out
@@ -435,7 +440,7 @@ class ClipLoader:
                 handle_start = version_data.get("handleStart", 0)
                 handle_end = version_data.get("handleEnd", 0)
                 frame_start_handle = frame_start - handle_start
-                frame_end_handle = frame_start + handle_end
+                frame_end_handle = frame_end + handle_end
                 database_frame_duration = int(
                     frame_end_handle - frame_start_handle + 1
                 )
