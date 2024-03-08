@@ -337,7 +337,7 @@ def imprint_container(container,
         ("name", str(name)),
         ("namespace", str(namespace) if namespace else None),
         ("loader", str(loader.__class__.__name__)),
-        ("representation", str(context["representation"]["_id"])),
+        ("representation", context["representation"]["id"]),
     ]
     for key, value in data:
         container[key] = value
