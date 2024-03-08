@@ -61,7 +61,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
         stub = self.get_stub()
         folder_name = context["folder"]["name"]
         product_name = context["product"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         _ = container.pop("layer")
 
@@ -80,7 +80,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
         else:  # switching version - keep same name
             comp_name = container["namespace"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
 
         layers = get_background_layers(path)
         comp = stub.reload_background(container["members"][1],
@@ -88,7 +88,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
                                       layers)
 
         # update container
-        container["representation"] = str(repre_doc["_id"])
+        container["representation"] = repre_entity["id"]
         container["name"] = product_name
         container["namespace"] = comp_name
         container["members"] = comp.members
