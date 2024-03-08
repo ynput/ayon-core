@@ -41,7 +41,7 @@ from ayon_core.pipeline import (
     AVALON_INSTANCE_ID,
 )
 from ayon_core.pipeline.context_tools import (
-    get_custom_workfile_template_from_session
+    get_current_context_custom_workfile_template
 )
 from ayon_core.pipeline.colorspace import get_imageio_config
 from ayon_core.pipeline.workfile import BuildWorkfile
@@ -2458,7 +2458,7 @@ def process_workfile_builder():
     # generate first version in file not existing and feature is enabled
     if create_fv_on and not os.path.exists(last_workfile_path):
         # get custom template path if any
-        custom_template_path = get_custom_workfile_template_from_session(
+        custom_template_path = get_current_context_custom_workfile_template(
             project_settings=project_settings
         )
 
