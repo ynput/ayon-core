@@ -110,7 +110,7 @@ class AlembicModelLoader(load.LoaderPlugin):
         # Get version from io
         project_name = context["project"]["name"]
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         # get corresponding node
         model_node = container["node"]
@@ -123,7 +123,7 @@ class AlembicModelLoader(load.LoaderPlugin):
 
         # prepare data for imprinting
         data_imprint = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "frameStart": first,
             "frameEnd": last,
             "version": version_entity["version"]
@@ -134,7 +134,7 @@ class AlembicModelLoader(load.LoaderPlugin):
             data_imprint[k] = version_attributes[k]
 
         # getting file path
-        file = get_representation_path(repre_doc).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         with maintained_selection():
             model_node['selected'].setValue(True)

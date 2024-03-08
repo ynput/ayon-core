@@ -117,15 +117,15 @@ class LinkAsGroup(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
-        root = get_representation_path(repre_doc).replace("\\", "/")
+        root = get_representation_path(repre_entity).replace("\\", "/")
 
         # Get start frame from version data
 
         version_attributes = version_entity["attrib"]
         updated_dict = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "frameEnd": version_attributes.get("frameEnd"),
             "version": version_entity["version"],
             "colorspace": version_attributes.get("colorSpace"),

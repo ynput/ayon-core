@@ -112,21 +112,21 @@ class LoadGizmo(load.LoaderPlugin):
         # Get version from io
         project_name = context["project"]["name"]
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         version_attributes = version_entity["attrib"]
 
         # get corresponding node
         group_node = container["node"]
 
-        file = get_representation_path(repre_doc).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         first = version_attributes.get("frameStart")
         last = version_attributes.get("frameEnd")
         colorspace = version_attributes.get("colorSpace")
 
         data_imprint = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "frameStart": first,
             "frameEnd": last,
             "version": version_entity["version"],

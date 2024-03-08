@@ -14,8 +14,6 @@ import nuke
 from qtpy import QtCore, QtWidgets
 import ayon_api
 
-from ayon_core.client import get_representations
-
 from ayon_core.host import HostDirmap
 from ayon_core.tools.utils import host_tools
 from ayon_core.pipeline.workfile.workfile_template_builder import (
@@ -846,19 +844,19 @@ def check_inventory_versions():
 
     project_name = get_current_project_name()
     # Find representations based on found containers
-    repre_docs = get_representations(
+    repre_entities = ayon_api.get_representations(
         project_name,
         representation_ids=repre_ids,
-        fields=["_id", "parent"]
+        fields={"id", "versionId"}
     )
     # Store representations by id and collect version ids
-    repre_docs_by_id = {}
+    repre_entities_by_id = {}
     version_ids = set()
-    for repre_doc in repre_docs:
+    for repre_entity in repre_entities:
         # Use stringed representation id to match value in containers
-        repre_id = str(repre_doc["_id"])
-        repre_docs_by_id[repre_id] = repre_doc
-        version_ids.add(repre_doc["parent"])
+        repre_id = repre_entity["id"]
+        repre_entities_by_id[repre_id] = repre_entity
+        version_ids.add(repre_entity["versionId"])
 
     version_entities = ayon_api.get_versions(
         project_name,
@@ -881,15 +879,15 @@ def check_inventory_versions():
     for item in node_with_repre_id:
         # Some python versions of nuke can't unfold tuple in for loop
         node, repre_id = item
-        repre_doc = repre_docs_by_id.get(repre_id)
+        repre_entity = repre_entities_by_id.get(repre_id)
         # Failsafe for not finding the representation.
-        if not repre_doc:
+        if not repre_entity:
             log.warning((
                 "Could not find the representation on node \"{}\""
             ).format(node.name()))
             continue
 
-        version_id = repre_doc["parent"]
+        version_id = repre_entity["versionId"]
         version_entity = version_entities_by_id.get(version_id)
         if not version_entity:
             log.warning((
