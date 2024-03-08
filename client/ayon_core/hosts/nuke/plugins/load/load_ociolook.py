@@ -221,11 +221,11 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         return group_node
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         group_node = container["node"]
 
-        filepath = get_representation_path(repre_doc)
+        filepath = get_representation_path(repre_entity)
 
         json_f = self._load_json_data(filepath)
 
@@ -243,7 +243,7 @@ class LoadOcioLookNodes(load.LoaderPlugin):
             group_node["name"].value()))
 
         return update_container(
-            group_node, {"representation": str(repre_doc["_id"])})
+            group_node, {"representation": repre_entity["id"]})
 
     def _load_json_data(self, filepath):
         # getting data from json file with unicode conversion

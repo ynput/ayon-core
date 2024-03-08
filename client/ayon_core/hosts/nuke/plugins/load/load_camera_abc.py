@@ -106,7 +106,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
         """
         # Get version from io
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         # get main variables
         version_attributes = version_entity["attrib"]
@@ -116,7 +116,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
 
         # prepare data for imprinting
         data_imprint = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "frameStart": first,
             "frameEnd": last,
             "version": version_entity["version"]
@@ -127,7 +127,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
             data_imprint[k] = version_attributes[k]
 
         # getting file path
-        file = get_representation_path(repre_doc).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         with maintained_selection():
             camera_node = container["node"]

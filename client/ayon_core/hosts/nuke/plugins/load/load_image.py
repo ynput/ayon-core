@@ -70,8 +70,8 @@ class LoadImage(load.LoaderPlugin):
 
         version_entity = context["version"]
         version_attributes = version_entity["attrib"]
-        repre_doc = context["representation"]
-        repre_id = repre_doc["_id"]
+        repre_entity = context["representation"]
+        repre_id = repre_entity["id"]
 
         self.log.debug(
             "Representation id `{}` ".format(repre_id))
@@ -91,7 +91,7 @@ class LoadImage(load.LoaderPlugin):
 
         file = file.replace("\\", "/")
 
-        frame = repre_doc["context"].get("frame")
+        frame = repre_entity["context"].get("frame")
         if frame:
             padding = len(frame)
             file = file.replace(
@@ -163,14 +163,14 @@ class LoadImage(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
-        repr_cont = repre_doc["context"]
+        repr_cont = repre_entity["context"]
 
-        file = get_representation_path(repre_doc)
+        file = get_representation_path(repre_entity)
 
         if not file:
-            repre_id = repre_doc["_id"]
+            repre_id = repre_entity["id"]
             self.log.warning(
                 "Representation id `{}` is failing to load".format(repre_id))
             return
@@ -200,7 +200,7 @@ class LoadImage(load.LoaderPlugin):
 
         version_attributes = version_entity["attrib"]
         updated_dict = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "frameStart": str(first),
             "frameEnd": str(last),
             "version": str(version_entity["version"]),
@@ -233,10 +233,10 @@ class LoadImage(load.LoaderPlugin):
     def _get_node_name(self, context):
         folder_entity = context["folder"]
         product_name = context["product"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         folder_name = folder_entity["name"]
-        repre_cont = repre_doc["context"]
+        repre_cont = repre_entity["context"]
         name_data = {
             "folder": {
                 "name": folder_name,
@@ -246,9 +246,9 @@ class LoadImage(load.LoaderPlugin):
             },
             "asset": folder_name,
             "subset": product_name,
-            "representation": repre_doc["name"],
+            "representation": repre_entity["name"],
             "ext": repre_cont["representation"],
-            "id": repre_doc["_id"],
+            "id": repre_entity["id"],
             "class_name": self.__class__.__name__
         }
 

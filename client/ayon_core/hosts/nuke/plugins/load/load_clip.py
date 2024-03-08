@@ -110,7 +110,7 @@ class LoadClip(plugin.NukeLoader):
         add_retime = options.get(
             "add_retime", self.options_defaults["add_retime"])
 
-        repre_id = representation["_id"]
+        repre_id = representation["id"]
 
         self.log.debug(
             "Representation id `{}` ".format(repre_id))
@@ -212,17 +212,18 @@ class LoadClip(plugin.NukeLoader):
     def switch(self, container, context):
         self.update(container, context)
 
-    def _representation_with_hash_in_frame(self, representation):
+    def _representation_with_hash_in_frame(self, repre_entity):
         """Convert frame key value to padded hash
 
         Args:
-            representation (dict): representation data
+            repre_entity (dict): Representation entity.
 
         Returns:
             dict: altered representation data
+
         """
-        representation = deepcopy(representation)
-        context = representation["context"]
+        new_repre_entity = deepcopy(repre_entity)
+        context = new_repre_entity["context"]
 
         # Get the frame from the context and hash it
         frame = context["frame"]
@@ -230,7 +231,7 @@ class LoadClip(plugin.NukeLoader):
 
         # Replace the frame with the hash in the originalBasename
         if (
-            "{originalBasename}" in representation["data"]["template"]
+            "{originalBasename}" in new_repre_entity["attrib"]["template"]
         ):
             origin_basename = context["originalBasename"]
             context["originalBasename"] = origin_basename.replace(
@@ -238,8 +239,8 @@ class LoadClip(plugin.NukeLoader):
             )
 
         # Replace the frame with the hash in the frame
-        representation["context"]["frame"] = hashed_frame
-        return representation
+        new_repre_entity["context"]["frame"] = hashed_frame
+        return new_repre_entity
 
     def update(self, container, context):
         """Update the Loader's path
@@ -252,21 +253,23 @@ class LoadClip(plugin.NukeLoader):
 
         project_name = context["project"]["name"]
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         version_attributes = version_entity["attrib"]
         version_data = version_entity["data"]
 
-        is_sequence = len(repre_doc["files"]) > 1
+        is_sequence = len(repre_entity["files"]) > 1
 
         read_node = container["node"]
 
         if is_sequence:
-            repre_doc = self._representation_with_hash_in_frame(
-                repre_doc
+            repre_entity = self._representation_with_hash_in_frame(
+                repre_entity
             )
 
-        filepath = get_representation_path(repre_doc).replace("\\", "/")
+        filepath = (
+            get_representation_path(repre_entity)
+        ).replace("\\", "/")
         self.log.debug("_ filepath: {}".format(filepath))
 
         start_at_workfile = "start at" in read_node['frame_mode'].value()
@@ -276,11 +279,11 @@ class LoadClip(plugin.NukeLoader):
             if "addRetime" in key
         ]
 
-        repre_id = repre_doc["_id"]
+        repre_id = repre_entity["id"]
 
         # colorspace profile
         colorspace = (
-            repre_doc["data"].get("colorspace")
+            repre_entity["data"].get("colorspace")
             or version_attributes.get("colorSpace")
         )
 
@@ -313,7 +316,7 @@ class LoadClip(plugin.NukeLoader):
             self._set_range_to_node(read_node, first, last, start_at_workfile)
 
             updated_dict = {
-                "representation": str(repre_doc["_id"]),
+                "representation": repre_entity["id"],
                 "frameStart": str(first),
                 "frameEnd": str(last),
                 "version": str(version_entity["version"]),
@@ -441,10 +444,10 @@ class LoadClip(plugin.NukeLoader):
     def _get_node_name(self, context):
         folder_entity = context["folder"]
         product_name = context["product"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         folder_name = folder_entity["name"]
-        repre_cont = repre_doc["context"]
+        repre_cont = repre_entity["context"]
         name_data = {
             "folder": {
                 "name": folder_name,
@@ -454,9 +457,9 @@ class LoadClip(plugin.NukeLoader):
             },
             "asset": folder_name,
             "subset": product_name,
-            "representation": repre_doc["name"],
+            "representation": repre_entity["name"],
             "ext": repre_cont["representation"],
-            "id": repre_doc["_id"],
+            "id": repre_entity["id"],
             "class_name": self.__class__.__name__
         }
 

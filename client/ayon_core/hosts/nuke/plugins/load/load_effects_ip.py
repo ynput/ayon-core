@@ -164,12 +164,12 @@ class LoadEffectsInputProcess(load.LoaderPlugin):
         # Get version from io
         project_name = context["project"]["name"]
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         # get corresponding node
         GN = container["node"]
 
-        file = get_representation_path(repre_doc).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         version_attributes = version_entity["attrib"]
         first = version_attributes.get("frameStart")
@@ -179,7 +179,7 @@ class LoadEffectsInputProcess(load.LoaderPlugin):
         workfile_first_frame = int(nuke.root()["first_frame"].getValue())
 
         data_imprint = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "frameStart": first,
             "frameEnd": last,
             "version": version_entity["version"],

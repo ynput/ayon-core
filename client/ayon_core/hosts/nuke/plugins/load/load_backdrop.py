@@ -186,12 +186,12 @@ class LoadBackdropNodes(load.LoaderPlugin):
         # Get version from io
         project_name = context["project"]["name"]
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         # get corresponding node
         GN = container["node"]
 
-        file = get_representation_path(repre_doc).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         name = container["name"]
         namespace = container["namespace"]
@@ -201,7 +201,7 @@ class LoadBackdropNodes(load.LoaderPlugin):
         colorspace = version_attributes.get("colorSpace")
 
         data_imprint = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "version": version_entity["version"],
             "colorspaceInput": colorspace,
         }
