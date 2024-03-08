@@ -201,19 +201,19 @@ class ImagePlaneLoader(load.LoaderPlugin):
 
     def update(self, container, context):
         folder_entity = context["folder"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         members = get_container_members(container)
         image_planes = cmds.ls(members, type="imagePlane")
         assert image_planes, "Image plane not found."
         image_plane_shape = image_planes[0]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
         cmds.setAttr("{}.imageName".format(image_plane_shape),
                      path,
                      type="string")
         cmds.setAttr("{}.representation".format(container["objectName"]),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
         # Set frame range.

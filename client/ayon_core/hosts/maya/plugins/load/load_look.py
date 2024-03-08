@@ -4,8 +4,8 @@ import json
 from collections import defaultdict
 
 from qtpy import QtWidgets
+from ayon_api import get_representation_by_name
 
-from ayon_core.client import get_representation_by_name
 from ayon_core.pipeline import get_representation_path
 import ayon_core.hosts.maya.api.plugin
 from ayon_core.hosts.maya.api import lib

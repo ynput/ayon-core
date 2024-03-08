@@ -189,8 +189,8 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             if cmds.nodeType(shapes[0]) == "aiStandIn":
                 standin = shapes[0]
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         proxy_basename, proxy_path = self._get_proxy_path(path)
 
         # Whether there is proxy or so, we still update the string operator.
@@ -216,7 +216,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         cmds.setAttr(
             container["objectName"] + ".representation",
-            str(repre_doc["_id"]),
+            repre_entity["id"],
             type="string"
         )
 

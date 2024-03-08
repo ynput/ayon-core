@@ -7,13 +7,12 @@ loader will use them instead of native vray vrmesh format.
 """
 import os
 
+from ayon_api import get_representation_by_name
 import maya.cmds as cmds
 
-from ayon_core.client import get_representation_by_name
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.maya.api.lib import (
@@ -109,12 +108,12 @@ class VRayProxyLoader(load.LoaderPlugin):
         assert vraymeshes, "Cannot find VRayMesh in container"
 
         #  get all representations for this version
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         filename = self._get_abc(
             context["project"]["name"], context["version"]["id"]
         )
         if not filename:
-            filename = get_representation_path(repre_doc)
+            filename = get_representation_path(repre_entity)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.fileName".format(vray_mesh),
@@ -123,7 +122,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def remove(self, container):
@@ -191,7 +190,9 @@ class VRayProxyLoader(load.LoaderPlugin):
         """
         self.log.debug(
             "Looking for abc in published representations of this version.")
-        abc_rep = get_representation_by_name(project_name, "abc", version_id)
+        abc_rep = ayon_api.get_representation_by_name(
+            project_name, "abc", version_id
+        )
         if abc_rep:
             self.log.debug("Found, we'll link alembic to vray proxy.")
             file_name = get_representation_path(abc_rep)

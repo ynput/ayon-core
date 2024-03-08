@@ -80,8 +80,8 @@ class VRaySceneLoader(load.LoaderPlugin):
         vraymeshes = cmds.ls(members, type="VRayScene")
         assert vraymeshes, "Cannot find VRayScene in container"
 
-        repre_doc = context["representation"]
-        filename = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        filename = get_representation_path(repre_entity)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.FilePath".format(vray_mesh),
@@ -90,7 +90,7 @@ class VRaySceneLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def remove(self, container):

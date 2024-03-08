@@ -809,9 +809,9 @@ class ReferenceLoader(Loader):
         node = container["objectName"]
 
         project_name = context["project"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
 
         # Get reference node from container members
         members = get_container_members(node)
@@ -824,9 +824,9 @@ class ReferenceLoader(Loader):
             "abc": "Alembic",
             "fbx": "FBX",
             "usd": "USD Import"
-        }.get(repre_doc["name"])
+        }.get(repre_entity["name"])
 
-        assert file_type, "Unsupported representation: %s" % repre_doc
+        assert file_type, "Unsupported representation: %s" % repre_entity
 
         assert os.path.exists(path), "%s does not exist." % path
 
@@ -834,7 +834,7 @@ class ReferenceLoader(Loader):
         # them to incoming data.
         alembic_attrs = ["speed", "offset", "cycleType", "time"]
         alembic_data = {}
-        if repre_doc["name"] == "abc":
+        if repre_entity["name"] == "abc":
             alembic_nodes = cmds.ls(
                 "{}:*".format(namespace), type="AlembicNode"
             )
@@ -875,7 +875,7 @@ class ReferenceLoader(Loader):
         self._organize_containers(content, container["objectName"])
 
         # Reapply alembic settings.
-        if repre_doc["name"] == "abc" and alembic_data:
+        if repre_entity["name"] == "abc" and alembic_data:
             alembic_nodes = cmds.ls(
                 "{}:*".format(namespace), type="AlembicNode"
             )
@@ -909,7 +909,7 @@ class ReferenceLoader(Loader):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
         # When an animation or pointcache gets connected to an Xgen container,

@@ -254,9 +254,9 @@ class LoadVDBtoVRay(load.LoaderPlugin):
                              type="string")
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
@@ -269,7 +269,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def switch(self, container, context):

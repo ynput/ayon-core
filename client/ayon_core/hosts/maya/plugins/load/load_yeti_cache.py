@@ -123,11 +123,11 @@ class YetiCacheLoader(load.LoaderPlugin):
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         namespace = container["namespace"]
         container_node = container["objectName"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
         settings = self.read_settings(path)
 
         # Collect scene information of asset
@@ -216,7 +216,7 @@ class YetiCacheLoader(load.LoaderPlugin):
                         set_attribute(attr, value, yeti_node)
 
         cmds.setAttr("{}.representation".format(container_node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      typ="string")
 
     def switch(self, container, context):

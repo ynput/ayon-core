@@ -39,16 +39,16 @@ class ToolWindows:
         cls._windows[tool] = window
 
 
-def _resolution_from_document(doc):
-    if not doc:
-        print("Entered document is not valid. \"{}\"".format(
-            str(doc)
+def _resolution_from_entity(entity):
+    if not entity:
+        print("Entered entity is not valid. \"{}\"".format(
+            str(entity)
         ))
         return None
 
-    attributes = doc.get("attrib")
+    attributes = entity.get("attrib")
     if attributes is None:
-        attributes = doc.get("data", {})
+        attributes = entity.get("data", {})
 
     resolution_width = attributes.get("resolutionWidth")
     resolution_height = attributes.get("resolutionHeight")
@@ -60,7 +60,9 @@ def _resolution_from_document(doc):
     # Make sure both width and height are set
     if resolution_width is None or resolution_height is None:
         cmds.warning(
-            "No resolution information found for \"{}\"".format(doc["name"])
+            "No resolution information found for \"{}\"".format(
+                entity["name"]
+            )
         )
         return None
 
@@ -76,7 +78,7 @@ def reset_resolution():
     project_name = get_current_project_name()
     folder_path = get_current_folder_path()
     folder_entity = get_folder_by_path(project_name, folder_path)
-    resolution = _resolution_from_document(folder_entity)
+    resolution = _resolution_from_entity(folder_entity)
     # Try get resolution from project
     if resolution is None:
         # TODO go through visualParents
@@ -85,7 +87,7 @@ def reset_resolution():
             " Trying to get resolution from project"
         ).format(folder_path))
         project_entity = get_project(project_name)
-        resolution = _resolution_from_document(project_entity)
+        resolution = _resolution_from_entity(project_entity)
 
     if resolution is None:
         msg = "Using default resolution {}x{}"
