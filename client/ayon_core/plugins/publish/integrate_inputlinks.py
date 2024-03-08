@@ -122,7 +122,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                     new_links_by_type,
                     "generative",
                     input_version,
-                    version_entity["_id"],
+                    version_entity["id"],
                 )
 
     def _get_existing_links(self, project_name, link_type, entity_ids):
