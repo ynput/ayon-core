@@ -1,5 +1,5 @@
 import os
-
+from qtpy import QtWidgets, QtCore
 from ayon_core.lib import EnumDef
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.lib import (
@@ -13,6 +13,47 @@ from ayon_core.hosts.max.api.pipeline import (
     remove_container_data
 )
 from ayon_core.pipeline import get_representation_path, load
+from ayon_core.settings import get_project_settings
+
+
+class MaterialDupOptionsWindow(QtWidgets.QDialog):
+
+    def __init__(self, material_options):
+        super(MaterialDupOptionsWindow, self).__init__()
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
+
+        self.material_option = None
+
+        self.widgets = {
+            "label": QtWidgets.QLabel(
+                "Select material duplicate options before loading the max scene."),
+            "material_options_list": QtWidgets.QListWidget(),
+            "warning": QtWidgets.QLabel("No material options selected!"),
+            "okButton": QtWidgets.QPushButton("Ok"),
+        }
+        for option in material_options:
+            self.widgets["material_options_list"].addItem(option)
+        # Build buttons.
+        layout = QtWidgets.QHBoxLayout(self.widgets["buttons"])
+        layout.addWidget(self.widgets["okButton"])
+        # Build layout.
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.widgets["label"])
+        layout.addWidget(self.widgets["list"])
+        layout.addWidget(self.widgets["buttons"])
+
+        self.widgets["okButton"].pressed.connect(self.on_ok_pressed)
+        self.widgets["material_options_list"].itemPressed.connect(
+            self.on_material_optionsPressed)
+
+    def on_material_optionsPressed(self, item):
+        self.material_option = item.text()
+
+    def on_ok_pressed(self):
+        if self.material_option is None:
+            self.widgets["warning"].setVisible(True)
+            return
+        self.close()
 
 
 class MaxSceneLoader(load.LoaderPlugin):
@@ -82,7 +123,9 @@ class MaxSceneLoader(load.LoaderPlugin):
         for prev_max_obj in prev_max_objects:
             if rt.isValidNode(prev_max_obj):  # noqa
                 rt.Delete(prev_max_obj)
-        rt.MergeMaxFile(path, quiet=True)
+        window = MaterialDupOptionsWindow(self.mtl_dup_enum)
+        window.exec_()
+        rt.MergeMaxFile(path, rt.Name(window.material_option), quiet=True)
 
         current_max_objects = rt.getLastMergedNodes()
 
