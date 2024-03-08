@@ -2,25 +2,24 @@ import os
 import re
 import copy
 import itertools
-import datetime
 import sys
 import traceback
 import uuid
 
 import ayon_api
-
-from ayon_core.client import get_representations
-from ayon_core.client.operations import (
+from ayon_api.utils import create_entity_id
+from ayon_api.operations import (
     OperationsSession,
-    new_representation_doc,
-    prepare_representation_update_data,
+    new_folder_entity,
+    new_product_entity,
+    new_version_entity,
+    new_representation_entity,
 )
-from ayon_core.addon import AddonsManager
+
 from ayon_core.lib import (
     StringTemplate,
     source_hash,
 )
-
 from ayon_core.lib.file_transaction import FileTransaction
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
@@ -220,20 +219,20 @@ class ProjectPushRepreItem:
         but filenames are not template based.
 
     Args:
-        repre_doc (Dict[str, Ant]): Representation document.
+        repre_entity (Dict[str, Ant]): Representation entity.
         roots (Dict[str, str]): Project roots (based on project anatomy).
     """
 
-    def __init__(self, repre_doc, roots):
-        self._repre_doc = repre_doc
+    def __init__(self, repre_entity, roots):
+        self._repre_entity = repre_entity
         self._roots = roots
         self._src_files = None
         self._resource_files = None
         self._frame = UNKNOWN
 
     @property
-    def repre_doc(self):
-        return self._repre_doc
+    def repre_entity(self):
+        return self._repre_entity
 
     @property
     def src_files(self):
@@ -312,7 +311,7 @@ class ProjectPushRepreItem:
         if self._src_files is not None:
             return self._src_files, self._resource_files
 
-        repre_context = self._repre_doc["context"]
+        repre_context = self._repre_entity["context"]
         if "frame" in repre_context or "udim" in repre_context:
             src_files, resource_files = self._get_source_files_with_frames()
         else:
@@ -329,7 +328,7 @@ class ProjectPushRepreItem:
         udim_placeholder = "__udim__"
         src_files = []
         resource_files = []
-        template = self._repre_doc["data"]["template"]
+        template = self._repre_entity["attrib"]["template"]
         # Remove padding from 'udim' and 'frame' formatting keys
         # - "{frame:0>4}" -> "{frame}"
         for key in ("udim", "frame"):
@@ -337,7 +336,7 @@ class ProjectPushRepreItem:
             replacement = "{{{}}}".format(key)
             template = re.sub(sub_part, replacement, template)
 
-        repre_context = self._repre_doc["context"]
+        repre_context = self._repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         if "frame" in fill_repre_context:
             fill_repre_context["frame"] = frame_placeholder
@@ -358,7 +357,7 @@ class ProjectPushRepreItem:
             .replace(udim_placeholder, "(?P<udim>[0-9]+)")
         )
         src_basename_regex = re.compile("^{}$".format(src_basename))
-        for file_info in self._repre_doc["files"]:
+        for file_info in self._repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots)
@@ -390,8 +389,8 @@ class ProjectPushRepreItem:
     def _get_source_files(self):
         src_files = []
         resource_files = []
-        template = self._repre_doc["data"]["template"]
-        repre_context = self._repre_doc["context"]
+        template = self._repre_entity["attrib"]["template"]
+        repre_context = self._repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         fill_roots = fill_repre_context["root"]
         for root_name in tuple(fill_roots.keys()):
@@ -400,7 +399,7 @@ class ProjectPushRepreItem:
                                                     fill_repre_context)
         repre_path = self._clean_path(repre_path)
         src_dirpath = os.path.dirname(repre_path)
-        for file_info in self._repre_doc["files"]:
+        for file_info in self._repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots))
@@ -594,13 +593,13 @@ class ProjectPushItemProcess:
 
         anatomy = Anatomy(src_project_name)
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             src_project_name,
-            version_ids=[src_version_id]
+            version_ids={src_version_id}
         )
         repre_items = [
-            ProjectPushRepreItem(repre_doc, anatomy.roots)
-            for repre_doc in repre_docs
+            ProjectPushRepreItem(repre_entity, anatomy.roots)
+            for repre_entity in repre_entities
         ]
         self._log_debug((
             f"Found {len(repre_items)} representations on"
@@ -694,38 +693,31 @@ class ProjectPushItemProcess:
         folder_label = None
         if new_folder_name != folder_name:
             folder_label = folder_name
-        fodler_create_data = {
-            "name": folder_name,
-            # TODO use different folder type?
-            "folderType": "Folder",
-        }
-        if parent_id:
-            fodler_create_data["parentId"] = parent_id
 
+        # TODO find out how to define folder type
+        folder_entity = new_folder_entity(
+            folder_name,
+            "Folder",
+            parent_id=parent_id,
+            attribs=new_folder_attrib
+        )
         if folder_label:
-            fodler_create_data["label"] = folder_label
+            folder_entity["label"] = folder_label
 
-        if new_folder_attrib:
-            fodler_create_data["attrib"] = new_folder_attrib
-
-        project_name = project_entity["name"]
-        response = ayon_api.post(
-            f"projects/{project_name}/folders",
-            **fodler_create_data
+        self._operations.create_entity(
+            project_entity["name"],
+            "folder",
+            folder_entity
         )
-        new_folder_entity = ayon_api.get_folder_by_id(
-            project_name, response.data["id"]
-        )
-        # TODO use operations
-        # self._operations.create_entity(
-        #     project_entity["name"],
-        #     "folder",
-        #     fodler_create_data
-        # )
         self._log_info(
             f"Creating new folder with name \"{folder_name}\""
         )
-        return new_folder_entity
+        # Calculate path for usage in rest of logic
+        parent_path = ""
+        if parent_folder_entity:
+            parent_path = parent_folder_entity["path"]
+        folder_entity["path"] = "/".join([parent_path, folder_name])
+        return folder_entity
 
     def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
@@ -826,12 +818,16 @@ class ProjectPushItemProcess:
 
     def _determine_product_name(self):
         product_type = self._product_type
-        folder_entity = self._folder_entity
         task_info = self._task_info
+        new_task_info = None
+        if task_info:
+            new_task_info = {
+                "name": task_info["name"],
+                "taskType": task_info["type"]
+            }
         product_name = get_product_name(
             self._item.dst_project_name,
-            folder_entity,
-            task_info,
+            new_task_info,
             self.host_name,
             product_type,
             self._item.variant,
@@ -854,21 +850,14 @@ class ProjectPushItemProcess:
             self._product_entity = product_entity
             return product_entity
 
-        create_data = {
-            "name": product_name,
-            "productType": product_type,
-            "folderId": folder_id,
-        }
-        response = ayon_api.post(
-            "projects/{}/products".format(project_name),
-            **create_data
+        product_entity = new_product_entity(
+            product_name,
+            product_type,
+            folder_id,
         )
-        product_entity = ayon_api.get_product_by_id(
-            project_name, response.data["id"]
+        self._operations.create_entity(
+            project_name, "product", product_entity
         )
-        # self._operations.create_entity(
-        #     project_name, "product", data
-        # )
         self._product_entity = product_entity
 
     def _make_sure_version_exists(self):
@@ -927,44 +916,24 @@ class ProjectPushItemProcess:
         )
         # Update existing version
         if existing_version_entity:
-            ayon_api.patch(
-                "projects/{}/versions/{}".format(
-                    project_name, existing_version_entity["id"]
-                ),
-                **{"attrib": dst_attrib}
+            self._operations.update_entity(
+                project_name,
+                "version",
+                existing_version_entity["id"],
+                {"attrib": dst_attrib}
             )
-            version_entity = ayon_api.get_version_by_id(
-                project_name, existing_version_entity["id"]
-            )
-            # TODO use operations
-            # self._operations.update_entity(
-            #     project_name,
-            #     "version",
-            #     existing_version_entity["id"],
-            #     update_data
-            # )
-            self._version_entity = version_entity
-
+            existing_version_entity["attrib"].update(dst_attrib)
+            self._version_entity = existing_version_entity
             return
 
-        response = ayon_api.post(
-            "projects/{}/versions/{}".format(
-                project_name, existing_version_entity["id"]
-            ),
-            **{
-                "version": version,
-                "productId": product_id,
-                "attrib": dst_attrib,
-            }
+        version_entity = new_version_entity(
+            version,
+            product_id,
+            attribs=dst_attrib,
         )
-        version_entity = ayon_api.get_version_by_id(
-            project_name, response.data["id"]
+        self._operations.create_entity(
+            project_name, "version", version_entity
         )
-        # TODO use operations
-        # self._operations.create_entity(
-        #     project_name, "version", version_entity
-        # )
-
         self._version_entity = version_entity
 
     def _integrate_representations(self):
@@ -978,13 +947,13 @@ class ProjectPushItemProcess:
     def _real_integrate_representations(self):
         version_entity = self._version_entity
         version_id = version_entity["id"]
-        existing_repres = get_representations(
+        existing_repres = ayon_api.get_representations(
             self._item.dst_project_name,
-            version_ids=[version_id]
+            version_ids={version_id}
         )
         existing_repres_by_low_name = {
-            repre_doc["name"].lower(): repre_doc
-            for repre_doc in existing_repres
+            repre_entity["name"].lower(): repre_entity
+            for repre_entity in existing_repres
         }
         template_name = self._template_name
         anatomy = self._anatomy
@@ -1031,8 +1000,8 @@ class ProjectPushItemProcess:
     ):
         processed_repre_items = []
         for repre_item in self._src_repre_items:
-            repre_doc = repre_item.repre_doc
-            repre_name = repre_doc["name"]
+            repre_entity = repre_item.repre_entity
+            repre_name = repre_entity["name"]
             repre_format_data = copy.deepcopy(formatting_data)
             repre_format_data["representation"] = repre_name
             for src_file in repre_item.src_files:
@@ -1041,7 +1010,7 @@ class ProjectPushItemProcess:
                 break
 
             # Re-use 'output' from source representation
-            repre_output_name = repre_doc["context"].get("output")
+            repre_output_name = repre_entity["context"].get("output")
             if repre_output_name is not None:
                 repre_format_data["output"] = repre_output_name
 
@@ -1098,34 +1067,24 @@ class ProjectPushItemProcess:
         path_template,
         existing_repres_by_low_name
     ):
-        addons_manager = AddonsManager()
-        sync_server_module = addons_manager.get("sync_server")
-        if sync_server_module is None or not sync_server_module.enabled:
-            sites = [{
-                "name": "studio",
-                "created_dt": datetime.datetime.now()
-            }]
-        else:
-            sites = sync_server_module.compute_resource_sync_sites(
-                project_name=self._item.dst_project_name
-            )
-
         added_repre_names = set()
         for item in processed_repre_items:
             (repre_item, repre_filepaths, repre_context, published_path) = item
-            repre_name = repre_item.repre_doc["name"]
+            repre_name = repre_item.repre_entity["name"]
             added_repre_names.add(repre_name.lower())
-            new_repre_data = {
+            new_repre_attributes = {
                 "path": published_path,
                 "template": path_template
             }
             new_repre_files = []
             for (path, rootless_path) in repre_filepaths:
                 new_repre_files.append({
+                    "id": create_entity_id(),
+                    "name": os.path.basename(rootless_path),
                     "path": rootless_path,
                     "size": os.path.getsize(path),
                     "hash": source_hash(path),
-                    "sites": sites
+                    "hash_type": "op3",
                 })
 
             existing_repre = existing_repres_by_low_name.get(
@@ -1133,41 +1092,51 @@ class ProjectPushItemProcess:
             )
             entity_id = None
             if existing_repre:
-                entity_id = existing_repre["_id"]
-            new_repre_doc = new_representation_doc(
+                entity_id = existing_repre["id"]
+            repre_entity = new_representation_entity(
                 repre_name,
                 version_id,
-                repre_context,
-                data=new_repre_data,
+                new_repre_files,
+                data={"context": repre_context},
+                attribs=new_repre_attributes,
                 entity_id=entity_id
             )
-            new_repre_doc["files"] = new_repre_files
             if not existing_repre:
                 self._operations.create_entity(
                     self._item.dst_project_name,
-                    new_repre_doc["type"],
-                    new_repre_doc
+                    "representation",
+                    repre_entity
                 )
             else:
-                update_data = prepare_representation_update_data(
-                    existing_repre, new_repre_doc
-                )
-                if update_data:
+                changes = {}
+                for key, value in repre_entity.items():
+                    if key == "attrib":
+                        continue
+                    if value != existing_repre.get(key):
+                        changes[key] = value
+                attrib_changes = {}
+                for key, value in repre_entity["attrib"].items():
+                    if value != existing_repre["attrib"].get(key):
+                        attrib_changes[key] = value
+                if attrib_changes:
+                    changes["attrib"] = attrib_changes
+
+                if changes:
                     self._operations.update_entity(
                         self._item.dst_project_name,
-                        new_repre_doc["type"],
-                        new_repre_doc["_id"],
-                        update_data
+                        "representation",
+                        entity_id,
+                        changes
                     )
 
         existing_repre_names = set(existing_repres_by_low_name.keys())
         for repre_name in (existing_repre_names - added_repre_names):
-            repre_doc = existing_repres_by_low_name[repre_name]
+            repre_entity = existing_repres_by_low_name[repre_name]
             self._operations.update_entity(
                 self._item.dst_project_name,
-                repre_doc["type"],
-                repre_doc["_id"],
-                {"type": "archived_representation"}
+                "representation",
+                repre_entity["id"],
+                {"active": False}
             )
 
 
