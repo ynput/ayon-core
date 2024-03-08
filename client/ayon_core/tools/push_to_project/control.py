@@ -2,7 +2,6 @@ import threading
 
 import ayon_api
 
-from ayon_core.client import get_representations
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
@@ -225,10 +224,12 @@ class PushToContextController:
             version_entity["version"]
         )
 
-    def _get_task_info_from_repre_docs(self, task_entities, repre_docs):
+    def _get_task_info_from_repre_entities(
+        self, task_entities, repre_entities
+    ):
         found_comb = []
-        for repre_doc in repre_docs:
-            context = repre_doc["context"]
+        for repre_entity in repre_entities:
+            context = repre_entity["context"]
             repre_task_name = context.get("task")
             if repre_task_name is None:
                 continue
@@ -257,11 +258,11 @@ class PushToContextController:
         project_name = self._src_project_name
         version_entity = self._src_version_entity
         task_entities = self._src_folder_task_entities
-        repre_docs = get_representations(
-            project_name, version_ids=[version_entity["id"]]
+        repre_entities = ayon_api.get_representations(
+            project_name, version_ids={version_entity["id"]}
         )
-        task_name, task_type = self._get_task_info_from_repre_docs(
-            task_entities, repre_docs
+        task_name, task_type = self._get_task_info_from_repre_entities(
+            task_entities, repre_entities
         )
 
         project_settings = get_project_settings(project_name)
