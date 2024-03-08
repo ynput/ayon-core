@@ -1,5 +1,6 @@
 import os
 
+from ayon_core.lib import EnumDef
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.lib import (
     unique_namespace,
@@ -25,14 +26,28 @@ class MaxSceneLoader(load.LoaderPlugin):
     order = -8
     icon = "code-fork"
     color = "green"
+    mtl_dup_default = "promptMtlDups"
+    mtl_dup_enum = ["promptMtlDups", "useMergedMtlDups",
+                    "useSceneMtlDups", "renameMtlDups"]
 
-    def load(self, context, name=None, namespace=None, data=None):
+    @classmethod
+    def get_options(cls, contexts):
+        return [
+            EnumDef("mtldup",
+                    cls.mtl_dup_enum,
+                    default=cls.mtl_dup_default,
+                    label="Material Duplicate Options")
+        ]
+
+    def load(self, context, name=None, namespace=None, options=None):
         from pymxs import runtime as rt
+        mat_dup_options = options.get("mtldup", self.mtl_dup_default)
         path = self.filepath_from_context(context)
         path = os.path.normpath(path)
         # import the max scene by using "merge file"
         path = path.replace('\\', '/')
-        rt.MergeMaxFile(path, quiet=True, includeFullGroup=True)
+        rt.MergeMaxFile(path, rt.Name(mat_dup_options),
+                        quiet=True, includeFullGroup=True)
         max_objects = rt.getLastMergedNodes()
         max_object_names = [obj.name for obj in max_objects]
         # implement the OP/AYON custom attributes before load
