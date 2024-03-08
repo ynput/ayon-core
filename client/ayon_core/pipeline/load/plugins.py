@@ -76,11 +76,11 @@ class LoaderPlugin(list):
             setattr(cls, option, value)
 
     @classmethod
-    def has_valid_extension(cls, repre_doc):
+    def has_valid_extension(cls, repre_entity):
         """Has representation document valid extension for loader.
 
         Args:
-            repre_doc (dict[str, Any]): Representation document.
+            repre_entity (dict[str, Any]): Representation entity.
 
         Returns:
              bool: Representation has valid extension
@@ -90,11 +90,11 @@ class LoaderPlugin(list):
             return True
 
         # Get representation main file extension from 'context'
-        repre_context = repre_doc.get("context") or {}
+        repre_context = repre_entity.get("context") or {}
         ext = repre_context.get("ext")
         if not ext:
             # Legacy way how to get extensions
-            path = repre_doc.get("data", {}).get("path")
+            path = repre_entity.get("attrib", {}).get("path")
             if not path:
                 cls.log.info(
                     "Representation doesn't have known source of extension"
@@ -138,18 +138,18 @@ class LoaderPlugin(list):
         ):
             return False
 
-        repre_doc = context.get("representation")
-        if not repre_doc:
+        repre_entity = context.get("representation")
+        if not repre_entity:
             return False
 
         plugin_repre_names = set(plugin_repre_names)
         if (
             "*" not in plugin_repre_names
-            and repre_doc["name"] not in plugin_repre_names
+            and repre_entity["name"] not in plugin_repre_names
         ):
             return False
 
-        if not cls.has_valid_extension(repre_doc):
+        if not cls.has_valid_extension(repre_entity):
             return False
 
         plugin_product_types = set(plugin_product_types)
