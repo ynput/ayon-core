@@ -6,9 +6,6 @@ import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
-from ayon_core.client.operations import (
-    prepare_workfile_info_update_data,
-)
 from ayon_core.pipeline.template_data import (
     get_template_data,
     get_task_template_data,
@@ -474,22 +471,24 @@ class WorkfileEntitiesModel:
         if note is None:
             return
 
+        old_note = workfile_info.get("attrib", {}).get("note")
+
         new_workfile_info = copy.deepcopy(workfile_info)
         attrib = new_workfile_info.setdefault("attrib", {})
         attrib["description"] = note
-        update_data = prepare_workfile_info_update_data(
-            workfile_info, new_workfile_info
-        )
         self._cache[identifier] = new_workfile_info
         self._items.pop(identifier, None)
-        if not update_data:
+        if old_note == note:
             return
 
         project_name = self._controller.get_current_project_name()
 
         session = OperationsSession()
         session.update_entity(
-            project_name, "workfile", workfile_info["id"], update_data
+            project_name,
+            "workfile",
+            workfile_info["id"],
+            {"attrib": {"description": note}},
         )
         session.commit()
 
