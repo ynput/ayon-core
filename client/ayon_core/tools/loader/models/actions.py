@@ -27,10 +27,6 @@ NOT_SET = object()
 class LoaderActionsModel:
     """Model for loader actions.
 
-    This is probably only part of models that requires to use codebase from
-    'ayon_core.client' because of backwards compatibility with loaders logic
-    which are expecting entities.
-
     TODOs:
         Deprecate 'qargparse' usage in loaders and implement conversion
             of 'ActionItem' to data (and 'from_data').

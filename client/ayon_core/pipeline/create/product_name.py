@@ -106,7 +106,7 @@ def get_product_name(
 
     Args:
         project_name (str): Project name.
-        task_entity (Optional[Dict[str, Any]]): Task entity.
+        task_entity (Dict[str, Any]): Task entity.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
