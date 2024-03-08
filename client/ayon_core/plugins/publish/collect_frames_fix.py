@@ -6,7 +6,6 @@ from ayon_core.lib.attribute_definitions import (
     BoolDef
 )
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
-from ayon_core.client.entities import get_representations
 
 
 class CollectFramesFixDef(
@@ -55,12 +54,18 @@ class CollectFramesFixDef(
             )
             return
 
-        representations = get_representations(
-            project_name, version_ids=[version_entity["id"]]
+        representations = ayon_api.get_representations(
+            project_name, version_ids={version_entity["id"]}
         )
         published_files = []
         for repre in representations:
-            if repre["context"]["family"] not in self.families:
+            # TODO get product type from product entity instead of
+            #   representation 'context' data.
+            repre_context = repre["context"]
+            product_type = repre_context.get("product", {}).get("type")
+            if not product_type:
+                product_type = repre_context.get("family")
+            if product_type not in self.families:
                 continue
 
             for file_info in repre.get("files"):

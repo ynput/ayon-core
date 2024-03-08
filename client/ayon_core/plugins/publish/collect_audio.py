@@ -3,7 +3,6 @@ import collections
 import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 
@@ -79,17 +78,17 @@ class CollectAudio(pyblish.api.ContextPlugin):
         # Query all required documents
         project_name = context.data["projectName"]
         anatomy = context.data["anatomy"]
-        repre_docs_by_folder_paths = self.query_representations(
+        repre_entities_by_folder_paths = self.query_representations(
             project_name, folder_paths)
 
         for folder_path, instances in instances_by_folder_path.items():
-            repre_docs = repre_docs_by_folder_paths[folder_path]
-            if not repre_docs:
+            repre_entities = repre_entities_by_folder_paths[folder_path]
+            if not repre_entities:
                 continue
 
-            repre_doc = repre_docs[0]
+            repre_entity = repre_entities[0]
             repre_path = get_representation_path_with_anatomy(
-                repre_doc, anatomy
+                repre_entity, anatomy
             )
             for instance in instances:
                 instance.data["audio"] = [{
@@ -159,20 +158,20 @@ class CollectAudio(pyblish.api.ContextPlugin):
             return output
 
         # Find representations under latest versions of audio products
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, version_ids=version_ids
         )
-        repre_docs_by_version_id = collections.defaultdict(list)
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
-            repre_docs_by_version_id[version_id].append(repre_doc)
+        repre_entities_by_version_id = collections.defaultdict(list)
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            repre_entities_by_version_id[version_id].append(repre_entity)
 
-        if not repre_docs_by_version_id:
+        if not repre_entities_by_version_id:
             return output
 
         for folder_path in folder_paths:
             folder_id = folder_id_by_path.get(folder_path)
             product_id = product_id_by_folder_id.get(folder_id)
             version_id = version_id_by_product_id.get(product_id)
-            output[folder_path] = repre_docs_by_version_id[version_id]
+            output[folder_path] = repre_entities_by_version_id[version_id]
         return output
