@@ -757,7 +757,7 @@ class ClipLoader(LoaderPlugin):
             or colorspace == "Unknown"
         ):
             colorspace = context["representation"]["data"].get(
-                "colorspace", None)
+                "colorspace")
 
         return colorspace
 

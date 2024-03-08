@@ -186,20 +186,20 @@ class LoadClip(opfapi.ClipLoader):
     #     """ Updating previously loaded clips
     #     """
     #     # load clip to timeline and get main variables
-    #     repre_doc = context['representation']
+    #     repre_entity = context['representation']
     #     name = container['name']
     #     namespace = container['namespace']
     #     track_item = phiero.get_track_items(
     #         track_item_name=namespace)
     #     version = io.find_one({
     #         "type": "version",
-    #         "_id": repre_doc["parent"]
+    #         "id": repre_entity["versionId"]
     #     })
     #     version_data = version.get("data", {})
     #     version_name = version.get("name", None)
     #     colorspace = version_data.get("colorSpace", None)
     #     object_name = "{}_{}".format(name, namespace)
-    #     file = get_representation_path(repre_doc).replace("\\", "/")
+    #     file = get_representation_path(repre_entity).replace("\\", "/")
     #     clip = track_item.source()
 
     #     # reconnect media to new path
@@ -224,7 +224,7 @@ class LoadClip(opfapi.ClipLoader):
 
     #     # add variables related to version context
     #     data_imprint.update({
-    #         "representation": str(repre_doc["_id"]),
+    #         "representation": repre_entity["id"],
     #         "version": version_name,
     #         "colorspace": colorspace,
     #         "objectName": object_name
