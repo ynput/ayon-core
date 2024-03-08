@@ -33,7 +33,6 @@ def initialize_openassetio_host_interface() -> HostInterface:
         HostInterface: The host interface instance.
 
     """
-    host_interface = AyonHostInterface()
     return AyonHostInterface()
 
 
