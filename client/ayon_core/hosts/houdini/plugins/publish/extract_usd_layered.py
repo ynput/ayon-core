@@ -1,13 +1,12 @@
 import os
 import contextlib
-import hou
 import sys
 from collections import deque
+import hou
 
 import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_representation_by_name
 from ayon_core.pipeline import (
     get_representation_path,
     publish,
@@ -301,7 +300,7 @@ class ExtractUSDLayered(publish.Extractor):
             self.log.debug("No existing version..")
             return False
 
-        representation = get_representation_by_name(
+        representation = ayon_api.get_representation_by_name(
             project_name, ext.lstrip("."), version_entity["id"]
         )
         if not representation:

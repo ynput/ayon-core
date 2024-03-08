@@ -73,18 +73,18 @@ class RedshiftProxyLoader(load.LoaderPlugin):
         )
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         # Update the file path
-        file_path = get_representation_path(repre_doc)
+        file_path = get_representation_path(repre_entity)
 
         node = container["node"]
         node.setParms({
             "RS_objprop_proxy_file": self.format_path(
-                file_path, repre_doc)
+                file_path, repre_entity)
         })
 
         # Update attribute
-        node.setParms({"representation": str(repre_doc["_id"])})
+        node.setParms({"representation": repre_entity["id"]})
 
     def remove(self, container):
 
