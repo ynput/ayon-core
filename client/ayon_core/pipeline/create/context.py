@@ -978,7 +978,7 @@ class CreatedInstance:
         if not self._data.get("instance_id"):
             self._data["instance_id"] = str(uuid4())
 
-        self._asset_is_valid = self.has_set_asset
+        self._folder_is_valid = self.has_set_folder
         self._task_is_valid = self.has_set_task
 
     def __str__(self):
@@ -1279,8 +1279,8 @@ class CreatedInstance:
 
     # Context validation related methods/properties
     @property
-    def has_set_asset(self):
-        """Asset name is set in data."""
+    def has_set_folder(self):
+        """Folder path is set in data."""
 
         return "folderPath" in self._data
 
@@ -1294,15 +1294,15 @@ class CreatedInstance:
     def has_valid_context(self):
         """Context data are valid for publishing."""
 
-        return self.has_valid_asset and self.has_valid_task
+        return self.has_valid_folder and self.has_valid_task
 
     @property
-    def has_valid_asset(self):
-        """Asset set in context exists in project."""
+    def has_valid_folder(self):
+        """Folder set in context exists in project."""
 
-        if not self.has_set_asset:
+        if not self.has_set_folder:
             return False
-        return self._asset_is_valid
+        return self._folder_is_valid
 
     @property
     def has_valid_task(self):
@@ -1312,9 +1312,9 @@ class CreatedInstance:
             return False
         return self._task_is_valid
 
-    def set_asset_invalid(self, invalid):
-        # TODO replace with `set_asset_name`
-        self._asset_is_valid = not invalid
+    def set_folder_invalid(self, invalid):
+        # TODO replace with `set_folder_path`
+        self._folder_is_valid = not invalid
 
     def set_task_invalid(self, invalid):
         # TODO replace with `set_task_name`
@@ -1554,10 +1554,10 @@ class CreateContext:
         return self._current_project_name
 
     def get_current_folder_path(self):
-        """Asset name which was used as current context on context reset.
+        """Folder path which was used as current context on context reset.
 
         Returns:
-            Union[str, None]: Asset name.
+            Union[str, None]: Folder path.
         """
 
         return self._current_folder_path
@@ -1596,7 +1596,7 @@ class CreateContext:
     def context_has_changed(self):
         """Host context has changed.
 
-        As context is used project, asset, task name and workfile path if
+        As context is used project, folder, task name and workfile path if
         host does support workfiles.
 
         Returns:
@@ -1971,7 +1971,7 @@ class CreateContext:
             Any: Output of triggered creator's 'create' method.
 
         Raises:
-            CreatorError: If creator was not found or asset is empty.
+            CreatorError: If creator was not found or folder is empty.
         """
 
         creator = self._get_creator_in_create(creator_identifier)
@@ -2228,7 +2228,7 @@ class CreateContext:
             raise CreatorsCreateFailed(failed_info)
 
     def validate_instances_context(self, instances=None):
-        """Validate 'asset' and 'task' instance context."""
+        """Validate 'folder' and 'task' instance context."""
         # Use all instances from context if 'instances' are not passed
         if instances is None:
             instances = tuple(self._instances_by_id.values())
@@ -2295,7 +2295,7 @@ class CreateContext:
             task_names_by_folder_path[folder_path].add(task_entity["name"])
 
         for instance in instances:
-            if not instance.has_valid_asset or not instance.has_valid_task:
+            if not instance.has_valid_folder or not instance.has_valid_task:
                 continue
 
             folder_path = instance["folderPath"]
@@ -2306,7 +2306,7 @@ class CreateContext:
                     instance["folderPath"] = folder_path
 
             if folder_path not in task_names_by_folder_path:
-                instance.set_asset_invalid(True)
+                instance.set_folder_invalid(True)
                 continue
 
             task_name = instance["task"]
