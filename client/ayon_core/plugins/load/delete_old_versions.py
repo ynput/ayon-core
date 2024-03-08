@@ -11,7 +11,6 @@
 # from qtpy import QtWidgets, QtCore
 #
 # from ayon_core import style
-# from ayon_core.client import get_representations
 # from ayon_core.addon import AddonsManager
 # from ayon_core.lib import format_file_size
 # from ayon_core.pipeline import load, Anatomy
@@ -265,7 +264,7 @@
 #             print(msg)
 #             return
 #
-#         repres = list(get_representations(
+#         repres = list(ayon_api.get_representations(
 #             project_name, version_ids=version_ids
 #         ))
 #
@@ -276,7 +275,9 @@
 #         dir_paths = {}
 #         file_paths_by_dir = collections.defaultdict(list)
 #         for repre in repres:
-#             file_path, seq_path = self.path_from_representation(repre, anatomy)
+#             file_path, seq_path = self.path_from_representation(
+#                 repre, anatomy
+#             )
 #             if file_path is None:
 #                 self.log.debug((
 #                     "Could not format path for represenation \"{}\""
@@ -347,7 +348,7 @@
 #             if version_tags == orig_version_tags:
 #                 continue
 #
-#             update_query = {"_id": version["id"]}
+#             update_query = {"id": version["id"]}
 #             update_data = {"$set": {"data.tags": version_tags}}
 #             mongo_changes_bulk.append(UpdateOne(update_query, update_data))
 #
