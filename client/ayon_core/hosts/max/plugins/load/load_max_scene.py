@@ -13,7 +13,6 @@ from ayon_core.hosts.max.api.pipeline import (
     remove_container_data
 )
 from ayon_core.pipeline import get_representation_path, load
-from ayon_core.settings import get_project_settings
 
 
 class MaterialDupOptionsWindow(QtWidgets.QDialog):
@@ -29,20 +28,24 @@ class MaterialDupOptionsWindow(QtWidgets.QDialog):
                 "Select material duplicate options before loading the max scene."),
             "material_options_list": QtWidgets.QListWidget(),
             "warning": QtWidgets.QLabel("No material options selected!"),
+            "buttons": QtWidgets.QWidget(),
             "okButton": QtWidgets.QPushButton("Ok"),
+            "cancelButton": QtWidgets.QPushButton("Cancel")
         }
         for option in material_options:
             self.widgets["material_options_list"].addItem(option)
         # Build buttons.
         layout = QtWidgets.QHBoxLayout(self.widgets["buttons"])
         layout.addWidget(self.widgets["okButton"])
+        layout.addWidget(self.widgets["cancelButton"])
         # Build layout.
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.widgets["label"])
-        layout.addWidget(self.widgets["list"])
+        layout.addWidget(self.widgets["material_options_list"])
         layout.addWidget(self.widgets["buttons"])
 
         self.widgets["okButton"].pressed.connect(self.on_ok_pressed)
+        self.widgets["cancelButton"].pressed.connect(self.on_cancel_pressed)
         self.widgets["material_options_list"].itemPressed.connect(
             self.on_material_optionsPressed)
 
@@ -55,6 +58,9 @@ class MaterialDupOptionsWindow(QtWidgets.QDialog):
             return
         self.close()
 
+    def on_cancel_pressed(self):
+        self.material_option = "promptMtlDups"
+        self.close()
 
 class MaxSceneLoader(load.LoaderPlugin):
     """Max Scene Loader."""
