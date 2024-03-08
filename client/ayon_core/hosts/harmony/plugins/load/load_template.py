@@ -82,8 +82,8 @@ class TemplateLoader(load.LoaderPlugin):
         node = harmony.find_node_by_name(node_name, "GROUP")
         self_name = self.__class__.__name__
 
-        repre_doc = context["representation"]
-        if is_representation_from_latest(repre_doc):
+        repre_entity = context["representation"]
+        if is_representation_from_latest(repre_entity):
             self._set_green(node)
         else:
             self._set_red(node)
@@ -111,7 +111,7 @@ class TemplateLoader(load.LoaderPlugin):
                 None, container["data"])
 
         harmony.imprint(
-            node, {"representation": str(repre_doc["_id"])}
+            node, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):
