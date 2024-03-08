@@ -1,13 +1,11 @@
 import sys
 import traceback
 import inspect
-import copy
 import collections
 import uuid
 
 import ayon_api
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     ProductLoaderPlugin,
@@ -427,22 +425,22 @@ class LoaderActionsModel:
                 "version": version_entity,
             }
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, version_ids=version_ids)
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
             version_entity = version_entities_by_id[version_id]
             product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
 
-            repre_context_by_id[repre_doc["_id"]] = {
+            repre_context_by_id[repre_entity["id"]] = {
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
                 "version": version_entity,
-                "representation": repre_doc,
+                "representation": repre_entity,
             }
 
         return version_context_by_id, repre_context_by_id
@@ -471,10 +469,10 @@ class LoaderActionsModel:
         if not project_name and not repre_ids:
             return product_context_by_id, repre_context_by_id
 
-        repre_docs = list(get_representations(
+        repre_entities = list(ayon_api.get_representations(
             project_name, representation_ids=repre_ids
         ))
-        version_ids = {r["parent"] for r in repre_docs}
+        version_ids = {r["versionId"] for r in repre_entities}
         version_entities = ayon_api.get_versions(
             project_name, version_ids=version_ids
         )
@@ -509,20 +507,20 @@ class LoaderActionsModel:
                 "product": product_entity,
             }
 
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
             version_entity = version_entities_by_id[version_id]
             product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
 
-            repre_context_by_id[repre_doc["_id"]] = {
+            repre_context_by_id[repre_entity["id"]] = {
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
                 "version": version_entity,
-                "representation": repre_doc,
+                "representation": repre_entity,
             }
         return product_context_by_id, repre_context_by_id
 
@@ -567,9 +565,9 @@ class LoaderActionsModel:
                 repre_product_ids = set()
                 repre_folder_ids = set()
                 for repre_context in filtered_repre_contexts:
-                    repre_ids.add(repre_context["representation"]["_id"])
+                    repre_ids.add(repre_context["representation"]["id"])
                     repre_product_ids.add(repre_context["product"]["id"])
-                    repre_version_ids.add(repre_context["version"]["_id"])
+                    repre_version_ids.add(repre_context["version"]["id"])
                     repre_folder_ids.add(repre_context["folder"]["id"])
 
                 item = self._create_loader_action_item(
@@ -686,10 +684,10 @@ class LoaderActionsModel:
         """
 
         project_entity = ayon_api.get_project(project_name)
-        repre_docs = list(get_representations(
+        repre_entities = list(ayon_api.get_representations(
             project_name, representation_ids=representation_ids
         ))
-        version_ids = {r["parent"] for r in repre_docs}
+        version_ids = {r["versionId"] for r in repre_entities}
         version_entities = ayon_api.get_versions(
             project_name, version_ids=version_ids
         )
@@ -707,8 +705,8 @@ class LoaderActionsModel:
         )
         folder_entities_by_id = {f["id"]: f for f in folder_entities}
         repre_contexts = []
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
             version_entity = version_entities_by_id[version_id]
             product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
@@ -719,7 +717,7 @@ class LoaderActionsModel:
                 "folder": folder_entity,
                 "product": product_entity,
                 "version": version_entity,
-                "representation": repre_doc,
+                "representation": repre_entity,
             })
 
         return self._load_representations_by_loader(
