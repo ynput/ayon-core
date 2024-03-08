@@ -590,6 +590,29 @@ def get_custom_workfile_template_from_session(
     )
 
 
+def get_current_context_custom_workfile_template(project_settings=None):
+    """Filter and fill workfile template profiles by current context.
+
+    This function can be used only inside host where context is set.
+
+    Args:
+        project_settings(Optional[Dict[str, Any]]): Project settings.
+
+    Returns:
+        str: Path to template or None if none of profiles match current
+            context. (Existence of formatted path is not validated.)
+
+    """
+    context = get_current_context()
+    return get_custom_workfile_template_by_string_context(
+        context["project_name"],
+        context["folder_path"],
+        context["task_name"],
+        get_current_host_name(),
+        project_settings=project_settings
+    )
+
+
 def change_current_context(folder_entity, task_entity, template_key=None):
     """Update active Session to a new task work area.
 
