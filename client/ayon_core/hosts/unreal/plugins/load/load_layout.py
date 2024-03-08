@@ -17,7 +17,6 @@ from unreal import (
 )
 import ayon_api
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
@@ -291,7 +290,7 @@ class LayoutLoader(plugin.Loader):
                     sec_params = section.get_editor_property('params')
                     sec_params.set_editor_property('animation', animation)
 
-    def _get_repre_docs_by_version_id(self, data):
+    def _get_repre_entities_by_version_id(self, data):
         version_ids = {
             element.get("version")
             for element in data
@@ -304,15 +303,15 @@ class LayoutLoader(plugin.Loader):
             return output
 
         project_name = get_current_project_name()
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names=["fbx", "abc"],
+            representation_names={"fbx", "abc"},
             version_ids=version_ids,
-            fields=["_id", "parent", "name"]
+            fields={"id", "versionId", "name"}
         )
-        for repre_doc in repre_docs:
-            version_id = str(repre_doc["parent"])
-            output[version_id].append(repre_doc)
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            output[version_id].append(repre_entity)
         return output
 
     def _process(self, lib_path, asset_dir, sequence, repr_loaded=None):
@@ -334,47 +333,50 @@ class LayoutLoader(plugin.Loader):
 
         loaded_assets = []
 
-        repre_docs_by_version_id = self._get_repre_docs_by_version_id(data)
+        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
+            data
+        )
         for element in data:
-            representation = None
+            repre_id = None
             repr_format = None
             if element.get('representation'):
-                repre_docs = repre_docs_by_version_id[element.get("version")]
-                if not repre_docs:
+                version_id = element.get("version")
+                repre_entities = repre_entities_by_version_id[version_id]
+                if not repre_entities:
                     self.log.error(
-                        f"No valid representation found for version "
-                        f"{element.get('version')}")
+                        f"No valid representation found for version"
+                        f" {version_id}")
                     continue
-                repre_doc = repre_docs[0]
-                representation = str(repre_doc["_id"])
-                repr_format = repre_doc["name"]
+                repre_entity = repre_entities[0]
+                repre_id = repre_entity["id"]
+                repr_format = repre_entity["name"]
 
             # This is to keep compatibility with old versions of the
             # json format.
             elif element.get('reference_fbx'):
-                representation = element.get('reference_fbx')
+                repre_id = element.get('reference_fbx')
                 repr_format = 'fbx'
             elif element.get('reference_abc'):
-                representation = element.get('reference_abc')
+                repre_id = element.get('reference_abc')
                 repr_format = 'abc'
 
             # If reference is None, this element is skipped, as it cannot be
             # imported in Unreal
-            if not representation:
+            if not repre_id:
                 continue
 
             instance_name = element.get('instance_name')
 
             skeleton = None
 
-            if representation not in repr_loaded:
-                repr_loaded.append(representation)
+            if repre_id not in repr_loaded:
+                repr_loaded.append(repre_id)
 
                 product_type = element.get("product_type")
                 if product_type is None:
                     product_type = element.get("family")
                 loaders = loaders_from_representation(
-                    all_loaders, representation)
+                    all_loaders, repre_id)
 
                 loader = None
 
@@ -385,7 +387,7 @@ class LayoutLoader(plugin.Loader):
 
                 if not loader:
                     self.log.error(
-                        f"No valid loader found for {representation}")
+                        f"No valid loader found for {repre_id}")
                     continue
 
                 options = {
@@ -394,7 +396,7 @@ class LayoutLoader(plugin.Loader):
 
                 assets = load_container(
                     loader,
-                    representation,
+                    repre_id,
                     namespace=instance_name,
                     options=options
                 )
@@ -414,8 +416,8 @@ class LayoutLoader(plugin.Loader):
                     item for item in data
                     if ((item.get('version') and
                         item.get('version') == element.get('version')) or
-                        item.get('reference_fbx') == representation or
-                        item.get('reference_abc') == representation)]
+                        item.get('reference_fbx') == repre_id or
+                        item.get('reference_abc') == repre_id)]
 
                 for instance in instances:
                     # transform = instance.get('transform')
@@ -439,9 +441,9 @@ class LayoutLoader(plugin.Loader):
                         bindings_dict[inst] = bindings
 
                 if skeleton:
-                    skeleton_dict[representation] = skeleton
+                    skeleton_dict[repre_id] = skeleton
             else:
-                skeleton = skeleton_dict.get(representation)
+                skeleton = skeleton_dict.get(repre_id)
 
             animation_file = element.get('animation')
 
@@ -655,8 +657,8 @@ class LayoutLoader(plugin.Loader):
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["_id"],
-            "parent": context["representation"]["parent"],
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
             "family": context["representation"]["context"]["family"],
             "loaded_assets": loaded_assets
         }
@@ -694,7 +696,7 @@ class LayoutLoader(plugin.Loader):
         asset_dir = container.get('namespace')
 
         folder_entity = context["folder"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         hierarchy = folder_entity["path"].lstrip("/").split("/")
         first_parent_name = hierarchy[0]
@@ -746,14 +748,14 @@ class LayoutLoader(plugin.Loader):
 
         EditorAssetLibrary.delete_directory(f"{asset_dir}/animations/")
 
-        source_path = get_representation_path(repre_doc)
+        source_path = get_representation_path(repre_entity)
 
         loaded_assets = self._process(source_path, asset_dir, sequence)
 
         data = {
-            "representation": str(repre_doc["_id"]),
-            "parent": str(repre_doc["parent"]),
-            "loaded_assets": loaded_assets
+            "representation": repre_entity["id"],
+            "parent": repre_entity["versionId"],
+            "loaded_assets": loaded_assets,
         }
         imprint(
             "{}/{}".format(asset_dir, container.get('container_name')), data)

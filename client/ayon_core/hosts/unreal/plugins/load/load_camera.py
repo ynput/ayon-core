@@ -14,6 +14,7 @@ from unreal import (
 from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
+    get_representation_path,
 )
 from ayon_core.hosts.unreal.api import plugin
 from ayon_core.hosts.unreal.api.pipeline import (
@@ -246,18 +247,21 @@ class CameraLoader(plugin.Loader):
         create_container(
             container=container_name, path=asset_dir)
 
+        product_type = context["product"]["productType"]
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": folder_name,
             "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["_id"],
-            "parent": context["representation"]["parent"],
-            "family": context["representation"]["context"]["family"]
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_name,
+            "family": product_type,
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -393,28 +397,33 @@ class CameraLoader(plugin.Loader):
 
         sub_scene.set_sequence(new_sequence)
 
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
+        repre_path = get_representation_path(repre_entity)
         self._import_camera(
             EditorLevelLibrary.get_editor_world(),
             new_sequence,
             new_sequence.get_bindings(),
             settings,
-            str(repre_doc["data"]["path"])
+            repre_path
         )
 
         # Set range of all sections
         # Changing the range of the section is not enough. We need to change
         # the frame of all the keys in the section.
         project_name = get_current_project_name()
-        asset = container.get('asset')
-        data = get_asset_by_name(project_name, asset)["data"]
+        folder_path = container.get("folder_path")
+        if folder_path is None:
+            folder_path = container.get("asset")
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        folder_attributes = folder_entity["attrib"]
 
+        clip_in = folder_attributes["clipIn"]
+        clip_out = folder_attributes["clipOut"]
+        frame_start = folder_attributes["frameStart"]
         for possessable in new_sequence.get_possessables():
             for tracks in possessable.get_tracks():
                 for section in tracks.get_sections():
-                    section.set_range(
-                        data.get('clipIn'),
-                        data.get('clipOut') + 1)
+                    section.set_range(clip_in, clip_out + 1)
                     for channel in section.get_all_channels():
                         for key in channel.get_keys():
                             old_time = key.get_time().get_editor_property(
@@ -422,13 +431,13 @@ class CameraLoader(plugin.Loader):
                             old_time_value = old_time.get_editor_property(
                                 'value')
                             new_time = old_time_value + (
-                                data.get('clipIn') - data.get('frameStart')
+                                clip_in - frame_start
                             )
                             key.set_time(unreal.FrameNumber(value=new_time))
 
         data = {
-            "representation": str(repre_doc["_id"]),
-            "parent": str(repre_doc["parent"])
+            "representation": repre_entity["id"],
+            "parent": repre_entity["versionId"],
         }
         imprint(f"{asset_dir}/{container.get('container_name')}", data)
 

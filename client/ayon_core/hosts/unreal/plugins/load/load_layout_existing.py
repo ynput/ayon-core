@@ -5,7 +5,6 @@ import unreal
 from unreal import EditorLevelLibrary
 import ayon_api
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
@@ -65,7 +64,6 @@ class ExistingLayoutLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": folder_path,
             "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
@@ -73,8 +71,10 @@ class ExistingLayoutLoader(plugin.Loader):
             # "loader": str(self.__class__.__name__),
             "representation": representation,
             "parent": version_id,
-            "family": product_type,
             "product_type": product_type,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
 
         upipeline.imprint(
@@ -201,19 +201,19 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return assets
 
-    def _get_valid_repre_docs(self, project_name, version_ids):
+    def _get_valid_repre_entities(self, project_name, version_ids):
         valid_formats = ['fbx', 'abc']
 
-        repre_docs = list(get_representations(
+        repre_entities = list(ayon_api.get_representations(
             project_name,
             representation_names=valid_formats,
             version_ids=version_ids
         ))
-        repre_doc_by_version_id = {}
-        for repre_doc in repre_docs:
-            version_id = str(repre_doc["parent"])
-            repre_doc_by_version_id[version_id] = repre_doc
-        return repre_doc_by_version_id
+        repre_entities_by_version_id = {}
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            repre_entities_by_version_id[version_id] = repre_entity
+        return repre_entities_by_version_id
 
     def _process(self, lib_path, project_name):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -232,44 +232,47 @@ class ExistingLayoutLoader(plugin.Loader):
                 repre_ids.add(repre_id)
                 elements.append(element)
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, representation_ids=repre_ids
         )
-        repre_docs_by_id = {
-            str(repre_doc["_id"]): repre_doc
-            for repre_doc in repre_docs
+        repre_entities_by_id = {
+            repre_entity["id"]: repre_entity
+            for repre_entity in repre_entities
         }
         layout_data = []
         version_ids = set()
         for element in elements:
             repre_id = element.get("representation")
-            repre_doc = repre_docs_by_id.get(repre_id)
-            if not repre_doc:
+            repre_entity = repre_entities_by_id.get(repre_id)
+            if not repre_entity:
                 raise AssertionError("Representation not found")
-            if not (repre_doc.get('data') or repre_doc['data'].get('path')):
+            if not (
+                repre_entity.get("attrib")
+                or repre_entity["attrib"].get("path")
+            ):
                 raise AssertionError("Representation does not have path")
-            if not repre_doc.get('context'):
+            if not repre_entity.get('context'):
                 raise AssertionError("Representation does not have context")
 
-            layout_data.append((repre_doc, element))
-            version_ids.add(repre_doc["parent"])
+            layout_data.append((repre_entity, element))
+            version_ids.add(repre_entity["versionId"])
 
         repre_parents_by_id = ayon_api.get_representation_parents(
-            project_name, repre_docs_by_id.keys()
+            project_name, repre_entities_by_id.keys()
         )
 
         # Prequery valid repre documents for all elements at once
-        valid_repre_doc_by_version_id = self._get_valid_repre_docs(
+        valid_repre_entities_by_version_id = self._get_valid_repre_entities(
             project_name, version_ids)
         containers = []
         actors_matched = []
 
-        for (repre_doc, lasset) in layout_data:
+        for (repre_entity, lasset) in layout_data:
             # For every actor in the scene, check if it has a representation in
             # those we got from the JSON. If so, create a container for it.
             # Otherwise, remove it from the scene.
             found = False
-            repre_id = repre_doc["_id"]
+            repre_id = repre_entity["id"]
             repre_parents = repre_parents_by_id[repre_id]
             folder_path = repre_parents.folder["path"]
             folder_name = repre_parents.folder["name"]
@@ -291,7 +294,7 @@ class ExistingLayoutLoader(plugin.Loader):
                 path = Path(filename)
 
                 if (not path.name or
-                        path.name not in repre_doc["data"]["path"]):
+                        path.name not in repre_entity["attrib"]["path"]):
                     continue
 
                 actor.set_actor_label(lasset.get('instance_name'))
@@ -303,8 +306,8 @@ class ExistingLayoutLoader(plugin.Loader):
                     f"{folder_name}_{product_name}",
                     mesh_path,
                     folder_path,
-                    repre_doc["_id"],
-                    repre_doc["parent"],
+                    repre_entity["id"],
+                    repre_entity["versionId"],
                     product_type
                 )
                 containers.append(container)
@@ -333,18 +336,18 @@ class ExistingLayoutLoader(plugin.Loader):
             loaded = False
 
             for container in all_containers:
-                repr = container.get('representation')
+                repre_id = container.get('representation')
 
-                if not repr == repre_doc["_id"]:
+                if not repre_id == repre_entity["id"]:
                     continue
 
                 asset_dir = container.get('namespace')
 
-                filter = unreal.ARFilter(
+                arfilter = unreal.ARFilter(
                     class_names=["StaticMesh"],
                     package_paths=[asset_dir],
                     recursive_paths=False)
-                assets = ar.get_assets(filter)
+                assets = ar.get_assets(arfilter)
 
                 for asset in assets:
                     obj = asset.get_asset()
@@ -357,8 +360,9 @@ class ExistingLayoutLoader(plugin.Loader):
             if loaded:
                 continue
 
+            version_id = lasset.get('version')
             assets = self._load_asset(
-                valid_repre_doc_by_version_id.get(lasset.get('version')),
+                valid_repre_entities_by_version_id.get(version_id),
                 lasset.get('representation'),
                 lasset.get('instance_name'),
                 lasset.get('family')
@@ -414,17 +418,18 @@ class ExistingLayoutLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": folder_path,
             "folder_path": folder_path,
             "namespace": curr_level_path,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["_id"],
-            "parent": context["representation"]["parent"],
-            "family": product_type,
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
             "product_type": product_type,
-            "loaded_assets": containers
+            "loaded_assets": containers,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
         upipeline.imprint(f"{curr_level_path}/{container_name}", data)
 
@@ -432,15 +437,15 @@ class ExistingLayoutLoader(plugin.Loader):
         asset_dir = container.get('namespace')
 
         project_name = context["project"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
-        source_path = get_representation_path(repre_doc)
+        source_path = get_representation_path(repre_entity)
         containers = self._process(source_path, project_name)
 
         data = {
-            "representation": str(repre_doc["_id"]),
-            "parent": str(repre_doc["parent"]),
-            "loaded_assets": containers
+            "representation": repre_entity["id"],
+            "loaded_assets": containers,
+            "parent": repre_entity["versionId"],
         }
         upipeline.imprint(
             "{}/{}".format(asset_dir, container.get('container_name')), data)
