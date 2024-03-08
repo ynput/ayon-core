@@ -108,21 +108,6 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
                 created_inst.data_to_store()
             )
 
-    def remove_instances(self, instances):
-        """Remove specified instance from the scene.
-
-        This is only removing `id` parameter so instance is no longer
-        instance, because it might contain valuable data for artist.
-
-        """
-        for instance in instances:
-            instance_node = rt.GetNodeByName(
-                instance.data.get("instance_node"))
-            if instance_node:
-                rt.Delete(instance_node)
-
-            self._remove_instance_from_context(instance)
-
     def create_node(self, product_name):
         if rt.getNodeByName(product_name):
             node = rt.getNodeByName(product_name)
