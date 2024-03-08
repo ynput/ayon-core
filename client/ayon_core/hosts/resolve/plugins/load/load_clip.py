@@ -67,14 +67,14 @@ class LoadClip(plugin.TimelineItemLoader):
         """ Updating previously loaded clips
         """
 
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         name = container['name']
         namespace = container['namespace']
         timeline_item = container["_timeline_item"]
 
         media_pool_item = timeline_item.GetMediaPoolItem()
 
-        files = plugin.get_representation_files(repre_doc)
+        files = plugin.get_representation_files(repre_entity)
 
         loader = plugin.ClipLoader(self, context)
         timeline_item = loader.update(timeline_item, files)
@@ -97,7 +97,7 @@ class LoadClip(plugin.TimelineItemLoader):
     def get_tag_data(self, context, name, namespace):
         """Return data to be imprinted on the timeline item marker"""
 
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         version_entity = context["version"]
         version_attributes = version_entity["attrib"]
         colorspace = version_attributes.get("colorSpace", None)
@@ -116,7 +116,7 @@ class LoadClip(plugin.TimelineItemLoader):
 
         # add variables related to version context
         data.update({
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "version": version_entity["version"],
             "colorspace": colorspace,
             "objectName": object_name
