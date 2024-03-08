@@ -27,8 +27,7 @@ import collections
 
 import pyblish.api
 import ayon_api
-
-from ayon_core.client.operations import OperationsSession
+from ayon_api.operations import OperationsSession
 
 InstanceFilterResult = collections.namedtuple(
     "InstanceFilterResult",
@@ -162,8 +161,6 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         version_entities_by_id,
         project_name
     ):
-        from ayon_core.client.operations import create_thumbnail
-
         # Make sure each entity id has defined only one thumbnail id
         thumbnail_info_by_entity_id = {}
         for instance_item in filtered_instance_items:
@@ -176,7 +173,9 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 ).format(instance_label))
                 continue
 
-            thumbnail_id = create_thumbnail(project_name, thumbnail_path)
+            thumbnail_id = ayon_api.create_thumbnail(
+                project_name, thumbnail_path
+            )
 
             # Set thumbnail id for version
             thumbnail_info_by_entity_id[version_id] = {
@@ -194,7 +193,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             folder_path = instance.data["folderPath"]
             thumbnail_info_by_entity_id[folder_id] = {
                 "thumbnail_id": thumbnail_id,
-                "entity_type": "asset",
+                "entity_type": "folder",
             }
             self.log.debug("Setting thumbnail for folder \"{}\" <{}>".format(
                 folder_path, version_id
@@ -207,7 +206,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 project_name,
                 thumbnail_info["entity_type"],
                 entity_id,
-                {"data.thumbnail_id": thumbnail_id}
+                {"thumbnailId": thumbnail_id}
             )
         op_session.commit()
 
