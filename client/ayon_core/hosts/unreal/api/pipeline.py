@@ -262,7 +262,7 @@ def containerise(name, namespace, nodes, context, loader=None, suffix="_CON"):
         "name": new_name,
         "namespace": namespace,
         "loader": str(loader),
-        "representation": context["representation"]["_id"],
+        "representation": context["representation"]["id"],
     }
     # 3 - imprint data
     imprint(f"{path}/{container_name}", data)
