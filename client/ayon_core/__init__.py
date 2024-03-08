@@ -1,4 +1,5 @@
 import os
+from .version import __version__
 
 
 AYON_CORE_ROOT = os.path.dirname(os.path.abspath(__file__))
