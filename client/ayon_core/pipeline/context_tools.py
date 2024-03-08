@@ -13,8 +13,7 @@ from pyblish.lib import MessageHandler
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import HostBase
 from ayon_core.client import get_ayon_server_api_connection
-from ayon_core.lib import is_in_tests
-from ayon_core.lib.events import emit_event
+from ayon_core.lib import is_in_tests, initialize_ayon_connection, emit_event
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -157,6 +156,7 @@ def install_host(host):
 
 def install_ayon_plugins(project_name=None, host_name=None):
     # Make sure modules are loaded
+    initialize_ayon_connection()
     load_addons()
 
     log.info("Registering global plug-ins..")
