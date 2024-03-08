@@ -218,9 +218,9 @@ class LoadImage(plugin.Loader):
         removed.
         """
 
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         # Create new containers first
-        context = get_representation_context(repre_doc)
+        context = get_representation_context(repre_entity["id"])
 
         # Get layer ids from previous container
         old_layer_names = self.get_members_from_container(container)
