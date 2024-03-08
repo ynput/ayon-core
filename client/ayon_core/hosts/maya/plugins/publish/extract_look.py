@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 """Maya look extractor."""
+import os
 import sys
-from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
 import contextlib
 import json
 import logging
-import os
 import tempfile
+import platform
+from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+
 import six
 import attr
-
 import pyblish.api
 
 from maya import cmds  # noqa
