@@ -69,14 +69,14 @@ class FusionLoadFBXMesh(load.LoaderPlugin):
         assert tool.ID == self.tool_type, f"Must be {self.tool_type}"
         comp = tool.Comp()
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
 
         with comp_lock_and_undo_chunk(comp, "Update tool"):
             tool["ImportFile"] = path
 
             # Update the imprinted representation
-            tool.SetData("avalon.representation", str(repre_doc["_id"]))
+            tool.SetData("avalon.representation", repre_entity["id"])
 
     def remove(self, container):
         tool = container["_tool"]
