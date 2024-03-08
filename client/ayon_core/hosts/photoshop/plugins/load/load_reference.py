@@ -44,7 +44,7 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
 
         folder_name = context["folder"]["name"]
         product_name = context["product"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])
@@ -57,14 +57,14 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
         else:  # switching version - keep same name
             layer_name = container["namespace"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
         with photoshop.maintained_selection():
             stub.replace_smart_object(
                 layer, path, layer_name
             )
 
         stub.imprint(
-            layer.id, {"representation": str(repre_doc["_id"])}
+            layer.id, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):
