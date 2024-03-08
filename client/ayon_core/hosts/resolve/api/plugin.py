@@ -357,11 +357,11 @@ class ClipLoader:
         # create name
         folder_entity = self.context["folder"]
         product_name = self.context["product"]["name"]
-        repre_doc = self.context["representation"]
+        repre_entity = self.context["representation"]
 
         folder_name = folder_entity["name"]
         folder_path = folder_entity["path"]
-        representation_name = repre_doc["name"]
+        representation_name = repre_entity["name"]
 
         self.data["clip_name"] = "_".join([
             folder_name,
