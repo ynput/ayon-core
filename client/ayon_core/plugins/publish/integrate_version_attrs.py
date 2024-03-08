@@ -56,7 +56,7 @@ class IntegrateVersionAttributes(pyblish.api.ContextPlugin):
                 continue
 
             self.log.debug("Updating attributes on version {} to {}".format(
-                version_entity["_id"], str(filtered_attributes)
+                version_entity["id"], str(filtered_attributes)
             ))
             op_session.update_entity(
                 project_name,

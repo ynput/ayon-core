@@ -379,7 +379,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
     def _fill_folder_data(self, instance, project_entity, anatomy_data):
         # QUESTION should we make sure that all folder data are poped if
         #   folder data cannot be found?
-        # - 'asset', 'hierarchy', 'parent', 'folder'
+        # - 'folder', 'hierarchy', 'parent', 'folder'
         folder_entity = instance.data.get("folderEntity")
         if folder_entity:
             folder_name = folder_entity["name"]
