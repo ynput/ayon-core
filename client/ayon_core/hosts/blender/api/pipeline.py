@@ -484,7 +484,7 @@ def containerise(name: str,
         "name": name,
         "namespace": namespace or '',
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     metadata_update(container, data)
@@ -523,7 +523,7 @@ def containerise_existing(
         "name": name,
         "namespace": namespace or '',
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     metadata_update(container, data)

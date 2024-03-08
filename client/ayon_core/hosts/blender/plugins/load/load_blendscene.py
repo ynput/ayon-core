@@ -114,10 +114,10 @@ class BlendSceneLoader(plugin.AssetLoader):
             "name": name,
             "namespace": namespace or '',
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
             "libpath": libpath,
             "asset_name": asset_name,
-            "parent": str(context["representation"]["parent"]),
+            "parent": context["representation"]["versionId"],
             "productType": context["product"]["productType"],
             "objectName": group_name,
             "members": members,
@@ -137,10 +137,10 @@ class BlendSceneLoader(plugin.AssetLoader):
         """
         Update the loaded asset.
         """
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         group_name = container["objectName"]
         asset_group = bpy.data.collections.get(group_name)
-        libpath = Path(get_representation_path(repre_doc)).as_posix()
+        libpath = Path(get_representation_path(repre_entity)).as_posix()
 
         assert asset_group, (
             f"The asset is not loaded: {container['objectName']}"
@@ -202,8 +202,8 @@ class BlendSceneLoader(plugin.AssetLoader):
 
         new_data = {
             "libpath": libpath,
-            "representation": str(repre_doc["_id"]),
-            "parent": str(repre_doc["parent"]),
+            "representation": repre_entity["id"],
+            "parent": repre_entity["versionId"],
             "members": members,
         }
 
