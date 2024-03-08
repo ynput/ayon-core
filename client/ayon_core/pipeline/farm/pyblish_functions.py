@@ -14,7 +14,6 @@ from ayon_core.pipeline import (
     get_representation_path,
     Anatomy,
 )
-from ayon_core.client import get_representations
 from ayon_core.lib import Logger
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
@@ -729,13 +728,14 @@ def get_resources(project_name, version_entity, extension=None):
 
     # there is a `context_filter` argument that won't probably work in
     # final release of AYON. SO we'll rather not use it
-    repre_docs = list(get_representations(
-        project_name, version_ids=[version_entity["id"]]))
+    repre_entities = list(ayon_api.get_representations(
+        project_name, version_ids={version_entity["id"]}
+    ))
 
     filtered = []
-    for doc in repre_docs:
-        if doc["context"]["ext"] in extensions:
-            filtered.append(doc)
+    for repre_entity in repre_entities:
+        if repre_entity["context"]["ext"] in extensions:
+            filtered.append(repre_entity)
 
     representation = filtered[0]
     directory = get_representation_path(representation)

@@ -457,7 +457,9 @@ def is_representation_from_latest(representation):
     """
 
     project_name = get_current_project_name()
-    return ayon_api.version_is_latest(project_name, representation["parent"])
+    return ayon_api.version_is_latest(
+        project_name, representation["versionId"]
+    )
 
 
 def get_template_data_from_session(session=None, settings=None):

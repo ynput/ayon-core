@@ -25,9 +25,9 @@ from ayon_api import (
     get_task_by_name,
     get_products,
     get_last_versions,
+    get_representations,
 )
 
-from ayon_core.client import get_representations
 from ayon_core.settings import get_project_settings
 from ayon_core.host import IWorkfileHost, HostBase
 from ayon_core.lib import (
@@ -40,7 +40,7 @@ from ayon_core.lib.attribute_definitions import get_attributes_keys
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import (
     get_loaders_by_name,
-    get_contexts_for_repre_docs,
+    get_representation_contexts,
     load_with_repre_context,
 )
 
@@ -1442,7 +1442,7 @@ class PlaceholderLoadMixin(object):
         Note:
             This returns all representation documents from all versions of
                 matching product. To filter for last version use
-                '_reduce_last_version_repre_docs'.
+                '_reduce_last_version_repre_entities'.
 
         Args:
             placeholder (PlaceholderItem): Item which should be populated.
@@ -1473,7 +1473,7 @@ class PlaceholderLoadMixin(object):
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
         if builder_type == "context_folder":
-            folder_ids = [current_folder_entity["_id"]]
+            folder_ids = [current_folder_entity["id"]]
 
         elif builder_type == "all_folders":
             folder_ids = {
@@ -1497,8 +1497,8 @@ class PlaceholderLoadMixin(object):
         filtered_product_ids = set()
         for product in products:
             if (
-                    product_name_regex is None
-                    or product_name_regex.match(product["name"])
+                product_name_regex is None
+                or product_name_regex.match(product["name"])
             ):
                 filtered_product_ids.add(product["id"])
 
@@ -1513,7 +1513,7 @@ class PlaceholderLoadMixin(object):
         )
         return list(get_representations(
             project_name,
-            representation_names=[representation_name],
+            representation_names={representation_name},
             version_ids=version_ids
         ))
 
@@ -1529,15 +1529,15 @@ class PlaceholderLoadMixin(object):
 
         pass
 
-    def _reduce_last_version_repre_docs(self, representations):
+    def _reduce_last_version_repre_entities(self, representations):
         """Reduce representations to last verison."""
 
         mapping = {}
         # TODO use representation context with entities
-        # - using 'asset', 'subset' and 'version' from context on
+        # - using 'folder', 'subset' and 'version' from context on
         #   representation is danger
-        for repre_doc in representations:
-            repre_context = repre_doc["context"]
+        for repre_entity in representations:
+            repre_context = repre_entity["context"]
 
             folder_name = repre_context["asset"]
             product_name = repre_context["subset"]
@@ -1551,7 +1551,7 @@ class PlaceholderLoadMixin(object):
                 product_mapping[product_name] = collections.defaultdict(list)
 
             version_mapping = product_mapping[product_name]
-            version_mapping[version].append(repre_doc)
+            version_mapping[version].append(repre_entity)
 
         output = []
         for product_mapping in mapping.values():
@@ -1588,10 +1588,10 @@ class PlaceholderLoadMixin(object):
         placeholder_representations = self._get_representations(placeholder)
 
         filtered_representations = []
-        for representation in self._reduce_last_version_repre_docs(
+        for representation in self._reduce_last_version_repre_entities(
             placeholder_representations
         ):
-            repre_id = str(representation["_id"])
+            repre_id = representation["id"]
             if repre_id not in ignore_repre_ids:
                 filtered_representations.append(representation)
 
@@ -1601,7 +1601,7 @@ class PlaceholderLoadMixin(object):
             ).format(placeholder.scene_identifier))
             return
 
-        repre_load_contexts = get_contexts_for_repre_docs(
+        repre_load_contexts = get_representation_contexts(
             self.project_name, filtered_representations
         )
         loaders_by_name = self.builder.get_loaders_by_name()
