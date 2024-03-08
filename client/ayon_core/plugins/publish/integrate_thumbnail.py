@@ -132,7 +132,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
 
     def _get_version_id(self, published_representations):
         for repre_info in published_representations.values():
-            return repre_info["representation"]["parent"]
+            return repre_info["representation"]["versionId"]
 
     def _get_instance_thumbnail_path(self, published_representations):
         thumb_repre_doc = None
