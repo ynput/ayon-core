@@ -15,7 +15,6 @@ import json
 
 import ayon_api
 
-from ayon_core.client import get_representations
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import (
     filter_profiles,
@@ -172,7 +171,7 @@ class BuildWorkfile:
         if current_context_profiles:
             # Add current folder entity if preset has current context set
             folder_entities.append(current_folder_entity)
-            current_folder_id = current_folder_entity["_id"]
+            current_folder_id = current_folder_entity["id"]
 
         if link_context_profiles:
             # Find and append linked folders if preset has set linked mapping
@@ -617,7 +616,7 @@ class BuildWorkfile:
                     try:
                         container = load_container(
                             loader,
-                            repre["_id"],
+                            repre["id"],
                             name=product_name
                         )
                         loaded_containers.append(container)
@@ -710,12 +709,12 @@ class BuildWorkfile:
             version_entity["id"]: version_entity
             for version_entity in last_version_by_product_id.values()
         }
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, version_ids=last_version_entities_by_id.keys()
         )
 
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
             version_entity = last_version_entities_by_id[version_id]
 
             product_id = version_entity["productId"]
@@ -739,8 +738,13 @@ class BuildWorkfile:
                     }
                 }
 
-            output[folder_id]["products"][product_id]["version"]["repres"].append(
-                repre_doc
-            )
+            (
+                output
+                [folder_id]
+                ["products"]
+                [product_id]
+                ["version"]
+                ["repres"]
+            ).append(repre_entity)
 
         return output
