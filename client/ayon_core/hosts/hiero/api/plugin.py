@@ -458,7 +458,7 @@ class ClipLoader:
         # gets file path
         file = get_representation_path_from_context(self.context)
         if not file:
-            repr_id = repr["_id"]
+            repr_id = repr["id"]
             log.warning(
                 "Representation id `{}` is failing to load".format(repr_id))
             return None
