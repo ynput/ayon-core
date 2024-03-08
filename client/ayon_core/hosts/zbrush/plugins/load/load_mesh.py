@@ -3,7 +3,7 @@ from ayon_core.pipeline import load, get_representation_path
 from ayon_core.hosts.zbrush.api.pipeline import (
     containerise, remove_container_data, imprint
 )
-from ayon_core.hosts.zbrush.api.lib import execute_load_zscript, remove_subtool
+from ayon_core.hosts.zbrush.api.lib import execute_zscript, remove_subtool
 
 
 class MeshLoader(load.LoaderPlugin):
@@ -22,21 +22,10 @@ class MeshLoader(load.LoaderPlugin):
 [VarSet, filename, "{filepath}"]
 [FileNameSetNext, #filename]
 [IKeyPress, 13, [IPress, Tool:Import:Import]]
-[VarSet,totalSubtools,[SubToolGetCount]]
-[VarSet, dllPath, ""]
-[MemReadString, AYONFileUtilPath, dllPath]
-[Loop, totalSubtools,
-  [SubToolSelect, [Val, n]]
-  [VarSet, subtoolOldName, [IGetTitle, "Tool:ItemInfo"]] // Get the tool name
-  [VarSet, subtoolOldName, [StrExtract, subtoolName, 0, [StrLength, subtoolName] - 2]]
-  [VarSet, subtoolNewName, [StrMerge, "{name}", ":", subtoolOldName]]
-  [FileExecute, #dllPath, RenameSetNext, subtoolNewName]
-  [IPress, “Tool:Subtool:Rename”]
-, n]
 ]
 
 """).format(filepath=file_path, name=name)
-        execute_load_zscript(load_zscript)
+        execute_zscript(load_zscript)
 
         return containerise(
             name,
@@ -51,21 +40,10 @@ class MeshLoader(load.LoaderPlugin):
 [VarSet, filename, "{filepath}"]
 [FileNameSetNext, #filename]
 [IKeyPress, 13, [IPress, Tool:Import:Import]]
-[VarSet,totalSubtools,[SubToolGetCount]]
-[VarSet, dllPath, ""]
-[MemReadString, AYONFileUtilPath, dllPath]
-[Loop, totalSubtools,
-  [SubToolSelect, [Val, n]]
-  [VarSet, subtoolOldName, [IGetTitle, "Tool:ItemInfo"]] // Get the tool name
-  [VarSet, subtoolOldName, [StrExtract, subtoolName, 0, [StrLength, subtoolName] - 2]]
-  [VarSet, subtoolNewName, [StrMerge, "{name}", ":", subtoolOldName]]
-  [FileExecute, #dllPath, RenameSetNext, subtoolNewName]
-  [IPress, “Tool:Subtool:Rename”]
-, n]
 ]
 
 """).format(filepath=path)
-        execute_load_zscript(load_zscript)
+        execute_zscript(load_zscript)
         representation_id = str(repre_doc["_id"])
         imprint(container, representation_id)
 

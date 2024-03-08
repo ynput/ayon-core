@@ -99,60 +99,6 @@ def execute_zscript_and_wait(zscript,
                 f"{timeout}s to run."
             )
 
-def execute_load_zscript(zscript):
-    """Function to execute ZScript after checking on whether ZFileUtil
-    plugins has been installed before loading mesh.
-    """
-    find_file_util_zscript="""
-[RoutineDef, CheckSystem,
-    //check ZBrush version
-    [VarSet, Zvers, [ZBrushInfo,0]]
-    [If, [Val, Zvers] >= 4.8,,
-        [Note,"\Cff9923This zscript\Cffffff is not designed for this version of \Cff9923ZBrush\Cffffff.",, 3, 4737096,, 300]
-        [Exit]
-    ]
-    //check Mac or PC
-    [VarSet, isMac, [ZBrushInfo, 6]]
-
-    // Make sure we have the dll and set its path
-    [If, [ZBrushInfo, 16] == 64,//64 bit
-        [If, isMac,
-            [VarSet,dllPath,[FileNameResolvePath, "ZFileUtils.lib"]]
-        ,
-            [VarSet,dllPath,[FileNameResolvePath, "ZFileUtils64.dll"]]
-        ]
-    , //else 32 bit - no longer supported
-        [Note, "\Cff9923This zscript\Cffffff is not designed for this version of \Cff9923ZBrush\Cffffff.",, 3, 4737096,, 300]
-        [Exit]
-    ]
-    [If, [FileExists, [Var, dllPath]],
-        //check that correct version
-        [VarSet, dllVersion, [FileExecute, [Var, dllPath], Version]]
-        [If, [Val,dllVersion] >= 3.0,//dll version
-            //OK
-        ,//else earlier version
-            [Note,"\Cff9923Note :\Cc0c0c0 The \Cff9923 ZFileUtils plugin \CffffffDLL\Cc0c0c0 is an earlier version which does not support this plugin.  Please install correct version."]
-            [Exit]
-        ]
-    , // else no DLL.
-        [Note,"\Cff9923Note :\Cc0c0c0 The \Cff9923 ZFileUtils plugin \CffffffDLL\Cc0c0c0 could
-        not be found at the correct location.  Please re-install the plugin, making sure the
-        relevant files and folders are in the \CffffffZStartup/ZPlugs\Cc0c0c0 folder."]
-        [Exit]
-    ]
-    // set dll path in memory block
-    [If, [MemGetSize, AYONFileUtilPath],
-        [MemResize, AYONFileUtilPath, [StrLength, dllPath]]
-    ,
-        [MemCreate, AYONFileUtilPath, [StrLength, dllPath]]
-    ]
-    [VarSet, size, [MemWriteString, AYONFileUtilPath, #dllPath,0,0]]
-    [MemResize, AYONFileUtilPath, size]
-
-]//end routine
-"""
-    execute_zscript(find_file_util_zscript)
-    execute_zscript(zscript)
 
 def find_first_filled_path(path):
     if not path:
