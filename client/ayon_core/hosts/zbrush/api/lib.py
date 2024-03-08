@@ -73,6 +73,19 @@ def execute_zscript_and_wait(zscript,
             assumed to have failed and raise an error.
 
     """
+    # At the end of the zscript write
+    # temporary file to confirm the zscript
+    # has run to the end of the script
+    if check_filepath is None:
+        check_filepath = get_tempfile_path()
+        check_filepath = check_filepath.replace("\\", "/")
+        zscript += (f"""
+[MemCreate, AYON_TempFileCheck, 1, 0]
+[MemWriteString, AYON_TempFileCheck, "1", 0]
+[MemSaveToFile, AYON_TempFileCheck, "{check_filepath}", 1]
+[MemDelete, AYON_TempFileCheck]
+        """)
+
     execute_zscript(zscript)
 
     # Wait around until the zscript finished
@@ -86,6 +99,60 @@ def execute_zscript_and_wait(zscript,
                 f"{timeout}s to run."
             )
 
+def execute_load_zscript(zscript):
+    """Function to execute ZScript after checking on whether ZFileUtil
+    plugins has been installed before loading mesh.
+    """
+    find_file_util_zscript="""
+[RoutineDef, CheckSystem,
+    //check ZBrush version
+    [VarSet, Zvers, [ZBrushInfo,0]]
+    [If, [Val, Zvers] >= 4.8,,
+        [Note,"\Cff9923This zscript\Cffffff is not designed for this version of \Cff9923ZBrush\Cffffff.",, 3, 4737096,, 300]
+        [Exit]
+    ]
+    //check Mac or PC
+    [VarSet, isMac, [ZBrushInfo, 6]]
+
+    // Make sure we have the dll and set its path
+    [If, [ZBrushInfo, 16] == 64,//64 bit
+        [If, isMac,
+            [VarSet,dllPath,[FileNameResolvePath, "ZFileUtils.lib"]]
+        ,
+            [VarSet,dllPath,[FileNameResolvePath, "ZFileUtils64.dll"]]
+        ]
+    , //else 32 bit - no longer supported
+        [Note, "\Cff9923This zscript\Cffffff is not designed for this version of \Cff9923ZBrush\Cffffff.",, 3, 4737096,, 300]
+        [Exit]
+    ]
+    [If, [FileExists, [Var, dllPath]],
+        //check that correct version
+        [VarSet, dllVersion, [FileExecute, [Var, dllPath], Version]]
+        [If, [Val,dllVersion] >= 3.0,//dll version
+            //OK
+        ,//else earlier version
+            [Note,"\Cff9923Note :\Cc0c0c0 The \Cff9923 ZFileUtils plugin \CffffffDLL\Cc0c0c0 is an earlier version which does not support this plugin.  Please install correct version."]
+            [Exit]
+        ]
+    , // else no DLL.
+        [Note,"\Cff9923Note :\Cc0c0c0 The \Cff9923 ZFileUtils plugin \CffffffDLL\Cc0c0c0 could
+        not be found at the correct location.  Please re-install the plugin, making sure the
+        relevant files and folders are in the \CffffffZStartup/ZPlugs\Cc0c0c0 folder."]
+        [Exit]
+    ]
+    // set dll path in memory block
+    [If, [MemGetSize, AYONFileUtilPath],
+        [MemResize, AYONFileUtilPath, [StrLength, dllPath]]
+    ,
+        [MemCreate, AYONFileUtilPath, [StrLength, dllPath]]
+    ]
+    [VarSet, size, [MemWriteString, AYONFileUtilPath, #dllPath,0,0]]
+    [MemResize, AYONFileUtilPath, size]
+
+]//end routine
+"""
+    execute_zscript(find_file_util_zscript)
+    execute_zscript(zscript)
 
 def find_first_filled_path(path):
     if not path:
@@ -151,7 +218,7 @@ def export_tool(filepath: str):
     # We do not check for the export file's existence because Zbrush might
     # write the file in chunks, as such the file might exist before the writing
     # to it has finished
-    execute_zscript_and_wait(export_tool_zscript, filepath)
+    execute_zscript_and_wait(export_tool_zscript)
     if not os.path.exists(filepath):
         raise RuntimeError(f"Export file was not created: {filepath}")
 
@@ -183,3 +250,22 @@ def is_in_edit_mode():
         bool_mode = content.rstrip('\x00')
 
     return bool_mode
+
+
+def remove_subtool(basename):
+    remove_subtool_zscript = ("""
+[VarSet,totalSubtools,[SubToolGetCount]]
+[Loop, totalSubtools,
+  [SubToolSelect, [Val, n]]
+  [VarSet, subtoolName, [IGetTitle, "Tool:ItemInfo"]] // Get the tool name
+  [VarSet, subtoolName, [StrExtract, subtoolName, 0, [StrLength, subtoolName] - 2]]
+  [VarSet, name,  [StrFind, "{basename}", subtoolName]]
+  [Note, name]
+  [If, name >= 0,
+  [IKeyPress,'3',[IPress,Tool:SubTool:Delete]]
+  ]
+, n]
+
+""").format(basename=basename)
+
+    execute_zscript(remove_subtool_zscript)
