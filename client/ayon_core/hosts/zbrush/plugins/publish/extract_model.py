@@ -15,7 +15,6 @@ class ExtractModel(publish.Extractor):
     hosts = ["zbrush"]
     families = ["model"]
     export_format = "obj"
-    optional = True
 
     def process(self, instance):
         attr_values = self.get_attr_values_from_data(instance.data)
