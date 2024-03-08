@@ -156,9 +156,9 @@ class LoadEffects(load.LoaderPlugin):
         """ Updating previously loaded effects
         """
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         active_track = container["_item"]
-        file = get_representation_path(repre_doc).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         # get main variables
         name = container['name']
@@ -192,7 +192,7 @@ class LoadEffects(load.LoaderPlugin):
         data_imprint = {
             "objectName": object_name,
             "name": name,
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "children_names": []
         }
 
@@ -293,7 +293,7 @@ class LoadEffects(load.LoaderPlugin):
                 "name": str(name),
                 "namespace": str(namespace),
                 "loader": str(loader),
-                "representation": str(context["representation"]["_id"]),
+                "representation": context["representation"]["id"],
             }
         }
 

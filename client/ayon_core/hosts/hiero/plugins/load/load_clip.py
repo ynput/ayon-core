@@ -150,7 +150,7 @@ class LoadClip(phiero.SequenceLoader):
         """ Updating previously loaded clips
         """
         version_entity = context["version"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
         # load clip to timeline and get main variables
         name = container["name"]
@@ -162,7 +162,8 @@ class LoadClip(phiero.SequenceLoader):
         version_name = version_entity["version"]
         colorspace = version_attributes.get("colorSpace")
         object_name = "{}_{}".format(name, namespace)
-        file = get_representation_path(repre_doc).replace("\\", "/")
+
+        file = get_representation_path(repre_entity).replace("\\", "/")
         clip = track_item.source()
 
         # reconnect media to new path
@@ -191,7 +192,7 @@ class LoadClip(phiero.SequenceLoader):
 
         # add variables related to version context
         data_imprint.update({
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "version": version_name,
             "colorspace": colorspace,
             "objectName": object_name
