@@ -8,9 +8,10 @@ from .utils import (
     LoaderNotFoundError,
 
     get_repres_contexts,
-    get_contexts_for_repre_docs,
     get_product_contexts,
     get_representation_context,
+    get_representation_contexts,
+    get_representation_contexts_by_ids,
 
     load_with_repre_context,
     load_with_product_context,
@@ -62,9 +63,10 @@ __all__ = (
     "LoaderNotFoundError",
 
     "get_repres_contexts",
-    "get_contexts_for_repre_docs",
     "get_product_contexts",
     "get_representation_context",
+    "get_representation_contexts",
+    "get_representation_contexts_by_ids",
 
     "load_with_repre_context",
     "load_with_product_context",

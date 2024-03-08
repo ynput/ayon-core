@@ -8,12 +8,6 @@ import numbers
 import ayon_api
 
 from ayon_core.host import ILoadHost
-from ayon_core.client import (
-    get_representations,
-    get_representation_by_id,
-    get_representation_by_name,
-    get_representation_parents
-)
 from ayon_core.lib import (
     StringTemplate,
     TemplateUnsolved,
@@ -99,64 +93,11 @@ def get_repres_contexts(representation_ids, project_name=None):
     if not project_name:
         project_name = get_current_project_name()
 
-    repre_docs = get_representations(project_name, representation_ids)
-
-    return get_contexts_for_repre_docs(project_name, repre_docs)
-
-
-def get_contexts_for_repre_docs(project_name, repre_docs):
-    contexts = {}
-    if not repre_docs:
-        return contexts
-
-    repre_docs_by_id = {}
-    version_ids = set()
-    for repre_doc in repre_docs:
-        version_ids.add(repre_doc["parent"])
-        repre_docs_by_id[repre_doc["_id"]] = repre_doc
-
-    version_entities = ayon_api.get_versions(
-        project_name, version_ids=version_ids
+    repre_entities = ayon_api.get_representations(
+        project_name, representation_ids
     )
 
-    version_entities_by_id = {}
-    product_ids = set()
-    for version_entity in version_entities:
-        version_entities_by_id[version_entity["id"]] = version_entity
-        product_ids.add(version_entity["productId"])
-
-    product_entities = ayon_api.get_products(
-        project_name, product_ids=product_ids
-    )
-    product_entities_by_id = {}
-    folder_ids = set()
-    for product_entity in product_entities:
-        product_entities_by_id[product_entity["id"]] = product_entity
-        folder_ids.add(product_entity["folderId"])
-
-    folder_entities_by_id = {
-        folder_entity["id"]: folder_entity
-        for folder_entity in ayon_api.get_folders(
-            project_name, folder_ids=folder_ids
-        )
-    }
-
-    project_entity = ayon_api.get_project(project_name)
-
-    for repre_id, repre_doc in repre_docs_by_id.items():
-        version_entity = version_entities_by_id[repre_doc["parent"]]
-        product_entity = product_entities_by_id[version_entity["productId"]]
-        folder_entity = folder_entities_by_id[product_entity["folderId"]]
-        context = {
-            "project": project_entity,
-            "folder": folder_entity,
-            "product": product_entity,
-            "version": version_entity,
-            "representation": repre_doc,
-        }
-        contexts[repre_id] = context
-
-    return contexts
+    return get_representation_contexts(project_name, repre_entities)
 
 
 def get_product_contexts(product_ids, project_name=None):
@@ -208,51 +149,138 @@ def get_product_contexts(product_ids, project_name=None):
     return contexts
 
 
-def get_representation_context(representation):
+def get_representation_contexts(project_name, representation_entities):
+    """Parenthood context for representations.
+
+    Function fills ``None`` if any entity was not found or could
+        not be queried.
+
+    Args:
+        project_name (str): Project name.
+        representation_entities (Iterable[dict[str, Any]]): Representation
+            entities.
+
+    Returns:
+        dict[str, dict[str, Any]]: The full representation context by
+            representation id.
+
+    """
+    repre_entities_by_id = {
+        repre_entity["id"]: repre_entity
+        for repre_entity in representation_entities
+    }
+
+    if not repre_entities_by_id:
+        return {}
+
+    repre_ids = set(repre_entities_by_id)
+
+    parents_by_repre_id = ayon_api.get_representations_parents(
+        project_name, repre_ids
+    )
+    output = {}
+    for repre_id in repre_ids:
+        repre_entity = repre_entities_by_id[repre_id]
+        (
+            version_entity,
+            product_entity,
+            folder_entity,
+            project_entity
+        ) = parents_by_repre_id[repre_id]
+        output[repre_id] = {
+            "project": project_entity,
+            "folder": folder_entity,
+            "product": product_entity,
+            "version": version_entity,
+            "representation": repre_entity,
+        }
+    return output
+
+
+def get_representation_contexts_by_ids(project_name, representation_ids):
+    """Parenthood context for representations found by ids.
+
+    Function fills ``None`` if any entity was not found or could
+        not be queried.
+
+    Args:
+        project_name (str): Project name.
+        representation_ids (Iterable[str]): Representation ids.
+
+    Returns:
+        dict[str, dict[str, Any]]: The full representation context by
+            representation id.
+
+    """
+    repre_ids = set(representation_ids)
+    if not repre_ids:
+        return {}
+
+    # Query representation entities by id
+    repre_entities_by_id = {
+        repre_entity["id"]: repre_entity
+        for repre_entity in ayon_api.get_representations(
+            project_name, repre_ids
+        )
+    }
+    output = get_representation_contexts(
+        project_name, repre_entities_by_id.values()
+    )
+    for repre_id in repre_ids:
+        if repre_id not in output:
+            output[repre_id] = {
+                "project": None,
+                "folder": None,
+                "product": None,
+                "version": None,
+                "representation": None,
+            }
+    return output
+
+
+def get_representation_context(project_name, representation):
     """Return parenthood context for representation.
 
     Args:
-        representation (str or ObjectId or dict): The representation id
-            or full representation as returned by the database.
+        project_name (str): Project name.
+        representation (Union[dict[str, Any], str]): Representation entity
+            or representation id.
 
     Returns:
-        dict: The full representation context.
+        dict[str, dict[str, Any]]: The full representation context.
+
+    Raises:
+        ValueError: When representation is invalid or parents were not found.
+
     """
-    from ayon_core.pipeline import get_current_project_name
-
-    assert representation is not None, "This is a bug"
-
-    project_name = get_current_project_name()
-    if not isinstance(representation, dict):
-        representation = get_representation_by_id(
-            project_name, representation
+    if not representation:
+        raise ValueError(
+            "Invalid argument value {}".format(str(representation))
         )
 
-    if not representation:
-        raise AssertionError("Representation was not found in database")
+    if isinstance(representation, dict):
+        repre_entity = representation
+        repre_id = repre_entity["id"]
+        context = get_representation_contexts(
+            project_name, [repre_entity]
+        )[repre_id]
+    else:
+        repre_id = representation
+        context = get_representation_contexts_by_ids(
+            project_name, {repre_id}
+        )[repre_id]
 
-    (
-        version_entity,
-        product_entity,
-        folder_entity,
-        project_entity
-    ) = get_representation_parents(project_name, representation)
-    if not version_entity:
-        raise AssertionError("Version was not found in database")
-    if not product_entity:
-        raise AssertionError("Product was not found in database")
-    if not folder_entity:
-        raise AssertionError("Folder was not found in database")
-    if not project_entity:
-        raise AssertionError("Project was not found in database")
+    missing_entities = []
+    for key, value in context.items():
+        if value is None:
+            missing_entities.append(key)
 
-    context = {
-        "project": project_entity,
-        "folder": folder_entity,
-        "product": product_entity,
-        "version": version_entity,
-        "representation": representation,
-    }
+    if missing_entities:
+        raise ValueError(
+            "Not able to receive representation parent types: {}".format(
+                ", ".join(missing_entities)
+            )
+        )
 
     return context
 
@@ -352,7 +380,7 @@ def load_container(
 
     Args:
         Loader (Loader): The loader class to trigger.
-        representation (str or ObjectId or dict): The representation id
+        representation (str or dict): The representation id
             or full representation as returned by the database.
         namespace (str, Optional): The namespace to assign. Defaults to None.
         name (str, Optional): The name to assign. Defaults to product name.
@@ -366,8 +394,11 @@ def load_container(
             the representation.
 
     """
+    from ayon_core.pipeline import get_current_project_name
 
-    context = get_representation_context(representation)
+    context = get_representation_context(
+        get_current_project_name(), representation
+    )
     return load_with_repre_context(
         Loader,
         context,
@@ -433,13 +464,13 @@ def update_container(container, version=-1):
 
     # Compute the different version from 'representation'
     project_name = get_current_project_name()
-    current_representation = get_representation_by_id(
+    current_representation = ayon_api.get_representation_by_id(
         project_name, container["representation"]
     )
 
     assert current_representation is not None, "This is a bug"
 
-    current_version_id = current_representation["parent"]
+    current_version_id = current_representation["versionId"]
     current_version = ayon_api.get_version_by_id(
         project_name, current_version_id, fields={"productId"}
     )
@@ -468,7 +499,7 @@ def update_container(container, version=-1):
     )
 
     repre_name = current_representation["name"]
-    new_representation = get_representation_by_name(
+    new_representation = ayon_api.get_representation_by_name(
         project_name, repre_name, new_version["id"]
     )
     if new_representation is None:
@@ -506,7 +537,7 @@ def switch_container(container, representation, loader_plugin=None):
 
     Args:
         container (dict): container information
-        representation (dict): representation data from document
+        representation (dict): representation entity
 
     Returns:
         function call
@@ -533,21 +564,20 @@ def switch_container(container, representation, loader_plugin=None):
 
     # Get the new representation to switch to
     project_name = get_current_project_name()
-    new_representation = get_representation_by_id(
-        project_name, representation["_id"]
-    )
 
-    new_context = get_representation_context(new_representation)
-    if not is_compatible_loader(loader_plugin, new_context):
+    context = get_representation_context(
+        project_name, representation["id"]
+    )
+    if not is_compatible_loader(loader_plugin, context):
         raise IncompatibleLoaderError(
             "Loader {} is incompatible with {}".format(
-                loader_plugin.__name__, new_context["product"]["name"]
+                loader_plugin.__name__, context["product"]["name"]
             )
         )
 
-    loader = loader_plugin(new_context)
+    loader = loader_plugin(context)
 
-    return loader.switch(container, new_context)
+    return loader.switch(container, context)
 
 
 def get_representation_path_from_context(context):
@@ -567,7 +597,7 @@ def get_representation_path_from_context(context):
     return get_representation_path(representation, root)
 
 
-def get_representation_path_with_anatomy(repre_doc, anatomy):
+def get_representation_path_with_anatomy(repre_entity, anatomy):
     """Receive representation path using representation document and anatomy.
 
     Anatomy is used to replace 'root' key in representation file. Ideally
@@ -579,7 +609,7 @@ def get_representation_path_with_anatomy(repre_doc, anatomy):
         imagine the result should also contain paths to possible resources.
 
     Args:
-        repre_doc (Dict[str, Any]): Representation document.
+        repre_entity (Dict[str, Any]): Representation entity.
         anatomy (Anatomy): Project anatomy object.
 
     Returns:
@@ -591,7 +621,7 @@ def get_representation_path_with_anatomy(repre_doc, anatomy):
     """
 
     try:
-        template = repre_doc["data"]["template"]
+        template = repre_entity["attrib"]["template"]
 
     except KeyError:
         raise InvalidRepresentationContext((
@@ -600,7 +630,7 @@ def get_representation_path_with_anatomy(repre_doc, anatomy):
         ))
 
     try:
-        context = repre_doc["context"]
+        context = repre_entity["context"]
         context["root"] = anatomy.roots
         path = StringTemplate.format_strict_template(template, context)
 
@@ -638,7 +668,7 @@ def get_representation_path(representation, root=None):
 
     def path_from_representation():
         try:
-            template = representation["data"]["template"]
+            template = representation["attrib"]["template"]
         except KeyError:
             return None
 
@@ -665,10 +695,10 @@ def get_representation_path(representation, root=None):
         return path
 
     def path_from_data():
-        if "path" not in representation["data"]:
+        if "path" not in representation["attrib"]:
             return None
 
-        path = representation["data"]["path"]
+        path = representation["attrib"]["path"]
         # Force replacing backslashes with forward slashed if not on
         #   windows
         if platform.system().lower() != "windows":
@@ -745,8 +775,12 @@ def filter_repre_contexts_by_loader(repre_contexts, loader):
 
 def loaders_from_representation(loaders, representation):
     """Return all compatible loaders for a representation."""
+    from ayon_core.pipeline import get_current_project_name
 
-    context = get_representation_context(representation)
+    project_name = get_current_project_name()
+    context = get_representation_context(
+        project_name, representation
+    )
     return loaders_from_repre_context(loaders, context)
 
 
@@ -825,26 +859,26 @@ def filter_containers(containers, project_name):
             invalid_containers.extend(containers)
         return output
 
-    repre_docs = get_representations(
+    repre_entities = ayon_api.get_representations(
         project_name,
         representation_ids=repre_ids,
-        fields=["_id", "parent"]
+        fields={"id", "versionId"}
     )
     # Store representations by stringified representation id
-    repre_docs_by_str_id = {}
-    repre_docs_by_version_id = collections.defaultdict(list)
-    for repre_doc in repre_docs:
-        repre_id = str(repre_doc["_id"])
-        version_id = repre_doc["parent"]
-        repre_docs_by_str_id[repre_id] = repre_doc
-        repre_docs_by_version_id[version_id].append(repre_doc)
+    repre_entities_by_id = {}
+    repre_entities_by_version_id = collections.defaultdict(list)
+    for repre_entity in repre_entities:
+        repre_id = repre_entity["id"]
+        version_id = repre_entity["versionId"]
+        repre_entities_by_id[repre_id] = repre_entity
+        repre_entities_by_version_id[version_id].append(repre_entity)
 
     # Query version docs to get it's product ids
     # - also query hero version to be able identify if representation
     #   belongs to existing version
     version_entities = ayon_api.get_versions(
         project_name,
-        version_ids=repre_docs_by_version_id.keys(),
+        version_ids=repre_entities_by_version_id.keys(),
         hero=True,
         fields={"id", "productId", "version"}
     )
@@ -887,8 +921,8 @@ def filter_containers(containers, project_name):
             invalid_containers.append(container)
             continue
 
-        repre_doc = repre_docs_by_str_id.get(repre_id)
-        if not repre_doc:
+        repre_entity = repre_entities_by_id.get(repre_id)
+        if not repre_entity:
             log.debug((
                 "Container '{}' has an invalid representation."
                 " It is missing in the database."
@@ -896,7 +930,7 @@ def filter_containers(containers, project_name):
             not_found_containers.append(container)
             continue
 
-        version_id = repre_doc["parent"]
+        version_id = repre_entity["versionId"]
         if version_id in outdated_version_ids:
             outdated_containers.append(container)
 
