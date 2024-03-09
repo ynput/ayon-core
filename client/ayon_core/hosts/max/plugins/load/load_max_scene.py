@@ -5,7 +5,8 @@ from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.lib import (
     unique_namespace,
     get_namespace,
-    object_transform_set
+    object_transform_set,
+    is_headless
 )
 from ayon_core.hosts.max.api.pipeline import (
     containerise, get_previous_loaded_object,
@@ -129,9 +130,12 @@ class MaxSceneLoader(load.LoaderPlugin):
         for prev_max_obj in prev_max_objects:
             if rt.isValidNode(prev_max_obj):  # noqa
                 rt.Delete(prev_max_obj)
-        window = MaterialDupOptionsWindow(self.mtl_dup_enum)
-        window.exec_()
-        rt.MergeMaxFile(path, rt.Name(window.material_option), quiet=True)
+        material_option = self.mtl_dup_default
+        if not is_headless():
+            window = MaterialDupOptionsWindow(self.mtl_dup_enum)
+            window.exec_()
+            material_option = window.material_option
+        rt.MergeMaxFile(path, rt.Name(material_option), quiet=True)
 
         current_max_objects = rt.getLastMergedNodes()
 
