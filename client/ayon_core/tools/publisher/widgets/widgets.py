@@ -1399,14 +1399,20 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         row = 0
         for attr_def, attr_instances, values in result:
             widget = create_widget_for_attr_def(attr_def, content_widget)
+            is_default = True
             if attr_def.is_value_def:
                 if len(values) == 1:
                     value = values[0]
                     if value is not None:
                         widget.set_value(values[0])
+                        is_default = value == attr_def.default
                 else:
                     widget.set_value(values, True)
-
+                    is_default = True
+                    for value in values:
+                        is_default = value == attr_def.default
+                        if not is_default:
+                            break
             widget.value_changed.connect(self._input_value_changed)
             self._attr_def_id_to_instances[attr_def.id] = attr_instances
             self._attr_def_id_to_attr_def[attr_def.id] = attr_def
@@ -1434,6 +1440,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                         QtCore.Qt.AlignRight
                         | QtCore.Qt.AlignVCenter
                     )
+                if is_default:
+                    label_widget.setStyleSheet("")
+                else:
+                    label_widget.setStyleSheet("font: bold; color: #4287f5")
                 content_layout.addWidget(
                     label_widget, row, 0, 1, expand_cols
                 )
@@ -1457,17 +1467,11 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         # Update the styling of the associated label if is default or override
         label_widget = self._attr_def_id_to_label.get(attr_id)
         if label_widget:
-            # NOTE: The default returned by attr_def.default is returning a
-            # float, when it should be a int. So lets cast the widget value
-            # (argument to this method) to a float to match the type.
-            _value = value
-            if isinstance(_value, int):
-                _value = float(_value)
-            is_default = _value == attr_def.default
+            is_default = value == attr_def.default
             if is_default:
                 label_widget.setStyleSheet("")
             else:
-                label_widget.setStyleSheet("font: bold")
+                label_widget.setStyleSheet("font: bold; color: #4287f5")
 
         for instance in instances:
             creator_attributes = instance["creator_attributes"]
@@ -1594,6 +1598,8 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                                 QtCore.Qt.AlignRight
                                 | QtCore.Qt.AlignVCenter
                             )
+                            label_widget
+
                         attr_def_layout.addWidget(
                             label_widget, row, 0, 1, expand_cols
                         )
@@ -1623,8 +1629,18 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 if multivalue:
                     widget.set_value(values, multivalue)
+                    is_default = True
+                    for value in values:
+                        is_default = value == attr_def.default
+                        if not is_default:
+                            break
                 else:
                     widget.set_value(values[0])
+                    is_default = values[0] == attr_def.default
+                if is_default:
+                    label_widget.setStyleSheet("")
+                else:
+                    label_widget.setStyleSheet("font: bold; color: #4287f5")
 
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
@@ -1639,17 +1655,11 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         # Update the styling of the associated label if is default or override
         label_widget = self._attr_def_id_to_label.get(attr_id)
         if label_widget:
-            # NOTE: The default returned by attr_def.default is returning a
-            # float, when it should be a int. So lets cast the widget value
-            # (argument to this method) to a float to match the type.
-            _value = value
-            if isinstance(_value, int):
-                _value = float(_value)
-            is_default = _value == attr_def.default
+            is_default = value == attr_def.default
             if is_default:
                 label_widget.setStyleSheet("")
             else:
-                label_widget.setStyleSheet("font: bold")
+                label_widget.setStyleSheet("color: #4287f5")
 
         for instance in instances:
             plugin_val = instance.publish_attributes[plugin_name]
