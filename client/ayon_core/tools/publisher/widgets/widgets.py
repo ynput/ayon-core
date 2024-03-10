@@ -1443,7 +1443,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 if is_default:
                     label_widget.setStyleSheet("")
                 else:
-                    label_widget.setStyleSheet("font: bold; color: #4287f5")
+                    label_widget.setStyleSheet("color: #4287f5")
                 content_layout.addWidget(
                     label_widget, row, 0, 1, expand_cols
                 )
@@ -1471,7 +1471,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             if is_default:
                 label_widget.setStyleSheet("")
             else:
-                label_widget.setStyleSheet("font: bold; color: #4287f5")
+                label_widget.setStyleSheet("color: #4287f5")
 
         for instance in instances:
             creator_attributes = instance["creator_attributes"]
@@ -1640,7 +1640,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 if is_default:
                     label_widget.setStyleSheet("")
                 else:
-                    label_widget.setStyleSheet("font: bold; color: #4287f5")
+                    label_widget.setStyleSheet("color: #4287f5")
 
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
