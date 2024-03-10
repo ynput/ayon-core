@@ -581,7 +581,8 @@ class InstanceCardView(AbstractInstanceView):
         )
 
     def mouseDoubleClickEvent(self, event):
-        self.double_clicked.emit()
+        if event.button() == QtCore.Qt.LeftButton:
+            self.double_clicked.emit()
 
     def sizeHint(self):
         """Modify sizeHint based on visibility of scroll bars."""

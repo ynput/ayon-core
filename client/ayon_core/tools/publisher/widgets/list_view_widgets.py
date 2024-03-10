@@ -379,7 +379,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
         "double click" as 2x "single click".
         """
         if event.button() != QtCore.Qt.LeftButton:
-            return
+            return False
 
         pressed_group_index = None
         pos_index = self.indexAt(event.pos())
@@ -388,13 +388,17 @@ class InstanceTreeView(QtWidgets.QTreeView):
 
         self._pressed_group_index = pressed_group_index
 
+        return True
+
     def mousePressEvent(self, event):
-        self._mouse_press(event)
-        super(InstanceTreeView, self).mousePressEvent(event)
+        handled = self._mouse_press(event)
+        if handled:
+            super(InstanceTreeView, self).mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        self._mouse_press(event)
-        super(InstanceTreeView, self).mouseDoubleClickEvent(event)
+        handled = self._mouse_press(event)
+        if handled:
+            super(InstanceTreeView, self).mouseDoubleClickEvent(event)
 
     def _mouse_release(self, event, pressed_index):
         if event.button() != QtCore.Qt.LeftButton:
