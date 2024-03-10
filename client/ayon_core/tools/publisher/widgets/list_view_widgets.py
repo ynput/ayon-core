@@ -397,9 +397,9 @@ class InstanceTreeView(QtWidgets.QTreeView):
             super(InstanceTreeView, self).mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        self.double_clicked.emit()
         handled = self._mouse_press(event)
         if handled:
+            self.double_clicked.emit()
             super(InstanceTreeView, self).mouseDoubleClickEvent(event)
 
     def _mouse_release(self, event, pressed_index):
