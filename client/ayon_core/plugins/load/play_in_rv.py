@@ -33,8 +33,10 @@ class PlayInRV(load.LoaderPlugin):
             app_manager = ApplicationManager()
             rvcon = RvCommunicator(name)
             rvcon.connect("localhost".encode("utf-8"), 45128)
-        except Exception:
-            rvcon.disconnect()
+        except Exception as err:
+            self.log.warning(f"Failed to connect to RV: {err}")
+        # finally:
+        #     rvcon.disconnect()
 
         if not rvcon.connected:
             project = representation["data"]["context"].get("project")
@@ -53,15 +55,15 @@ class PlayInRV(load.LoaderPlugin):
             openrv_app = app_manager.find_latest_available_variant_for_group("openrv")
             openrv_app.launch(**ctx)
 
-            start_time = time()
-            while not rvcon.connected:
-                if time() - start_time > 60:
-                    break
-                try:
+            try:
+                for _ in range(60):
+                    self.log.warning("Trying to connect to RV")
                     rvcon.connect("localhost".encode("utf-8"), 45128)
-                except Exception:
-                    rvcon.disconnect()
-            raise Exception("Failed to connect to RV")
+                    if rvcon.connected:
+                        break
+                    sleep(1)
+            except Exception:
+                raise Exception("Failed to connect to RV")
 
         _data = [{
             # "objectName": representation["context"]["representation"],
