@@ -266,31 +266,6 @@ def get_current_context():
     }
 
 
-def get_workfile_metadata(metadata_key, default=None):
-    if default is None:
-        default = []
-    output_file = tempfile.NamedTemporaryFile(
-        mode="w", prefix="a_zb_meta", suffix=".txt", delete=False
-    )
-    output_file.close()
-    output_filepath = output_file.name.replace("\\", "/")
-    context_data_zscript = ("""
-[IFreeze,
-[If, [MemCreate, {metadata_key}, 400000, 0] !=-1,
-[MemCreate, {metadata_key}, 400000, 0]
-[MemWriteString, {metadata_key}, "{default}", 0]]
-[MemSaveToFile, {metadata_key}, "{output_filepath}", 1]
-[MemDelete, {metadata_key}]
-]
-""").format(metadata_key=metadata_key,
-            default=default, output_filepath=output_filepath)
-    execute_zscript(context_data_zscript)
-    with open(output_filepath) as data:
-        file_content = str(data.read().strip()).rstrip('\x00')
-        file_content = ast.literal_eval(file_content)
-    return file_content
-
-
 def get_containers():
     output = get_load_workfile_metadata(ZBRUSH_SECTION_NAME_CONTAINERS)
     if output:
