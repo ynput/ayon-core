@@ -88,7 +88,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
     targets = ["local"]
 
     hosts = ["fusion", "max", "maya", "nuke", "houdini",
-             "celaction", "aftereffects", "harmony", "blender"]
+             "celaction", "aftereffects", "harmony", "blender", "unreal"]
 
     families = ["render.farm", "render.frames_farm",
                 "prerender.farm", "prerender.frames_farm",
@@ -499,6 +499,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         metadata_path, rootless_metadata_path = \
             create_metadata_path(instance, anatomy)
 
+        self.log.debug(f"Writing metadata to '{metadata_path}")
         with open(metadata_path, "w") as f:
             json.dump(publish_job, f, indent=4, sort_keys=True)
 
