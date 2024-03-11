@@ -1,0 +1,44 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Movie Pipeline Deadline",
+	"Description": "A plugin which adds support for distributed rendering via Deadline to the Movie Render Pipeline.",
+	"Category": "Epic Deadline",
+	"CreatedBy": "Epic Games, Inc.",
+	"CreatedByURL" : "http://epicgames.com",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EnabledByDefault" : false,
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Plugins":
+	[
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "MovieRenderPipeline",
+			"Enabled": true
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true
+		},
+		{
+		    "Name": "UnrealDeadlineService",
+		    "Enabled": true
+		}
+	],
+	"Modules":
+	[
+		{
+			"Name": "MoviePipelineDeadline",
+			"Type" : "UncookedOnly"
+		}
+	]
+}
