@@ -408,8 +408,7 @@ class LoaderActionsModel:
 
         project_entity = ayon_api.get_project(project_name)
 
-        for version_entity in version_entities_by_id:
-            version_id = version_entity["id"]
+        for version_id, version_entity in version_entities_by_id.items():
             product_id = version_entity["productId"]
             product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
