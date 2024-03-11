@@ -22,9 +22,15 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
         sequence = opfapi.get_current_sequence(opfapi.CTX.selection)
 
         # create product name
+        task_entity = context.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         product_name = get_product_name(
             context.data["projectName"],
-            context.data["taskEntity"],
+            task_name,
+            task_type,
             context.data["hostName"],
             product_type,
             variant,

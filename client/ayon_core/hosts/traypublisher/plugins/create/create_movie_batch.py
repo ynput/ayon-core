@@ -105,10 +105,15 @@ class BatchMovieCreator(TrayPublishCreator):
     def _get_product_name(self, project_name, task_entity, variant):
         """Create product name according to standard template process"""
         host_name = self.create_context.host_name
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         try:
             product_name = get_product_name(
                 project_name,
-                task_entity,
+                task_name,
+                task_type,
                 host_name,
                 self.product_type,
                 variant,
@@ -119,14 +124,10 @@ class BatchMovieCreator(TrayPublishCreator):
             #   but user have ability to change it
             # NOTE: This expect that there is not task 'Undefined' on folder
             dumb_value = "Undefined"
-            task_entity = {
-                "name": dumb_value,
-                "taskType": dumb_value,
-                "short": dumb_value,
-            }
             product_name = get_product_name(
                 project_name,
-                task_entity,
+                dumb_value,
+                dumb_value,
                 host_name,
                 self.product_type,
                 variant,

@@ -149,10 +149,14 @@ class LegacyCreator(object):
         dynamic_data = cls.get_dynamic_data(
             project_name, folder_entity, task_entity, variant, host_name
         )
-
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         return get_product_name(
             project_name,
-            task_entity,
+            task_name,
+            task_type,
             host_name,
             cls.product_type,
             variant,
