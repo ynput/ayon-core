@@ -297,8 +297,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             repre_entity["name"].lower(): repre_entity
             for repre_entity in get_representations(
                 project_name,
-                version_ids=[version_entity["id"]],
-                fields={"id", "name"}
+                version_ids=[version_entity["id"]]
             )
         }
 
@@ -506,8 +505,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         existing_version = get_version_by_name(
             project_name,
             version_number,
-            product_entity["id"],
-            fields={"id"}
+            product_entity["id"]
         )
         version_id = None
         if existing_version:
