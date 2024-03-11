@@ -49,7 +49,7 @@ def csvpublish(
     )
 
     create_context.create(
-        "io.ayon_core.creators.traypublisher.csv_ingest",
+        "io.ayon.creators.traypublisher.csv_ingest",
         "Main",
         asset_doc=asset_doc,
         task_name=task_name,
