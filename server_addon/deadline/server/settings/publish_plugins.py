@@ -453,18 +453,18 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "optional": False,
         "active": True,
         "priority": 50,
-        "chunk_size":999999,
+        "chunk_size": 999999,
         "group": ""
     },
-    "HoudiniSubmitDeadline":{
+    "HoudiniSubmitDeadline": {
         "enabled": True,
         "optional": False,
         "active": True,
         "priority": 50,
-        "chunk_size":1,
+        "chunk_size": 1,
         "group": "",
         "export_priority": 50,
-        "export_chunk_size":10,
+        "export_chunk_size": 10,
         "export_group": ""
     },
     "MaxSubmitDeadline": {

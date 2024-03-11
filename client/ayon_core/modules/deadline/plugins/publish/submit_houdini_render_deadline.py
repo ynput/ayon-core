@@ -109,9 +109,10 @@ class HoudiniSubmitDeadline(
                 minimum=1,
                 maximum=1000
             ),
-            TextDef("group",
-                    default=cls.group,
-                    label="Group Name"
+            TextDef(
+                "group",
+                default=cls.group,
+                label="Group Name"
             ),
             NumberDef(
                 "export_priority",
@@ -127,9 +128,11 @@ class HoudiniSubmitDeadline(
                 minimum=1,
                 maximum=1000
             ),
-            TextDef("export_group",
-                    default=cls.export_group,
-                    label="Export Group Name"),
+            TextDef(
+                "export_group",
+                default=cls.export_group,
+                label="Export Group Name"
+            ),
         ]
 
     def get_job_info(self, dependency_job_ids=None):
