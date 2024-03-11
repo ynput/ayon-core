@@ -141,7 +141,7 @@ configuration in project settings.
                 version_comment = next(
                     iter(
                         repre_data["comment"]
-                        for _, repre_data in product_data["representations"].items()  # noqa: E501
+                        for repre_data in product_data["representations"].values()  # noqa: E501
                         if repre_data["comment"]
                     ),
                     None
