@@ -31,12 +31,12 @@ class ValidateInstanceInContextHoudini(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
 
-        folderPath = instance.data.get("folderPath")
+        folder_path = instance.data.get("folderPath")
         task = instance.data.get("task")
         context = self.get_context(instance)
-        if (folderPath, task) != context:
+        if (folder_path, task) != context:
             context_label = "{} > {}".format(*context)
-            instance_label = "{} > {}".format(folderPath, task)
+            instance_label = "{} > {}".format(folder_path, task)
 
             raise PublishValidationError(
                 message=(
@@ -58,14 +58,14 @@ class ValidateInstanceInContextHoudini(pyblish.api.InstancePlugin,
 
     @classmethod
     def repair(cls, instance):
-        context_asset, context_task = cls.get_context(instance)
+        context_folder, context_task = cls.get_context(instance)
 
         create_context = instance.context.data["create_context"]
-        instance_id = instance.data.get("instance_id")
+        instance_id = instance.data["instance_id"]
         created_instance = create_context.get_instance_by_id(
             instance_id
         )
-        created_instance["folderPath"] = context_asset
+        created_instance["folderPath"] = context_folder
         created_instance["task"] = context_task
         create_context.save_changes()
 
