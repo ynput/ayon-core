@@ -70,7 +70,6 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         for instance in context:
             instance_folder_entity = instance.data.get("folderEntity")
             _folder_path = instance.data["folderPath"]
-            _task_name = instance.data["task"]
 
             # There is possibility that folderEntity on instance is set
             if instance_folder_entity:
@@ -145,7 +144,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             folder_path_by_id[folder_id] = folder_entity["path"]
 
             task_entity = instance.data.get("taskEntity")
-            _task_name = instance.data["task"]
+            _task_name = instance.data.get("task")
 
             # There is possibility that taskEntity on instance is set
             if task_entity:
@@ -180,12 +179,15 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         all_task_names = set()
         for per_task in instances_missing_task.values():
             all_task_names |= set(per_task.keys())
+        all_task_names.discard(None)
 
-        task_entities = ayon_api.get_tasks(
-            project_name,
-            folder_ids=all_folder_ids,
-            task_names=all_task_names
-        )
+        task_entities = []
+        if all_task_names:
+            task_entities = ayon_api.get_tasks(
+                project_name,
+                folder_ids=all_folder_ids,
+                task_names=all_task_names
+            )
         task_entity_by_ids = {}
         for task_entity in task_entities:
             folder_id = task_entity["folderId"]
@@ -206,7 +208,6 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     not_found_task_paths.append(
                         "/".join([folder_path, task_name])
                     )
-                    continue
 
                 for instance in instances:
                     instance.data["taskEntity"] = task_entity
