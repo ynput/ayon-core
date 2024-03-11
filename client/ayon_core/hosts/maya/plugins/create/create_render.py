@@ -106,3 +106,9 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
                     default=self.render_settings.get("enable_all_lights",
                                                      False))
         ]
+
+    def get_extra_label(self):
+        """A label that can be made custom for a creator"""
+        print("get_extra_label() dir(self)", dir(self))
+        # TODO: How do you get to the instance attributes from here, such as frameStart and frameEnd?
+        return "{}-{}".format(1001, 1010)
