@@ -24,7 +24,7 @@ class IngestCSV(TrayPublishCreator):
 
     label = "CSV Ingest"
     product_type = "csv_ingest_file"
-    identifier = "io.ayon_core.creators.traypublisher.csv_ingest"
+    identifier = "io.ayon.creators.traypublisher.csv_ingest"
 
     default_variants = ["Main"]
 
