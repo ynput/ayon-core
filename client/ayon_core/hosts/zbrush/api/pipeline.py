@@ -53,7 +53,6 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_event_callback("application.launched", self.initial_app_launch)
         register_event_callback("application.exit", self.application_exit)
 
-
     def get_current_project_name(self):
         """
         Returns:
@@ -90,6 +89,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             "folder_path": context.get("folder_path"),
             "task_name": context.get("task")
         }
+
     # --- Workfile ---
     def open_workfile(self, filepath):
         open_file_zscript = ("""
@@ -193,6 +193,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def get_context_data(self):
         get_load_workfile_metadata(ZBRUSH_METADATA_CREATE_CONTEXT)
+
 
 def containerise(
         name, context, namespace="", loader=None, containers=None):
@@ -310,6 +311,7 @@ def get_containers():
                 item["objectName"] = members
 
     return output
+
 
 def write_load_metadata(metadata_key, data):
     #TODO: create temp json file
@@ -545,6 +547,7 @@ def imprint(container, representation_id):
             new_container_data = json.dumps([data])
             file.write(new_container_data)
             file.close()
+
 
 def tmp_current_file_check():
     output_file = tempfile.NamedTemporaryFile(
