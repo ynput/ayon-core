@@ -92,17 +92,13 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     # --- Workfile ---
     def open_workfile(self, filepath):
-        open_file_zscript = ("""
+        filepath = filepath.replace("\\", "/")
+        execute_zscript(f"""
 [IFreeze,
-[MemCreate, currentfile, 1000, 0]
-[VarSet, filename, "{filepath}"]
-[MemWriteString, currentfile, #filename, 0]
-[FileNameSetNext, #filename]
-[IKeyPress, 13, [IPress, File:Open:Open]]]
-[MemDelete, currentfile]
+    [FileNameSetNext, "{filepath}"]
+    [IKeyPress, 13, [IPress, File:Open:Open]]]
 ]
-    """).format(filepath=filepath)
-        execute_zscript(open_file_zscript)
+    """)
         set_current_file(filepath=filepath)
         return filepath
 
@@ -110,21 +106,16 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         if not filepath:
             filepath = self.get_current_workfile()
         filepath = filepath.replace("\\", "/")
-        save_file_zscript = ("""
-[IFreeze,
-[MemCreate, currentfile, 1000, 0]
-[VarSet, filename, "{filepath}"]
-[MemWriteString, currentfile, #filename, 0]
-[FileNameSetNext, #filename]
-[IKeyPress, 13, [IPress, File:SaveAs:SaveAs]]]
-[MemDelete, currentfile]
-]
-""").format(filepath=filepath)
         # # move the json data to the files
         # # shutil.copy
         copy_ayon_data(filepath)
         set_current_file(filepath=filepath)
-        execute_zscript(save_file_zscript)
+        execute_zscript(f"""
+[IFreeze,
+    [FileNameSetNext, "{filepath}"]
+    [IKeyPress, 13, [IPress, File:SaveAs:SaveAs]]]
+]
+""")
         return filepath
 
     def work_root(self, session):
