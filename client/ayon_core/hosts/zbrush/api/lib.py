@@ -46,6 +46,7 @@ def execute_zscript(zscript, communicator=None):
 
 def execute_zscript_and_wait(zscript,
                              check_filepath=None,
+                             sub_level=0,
                              wait=0.1,
                              timeout=20):
     """Execute ZScript and wait until ZScript finished processing.
@@ -138,23 +139,27 @@ def get_workdir(project_name, asset_name, task_name):
             return valid_workdir
 
 
-def export_tool(filepath: str):
+def export_tool(filepath: str, sub_level: int):
     """Export active zbrush tool to filepath."""
     filepath = filepath.replace("\\", "/")
     export_tool_zscript = ("""
 [IFreeze,
+[VarSet, subdlevel, {sub_level}]
+[VarSet, maxSubd, [IGetMax, Tool:Geometry:SDiv]]
+[If, subdlevel == 0 || sublevel > maxSubd,
+[VarSet, subdlevel, maxSubd]]
+[ISet, "Tool:Geometry:SDiv", subdlevel, 0]
 [FileNameSetNext, "{filepath}"]
 [IKeyPress, 13, [IPress, Tool:Export]]
 ]
-""").format(filepath=filepath)
+""").format(filepath=filepath, sub_level=sub_level)
 
     # We do not check for the export file's existence because Zbrush might
     # write the file in chunks, as such the file might exist before the writing
     # to it has finished
     execute_zscript_and_wait(
-        export_tool_zscript, check_filepath=filepath)
-    if not os.path.exists(filepath):
-        raise RuntimeError(f"Export file was not created: {filepath}")
+        export_tool_zscript, check_filepath=filepath,
+        sub_level=sub_level)
 
 
 def is_in_edit_mode():

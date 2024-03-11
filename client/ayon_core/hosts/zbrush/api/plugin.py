@@ -39,11 +39,11 @@ class ZbrushCreatorBase:
 
 
 class ZbrushCreator(Creator, ZbrushCreatorBase):
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         # TODO: use selection
         new_instance = CreatedInstance(
         self.product_type,
-        subset_name,
+        product_name,
         instance_data,
         self
     )
