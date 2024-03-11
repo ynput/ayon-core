@@ -8,6 +8,9 @@ from ayon_core.lib import Logger
 from ayon_core.pipeline import (
     get_representation_path,
 )
+from ayon_core.pipeline.colorspace import (
+    get_imageio_file_rules_colorspace_from_filepath
+)
 from ayon_core.hosts.nuke.api.lib import (
     get_imageio_input_colorspace,
     maintained_selection
@@ -82,9 +85,9 @@ class LoadClip(plugin.NukeLoader):
         return cls.representations_include or cls.representations
 
     def load(self, context, name, namespace, options):
-        """Load asset via database
-        """
-        representation = context["representation"]
+        """Load asset via database."""
+        project_name = context["project"]["name"]
+        repre_entity = context["representation"]
         version_entity = context["version"]
         version_attributes = version_entity["attrib"]
         version_data = version_entity["data"]
@@ -92,12 +95,11 @@ class LoadClip(plugin.NukeLoader):
         # reset container id so it is always unique for each instance
         self.reset_container_id()
 
-        is_sequence = len(representation["files"]) > 1
+        is_sequence = len(repre_entity["files"]) > 1
 
         if is_sequence:
-            context["representation"] = \
-                self._representation_with_hash_in_frame(
-                    representation
+            context["representation"] = (
+                self._representation_with_hash_in_frame(repre_entity)
             )
 
         filepath = self.filepath_from_context(context)
@@ -110,7 +112,7 @@ class LoadClip(plugin.NukeLoader):
         add_retime = options.get(
             "add_retime", self.options_defaults["add_retime"])
 
-        repre_id = representation["id"]
+        repre_id = repre_entity["id"]
 
         self.log.debug(
             "Representation id `{}` ".format(repre_id))
@@ -148,7 +150,7 @@ class LoadClip(plugin.NukeLoader):
 
         # get colorspace
         colorspace = (
-            representation["data"].get("colorspace")
+            repre_entity["data"].get("colorspace")
             or version_attributes.get("colorSpace")
         )
 
@@ -157,8 +159,12 @@ class LoadClip(plugin.NukeLoader):
         with viewer_update_and_undo_stop():
             read_node["file"].setValue(filepath)
 
-            used_colorspace = self._set_colorspace(
-                read_node, colorspace, filepath
+            self.set_colorspace_to_node(
+                read_node,
+                filepath,
+                project_name,
+                version_entity,
+                repre_entity
             )
 
             self._set_range_to_node(read_node, first, last, start_at_workfile)
@@ -171,8 +177,6 @@ class LoadClip(plugin.NukeLoader):
                 "version": version_name,
                 "db_colorspace": colorspace
             }
-            if used_colorspace:
-                data_imprint["used_colorspace"] = used_colorspace
 
             # add attributes from the version to imprint metadata knob
             for key in [
@@ -310,8 +314,13 @@ class LoadClip(plugin.NukeLoader):
         # to avoid multiple undo steps for rest of process
         # we will switch off undo-ing
         with viewer_update_and_undo_stop():
-            used_colorspace = self._set_colorspace(
-                read_node, colorspace, filepath)
+            self.set_colorspace_to_node(
+                read_node,
+                filepath,
+                project_name,
+                version_entity,
+                repre_entity
+            )
 
             self._set_range_to_node(read_node, first, last, start_at_workfile)
 
@@ -327,10 +336,6 @@ class LoadClip(plugin.NukeLoader):
                 "fps": str(version_attributes.get("fps")),
                 "author": version_attributes.get("author")
             }
-
-            # add used colorspace if found any
-            if used_colorspace:
-                updated_dict["used_colorspace"] = used_colorspace
 
             last_version_entity = ayon_api.get_last_version_by_product_id(
                 project_name, version_entity["productId"], fields={"id"}
@@ -354,6 +359,38 @@ class LoadClip(plugin.NukeLoader):
             self.clear_members(read_node)
 
         self.set_as_member(read_node)
+
+    def set_colorspace_to_node(
+        self,
+        read_node,
+        filepath,
+        project_name,
+        version_entity,
+        repre_entity,
+    ):
+        """Set colorspace to read node.
+
+        Sets colorspace with available names validation.
+
+        Args:
+            read_node (nuke.Node): The nuke's read node
+            filepath (str): File path.
+            project_name (str): Project name.
+            version_entity (dict): Version entity.
+            repre_entity (dict): Representation entity.
+
+        """
+        used_colorspace = self._get_colorspace_data(
+            project_name, version_entity, repre_entity, filepath
+        )
+        if (
+            used_colorspace
+            and colorspace_exists_on_node(read_node, used_colorspace)
+        ):
+            self.log.info(f"Used colorspace: {used_colorspace}")
+            read_node["colorspace"].setValue(used_colorspace)
+        else:
+            self.log.info("Colorspace not set...")
 
     def remove(self, container):
         read_node = container["node"]
@@ -465,22 +502,54 @@ class LoadClip(plugin.NukeLoader):
 
         return self.node_name_template.format(**name_data)
 
-    def _set_colorspace(self, node, colorspace, path):
-        output_color = None
-        path = path.replace("\\", "/")
+    def _get_colorspace_data(
+        self, project_name, version_entity, repre_entity, filepath
+    ):
+        """Get colorspace data from version and representation documents
 
-        # colorspace from `project_settings/nuke/imageio/regex_inputs`
-        iio_colorspace = get_imageio_input_colorspace(path)
+        Args:
+            project_name (str): Project name.
+            version_entity (dict): Version entity.
+            repre_entity (dict): Representation entity.
+            filepath (str): File path.
 
-        # Set colorspace defined in version data
-        if (
-            colorspace is not None
-            and colorspace_exists_on_node(node, str(colorspace))
-        ):
-            node["colorspace"].setValue(str(colorspace))
-            output_color = str(colorspace)
-        elif iio_colorspace is not None:
-            node["colorspace"].setValue(iio_colorspace)
-            output_color = iio_colorspace
+        Returns:
+            Any[str,None]: colorspace name or None
+        """
+        # Get backward compatible colorspace key.
+        colorspace = repre_entity["data"].get("colorspace")
+        self.log.debug(
+            f"Colorspace from representation colorspace: {colorspace}"
+        )
 
-        return output_color
+        # Get backward compatible version data key if colorspace is not found.
+        if not colorspace:
+            colorspace = version_entity["attrib"].get("colorSpace")
+            self.log.debug(
+                f"Colorspace from version colorspace: {colorspace}"
+            )
+
+        # Get colorspace from representation colorspaceData if colorspace is
+        # not found.
+        if not colorspace:
+            colorspace_data = repre_entity["data"].get("colorspaceData", {})
+            colorspace = colorspace_data.get("colorspace")
+            self.log.debug(
+                f"Colorspace from representation colorspaceData: {colorspace}"
+            )
+
+        # check if any filerules are not applicable
+        new_parsed_colorspace = get_imageio_file_rules_colorspace_from_filepath( # noqa
+            filepath, "nuke", project_name
+        )
+        self.log.debug(f"Colorspace new filerules: {new_parsed_colorspace}")
+
+        # colorspace from `project_settings/nuke/imageio/regexInputs`
+        old_parsed_colorspace = get_imageio_input_colorspace(filepath)
+        self.log.debug(f"Colorspace old filerules: {old_parsed_colorspace}")
+
+        return (
+            new_parsed_colorspace
+            or old_parsed_colorspace
+            or colorspace
+        )
