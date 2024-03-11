@@ -858,7 +858,7 @@ def get_current_context_template_data_with_folder_attrs():
     anatomy = Anatomy(project_name, project_entity=project_entity)
     folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
     task_entity = ayon_api.get_task_by_name(
-        project_name, folder_path["id"], task_name
+        project_name, folder_entity["id"], task_name
     )
 
     # get context specific vars
