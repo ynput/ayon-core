@@ -12,7 +12,7 @@ from ayon_api.operations import (
 )
 from ayon_api.utils import create_entity_id
 
-from ayon_core.lib import create_hard_link
+from ayon_core.lib import create_hard_link, source_hash
 from ayon_core.pipeline.publish import get_publish_template_name
 
 
@@ -578,6 +578,33 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
             hero=True,
             logger=self.log
         )
+
+    def get_rootless_path(self, anatomy, path):
+        """Returns, if possible, path without absolute portion from root
+            (eg. 'c:\' or '/opt/..')
+
+         This information is platform dependent and shouldn't be captured.
+         Example:
+             'c:/projects/MyProject1/Assets/publish...' >
+             '{root}/MyProject1/Assets...'
+
+        Args:
+            anatomy (Anatomy): Project anatomy.
+            path (str): Absolute path.
+
+        Returns:
+            str: Path where root path is replaced by formatting string.
+
+        """
+        success, rootless_path = anatomy.find_root_template_from_path(path)
+        if success:
+            path = rootless_path
+        else:
+            self.log.warning((
+                "Could not find root path for remapping \"{}\"."
+                " This may cause issues on farm."
+            ).format(path))
+        return path
 
     def copy_file(self, src_path, dst_path):
         # TODO check drives if are the same to check if cas hardlink
