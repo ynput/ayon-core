@@ -65,10 +65,15 @@ class CollectAutoReview(pyblish.api.ContextPlugin):
         host_name = context.data["hostName"]
         folder_entity = context.data["folderEntity"]
         task_entity = context.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
 
         product_name = get_product_name(
             project_name,
-            task_entity,
+            task_name,
+            task_type,
             host_name,
             product_type,
             variant,

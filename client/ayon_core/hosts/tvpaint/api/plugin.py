@@ -70,10 +70,15 @@ class TVPaintCreatorCommon:
             host_name,
             instance
         )
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
 
         return get_product_name(
             project_name,
-            task_entity,
+            task_name,
+            task_type,
             host_name,
             self.product_type,
             variant,

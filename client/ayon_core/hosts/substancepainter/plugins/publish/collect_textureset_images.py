@@ -86,13 +86,19 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         map_identifier = strip_template(template)
         suffix += f".{map_identifier}"
 
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
         image_product_name = get_product_name(
             # TODO: The product type actually isn't 'texture' currently but
             #   for now this is only done so the product name starts with
             #   'texture'
-            project_name=context.data["projectName"],
-            task_entity=task_entity,
-            host_name=context.data["hostName"],
+            context.data["projectName"],
+            task_name,
+            task_type,
+            context.data["hostName"],
             product_type="texture",
             variant=instance.data["variant"] + suffix,
             project_settings=context.data["project_settings"]

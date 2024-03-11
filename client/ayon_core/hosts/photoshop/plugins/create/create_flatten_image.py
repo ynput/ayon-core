@@ -136,10 +136,18 @@ class AutoImageCreator(PSAutoCreator):
     ):
         if host_name is None:
             host_name = self.create_context.host_name
+
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
         dynamic_data = prepare_template_data({"layer": "{layer}"})
+
         product_name = get_product_name(
             project_name,
-            task_entity,
+            task_name,
+            task_type,
             host_name,
             self.product_type,
             variant,

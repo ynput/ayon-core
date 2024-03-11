@@ -55,9 +55,15 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
 
         # Check product name
         folder_entity = instance.data["folderEntity"]
+        task_entity = instance.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         product_name = get_product_name(
             instance.context.data["projectName"],
-            instance.data["taskEntity"],
+            task_name,
+            task_type,
             instance.context.data["hostName"],
             instance.data["productType"],
             variant=instance.data["variant"],
@@ -79,10 +85,15 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
 
         # Check product name
         folder_entity = instance.data["folderEntity"]
+        task_entity = instance.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         product_name = get_product_name(
             instance.context.data["projectName"],
-            instance.data["taskEntity"],
-            instance.data["task"],
+            task_name,
+            task_type,
             instance.context.data["hostName"],
             instance.data["productType"],
             variant=instance.data["variant"],

@@ -81,7 +81,8 @@ def get_product_name_template(
 
 def get_product_name(
     project_name,
-    task_entity,
+    task_name,
+    task_type,
     host_name,
     product_type,
     variant,
@@ -106,7 +107,8 @@ def get_product_name(
 
     Args:
         project_name (str): Project name.
-        task_entity (Dict[str, Any]): Task entity.
+        task_name (Union[str, None]): Task name.
+        task_type (Union[str, None]): Task type.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
@@ -128,11 +130,6 @@ def get_product_name(
 
     if not product_type:
         return ""
-
-    task_name = task_type = None
-    if task_entity:
-        task_name = task_entity["name"]
-        task_type = task_entity["taskType"]
 
     template = get_product_name_template(
         project_name,

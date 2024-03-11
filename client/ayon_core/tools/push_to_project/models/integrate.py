@@ -819,15 +819,15 @@ class ProjectPushItemProcess:
     def _determine_product_name(self):
         product_type = self._product_type
         task_info = self._task_info
-        new_task_info = None
+        task_name = task_type = None
         if task_info:
-            new_task_info = {
-                "name": task_info["name"],
-                "taskType": task_info["type"]
-            }
+            task_name = task_info["name"]
+            task_type = task_info["type"]
+
         product_name = get_product_name(
             self._item.dst_project_name,
-            new_task_info,
+            task_name,
+            task_type,
             self.host_name,
             product_type,
             self._item.variant,
