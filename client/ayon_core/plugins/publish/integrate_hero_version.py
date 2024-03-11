@@ -10,6 +10,7 @@ from ayon_api.operations import (
     OperationsSession,
     new_version_entity,
 )
+from ayon_api.utils import create_entity_id
 
 from ayon_core.lib import create_hard_link
 from ayon_core.pipeline.publish import get_publish_template_name
