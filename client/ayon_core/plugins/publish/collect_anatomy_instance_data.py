@@ -132,7 +132,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         context_task_entity = context.data.get("taskEntity")
         context_task_name = None
         if context_task_entity:
-            context_task_name = context_task_entity["path"]
+            context_task_name = context_task_entity["name"]
 
         instances_missing_task = {}
         folder_path_by_id = {}

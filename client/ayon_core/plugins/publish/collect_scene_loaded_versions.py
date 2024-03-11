@@ -57,7 +57,7 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
         for con in containers:
             repre_id = con["representation"]
             repre_entity = repre_entities_by_id.get(repre_id)
-            if repre_doc is None:
+            if repre_entity is None:
                 self.log.warning((
                     "Skipping container,"
                     " did not find representation document. {}"
