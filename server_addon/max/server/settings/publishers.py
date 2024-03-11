@@ -49,6 +49,20 @@ class FamilyMappingItemModel(BaseSettingsModel):
     )
 
 
+class ValidateModelNameModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    regex: str = SettingsField(
+        "(.*)_(?P<subset>.*)_(GEO)",
+        title="Validation regex",
+        description=(
+            "Regex for validating model name. You can use named "
+            " capturing groups:(?P<asset>.*) for Asset name"
+        )
+    )
+
+
 class ValidateLoadedPluginModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -65,10 +79,14 @@ class BasicValidateModel(BaseSettingsModel):
 
 
 class PublishersModel(BaseSettingsModel):
+    ValidateInstanceInContext: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Instance In Context",
+        section="Validators"
+    )
     ValidateFrameRange: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Frame Range",
-        section="Validators"
+        title="Validate Frame Range"
     )
     ValidateAttributes: ValidateAttributesModel = SettingsField(
         default_factory=ValidateAttributesModel,
@@ -82,6 +100,10 @@ class PublishersModel(BaseSettingsModel):
             "the system automatically skips checking it"
         )
     )
+    ValidateNoAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate No Animation"
+    )
     ValidateLoadedPlugin: ValidateLoadedPluginModel = SettingsField(
         default_factory=ValidateLoadedPluginModel,
         title="Validate Loaded Plugin"
@@ -89,6 +111,10 @@ class PublishersModel(BaseSettingsModel):
     ValidateMeshHasUVs: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Mesh Has UVs"
+    )
+    ValidateModelName: ValidateModelNameModel = SettingsField(
+        default_factory=ValidateModelNameModel,
+        title="Validate Model Name"
     )
     ExtractModelObj: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -114,6 +140,11 @@ class PublishersModel(BaseSettingsModel):
 
 
 DEFAULT_PUBLISH_SETTINGS = {
+    "ValidateInstanceInContext": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
     "ValidateFrameRange": {
         "enabled": True,
         "optional": True,
@@ -133,6 +164,12 @@ DEFAULT_PUBLISH_SETTINGS = {
         "nearclip": 1.0,
         "farclip": 1000.0
     },
+    "ValidateModelName": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+        "regex": "(.*)_(?P<subset>.*)_(GEO)"
+    },
     "ValidateLoadedPlugin": {
         "enabled": False,
         "optional": True,
@@ -142,6 +179,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": False
+    },
+    "ValidateNoAnimation": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
     },
     "ExtractModelObj": {
         "enabled": True,
