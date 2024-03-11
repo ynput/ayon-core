@@ -9,7 +9,7 @@ class CreateModel(plugin.ZbrushCreator):
     identifier = "io.ayon.creators.zbrush.model"
     label = "Model"
     product_type = "model"
-    icon = "gear"
+    icon = "cube"
 
     def create(self, product_name, instance_data, pre_create_data):
         creator_attributes = instance_data.setdefault(
