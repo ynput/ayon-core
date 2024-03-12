@@ -2,10 +2,6 @@
 import pyblish.api
 from ayon_core.pipeline import registered_host
 
-import importlib
-import ayon_core.hosts.zbrush.api.lib
-importlib.reload(ayon_core.hosts.zbrush.api.lib)
-
 
 class CollectCurrentFile(pyblish.api.ContextPlugin):
     label = "Collect Current File"
