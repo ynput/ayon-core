@@ -3,14 +3,8 @@ import uuid
 import time
 import tempfile
 import logging
-from ayon_core.client import (
-    get_project,
-    get_asset_by_name,
-)
-from ayon_core.pipeline import Anatomy
-from string import Formatter
+
 from . import CommunicationWrapper
-from ayon_core.pipeline.template_data import get_template_data
 
 
 log = logging.getLogger("zbrush.lib")
@@ -46,7 +40,6 @@ def execute_zscript(zscript, communicator=None):
 
 def execute_zscript_and_wait(zscript,
                              check_filepath=None,
-                             sub_level=0,
                              wait=0.1,
                              timeout=20):
     """Execute ZScript and wait until ZScript finished processing.
@@ -88,81 +81,49 @@ def execute_zscript_and_wait(zscript,
             )
 
 
-def find_first_filled_path(path):
-    if not path:
-        return ""
-
-    fields = set()
-    for item in Formatter().parse(path):
-        _, field_name, format_spec, conversion = item
-        if not field_name:
-            continue
-        conversion = "!{}".format(conversion) if conversion else ""
-        format_spec = ":{}".format(format_spec) if format_spec else ""
-        orig_key = "{{{}{}{}}}".format(
-            field_name, conversion, format_spec)
-        fields.add(orig_key)
-
-    for field in fields:
-        path = path.split(field, 1)[0]
-    return path
+def get_workdir() -> str:
+    """Return the currently active work directory"""
+    return os.environ["AYON_WORKDIR"]
 
 
-def get_workdir(project_name, asset_name, task_name):
-    project = get_project(project_name)
-    asset = get_asset_by_name(project_name, asset_name)
+def export_tool(filepath: str, subdivision_level: int = 0):
+    """Export active zbrush tool to filepath.
 
-    data = get_template_data(project, asset, task_name)
+    Args:
+        filepath (str): The filepath to export to.
+        subdivision_level (int): The subdivision level to export.
+            A value of zero will export the current subdivision level
+            A negative value, e.g. -1 will go negatively from the highest
+            subdivs - e.g. -1 is the highest available subdiv.
 
-    anatomy = Anatomy(project_name)
-    workdir = anatomy.templates_obj["work"]["folder"].format(data)
-
-    # Remove any potential un-formatted parts of the path
-    valid_workdir = find_first_filled_path(workdir)
-
-    # Path is not filled at all
-    if not valid_workdir:
-        raise AssertionError("Failed to calculate workdir.")
-
-    # Normalize
-    valid_workdir = os.path.normpath(valid_workdir)
-    if os.path.exists(valid_workdir):
-        return valid_workdir
-
-    data.pop("task", None)
-    workdir = anatomy.templates_obj["work"]["folder"].format(data)
-    valid_workdir = find_first_filled_path(workdir)
-    if valid_workdir:
-        # Normalize
-        valid_workdir = os.path.normpath(valid_workdir)
-        if os.path.exists(valid_workdir):
-            return valid_workdir
-
-
-def export_tool(filepath: str, sub_level: int):
-    """Export active zbrush tool to filepath."""
+    """
     filepath = filepath.replace("\\", "/")
-    export_tool_zscript = ("""
-[IFreeze,
-[VarSet, subdlevel, {sub_level}]
-[VarSet, maxSubd, [IGetMax, Tool:Geometry:SDiv]]
-[If, subdlevel == 0 || sublevel > maxSubd,
-[VarSet, subdlevel, maxSubd]]
-[ISet, "Tool:Geometry:SDiv", subdlevel, 0]
+
+    # Only set any subdiv level if subdiv level != 0
+    set_subdivs_script = ""
+    if subdivision_level != 0:
+        set_subdivs_script = f"""
+[VarSet, max_subd, [IGetMax, "Tool:Geometry:SDiv"]]
+[If, max_subd > 0,
+    [ISet, "Tool:Geometry:SDiv", {subdivision_level}, 0],
+    [ISet, "Tool:Geometry:SDiv", [VarGet, max_subd] - {subdivision_level}, 0]
+]"""
+
+    # Export tool
+    export_tool_zscript = f"""
+[IFreeze, {set_subdivs_script}
 [FileNameSetNext, "{filepath}"]
 [IKeyPress, 13, [IPress, Tool:Export]]
-]
-""").format(filepath=filepath, sub_level=sub_level)
+
+]"""
 
     # We do not check for the export file's existence because Zbrush might
     # write the file in chunks, as such the file might exist before the writing
     # to it has finished
-    execute_zscript_and_wait(
-        export_tool_zscript, check_filepath=filepath,
-        sub_level=sub_level)
+    execute_zscript_and_wait(export_tool_zscript, check_filepath=filepath)
 
 
-def is_in_edit_mode():
+def is_in_edit_mode() -> bool:
     """Return whether transform edit mode is currently enabled.
 
     Certain actions can't be performed if Zbrush is currently not within
@@ -188,7 +149,7 @@ def is_in_edit_mode():
         content = str(mode.read())
         bool_mode = content.rstrip('\x00')
 
-    return bool_mode
+    return bool(int(bool_mode))
 
 
 def remove_subtool(basename):

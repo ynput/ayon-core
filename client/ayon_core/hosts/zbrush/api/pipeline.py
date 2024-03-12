@@ -53,7 +53,6 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_event_callback("application.launched", self.initial_app_launch)
         register_event_callback("application.exit", self.application_exit)
 
-
     def get_current_project_name(self):
         """
         Returns:
@@ -90,19 +89,16 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             "folder_path": context.get("folder_path"),
             "task_name": context.get("task")
         }
+
     # --- Workfile ---
     def open_workfile(self, filepath):
-        open_file_zscript = ("""
+        filepath = filepath.replace("\\", "/")
+        execute_zscript(f"""
 [IFreeze,
-[MemCreate, currentfile, 1000, 0]
-[VarSet, filename, "{filepath}"]
-[MemWriteString, currentfile, #filename, 0]
-[FileNameSetNext, #filename]
-[IKeyPress, 13, [IPress, File:Open:Open]]]
-[MemDelete, currentfile]
+    [FileNameSetNext, "{filepath}"]
+    [IKeyPress, 13, [IPress, File:Open:Open]]]
 ]
-    """).format(filepath=filepath)
-        execute_zscript(open_file_zscript)
+    """)
         set_current_file(filepath=filepath)
         return filepath
 
@@ -110,31 +106,23 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         if not filepath:
             filepath = self.get_current_workfile()
         filepath = filepath.replace("\\", "/")
-        save_file_zscript = ("""
-[IFreeze,
-[MemCreate, currentfile, 1000, 0]
-[VarSet, filename, "{filepath}"]
-[MemWriteString, currentfile, #filename, 0]
-[FileNameSetNext, #filename]
-[IKeyPress, 13, [IPress, File:SaveAs:SaveAs]]]
-[MemDelete, currentfile]
-]
-""").format(filepath=filepath)
         # # move the json data to the files
         # # shutil.copy
         copy_ayon_data(filepath)
         set_current_file(filepath=filepath)
-        execute_zscript(save_file_zscript)
+        execute_zscript(f"""
+[IFreeze,
+    [FileNameSetNext, "{filepath}"]
+    [IKeyPress, 13, [IPress, File:SaveAs:SaveAs]]]
+]
+""")
         return filepath
 
     def work_root(self, session):
         return session["AYON_WORKDIR"]
 
     def get_current_workfile(self):
-        project_name = get_current_context()["project_name"]
-        folder_path = get_current_context()["folder_path"]
-        task_name = get_current_context()["task_name"]
-        work_dir = get_workdir(project_name, folder_path, task_name)
+        work_dir = get_workdir()
         txt_dir = os.path.join(
             work_dir, ".zbrush_metadata").replace(
                 "\\", "/"
@@ -194,6 +182,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def get_context_data(self):
         get_load_workfile_metadata(ZBRUSH_METADATA_CREATE_CONTEXT)
 
+
 def containerise(
         name, context, namespace="", loader=None, containers=None):
     data = {
@@ -218,10 +207,7 @@ def save_current_workfile_context(context):
 
 
 def write_context_metadata(metadata_key, context):
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata", metadata_key).replace(
             "\\", "/"
@@ -242,14 +228,11 @@ def write_context_metadata(metadata_key, context):
 def write_workfile_metadata(metadata_key, data=None):
     if data is None:
         data = []
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
     current_file = registered_host().get_current_workfile()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -274,31 +257,6 @@ def get_current_context():
     }
 
 
-def get_workfile_metadata(metadata_key, default=None):
-    if default is None:
-        default = []
-    output_file = tempfile.NamedTemporaryFile(
-        mode="w", prefix="a_zb_meta", suffix=".txt", delete=False
-    )
-    output_file.close()
-    output_filepath = output_file.name.replace("\\", "/")
-    context_data_zscript = ("""
-[IFreeze,
-[If, [MemCreate, {metadata_key}, 400000, 0] !=-1,
-[MemCreate, {metadata_key}, 400000, 0]
-[MemWriteString, {metadata_key}, "{default}", 0]]
-[MemSaveToFile, {metadata_key}, "{output_filepath}", 1]
-[MemDelete, {metadata_key}]
-]
-""").format(metadata_key=metadata_key,
-            default=default, output_filepath=output_filepath)
-    execute_zscript(context_data_zscript)
-    with open(output_filepath) as data:
-        file_content = str(data.read().strip()).rstrip('\x00')
-        file_content = ast.literal_eval(file_content)
-    return file_content
-
-
 def get_containers():
     output = get_load_workfile_metadata(ZBRUSH_SECTION_NAME_CONTAINERS)
     if output:
@@ -311,16 +269,14 @@ def get_containers():
 
     return output
 
+
 def write_load_metadata(metadata_key, data):
     #TODO: create temp json file
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
     current_file = registered_host().get_current_workfile()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     name = next((d["name"] for d in data), None)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
@@ -339,10 +295,7 @@ def write_load_metadata(metadata_key, data):
 
 def get_load_context_metadata(metadata_key):
     file_content = []
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata", metadata_key).replace(
             "\\", "/"
@@ -363,14 +316,11 @@ def get_load_workfile_metadata(metadata_key):
     # save zscript to the hidden folder
     # load json files
     file_content = []
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
     current_file = registered_host().get_current_workfile()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -393,14 +343,11 @@ def get_instance_workfile_metadata(metadata_key):
     # save zscript to the hidden folder
     # load json files
     file_content = []
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
     current_file = registered_host().get_current_workfile()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -416,14 +363,11 @@ def get_instance_workfile_metadata(metadata_key):
 
 
 def remove_container_data(name):
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
     current_file = registered_host().get_current_workfile()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, ZBRUSH_SECTION_NAME_CONTAINERS).replace(
@@ -437,10 +381,7 @@ def remove_container_data(name):
 
 
 def remove_tmp_data():
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     for name in [ZBRUSH_METADATA_CREATE_CONTEXT,
                  ZBRUSH_SECTION_NAME_INSTANCES,
                  ZBRUSH_SECTION_NAME_CONTAINERS]:
@@ -458,14 +399,11 @@ def remove_tmp_data():
 
 def copy_ayon_data(filepath):
     filename = os.path.splitext(os.path.basename(filepath))[0].strip()
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
     current_file = registered_host().get_current_workfile()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     for name in [ZBRUSH_METADATA_CREATE_CONTEXT,
                  ZBRUSH_SECTION_NAME_INSTANCES,
                  ZBRUSH_SECTION_NAME_CONTAINERS]:
@@ -490,10 +428,7 @@ def copy_ayon_data(filepath):
 
 
 def set_current_file(filepath=None):
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     txt_dir = os.path.join(
         work_dir, ".zbrush_metadata").replace(
             "\\", "/"
@@ -516,14 +451,11 @@ def imprint(container, representation_id):
     old_container_data = []
     data = {}
     name = container["objectName"]
-    project_name = get_current_context()["project_name"]
-    folder_path = get_current_context()["folder_path"]
-    task_name = get_current_context()["task_name"]
     current_file = registered_host().get_current_workfile()
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, ZBRUSH_SECTION_NAME_CONTAINERS).replace(
@@ -545,6 +477,7 @@ def imprint(container, representation_id):
             new_container_data = json.dumps([data])
             file.write(new_container_data)
             file.close()
+
 
 def tmp_current_file_check():
     output_file = tempfile.NamedTemporaryFile(
