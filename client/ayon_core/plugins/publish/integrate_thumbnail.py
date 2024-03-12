@@ -133,27 +133,30 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         for repre_info in published_representations.values():
             return repre_info["representation"]["versionId"]
 
-    def _get_instance_thumbnail_path(self, published_representations):
-        thumb_repre_doc = None
+    def _get_instance_thumbnail_path(
+        self, published_representations, anatomy
+    ):
+        thumb_repre_entity = None
         for repre_info in published_representations.values():
-            repre_doc = repre_info["representation"]
-            if "thumbnail" in repre_doc["name"].lower():
-                thumb_repre_doc = repre_doc
+            repre_entity = repre_info["representation"]
+            if "thumbnail" in repre_entity["name"].lower():
+                thumb_repre_entity = repre_entity
                 break
 
-        if thumb_repre_doc is None:
+        if thumb_repre_entity is None:
             self.log.debug(
                 "There is no representation with name \"thumbnail\""
             )
             return None
 
-        path = thumb_repre_doc["data"]["path"]
-        if not os.path.exists(path):
+        path = thumb_repre_entity["attrib"]["path"]
+        filled_path = anatomy.fill_root(path)
+        if not os.path.exists(filled_path):
             self.log.warning(
-                "Thumbnail file cannot be found. Path: {}".format(path)
+                "Thumbnail file cannot be found. Path: {}".format(filled_path)
             )
             return None
-        return os.path.normpath(path)
+        return os.path.normpath(filled_path)
 
     def _integrate_thumbnails(
         self,
