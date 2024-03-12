@@ -1,4 +1,3 @@
-import functools
 import os
 import uuid
 import time
@@ -85,24 +84,6 @@ def execute_zscript_and_wait(zscript,
 
 def get_workdir():
     return os.environ["AYON_WORKDIR"]
-
-    # Path is not filled at all
-    if not valid_workdir:
-        raise AssertionError("Failed to calculate workdir.")
-
-    # Normalize
-    valid_workdir = os.path.normpath(valid_workdir)
-    if os.path.exists(valid_workdir):
-        return valid_workdir
-
-    data.pop("task", None)
-    workdir = anatomy.templates_obj["work"]["folder"].format(data)
-    valid_workdir = find_first_filled_path(workdir)
-    if valid_workdir:
-        # Normalize
-        valid_workdir = os.path.normpath(valid_workdir)
-        if os.path.exists(valid_workdir):
-            return valid_workdir
 
 
 def export_tool(filepath: str, sub_level: int):
