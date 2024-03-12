@@ -79,7 +79,7 @@ class MaxSceneLoader(load.LoaderPlugin):
     color = "green"
     mtl_dup_default = "promptMtlDups"
     mtl_dup_enum_dict = {
-        "promptMtlDups": "Prompt Material",
+        "promptMtlDups": "Prompt on Duplicate Materials",
         "useMergedMtlDups": "Use Incoming Material",
         "useSceneMtlDups": "Use Scene Material",
         "renameMtlDups": "Merge and Rename Incoming Material"
