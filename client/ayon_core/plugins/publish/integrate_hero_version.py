@@ -237,7 +237,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
             entity_id = old_version["id"]
 
         new_hero_version = new_version_entity(
-            src_version_entity["version"],
+            - src_version_entity["version"],
             src_version_entity["productId"],
             task_id=src_version_entity["taskId"],
             data=copy.deepcopy(src_version_entity["data"]),
