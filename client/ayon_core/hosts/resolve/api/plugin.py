@@ -12,7 +12,24 @@ from ayon_core.pipeline import (
     Creator as NewCreator
 )
 
+from ayon_core.pipeline.create import (
+    Creator,
+    HiddenCreator,
+    CreatedInstance,
+    cache_and_get_instances,
+)
+
+from .pipeline import (
+    list_instances,
+    update_instances,
+    remove_instances,
+    HostContext,
+)
+
 from . import lib, constants
+
+
+SHARED_DATA_KEY = "ayon.resolve.instances"
 
 
 class ClipLoader:
@@ -653,3 +670,78 @@ class PublishableClip:
 
 # alias for backward compatibility
 PublishClip = PublishableClip  # noqa
+
+
+class HiddenResolvePublishCreator(HiddenCreator):
+    host_name = "resolve"
+    settings_category = "resolve"
+
+    def collect_instances(self):
+        instances_by_identifier = cache_and_get_instances(
+            self, SHARED_DATA_KEY, list_instances
+        )
+        for instance_data in instances_by_identifier[self.identifier]:
+            instance = CreatedInstance.from_existing(instance_data, self)
+            self._add_instance_to_context(instance)
+
+    def update_instances(self, update_list):
+        update_instances(update_list)
+
+    def remove_instances(self, instances):
+        remove_instances(instances)
+        for instance in instances:
+            self._remove_instance_from_context(instance)
+
+    def _store_new_instance(self, new_instance):
+        """Resolve publisher specific method to store instance.
+
+        Instance is stored into "workfile" of Resolve and also add it
+        to CreateContext.
+
+        Args:
+            new_instance (CreatedInstance): Instance that should be stored.
+        """
+
+        # Host implementation of storing metadata about instance
+        HostContext.add_instance(new_instance.data_to_store())
+        # Add instance to current context
+        self._add_instance_to_context(new_instance)
+
+
+class ResolvePublishCreator(Creator):
+    create_allow_context_change = True
+    host_name = "resolve"
+    settings_category = "resolve"
+
+    def collect_instances(self):
+        instances_by_identifier = cache_and_get_instances(
+            self, SHARED_DATA_KEY, list_instances
+        )
+        for instance_data in instances_by_identifier[self.identifier]:
+            instance = CreatedInstance.from_existing(instance_data, self)
+            self._add_instance_to_context(instance)
+
+    def update_instances(self, update_list):
+        update_instances(update_list)
+
+    def remove_instances(self, instances):
+        remove_instances(instances)
+        for instance in instances:
+            self._remove_instance_from_context(instance)
+
+    def _store_new_instance(self, new_instance):
+        """Resolve publisher specific method to store instance.
+
+        Instance is stored into "workfile" of Resolve and also add it
+        to CreateContext.
+
+        Args:
+            new_instance (CreatedInstance): Instance that should be stored.
+        """
+
+        # Host implementation of storing metadata about instance
+        HostContext.add_instance(new_instance.data_to_store())
+        new_instance.mark_as_stored()
+
+        # Add instance to current context
+        self._add_instance_to_context(new_instance)
