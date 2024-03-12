@@ -103,7 +103,7 @@ class ValidateModelName(pyblish.api.InstancePlugin,
         invalid = False
         compare = {
             "project": instance.context.data["projectName"],
-            "asset": instance.context.data["folderPath"],
+            "asset": instance.data["folderPath"],
             "subset": instance.data["productName"]
         }
         for key, required_value in compare.items():
