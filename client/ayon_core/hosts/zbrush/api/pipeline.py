@@ -125,7 +125,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         project_name = get_current_context()["project_name"]
         folder_path = get_current_context()["folder_path"]
         task_name = get_current_context()["task_name"]
-        work_dir = get_workdir(project_name, folder_path, task_name)
+        work_dir = get_workdir()
         txt_dir = os.path.join(
             work_dir, ".zbrush_metadata").replace(
                 "\\", "/"
@@ -213,7 +213,7 @@ def write_context_metadata(metadata_key, context):
     project_name = get_current_context()["project_name"]
     folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata", metadata_key).replace(
             "\\", "/"
@@ -241,7 +241,7 @@ def write_workfile_metadata(metadata_key, data=None):
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -288,7 +288,7 @@ def write_load_metadata(metadata_key, data):
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     name = next((d["name"] for d in data), None)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
@@ -310,7 +310,7 @@ def get_load_context_metadata(metadata_key):
     project_name = get_current_context()["project_name"]
     folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata", metadata_key).replace(
             "\\", "/"
@@ -338,7 +338,7 @@ def get_load_workfile_metadata(metadata_key):
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -368,7 +368,7 @@ def get_instance_workfile_metadata(metadata_key):
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, metadata_key).replace(
@@ -391,7 +391,7 @@ def remove_container_data(name):
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, ZBRUSH_SECTION_NAME_CONTAINERS).replace(
@@ -408,7 +408,7 @@ def remove_tmp_data():
     project_name = get_current_context()["project_name"]
     folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     for name in [ZBRUSH_METADATA_CREATE_CONTEXT,
                  ZBRUSH_SECTION_NAME_INSTANCES,
                  ZBRUSH_SECTION_NAME_CONTAINERS]:
@@ -433,7 +433,7 @@ def copy_ayon_data(filepath):
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     for name in [ZBRUSH_METADATA_CREATE_CONTEXT,
                  ZBRUSH_SECTION_NAME_INSTANCES,
                  ZBRUSH_SECTION_NAME_CONTAINERS]:
@@ -461,7 +461,7 @@ def set_current_file(filepath=None):
     project_name = get_current_context()["project_name"]
     folder_path = get_current_context()["folder_path"]
     task_name = get_current_context()["task_name"]
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     txt_dir = os.path.join(
         work_dir, ".zbrush_metadata").replace(
             "\\", "/"
@@ -491,7 +491,7 @@ def imprint(container, representation_id):
     if current_file:
         current_file = os.path.splitext(
             os.path.basename(current_file))[0].strip()
-    work_dir = get_workdir(project_name, folder_path, task_name)
+    work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
         current_file, ZBRUSH_SECTION_NAME_CONTAINERS).replace(
