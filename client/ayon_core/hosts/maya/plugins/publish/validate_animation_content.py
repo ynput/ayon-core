@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
 
 
 class ValidateAnimationContent(pyblish.api.InstancePlugin):
-    """Adheres to the content of 'animation' family
+    """Adheres to the content of 'animation' product type
 
     - Must have collected `out_hierarchy` data.
     - All nodes in `out_hierarchy` must be in the instance.

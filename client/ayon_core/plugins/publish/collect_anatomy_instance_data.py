@@ -4,8 +4,8 @@ Requires:
     context     -> projectEntity
     context     -> assetEntity
     instance    -> folderPath
-    instance    -> subset
-    instance    -> family
+    instance    -> productName
+    instance    -> productType
 
 Optional:
     instance    -> version
@@ -120,7 +120,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             ).format(joined_asset_names))
 
     def fill_latest_versions(self, context, project_name):
-        """Try to find latest version for each instance's subset.
+        """Try to find latest version for each instance's product name.
 
         Key "latestVersion" is always set to latest version or `None`.
 
@@ -134,7 +134,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         self.log.debug("Querying latest versions for instances.")
 
         hierarchy = {}
-        names_by_asset_ids = collections.defaultdict(set)
+        names_by_folder_ids = collections.defaultdict(set)
         for instance in context:
             # Make sure `"latestVersion"` key is set
             latest_version = instance.data.get("latestVersion")
@@ -145,41 +145,41 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if not asset_doc:
                 continue
 
-            # Store asset ids and subset names for queries
-            asset_id = asset_doc["_id"]
-            subset_name = instance.data["subset"]
+            # Store folder ids and product names for queries
+            folder_id = asset_doc["_id"]
+            product_name = instance.data["productName"]
 
             # Prepare instance hierarchy for faster filling latest versions
-            if asset_id not in hierarchy:
-                hierarchy[asset_id] = {}
-            if subset_name not in hierarchy[asset_id]:
-                hierarchy[asset_id][subset_name] = []
-            hierarchy[asset_id][subset_name].append(instance)
-            names_by_asset_ids[asset_id].add(subset_name)
+            if folder_id not in hierarchy:
+                hierarchy[folder_id] = {}
+            if product_name not in hierarchy[folder_id]:
+                hierarchy[folder_id][product_name] = []
+            hierarchy[folder_id][product_name].append(instance)
+            names_by_folder_ids[folder_id].add(product_name)
 
         subset_docs = []
-        if names_by_asset_ids:
+        if names_by_folder_ids:
             subset_docs = list(get_subsets(
-                project_name, names_by_asset_ids=names_by_asset_ids
+                project_name, names_by_asset_ids=names_by_folder_ids
             ))
 
-        subset_ids = [
+        product_ids = {
             subset_doc["_id"]
             for subset_doc in subset_docs
-        ]
+        }
 
-        last_version_docs_by_subset_id = get_last_versions(
-            project_name, subset_ids, fields=["name"]
+        last_version_docs_by_product_id = get_last_versions(
+            project_name, product_ids, fields=["name"]
         )
         for subset_doc in subset_docs:
-            subset_id = subset_doc["_id"]
-            last_version_doc = last_version_docs_by_subset_id.get(subset_id)
+            product_id = subset_doc["_id"]
+            last_version_doc = last_version_docs_by_product_id.get(product_id)
             if last_version_doc is None:
                 continue
 
-            asset_id = subset_doc["parent"]
-            subset_name = subset_doc["name"]
-            _instances = hierarchy[asset_id][subset_name]
+            folder_id = subset_doc["parent"]
+            product_name = subset_doc["name"]
+            _instances = hierarchy[folder_id][product_name]
             for _instance in _instances:
                 _instance.data["latestVersion"] = last_version_doc["name"]
 
@@ -191,9 +191,15 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         for instance in context:
             anatomy_data = copy.deepcopy(context.data["anatomyData"])
+            product_name = instance.data["productName"]
+            product_type = instance.data["productType"]
             anatomy_data.update({
-                "family": instance.data["family"],
-                "subset": instance.data["subset"],
+                "family": product_type,
+                "subset": product_name,
+                "product": {
+                    "name": product_name,
+                    "type": product_type,
+                }
             })
 
             self._fill_asset_data(instance, project_doc, anatomy_data)
@@ -227,8 +233,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     instance.context.data["hostName"],
                     task_name=task_name,
                     task_type=task_type,
-                    family=instance.data["family"],
-                    subset=instance.data["subset"]
+                    product_type=instance.data["productType"],
+                    product_name=instance.data["productName"]
                 )
             anatomy_data["version"] = version_number
 

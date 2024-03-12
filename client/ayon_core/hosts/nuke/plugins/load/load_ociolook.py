@@ -219,14 +219,13 @@ class LoadOcioLookNodes(load.LoaderPlugin):
 
         return group_node
 
-    def update(self, container, representation):
-
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
+    def update(self, container, context):
+        version_doc = context["version"]
+        repre_doc = context["representation"]
 
         group_node = container["node"]
 
-        filepath = get_representation_path(representation)
+        filepath = get_representation_path(repre_doc)
 
         json_f = self._load_json_data(filepath)
 
@@ -242,7 +241,7 @@ class LoadOcioLookNodes(load.LoaderPlugin):
             group_node["name"].value()))
 
         return update_container(
-            group_node, {"representation": str(representation["_id"])})
+            group_node, {"representation": str(repre_doc["_id"])})
 
     def _load_json_data(self, filepath):
         # getting data from json file with unicode conversion
@@ -280,8 +279,8 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         else:
             return input
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         node = nuke.toNode(container['objectName'])

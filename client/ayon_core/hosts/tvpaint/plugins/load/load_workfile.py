@@ -58,7 +58,7 @@ class LoadWorkfile(plugin.Loader):
         if not asset_name:
             context = get_current_context()
             project_name = context["project_name"]
-            asset_name = context["asset_name"]
+            asset_name = context["folder_path"]
             task_name = context["task_name"]
 
         template_key = get_workfile_template_key_from_context(
@@ -101,7 +101,7 @@ class LoadWorkfile(plugin.Loader):
                 "tvpaint",
                 task_name=task_name,
                 task_type=data["task"]["type"],
-                family="workfile"
+                product_type="workfile"
             )
         else:
             version += 1

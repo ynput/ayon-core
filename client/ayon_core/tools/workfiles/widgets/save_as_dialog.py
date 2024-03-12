@@ -49,7 +49,7 @@ class SubversionLineEdit(QtWidgets.QWidget):
         self._input_field.setText(action.text())
 
     def _update(self, values):
-        """Create optional predefined subset names
+        """Create optional predefined product names
 
         Args:
             default_names(list): all predefined names

@@ -48,13 +48,14 @@ class AssLoader(load.LoaderPlugin):
             suffix="",
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # Update the file path
+        repre_doc = context["representation"]
         procedural = container["node"]
-        procedural.setParms({"ar_filename": self.format_path(representation)})
+        procedural.setParms({"ar_filename": self.format_path(repre_doc)})
 
         # Update attribute
-        procedural.setParms({"representation": str(representation["_id"])})
+        procedural.setParms({"representation": str(repre_doc["_id"])})
 
     def remove(self, container):
         node = container["node"]
@@ -86,5 +87,5 @@ class AssLoader(load.LoaderPlugin):
 
         return os.path.normpath(path).replace("\\", "/")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)

@@ -56,8 +56,9 @@ class CollectVrayScene(pyblish.api.InstancePlugin):
             frame_end_handle = frame_end_render
 
         # Get layer specific settings, might be overrides
+        product_type = "vrayscene_layer"
         data = {
-            "subset": layer_name,
+            "productName": layer_name,
             "layer": layer_name,
             # TODO: This likely needs fixing now
             # Before refactor: cmds.sets(layer, q=True) or ["*"]
@@ -74,9 +75,10 @@ class CollectVrayScene(pyblish.api.InstancePlugin):
                 self.get_render_attribute("byFrameStep",
                                           layer=layer_name)),
             "renderer": renderer,
-            # instance subset
-            "family": "vrayscene_layer",
-            "families": ["vrayscene_layer"],
+            # instance product type
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
             "time": get_formatted_current_time(),
             "author": context.data["user"],
             # Add source to allow tracing back to the scene from

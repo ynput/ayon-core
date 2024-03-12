@@ -11,16 +11,16 @@ class CreateCamera(plugin.BaseCreator):
 
     identifier = "io.openpype.creators.blender.camera"
     label = "Camera"
-    family = "camera"
+    product_type = "camera"
     icon = "video-camera"
 
     create_as_asset_group = True
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
 
-        asset_group = super().create(subset_name,
+        asset_group = super().create(product_name,
                                      instance_data,
                                      pre_create_data)
 
@@ -30,8 +30,8 @@ class CreateCamera(plugin.BaseCreator):
                 obj.parent = asset_group
         else:
             plugin.deselect_all()
-            camera = bpy.data.cameras.new(subset_name)
-            camera_obj = bpy.data.objects.new(subset_name, camera)
+            camera = bpy.data.cameras.new(product_name)
+            camera_obj = bpy.data.objects.new(product_name, camera)
 
             instances = bpy.data.collections.get(AVALON_INSTANCES)
             instances.objects.link(camera_obj)

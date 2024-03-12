@@ -526,8 +526,8 @@ def imprint(timeline_item, data=None):
     Examples:
         data = {
             'folderPath': 'sq020sh0280',
-            'family': 'render',
-            'subset': 'subsetMain'
+            'productType': 'render',
+            'productName': 'productMain'
         }
     """
     data = data or {}

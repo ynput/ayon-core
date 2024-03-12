@@ -163,10 +163,6 @@ def get_studio_settings(*args, **kwargs):
     return _AyonSettingsCache.get_value_by_project(None)
 
 
-# Backward compatibility
-get_system_settings = get_studio_settings
-
-
 def get_project_settings(project_name, *args, **kwargs):
     return _AyonSettingsCache.get_value_by_project(project_name)
 

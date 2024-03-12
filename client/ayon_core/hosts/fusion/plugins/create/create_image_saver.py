@@ -17,7 +17,7 @@ class CreateImageSaver(GenericCreateSaver):
     identifier = "io.openpype.creators.fusion.imagesaver"
     label = "Image (saver)"
     name = "image"
-    family = "image"
+    product_type = "image"
     description = "Fusion Saver to generate image"
 
     default_frame = 0

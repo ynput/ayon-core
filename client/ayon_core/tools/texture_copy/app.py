@@ -31,14 +31,23 @@ class TextureCopy:
         if parents and len(parents) > 0:
             hierarchy = os.path.join(*parents)
 
+        product_name = "Main"
+        product_type = "texture"
         template_data = {
             "project": {
                 "name": project_name,
                 "code": project['data']['code']
             },
-            "asset": asset['name'],
-            "family": 'texture',
-            "subset": 'Main',
+            "asset": asset["name"],
+            "family": product_type,
+            "subset": product_name,
+            "folder": {
+                "name": asset["name"],
+            },
+            "product": {
+                "name": product_name,
+                "type": product_type,
+            },
             "hierarchy": hierarchy
         }
         anatomy = Anatomy(project_name)
