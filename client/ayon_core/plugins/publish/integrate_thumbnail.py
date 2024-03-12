@@ -83,6 +83,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         )
 
         filtered_instances = []
+        anatomy = context.data["anatomy"]
         for instance in context:
             instance_label = self._get_instance_label(instance)
             # Skip instances without published representations
@@ -98,7 +99,9 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             # Find thumbnail path on instance
             thumbnail_path = (
                 instance.data.get("thumbnailPath")
-                or self._get_instance_thumbnail_path(published_repres)
+                or self._get_instance_thumbnail_path(
+                    published_repres, anatomy
+                )
             )
             if thumbnail_path:
                 self.log.debug((
