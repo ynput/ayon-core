@@ -203,7 +203,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     .get(folder_id, {})
                     .get(task_name)
                 )
-                if not task_entity:
+                if task_name and not task_entity:
                     folder_path = folder_path_by_id[folder_id]
                     not_found_task_paths.append(
                         "/".join([folder_path, task_name])
