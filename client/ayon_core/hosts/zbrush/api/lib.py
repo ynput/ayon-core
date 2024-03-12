@@ -82,7 +82,8 @@ def execute_zscript_and_wait(zscript,
             )
 
 
-def get_workdir():
+def get_workdir() -> str:
+    """Return the currently active work directory"""
     return os.environ["AYON_WORKDIR"]
 
 
@@ -109,7 +110,7 @@ def export_tool(filepath: str, sub_level: int):
         sub_level=sub_level)
 
 
-def is_in_edit_mode():
+def is_in_edit_mode() -> bool:
     """Return whether transform edit mode is currently enabled.
 
     Certain actions can't be performed if Zbrush is currently not within
@@ -135,7 +136,7 @@ def is_in_edit_mode():
         content = str(mode.read())
         bool_mode = content.rstrip('\x00')
 
-    return bool_mode
+    return bool(int(bool_mode))
 
 
 def remove_subtool(basename):
