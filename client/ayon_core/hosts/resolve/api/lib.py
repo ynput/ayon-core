@@ -2,6 +2,7 @@ import json
 import re
 import os
 import contextlib
+import tempfile
 from opentimelineio import opentime
 
 from ayon_core.lib import Logger
@@ -9,6 +10,8 @@ from ayon_core.pipeline.editorial import (
     is_overlapping_otio_ranges,
     frames_to_timecode
 )
+from ayon_core.pipeline.tempdir import create_custom_tempdir
+
 from . import constants
 from ..otio import davinci_export as otio_export
 
@@ -930,6 +933,46 @@ def get_otio_clip_instance_data(otio_timeline, timeline_item_data):
             return {"otioClip": otio_clip}
 
     return None
+
+
+def get_timeline_otio_filepath(project_name, anatomy=None, timeline=None):
+    """Get timeline otio filepath.
+
+    Args:
+        project_name (str): ayon project name
+        anatomy (ayon_core.pipeline.Anatomy)[optional]: Anatomy object
+        timeline (resolve.Timeline)[optional]: resolve's object
+
+    Returns:
+        str: temporary otio filepath
+    """
+    from . import bmdvr
+    resolve_project = get_current_resolve_project()
+    timeline = resolve_project.GetCurrentTimeline()
+    timeline_name = timeline.GetName()
+
+    # get custom staging dir
+    custom_temp_dir = create_custom_tempdir(project_name, anatomy)
+    staging_dir = os.path.normpath(
+        tempfile.mkdtemp(
+            prefix="resolve_otio_tmp_",
+            dir=custom_temp_dir
+        )
+    )
+    filename = os.path.join(staging_dir, f"{timeline_name}.otio")
+
+    # Native otio export is available from Resolve 18.5
+    # [major, minor, patch, build, suffix]
+    resolve_version = bmdvr.GetVersion()
+    if resolve_version[0] < 18 or resolve_version[1] < 5:
+        # if it is lower then use ayon's otio exporter
+        otio_timeline = otio_export.create_otio_timeline(
+            resolve_project, timeline=timeline)
+        otio_export.write_to_file(otio_timeline, filename)
+
+    timeline.Export(filename, bmdvr.EXPORT_OTIO)
+
+    return filename
 
 
 def get_reformated_path(path, padded=False, first=False):
