@@ -40,7 +40,6 @@ def execute_zscript(zscript, communicator=None):
 
 def execute_zscript_and_wait(zscript,
                              check_filepath=None,
-                             sub_level=0,
                              wait=0.1,
                              timeout=20):
     """Execute ZScript and wait until ZScript finished processing.
@@ -87,27 +86,41 @@ def get_workdir() -> str:
     return os.environ["AYON_WORKDIR"]
 
 
-def export_tool(filepath: str, sub_level: int):
-    """Export active zbrush tool to filepath."""
+def export_tool(filepath: str, subdivision_level: int = 0):
+    """Export active zbrush tool to filepath.
+
+    Args:
+        filepath (str): The filepath to export to.
+        subdivision_level (int): The subdivision level to export.
+            A value of zero will export the current subdivision level
+            A negative value, e.g. -1 will go negatively from the highest
+            subdivs - e.g. -1 is the highest available subdiv.
+
+    """
     filepath = filepath.replace("\\", "/")
-    export_tool_zscript = ("""
-[IFreeze,
-[VarSet, subdlevel, {sub_level}]
-[VarSet, maxSubd, [IGetMax, Tool:Geometry:SDiv]]
-[If, subdlevel == 0 || sublevel > maxSubd,
-[VarSet, subdlevel, maxSubd]]
-[ISet, "Tool:Geometry:SDiv", subdlevel, 0]
+
+    # Only set any subdiv level if subdiv level != 0
+    set_subdivs_script = ""
+    if subdivision_level != 0:
+        set_subdivs_script = f"""
+[VarSet, max_subd, [IGetMax, "Tool:Geometry:SDiv"]]
+[If, max_subd > 0,
+    [ISet, "Tool:Geometry:SDiv", {subdivision_level}, 0],
+    [ISet, "Tool:Geometry:SDiv", [VarGet, max_subd] - {subdivision_level}, 0]
+]"""
+
+    # Export tool
+    export_tool_zscript = f"""
+[IFreeze, {set_subdivs_script}
 [FileNameSetNext, "{filepath}"]
 [IKeyPress, 13, [IPress, Tool:Export]]
-]
-""").format(filepath=filepath, sub_level=sub_level)
+
+]"""
 
     # We do not check for the export file's existence because Zbrush might
     # write the file in chunks, as such the file might exist before the writing
     # to it has finished
-    execute_zscript_and_wait(
-        export_tool_zscript, check_filepath=filepath,
-        sub_level=sub_level)
+    execute_zscript_and_wait(export_tool_zscript, check_filepath=filepath)
 
 
 def is_in_edit_mode() -> bool:
