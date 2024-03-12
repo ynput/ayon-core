@@ -323,8 +323,10 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                     "Could not create hero version because it is not"
                     " possible to replace current hero files."
                 ))
+
         try:
             src_to_dst_file_paths = []
+            repre_integrate_data = []
             path_template_obj = anatomy.templates_obj[template_key]["path"]
             for repre_info in published_repres.values():
 
@@ -339,10 +341,6 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
 
                 # Get filled path to repre context
                 template_filled = path_template_obj.format_strict(anatomy_data)
-                repre_attributes = {
-                    "path": str(template_filled),
-                    "template": hero_template
-                }
                 repre_context = template_filled.used_values
                 for key in self.db_representation_context_keys:
                     value = anatomy_data.get(key)
@@ -354,10 +352,15 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 repre_entity.pop("id", None)
                 repre_entity["versionId"] = new_hero_version["id"]
                 repre_entity["context"] = repre_context
-                repre_entity["attrib"] = repre_attributes
+                repre_entity["attrib"] = {
+                    "path": str(template_filled),
+                    "template": hero_template
+                }
 
+                dst_paths = []
                 # Prepare paths of source and destination files
                 if len(published_files) == 1:
+                    dst_paths.append(str(template_filled))
                     src_to_dst_file_paths.append(
                         (published_files[0], template_filled)
                     )
@@ -393,11 +396,28 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                         src_to_dst_file_paths.append(
                             (src_file, dst_file)
                         )
+                        dst_paths.append(dst_file)
 
-                # replace original file name with hero name in repre doc
-                dst_paths = []
-                for _, dst_path in src_to_dst_file_paths:
-                    dst_paths.append(dst_path)
+                repre_integrate_data.append(
+                    (repre_entity, dst_paths)
+                )
+
+            self.path_checks = []
+
+            # Copy(hardlink) paths of source and destination files
+            # TODO should we *only* create hardlinks?
+            # TODO should we keep files for deletion until this is successful?
+            for src_path, dst_path in src_to_dst_file_paths:
+                self.copy_file(src_path, dst_path)
+
+            for src_path, dst_path in other_file_paths_mapping:
+                self.copy_file(src_path, dst_path)
+
+            # Update prepared representation etity data with files
+            #   and integrate it to server.
+            # NOTE: This must happen with existing files on disk because of
+            #   file hash.
+            for repre_entity, dst_paths in repre_integrate_data:
                 repre_files = self.get_files_info(dst_paths, anatomy)
                 repre_entity["files"] = repre_files
 
@@ -416,13 +436,15 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                         update_data
                     )
 
-                # Unarchive representation
+                # Activate representation
                 elif repre_name_low in inactive_old_repres_by_name:
                     inactive_repre = inactive_old_repres_by_name.pop(
                         repre_name_low
                     )
                     repre_entity["id"] = inactive_repre["id"]
-                    update_data = prepare_changes(inactive_repre, repre_entity)
+                    update_data = prepare_changes(
+                        inactive_repre, repre_entity
+                    )
                     op_session.update_entity(
                         project_name,
                         "representation",
@@ -438,18 +460,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                         repre_entity
                     )
 
-            self.path_checks = []
-
-            # Copy(hardlink) paths of source and destination files
-            # TODO should we *only* create hardlinks?
-            # TODO should we keep files for deletion until this is successful?
-            for src_path, dst_path in src_to_dst_file_paths:
-                self.copy_file(src_path, dst_path)
-
-            for src_path, dst_path in other_file_paths_mapping:
-                self.copy_file(src_path, dst_path)
-
-            # Archive not replaced old representations
+            # Deactivate not replaced representations
             for repre in old_repres_to_delete.values():
                 op_session.update_entity(
                     project_name,
