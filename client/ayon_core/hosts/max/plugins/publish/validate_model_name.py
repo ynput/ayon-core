@@ -104,7 +104,7 @@ class ValidateModelName(pyblish.api.InstancePlugin,
         compare = {
             "project": instance.context.data["projectName"],
             "asset": instance.context.data["folderPath"],
-            "subset": instance.context.data["subset"],
+            "subset": instance.name,
         }
         for key, required_value in compare.items():
             if key in regex.groupindex:
