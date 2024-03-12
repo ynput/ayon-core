@@ -1,6 +1,6 @@
 import os
 from qtpy import QtWidgets, QtCore
-from ayon_core.lib import EnumDef
+from ayon_core.lib.attribute_definitions import EnumDef
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.lib import (
     unique_namespace,
@@ -23,6 +23,7 @@ class MaterialDupOptionsWindow(QtWidgets.QDialog):
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
         self.material_option = None
+        self.material_options = material_options
 
         self.widgets = {
             "label": QtWidgets.QLabel(
@@ -33,7 +34,7 @@ class MaterialDupOptionsWindow(QtWidgets.QDialog):
             "okButton": QtWidgets.QPushButton("Ok"),
             "cancelButton": QtWidgets.QPushButton("Cancel")
         }
-        for option in material_options:
+        for option in material_options.values():
             self.widgets["material_options_list"].addItem(option)
         # Build buttons.
         layout = QtWidgets.QHBoxLayout(self.widgets["buttons"])
@@ -51,7 +52,9 @@ class MaterialDupOptionsWindow(QtWidgets.QDialog):
             self.on_material_optionsPressed)
 
     def on_material_optionsPressed(self, item):
-        self.material_option = item.text()
+        self.material_option = next((key for key in self.material_options.keys()
+                                     if self.material_options[key]== item.text()),
+                                     None)
 
     def on_ok_pressed(self):
         if self.material_option is None:
@@ -75,14 +78,17 @@ class MaxSceneLoader(load.LoaderPlugin):
     icon = "code-fork"
     color = "green"
     mtl_dup_default = "promptMtlDups"
-    mtl_dup_enum = ["promptMtlDups", "useMergedMtlDups",
-                    "useSceneMtlDups", "renameMtlDups"]
-
+    mtl_dup_enum_dict = {
+        "promptMtlDups": "Prompt Material",
+        "useMergedMtlDups": "Use Incoming Material",
+        "useSceneMtlDups": "Use Scene Material",
+        "renameMtlDups": "Merge and Rename Incoming Material"
+        }
     @classmethod
     def get_options(cls, contexts):
         return [
             EnumDef("mtldup",
-                    cls.mtl_dup_enum,
+                    items=cls.mtl_dup_enum_dict,
                     default=cls.mtl_dup_default,
                     label="Material Duplicate Options")
         ]
@@ -132,7 +138,7 @@ class MaxSceneLoader(load.LoaderPlugin):
                 rt.Delete(prev_max_obj)
         material_option = self.mtl_dup_default
         if not is_headless():
-            window = MaterialDupOptionsWindow(self.mtl_dup_enum)
+            window = MaterialDupOptionsWindow(self.mtl_dup_enum_dict)
             window.exec_()
             material_option = window.material_option
         rt.MergeMaxFile(path, rt.Name(material_option), quiet=True)
