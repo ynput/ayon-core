@@ -3,7 +3,7 @@
 import os
 import pyblish.api
 
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 
 
 class CollectWorkfile(pyblish.api.ContextPlugin):
@@ -15,26 +15,27 @@ class CollectWorkfile(pyblish.api.ContextPlugin):
 
     def process(self, context):
         """Plugin entry point."""
-        family = "workfile"
+        product_type = "workfile"
         basename = os.path.basename(context.data["currentFile"])
-        subset = get_subset_name(
-            family,
-            "",
-            context.data["anatomyData"]["task"]["name"],
+        product_name = get_product_name(
+            context.data["projectName"],
             context.data["assetEntity"],
-            context.data["anatomyData"]["project"]["name"],
-            host_name=context.data["hostName"],
+            context.data["task"],
+            context.data["hostName"],
+            product_type,
+            "",
             project_settings=context.data["project_settings"]
         )
 
         # Create instance
-        instance = context.create_instance(subset)
+        instance = context.create_instance(product_name)
         instance.data.update({
-            "subset": subset,
+            "productName": product_name,
             "label": basename,
             "name": basename,
-            "family": family,
-            "families": [family],
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
             "representations": [],
             "folderPath": context.data["folderPath"]
         })

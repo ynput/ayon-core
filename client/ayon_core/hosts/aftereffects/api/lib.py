@@ -128,7 +128,7 @@ def set_settings(frames, resolution, comp_ids=None, print_msg=True):
     current_context = get_current_context()
 
     asset_doc = get_asset_by_name(current_context["project_name"],
-                                  current_context["asset_name"])
+                                  current_context["folder_path"])
     settings = get_asset_settings(asset_doc)
 
     msg = ''

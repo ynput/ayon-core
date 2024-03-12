@@ -36,7 +36,7 @@ class ValidateAlembicVisibleOnly(pyblish.api.InstancePlugin):
     @classmethod
     def get_invalid(cls, instance):
 
-        if instance.data["family"] == "animation":
+        if instance.data["productType"] == "animation":
             # Special behavior to use the nodes in out_SET
             nodes = instance.data["out_hierarchy"]
         else:

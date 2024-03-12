@@ -156,16 +156,16 @@ class ExtractBurnin(publish.Extractor):
 
     def main_process(self, instance):
         host_name = instance.context.data["hostName"]
-        family = instance.data["family"]
+        product_type = instance.data["productType"]
+        product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
-        subset = instance.data["subset"]
 
         filtering_criteria = {
             "hosts": host_name,
-            "product_types": family,
-            "product_names": subset,
+            "product_types": product_type,
+            "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
         }
@@ -177,9 +177,11 @@ class ExtractBurnin(publish.Extractor):
         if not profile:
             self.log.debug((
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
-                " | Task type \"{}\" | Product name \"{}\" "
-            ).format(host_name, family, task_name, task_type, subset))
+                " Host: \"{}\" | Product type: \"{}\" | Product name \"{}\""
+                " | Task name \"{}\" | Task type \"{}\""
+            ).format(
+                host_name, product_type, product_name, task_name, task_type
+            ))
             return
 
         # Pre-filter burnin definitions by instance families
@@ -189,7 +191,7 @@ class ExtractBurnin(publish.Extractor):
                 "Skipped instance. Burnin definitions are not set for profile"
                 " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
                 " | Profile \"{}\""
-            ).format(host_name, family, task_name, profile))
+            ).format(host_name, product_type, task_name, profile))
             return
 
         burnin_options = self._get_burnin_options()

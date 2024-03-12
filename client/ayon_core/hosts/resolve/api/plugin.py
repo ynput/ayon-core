@@ -350,7 +350,7 @@ class ClipLoader:
         """ Gets context and convert it to self.data
         data structure:
             {
-                "name": "assetName_subsetName_representationName"
+                "name": "assetName_productName_representationName"
                 "binPath": "projectBinPath",
             }
         """
@@ -358,17 +358,17 @@ class ClipLoader:
         representation = self.context["representation"]
         representation_context = representation["context"]
         asset = str(representation_context["asset"])
-        subset = str(representation_context["subset"])
+        product_name = str(representation_context["subset"])
         representation_name = str(representation_context["representation"])
         self.data["clip_name"] = "_".join([
             asset,
-            subset,
+            product_name,
             representation_name
         ])
         self.data["versionData"] = self.context["version"]["data"]
 
         self.data["timeline_basename"] = "timeline_{}_{}".format(
-            subset, representation_name)
+            product_name, representation_name)
 
         # solve project bin structure path
         hierarchy = str("/".join((
@@ -410,6 +410,11 @@ class ClipLoader:
         source_out = int(_clip_property("End"))
         source_duration = int(_clip_property("Frames"))
 
+        # Trim clip start if slate is present
+        if "slate" in self.data["versionData"]["families"]:
+            source_in += 1
+            source_duration = source_out - source_in + 1
+
         if not self.with_handles:
             # Load file without the handles of the source media
             # We remove the handles from the source in and source out
@@ -435,7 +440,7 @@ class ClipLoader:
                 handle_start = version_data.get("handleStart", 0)
                 handle_end = version_data.get("handleEnd", 0)
                 frame_start_handle = frame_start - handle_start
-                frame_end_handle = frame_start + handle_end
+                frame_end_handle = frame_end + handle_end
                 database_frame_duration = int(
                     frame_end_handle - frame_start_handle + 1
                 )
@@ -538,7 +543,7 @@ class TimelineItemLoader(LoaderPlugin):
     ):
         pass
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update an existing `container`
         """
         pass
@@ -603,9 +608,9 @@ class PublishClip:
     rename_default = False
     hierarchy_default = "{_folder_}/{_sequence_}/{_track_}"
     clip_name_default = "shot_{_trackIndex_:0>3}_{_clipIndex_:0>4}"
-    subset_name_default = "<track_name>"
+    base_product_name_default = "<track_name>"
     review_track_default = "< none >"
-    subset_family_default = "plate"
+    product_type_default = "plate"
     count_from_default = 10
     count_steps_default = 10
     vertical_sync_default = False
@@ -630,7 +635,6 @@ class PublishClip:
         self.track_name = str(track_name).replace(" ", "_")
         self.track_index = int(timeline_item_data["track"]["index"])
 
-        # adding tag.family into tag
         if kwargs.get("avalon"):
             self.tag_data.update(kwargs["avalon"])
 
@@ -728,10 +732,10 @@ class PublishClip:
             "countFrom", {}).get("value") or self.count_from_default
         self.count_steps = self.ui_inputs.get(
             "countSteps", {}).get("value") or self.count_steps_default
-        self.subset_name = self.ui_inputs.get(
-            "subsetName", {}).get("value") or self.subset_name_default
-        self.subset_family = self.ui_inputs.get(
-            "subsetFamily", {}).get("value") or self.subset_family_default
+        self.base_product_name = self.ui_inputs.get(
+            "productName", {}).get("value") or self.base_product_name_default
+        self.product_type = self.ui_inputs.get(
+            "productType", {}).get("value") or self.product_type_default
         self.vertical_sync = self.ui_inputs.get(
             "vSyncOn", {}).get("value") or self.vertical_sync_default
         self.driving_layer = self.ui_inputs.get(
@@ -739,12 +743,14 @@ class PublishClip:
         self.review_track = self.ui_inputs.get(
             "reviewTrack", {}).get("value") or self.review_track_default
 
-        # build subset name from layer name
-        if self.subset_name == "<track_name>":
-            self.subset_name = self.track_name
+        # build product name from layer name
+        if self.base_product_name == "<track_name>":
+            self.base_product_name = self.track_name
 
-        # create subset for publishing
-        self.subset = self.subset_family + self.subset_name.capitalize()
+        # create product name for publishing
+        self.product_name = (
+            self.product_type + self.base_product_name.capitalize()
+        )
 
     def _replace_hash_to_expression(self, name, text):
         """ Replace hash with number in correct padding. """
@@ -824,17 +830,19 @@ class PublishClip:
             # driving layer is set as negative match
             for (_in, _out), hero_data in self.vertical_clip_match.items():
                 hero_data.update({"heroTrack": False})
-                if _in == self.clip_in and _out == self.clip_out:
-                    data_subset = hero_data["subset"]
-                    # add track index in case duplicity of names in hero data
-                    if self.subset in data_subset:
-                        hero_data["subset"] = self.subset + str(
-                            self.track_index)
-                    # in case track name and subset name is the same then add
-                    if self.subset_name == self.track_name:
-                        hero_data["subset"] = self.subset
-                    # assign data to return hierarchy data to tag
-                    tag_hierarchy_data = hero_data
+                if _in != self.clip_in or _out != self.clip_out:
+                    continue
+
+                data_product_name = hero_data["productName"]
+                # add track index in case duplicity of names in hero data
+                if self.product_name in data_product_name:
+                    hero_data["productName"] = self.product_name + str(
+                        self.track_index)
+                # in case track name and product name is the same then add
+                if self.base_product_name == self.track_name:
+                    hero_data["productName"] = self.product_name
+                # assign data to return hierarchy data to tag
+                tag_hierarchy_data = hero_data
 
         # add data to return data dict
         self.tag_data.update(tag_hierarchy_data)
@@ -859,8 +867,8 @@ class PublishClip:
             "hierarchy": hierarchy_filled,
             "parents": self.parents,
             "hierarchyData": hierarchy_formatting_data,
-            "subset": self.subset,
-            "family": self.subset_family
+            "productName": self.product_name,
+            "productType": self.product_type
         }
 
     def _convert_to_entity(self, key):
