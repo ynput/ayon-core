@@ -341,25 +341,19 @@ def get_timeline_item(media_pool_item: object,
     Returns:
         object: resolve.TimelineItem
     """
-    clip_name = media_pool_item.GetClipProperty("File Name")
+    _clip_property = media_pool_item.GetClipProperty
+    clip_name = _clip_property("File Name")
     output_timeline_item = None
     timeline = timeline or get_current_timeline()
 
     with maintain_current_timeline(timeline):
         # search the timeline for the added clip
 
-        for ti_data in get_current_timeline_items():
-            ti_clip_item = ti_data["clip"]["item"]
-            ti_media_pool_item = ti_clip_item.GetMediaPoolItem()
-
-            # Skip items that do not have a media pool item, like for example
-            # an "Adjustment Clip" or a "Fusion Composition" from the effects
-            # toolbox
-            if not ti_media_pool_item:
-                continue
-
-            if clip_name in ti_media_pool_item.GetClipProperty("File Name"):
-                output_timeline_item = ti_clip_item
+        for _ti_data in get_current_timeline_items():
+            _ti_clip = _ti_data["clip"]["item"]
+            _ti_clip_property = _ti_clip.GetMediaPoolItem().GetClipProperty
+            if clip_name in _ti_clip_property("File Name"):
+                output_timeline_item = _ti_clip
 
     return output_timeline_item
 
