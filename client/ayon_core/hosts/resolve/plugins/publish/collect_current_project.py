@@ -11,7 +11,7 @@ class CollectResolveProject(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder - 0.499
 
     def process(self, context):
-        resolve_project = rapi.get_current_project()
+        resolve_project = rapi.get_current_resolve_project()
         timeline = resolve_project.GetCurrentTimeline()
         fps = timeline.GetSetting("timelineFrameRate")
 

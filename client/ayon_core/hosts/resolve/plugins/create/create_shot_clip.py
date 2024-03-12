@@ -330,6 +330,6 @@ class CreateShotClip(plugin.ResolveCreator):
 
             # removing instance by marker color
             print(f"Removing instance: {track_item.GetName()}")
-            track_item.DeleteMarkersByColor(lib.pype_marker_color)
+            track_item.DeleteMarkersByColor(constants.ayon_marker_color)
 
             self._remove_instance_from_context(instance)
