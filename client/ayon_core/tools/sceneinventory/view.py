@@ -185,6 +185,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     return
 
                 standard_versions = ayon_api.get_versions(
+                    project_name,
                     product_ids=hero_versions_by_product_id.keys(),
                     versions=hero_versions_by_product_id.values()
                 )
