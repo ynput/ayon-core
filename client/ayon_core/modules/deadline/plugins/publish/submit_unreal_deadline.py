@@ -199,9 +199,9 @@ class UnrealSubmitDeadline(
         deadline_plugin_info.EditorExecutableName = "UnrealEditor-Cmd.exe"  # parse ayon+settings://applications/applications/unreal/variants/3/environmen
         deadline_plugin_info.EngineVersion = self._instance.data["app_version"]
         master_level = self._instance.data["master_level"]
-        config_path = self._instance.data["config_path"]
+        render_queue_path = self._instance.data["render_queue_path"]
         cmd_args = [f"{master_level} -game ",
-                    f"-MoviePipelineConfig={config_path}"]
+                    f"-MoviePipelineConfig={render_queue_path}"]
         cmd_args.extend([
             "-windowed",
             "-Log",
