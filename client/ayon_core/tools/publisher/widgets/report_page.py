@@ -56,6 +56,8 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.setLayoutDirection(QtCore.Qt.RightToLeft)
 
+        self.setObjectName("PublisherVerticalScrollArea")
+
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         # Background of scrollbar will be transparent
         scrollbar_bg = self.verticalScrollBar().parent()
