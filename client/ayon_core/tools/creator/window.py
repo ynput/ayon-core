@@ -382,7 +382,7 @@ class CreatorWindow(QtWidgets.QDialog):
 
         product_types_smart_select = (
             get_current_project_settings()
-            ["global"]
+            ["core"]
             ["tools"]
             ["creator"]
             ["product_types_smart_select"]
