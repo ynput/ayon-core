@@ -106,6 +106,9 @@ class UnrealSubmitDeadline(
             if value:
                 dln_job_info.EnvironmentKeyValue[key] = value
 
+        dln_job_info.EnvironmentKeyValue["AYON_UNREAL_VERSION"] = (
+            self._instance.data)["app_version"]
+
         # to recognize render jobs
         dln_job_info.add_render_job_env_var()
 
