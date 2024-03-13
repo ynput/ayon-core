@@ -376,9 +376,12 @@ class CreatorWindow(QtWidgets.QDialog):
 
         self._creators_model.reset()
 
+        # accounts for openpype/ayon-core
+        project_settings = get_current_project_settings()
+        core_settings = project_settings.get("global") or project_settings.get("core")
+
         product_types_smart_select = (
-            get_current_project_settings()
-            ["global"]
+            core_settings
             ["tools"]
             ["creator"]
             ["product_types_smart_select"]
