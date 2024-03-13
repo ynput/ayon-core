@@ -215,10 +215,7 @@ class PerforceUtils(object):
             "-S",
             self._stream,
         ]
-        print(f"os.environ::{os.environ.get('P4PORT')}")
-        print(f"os.environ::{os.environ.get('P4PASSWD')}")
-        print(f"os.environ::{os.environ.get('P4USER')}")
-        print(f"_stream::{self._stream}")
+
         result = subprocess.check_output(cmd, env=self._env)
         print(">>>>result {}".format(result))
         result = result.splitlines()
@@ -250,9 +247,6 @@ class PerforceUtils(object):
     def DetermineProjectRoot(self, uprojectFile):
         # Find project file from workspaceRoot. If gamePath contains '...', it should try to search the path recursively
         # 2023-04-06 18:31:56:  0: PYTHON: {'self': <UnrealSyncUtil.PerforceUtils object at 0x00000291C0830A90>, 'uprojectFile': u'DLFarmTests.uproject', 'cmd': ['p4', '-p', '10.10.10.162:1666', '-c', 'DLFarmTests_bepic-devtop01', 'files', u'//dl-farm-test/mainline///DLFarmTests.uproject'], 'result': [], 'search_path': u'//dl-farm-test/mainline///DLFarmTests.uproject'}
-        print(f"_gamePath::{self._gamePath}")
-        print(f"_stream::{self._stream}")
-        print(f"uprojectFile::{uprojectFile}")
 
         if not self._gamePath:
             search_path = self._stream + "/" + uprojectFile
@@ -261,16 +255,13 @@ class PerforceUtils(object):
         cmd = self.GetP4CommandPrefix() + ["files", search_path]
         result = subprocess.check_output(cmd, env=self._env)
         result = result.splitlines()
-        print(locals())
-        print(self._gamePath)
+
         if len(result) == 0:
             raise PerforceProjectNotFoundError(search_path)
         elif len(result) > 1:
             raise PerforceMultipleProjectError(search_path, len(result))
         result = result[0]
         # m = re.search("%s/(.*)/%s" % (self._stream, uprojectFile), str(result))
-        print(f"result::{result}")
-        print(f"stream::{self._stream}, uproject::{uprojectFile}")
         m = re.search("%s/.*/?%s#.*" % (self._stream, uprojectFile), str(result))
         if not m:
             raise PerforceError("Unable to parse project path: %s" % str(result))
