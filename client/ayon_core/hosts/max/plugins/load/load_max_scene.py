@@ -17,7 +17,10 @@ from ayon_core.pipeline import get_representation_path, load
 
 
 class MaterialDupOptionsWindow(QtWidgets.QDialog):
-
+    """The pop-up dialog allows users to choose material
+    duplicate options for importing Max objects when updating
+    or switching assets.
+    """
     def __init__(self, material_options):
         super(MaterialDupOptionsWindow, self).__init__()
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
@@ -34,8 +37,10 @@ class MaterialDupOptionsWindow(QtWidgets.QDialog):
             "okButton": QtWidgets.QPushButton("Ok"),
             "cancelButton": QtWidgets.QPushButton("Cancel")
         }
-        for option in material_options.values():
-            self.widgets["material_options_list"].addItem(option)
+        for key, value in material_options.items():
+            item = QtWidgets.QListWidgetItem(value)
+            self.widgets["material_options_list"].addItem(item)
+            item.setData(QtCore.Qt.UserRole, key)
         # Build buttons.
         layout = QtWidgets.QHBoxLayout(self.widgets["buttons"])
         layout.addWidget(self.widgets["okButton"])
@@ -49,12 +54,10 @@ class MaterialDupOptionsWindow(QtWidgets.QDialog):
         self.widgets["okButton"].pressed.connect(self.on_ok_pressed)
         self.widgets["cancelButton"].pressed.connect(self.on_cancel_pressed)
         self.widgets["material_options_list"].itemPressed.connect(
-            self.on_material_optionsPressed)
+            self.on_material_options_pressed)
 
-    def on_material_optionsPressed(self, item):
-        self.material_option = next((key for key in self.material_options.keys()
-                                     if self.material_options[key]== item.text()),
-                                     None)
+    def on_material_options_pressed(self, item):
+        self.material_option = item.data(QtCore.Qt.UserRole)
 
     def on_ok_pressed(self):
         if self.material_option is None:
