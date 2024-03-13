@@ -101,7 +101,7 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
             frame_start = int(inst.data["frameStart"])
             frame_end = int(inst.data["frameEnd"])
 
-            frame_placeholder = "#" * len(str(frame_end))
+            frame_placeholder = "#" * output_settings.zero_pad_frame_numbers
             exp_file_name = self._get_expected_file_name(
                 output_settings.file_name_format,
                 ext,
@@ -185,13 +185,12 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
                 _spl = file_name.split("#")
                 _len = (len(_spl) - 1)
                 placeholder = "#"*_len
-                for frame in range(start, end+1):
+                for frame in range(start, end):
                     new_file_name = file_name.replace(placeholder,
                                                       str(frame).zfill(_len))
                     path = os.path.join(base_dir, new_file_name)
                     expected_files.append(path)
 
-        self.log.debug(f"expected_files::{expected_files}")
         return expected_files
 
     def _get_output_dir(self, render_instance):

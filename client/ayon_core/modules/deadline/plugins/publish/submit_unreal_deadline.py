@@ -78,7 +78,7 @@ class UnrealSubmitDeadline(
         dln_job_info.Department = self.department
         dln_job_info.ChunkSize = self.chunk_size
         dln_job_info.OutputFilename += \
-            os.path.basename(self._instance.data["expectedFiles"][0])
+            os.path.basename(self._instance.data["file_names"][0])
         dln_job_info.OutputDirectory += \
             os.path.dirname(self._instance.data["expectedFiles"][0])
         dln_job_info.JobDelay = "00:00:00"
@@ -93,7 +93,7 @@ class UnrealSubmitDeadline(
             "AYON_WORKDIR",
             "AYON_APP_NAME",
             "AYON_LOG_NO_COLORS",
-            "IS_TEST"
+            "IS_TEST",
         ]
 
         environment = {
@@ -118,21 +118,10 @@ class UnrealSubmitDeadline(
         self._instance.data["outputDir"] = os.path.dirname(render_path)
         self._instance.context.data["version"] = 1  #TODO
 
-        file_name, frame = list(collect_frames([render_path]).items())[0]
-        if frame:
-            # replace frame ('000001') with Deadline's required '[#######]'
-            # expects filename in format project_asset_subset_version.FRAME.ext
-            render_dir = os.path.dirname(render_path)
-            file_name = os.path.basename(render_path)
-            hashed = '[{}]'.format(len(frame) * "#")
-            file_name = file_name.replace(frame, hashed)
-            render_path = os.path.join(render_dir, file_name)
+        render_dir = os.path.dirname(render_path)
+        file_name = self._instance.data["file_names"][0]
+        render_path = os.path.join(render_dir, file_name)
 
-        # must be here because of DL AE plugin
-        # added override of multiprocess by env var, if shouldn't be used for
-        # some app variant use MULTIPROCESS:false in Settings, default is True
-        env_multi = env_value_to_bool("MULTIPROCESS", default=True)
-        deadline_plugin_info.MultiProcess = env_multi and self.multiprocess
         deadline_plugin_info.ProjectFile = self.scene_path
         deadline_plugin_info.Output = render_path.replace("\\", "/")
 
