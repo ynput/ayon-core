@@ -1139,69 +1139,71 @@ class RenderProductsRedshift(ARenderProducts):
         global_aov_enabled = bool(
             self._get_attr("redshiftOptions.aovGlobalEnableMode")
         )
-        if global_aov_enabled:
-            for aov in aovs:
-                enabled = self._get_attr(aov, "enabled")
-                if not enabled:
-                    continue
+        if not global_aov_enabled:
+            return products
 
-                aov_type = self._get_attr(aov, "aovType")
-                if self.multipart and aov_type not in self.unmerged_aovs:
-                    continue
+        for aov in aovs:
+            enabled = self._get_attr(aov, "enabled")
+            if not enabled:
+                continue
 
-                # Any AOVs that still get processed, like Cryptomatte
-                # by themselves are not multipart files.
+            aov_type = self._get_attr(aov, "aovType")
+            if self.multipart and aov_type not in self.unmerged_aovs:
+                continue
 
-                # Redshift skips rendering of masterlayer without AOV suffix
-                # when a Beauty AOV is rendered. It overrides the main layer.
-                if aov_type == "Beauty":
-                    has_beauty_aov = True
+            # Any AOVs that still get processed, like Cryptomatte
+            # by themselves are not multipart files.
 
-                aov_name = self._get_attr(aov, "name")
+            # Redshift skips rendering of masterlayer without AOV suffix
+            # when a Beauty AOV is rendered. It overrides the main layer.
+            if aov_type == "Beauty":
+                has_beauty_aov = True
 
-                # Support light Groups
-                light_groups = []
-                if self._get_attr(aov, "supportsLightGroups"):
-                    all_light_groups = self._get_attr(aov, "allLightGroups")
-                    if all_light_groups:
-                        # All light groups is enabled
-                        light_groups = self._get_redshift_light_groups()
-                    else:
-                        value = self._get_attr(aov, "lightGroupList")
-                        # note: string value can return None when never set
-                        if value:
-                            selected_light_groups = value.strip().split()
-                            light_groups = selected_light_groups
+            aov_name = self._get_attr(aov, "name")
 
-                    for light_group in light_groups:
-                        aov_light_group_name = "{}_{}".format(aov_name,
-                                                            light_group)
-                        for camera in cameras:
-                            product = RenderProduct(
-                                productName=aov_light_group_name,
-                                aov=aov_name,
-                                ext=ext,
-                                multipart=False,
-                                camera=camera,
-                                driver=aov,
-                                colorspace=colorspace)
-                            products.append(product)
+            # Support light Groups
+            light_groups = []
+            if self._get_attr(aov, "supportsLightGroups"):
+                all_light_groups = self._get_attr(aov, "allLightGroups")
+                if all_light_groups:
+                    # All light groups is enabled
+                    light_groups = self._get_redshift_light_groups()
+                else:
+                    value = self._get_attr(aov, "lightGroupList")
+                    # note: string value can return None when never set
+                    if value:
+                        selected_light_groups = value.strip().split()
+                        light_groups = selected_light_groups
 
-                if light_groups:
-                    light_groups_enabled = True
+                for light_group in light_groups:
+                    aov_light_group_name = "{}_{}".format(aov_name,
+                                                          light_group)
+                    for camera in cameras:
+                        product = RenderProduct(
+                            productName=aov_light_group_name,
+                            aov=aov_name,
+                            ext=ext,
+                            multipart=False,
+                            camera=camera,
+                            driver=aov,
+                            colorspace=colorspace)
+                        products.append(product)
 
-                # Redshift AOV Light Select always renders the global AOV
-                # even when light groups are present so we don't need to
-                # exclude it when light groups are active
-                for camera in cameras:
-                    product = RenderProduct(productName=aov_name,
-                                            aov=aov_name,
-                                            ext=ext,
-                                            multipart=False,
-                                            camera=camera,
-                                            driver=aov,
-                                            colorspace=colorspace)
-                    products.append(product)
+            if light_groups:
+                light_groups_enabled = True
+
+            # Redshift AOV Light Select always renders the global AOV
+            # even when light groups are present so we don't need to
+            # exclude it when light groups are active
+            for camera in cameras:
+                product = RenderProduct(productName=aov_name,
+                                        aov=aov_name,
+                                        ext=ext,
+                                        multipart=False,
+                                        camera=camera,
+                                        driver=aov,
+                                        colorspace=colorspace)
+                products.append(product)
 
         # When a Beauty AOV is added manually, it will be rendered as
         # 'Beauty_other' in file name and "standard" beauty will have
