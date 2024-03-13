@@ -22,23 +22,22 @@ class PlayInRV(load.LoaderPlugin):
     order = -10
     icon = "play-circle"
     color = "orange"
+    rvcon = RvCommunicator("ayon")
 
     def load(self, context, name, namespace, data):
+        self.log.warning(f"{self.rvcon.connected = }")
+        app_manager = ApplicationManager()
 
         representation = context.get("representation")
         if not representation:
             raise Exception(f"Missing representation data: {representation = }")
 
         try:
-            app_manager = ApplicationManager()
-            rvcon = RvCommunicator(name)
-            rvcon.connect("localhost".encode("utf-8"), 45128)
+            self.rvcon.connect("localhost".encode("utf-8"), 45128)
         except Exception as err:
-            self.log.warning(f"Failed to connect to RV: {err}")
-        # finally:
-        #     rvcon.disconnect()
+            pass
 
-        if not rvcon.connected:
+        if not self.rvcon.connected:
             project = representation["data"]["context"].get("project")
             folder = representation["data"]["context"].get("folder")
             task = representation["data"]["context"].get("task")
@@ -48,7 +47,7 @@ class PlayInRV(load.LoaderPlugin):
             ctx = {
                 "project_name": project["name"],
                 "folder_path": folder["name"],
-                "task_name": task["name"],
+                "task_name": task["name"] or "generic",
             }
             self.log.warning(f"{ctx = }")
 
@@ -58,25 +57,24 @@ class PlayInRV(load.LoaderPlugin):
             try:
                 for _ in range(60):
                     self.log.warning("Trying to connect to RV")
-                    rvcon.connect("localhost".encode("utf-8"), 45128)
-                    if rvcon.connected:
+                    self.rvcon.connect("localhost".encode("utf-8"), 45128)
+                    if self.rvcon.connected:
                         break
                     sleep(1)
             except Exception:
                 raise Exception("Failed to connect to RV")
 
         _data = [{
-            # "objectName": representation["context"]["representation"],
-            "objectName": "LoadClip_exr",
+            "objectName": representation["context"]["representation"],
             "representation": representation["_id"],
         }]
         payload = json.dumps(_data)
         self.log.warning(f"{payload = }")
         try:
-            rvcon.sendEvent("ayon_load_container", payload)
-        # rvcon.sendEvent("ayon_open_loader", "")
-        # rvcon.sendEvent("key-down--l", "")
+            self.log.warning(f"{self.rvcon.connected = }")
+            self.rvcon.sendEventAndReturn("ayon_load_container", payload)
         except Exception as err:
             raise Exception(f"Failed to send event to RV: {err}")
         finally:
-            rvcon.disconnect()
+            sleep(1)
+            self.rvcon.disconnect()
