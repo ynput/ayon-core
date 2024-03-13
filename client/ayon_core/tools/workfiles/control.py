@@ -572,6 +572,7 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
+                src_filepath=representation_filepath
             )
         except Exception:
             failed = True
