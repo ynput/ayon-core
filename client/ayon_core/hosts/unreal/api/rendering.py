@@ -11,6 +11,13 @@ from ayon_core.tools.utils import show_message_dialog
 queue = None
 executor = None
 
+SUPPORTED_EXTENSION_MAP = {
+    "png": unreal.MoviePipelineImageSequenceOutput_PNG,
+    "exr": unreal.MoviePipelineImageSequenceOutput_EXR,
+    "jpg": unreal.MoviePipelineImageSequenceOutput_JPG,
+    "bmp": unreal.MoviePipelineImageSequenceOutput_BMP,
+}
+
 
 def _queue_finish_callback(exec, success):
     unreal.log("Render completed. Success: " + str(success))
@@ -28,6 +35,66 @@ def _job_finish_callback(job, success):
     # edits in OnQueueFinishedCallback if you don't want to leak state changes
     # into the editor world.
     unreal.log("Individual job completed.")
+
+
+def get_render_config(project_name, project_settings=None):
+    """Returns Unreal asset from render config.
+
+    Expects configured location of render config set in Settings. This path
+    must contain stored render config in Unreal project
+    Args:
+        project_name (str):
+        project_settings (dict): Settings from get_project_settings
+    Returns
+        (str, uasset): path and UAsset
+    Raises:
+        RuntimeError if no path to config is set
+    """
+    if not project_settings:
+        project_settings = get_project_settings(project_name)
+
+    ar = unreal.AssetRegistryHelpers.get_asset_registry()
+    config_path = project_settings["unreal"]["render_config_path"]
+
+    if not config_path:
+        raise RuntimeError("Please provide location for stored render "
+            "config in `ayon+settings://unreal/render_config_path`")
+
+    unreal.log(f"Configured config path {config_path}")
+    if not unreal.EditorAssetLibrary.does_asset_exist(config_path):
+        raise RuntimeError(f"No config found at {config_path}")
+
+    unreal.log("Found saved render configuration")
+    config = ar.get_asset_by_object_path(config_path).get_asset()
+
+    return config_path, config
+
+
+def set_output_extension_from_settings(render_format, config):
+    """Forces output extension from Settings if available.
+
+    Clear all other extensions if there is value in Settings.
+    Args:
+        render_format (str): "png"|"jpg"|"exr"|"bmp"
+        config (unreal.MoviePipelineMasterConfig)
+    Returns
+        (unreal.MoviePipelineMasterConfig)
+    """
+    if not render_format:
+        return config
+
+    cls_from_map = SUPPORTED_EXTENSION_MAP.get(render_format.lower())
+    if not cls_from_map:
+        return config
+
+    for ext, cls in SUPPORTED_EXTENSION_MAP.items():
+        current_sett = config.find_setting_by_class(cls)
+        if current_sett and ext == render_format:
+            return config
+        config.remove_setting(current_sett)
+
+    config.find_or_add_setting_by_class(cls_from_map)
+    return config
 
 
 def start_rendering():
@@ -60,14 +127,14 @@ def start_rendering():
             inst_data.append(data)
 
     try:
-        project = os.environ.get("AYON_PROJECT_NAME")
-        anatomy = Anatomy(project)
+        project_name = os.environ.get("AYON_PROJECT_NAME")
+        anatomy = Anatomy(project_name)
         root = anatomy.roots['renders']
     except Exception as e:
         raise Exception(
             "Could not find render root in anatomy settings.") from e
 
-    render_dir = f"{root}/{project}"
+    render_dir = f"{root}/{project_name}"
 
     # subsystem = unreal.get_editor_subsystem(
     #     unreal.MoviePipelineQueueSubsystem)
@@ -77,12 +144,8 @@ def start_rendering():
 
     ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
-    data = get_project_settings(project)
-    config = None
-    config_path = str(data.get("unreal").get("render_config_path"))
-    if config_path and unreal.EditorAssetLibrary.does_asset_exist(config_path):
-        unreal.log("Found saved render configuration")
-        config = ar.get_asset_by_object_path(config_path).get_asset()
+    project_settings = get_project_settings(project_name)
+    _, config = get_render_config(project_name, project_settings)
 
     for i in inst_data:
         sequence = ar.get_asset_by_object_path(i["sequence"]).get_asset()
@@ -127,6 +190,7 @@ def start_rendering():
             if config:
                 job.get_configuration().copy_from(config)
 
+            job_config = job.get_configuration()
             # User data could be used to pass data to the job, that can be
             # read in the job's OnJobFinished callback. We could,
             # for instance, pass the AyonPublishInstance's path to the job.
@@ -135,7 +199,7 @@ def start_rendering():
             output_dir = render_setting.get('output')
             shot_name = render_setting.get('sequence').get_name()
 
-            settings = job.get_configuration().find_or_add_setting_by_class(
+            settings = job_config.find_or_add_setting_by_class(
                 unreal.MoviePipelineOutputSetting)
             settings.output_resolution = unreal.IntPoint(1920, 1080)
             settings.custom_start_frame = render_setting.get("frame_range")[0]
@@ -144,30 +208,22 @@ def start_rendering():
             settings.file_name_format = f"{shot_name}" + ".{frame_number}"
             settings.output_directory.path = f"{render_dir}/{output_dir}"
 
-            job.get_configuration().find_or_add_setting_by_class(
+            job_config.find_or_add_setting_by_class(
                 unreal.MoviePipelineDeferredPassBase)
 
-            render_format = data.get("unreal").get("render_format", "png")
+            render_format = project_settings.get("unreal").get("render_format",
+                                                               "png")
 
-            if render_format == "png":
-                job.get_configuration().find_or_add_setting_by_class(
-                    unreal.MoviePipelineImageSequenceOutput_PNG)
-            elif render_format == "exr":
-                job.get_configuration().find_or_add_setting_by_class(
-                    unreal.MoviePipelineImageSequenceOutput_EXR)
-            elif render_format == "jpg":
-                job.get_configuration().find_or_add_setting_by_class(
-                    unreal.MoviePipelineImageSequenceOutput_JPG)
-            elif render_format == "bmp":
-                job.get_configuration().find_or_add_setting_by_class(
-                    unreal.MoviePipelineImageSequenceOutput_BMP)
+            set_output_extension_from_settings(render_format,
+                                               job_config)
 
     # If there are jobs in the queue, start the rendering process.
     if queue.get_jobs():
         global executor
         executor = unreal.MoviePipelinePIEExecutor()
 
-        preroll_frames = data.get("unreal").get("preroll_frames", 0)
+        preroll_frames = project_settings.get("unreal").get("preroll_frames",
+                                                            0)
 
         settings = unreal.MoviePipelinePIEExecutorSettings()
         settings.set_editor_property(
