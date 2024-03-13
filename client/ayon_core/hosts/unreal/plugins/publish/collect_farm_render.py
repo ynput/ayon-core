@@ -27,6 +27,7 @@ class UnrealRenderInstance(RenderInstance):
     config_path = attr.ib(default=None)
     app_version = attr.ib(default=None)
     output_settings = attr.ib(default=None)
+    render_queue_path = attr.ib(default=None)
 
 
 class CollectUnrealRemoteRender(publish.AbstractCollectRender):
@@ -79,6 +80,20 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
             if family not in ["render"]:
                 continue
 
+            render_queue_path = "/Game/Ayon/renderQueue"
+            if not unreal.EditorAssetLibrary.does_asset_exist(
+                    render_queue_path):
+                # TODO temporary until C++ blueprint is created as it is not
+                # possible to create renderQueue
+                master_level = inst.data["master_level"]
+                sequence = inst.data["sequence"]
+                msg = (f"Please create `Movie Pipeline Queue` "
+                       f"at `{render_queue_path}`. "
+                       f"Set it Sequence to `{sequence}`, "
+                       f"Map to `{master_level}` and "
+                       f"Settings to `{config_path}` ")
+                raise RuntimeError(msg)
+
             instance_families = inst.data.get("families", [])
             product_name = inst.data["productName"]
             task_name = inst.data.get("task")
@@ -126,7 +141,8 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
                 app_version=f"{UNREAL_VERSION.major}.{UNREAL_VERSION.minor}",
                 output_settings=output_settings,
                 config_path=config_path,
-                master_level=inst.data["master_level"]
+                master_level=inst.data["master_level"],
+                render_queue_path=render_queue_path
             )
             instance.farm = True
 
