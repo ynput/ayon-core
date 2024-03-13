@@ -28,6 +28,10 @@ class GeneralSettings(BaseSettingsModel):
         default_factory=MenuShortcut,
         title="Menu Shortcuts",
     )
+    openrv: bool = SettingsField(
+        default=False,
+        title="OpenRV Integration",
+    )
 
 
 DEFAULT_GENERAL_SETTINGS = {

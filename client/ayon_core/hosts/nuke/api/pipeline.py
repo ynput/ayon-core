@@ -1,6 +1,7 @@
 import nuke
 
 import os
+import json
 import importlib
 from collections import OrderedDict, defaultdict
 
@@ -14,6 +15,7 @@ from ayon_core.host import (
 )
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import register_event_callback, Logger
+from ayon_core.lib.applications import ApplicationManager
 from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
@@ -23,6 +25,7 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     get_current_asset_name,
     get_current_task_name,
+    get_current_context,
     registered_host,
 )
 from ayon_core.pipeline.workfile import BuildWorkfile
@@ -70,6 +73,8 @@ from .workio import (
     current_file
 )
 from .constants import ASSIST
+
+from ayon_openrv.api import RvCommunicator
 
 log = Logger.get_logger(__name__)
 
@@ -229,9 +234,61 @@ def get_context_label():
     )
 
 
+def view_read_in_rv():
+    # get selected node
+    read_nodes = nuke.selectedNodes()
+    if not read_nodes:
+        raise ValueError("No node selected")
+    
+    data = []
+    for rn in read_nodes:
+        # check if node is ReadNode
+        if rn.Class() != "Read":
+            continue
+
+        # get data from avalon knob
+        rn_data = parse_container(rn) # {'handleEnd': '10', 'handleStart': '10', 'version': '3', 'fps': '24.0', 'author': 'alexander.bollgoehn', 'db_colorspace': 'None', 'source': 'work: Unknown command', 'frameEnd': '1066', 'frameStart': '1001', 'representation': '611c06a4d66511eeba1af45214494c81', 'loader': 'LoadClip', 'namespace': '0010_cp', 'name': 'renderCompSlap', 'id': 'pyblish.avalon.container', 'schema': 'openpype:container-2.0', 'objectName': 'LoadClip_exr', 'node': <LoadClip_exr at 0x0000022C50B89260>}
+
+        if rn_data:
+            # strip out node since it is not serializable
+            del rn_data["node"]
+        else:
+            # get data from avalon knob
+            rn_data = {"file": rn["file"].value()}
+
+        data.append(rn_data)
+        log.info(f"{rn_data = }")
+    
+    # representation_id = read_node["avalon:representation"].value()
+
+    # connect to RV
+    rvcon = RvCommunicator("AYON-NUKE-RV-CONNECTOR")
+    rvcon.connect("localhost".encode("utf-8"), 45128)
+    if not rvcon.connected:
+        raise ValueError("RV not running")
+
+    # send event to RV
+    payload = json.dumps(data) 
+    rvcon.sendEvent("ayon_load_container", payload)
+    
+    # and disconnect so we don't get errors in RV
+    rvcon.disconnect()
+
+
+def open_rv():
+    # get application object
+    app_manager = ApplicationManager()
+    openrv_app = app_manager.find_latest_available_variant_for_group("openrv")
+    
+    # launch application
+    # TODO: gotta inject "-network" flag to launch, currently this is set globally
+    openrv_app.launch(**get_current_context())
+
+
 def _install_menu():
     """Install Avalon menu into Nuke's main menu bar."""
-
+    nuke_addon_settings = get_current_project_settings()["nuke"]
+    
     # uninstall original avalon menu
     main_window = get_main_window()
     menubar = nuke.menu("Nuke")
@@ -248,6 +305,11 @@ def _install_menu():
         context_action.setText(label)
 
         # add separator after context label
+        menu.addSeparator()
+
+    if nuke_addon_settings["general"]["openrv"]:
+        menu.addCommand("RV/Open RV", lambda: open_rv())
+        menu.addCommand("RV/Play In RV", lambda: view_read_in_rv())
         menu.addSeparator()
 
     menu.addCommand(
