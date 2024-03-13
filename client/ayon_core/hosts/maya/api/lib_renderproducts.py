@@ -1140,6 +1140,15 @@ class RenderProductsRedshift(ARenderProducts):
             self._get_attr("redshiftOptions.aovGlobalEnableMode")
         )
         if not global_aov_enabled:
+            beauty_name = "BeautyAux" if has_beauty_aov else ""
+            for camera in cameras:
+                products.insert(0,
+                                RenderProduct(productName=beauty_name,
+                                            ext=ext,
+                                            multipart=self.multipart,
+                                            camera=camera,
+                                            colorspace=colorspace))
+
             return products
 
         for aov in aovs:
