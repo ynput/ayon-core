@@ -4,7 +4,7 @@ For synchronization of published image and workfile version it is required
 to store workfile version from workfile file name in context.data["version"].
 In remote publishing this name is unreliable (artist might not follow naming
 convention etc.), last published workfile version for particular workfile
-subset is used instead.
+product is used instead.
 
 This plugin runs only in remote publishing (eg. Webpublisher).
 
@@ -30,13 +30,13 @@ class CollectPublishedVersion(pyblish.api.ContextPlugin):
     targets = ["automated"]
 
     def process(self, context):
-        workfile_subset_name = None
+        workfile_product_name = None
         for instance in context:
-            if instance.data["family"] == "workfile":
-                workfile_subset_name = instance.data["subset"]
+            if instance.data["productType"] == "workfile":
+                workfile_product_name = instance.data["productName"]
                 break
 
-        if not workfile_subset_name:
+        if not workfile_product_name:
             self.log.warning("No workfile instance found, "
                              "synchronization of version will not work.")
             return
@@ -45,9 +45,9 @@ class CollectPublishedVersion(pyblish.api.ContextPlugin):
         asset_doc = context.data["assetEntity"]
         asset_id = asset_doc["_id"]
 
-        version_doc = get_last_version_by_subset_name(project_name,
-                                                      workfile_subset_name,
-                                                      asset_id)
+        version_doc = get_last_version_by_subset_name(
+            project_name, workfile_product_name, asset_id
+        )
 
         if version_doc:
             version_int = int(version_doc["name"]) + 1

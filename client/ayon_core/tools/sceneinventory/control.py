@@ -69,10 +69,10 @@ class SceneInventoryController:
 
         context = self.get_current_context()
         project_name = context["project_name"]
-        folder_name = context.get("asset_name")
+        folder_path = context.get("folder_path")
         folder_id = None
-        if folder_name:
-            folder = ayon_api.get_folder_by_path(project_name, folder_name)
+        if folder_path:
+            folder = ayon_api.get_folder_by_path(project_name, folder_path)
             if folder:
                 folder_id = folder["id"]
 

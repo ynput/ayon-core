@@ -2,7 +2,12 @@ import json
 
 from maya import cmds
 
-from ayon_core.pipeline import registered_host, get_current_asset_name
+from ayon_core.pipeline import (
+    registered_host,
+    get_current_asset_name,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
+)
 from ayon_core.pipeline.workfile.workfile_template_builder import (
     TemplateAlreadyImported,
     AbstractTemplateBuilder,
@@ -73,7 +78,9 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
         for node in imported_sets:
             if not cmds.attributeQuery("id", node=node, exists=True):
                 continue
-            if cmds.getAttr("{}.id".format(node)) != "pyblish.avalon.instance":
+            if cmds.getAttr("{}.id".format(node)) not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }:
                 continue
             if not cmds.attributeQuery("asset", node=node, exists=True):
                 continue
@@ -133,10 +140,12 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
         placeholder_name_parts = placeholder_data["builder_type"].split("_")
 
         pos = 1
-        # add family in any
-        placeholder_family = placeholder_data["family"]
-        if placeholder_family:
-            placeholder_name_parts.insert(pos, placeholder_family)
+        placeholder_product_type = placeholder_data.get("product_type")
+        if placeholder_product_type is None:
+            placeholder_product_type = placeholder_data.get("family")
+
+        if placeholder_product_type:
+            placeholder_name_parts.insert(pos, placeholder_product_type)
             pos += 1
 
         # add loader arguments if any

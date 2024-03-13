@@ -13,10 +13,10 @@ class CreateCamera(UnrealAssetCreator):
 
     identifier = "io.ayon.creators.unreal.camera"
     label = "Camera"
-    family = "camera"
+    product_type = "camera"
     icon = "fa.camera"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         if pre_create_data.get("use_selection"):
             sel_objects = unreal.EditorUtilityLibrary.get_selected_assets()
             selection = [a.get_path_name() for a in sel_objects]
@@ -33,6 +33,6 @@ class CreateCamera(UnrealAssetCreator):
         instance_data["level"] = world.get_path_name()
 
         super(CreateCamera, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)

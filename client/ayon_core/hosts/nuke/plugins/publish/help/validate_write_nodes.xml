@@ -25,7 +25,7 @@
             ### How to repair?
 
             Contact your supervisor or fix it in project settings at
-            'project_settings/nuke/imageio/nodes/requiredNodes' at knobs.
+            'project_settings/nuke/imageio/nodes/required_nodes' at knobs.
             Each '__legacy__' type has to be defined accordingly to its type.
         </description>
     </error>

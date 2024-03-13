@@ -87,12 +87,12 @@ class ImageLoader(load.LoaderPlugin):
 
         return node
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_doc = context["representation"]
         node = container["node"]
 
         # Update the file path
-        file_path = get_representation_path(representation)
+        file_path = get_representation_path(repre_doc)
         file_path = file_path.replace("\\", "/")
         file_path = self._get_file_sequence(file_path)
 
@@ -100,7 +100,7 @@ class ImageLoader(load.LoaderPlugin):
         node.setParms(
             {
                 "filename1": file_path,
-                "representation": str(representation["_id"]),
+                "representation": str(repre_doc["_id"]),
             }
         )
 
@@ -128,5 +128,5 @@ class ImageLoader(load.LoaderPlugin):
         fname = ".".join([prefix, "$F{}".format(len(padding)), suffix])
         return os.path.join(root, fname).replace("\\", "/")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)

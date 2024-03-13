@@ -9,7 +9,7 @@ from ayon_core.client import (
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import prepare_template_data
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.pipeline.create import get_subset_name_template
+from ayon_core.pipeline.create import get_product_name_template
 from ayon_core.tools.ayon_utils.models import ProjectsModel, HierarchyModel
 
 from .models import (
@@ -256,12 +256,12 @@ class PushToContextController:
 
         project_settings = get_project_settings(project_name)
         subset_doc = self._src_subset_doc
-        family = subset_doc["data"].get("family")
-        if not family:
-            family = subset_doc["data"]["families"][0]
-        template = get_subset_name_template(
+        product_type = subset_doc["data"].get("family")
+        if not product_type:
+            product_type = subset_doc["data"]["families"][0]
+        template = get_product_name_template(
             self._src_project_name,
-            family,
+            product_type,
             task_name,
             task_type,
             None,
@@ -279,28 +279,31 @@ class PushToContextController:
         template_s = template[:idx]
         template_e = template[idx + len(variant_placeholder):]
         fill_data = prepare_template_data({
-            "family": family,
+            "family": product_type,
+            "product": {
+                "type": product_type,
+            },
             "task": task_name
         })
         try:
-            subset_s = template_s.format(**fill_data)
-            subset_e = template_e.format(**fill_data)
+            product_s = template_s.format(**fill_data)
+            product_e = template_e.format(**fill_data)
         except Exception as exc:
             print("Failed format", exc)
             return ""
 
-        subset_name = self._src_subset_doc["name"]
+        product_name = self._src_subset_doc["name"]
         if (
-            (subset_s and not subset_name.startswith(subset_s))
-            or (subset_e and not subset_name.endswith(subset_e))
+            (product_s and not product_name.startswith(product_s))
+            or (product_e and not product_name.endswith(product_e))
         ):
             return ""
 
-        if subset_s:
-            subset_name = subset_name[len(subset_s):]
-        if subset_e:
-            subset_name = subset_name[:len(subset_e)]
-        return subset_name
+        if product_s:
+            product_name = product_name[len(product_s):]
+        if product_e:
+            product_name = product_name[:len(product_e)]
+        return product_name
 
     def _check_submit_validations(self):
         if not self._user_values.is_valid:
