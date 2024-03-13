@@ -1,5 +1,4 @@
 import json
-from time import sleep, time
 from ayon_core.lib import ApplicationManager
 from ayon_core.pipeline import load, get_current_context
 
@@ -54,15 +53,14 @@ class PlayInRV(load.LoaderPlugin):
             openrv_app = app_manager.find_latest_available_variant_for_group("openrv")
             openrv_app.launch(**ctx)
 
-            try:
-                for _ in range(60):
-                    self.log.warning("Trying to connect to RV")
+            while not self.rvcon.connected:
+                self.log.warning("Trying to connect to RV")
+                try:
                     self.rvcon.connect("localhost".encode("utf-8"), 45128)
-                    if self.rvcon.connected:
-                        break
-                    sleep(1)
-            except Exception:
-                raise Exception("Failed to connect to RV")
+                except Exception as err:
+                    pass
+                if self.rvcon.connected:
+                    break
 
         _data = [{
             "objectName": representation["context"]["representation"],
@@ -76,5 +74,4 @@ class PlayInRV(load.LoaderPlugin):
         except Exception as err:
             raise Exception(f"Failed to send event to RV: {err}")
         finally:
-            sleep(1)
             self.rvcon.disconnect()
