@@ -1,8 +1,16 @@
 import openassetio_mediacreation as mc
+import pytest
 from openassetio.trait import TraitsData
 import json
 import ayon_core.pipeline.traits as traits
 
+
+@pytest.fixture
+def file_sequence(tmp_path):
+    for x in range(5):
+        file = tmp_path / f"file_{x}.txt"
+        file.write_text(f"Hello {x}")
+        yield file
 
 def _print_data(data):
     as_dict = {
@@ -40,3 +48,14 @@ def test_get_available_traits_ids(printer):
     assert "ayon:usage.Subset" in trait_ids
     for trait_id in sorted(trait_ids):
         printer(trait_id)
+
+
+def test_update_file_bundle_data(printer, file_sequence):
+    data = TraitsData()
+    fb = mc.traits.files.FilesBundleTrait(data)
+    files
+    fb.setFiles(json.dumps([str(file) for file in list[file_sequence]))
+    traits.update_file_bundle_data(data)
+    assert fb.getSizes() is not None
+    assert fb.getHashes() is not None
+    _print_data(data)

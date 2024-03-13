@@ -54,4 +54,10 @@ def get_openassetio_manager() -> Manager:
             f"check ${ManagerFactory.kDefaultManagerConfigEnvVarName}"
         )
 
+    if not manager.hasCapability(Manager.kCapabilityLoad):
+        raise ConfigurationException(
+            f"Manager {manager.identifier} does not support entity, "
+            "resolution. Check the manager configuration"
+        )
+
     return manager

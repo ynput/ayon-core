@@ -401,3 +401,25 @@ traits:
             type: string
             description: >
               Annotation.
+      FilesBundle:
+        description: >
+          A trait indicating a files bundle. Because of the limitation of the
+          current traitgen, we are using a string to represent the files, sizes
+          and hashes. This is not the final representation and will be updated
+          in the future. It is serialized as a JSON string.
+
+        usage:
+          - entity
+        properties:
+          files:
+            type: string
+            description: >
+              Files in the bundle.
+          sizes:
+            type: string
+            description: >
+              Sizes of the files in the bundle.
+          hashes:
+            type: string
+            description: >
+              Hashes of the files in the bundle.

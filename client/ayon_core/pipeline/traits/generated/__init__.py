@@ -1,4 +1,4 @@
-﻿from . import Ayon
+from . import Ayon
 from . import openassetio_mediacreation
 
 

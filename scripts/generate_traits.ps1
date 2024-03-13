@@ -11,7 +11,7 @@
 
 .EXAMPLE
 
-PS> .\generate_traits.ps1
+PS> .\.poetry\bin\poetry.exe run pwsh .\scripts\generate_traits.ps1
 
 #>
 

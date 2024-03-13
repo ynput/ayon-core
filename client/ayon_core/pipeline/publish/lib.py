@@ -955,3 +955,19 @@ def get_publish_instance_families(instance):
         families.discard(family)
     output.extend(families)
     return output
+
+
+def register_representation(instance, traits_data):
+    """Register representation on instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance on which should be
+            representation registered.
+        traits_data (dict): Representation traits data.
+    """
+
+
+    if "representations" not in instance.data:
+        instance.data["representations"] = []
+
+    instance.data["representations"].append(traits_data)

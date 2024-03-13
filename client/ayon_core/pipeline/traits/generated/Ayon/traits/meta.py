@@ -94,6 +94,143 @@ class AnnotationTrait:
     
 
 
+class FilesBundleTrait:
+    """
+    A trait indicating a files bundle. Because of the limitation of the
+    current traitgen, we are using a string to represent the files,
+    sizes and hashes. This is not the final representation and will be
+    updated in the future. It is serialized as a JSON string.
+    Usage: entity
+    """
+    kId = "Ayon:meta.FilesBundle"
+
+    def __init__(self, traitsData):
+        """
+        Construct this trait view, wrapping the given data.
+
+        @param traitsData @fqref{TraitsData}} "TraitsData" The target
+        data that holds/will hold the traits properties.
+        """
+        self.__data = traitsData
+
+    def isImbued(self):
+        """
+        Checks whether the data this trait has been applied to
+        actually has this trait.
+        @return `True` if the underlying data has this trait, `False`
+        otherwise.
+        """
+        return self.isImbuedTo(self.__data)
+
+    @classmethod
+    def isImbuedTo(cls, traitsData):
+        """
+        Checks whether the given data actually has this trait.
+        @param traitsData: Data to check for trait.
+        @return `True` if the underlying data has this trait, `False`
+        otherwise.
+        """
+        return traitsData.hasTrait(cls.kId)
+
+    def imbue(self):
+        """
+        Adds this trait to the held data.
+
+        If the data already has this trait, it is a no-op.
+        """
+        self.__data.addTrait(self.kId)
+
+    @classmethod
+    def imbueTo(cls, traitsData):
+        """
+        Adds this trait to the provided data.
+
+        If the data already has this trait, it is a no-op.
+        """
+        traitsData.addTrait(cls.kId)
+
+    
+    def setFiles(self, files: str):
+        """
+        Sets the files property.
+
+        Files in the bundle.
+        """
+        if not isinstance(files, str):
+            raise TypeError("files must be a 'str'.")
+        self.__data.setTraitProperty(self.kId, "files", files)
+
+    def getFiles(self, defaultValue: str=None) -> Union[str, None]:
+        """
+        Gets the value of the files property or the supplied default.
+
+        Files in the bundle.
+        """
+        value = self.__data.getTraitProperty(self.kId, "files")
+        if value is None:
+            return defaultValue
+
+        if not isinstance(value, str):
+            if defaultValue is None:
+                raise TypeError(f"Invalid stored value type: '{type(value).__name__}' should be 'str'.")
+            return defaultValue
+        return value
+        
+    def setHashes(self, hashes: str):
+        """
+        Sets the hashes property.
+
+        Hashes of the files in the bundle.
+        """
+        if not isinstance(hashes, str):
+            raise TypeError("hashes must be a 'str'.")
+        self.__data.setTraitProperty(self.kId, "hashes", hashes)
+
+    def getHashes(self, defaultValue: str=None) -> Union[str, None]:
+        """
+        Gets the value of the hashes property or the supplied default.
+
+        Hashes of the files in the bundle.
+        """
+        value = self.__data.getTraitProperty(self.kId, "hashes")
+        if value is None:
+            return defaultValue
+
+        if not isinstance(value, str):
+            if defaultValue is None:
+                raise TypeError(f"Invalid stored value type: '{type(value).__name__}' should be 'str'.")
+            return defaultValue
+        return value
+        
+    def setSizes(self, sizes: str):
+        """
+        Sets the sizes property.
+
+        Sizes of the files in the bundle.
+        """
+        if not isinstance(sizes, str):
+            raise TypeError("sizes must be a 'str'.")
+        self.__data.setTraitProperty(self.kId, "sizes", sizes)
+
+    def getSizes(self, defaultValue: str=None) -> Union[str, None]:
+        """
+        Gets the value of the sizes property or the supplied default.
+
+        Sizes of the files in the bundle.
+        """
+        value = self.__data.getTraitProperty(self.kId, "sizes")
+        if value is None:
+            return defaultValue
+
+        if not isinstance(value, str):
+            if defaultValue is None:
+                raise TypeError(f"Invalid stored value type: '{type(value).__name__}' should be 'str'.")
+            return defaultValue
+        return value
+        
+    
+
+
 class RelationshipTrait:
     """
     A trait indicating a relationship.
