@@ -128,7 +128,24 @@ class UnrealSubmitDeadline(
         deadline_plugin_info.ProjectFile = self.scene_path
         deadline_plugin_info.Output = render_path.replace("\\", "/")
 
-        # if Perforce!!
+        deadline_plugin_info.ProjectFile = self.scene_path
+        deadline_plugin_info.EditorExecutableName = "UnrealEditor-Cmd.exe"  # parse ayon+settings://applications/applications/unreal/variants/3/environmen
+        deadline_plugin_info.EngineVersion = self._instance.data["app_version"]
+        master_level = self._instance.data["master_level"]
+        render_queue_path = self._instance.data["render_queue_path"]
+        cmd_args = [f"{master_level} -game ",
+                    f"-MoviePipelineConfig={render_queue_path}"]
+        cmd_args.extend([
+            "-windowed",
+            "-Log",
+            "-StdOut",
+            "-allowStdOutLogVerbosity"
+            "-Unattended"
+        ])
+        self.log.info(f"cmd-args::{cmd_args}")
+        deadline_plugin_info.CommandLineArguments = " ".join(cmd_args)
+
+        # if Perforce - triggered by active `publish_commit` instance!!
         collected_version_control = self._get_version_control()
         if collected_version_control:
             self._update_version_control_data(collected_version_control,
@@ -180,9 +197,17 @@ class UnrealSubmitDeadline(
 
     def _update_version_control_data(self, collected_version_control,
                                      deadline_plugin_info):
-        self.log.info(f"collected_version_control::{collected_version_control}")
-        unreal_project_file_name = os.path.basename(self.scene_path)
+        """Adds Perforce metadata which causes DL pre job to sync to change.
 
+        It triggers only in presence of activated `publish_commit` instance,
+        which materialize info about commit. Artists could return to any
+        published commit and re-render if they choose.
+        `publish_commit` replaces `workfile` as there are no versioned Unreal
+        projects (because of size).
+        """
+        self.log.info(f"collected_version_control::{collected_version_control}")
+
+        unreal_project_file_name = os.path.basename(self.scene_path)
         version_control_data = self._instance.context.data["version_control"]
         workspace_dir = version_control_data["workspace_dir"]
         unreal_project_hierarchy = self.scene_path.replace(workspace_dir,
@@ -192,22 +217,8 @@ class UnrealSubmitDeadline(
         unreal_project_hierarchy = unreal_project_hierarchy.strip("\\")
 
         deadline_plugin_info.ProjectFile = unreal_project_file_name
+
         deadline_plugin_info.PerforceStream = version_control_data["stream"]
         deadline_plugin_info.PerforceChangelist = collected_version_control[
             "change_info"]["change"]
         deadline_plugin_info.PerforceGamePath = unreal_project_hierarchy
-        deadline_plugin_info.EditorExecutableName = "UnrealEditor-Cmd.exe"  # parse ayon+settings://applications/applications/unreal/variants/3/environmen
-        deadline_plugin_info.EngineVersion = self._instance.data["app_version"]
-        master_level = self._instance.data["master_level"]
-        render_queue_path = self._instance.data["render_queue_path"]
-        cmd_args = [f"{master_level} -game ",
-                    f"-MoviePipelineConfig={render_queue_path}"]
-        cmd_args.extend([
-            "-windowed",
-            "-Log",
-            "-StdOut",
-            "-allowStdOutLogVerbosity"
-            "-Unattended"
-        ])
-        self.log.info(f"cmd-args::{cmd_args}")
-        deadline_plugin_info.CommandLineArguments = " ".join(cmd_args)
