@@ -4,7 +4,7 @@ from ayon_core.pipeline import PublishValidationError
 from pymxs import runtime as rt
 
 
-class ValidateExtendedViewport(pyblish.api.InstancePlugin):
+class ValidateExtendedViewport(pyblish.api.ContextPlugin):
     """Validate if the first viewport is an extended viewport."""
 
     order = pyblish.api.ValidatorOrder
@@ -12,7 +12,7 @@ class ValidateExtendedViewport(pyblish.api.InstancePlugin):
     hosts = ["max"]
     label = "Validate Extended Viewport"
 
-    def process(self, instance):
+    def process(self, context):
         try:
             rt.viewport.activeViewportEx(1)
         except RuntimeError:
