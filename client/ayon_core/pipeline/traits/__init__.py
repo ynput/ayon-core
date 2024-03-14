@@ -1,9 +1,11 @@
 import collections
-from pathlib import Path
-import inspect
 import hashlib
+import inspect
 import json
+from pathlib import Path
+
 import deal
+
 from .generated.Ayon.traits.meta import FilesBundleTrait
 
 
@@ -60,7 +62,3 @@ def update_file_bundle_data(traits_data):
     if files:
         trait.setSizes(json.dumps(sizes))
         trait.setHashes(json.dumps(hashes))
-
-
-
-

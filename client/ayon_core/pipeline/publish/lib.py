@@ -956,7 +956,6 @@ def register_representation(instance, traits_data):
         traits_data (dict): Representation traits data.
     """
 
-
     if "representations" not in instance.data:
         instance.data["representations"] = []
 
