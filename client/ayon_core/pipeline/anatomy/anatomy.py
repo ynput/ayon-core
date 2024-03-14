@@ -11,7 +11,7 @@ from ayon_core.lib import Logger, get_local_site_id
 from ayon_core.addon import AddonsManager
 
 from .exceptions import RootCombinationError, ProjectNotSet
-from .roots import Roots
+from .roots import AnatomyRoots
 from .templates import AnatomyTemplates
 
 log = Logger.get_logger(__name__)
@@ -20,21 +20,20 @@ log = Logger.get_logger(__name__)
 class BaseAnatomy(object):
     """Anatomy module helps to keep project settings.
 
-    Wraps key project specifications, AnatomyTemplates and Roots.
+    Wraps key project specifications, AnatomyTemplates and AnatomyRoots.
     """
     root_key_regex = re.compile(r"{(root?[^}]+)}")
     root_name_regex = re.compile(r"root\[([^]]+)\]")
 
     def __init__(self, project_entity, root_overrides=None):
-        project_name = project_entity["name"]
-        self.project_name = project_name
-        self.project_code = project_entity["code"]
+        self._project_name = project_entity["name"]
+        self._project_code = project_entity["code"]
 
         self._data = self._prepare_anatomy_data(
             project_entity, root_overrides
         )
         self._templates_obj = AnatomyTemplates(self)
-        self._roots_obj = Roots(self)
+        self._roots_obj = AnatomyRoots(self)
 
     # Anatomy used as dictionary
     # - implemented only getters returning copy
@@ -42,7 +41,9 @@ class BaseAnatomy(object):
         return copy.deepcopy(self._data[key])
 
     def get(self, key, default=None):
-        return copy.deepcopy(self._data).get(key, default)
+        if key not in self._data:
+            return default
+        return copy.deepcopy(self._data[key])
 
     def keys(self):
         return copy.deepcopy(self._data).keys()
@@ -52,6 +53,26 @@ class BaseAnatomy(object):
 
     def items(self):
         return copy.deepcopy(self._data).items()
+
+    @property
+    def project_name(self):
+        """Project name for which is anatomy prepared.
+
+        Returns:
+            str: Project name.
+
+        """
+        return self._project_name
+
+    @property
+    def project_code(self):
+        """Project name for which is anatomy prepared.
+
+        Returns:
+            str: Project code.
+
+        """
+        return self._project_code
 
     def _prepare_anatomy_data(self, project_entity, root_overrides):
         """Prepare anatomy data for further processing.
@@ -78,12 +99,33 @@ class BaseAnatomy(object):
         """Return `AnatomyTemplates` object of current Anatomy instance."""
         return self._templates_obj
 
+    def get_template(self, category_name, template_name, subkey=None):
+        """Get template item from category.
+
+        Args:
+            category_name (str): Category name.
+            template_name (str): Template name.
+            subkey (Optional[str]): Subkey name.
+
+        Returns:
+            Any: Template item, subkey value as AnatomyStringTemplate or None.
+
+        """
+        return self._templates_obj.get_template(
+            category_name, template_name, subkey
+        )
+
     def format(self, *args, **kwargs):
         """Wrap `format` method of Anatomy's `templates_obj`."""
         return self._templates_obj.format(*args, **kwargs)
 
     def format_all(self, *args, **kwargs):
-        """Wrap `format_all` method of Anatomy's `templates_obj`."""
+        """Wrap `format_all` method of Anatomy's `templates_obj`.
+
+        Deprecated:
+            Use ``format`` method with ``strict=False`` instead.
+
+        """
         return self._templates_obj.format_all(*args, **kwargs)
 
     @property
@@ -93,7 +135,12 @@ class BaseAnatomy(object):
 
     @property
     def roots_obj(self):
-        """Return `Roots` object of current Anatomy instance."""
+        """Roots wrapper object.
+
+        Returns:
+            AnatomyRoots: Roots wrapper.
+
+        """
         return self._roots_obj
 
     def root_environments(self):
@@ -110,15 +157,15 @@ class BaseAnatomy(object):
         return self.roots_obj.root_environmets_fill_data(template)
 
     def find_root_template_from_path(self, *args, **kwargs):
-        """Wrapper for Roots `find_root_template_from_path`."""
+        """Wrapper for AnatomyRoots `find_root_template_from_path`."""
         return self.roots_obj.find_root_template_from_path(*args, **kwargs)
 
     def path_remapper(self, *args, **kwargs):
-        """Wrapper for Roots `path_remapper`."""
+        """Wrapper for AnatomyRoots `path_remapper`."""
         return self.roots_obj.path_remapper(*args, **kwargs)
 
     def all_root_paths(self):
-        """Wrapper for Roots `all_root_paths`."""
+        """Wrapper for AnatomyRoots `all_root_paths`."""
         return self.roots_obj.all_root_paths()
 
     def set_root_environments(self):
@@ -142,14 +189,17 @@ class BaseAnatomy(object):
         """
 
         output = set()
-        if isinstance(data, dict):
-            for value in data.values():
-                for root in self._root_keys_from_templates(value):
-                    output.add(root)
+        keys_queue = collections.deque()
+        keys_queue.append(data)
+        while keys_queue:
+            queue_data = keys_queue.popleft()
+            if isinstance(queue_data, dict):
+                for value in queue_data.values():
+                    keys_queue.append(value)
 
-        elif isinstance(data, str):
-            for group in re.findall(self.root_key_regex, data):
-                output.add(group)
+            elif isinstance(queue_data, str):
+                for group in re.findall(self.root_key_regex, queue_data):
+                    output.add(group)
 
         return output
 
