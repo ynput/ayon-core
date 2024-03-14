@@ -247,7 +247,7 @@ def view_read_in_rv():
             continue
 
         # get data from avalon knob
-        rn_data = parse_container(rn) # {'handleEnd': '10', 'handleStart': '10', 'version': '3', 'fps': '24.0', 'author': 'alexander.bollgoehn', 'db_colorspace': 'None', 'source': 'work: Unknown command', 'frameEnd': '1066', 'frameStart': '1001', 'representation': '611c06a4d66511eeba1af45214494c81', 'loader': 'LoadClip', 'namespace': '0010_cp', 'name': 'renderCompSlap', 'id': 'pyblish.avalon.container', 'schema': 'openpype:container-2.0', 'objectName': 'LoadClip_exr', 'node': <LoadClip_exr at 0x0000022C50B89260>}
+        rn_data = parse_container(rn)
 
         if rn_data:
             # strip out node since it is not serializable
@@ -257,8 +257,7 @@ def view_read_in_rv():
             rn_data = {"file": rn["file"].value()}
 
         data.append(rn_data)
-        log.info(f"{rn_data = }")
-    
+
     # representation_id = read_node["avalon:representation"].value()
 
     # connect to RV
