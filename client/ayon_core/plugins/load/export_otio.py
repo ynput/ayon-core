@@ -9,7 +9,6 @@ from ayon_core.client import (
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
-from ayon_core.lib import run_detached_process
 from ayon_core.tools.utils import show_message_dialog
 
 
@@ -151,11 +150,6 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         layout.addWidget(self.lineedit_output_path)
         export_layout.addWidget(widget)
 
-        self.checkbox_inspect_otio_view = QtWidgets.QCheckBox(
-            "Inspect with OTIO view"
-        )
-        export_layout.addWidget(self.checkbox_inspect_otio_view)
-
         self.button_export = QtWidgets.QPushButton("Export")
         export_layout.addWidget(self.button_export)
 
@@ -232,10 +226,6 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             }
 
         self.export_otio(clips_data, output_path)
-
-        check_state = self.checkbox_inspect_otio_view.checkState()
-        if check_state == QtCore.Qt.CheckState.Checked:
-            run_detached_process(["otioview", output_path])
 
         # Feedback about success.
         show_message_dialog(
