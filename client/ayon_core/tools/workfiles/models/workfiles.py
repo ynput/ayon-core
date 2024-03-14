@@ -253,8 +253,9 @@ class WorkareaModel:
         return list(comment_hints), current_comment
 
     def _get_workdir(self, anatomy, template_key, fill_data):
-        template_info = anatomy.templates_obj[template_key]
-        directory_template = template_info["folder"]
+        directory_template = anatomy.get_template(
+            "work", template_key, "directory"
+        )
         return directory_template.format_strict(fill_data).normalized()
 
     def get_workarea_save_as_data(self, folder_id, task_id):
@@ -299,8 +300,7 @@ class WorkareaModel:
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        template_info = anatomy.templates_obj[template_key]
-        file_template = template_info["file"]
+        file_template = anatomy.get_template("work", template_key, "file")
 
         comment_hints, comment = self._get_comments_from_root(
             file_template,
@@ -342,8 +342,7 @@ class WorkareaModel:
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        template_info = anatomy.templates_obj[template_key]
-        file_template = template_info["file"]
+        file_template = anatomy.get_template("work", template_key, "file")
 
         if use_last_version:
             version = self._get_last_workfile_version(

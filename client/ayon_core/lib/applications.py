@@ -1862,7 +1862,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
                 project_settings=project_settings
             )
             # Find last workfile
-            file_template = str(anatomy.templates[template_key]["file"])
+            file_template = anatomy.get_template("work", template_key, "file")
 
             workdir_data.update({
                 "version": 1,
