@@ -1,11 +1,10 @@
 import os
-import numbers
 import platform
-
-import six
+import numbers
 
 from ayon_core.lib import Logger
 from ayon_core.lib.path_templates import FormatObject
+
 
 class RootItem(FormatObject):
     """Represents one item or roots.
@@ -15,21 +14,13 @@ class RootItem(FormatObject):
     is used for formatting of template.
 
     Args:
+        parent (AnatomyRoots): Parent object.
         root_raw_data (dict): Dictionary containing root values by platform
             names. ["windows", "linux" and "darwin"]
-        name (str, optional): Root name which is representing. Used with
+        name (str): Root name which is representing. Used with
             multi root setup otherwise None value is expected.
-        parent_keys (list, optional): All dictionary parent keys. Values of
-            `parent_keys` are used for get full key which RootItem is
-            representing. Used for replacing root value in path with
-            formattable key. e.g. parent_keys == ["work"] -> {root[work]}
-        parent (object, optional): It is expected to be `Roots` object.
-            Value of `parent` won't affect code logic much.
     """
-
-    def __init__(
-        self, root_raw_data, name=None, parent_keys=None, parent=None
-    ):
+    def __init__(self, parent, root_raw_data, name):
         super(RootItem, self).__init__()
         self._log = None
         lowered_platform_keys = {}
@@ -38,12 +29,11 @@ class RootItem(FormatObject):
         self.raw_data = lowered_platform_keys
         self.cleaned_data = self._clean_roots(lowered_platform_keys)
         self.name = name
-        self.parent_keys = parent_keys or []
         self.parent = parent
 
-        self.available_platforms = list(lowered_platform_keys.keys())
+        self.available_platforms = set(lowered_platform_keys.keys())
         self.value = lowered_platform_keys.get(platform.system().lower())
-        self.clean_value = self.clean_root(self.value)
+        self.clean_value = self._clean_root(self.value)
 
     def __format__(self, *args, **kwargs):
         return self.value.__format__(*args, **kwargs)
@@ -64,7 +54,7 @@ class RootItem(FormatObject):
                 self.parent.project_name
             )
 
-        raise AssertionError(
+        raise KeyError(
             "Root key \"{}\" is missing{}.".format(
                 key, additional_info
             )
@@ -76,6 +66,7 @@ class RootItem(FormatObject):
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
+    @property
     def full_key(self):
         """Full key value for dictionary formatting in template.
 
@@ -83,32 +74,40 @@ class RootItem(FormatObject):
             str: Return full replacement key for formatting. This helps when
                 multiple roots are set. In that case e.g. `"root[work]"` is
                 returned.
+
         """
-        if not self.name:
-            return "root"
+        return "root[{}]".format(self.name)
 
-        joined_parent_keys = "".join(
-            ["[{}]".format(key) for key in self.parent_keys]
-        )
-        return "root{}".format(joined_parent_keys)
+    @staticmethod
+    def _clean_path(path):
+        """Just replace backslashes with forward slashes.
 
-    def clean_path(self, path):
-        """Just replace backslashes with forward slashes."""
+        Args:
+            path (str): Path which should be cleaned.
+
+        Returns:
+            str: Cleaned path with forward slashes.
+
+        """
         return str(path).replace("\\", "/")
 
-    def clean_root(self, root):
-        """Makes sure root value does not end with slash."""
-        if root:
-            root = self.clean_path(root)
-            while root.endswith("/"):
-                root = root[:-1]
-        return root
+    def _clean_root(self, root):
+        """Clean root value.
+
+        Args:
+            root (str): Root value which should be cleaned.
+
+        Returns:
+            str: Cleaned root value.
+
+        """
+        return self._clean_path(root).rstrip("/")
 
     def _clean_roots(self, raw_data):
         """Clean all values of raw root item values."""
         cleaned = {}
         for key, value in raw_data.items():
-            cleaned[key] = self.clean_root(value)
+            cleaned[key] = self._clean_root(value)
         return cleaned
 
     def path_remapper(self, path, dst_platform=None, src_platform=None):
@@ -121,27 +120,20 @@ class RootItem(FormatObject):
             src_platform (str, optional): Specify source platform. This is
                 recommended to not use and keep unset until you really want
                 to use specific platform.
-            roots (dict/RootItem/None, optional): It is possible to remap
-                path with different roots then instance where method was
-                called has.
 
         Returns:
-            str/None: When path does not contain known root then
-                None is returned else returns remapped path with "{root}"
-                or "{root[<name>]}".
+            Union[str, None]: When path does not contain known root then
+                None is returned else returns remapped path with
+                "{root[<name>]}".
+
         """
-        cleaned_path = self.clean_path(path)
+        cleaned_path = self._clean_path(path)
         if dst_platform:
             dst_root_clean = self.cleaned_data.get(dst_platform)
             if not dst_root_clean:
-                key_part = ""
-                full_key = self.full_key()
-                if full_key != "root":
-                    key_part += "\"{}\" ".format(full_key)
-
                 self.log.warning(
-                    "Root {}miss platform \"{}\" definition.".format(
-                        key_part, dst_platform
+                    "Root \"{}\" miss platform \"{}\" definition.".format(
+                        self.full_key, dst_platform
                     )
                 )
                 return None
@@ -154,7 +146,7 @@ class RootItem(FormatObject):
             if src_root_clean is None:
                 self.log.warning(
                     "Root \"{}\" miss platform \"{}\" definition.".format(
-                        self.full_key(), src_platform
+                        self.full_key, src_platform
                     )
                 )
                 return None
@@ -172,19 +164,12 @@ class RootItem(FormatObject):
         if not result:
             return None
 
-        def parent_dict(keys, value):
-            if not keys:
-                return value
-
-            key = keys.pop(0)
-            return {key: parent_dict(keys, value)}
-
         if dst_platform:
-            format_value = parent_dict(list(self.parent_keys), dst_root_clean)
+            fill_data = {self.name: dst_root_clean}
         else:
-            format_value = parent_dict(list(self.parent_keys), self.value)
+            fill_data = {self.name: self.value}
 
-        return template.format(**{"root": format_value})
+        return template.format(**{"root": fill_data})
 
     def find_root_template_from_path(self, path):
         """Replaces known root value with formattable key in path.
@@ -218,7 +203,7 @@ class RootItem(FormatObject):
         result = False
         output = str(path)
 
-        mod_path = self.clean_path(path)
+        mod_path = self._clean_path(path)
         for root_os, root_path in self.cleaned_data.items():
             # Skip empty paths
             if not root_path:
@@ -231,27 +216,26 @@ class RootItem(FormatObject):
 
             if _mod_path.startswith(root_path):
                 result = True
-                replacement = "{" + self.full_key() + "}"
+                replacement = "{" + self.full_key + "}"
                 output = replacement + mod_path[len(root_path):]
                 break
 
         return (result, output)
 
 
-class Roots:
+class AnatomyRoots:
     """Object which should be used for formatting "root" key in templates.
 
     Args:
-        anatomy Anatomy: Anatomy object created for a specific project.
+        anatomy (Anatomy): Anatomy object created for a specific project.
     """
 
     env_prefix = "AYON_PROJECT_ROOT"
-    roots_filename = "roots.json"
 
     def __init__(self, anatomy):
         self._log = None
-        self.anatomy = anatomy
-        self.loaded_project = None
+        self._anatomy = anatomy
+        self._loaded_project = None
         self._roots = None
 
     def __format__(self, *args, **kwargs):
@@ -266,6 +250,16 @@ class Roots:
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
+    @property
+    def anatomy(self):
+        """Parent Anatomy object.
+
+        Returns:
+            Anatomy: Parent anatomy object.
+
+        """
+        return self._anatomy
+
     def reset(self):
         """Reset current roots value."""
         self._roots = None
@@ -277,19 +271,20 @@ class Roots:
 
         Args:
             path (str): Source path which need to be remapped.
-            dst_platform (str, optional): Specify destination platform
+            dst_platform (Optional[str]): Specify destination platform
                 for which remapping should happen.
-            src_platform (str, optional): Specify source platform. This is
+            src_platform (Optional[str]): Specify source platform. This is
                 recommended to not use and keep unset until you really want
                 to use specific platform.
-            roots (dict/RootItem/None, optional): It is possible to remap
+            roots (Optional[Union[dict, RootItem])): It is possible to remap
                 path with different roots then instance where method was
                 called has.
 
         Returns:
-            str/None: When path does not contain known root then
+            Union[str, None]: When path does not contain known root then
                 None is returned else returns remapped path with "{root}"
                 or "{root[<name>]}".
+
         """
         if roots is None:
             roots = self.roots
@@ -318,8 +313,8 @@ class Roots:
 
         Args:
             path (str): Source path where root will be searched.
-            roots (Roots/dict, optional): It is possible to use different
-                roots than instance where method was triggered has.
+            roots (Optional[Union[AnatomyRoots, dict]): It is possible to use
+                different roots than instance where method was triggered has.
 
         Returns:
             tuple: Output contains tuple with bool representing success as
@@ -344,7 +339,9 @@ class Roots:
         for root_name, _root in roots.items():
             success, result = self.find_root_template_from_path(path, _root)
             if success:
-                self.log.info("Found match in root \"{}\".".format(root_name))
+                self.log.debug(
+                    "Found match in root \"{}\".".format(root_name)
+                )
                 return success, result
 
         self.log.warning("No matching root was found in current setting.")
@@ -446,7 +443,7 @@ class Roots:
             }
 
         if isinstance(roots, RootItem):
-            key_items = [Roots.env_prefix]
+            key_items = [AnatomyRoots.env_prefix]
             for _key in keys:
                 key_items.append(_key.upper())
             key = "_".join(key_items)
@@ -463,25 +460,31 @@ class Roots:
 
     @property
     def project_name(self):
-        """Return project name which will be used for loading root values."""
-        return self.anatomy.project_name
+        """Current project name which will be used for loading root values.
+
+        Returns:
+            str: Project name.
+        """
+        return self._anatomy.project_name
 
     @property
     def roots(self):
         """Property for filling "root" key in templates.
 
         This property returns roots for current project or default root values.
+
         Warning:
             Default roots value may cause issues when project use different
             roots settings. That may happen when project use multiroot
             templates but default roots miss their keys.
+
         """
-        if self.project_name != self.loaded_project:
+        if self.project_name != self._loaded_project:
             self._roots = None
 
         if self._roots is None:
             self._roots = self._discover()
-            self.loaded_project = self.project_name
+            self._loaded_project = self.project_name
         return self._roots
 
     def _discover(self):
@@ -494,10 +497,10 @@ class Roots:
             setting is used.
         """
 
-        return self._parse_dict(self.anatomy["roots"], parent=self)
+        return self._parse_dict(self._anatomy["roots"], self)
 
     @staticmethod
-    def _parse_dict(data, key=None, parent_keys=None, parent=None):
+    def _parse_dict(data, parent):
         """Parse roots raw data into RootItem or dictionary with RootItems.
 
         Converting raw roots data to `RootItem` helps to handle platform keys.
@@ -506,29 +509,16 @@ class Roots:
 
         Args:
             data (dict): Should contain raw roots data to be parsed.
-            key (str, optional): Current root key. Set by recursion.
-            parent_keys (list): Parent dictionary keys. Set by recursion.
-            parent (Roots, optional): Parent object set in `RootItem`
-                helps to keep RootItem instance updated with `Roots` object.
+            parent (AnatomyRoots): Parent object set as parent
+                for ``RootItem``.
 
         Returns:
-            `RootItem` or `dict` with multiple `RootItem`s when multiroot
-            setting is used.
+            dict[str, RootItem]: Root items by name.
+
         """
-        if not parent_keys:
-            parent_keys = []
-        is_last = False
-        for value in data.values():
-            if isinstance(value, six.string_types):
-                is_last = True
-                break
-
-        if is_last:
-            return RootItem(data, key, parent_keys, parent=parent)
-
         output = {}
-        for _key, value in data.items():
-            _parent_keys = list(parent_keys)
-            _parent_keys.append(_key)
-            output[_key] = Roots._parse_dict(value, _key, _parent_keys, parent)
+        for root_name, root_values in data.items():
+            output[root_name] = RootItem(
+                parent, root_values, root_name
+            )
         return output
