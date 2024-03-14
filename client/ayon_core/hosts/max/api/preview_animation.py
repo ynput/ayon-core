@@ -39,7 +39,7 @@ def viewport_layout_and_camera(camera, layout="layout_1"):
     review_camera = rt.getNodeByName(camera)
 
     try:
-        if rt.viewport.getLayout()!=rt.name(layout):
+        if rt.viewport.getLayout() != rt.name(layout):
             rt.execute("max tool maximize")
             needs_maximise = 1
         rt.viewport.setCamera(review_camera)
