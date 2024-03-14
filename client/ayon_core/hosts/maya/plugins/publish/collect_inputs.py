@@ -172,7 +172,7 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
         """Collects inputs from nodes in renderlayer, incl. shaders + camera"""
 
         # Get the renderlayer
-        renderlayer = instance.data.get("renderlayer")
+        renderlayer = instance.data.get("setMembers")
 
         if renderlayer == "defaultRenderLayer":
             # Assume all loaded containers in the scene are inputs
@@ -180,11 +180,6 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
             return copy.deepcopy(scene_containers)
         else:
             # Get the members of the layer
-            renderlayer = next((i for i in cmds.ls(type='renderLayer')
-                             if i.endswith(renderlayer)), None)
-            if renderlayer is None:
-                return copy.deepcopy(scene_containers)
-
             members = cmds.editRenderLayerMembers(renderlayer,
                                                   query=True,
                                                   fullNames=True) or []
