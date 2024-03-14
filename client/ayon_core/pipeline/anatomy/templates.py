@@ -388,6 +388,77 @@ class AnatomyTemplates(TemplatesDict):
                 default templates.
         """
 
+    @property
+    def frame_padding(self):
+        """Default frame padding.
+
+        Returns:
+            int: Frame padding used by default in templates.
+
+        """
+        self._validate_discovery()
+        return self["frame_padding"]
+
+    @property
+    def version_padding(self):
+        """Default version padding.
+
+        Returns:
+            int: Version padding used by default in templates.
+
+        """
+        self._validate_discovery()
+        return self["version_padding"]
+
+    @classmethod
+    def get_rootless_path_from_result(cls, result):
+        """Calculate rootless path from formatting result.
+
+        Args:
+            result (TemplateResult): Result of StringTemplate formatting.
+
+        Returns:
+            str: Rootless path if result contains one of anatomy roots.
+        """
+
+        used_values = result.used_values
+        missing_keys = result.missing_keys
+        template = result.template
+        invalid_types = result.invalid_types
+        if (
+            "root" not in used_values
+            or "root" in missing_keys
+            or "{root" not in template
+        ):
+            return
+
+        for invalid_type in invalid_types:
+            if "root" in invalid_type:
+                return
+
+        root_keys = cls._dict_to_subkeys_list({"root": used_values["root"]})
+        if not root_keys:
+            return
+
+        output = str(result)
+        for used_root_keys in root_keys:
+            if not used_root_keys:
+                continue
+
+            used_value = used_values
+            root_key = None
+            for key in used_root_keys:
+                used_value = used_value[key]
+                if root_key is None:
+                    root_key = key
+                else:
+                    root_key += "[{}]".format(key)
+
+            root_key = "{" + root_key + "}"
+            output = output.replace(str(used_value), root_key)
+
+        return output
+
         if self.project_name is None:
             # QUESTION create project specific if not found?
             raise AssertionError((
