@@ -31,14 +31,23 @@ class TextureCopy:
         if parents and len(parents) > 0:
             hierarchy = os.path.join(*parents)
 
+        product_name = "Main"
+        product_type = "texture"
         template_data = {
             "project": {
                 "name": project_name,
                 "code": project['data']['code']
             },
-            "asset": asset['name'],
-            "family": 'texture',
-            "subset": 'Main',
+            "asset": asset["name"],
+            "family": product_type,
+            "subset": product_name,
+            "folder": {
+                "name": asset["name"],
+            },
+            "product": {
+                "name": product_name,
+                "type": product_type,
+            },
             "hierarchy": hierarchy
         }
         anatomy = Anatomy(project_name)
@@ -132,8 +141,8 @@ class TextureCopy:
 def texture_copy(asset, project, path):
     t.echo("*** Running Texture tool ***")
     t.echo(">>> Initializing avalon session ...")
-    os.environ["AVALON_PROJECT"] = project
-    os.environ["AVALON_ASSET"] = asset
+    os.environ["AYON_PROJECT_NAME"] = project
+    os.environ["AYON_FOLDER_PATH"] = asset
     TextureCopy().process(asset, project, path)
 
 

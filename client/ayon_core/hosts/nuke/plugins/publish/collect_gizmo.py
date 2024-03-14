@@ -15,8 +15,8 @@ class CollectGizmo(pyblish.api.InstancePlugin):
 
         gizmo_node = instance.data["transientData"]["node"]
 
-        # add family to familiess
-        instance.data["families"].insert(0, instance.data["family"])
+        # add product type to familiess
+        instance.data["families"].insert(0, instance.data["productType"])
         # make label nicer
         instance.data["label"] = gizmo_node.name()
 
@@ -25,6 +25,7 @@ class CollectGizmo(pyblish.api.InstancePlugin):
         handle_end = instance.context.data["handleEnd"]
         first_frame = int(nuke.root()["first_frame"].getValue())
         last_frame = int(nuke.root()["last_frame"].getValue())
+        families = [instance.data["productType"]] + instance.data["families"]
 
         # Add version data to instance
         version_data = {
@@ -33,8 +34,8 @@ class CollectGizmo(pyblish.api.InstancePlugin):
             "frameStart": first_frame + handle_start,
             "frameEnd": last_frame - handle_end,
             "colorspace": nuke.root().knob('workingSpaceLUT').value(),
-            "families": [instance.data["family"]] + instance.data["families"],
-            "subset": instance.data["subset"],
+            "families": families,
+            "productName": instance.data["productName"],
             "fps": instance.context.data["fps"]
         }
 

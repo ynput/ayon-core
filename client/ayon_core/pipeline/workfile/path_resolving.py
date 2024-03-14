@@ -72,7 +72,7 @@ def get_workfile_template_key(
     try:
         profiles = (
             project_settings
-            ["global"]
+            ["core"]
             ["tools"]
             ["Workfiles"]
             ["workfile_template_profiles"]
@@ -157,7 +157,7 @@ def get_workdir(
         task_name (str): Task name for which are workdir data preapred.
         host_name (str): Host which is used to workdir. This is required
             because workdir template may contain `{app}` key. In `Session`
-            is stored under `AVALON_APP` key.
+            is stored under `AYON_HOST_NAME` key.
         anatomy (Anatomy): Optional argument. Anatomy object is created using
             project name from `project_doc`. It is preferred to pass this
             argument as initialization of a new Anatomy object may be time
@@ -321,7 +321,7 @@ def get_last_workfile(
             data["app"],
             task_name=data["task"]["name"],
             task_type=data["task"]["type"],
-            family="workfile"
+            product_type="workfile"
         )
         data.pop("comment", None)
         if not data.get("ext"):
@@ -507,7 +507,7 @@ def create_workdir_extra_folders(
 
     # Load extra folders profiles
     extra_folders_profiles = (
-        project_settings["global"]["tools"]["Workfiles"]["extra_folders"]
+        project_settings["core"]["tools"]["Workfiles"]["extra_folders"]
     )
     # Skip if are empty
     if not extra_folders_profiles:

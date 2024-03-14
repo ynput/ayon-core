@@ -28,9 +28,8 @@ class FusionLoadUSD(load.LoaderPlugin):
     tool_type = "uLoader"
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
-        super(FusionLoadUSD, cls).apply_settings(project_settings,
-                                                 system_settings)
+    def apply_settings(cls, project_settings):
+        super(FusionLoadUSD, cls).apply_settings(project_settings)
         if cls.enabled:
             # Enable only in Fusion 18.5+
             fusion = get_fusion_module()
@@ -61,22 +60,23 @@ class FusionLoadUSD(load.LoaderPlugin):
                               context=context,
                               loader=self.__class__.__name__)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
 
         tool = container["_tool"]
         assert tool.ID == self.tool_type, f"Must be {self.tool_type}"
         comp = tool.Comp()
 
-        path = get_representation_path(representation)
+        repre_doc = context["representation"]
+        path = get_representation_path(repre_doc)
 
         with comp_lock_and_undo_chunk(comp, "Update tool"):
             tool["Filename"] = path
 
             # Update the imprinted representation
-            tool.SetData("avalon.representation", str(representation["_id"]))
+            tool.SetData("avalon.representation", str(repre_doc["_id"]))
 
     def remove(self, container):
         tool = container["_tool"]

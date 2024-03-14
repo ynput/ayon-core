@@ -138,14 +138,14 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             render_target (str): render target
             colorspace (str): colorspace
         """
-        family = instance.data["family"]
+        product_type = instance.data["productType"]
 
         # add targeted family to families
         instance.data["families"].append(
-            "{}.{}".format(family, render_target)
+            "{}.{}".format(product_type, render_target)
         )
         self.log.debug("Appending render target to families: {}.{}".format(
-            family, render_target)
+            product_type, render_target)
         )
 
         write_node = self._write_node_helper(instance)
@@ -175,7 +175,7 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             "colorspace": colorspace
         })
 
-        if family == "render":
+        if product_type == "render":
             instance.data.update({
                 "handleStart": handle_start,
                 "handleEnd": handle_end,
@@ -193,7 +193,6 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
                 "frameStartHandle": first_frame,
                 "frameEndHandle": last_frame,
             })
-
 
         # TODO temporarily set stagingDir as persistent for backward
         # compatibility. This is mainly focused on `renders`folders which
@@ -268,10 +267,6 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             "stagingDir": output_dir,
             "tags": []
         }
-
-        frame_start_str = self._get_frame_start_str(first_frame, last_frame)
-
-        representation['frameStart'] = frame_start_str
 
         # set slate frame
         collected_frames = self._add_slate_frame_to_collected_frames(

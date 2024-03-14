@@ -156,7 +156,7 @@ class BaseWorkfileController(
         self._log = None
 
         self._current_project_name = None
-        self._current_folder_name = None
+        self._current_folder_path = None
         self._current_folder_id = None
         self._current_task_name = None
         self._save_is_enabled = True
@@ -468,12 +468,12 @@ class BaseWorkfileController(
         context = self._get_host_current_context()
 
         project_name = context["project_name"]
-        folder_name = context["asset_name"]
+        folder_path = context["folder_path"]
         task_name = context["task_name"]
         current_file = self.get_current_workfile()
         folder_id = None
-        if folder_name:
-            folder = ayon_api.get_folder_by_path(project_name, folder_name)
+        if folder_path:
+            folder = ayon_api.get_folder_by_path(project_name, folder_path)
             if folder:
                 folder_id = folder["id"]
 
@@ -481,7 +481,7 @@ class BaseWorkfileController(
         self._project_anatomy = None
 
         self._current_project_name = project_name
-        self._current_folder_name = folder_name
+        self._current_folder_path = folder_path
         self._current_folder_id = folder_id
         self._current_task_name = task_name
 
@@ -573,6 +573,7 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
+                src_filepath=representation_filepath
             )
         except Exception:
             failed = True
@@ -639,6 +640,7 @@ class BaseWorkfileController(
         return {
             "project_name": project_name,
             "folder_id": folder_id,
+            "folder_path": folder["path"],
             "asset_id": folder_id,
             "asset_name": folder["name"],
             "task_id": task_id,

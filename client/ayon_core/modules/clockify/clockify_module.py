@@ -2,22 +2,27 @@ import os
 import threading
 import time
 
-from ayon_core.modules import OpenPypeModule, ITrayModule, IPluginPaths
+from ayon_core.modules import AYONAddon, ITrayModule, IPluginPaths
 from ayon_core.client import get_asset_by_name
 
 from .constants import CLOCKIFY_FTRACK_USER_PATH, CLOCKIFY_FTRACK_SERVER_PATH
 
 
-class ClockifyModule(OpenPypeModule, ITrayModule, IPluginPaths):
+class ClockifyModule(AYONAddon, ITrayModule, IPluginPaths):
     name = "clockify"
 
-    def initialize(self, modules_settings):
-        clockify_settings = modules_settings[self.name]
-        self.enabled = clockify_settings["enabled"]
-        self.workspace_name = clockify_settings["workspace_name"]
+    def initialize(self, studio_settings):
+        enabled = self.name in studio_settings
+        workspace_name = None
+        if enabled:
+            clockify_settings = studio_settings[self.name]
+            workspace_name = clockify_settings["workspace_name"]
 
-        if self.enabled and not self.workspace_name:
-            raise Exception("Clockify Workspace is not set in settings.")
+        if enabled and workspace_name:
+            self.log.warning("Clockify Workspace is not set in settings.")
+            enabled = False
+        self.enabled = enabled
+        self.workspace_name = workspace_name
 
         self.timer_manager = None
         self.MessageWidgetClass = None

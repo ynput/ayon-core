@@ -96,7 +96,7 @@ class AlembicModelLoader(load.LoaderPlugin):
             loader=self.__class__.__name__,
             data=data_imprint)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """
             Called by Scene Inventory when look should be updated to current
             version.
@@ -106,15 +106,15 @@ class AlembicModelLoader(load.LoaderPlugin):
 
         Args:
             container: object that has look to be updated
-            representation: (dict): relationship data to get proper
+            context: (dict): relationship data to get proper
                                     representation from DB and persisted
                                     data in .json
         Returns:
             None
         """
         # Get version from io
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
+        version_doc = context["version"]
+        repre_doc = context["representation"]
 
         # get corresponding node
         model_node = container["node"]
@@ -131,7 +131,7 @@ class AlembicModelLoader(load.LoaderPlugin):
         add_keys = ["source", "author", "fps"]
 
         data_imprint = {
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "frameStart": first,
             "frameEnd": last,
             "version": vname
@@ -141,7 +141,7 @@ class AlembicModelLoader(load.LoaderPlugin):
             data_imprint.update({k: version_data[k]})
 
         # getting file path
-        file = get_representation_path(representation).replace("\\", "/")
+        file = get_representation_path(repre_doc).replace("\\", "/")
 
         with maintained_selection():
             model_node['selected'].setValue(True)
@@ -202,8 +202,8 @@ class AlembicModelLoader(load.LoaderPlugin):
             color_value = "0xd88467ff"
         node["tile_color"].setValue(int(color_value, 16))
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         node = nuke.toNode(container['objectName'])

@@ -68,6 +68,7 @@ class ExtractLayout(publish.Extractor):
                 json_element = {}
                 json_element["reference"] = str(blend_id)
                 json_element["family"] = family
+                json_element["product_type"] = family
                 json_element["instance_name"] = actor.get_name()
                 json_element["asset_name"] = mesh.get_name()
                 import_data = mesh.get_editor_property("asset_import_data")

@@ -39,13 +39,15 @@ class AudioLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["asset"]["name"]
+        product_name = context["subset"]["name"]
 
-        asset_name = plugin.prepare_scene_name(asset, subset)
-        unique_number = plugin.get_unique_number(asset, subset)
-        group_name = plugin.prepare_scene_name(asset, subset, unique_number)
-        namespace = namespace or f"{asset}_{unique_number}"
+        asset_name = plugin.prepare_scene_name(folder_name, product_name)
+        unique_number = plugin.get_unique_number(folder_name, product_name)
+        group_name = plugin.prepare_scene_name(
+            folder_name, product_name, unique_number
+        )
+        namespace = namespace or f"{folder_name}_{unique_number}"
 
         avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
         if not avalon_container:
@@ -85,7 +87,7 @@ class AudioLoader(plugin.AssetLoader):
             "libpath": libpath,
             "asset_name": asset_name,
             "parent": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
+            "productType": context["subset"]["data"]["family"],
             "objectName": group_name,
             "audio": audio
         }
@@ -94,7 +96,7 @@ class AudioLoader(plugin.AssetLoader):
         self[:] = objects
         return [objects]
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """Update an audio strip in the sequence editor.
 
         Arguments:
@@ -103,14 +105,15 @@ class AudioLoader(plugin.AssetLoader):
             representation (openpype:representation-1.0): Representation to
                 update, from `host.ls()`.
         """
+        repre_doc = context["representation"]
         object_name = container["objectName"]
         asset_group = bpy.data.objects.get(object_name)
-        libpath = Path(get_representation_path(representation))
+        libpath = Path(get_representation_path(repre_doc))
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(representation, indent=2),
+            pformat(repre_doc, indent=2),
         )
 
         assert asset_group, (
@@ -173,8 +176,8 @@ class AudioLoader(plugin.AssetLoader):
         window_manager.windows[-1].screen.areas[0].type = old_type
 
         metadata["libpath"] = str(libpath)
-        metadata["representation"] = str(representation["_id"])
-        metadata["parent"] = str(representation["parent"])
+        metadata["representation"] = str(repre_doc["_id"])
+        metadata["parent"] = str(repre_doc["parent"])
         metadata["audio"] = new_audio
 
     def exec_remove(self, container: Dict) -> bool:

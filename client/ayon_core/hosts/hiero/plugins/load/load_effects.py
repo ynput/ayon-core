@@ -157,19 +157,19 @@ class LoadEffects(load.LoaderPlugin):
 
         return loaded
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """ Updating previously loaded effects
         """
+        version_doc = context["version"]
+        repre_doc = context["representation"]
         active_track = container["_item"]
-        file = get_representation_path(representation).replace("\\", "/")
+        file = get_representation_path(repre_doc).replace("\\", "/")
 
         # get main variables
         name = container['name']
         namespace = container['namespace']
 
         # get timeline in out data
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
         version_data = version_doc["data"]
         clip_in = version_data["clipIn"]
         clip_out = version_data["clipOut"]
@@ -197,7 +197,7 @@ class LoadEffects(load.LoaderPlugin):
         data_imprint = {
             "objectName": object_name,
             "name": name,
-            "representation": str(representation["_id"]),
+            "representation": str(repre_doc["_id"]),
             "children_names": []
         }
 
@@ -256,8 +256,8 @@ class LoadEffects(load.LoaderPlugin):
         else:
             return input
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         pass

@@ -43,7 +43,7 @@ class InventoryModel(TreeModel):
         "Name",
         "version",
         "count",
-        "family",
+        "productType",
         "group",
         "loader",
         "objectName",
@@ -140,8 +140,8 @@ class InventoryModel(TreeModel):
                 return qtawesome.icon("fa.file-o", color=color)
 
             if index.column() == 3:
-                # Family icon
-                return item.get("familyIcon", None)
+                # Product type icon
+                return item.get("productTypeIcon", None)
 
             column_name = self.Columns[index.column()]
 
@@ -174,7 +174,7 @@ class InventoryModel(TreeModel):
         return super(InventoryModel, self).data(index, role)
 
     def set_hierarchy_view(self, state):
-        """Set whether to display subsets in hierarchy view."""
+        """Set whether to display products in hierarchy view."""
         state = bool(state)
 
         if state != self._hierarchy_view:
@@ -297,7 +297,7 @@ class InventoryModel(TreeModel):
                 self.add_child(item_node, parent=group_node)
 
         # TODO Use product icons
-        family_icon = qtawesome.icon(
+        product_type_icon = qtawesome.icon(
             "fa.folder", color="#0091B2"
         )
         # Prepare site sync specific data
@@ -313,18 +313,18 @@ class InventoryModel(TreeModel):
             subset = group_dict["subset"]
             asset = group_dict["asset"]
 
-            # Get the primary family
+            # Get product type
             maj_version, _ = schema.get_schema_version(subset["schema"])
             if maj_version < 3:
                 src_doc = version
             else:
                 src_doc = subset
 
-            prim_family = src_doc["data"].get("family")
-            if not prim_family:
+            product_type = src_doc["data"].get("family")
+            if not product_type:
                 families = src_doc["data"].get("families")
                 if families:
-                    prim_family = families[0]
+                    product_type = families[0]
 
             # Store the highest available version so the model can know
             # whether current version is currently up-to-date.
@@ -340,8 +340,8 @@ class InventoryModel(TreeModel):
             group_node["representation"] = repre_id
             group_node["version"] = version["name"]
             group_node["highest_version"] = highest_version["name"]
-            group_node["family"] = prim_family or ""
-            group_node["familyIcon"] = family_icon
+            group_node["productType"] = product_type or ""
+            group_node["productTypeIcon"] = product_type_icon
             group_node["count"] = len(group_containers)
             group_node["isGroupNode"] = True
             group_node["group"] = subset["data"].get("subsetGroup")

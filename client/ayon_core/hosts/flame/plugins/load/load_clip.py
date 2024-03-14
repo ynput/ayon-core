@@ -11,7 +11,7 @@ from ayon_core.lib.transcoding import (
 
 
 class LoadClip(opfapi.ClipLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
@@ -31,14 +31,14 @@ class LoadClip(opfapi.ClipLoader):
     # settings
     reel_group_name = "OpenPype_Reels"
     reel_name = "Loaded"
-    clip_name_template = "{asset}_{subset}<_{output}>"
+    clip_name_template = "{folder[name]}_{product[name]}<_{output}>"
 
     """ Anatomy keys from version context data and dynamically added:
         - {layerName} - original layer name token
         - {layerUID} - original layer UID token
         - {originalBasename} - original clip name taken from file
     """
-    layer_rename_template = "{asset}_{subset}<_{output}>"
+    layer_rename_template = "{folder[name]}_{product[name]}<_{output}>"
     layer_rename_patterns = []
 
     def load(self, context, name, namespace, options):
@@ -70,7 +70,7 @@ class LoadClip(opfapi.ClipLoader):
         self.log.info("Loading with colorspace: `{}`".format(colorspace))
 
         # create workfile path
-        workfile_dir = os.environ["AVALON_WORKDIR"]
+        workfile_dir = os.environ["AYON_WORKDIR"]
         openclip_dir = os.path.join(
             workfile_dir, clip_name
         )
@@ -180,27 +180,27 @@ class LoadClip(opfapi.ClipLoader):
         # unwrapping segment from input clip
         pass
 
-    # def switch(self, container, representation):
-    #     self.update(container, representation)
+    # def switch(self, container, context):
+    #     self.update(container, context)
 
-    # def update(self, container, representation):
+    # def update(self, container, context):
     #     """ Updating previously loaded clips
     #     """
-
     #     # load clip to timeline and get main variables
+    #     repre_doc = context['representation']
     #     name = container['name']
     #     namespace = container['namespace']
     #     track_item = phiero.get_track_items(
     #         track_item_name=namespace)
     #     version = io.find_one({
     #         "type": "version",
-    #         "_id": representation["parent"]
+    #         "_id": repre_doc["parent"]
     #     })
     #     version_data = version.get("data", {})
     #     version_name = version.get("name", None)
     #     colorspace = version_data.get("colorspace", None)
     #     object_name = "{}_{}".format(name, namespace)
-    #     file = get_representation_path(representation).replace("\\", "/")
+    #     file = get_representation_path(repre_doc).replace("\\", "/")
     #     clip = track_item.source()
 
     #     # reconnect media to new path
@@ -225,7 +225,7 @@ class LoadClip(opfapi.ClipLoader):
 
     #     # add variables related to version context
     #     data_imprint.update({
-    #         "representation": str(representation["_id"]),
+    #         "representation": str(repre_doc["_id"]),
     #         "version": version_name,
     #         "colorspace": colorspace,
     #         "objectName": object_name

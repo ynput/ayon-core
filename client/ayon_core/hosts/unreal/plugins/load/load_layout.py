@@ -369,16 +369,18 @@ class LayoutLoader(plugin.Loader):
             if representation not in repr_loaded:
                 repr_loaded.append(representation)
 
-                family = element.get('family')
+                product_type = element.get("product_type")
+                if product_type is None:
+                    product_type = element.get("family")
                 loaders = loaders_from_representation(
                     all_loaders, representation)
 
                 loader = None
 
                 if repr_format == 'fbx':
-                    loader = self._get_fbx_loader(loaders, family)
+                    loader = self._get_fbx_loader(loaders, product_type)
                 elif repr_format == 'abc':
-                    loader = self._get_abc_loader(loaders, family)
+                    loader = self._get_abc_loader(loaders, product_type)
 
                 if not loader:
                     self.log.error(
@@ -422,12 +424,12 @@ class LayoutLoader(plugin.Loader):
 
                     actors = []
 
-                    if family == 'model':
+                    if product_type == 'model':
                         actors, _ = self._process_family(
                             assets, 'StaticMesh', transform, basis,
                             sequence, inst
                         )
-                    elif family == 'rig':
+                    elif product_type == 'rig':
                         actors, bindings = self._process_family(
                             assets, 'SkeletalMesh', transform, basis,
                             sequence, inst
@@ -481,7 +483,7 @@ class LayoutLoader(plugin.Loader):
         for asset_container in asset_containers:
             package_path = asset_container.get_editor_property('package_path')
             family = EditorAssetLibrary.get_metadata_tag(
-                asset_container.get_asset(), 'family')
+                asset_container.get_asset(), "family")
             assets = EditorAssetLibrary.list_assets(
                 str(package_path), recursive=False)
             if family == 'model':
@@ -501,7 +503,7 @@ class LayoutLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -659,7 +661,7 @@ class LayoutLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
+    def update(self, container, context):
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
 
@@ -675,9 +677,11 @@ class LayoutLoader(plugin.Loader):
         root = "/Game/Ayon"
 
         asset_dir = container.get('namespace')
-        context = representation.get("context")
 
-        hierarchy = context.get('hierarchy').split("/")
+        asset_doc = context["asset"]
+        repre_doc = context["representation"]
+
+        hierarchy = list(asset_doc["data"]["parents"])
 
         sequence = None
         master_level = None
@@ -726,13 +730,13 @@ class LayoutLoader(plugin.Loader):
 
         EditorAssetLibrary.delete_directory(f"{asset_dir}/animations/")
 
-        source_path = get_representation_path(representation)
+        source_path = get_representation_path(repre_doc)
 
         loaded_assets = self._process(source_path, asset_dir, sequence)
 
         data = {
-            "representation": str(representation["_id"]),
-            "parent": str(representation["parent"]),
+            "representation": str(repre_doc["_id"]),
+            "parent": str(repre_doc["parent"]),
             "loaded_assets": loaded_assets
         }
         imprint(

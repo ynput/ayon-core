@@ -359,7 +359,7 @@
 #
 #         if mongo_changes_bulk:
 #             dbcon = AvalonMongoDB()
-#             dbcon.Session["AVALON_PROJECT"] = project_name
+#             dbcon.Session["AYON_PROJECT_NAME"] = project_name
 #             dbcon.install()
 #             dbcon.bulk_write(mongo_changes_bulk)
 #             dbcon.uninstall()
@@ -401,7 +401,7 @@
 #         import ftrack_api
 #
 #         session = ftrack_api.Session()
-#         subset_name = data["subset"]["name"]
+#         product_name = data["subset"]["name"]
 #         versions = {
 #             '"{}"'.format(version_doc["name"])
 #             for version_doc in data["versions"]
@@ -414,7 +414,7 @@
 #                 " and version in ({})"
 #             ).format(
 #                 asset_ftrack_id,
-#                 subset_name,
+#                 product_name,
 #                 ",".join(versions)
 #             )
 #         ).all()

@@ -7,7 +7,7 @@ class CreateTyCache(plugin.MaxCreator):
     """Creator plugin for TyCache."""
     identifier = "io.openpype.creators.max.tycache"
     label = "TyCache"
-    family = "tycache"
+    product_type = "tycache"
     icon = "gear"
 
 
