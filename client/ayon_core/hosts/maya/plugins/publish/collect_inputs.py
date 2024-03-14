@@ -180,6 +180,11 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
             return copy.deepcopy(scene_containers)
         else:
             # Get the members of the layer
+            renderlayer = next((i for i in cmds.ls(type='renderLayer')
+                             if i.endswith(renderlayer)), None)
+            if renderlayer is None:
+                return copy.deepcopy(scene_containers)
+
             members = cmds.editRenderLayerMembers(renderlayer,
                                                   query=True,
                                                   fullNames=True) or []
