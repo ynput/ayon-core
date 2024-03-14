@@ -476,16 +476,16 @@ def update_container(container, version=-1):
     )
     if isinstance(version, HeroVersionType):
         new_version = ayon_api.get_hero_version_by_product_id(
-            project_name, current_version["productId"], fields={"id"}
+            project_name, current_version["productId"]
         )
     elif version == -1:
         new_version = ayon_api.get_last_version_by_product_id(
-            project_name, current_version["productId"], fields={"id"}
+            project_name, current_version["productId"]
         )
 
     else:
         new_version = ayon_api.get_version_by_name(
-            project_name, version, current_version["productId"], fields={"id"}
+            project_name, version, current_version["productId"]
         )
 
     if new_version is None:
