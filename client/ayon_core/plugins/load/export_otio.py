@@ -172,14 +172,11 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             item["widget"].setChecked(True)
 
     def set_output_path(self):
-        file_dialog = QtWidgets.QFileDialog()
-        file_dialog.setNameFilter("OTIO Files (*.otio)")
-        file_dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
-        if file_dialog.exec_():
-            selected_files = file_dialog.selectedFiles()
-            output_path = selected_files[0] if selected_files else None
-            if output_path:
-                self.lineedit_output_path.setText(output_path)
+        file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            None, "Save OTIO file.", "", "OTIO Files (*.otio)"
+        )
+        if file_path:
+            self.lineedit_output_path.setText(file_path)
 
     def export(self):
         output_path = self.lineedit_output_path.text()
