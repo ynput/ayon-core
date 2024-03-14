@@ -98,15 +98,27 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
             product_name = inst.data["productName"]
             task_name = inst.data.get("task")
 
-            frame_start = int(inst.data["frameStart"])
-            frame_end = int(inst.data["frameEnd"])
+            ar = unreal.AssetRegistryHelpers.get_asset_registry()
+            sequence = (ar.get_asset_by_object_path(inst.data["sequence"]).
+                        get_asset())
+            if not sequence:
+                raise RuntimeError(f"Cannot find {inst.data['sequence']}")
 
+            # current frame range - might be different from created
+            frame_start = sequence.get_playback_start()
+            # in Unreal 1 of 60 >> 0-59
+            frame_end = sequence.get_playback_end() - 1
+
+            inst.data["frameStart"] = frame_start
+            inst.data["frameEnd"] = frame_end
+
+            master_sequence_name = inst.data["output"]
             frame_placeholder = "#" * output_settings.zero_pad_frame_numbers
             exp_file_name = self._get_expected_file_name(
                 output_settings.file_name_format,
                 ext,
                 frame_placeholder,
-                inst.data["output"])
+                master_sequence_name)
 
             publish_attributes = {}
 
@@ -185,7 +197,7 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
                 _spl = file_name.split("#")
                 _len = (len(_spl) - 1)
                 placeholder = "#"*_len
-                for frame in range(start, end):
+                for frame in range(start, end+1):
                     new_file_name = file_name.replace(placeholder,
                                                       str(frame).zfill(_len))
                     path = os.path.join(base_dir, new_file_name)
