@@ -92,6 +92,142 @@ class AnatomyStringTemplate(StringTemplate):
         return AnatomyTemplateResult(result, rootless_path)
 
 
+class TemplateItem:
+    """Template item under template category.
+
+    This item data usually contains 'file' and 'directory' by anatomy
+        definition, enhanced by common data ('frame_padding',
+        'version_padding'). It adds 'path' key which is combination of
+        'file' and 'directory' values.
+
+    Args:
+        anatomy_templates (AnatomyTemplates): Anatomy templates object.
+        template_data (dict[str, Any]): Templates data.
+
+    """
+    def __init__(self, anatomy_templates, template_data):
+        template_data = copy.deepcopy(template_data)
+
+        # Backwards compatibility for 'folder'
+        # TODO remove when deprecation not needed anymore
+        if (
+            "folder" not in template_data
+            and "directory" in template_data
+        ):
+            template_data["folder"] = template_data["directory"]
+
+        # Add 'path' key
+        if (
+            "path" not in template_data
+            and "file" in template_data
+            and "directory" in template_data
+        ):
+            template_data["path"] = "/".join(
+                (template_data["directory"], template_data["file"])
+            )
+
+        for key, value in template_data.items():
+            if isinstance(value, str):
+                value = AnatomyStringTemplate(anatomy_templates, value)
+            template_data[key] = value
+
+        self._template_data = template_data
+        self._anatomy_templates = anatomy_templates
+
+    def __getitem__(self, key):
+        return self._template_data[key]
+
+    def get(self, key, default=None):
+        return self._template_data.get(key, default)
+
+    def format(self, data, strict=True):
+        output = {}
+        for key, value in self._template_data.items():
+            if isinstance(value, AnatomyStringTemplate):
+                value = value.format(data)
+            output[key] = value
+        return output
+
+
+class TemplateCategory:
+    """Template category.
+
+    Template category groups template items for specific usage. Categories
+        available at the moment are 'work', 'publish', 'hero', 'delivery',
+        'staging' and 'others'.
+
+    Args:
+        anatomy_templates (AnatomyTemplates): Anatomy templates object.
+        category_name (str): Category name.
+        category_data (dict[str, Any]): Category data.
+
+    """
+    def __init__(self, anatomy_templates, category_name, category_data):
+        for key, value in category_data.items():
+            if isinstance(value, dict):
+                value = TemplateItem(anatomy_templates, value)
+            elif isinstance(value, str):
+                value = AnatomyStringTemplate(anatomy_templates, value)
+            category_data[key] = value
+        self._name = category_name
+        self._name_prefix = "{}_".format(category_name)
+        self._category_data = category_data
+
+    def __getitem__(self, key):
+        new_key = self._convert_getter_key(key)
+        return self._category_data[new_key]
+
+    def get(self, key, default=None):
+        new_key = self._convert_getter_key(key)
+        return self._category_data.get(new_key, default)
+
+    @property
+    def name(self):
+        """Category name.
+
+        Returns:
+            str: Category name.
+
+        """
+        return self._name
+
+    def format(self, data, strict=True):
+        output = {}
+        for key, value in self._category_data.items():
+            if isinstance(value, TemplateItem):
+                value = value.format(data, strict)
+            elif isinstance(value, AnatomyStringTemplate):
+                value = value.format(data)
+
+            output[key] = value
+        return output
+
+    def _convert_getter_key(self, key):
+        """Convert key for backwards compatibility.
+
+        OpenPype compatible settings did contain template keys prefixed by
+        category name e.g. 'publish_render' which should be just 'render'.
+
+        This method keeps the backwards compatibility but only if the key
+        starts with the category name prefix and the key is available in
+        roots.
+
+        Args:
+            key (str): Key to be converted.
+
+        Returns:
+            str: Converted string.
+
+        """
+        if key in self._category_data:
+            return key
+        if key.startswith(self._name_prefix):
+            new_key = key[len(self._name_prefix):]
+            if new_key in self._category_data:
+                return new_key
+        return key
+
+
 class AnatomyTemplates(TemplatesDict):
     inner_key_pattern = re.compile(r"(\{@.*?[^{}0]*\})")
     inner_key_name_pattern = re.compile(r"\{@(.*?[^{}0]*)\}")
