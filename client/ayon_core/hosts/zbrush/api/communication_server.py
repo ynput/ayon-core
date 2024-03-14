@@ -346,7 +346,7 @@ class QtZbrushRpc(BaseZbrushRpc):
     async def scene_inventory_tool(self):
         """Open Scene Inventory tool.
 
-        Function can't confirm if tool was opened becauise one part of
+        Function can't confirm if tool was opened because one part of
         SceneInventory initialization is calling websocket request to host but
         host can't response because is waiting for response from this call.
         """
