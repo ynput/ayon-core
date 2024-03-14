@@ -13,6 +13,8 @@ def __main__( deadlinePlugin ):
     # Retrieve the settings from the job so we know which branch/stream/target this is.
     #
     stream      = deadlinePlugin.GetPluginInfoEntry("PerforceStream")
+    if not stream:
+        print("Perforce info not collected, skipping!")
     changelist  = int(deadlinePlugin.GetPluginInfoEntryWithDefault("PerforceChangelist", "0"))
     gamePath    = deadlinePlugin.GetPluginInfoEntry("PerforceGamePath")
     projectFile = deadlinePlugin.GetPluginInfoEntry("ProjectFile")
