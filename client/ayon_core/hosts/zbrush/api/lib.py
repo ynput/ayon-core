@@ -196,7 +196,6 @@ def export_tool(filepath: str, subdivision_level: int = 0):
     # TODO: If this overrides a tool's subdiv level it should actually revert
     #   it to the original level so that subsequent publishes behave the same
     filepath = filepath.replace("\\", "/")
-    ext = os.path.splitext(filepath)[-1].strip(".")
     # Only set any subdiv level if subdiv level != 0
     set_subdivs_script = ""
     if subdivision_level != 0:

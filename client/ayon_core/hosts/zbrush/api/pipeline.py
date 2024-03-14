@@ -64,7 +64,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def get_current_folder_path(self):
         """
         Returns:
-            Union[str, None]: Current asset name.
+            Union[str, None]: Current folder path.
         """
 
         return self.get_current_context().get("folder_path")
@@ -144,7 +144,7 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     def list_instances(self):
         """Get all AYON instances."""
         # Figure out how to deal with this
-        return get_instance_workfile_metadata(ZBRUSH_SECTION_NAME_INSTANCES)
+        return get_instance_workfile_metadata()
 
     def write_instances(self, data):
         """Write all AYON instances"""
@@ -159,7 +159,9 @@ class ZbrushHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return get_containers()
 
     def initial_app_launch(self):
-        """The actions should be done when Zbrush launches.
+        """Triggers on launch of the communication server for Zbrush.
+
+        Usually this aligns roughly with the start of Zbrush.
         """
         #TODO: figure out how to deal with the last workfile issue
         set_current_file()
@@ -206,12 +208,19 @@ def containerise(
 
     containers.append(data)
 
-    write_load_metadata(ZBRUSH_SECTION_NAME_CONTAINERS, containers)
+    write_load_metadata(containers)
     return data
 
 
 def save_current_workfile_context(context):
-    """Function to save current workfile context data
+    """Save current workfile context data to `.zbrush_metadata/{workfile}/key`
+
+    This persists the current in-memory context to be set for a specific
+    workfile on disk. Usually used on save to persist the local sessions'
+    workfile context on save.
+
+    The context data includes things like the project name, folder path,
+    etc.
 
     Args:
         context (dict): context data
@@ -222,8 +231,11 @@ def save_current_workfile_context(context):
 
 def write_context_metadata(metadata_key, context):
     """Write context data into the related json
-    which stores in zbrush_metadata folder
+    which stores in .zbrush_metadata/key folder
     in the project work directory.
+
+    The context data includes the project name, folder path
+    and task name.
 
     Args:
         metadata_key (str): metadata key
@@ -249,7 +261,10 @@ def write_context_metadata(metadata_key, context):
 
 def write_workfile_metadata(metadata_key, data=None):
     """Function to write workfile metadata(such as creator's context data
-    and instance data)
+    and instance data) in .zbrushmetadata/{workfile}/{metadata_key} folder
+    This persists the current in-memory instance/creator's context data
+    to be set for a specific workfile on disk. Usually used on save to
+    persist updating instance data and context data used in publisher.
 
     Args:
         metadata_key (str): metadata key
@@ -275,12 +290,16 @@ def write_workfile_metadata(metadata_key, data=None):
 
 
 def get_current_workfile_context():
-    """Function to get the current context from the related json file
+    """Function to get the current context data from the related
+    json file in .zbrush_metadata/context folder
+
+    The current context data includes thing like project name,
+    folder path and task name.
 
     Returns:
         list: list of context data
     """
-    return get_load_context_metadata(ZBRUSH_SECTION_NAME_CONTEXT)
+    return get_load_context_metadata()
 
 
 def get_containers():
@@ -301,9 +320,11 @@ def get_containers():
     return output
 
 
-def write_load_metadata(metadata_key, data):
-    """Write/Edit the container data into the related json file which
-    stores in zbrush_metadata folder
+def write_load_metadata(data):
+    """Write/Edit the container data into the related json file("{subset_name}.json")
+    which stores in .zbrush_metadata/{workfile}/containers folder.
+    This persists the current in-memory containers data
+    to be set for updating and switching assets in scene inventory.
 
     Args:
         metadata_key (str): metadata key for container
@@ -317,7 +338,7 @@ def write_load_metadata(metadata_key, data):
     name = next((d["name"] for d in data), None)
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
-        current_file, metadata_key).replace(
+        current_file, ZBRUSH_SECTION_NAME_CONTAINERS).replace(
             "\\", "/"
         )
     os.makedirs(json_dir, exist_ok=True)
@@ -330,13 +351,13 @@ def write_load_metadata(metadata_key, data):
         file.close()
 
 
-def get_load_context_metadata(metadata_key):
+def get_load_context_metadata():
     """Get the context data from the related json file
-    ("context.json") which stores in zbrush_metadata folder
-    in the project work directory.
+    ("context.json") which stores in .zbrush_metadata/context
+    folder in the project work directory.
 
-    Args:
-        metadata_key (str): metadata key for context data
+    The context data includes the project name, folder path and
+    task name.
 
     Returns:
         list: context data
@@ -344,7 +365,7 @@ def get_load_context_metadata(metadata_key):
     file_content = []
     work_dir = get_workdir()
     json_dir = os.path.join(
-        work_dir, ".zbrush_metadata", metadata_key).replace(
+        work_dir, ".zbrush_metadata", ZBRUSH_SECTION_NAME_CONTEXT).replace(
             "\\", "/"
         )
     if not os.path.exists(json_dir):
@@ -360,10 +381,16 @@ def get_load_context_metadata(metadata_key):
 
 
 def get_load_workfile_metadata(metadata_key):
-    """Get to load the workfile metadata(such as
+    """Get to load the workfile json metadata(such as
     creator's context data and container data) which stores in
-    zbrush_metadata folder in the project
+    zbrush_metadata/{workfile}/{metadata_key} folder in the project
     work directory.
+    It mainly supports to the metadata_key below:
+    ZBRUSH_METADATA_CREATE_CONTEXT: loading create_context.json where
+        stores the data with publish_attributes(e.g. whether the
+        optional validator is enabled.)
+    ZBRUSH_SECTION_NAME_CONTAINERS: loading {subset_name}.json where
+        includes all the loaded asset data to the zbrush scene.
 
     Args:
         metadata_key (str): name of the metadata key
@@ -395,13 +422,13 @@ def get_load_workfile_metadata(metadata_key):
     return file_content
 
 
-def get_instance_workfile_metadata(metadata_key):
-    """Get instance data from the related metadata json ("instances.json")
-    which stores in zbrush_metadata folder in the project
-    work directory.
+def get_instance_workfile_metadata():
+    """Get instance data from the related metadata json("instances.json")
+    which stores in .zbrush_metadata/{workfile}/instances folder
+    in the project work directory.
 
-    Args:
-        metadata_key (str): name of the metadata
+    Instance data includes the info like the workfile instance
+    and any instances created by the users for publishing.
 
     Returns:
         dict: instance data
@@ -414,7 +441,7 @@ def get_instance_workfile_metadata(metadata_key):
     work_dir = get_workdir()
     json_dir = os.path.join(
         work_dir, ".zbrush_metadata",
-        current_file, metadata_key).replace(
+        current_file, ZBRUSH_SECTION_NAME_INSTANCES).replace(
             "\\", "/"
         )
     if not os.path.exists(json_dir) or not os.listdir(json_dir):
@@ -427,7 +454,8 @@ def get_instance_workfile_metadata(metadata_key):
 
 
 def remove_container_data(name):
-    """Function to remove the container data
+    """Function to remove the specific container data from
+    {subset_name}.json in .zbrush_metadata/{workfile}/containers folder
 
     Args:
         name (str): object name stored in the container
@@ -473,7 +501,8 @@ def remove_tmp_data():
 
 def copy_ayon_data(filepath):
     """Copy any ayon-related data(
-        such as instances, create-context, cotnainer)
+        such as instances, create-context, cotnainers)
+        from the previous workfile to the new one
         when incrementing and saving workfile.
 
     Args:
@@ -535,7 +564,8 @@ def set_current_file(filepath=None):
 
 def imprint(container, representation_id):
     """Function to update the container data from
-    the related json file when updating or switching asset(s)
+    the related json file in .zbrushmetadata/{workfile}/container
+    when updating or switching asset(s)
 
     Args:
         container (str): container
