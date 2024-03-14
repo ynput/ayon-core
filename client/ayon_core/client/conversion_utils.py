@@ -908,7 +908,7 @@ def convert_create_version_to_v4(version, con):
         converted_version["attrib"] = attribs
 
     if data:
-        converted_version["data"] = attribs
+        converted_version["data"] = data
 
     return converted_version
 
@@ -951,7 +951,7 @@ def convert_create_hero_version_to_v4(hero_version, project_name, con):
         converted_version["attrib"] = attribs
 
     if data:
-        converted_version["data"] = attribs
+        converted_version["data"] = data
 
     return converted_version
 
