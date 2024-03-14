@@ -77,8 +77,8 @@ def check_destination_path(
     """
 
     anatomy_data.update(datetime_data)
-    anatomy_filled = anatomy.format_all(anatomy_data)
-    dest_path = anatomy_filled["delivery"][template_name]
+    path_template = anatomy.get_template("delivery", template_name, "path")
+    dest_path = path_template.format(anatomy_data)
     report_items = collections.defaultdict(list)
 
     if not dest_path.solved:
@@ -150,7 +150,7 @@ def deliver_single_file(
     if format_dict:
         anatomy_data = copy.deepcopy(anatomy_data)
         anatomy_data["root"] = format_dict["root"]
-    template_obj = anatomy.templates_obj["delivery"][template_name]
+    template_obj = anatomy.get_template("delivery", template_name, "path")
     delivery_path = template_obj.format_strict(anatomy_data)
 
     # Backwards compatibility when extension contained `.`
@@ -220,8 +220,9 @@ def deliver_sequence(
         report_items["Source file was not found"].append(msg)
         return report_items, 0
 
-    delivery_templates = anatomy.templates.get("delivery") or {}
-    delivery_template = delivery_templates.get(template_name)
+    delivery_template = anatomy.get_template(
+        "delivery", template_name, "path"
+    )
     if delivery_template is None:
         msg = (
             "Delivery template \"{}\" in anatomy of project \"{}\""
@@ -277,7 +278,7 @@ def deliver_sequence(
     anatomy_data["frame"] = frame_indicator
     if format_dict:
         anatomy_data["root"] = format_dict["root"]
-    template_obj = anatomy.templates_obj["delivery"][template_name]
+    template_obj = anatomy.get_template("delivery", template_name, "path")
     delivery_path = template_obj.format_strict(anatomy_data)
 
     delivery_path = os.path.normpath(delivery_path.replace("\\", "/"))
