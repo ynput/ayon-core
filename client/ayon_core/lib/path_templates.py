@@ -1,8 +1,6 @@
 import os
 import re
-import copy
 import numbers
-import collections
 
 import six
 
@@ -10,44 +8,6 @@ KEY_PATTERN = re.compile(r"(\{.*?[^{0]*\})")
 KEY_PADDING_PATTERN = re.compile(r"([^:]+)\S+[><]\S+")
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
-
-
-def merge_dict(main_dict, enhance_dict):
-    """Merges dictionaries by keys.
-
-    Function call itself if value on key is again dictionary.
-
-    Args:
-        main_dict (dict): First dict to merge second one into.
-        enhance_dict (dict): Second dict to be merged.
-
-    Returns:
-        dict: Merged result.
-
-    .. note:: does not overrides whole value on first found key
-              but only values differences from enhance_dict
-
-    """
-    for key, value in enhance_dict.items():
-        if key not in main_dict:
-            main_dict[key] = value
-        elif isinstance(value, dict) and isinstance(main_dict[key], dict):
-            main_dict[key] = merge_dict(main_dict[key], value)
-        else:
-            main_dict[key] = value
-    return main_dict
-
-
-class TemplateMissingKey(Exception):
-    """Exception for cases when key does not exist in template."""
-
-    msg = "Template key does not exist: `{}`."
-
-    def __init__(self, parents):
-        parent_join = "".join(["[\"{0}\"]".format(key) for key in parents])
-        super(TemplateMissingKey, self).__init__(
-            self.msg.format(parent_join)
-        )
 
 
 class TemplateUnsolved(Exception):
@@ -240,137 +200,6 @@ class StringTemplate(object):
                 new_parts.extend(tmp_parts[idx])
         return new_parts
 
-
-class TemplatesDict(object):
-    def __init__(self, templates=None):
-        self._raw_templates = None
-        self._templates = None
-        self._objected_templates = None
-        self.set_templates(templates)
-
-    def set_templates(self, templates):
-        if templates is None:
-            self._raw_templates = None
-            self._templates = None
-            self._objected_templates = None
-        elif isinstance(templates, dict):
-            self._raw_templates = copy.deepcopy(templates)
-            self._templates = templates
-            self._objected_templates = self.create_objected_templates(
-                templates)
-        else:
-            raise TypeError("<{}> argument must be a dict, not {}.".format(
-                self.__class__.__name__, str(type(templates))
-            ))
-
-    def __getitem__(self, key):
-        return self.objected_templates[key]
-
-    def get(self, key, *args, **kwargs):
-        return self.objected_templates.get(key, *args, **kwargs)
-
-    @property
-    def raw_templates(self):
-        return self._raw_templates
-
-    @property
-    def templates(self):
-        return self._templates
-
-    @property
-    def objected_templates(self):
-        return self._objected_templates
-
-    def _create_template_object(self, template):
-        """Create template object from a template string.
-
-        Separated into method to give option change class of templates.
-
-        Args:
-            template (str): Template string.
-
-        Returns:
-            StringTemplate: Object of template.
-        """
-
-        return StringTemplate(template)
-
-    def create_objected_templates(self, templates):
-        if not isinstance(templates, dict):
-            raise TypeError("Expected dict object, got {}".format(
-                str(type(templates))
-            ))
-
-        objected_templates = copy.deepcopy(templates)
-        inner_queue = collections.deque()
-        inner_queue.append(objected_templates)
-        while inner_queue:
-            item = inner_queue.popleft()
-            if not isinstance(item, dict):
-                continue
-            for key in tuple(item.keys()):
-                value = item[key]
-                if isinstance(value, six.string_types):
-                    item[key] = self._create_template_object(value)
-                elif isinstance(value, dict):
-                    inner_queue.append(value)
-        return objected_templates
-
-    def _format_value(self, value, data):
-        if isinstance(value, StringTemplate):
-            return value.format(data)
-
-        if isinstance(value, dict):
-            return self._solve_dict(value, data)
-        return value
-
-    def _solve_dict(self, templates, data):
-        """ Solves templates with entered data.
-
-        Args:
-            templates (dict): All templates which will be formatted.
-            data (dict): Containing keys to be filled into template.
-
-        Returns:
-            dict: With `TemplateResult` in values containing filled or
-                partially filled templates.
-        """
-        output = collections.defaultdict(dict)
-        for key, value in templates.items():
-            output[key] = self._format_value(value, data)
-
-        return output
-
-    def format(self, in_data, only_keys=True, strict=True):
-        """ Solves templates based on entered data.
-
-        Args:
-            data (dict): Containing keys to be filled into template.
-            only_keys (bool, optional): Decides if environ will be used to
-                fill templates or only keys in data.
-
-        Returns:
-            TemplatesResultDict: Output `TemplateResult` have `strict`
-                attribute set to True so accessing unfilled keys in templates
-                will raise exceptions with explaned error.
-        """
-        # Create a copy of inserted data
-        data = copy.deepcopy(in_data)
-
-        # Add environment variable to data
-        if only_keys is False:
-            for key, val in os.environ.items():
-                env_key = "$" + key
-                if env_key not in data:
-                    data[env_key] = val
-
-        solved = self._solve_dict(self.objected_templates, data)
-
-        output = TemplatesResultDict(solved)
-        output.strict = strict
-        return output
-
-
 class TemplateResult(str):
     """Result of template format with most of information in.
 
@@ -379,8 +208,8 @@ class TemplateResult(str):
             only used keys.
         solved (bool): For check if all required keys were filled.
         template (str): Original template.
-        missing_keys (list): Missing keys that were not in the data. Include
-            missing optional keys.
+        missing_keys (Iterable[str]): Missing keys that were not in the data.
+            Include missing optional keys.
         invalid_types (dict): When key was found in data, but value had not
             allowed DataType. Allowed data types are `numbers`,
             `str`(`basestring`) and `dict`. Dictionary may cause invalid type
@@ -443,99 +272,6 @@ class TemplateResult(str):
             self.missing_keys,
             self.invalid_types
         )
-
-
-class TemplatesResultDict(dict):
-    """Holds and wrap TemplateResults for easy bug report."""
-
-    def __init__(self, in_data, key=None, parent=None, strict=None):
-        super(TemplatesResultDict, self).__init__()
-        for _key, _value in in_data.items():
-            if isinstance(_value, dict):
-                _value = self.__class__(_value, _key, self)
-            self[_key] = _value
-
-        self.key = key
-        self.parent = parent
-        self.strict = strict
-        if self.parent is None and strict is None:
-            self.strict = True
-
-    def __getitem__(self, key):
-        if key not in self.keys():
-            hier = self.hierarchy()
-            hier.append(key)
-            raise TemplateMissingKey(hier)
-
-        value = super(TemplatesResultDict, self).__getitem__(key)
-        if isinstance(value, self.__class__):
-            return value
-
-        # Raise exception when expected solved templates and it is not.
-        if self.raise_on_unsolved and hasattr(value, "validate"):
-            value.validate()
-        return value
-
-    @property
-    def raise_on_unsolved(self):
-        """To affect this change `strict` attribute."""
-        if self.strict is not None:
-            return self.strict
-        return self.parent.raise_on_unsolved
-
-    def hierarchy(self):
-        """Return dictionary keys one by one to root parent."""
-        if self.parent is None:
-            return []
-
-        hier_keys = []
-        par_hier = self.parent.hierarchy()
-        if par_hier:
-            hier_keys.extend(par_hier)
-        hier_keys.append(self.key)
-
-        return hier_keys
-
-    @property
-    def missing_keys(self):
-        """Return missing keys of all children templates."""
-        missing_keys = set()
-        for value in self.values():
-            missing_keys |= value.missing_keys
-        return missing_keys
-
-    @property
-    def invalid_types(self):
-        """Return invalid types of all children templates."""
-        invalid_types = {}
-        for value in self.values():
-            invalid_types = merge_dict(invalid_types, value.invalid_types)
-        return invalid_types
-
-    @property
-    def used_values(self):
-        """Return used values for all children templates."""
-        used_values = {}
-        for value in self.values():
-            used_values = merge_dict(used_values, value.used_values)
-        return used_values
-
-    def get_solved(self):
-        """Get only solved key from templates."""
-        result = {}
-        for key, value in self.items():
-            if isinstance(value, self.__class__):
-                value = value.get_solved()
-                if not value:
-                    continue
-                result[key] = value
-
-            elif (
-                not hasattr(value, "solved") or
-                value.solved
-            ):
-                result[key] = value
-        return self.__class__(result, key=self.key, parent=self.parent)
 
 
 class TemplatePartResult:
