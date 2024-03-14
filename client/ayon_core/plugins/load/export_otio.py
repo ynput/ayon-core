@@ -199,7 +199,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             show_message_dialog(
                 "Wrong extension.",
                 (
-                    "Output path needs to end with .otio."
+                    "Output path needs to end with \".otio\"."
                 ),
                 level="critical",
                 parent=self
