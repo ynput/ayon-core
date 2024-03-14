@@ -17,5 +17,8 @@ class ValidateExtendedViewport(pyblish.api.InstancePlugin):
             rt.viewport.activeViewportEx(1)
         except RuntimeError:
             raise PublishValidationError(
-                "Please make sure one viewport is not an extended viewport", title=self.label)
+                "Please make sure at least one viewport is not an extended viewport but a 3dsmax supported viewport "
+                "i.e camera/persp/orthographic view. To rectify it, please go to view in the top menubar, "
+                "go to Views -> Viewports Configuration -> layout and right click on one of the panels to change "
+                "it.", title=self.label)
 
