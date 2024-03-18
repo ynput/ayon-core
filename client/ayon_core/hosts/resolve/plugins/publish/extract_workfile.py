@@ -12,7 +12,7 @@ class ExtractWorkfile(publish.Extractor):
 
     label = "Extract Workfile"
     order = pyblish.api.ExtractorOrder
-    product_types = ["workfile"]
+    families = ["workfile"]
     hosts = ["resolve"]
 
     def process(self, instance):
