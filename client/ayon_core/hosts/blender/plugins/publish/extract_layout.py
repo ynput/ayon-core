@@ -5,7 +5,8 @@ import bpy
 import bpy_extras
 import bpy_extras.anim_utils
 
-from ayon_core.client import get_representation_by_name
+from ayon_api import get_representations
+
 from ayon_core.pipeline import publish
 from ayon_core.hosts.blender.api import plugin
 from ayon_core.hosts.blender.api.pipeline import AVALON_PROPERTY
@@ -134,6 +135,8 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
         fbx_count = 0
 
         project_name = instance.context.data["projectName"]
+        version_ids = set()
+        filtered_assets = []
         for asset in asset_group.children:
             metadata = asset.get(AVALON_PROPERTY)
             if not metadata:
@@ -146,42 +149,47 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
                 )
                 continue
 
+            filtered_assets.append((asset, metadata))
+            version_ids.add(metadata["parent"])
+
+        repre_entities = get_representations(
+            project_name,
+            representation_names={"blend", "fbx", "abc"},
+            version_ids=version_ids,
+            fields={"id", "versionId", "name"}
+        )
+        repre_mapping_by_version_id = {
+            version_id: {}
+            for version_id in version_ids
+        }
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            repre_mapping_by_version_id[version_id][repre_entity["name"]] = (
+                repre_entity
+            )
+
+        for asset, metadata in filtered_assets:
             version_id = metadata["parent"]
             product_type = metadata.get("product_type")
             if product_type is None:
                 product_type = metadata["family"]
 
+            repres_by_name = repre_mapping_by_version_id[version_id]
+
             self.log.debug("Parent: {}".format(version_id))
-            # Get blend reference
-            blend = get_representation_by_name(
-                project_name, "blend", version_id, fields=["_id"]
-            )
-            blend_id = None
-            if blend:
-                blend_id = blend["_id"]
-            # Get fbx reference
-            fbx = get_representation_by_name(
-                project_name, "fbx", version_id, fields=["_id"]
-            )
-            fbx_id = None
-            if fbx:
-                fbx_id = fbx["_id"]
-            # Get abc reference
-            abc = get_representation_by_name(
-                project_name, "abc", version_id, fields=["_id"]
-            )
-            abc_id = None
-            if abc:
-                abc_id = abc["_id"]
-
-            json_element = {}
-            if blend_id:
-                json_element["reference"] = str(blend_id)
-            if fbx_id:
-                json_element["reference_fbx"] = str(fbx_id)
-            if abc_id:
-                json_element["reference_abc"] = str(abc_id)
-
+            # Get blend, fbx and abc reference
+            blend_id = repres_by_name.get("blend", {}).get("id")
+            fbx_id = repres_by_name.get("fbx", {}).get("id")
+            abc_id = repres_by_name.get("abc", {}).get("id")
+            json_element = {
+                key: value
+                for key, value in (
+                    ("reference", blend_id),
+                    ("reference_fbx", fbx_id),
+                    ("reference_abc", abc_id),
+                )
+                if value
+            }
             json_element["product_type"] = product_type
             json_element["instance_name"] = asset.name
             json_element["asset_name"] = metadata["asset_name"]
@@ -228,7 +236,7 @@ class ExtractLayout(publish.Extractor, publish.OptionalPyblishPluginMixin):
 
             json_data.append(json_element)
 
-        folder_name = instance.data["assetEntity"]["name"]
+        folder_name = instance.data["folderEntity"]["name"]
         product_name = instance.data["productName"]
         instance_name = f"{folder_name}_{product_name}"
         json_filename = f"{instance_name}.json"

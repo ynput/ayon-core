@@ -57,7 +57,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
         existing_product_names = self._get_existing_product_names(context)
 
         # from CollectBatchData
-        asset_name = context.data["folderPath"]
+        folder_path = context.data["folderPath"]
         task_name = context.data["task"]
         variant = context.data["variant"]
         project_name = context.data["projectEntity"]["name"]
@@ -120,7 +120,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
                     context,
                     layer,
                     resolved_product_type,
-                    asset_name,
+                    folder_path,
                     product_name,
                     task_name
                 )
@@ -146,7 +146,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
                 context,
                 first_layer,
                 product_type,
-                asset_name,
+                folder_path,
                 product_name,
                 task_name
             )

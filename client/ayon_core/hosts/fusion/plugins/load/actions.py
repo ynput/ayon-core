@@ -27,11 +27,10 @@ class FusionSetFrameRangeLoader(load.LoaderPlugin):
 
         from ayon_core.hosts.fusion.api import lib
 
-        version = context['version']
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        start = version_attributes.get("frameStart", None)
+        end = version_attributes.get("frameEnd", None)
 
         if start is None or end is None:
             print("Skipping setting frame range because start or "
@@ -62,11 +61,9 @@ class FusionSetFrameRangeWithHandlesLoader(load.LoaderPlugin):
 
         from ayon_core.hosts.fusion.api import lib
 
-        version = context['version']
-        version_data = version.get("data", {})
-
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        version_attributes = context["version"]["attrib"]
+        start = version_attributes.get("frameStart", None)
+        end = version_attributes.get("frameEnd", None)
 
         if start is None or end is None:
             print("Skipping setting frame range because start or "
@@ -74,7 +71,7 @@ class FusionSetFrameRangeWithHandlesLoader(load.LoaderPlugin):
             return
 
         # Include handles
-        start -= version_data.get("handleStart", 0)
-        end += version_data.get("handleEnd", 0)
+        start -= version_attributes.get("handleStart", 0)
+        end += version_attributes.get("handleEnd", 0)
 
         lib.update_frame_range(start, end)

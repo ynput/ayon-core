@@ -12,7 +12,6 @@ from abc import ABCMeta, abstractmethod
 import six
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.client import get_asset_name_identifier
 from ayon_core.settings import get_project_settings, get_studio_settings
 from .log import Logger
 from .profiles_filtering import filter_profiles
@@ -1381,7 +1380,7 @@ class EnvironmentPrepData(dict):
         data (dict): Data must contain required keys.
     """
     required_keys = (
-        "project_doc", "asset_doc", "task_name", "app", "anatomy"
+        "project_entity", "folder_entity", "task_entity", "app", "anatomy"
     )
 
     def __init__(self, data):
@@ -1395,7 +1394,7 @@ class EnvironmentPrepData(dict):
         if data.get("env") is None:
             data["env"] = os.environ.copy()
 
-        project_name = data["project_doc"]["name"]
+        project_name = data["project_entity"]["name"]
         if "project_settings" not in data:
             data["project_settings"] = get_project_settings(project_name)
 
@@ -1546,13 +1545,13 @@ def prepare_app_environments(
         app.environment
     ]
 
-    asset_doc = data.get("asset_doc")
+    folder_entity = data.get("folder_entity")
     # Add tools environments
     groups_by_name = {}
     tool_by_group_name = collections.defaultdict(dict)
-    if asset_doc:
+    if folder_entity:
         # Make sure each tool group can be added only once
-        for key in asset_doc["data"].get("tools_env") or []:
+        for key in folder_entity["attrib"].get("tools") or []:
             tool = app.manager.tools.get(key)
             if not tool or not tool.is_valid_for_app(app):
                 continue
@@ -1674,10 +1673,10 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
     # Context environments
     log = data["log"]
 
-    project_doc = data["project_doc"]
-    asset_doc = data["asset_doc"]
-    task_name = data["task_name"]
-    if not project_doc:
+    project_entity = data["project_entity"]
+    folder_entity = data["folder_entity"]
+    task_entity = data["task_entity"]
+    if not project_entity:
         log.info(
             "Skipping context environments preparation."
             " Launch context does not contain required data."
@@ -1685,21 +1684,21 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
         return
 
     # Load project specific environments
-    project_name = project_doc["name"]
+    project_name = project_entity["name"]
     project_settings = get_project_settings(project_name)
     data["project_settings"] = project_settings
 
     app = data["app"]
     context_env = {
-        "AYON_PROJECT_NAME": project_doc["name"],
+        "AYON_PROJECT_NAME": project_entity["name"],
         "AYON_APP_NAME": app.full_name
     }
-    if asset_doc:
-        asset_name = get_asset_name_identifier(asset_doc)
-        context_env["AYON_FOLDER_PATH"] = asset_name
+    if folder_entity:
+        folder_path = folder_entity["path"]
+        context_env["AYON_FOLDER_PATH"] = folder_path
 
-        if task_name:
-            context_env["AYON_TASK_NAME"] = task_name
+        if task_entity:
+            context_env["AYON_TASK_NAME"] = task_entity["name"]
 
     log.debug(
         "Context environments set:\n{}".format(
@@ -1719,15 +1718,19 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
 
     data["env"]["AYON_HOST_NAME"] = app.host_name
 
-    if not asset_doc or not task_name:
+    if not folder_entity or not task_entity:
         # QUESTION replace with log.info and skip workfile discovery?
         # - technically it should be possible to launch host without context
         raise ApplicationLaunchFailed(
-            "Host launch require asset and task context."
+            "Host launch require folder and task context."
         )
 
     workdir_data = get_template_data(
-        project_doc, asset_doc, task_name, app.host_name, project_settings
+        project_entity,
+        folder_entity,
+        task_entity,
+        app.host_name,
+        project_settings
     )
     data["workdir_data"] = workdir_data
 
@@ -1853,9 +1856,9 @@ def _prepare_last_workfile(data, workdir, addons_manager):
             project_settings = data["project_settings"]
             task_type = workdir_data["task"]["type"]
             template_key = get_workfile_template_key(
+                project_name,
                 task_type,
                 app.host_name,
-                project_name,
                 project_settings=project_settings
             )
             # Find last workfile

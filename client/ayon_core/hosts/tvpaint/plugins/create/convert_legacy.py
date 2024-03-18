@@ -1,14 +1,14 @@
 import collections
 
 from ayon_core.pipeline.create.creator_plugins import (
-    SubsetConvertorPlugin,
+    ProductConvertorPlugin,
     cache_and_get_instances,
 )
 from ayon_core.hosts.tvpaint.api.plugin import SHARED_DATA_KEY
 from ayon_core.hosts.tvpaint.api.lib import get_groups_data
 
 
-class TVPaintLegacyConverted(SubsetConvertorPlugin):
+class TVPaintLegacyConverted(ProductConvertorPlugin):
     """Conversion of legacy instances in scene to new creators.
 
     This convertor handles only instances created by core creators.

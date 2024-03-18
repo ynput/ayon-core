@@ -4,14 +4,12 @@ import os
 import json
 import re
 from copy import deepcopy
+
 import requests
 import clique
-
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import (
-    get_last_version_by_subset_name,
-)
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -189,7 +187,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         output_dir = self._get_publish_folder(
             anatomy,
             deepcopy(instance.data["anatomyData"]),
-            instance.data.get("folderPath"),
+            instance.data.get("folderEntity"),
             instances[0]["productName"],
             instance.context,
             instances[0]["productType"],
@@ -503,7 +501,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             json.dump(publish_job, f, indent=4, sort_keys=True)
 
     def _get_publish_folder(self, anatomy, template_data,
-                            asset, product_name, context,
+                            folder_entity, product_name, context,
                             product_type, version=None):
         """
             Extracted logic to pre-calculate real publish folder, which is
@@ -517,7 +515,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         Args:
             anatomy (ayon_core.pipeline.anatomy.Anatomy):
             template_data (dict): pre-calculated collected data for process
-            asset (string): asset name
+            folder_entity (dict[str, Any]): Folder entity.
             product_name (string): Product name (actually group name
                 of product)
             product_type (string): for current deadline process it's always
@@ -535,13 +533,16 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         project_name = context.data["projectName"]
         host_name = context.data["hostName"]
         if not version:
-            version = get_last_version_by_subset_name(
-                project_name,
-                product_name,
-                asset_name=asset
-            )
-            if version:
-                version = int(version["name"]) + 1
+            version_entity = None
+            if folder_entity:
+                version_entity = ayon_api.get_last_version_by_product_name(
+                    project_name,
+                    product_name,
+                    folder_entity["id"]
+                )
+
+            if version_entity:
+                version = int(version_entity["version"]) + 1
             else:
                 version = get_versioning_start(
                     project_name,

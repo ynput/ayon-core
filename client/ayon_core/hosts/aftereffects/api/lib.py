@@ -4,8 +4,10 @@ import json
 import contextlib
 import logging
 
+import ayon_api
+
 from ayon_core.pipeline.context_tools import get_current_context
-from ayon_core.client import get_asset_by_name
+
 from .ws_stub import get_stub
 
 log = logging.getLogger(__name__)
@@ -85,21 +87,21 @@ def get_background_layers(file_url):
     return layers
 
 
-def get_asset_settings(asset_doc):
-    """Get settings on current asset from database.
+def get_folder_settings(folder_entity):
+    """Get settings of current folder.
 
     Returns:
         dict: Scene data.
 
     """
-    asset_data = asset_doc["data"]
-    fps = asset_data.get("fps", 0)
-    frame_start = asset_data.get("frameStart", 0)
-    frame_end = asset_data.get("frameEnd", 0)
-    handle_start = asset_data.get("handleStart", 0)
-    handle_end = asset_data.get("handleEnd", 0)
-    resolution_width = asset_data.get("resolutionWidth", 0)
-    resolution_height = asset_data.get("resolutionHeight", 0)
+    folder_attributes = folder_entity["attrib"]
+    fps = folder_attributes.get("fps", 0)
+    frame_start = folder_attributes.get("frameStart", 0)
+    frame_end = folder_attributes.get("frameEnd", 0)
+    handle_start = folder_attributes.get("handleStart", 0)
+    handle_end = folder_attributes.get("handleEnd", 0)
+    resolution_width = folder_attributes.get("resolutionWidth", 0)
+    resolution_height = folder_attributes.get("resolutionHeight", 0)
     duration = (frame_end - frame_start + 1) + handle_start + handle_end
 
     return {
@@ -127,9 +129,11 @@ def set_settings(frames, resolution, comp_ids=None, print_msg=True):
     frame_start = frames_duration = fps = width = height = None
     current_context = get_current_context()
 
-    asset_doc = get_asset_by_name(current_context["project_name"],
-                                  current_context["folder_path"])
-    settings = get_asset_settings(asset_doc)
+    folder_entity = ayon_api.get_folder_by_path(
+        current_context["project_name"],
+        current_context["folder_path"]
+    )
+    settings = get_folder_settings(folder_entity)
 
     msg = ''
     if frames:

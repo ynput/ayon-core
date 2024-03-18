@@ -25,8 +25,8 @@ class CollectInstanceData(pyblish.api.InstancePlugin):
         frame_range_source = creator_attributes.get("frame_range_source")
         instance.data["frame_range_source"] = frame_range_source
 
-        # get asset frame ranges to all instances
-        # render product type instances `asset_db` render target
+        # get folder frame ranges to all instances
+        # render product type instances `current_folder` render target
         start = context.data["frameStart"]
         end = context.data["frameEnd"]
         handle_start = context.data["handleStart"]

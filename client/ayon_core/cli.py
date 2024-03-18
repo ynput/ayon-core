@@ -11,6 +11,7 @@ import acre
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_general_environments
+from ayon_core.lib import initialize_ayon_connection
 
 from .cli_commands import Commands
 
@@ -243,6 +244,7 @@ def _set_addons_environments():
 
 
 def main(*args, **kwargs):
+    initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
 
