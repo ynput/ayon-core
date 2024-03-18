@@ -68,10 +68,10 @@ class ImportImage(plugin.Loader):
             load_options_str += (load_option + " ")
 
         # Prepare layer name
-        asset_name = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         version_name = context["version"]["name"]
         layer_name = "{}_{}_v{:0>3}".format(
-            asset_name,
+            folder_name,
             name,
             version_name
         )

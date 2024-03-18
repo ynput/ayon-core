@@ -8,7 +8,7 @@ import maya.utils
 import maya.cmds as cmds
 
 from ayon_core.pipeline import (
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
     registered_host
 )
@@ -43,7 +43,7 @@ def _get_menu(menu_name=None):
 
 def get_context_label():
     return "{}, {}".format(
-        get_current_asset_name(),
+        get_current_folder_path(),
         get_current_task_name()
     )
 

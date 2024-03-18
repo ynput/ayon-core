@@ -95,7 +95,7 @@ class NukeCreator(NewCreator):
         any node having instance data knob.
 
         Arguments:
-            product_name (str): Subset name
+            product_name (str): Product name
         """
 
         for node in nuke.allNodes(recurseGroups=True):

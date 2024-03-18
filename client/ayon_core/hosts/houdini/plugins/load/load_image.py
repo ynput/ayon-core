@@ -64,7 +64,7 @@ class ImageLoader(load.LoaderPlugin):
         parent = get_image_avalon_container()
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         node = parent.createNode("file", node_name=node_name)
@@ -79,7 +79,7 @@ class ImageLoader(load.LoaderPlugin):
             "name": node_name,
             "namespace": namespace,
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
         }
 
         # todo: add folder="Avalon"
@@ -88,11 +88,11 @@ class ImageLoader(load.LoaderPlugin):
         return node
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         node = container["node"]
 
         # Update the file path
-        file_path = get_representation_path(repre_doc)
+        file_path = get_representation_path(repre_entity)
         file_path = file_path.replace("\\", "/")
         file_path = self._get_file_sequence(file_path)
 
@@ -100,7 +100,7 @@ class ImageLoader(load.LoaderPlugin):
         node.setParms(
             {
                 "filename1": file_path,
-                "representation": str(repre_doc["_id"]),
+                "representation": repre_entity["id"],
             }
         )
 

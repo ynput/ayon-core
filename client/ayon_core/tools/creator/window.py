@@ -2,15 +2,15 @@ import sys
 import traceback
 import re
 
+import ayon_api
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.client import get_asset_by_name, get_subsets
 from ayon_core import style
 from ayon_core.settings import get_current_project_settings
 from ayon_core.tools.utils.lib import qt_app_context
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
 )
 from ayon_core.pipeline.create import (
@@ -216,20 +216,20 @@ class CreatorWindow(QtWidgets.QDialog):
         # Early exit if no folder path
         if not folder_path:
             self._build_menu()
-            self.echo("Asset name is required ..")
+            self.echo("Folder is required ..")
             self._set_valid_state(False)
             return
 
         project_name = get_current_project_name()
-        asset_doc = None
+        folder_entity = None
         if creator_plugin:
-            # Get the asset from the database which match with the name
-            asset_doc = get_asset_by_name(
-                project_name, folder_path, fields=["_id"]
+            # Get the folder from the database which match with the name
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path, fields={"id"}
             )
 
         # Get plugin
-        if not asset_doc or not creator_plugin:
+        if not folder_entity or not creator_plugin:
             self._build_menu()
 
             if not creator_plugin:
@@ -239,12 +239,16 @@ class CreatorWindow(QtWidgets.QDialog):
             self._set_valid_state(False)
             return
 
-        folder_id = asset_doc["_id"]
+        folder_id = folder_entity["id"]
+
         task_name = get_current_task_name()
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_id, task_name
+        )
 
         # Calculate product name with Creator plugin
         product_name = creator_plugin.get_product_name(
-            project_name, folder_id, task_name, user_input_text
+            project_name, folder_entity, task_entity, user_input_text
         )
         # Force replacement of prohibited symbols
         # QUESTION should Creator care about this and here should be only
@@ -272,12 +276,12 @@ class CreatorWindow(QtWidgets.QDialog):
         self._product_name_input.setText(product_name)
 
         # Get all products of the current folder
-        subset_docs = get_subsets(
-            project_name, asset_ids=[folder_id], fields=["name"]
+        product_entities = ayon_api.get_products(
+            project_name, folder_ids={folder_id}, fields={"name"}
         )
         existing_product_names = {
-            subset_doc["name"]
-            for subset_doc in subset_docs
+            product_entity["name"]
+            for product_entity in product_entities
         }
         existing_product_names_low = set(
             _name.lower()
@@ -372,13 +376,13 @@ class CreatorWindow(QtWidgets.QDialog):
             self.setStyleSheet(style.load_stylesheet())
 
     def refresh(self):
-        self._folder_path_input.setText(get_current_asset_name())
+        self._folder_path_input.setText(get_current_folder_path())
 
         self._creators_model.reset()
 
         product_types_smart_select = (
             get_current_project_settings()
-            ["global"]
+            ["core"]
             ["tools"]
             ["creator"]
             ["product_types_smart_select"]

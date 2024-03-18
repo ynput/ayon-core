@@ -181,7 +181,7 @@ class Commands:
             json.dump(env, file_stream, indent=4)
 
     @staticmethod
-    def contextselection(output_path, project_name, asset_name, strict):
+    def contextselection(output_path, project_name, folder_path, strict):
         from ayon_core.tools.context_dialog import main
 
-        main(output_path, project_name, asset_name, strict)
+        main(output_path, project_name, folder_path, strict)

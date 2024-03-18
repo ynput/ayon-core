@@ -28,7 +28,7 @@ class CollectCustomStagingDir(pyblish.api.InstancePlugin):
     Location of the folder is configured in `project_anatomy/templates/others`.
     ('transient' key is expected, with 'folder' key)
 
-    Which family/task type/subset is applicable is configured in:
+    Which family/task type/product is applicable is configured in:
     `project_settings/global/tools/publish/custom_staging_dir_profiles`
 
     """
