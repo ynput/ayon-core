@@ -3,7 +3,6 @@ import shutil
 
 import ayon_api
 
-from ayon_core.client import get_asset_by_id
 from ayon_core.host import IWorkfileHost
 from ayon_core.lib import Logger, emit_event
 from ayon_core.lib.events import QueuedEventSystem
@@ -573,6 +572,7 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
+                src_filepath=representation_filepath
             )
         except Exception:
             failed = True
@@ -635,13 +635,10 @@ class BaseWorkfileController(
             folder = self.get_folder_entity(project_name, folder_id)
         if task is None:
             task = self.get_task_entity(project_name, task_id)
-        # NOTE keys should are OpenPype compatible
         return {
             "project_name": project_name,
             "folder_id": folder_id,
             "folder_path": folder["path"],
-            "asset_id": folder_id,
-            "asset_name": folder["name"],
             "task_id": task_id,
             "task_name": task["name"],
             "host_name": self.get_host_name(),
@@ -662,15 +659,16 @@ class BaseWorkfileController(
             folder_id != self.get_current_folder_id()
             or task_name != self.get_current_task_name()
         ):
-            # Use OpenPype asset-like object
-            asset_doc = get_asset_by_id(
+            folder_entity = ayon_api.get_folder_by_id(
                 event_data["project_name"],
                 event_data["folder_id"],
             )
-            change_current_context(
-                asset_doc,
+            task_entity = ayon_api.get_task_by_name(
+                event_data["project_name"],
+                event_data["folder_id"],
                 event_data["task_name"]
             )
+            change_current_context(folder_entity, task_entity)
 
         self._host_open_workfile(filepath)
 
@@ -712,11 +710,15 @@ class BaseWorkfileController(
             folder_id != self.get_current_folder_id()
             or task_name != self.get_current_task_name()
         ):
-            # Use OpenPype asset-like object
-            asset_doc = get_asset_by_id(project_name, folder["id"])
+            folder_entity = ayon_api.get_folder_by_id(
+                project_name, folder["id"]
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder["id"], task_name
+            )
             change_current_context(
-                asset_doc,
-                task["name"],
+                folder_entity,
+                task_entity,
                 template_key=template_key
             )
 

@@ -33,8 +33,8 @@ class MeshLoader(load.LoaderPlugin):
             loader=self.__class__.__name__)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         load_zscript = ("""
 [IFreeze,
 [VarSet, filename, "{filepath}"]
@@ -44,7 +44,7 @@ class MeshLoader(load.LoaderPlugin):
 
 """).format(filepath=path)
         execute_zscript(load_zscript)
-        representation_id = str(repre_doc["_id"])
+        representation_id = str(repre_entity["_id"])
         imprint(container, representation_id)
 
     def switch(self, container, context):

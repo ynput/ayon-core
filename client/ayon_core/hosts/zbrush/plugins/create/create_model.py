@@ -25,7 +25,7 @@ class CreateModel(plugin.ZbrushCreator):
             pre_create_data)
 
     def get_instance_attr_defs(self):
-        export_format_enum = ["abc", "fbx", "ma", "obj"]
+        export_format_enum = ["abc", "fbx", "obj"]
         return [
             NumberDef(
                 "subd_level",

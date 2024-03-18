@@ -21,7 +21,7 @@ from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
     registered_host,
 )
@@ -224,7 +224,7 @@ def _show_workfiles():
 
 def get_context_label():
     return "{0}, {1}".format(
-        get_current_asset_name(),
+        get_current_folder_path(),
         get_current_task_name()
     )
 
@@ -432,7 +432,7 @@ def containerise(node,
             ("name", name),
             ("namespace", namespace),
             ("loader", str(loader)),
-            ("representation", context["representation"]["_id"]),
+            ("representation", context["representation"]["id"]),
         ],
 
         **data or dict()
