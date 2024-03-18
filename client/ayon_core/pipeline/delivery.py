@@ -143,7 +143,7 @@ def deliver_single_file(
     src_path = os.path.normpath(src_path.replace("\\", "/"))
 
     if not os.path.exists(src_path):
-        msg = "{} doesn't exist for {}".format(src_path, repre["_id"])
+        msg = "{} doesn't exist for {}".format(src_path, repre["id"])
         report_items["Source file was not found"].append(msg)
         return report_items, 0
 
@@ -216,7 +216,7 @@ def deliver_sequence(
 
     if not hash_path_exist(src_path):
         msg = "{} doesn't exist for {}".format(
-            src_path, repre["_id"])
+            src_path, repre["id"])
         report_items["Source file was not found"].append(msg)
         return report_items, 0
 

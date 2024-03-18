@@ -1,5 +1,5 @@
 from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
-from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
+from ayon_core.pipeline.create.creator_plugins import ProductConvertorPlugin
 from ayon_core.hosts.nuke.api.lib import (
     INSTANCE_DATA_KNOB,
     get_node_data,
@@ -11,7 +11,7 @@ from ayon_core.hosts.nuke.api.plugin import convert_to_valid_instaces
 import nuke
 
 
-class LegacyConverted(SubsetConvertorPlugin):
+class LegacyConverted(ProductConvertorPlugin):
     identifier = "legacy.converter"
 
     def find_instances(self):

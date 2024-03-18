@@ -1,10 +1,10 @@
-"""Produces instance.data["subsetGroup"] data used during integration.
+"""Produces instance.data["productGroup"] data used during integration.
 
 Requires:
     dict -> context["anatomyData"] *(pyblish.api.CollectorOrder + 0.49)
 
 Provides:
-    instance -> subsetGroup (str)
+    instance -> productGroup (str)
 
 """
 import pyblish.api
@@ -18,7 +18,7 @@ from ayon_core.lib import (
 
 
 class IntegrateProductGroup(pyblish.api.InstancePlugin):
-    """Integrate Subset Group for publish."""
+    """Integrate Product Group for publish."""
 
     # Run after CollectAnatomyInstanceData
     order = pyblish.api.IntegratorOrder - 0.1
@@ -37,11 +37,11 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         if not self.product_grouping_profiles:
             return
 
-        if instance.data.get("subsetGroup"):
-            # If subsetGroup is already set then allow that value to remain
+        if instance.data.get("productGroup"):
+            # If productGroup is already set then allow that value to remain
             self.log.debug((
                 "Skipping collect product group due to existing value: {}"
-            ).format(instance.data["subsetGroup"]))
+            ).format(instance.data["productGroup"]))
             return
 
         # Skip if there is no matching profile
@@ -79,11 +79,11 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
         except (KeyError, TemplateUnsolved):
             keys = fill_pairs.keys()
             self.log.warning((
-                "Subset grouping failed. Only {} are expected in Settings"
+                "Product grouping failed. Only {} are expected in Settings"
             ).format(','.join(keys)))
 
         if filled_template:
-            instance.data["subsetGroup"] = filled_template
+            instance.data["productGroup"] = filled_template
 
     def get_profile_filter_criteria(self, instance):
         """Return filter criteria for `filter_profiles`"""
