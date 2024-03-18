@@ -17,17 +17,19 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
     hosts = ["resolve", "hiero", "flame"]
 
     def process(self, context):
-        temp_context = {}
         project_name = context.data["projectName"]
-        final_context = {}
-        final_context[project_name] = {}
-        final_context[project_name]["entity_type"] = "project"
+        temp_context = {}
+        final_context = {
+            project_name: {
+                "entity_type": "project",
+                "children": temp_context
+            },
+        }
 
         for instance in context:
             self.log.debug("Processing instance: `{}` ...".format(instance))
 
             # shot data dict
-            shot_data = {}
             product_type = instance.data["productType"]
             families = instance.data["families"]
 
@@ -41,23 +43,25 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             if not instance.data.get("heroTrack"):
                 continue
 
-            shot_data["entity_type"] = "folder"
-            # suppose that all instances are Shots
-            shot_data["folder_type"] = "Shot"
-            shot_data['tasks'] = instance.data.get("tasks") or {}
-            shot_data["comments"] = instance.data.get("comments", [])
-
-            shot_data['attributes'] = {
-                "handleStart": instance.data["handleStart"],
-                "handleEnd": instance.data["handleEnd"],
-                "frameStart": instance.data["frameStart"],
-                "frameEnd": instance.data["frameEnd"],
-                "clipIn": instance.data["clipIn"],
-                "clipOut": instance.data["clipOut"],
-                "fps": instance.data["fps"],
-                "resolutionWidth": instance.data["resolutionWidth"],
-                "resolutionHeight": instance.data["resolutionHeight"],
-                "pixelAspect": instance.data["pixelAspect"]
+            shot_data = {
+                "entity_type": "folder",
+                # WARNING Default folder type is hardcoded
+                # suppose that all instances are Shots
+                "folder_type": "Shot",
+                "tasks": instance.data.get("tasks") or {},
+                "comments": instance.data.get("comments", []),
+                "attributes": {
+                    "handleStart": instance.data["handleStart"],
+                    "handleEnd": instance.data["handleEnd"],
+                    "frameStart": instance.data["frameStart"],
+                    "frameEnd": instance.data["frameEnd"],
+                    "clipIn": instance.data["clipIn"],
+                    "clipOut": instance.data["clipOut"],
+                    "fps": instance.data["fps"],
+                    "resolutionWidth": instance.data["resolutionWidth"],
+                    "resolutionHeight": instance.data["resolutionHeight"],
+                    "pixelAspect": instance.data["pixelAspect"],
+                },
             }
             # Split by '/' for AYON where asset is a path
             name = instance.data["folderPath"].split("/")[-1]
@@ -71,6 +75,16 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 next_dict[parent_name]["folder_type"] = parent[
                     "entity_type"].capitalize()
                 next_dict[parent_name]["children"] = actual
+
+            for parent in reversed(instance.data["parents"]):
+                parent_name = parent["entity_name"]
+                next_dict = {
+                    parent_name: {
+                        "entity_type": "folder",
+                        "folder_type": parent["entity_type"].capitalize(),
+                        "children": actual
+                    }
+                }
                 actual = next_dict
 
             temp_context = self._update_dict(temp_context, actual)
@@ -78,8 +92,6 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
         # skip if nothing for hierarchy available
         if not temp_context:
             return
-
-        final_context[project_name]['children'] = temp_context
 
         # adding hierarchy context to context
         context.data["hierarchyContext"] = final_context
