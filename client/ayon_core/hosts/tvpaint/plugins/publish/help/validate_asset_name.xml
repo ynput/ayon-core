@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
 <error id="main">
-<title>Subset context</title>
+<title>Product context</title>
 <description>## Invalid product context
 
 Context of the given product doesn't match your current scene.
 
 ### How to repair?
 
-Yout can fix this with "Repair" button on the right. This will use '{expected_asset}' asset name and overwrite '{found_asset}' asset name in scene metadata.
+Yout can fix this with "Repair" button on the right. This will use '{expected_folder}' folder path and overwrite '{found_folder}' folder path in scene metadata.
 
 After that restart publishing with Reload button.
 </description>

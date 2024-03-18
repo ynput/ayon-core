@@ -1,7 +1,7 @@
 import pyblish.api
 
 import ayon_core.hosts.harmony.api as harmony
-from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline import get_current_folder_path
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
@@ -27,7 +27,7 @@ class ValidateInstanceRepair(pyblish.api.Action):
         # Apply pyblish.logic to get the instances for the plug-in
         instances = pyblish.api.instances_by_plugin(failed, plugin)
 
-        folder_path = get_current_asset_name()
+        folder_path = get_current_folder_path()
         for instance in instances:
             data = harmony.read(instance.data["setMembers"][0])
             data["folderPath"] = folder_path
@@ -35,7 +35,7 @@ class ValidateInstanceRepair(pyblish.api.Action):
 
 
 class ValidateInstance(pyblish.api.InstancePlugin):
-    """Validate the instance asset is the current asset."""
+    """Validate the instance folder is the current folder."""
 
     label = "Validate Instance"
     hosts = ["harmony"]
@@ -43,17 +43,18 @@ class ValidateInstance(pyblish.api.InstancePlugin):
     order = ValidateContentsOrder
 
     def process(self, instance):
-        instance_asset = instance.data["folderPath"]
-        current_asset = get_current_asset_name()
+        instance_folder_path = instance.data["folderPath"]
+        current_colder_path = get_current_folder_path()
         msg = (
-            "Instance asset is not the same as current asset:"
-            f"\nInstance: {instance_asset}\nCurrent: {current_asset}"
+            "Instance folder is not the same as current folder:"
+            f"\nInstance: {instance_folder_path}]"
+            f"\nCurrent: {current_colder_path}"
         )
 
         formatting_data = {
-            "found": instance_asset,
-            "expected": current_asset
+            "found": instance_folder_path,
+            "expected": current_colder_path
         }
-        if instance_asset != current_asset:
+        if instance_folder_path != current_colder_path:
             raise PublishXmlValidationError(self, msg,
                                             formatting_data=formatting_data)

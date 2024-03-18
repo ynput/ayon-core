@@ -145,8 +145,8 @@ class WriteNodeKnobSettingPanel(nukescripts.PythonPanel):
 
         for setting in settings:
             # TODO change 'subsets' to 'product_names' in settings
-            for subset in setting["subsets"]:
-                preset_name.append(subset)
+            for product_name in setting["subsets"]:
+                preset_name.append(product_name)
 
         return preset_name, knobs_nodes
 

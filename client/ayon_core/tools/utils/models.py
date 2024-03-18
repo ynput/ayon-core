@@ -3,12 +3,6 @@ import logging
 
 import qtpy
 from qtpy import QtCore, QtGui
-from ayon_core.client import get_projects
-from .constants import (
-    PROJECT_IS_ACTIVE_ROLE,
-    PROJECT_NAME_ROLE,
-    DEFAULT_PROJECT_LABEL
-)
 
 log = logging.getLogger(__name__)
 

@@ -42,10 +42,10 @@ class ImportAudioLoader(load.LoaderPlugin):
     def load(self, context, name=None, namespace=None, data=None):
         wav_file = get_representation_path(context["representation"])
         harmony.send(
-            {"function": func, "args": [context["subset"]["name"], wav_file]}
+            {"function": func, "args": [context["product"]["name"], wav_file]}
         )
 
-        product_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
 
         return harmony.containerise(
             product_name,
