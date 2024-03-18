@@ -909,13 +909,13 @@ class PublishClip:
             "families": [self.product_type, self.data["family"]]
         }
 
-    def _convert_to_entity(self, type, template):
+    def _convert_to_entity(self, src_type, template):
         """ Converting input key to key with type. """
         # convert to entity type
-        entity_type = self.types.get(type, None)
+        folder_type = self.types.get(src_type, None)
 
-        assert entity_type, "Missing entity type for `{}`".format(
-            type
+        assert folder_type, "Missing folder type for `{}`".format(
+            src_type
         )
 
         # first collect formatting data to use for formatting template
@@ -926,7 +926,7 @@ class PublishClip:
             formatting_data[_k] = value
 
         return {
-            "entity_type": entity_type,
+            "folder_type": folder_type,
             "entity_name": template.format(
                 **formatting_data
             )

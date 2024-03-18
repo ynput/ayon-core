@@ -193,7 +193,8 @@ class ShotMetadataSolver:
                 continue
 
             parents.append({
-                "entity_type": parent_token_type,
+                "entity_type": "folder",
+                "folder_type": parent_token_type,
                 "entity_name": parent_name
             })
 
@@ -264,7 +265,8 @@ class ShotMetadataSolver:
         }]
         for entity in folders_hierarchy:
             output.append({
-                "entity_type": entity["folderType"],
+                "entity_type": "folder",
+                "folder_type": entity["folderType"],
                 "entity_name": entity["name"]
             })
         return output
