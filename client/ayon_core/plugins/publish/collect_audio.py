@@ -112,9 +112,13 @@ class CollectAudio(pyblish.api.ContextPlugin):
         Returns:
             collections.defaultdict[str, List[Dict[Str, Any]]]: Representations
                 related to audio products by folder path.
-        """
 
+        """
         output = collections.defaultdict(list)
+        # Skip the queries if audio product name is not defined
+        if not self.audio_product_name:
+            return output
+
         # Query folder entities
         folder_entities = ayon_api.get_folders(
             project_name,
