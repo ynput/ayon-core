@@ -7,7 +7,7 @@ from ayon_core.tools.utils import (
     ProjectsQtModel,
     ProjectSortFilterProxy,
 )
-from ayon_core.tools.ayon_utils.models import PROJECTS_MODEL_SENDER
+from ayon_core.tools.common_models import PROJECTS_MODEL_SENDER
 
 
 class ProjectIconView(QtWidgets.QListView):

@@ -15,7 +15,7 @@ from ayon_core.pipeline.context_tools import (
 )
 from ayon_core.pipeline.workfile import create_workdir_extra_folders
 
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
     ProjectsModel,
