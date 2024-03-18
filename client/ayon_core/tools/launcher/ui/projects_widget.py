@@ -1,8 +1,9 @@
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import PlaceholderLineEdit, RefreshButton
-from ayon_core.tools.ayon_utils.widgets import (
+from ayon_core.tools.utils import (
+    PlaceholderLineEdit,
+    RefreshButton,
     ProjectsQtModel,
     ProjectSortFilterProxy,
 )

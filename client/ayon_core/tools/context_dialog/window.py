@@ -10,15 +10,13 @@ from ayon_core.tools.ayon_utils.models import (
     ProjectsModel,
     HierarchyModel,
 )
-from ayon_core.tools.ayon_utils.widgets import (
+from ayon_core.tools.utils import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
-)
-from ayon_core.tools.utils.lib import (
-    center_window,
     get_ayon_qt_app,
 )
+from ayon_core.tools.utils.lib import center_window
 
 
 class SelectionModel(object):
