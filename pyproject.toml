@@ -19,6 +19,7 @@ speedcopy = "^2.1"
 six = "^1.15"
 qtawesome = "0.7.3"
 pre-commit = "^3.6.2"
+codespell = "^2.2.6"
 
 
 [tool.poetry.dev-dependencies]
@@ -97,7 +98,7 @@ line-ending = "auto"
 [tool.codespell]
 # Ignore words that are not in the dictionary.
 ignore-words-list = "ayon,ynput"
-skip = "./.*,./package/*"
+skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
 count = true
 quiet-level = 3
 
