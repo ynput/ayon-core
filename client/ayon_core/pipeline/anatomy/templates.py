@@ -560,31 +560,56 @@ class AnatomyTemplates:
         """
         return self.format(in_data, strict=False)
 
-    def get_template(self, category_name, template_name, subkey=None):
+    def get_template(
+        self, category_name, template_name, subkey=None, default=_PLACEHOLDER
+    ):
         """Get template item from category.
 
         Args:
             category_name (str): Category name.
             template_name (str): Template name.
             subkey (Optional[str]): Subkey name.
+            default (Any): Default value if template is not found.
 
         Returns:
             Any: Template item or subkey value.
+
+        Raises:
+            KeyError: When any passed key is not available. Raise of error
+                does not happen if 'default' is filled.
 
         """
         self._validate_discovery()
         category = self.get(category_name)
         if category is None:
-            return None
+            if default is not _PLACEHOLDER:
+                return default
+            raise KeyError("Category '{}' not found.".format(category_name))
 
         template_item = category.get(template_name)
         if template_item is None:
-            return template_item
+            if default is not _PLACEHOLDER:
+                return default
+            raise KeyError(
+                "Template '{}' not found in category '{}'.".format(
+                    template_name, category_name
+                )
+            )
 
         if subkey is None:
             return template_item
 
-        return template_item.get(subkey)
+        item = template_item.get(subkey)
+        if item is not None:
+            return item
+
+        if default is not _PLACEHOLDER:
+            return default
+        raise KeyError(
+            "Subkey '{}' not found in '{}/{}'.".format(
+                subkey, category_name, template_name
+            )
+        )
 
     def _solve_dict(self, data, strict):
         """ Solves templates with entered data.
