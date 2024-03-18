@@ -379,7 +379,6 @@ class TemplateCategory:
         return key
 
 
-class AnatomyTemplates(TemplatesDict):
 class AnatomyTemplates:
     inner_key_pattern = re.compile(r"(\{@.*?[^{}0]*\})")
     inner_key_name_pattern = re.compile(r"\{@(.*?[^{}0]*)\}")
