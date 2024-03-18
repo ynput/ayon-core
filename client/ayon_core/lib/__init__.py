@@ -160,12 +160,6 @@ from .ayon_info import (
     is_in_tests,
 )
 
-
-from .connections import (
-    requests_get,
-    requests_post
-)
-
 terminal = Terminal
 
 __all__ = [
@@ -284,7 +278,4 @@ __all__ = [
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
-
-    "requests_get",
-    "requests_post"
 ]
