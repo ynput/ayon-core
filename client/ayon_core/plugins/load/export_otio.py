@@ -2,17 +2,14 @@ from collections import defaultdict
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.client import (
-    get_representations,
-    get_asset_name_identifier
-)
+from ayon_api import get_representations, get_folder_by_id
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.tools.utils import show_message_dialog
 
 
-class ExportOTIO(load.SubsetLoaderPlugin):
+class ExportOTIO(load.ProductLoaderPlugin):
     """Export selected versions to OpenTimelineIO."""
 
     is_multiple_contexts_compatible = True
@@ -66,32 +63,30 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         all_representation_names = set()
         self._version_path_by_id = {}
         version_docs_by_id = {
-            context["version"]["_id"]: context["version"]
+            context["version"]["id"]: context["version"]
             for context in contexts
         }
         repre_docs = list(get_representations(
             self._project_name, version_ids=set(version_docs_by_id)
         ))
         self._version_by_representation_id = {
-            repre_doc["_id"]: version_docs_by_id[repre_doc["parent"]]
+            repre_doc["id"]: version_docs_by_id[repre_doc["versionId"]]
             for repre_doc in repre_docs
         }
         self._version_path_by_id = {}
         for context in contexts:
-            version_doc = context["version"]
-            version_id = version_doc["_id"]
+            version_id = context["version"]["id"]
             if version_id in self._version_path_by_id:
                 continue
-            asset_doc = context["asset"]
-            folder_path = get_asset_name_identifier(asset_doc)
-            subset_name = context["subset"]["name"]
-            self._version_path_by_id[version_id] = "{}/{}/v{:03d}".format(
-                folder_path, subset_name, version_doc["name"]
-            )
+            self._version_path_by_id[version_id] = "/".join([
+                context["folder"]["path"],
+                context["product"]["name"],
+                context["version"]["name"]
+            ])
 
         representations_by_version_id = defaultdict(list)
         for repre_doc in repre_docs:
-            representations_by_version_id[repre_doc["parent"]].append(
+            representations_by_version_id[repre_doc["versionId"]].append(
                 repre_doc
             )
 
@@ -209,9 +204,11 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         anatomy = Anatomy(self._project_name)
         clips_data = {}
         for representation in representations:
-            version = self._version_by_representation_id[representation["_id"]]
+            version = self._version_by_representation_id[
+                representation["id"]
+            ]
             name = "{}/{}".format(
-                self._version_path_by_id[version["_id"]],
+                self._version_path_by_id[version["id"]],
                 representation["name"]
             )
             clips_data[name] = {
