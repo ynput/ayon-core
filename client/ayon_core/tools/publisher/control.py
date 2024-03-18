@@ -38,7 +38,7 @@ from ayon_core.pipeline.create.context import (
     ConvertorsOperationFailed,
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
-from ayon_core.tools.ayon_utils.models import HierarchyModel
+from ayon_core.tools.common_models import HierarchyModel
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
