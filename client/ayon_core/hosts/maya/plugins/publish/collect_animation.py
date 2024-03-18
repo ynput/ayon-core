@@ -16,7 +16,7 @@ class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
     """
 
     order = pyblish.api.CollectorOrder + 0.4
-    product_types = ["animation"]
+    families = ["animation"]
     label = "Collect Animation Output Geometry"
     hosts = ["maya"]
 

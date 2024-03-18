@@ -11,7 +11,7 @@ class CollectBackdrops(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.22
     label = "Collect Backdrop"
     hosts = ["nuke"]
-    product_types = ["nukenodes"]
+    families = ["nukenodes"]
 
     def process(self, instance):
         self.log.debug(pformat(instance.data))
