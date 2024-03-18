@@ -3,10 +3,12 @@ from pprint import pformat
 import pyblish
 
 from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+from ayon_core.hosts.resolve.api.constants import (
+    publish_clip_color
+)
 from ayon_core.hosts.resolve.api.lib import (
     get_current_timeline_items,
-    get_timeline_item_pype_tag,
-    publish_clip_color,
+    get_timeline_item_ayon_tag,
     get_publish_attribute,
     get_otio_clip_instance_data,
 )
@@ -33,8 +35,8 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             data = {}
             timeline_item = timeline_item_data["clip"]["item"]
 
-            # get pype tag data
-            tag_data = get_timeline_item_pype_tag(timeline_item)
+            # get ayon tag data
+            tag_data = get_timeline_item_ayon_tag(timeline_item)
             self.log.debug(f"__ tag_data: {pformat(tag_data)}")
 
             if not tag_data:

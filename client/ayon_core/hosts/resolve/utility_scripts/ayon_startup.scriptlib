@@ -1,4 +1,4 @@
--- Run OpenPype's Python launch script for resolve
+-- Run Ayon's Python launch script for resolve
 function file_exists(name)
    local f = io.open(name, "r")
    return f ~= nil and io.close(f)
@@ -12,7 +12,7 @@ if ayon_startup_script ~= nil then
     if file_exists(script) then
         -- We must use RunScript to ensure it runs in a separate
         -- process to Resolve itself to avoid a deadlock for
-        -- certain imports of OpenPype libraries or Qt
+        -- certain imports of Ayon libraries or Qt
         print("Running launch script: " .. script)
         fusion:RunScript(script)
     else

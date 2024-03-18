@@ -256,11 +256,11 @@ def add_otio_metadata(otio_item, media_pool_item, **kwargs):
         otio_item.metadata.update({key: value})
 
 
-def create_otio_timeline(resolve_project):
+def create_otio_timeline(resolve_project, timeline=None):
 
     # get current timeline
-    self.project_fps = resolve_project.GetSetting("timelineFrameRate")
-    timeline = resolve_project.GetCurrentTimeline()
+    timeline = timeline or resolve_project.GetCurrentTimeline()
+    self.project_fps = timeline.GetSetting("timelineFrameRate")
 
     # convert timeline to otio
     otio_timeline = _create_otio_timeline(
