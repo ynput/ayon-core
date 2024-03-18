@@ -16,6 +16,8 @@ from .exceptions import (
 )
 from .roots import RootItem
 
+_PLACEHOLDER = object()
+
 
 class AnatomyTemplateResult(TemplateResult):
     rootless = None
