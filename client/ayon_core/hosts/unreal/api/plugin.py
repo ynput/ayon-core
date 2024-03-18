@@ -21,6 +21,7 @@ from ayon_core.lib import (
     UILabelDef
 )
 from ayon_core.pipeline import (
+    AutoCreator,
     Creator,
     LoaderPlugin,
     CreatorError,
@@ -28,52 +29,94 @@ from ayon_core.pipeline import (
 )
 
 
-@six.add_metaclass(ABCMeta)
-class UnrealBaseCreator(Creator):
-    """Base class for Unreal creator plugins."""
+class UnrealCreateLogic():
+    """Universal class for logic that Unreal creators could inherit from."""
     root = "/Game/Ayon/AyonPublishInstances"
     suffix = "_INS"
 
+
     @staticmethod
-    def cache_instance_data(shared_data):
+    def get_cached_instances(shared_data):
         """Cache instances for Creators to shared data.
 
-        Create `unreal_cached_instances` key when needed in shared data and
+        Create `unreal_cached_subsets` key when needed in shared data and
         fill it with all collected instances from the scene under its
         respective creator identifiers.
 
         If legacy instances are detected in the scene, create
-        `unreal_cached_legacy_instances` there and fill it with
-        all legacy products under family as a key.
+        `unreal_cached_legacy_subsets` there and fill it with
+        all legacy subsets under product_type as a key.
 
         Args:
             Dict[str, Any]: Shared data.
 
+        Return:
+            Dict[str, Any]: Shared data dictionary.
+
         """
-        if "unreal_cached_instances" in shared_data:
-            return
+        if shared_data.get("unreal_cached_subsets") is None:
+            unreal_cached_subsets = collections.defaultdict(list)
+            unreal_cached_legacy_subsets = collections.defaultdict(list)
+            for instance in ls_inst():
+                creator_id = instance.get("creator_identifier")
+                if creator_id:
+                    unreal_cached_subsets[creator_id].append(instance)
+                else:
+                    product_type = instance.get("product_type")
+                    unreal_cached_legacy_subsets[product_type].append(instance)
 
-        unreal_cached_instances = collections.defaultdict(list)
-        unreal_cached_legacy_instances = collections.defaultdict(list)
-        for instance in ls_inst():
-            creator_id = instance.get("creator_identifier")
-            if creator_id:
-                unreal_cached_instances[creator_id].append(instance)
-            else:
-                family = instance.get("family")
-                unreal_cached_legacy_instances[family].append(instance)
+            shared_data["unreal_cached_subsets"] = unreal_cached_subsets
+            shared_data["unreal_cached_legacy_subsets"] = (
+                unreal_cached_legacy_subsets
+            )
+        return shared_data
 
-        shared_data["unreal_cached_instances"] = unreal_cached_instances
-        shared_data["unreal_cached_legacy_instances"] = (
-            unreal_cached_legacy_instances
-        )
+    def _default_collect_instances(self):
+        # cache instances if missing
+        self.get_cached_instances(self.collection_shared_data)
+        for instance in self.collection_shared_data[
+                "unreal_cached_subsets"].get(self.identifier, []):
+            # Unreal saves metadata as string, so we need to convert it back
+            instance['creator_attributes'] = ast.literal_eval(
+                instance.get('creator_attributes', '{}'))
+            instance['publish_attributes'] = ast.literal_eval(
+                instance.get('publish_attributes', '{}'))
+            created_instance = CreatedInstance.from_existing(instance, self)
+            self._add_instance_to_context(created_instance)
 
-    def create(self, product_name, instance_data, pre_create_data):
+    def _default_update_instances(self, update_list):
+        for created_inst, changes in update_list:
+            instance_node = created_inst.get("instance_path", "")
+
+            if not instance_node:
+                unreal.log_warning(
+                    f"Instance node not found for {created_inst}")
+                continue
+
+            new_values = {
+                key: changes[key].new_value
+                for key in changes.changed_keys
+            }
+            imprint(
+                instance_node,
+                new_values
+            )
+
+    def _default_remove_instances(self, instances):
+        for instance in instances:
+            instance_node = instance.data.get("instance_path", "")
+            if instance_node:
+                unreal.EditorAssetLibrary.delete_asset(instance_node)
+
+            self._remove_instance_from_context(instance)
+
+
+    def create_unreal(self, product_name, instance_data, pre_create_data):
         try:
             instance_name = f"{product_name}{self.suffix}"
             pub_instance = create_publish_instance(instance_name, self.root)
 
-            instance_data["productName"] = product_name
+            instance_data["product_name"] = product_name
             instance_data["instance_path"] = f"{self.root}/{instance_name}"
 
             instance = CreatedInstance(
@@ -92,7 +135,8 @@ class UnrealBaseCreator(Creator):
                 obj = ar.get_asset_by_object_path(member).get_asset()
                 assets.add(obj)
 
-            imprint(f"{self.root}/{instance_name}", instance.data_to_store())
+            imprint(f"{self.root}/{instance_name}",
+                    instance.data_to_store())
 
             return instance
 
@@ -102,47 +146,36 @@ class UnrealBaseCreator(Creator):
                 CreatorError(f"Creator error: {er}"),
                 sys.exc_info()[2])
 
+
+class UnrealBaseAutoCreator(AutoCreator, UnrealCreateLogic):
+    """Base class for Unreal auto creator plugins."""
+
     def collect_instances(self):
-        # cache instances if missing
-        self.cache_instance_data(self.collection_shared_data)
-        for instance in self.collection_shared_data[
-                "unreal_cached_instances"].get(self.identifier, []):
-            # Unreal saves metadata as string, so we need to convert it back
-            instance['creator_attributes'] = ast.literal_eval(
-                instance.get('creator_attributes', '{}'))
-            instance['publish_attributes'] = ast.literal_eval(
-                instance.get('publish_attributes', '{}'))
-            created_instance = CreatedInstance.from_existing(instance, self)
-            self._add_instance_to_context(created_instance)
+        return self._default_collect_instances()
 
     def update_instances(self, update_list):
-        for created_inst, changes in update_list:
-            instance_node = created_inst.get("instance_path", "")
-
-            if not instance_node:
-                unreal.log_warning(
-                    f"Instance node not found for {created_inst}")
-                continue
-
-            new_values = {
-                key: changes[key].new_value
-                for key in changes.changed_keys
-            }
-            imprint(
-                instance_node,
-                new_values
-            )
+        return self._default_update_instances(update_list)
 
     def remove_instances(self, instances):
-        for instance in instances:
-            instance_node = instance.data.get("instance_path", "")
-            if instance_node:
-                unreal.EditorAssetLibrary.delete_asset(instance_node)
-
-            self._remove_instance_from_context(instance)
+        return self._default_remove_instances(instances)
 
 
-@six.add_metaclass(ABCMeta)
+class UnrealBaseCreator(UnrealCreateLogic, Creator):
+    """Base class for Unreal creator plugins."""
+
+    def create(self, subset_name, instance_data, pre_create_data):
+        self.create_unreal(subset_name, instance_data, pre_create_data)
+
+    def collect_instances(self):
+        return self._default_collect_instances()
+
+    def update_instances(self, update_list):
+        return self._default_update_instances(update_list)
+
+    def remove_instances(self, instances):
+        return self._default_remove_instances(instances)
+
+
 class UnrealAssetCreator(UnrealBaseCreator):
     """Base class for Unreal creator plugins based on assets."""
 

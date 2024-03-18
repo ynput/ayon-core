@@ -16,7 +16,7 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     label = "Validate Sequence Frames"
-    families = ["render"]
+    families = ["render.local"]
     hosts = ["unreal"]
     optional = True
 

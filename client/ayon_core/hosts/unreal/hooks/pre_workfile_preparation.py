@@ -21,6 +21,7 @@ from ayon_core.hosts.unreal.ue_workers import (
     UEPluginInstallWorker
 )
 from ayon_core.hosts.unreal.ui import SplashScreen
+from ayon_core.modules import ModulesManager
 
 
 class UnrealPrelaunchHook(PreLaunchHook):
@@ -162,7 +163,14 @@ class UnrealPrelaunchHook(PreLaunchHook):
             # so let's keep it quiet.
             ...
 
+        version_control_addon = self._get_enabled_version_control_addon()
         unreal_project_filename = self._get_work_filename()
+        if version_control_addon:
+            conn_info = version_control_addon.get_connection_info(
+                project_name=self.data["project_name"]
+            )
+            workdir = conn_info["workspace_dir"]
+            self._sync_latest_version(version_control_addon, conn_info)
         unreal_project_name = os.path.splitext(unreal_project_filename)[0]
         # Unreal is sensitive about project names longer then 20 chars
         if len(unreal_project_name) > 20:
@@ -249,3 +257,21 @@ class UnrealPrelaunchHook(PreLaunchHook):
         # Append project file to launch arguments
         self.launch_context.launch_args.append(
             f"\"{project_file.as_posix()}\"")
+
+    def _get_enabled_version_control_addon(self):
+        manager = ModulesManager()
+        version_control_addon = manager.get("version_control")
+        if version_control_addon and version_control_addon.enabled:
+            return version_control_addon
+        return None
+
+    def _sync_latest_version(self, version_addon, conn_info):
+        from version_control.backends.perforce.api.rest_stub import \
+            PerforceRestStub
+        PerforceRestStub.login(host=conn_info["host"],
+                               port=conn_info["port"],
+                               username=conn_info["username"],
+                               password=conn_info["password"],
+                               workspace=conn_info["workspace_dir"])
+        PerforceRestStub.sync_latest_version(conn_info["workspace_dir"])
+        return
