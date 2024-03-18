@@ -38,7 +38,6 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
 
         for created_instance in create_context.instances:
             instance_data = created_instance.data_to_store()
-            instance_data["asset"] = instance_data.pop("folderPath")
             if instance_data["active"]:
                 thumbnail_path = thumbnail_paths_by_instance_id.get(
                     created_instance.id
@@ -54,12 +53,12 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         context.data.update(create_context.context_data_to_store())
         context.data["newPublishing"] = True
         # Update context data
-        asset_name = create_context.get_current_asset_name()
+        folder_path = create_context.get_current_folder_path()
         task_name = create_context.get_current_task_name()
         for key, value in (
-            ("AVALON_PROJECT", project_name),
-            ("AVALON_ASSET", asset_name),
-            ("AVALON_TASK", task_name)
+            ("AYON_PROJECT_NAME", project_name),
+            ("AYON_FOLDER_PATH", folder_path),
+            ("AYON_TASK_NAME", task_name)
         ):
             if value is None:
                 os.environ.pop(key, None)
@@ -73,18 +72,22 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         transient_data,
         thumbnail_path
     ):
-        subset = in_data["subset"]
+        product_name = in_data["productName"]
         # If instance data already contain families then use it
         instance_families = in_data.get("families") or []
+        # Add product type to families
+        instance_families.append(in_data["productType"])
 
-        instance = context.create_instance(subset)
+        instance = context.create_instance(product_name)
         instance.data.update({
-            "subset": subset,
-            "asset": in_data["asset"],
+            "publish": True,
+            "label": in_data.get("label") or product_name,
+            "name": product_name,
+            "folderPath": in_data["folderPath"],
             "task": in_data["task"],
-            "label": in_data.get("label") or subset,
-            "name": subset,
-            "family": in_data["family"],
+            "productName": product_name,
+            "productType": in_data["productType"],
+            "family": in_data["productType"],
             "families": instance_families,
             "representations": [],
             "thumbnailSource": thumbnail_path

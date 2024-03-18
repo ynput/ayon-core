@@ -42,15 +42,27 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
     integrate_thumbnail = False
     target_size = {
-        "type": "resize",
-        "width": 1920,
-        "height": 1080
+        "type": "source",
+        "resize": {
+            "width": 1920,
+            "height": 1080
+        }
     }
-    background_color = None
+    background_color = (0, 0, 0, 0.0)
     duration_split = 0.5
     # attribute presets from settings
-    oiiotool_defaults = None
-    ffmpeg_args = None
+    oiiotool_defaults = {
+        "type": "colorspace",
+        "colorspace": "color_picking",
+        "display_and_view": {
+            "display": "default",
+            "view": "sRGB"
+        }
+    }
+    ffmpeg_args = {
+        "input": [],
+        "output": []
+    }
     product_names = []
 
     def process(self, instance):
@@ -74,16 +86,16 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 instance.data["representations"].remove(repre)
 
     def _main_process(self, instance):
-        subset_name = instance.data["subset"]
+        product_name = instance.data["productName"]
         instance_repres = instance.data.get("representations")
         if not instance_repres:
             self.log.debug((
                 "Instance {} does not have representations. Skipping"
-            ).format(subset_name))
+            ).format(product_name))
             return
 
         self.log.debug(
-            "Processing instance with subset name {}".format(subset_name)
+            "Processing instance with product name {}".format(product_name)
         )
 
         # Skip if instance have 'review' key in data set to 'False'
@@ -98,15 +110,15 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         # skip crypto passes.
         # TODO: This is just a quick fix and has its own side-effects - it is
-        #       affecting every subset name with `crypto` in its name.
+        #       affecting every prouct name with `crypto` in its name.
         #       This must be solved properly, maybe using tags on
         #       representation that can be determined much earlier and
         #       with better precision.
-        if "crypto" in subset_name.lower():
+        if "crypto" in product_name.lower():
             self.log.debug("Skipping crypto passes.")
             return
 
-        # We only want to process the subsets needed from settings.
+        # We only want to process the produces needed from settings.
         def validate_string_against_patterns(input_str, patterns):
             for pattern in patterns:
                 if re.match(pattern, input_str):
@@ -116,14 +128,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         product_names = self.product_names
         if product_names:
             result = validate_string_against_patterns(
-                instance.data["subset"], product_names
+                product_name, product_names
             )
             if not result:
-                self.log.debug(
-                    "Product name \"{}\" did not match settings filters: {}".format(
-                        instance.data["subset"], product_names
-                    )
-                )
+                self.log.debug((
+                    "Product name \"{}\" did not match settings filters: {}"
+                ).format(product_name, product_names))
                 return
 
         # first check for any explicitly marked representations for thumbnail
@@ -369,7 +379,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         repre_display = colorspace_data.get("display")
         repre_view = colorspace_data.get("view")
-        oiio_default_type = None
         oiio_default_display = None
         oiio_default_view = None
         oiio_default_colorspace = None
@@ -387,11 +396,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         #   oiiotool_defaults
         elif self.oiiotool_defaults:
             oiio_default_type = self.oiiotool_defaults["type"]
-            if "colorspace" in oiio_default_type:
+            if "colorspace" == oiio_default_type:
                 oiio_default_colorspace = self.oiiotool_defaults["colorspace"]
             else:
-                oiio_default_display = self.oiiotool_defaults["display"]
-                oiio_default_view = self.oiiotool_defaults["view"]
+                display_and_view = self.oiiotool_defaults["display_and_view"]
+                oiio_default_display = display_and_view["display"]
+                oiio_default_view = display_and_view["view"]
 
         try:
             convert_colorspace(
@@ -468,7 +478,15 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # Set video input attributes
         max_int = str(2147483647)
         video_data = get_ffprobe_data(video_file_path, logger=self.log)
-        duration = float(video_data["format"]["duration"])
+        # Use duration of the individual streams since it is returned with
+        # higher decimal precision than 'format.duration'. We need this
+        # more precise value for calculating the correct amount of frames
+        # for higher FPS ranges or decimal ranges, e.g. 29.97 FPS
+        duration = max(
+            float(stream.get("duration", 0))
+            for stream in video_data["streams"]
+            if stream.get("codec_type") == "video"
+        )
 
         cmd_args = [
             "-y",
@@ -507,11 +525,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         input_path,
     ):
         # get settings
-        if self.target_size.get("type") == "source":
+        if self.target_size["type"] == "source":
             return []
 
-        target_width = self.target_size["width"]
-        target_height = self.target_size["height"]
+        resize = self.target_size["resize"]
+        target_width = resize["width"]
+        target_height = resize["height"]
 
         # form arg string per application
         return get_rescaled_command_arguments(

@@ -1,11 +1,6 @@
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id
-)
-from ayon_core.pipeline import (
-    get_representation_path,
-    get_current_project_name,
-)
+import ayon_api
+
+from ayon_core.pipeline import get_representation_path
 from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,
     IMAGE_EXTENSIONS
@@ -14,7 +9,7 @@ import ayon_core.hosts.hiero.api as phiero
 
 
 class LoadClip(phiero.SequenceLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
@@ -42,7 +37,7 @@ class LoadClip(phiero.SequenceLoader):
     clip_name_template = "{asset}_{subset}_{representation}"
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         plugin_type_settings = (
             project_settings
             .get("hiero", {})
@@ -54,24 +49,35 @@ class LoadClip(phiero.SequenceLoader):
 
         plugin_name = cls.__name__
 
-        plugin_settings = None
         # Look for plugin settings in host specific settings
-        if plugin_name in plugin_type_settings:
-            plugin_settings = plugin_type_settings[plugin_name]
-
+        plugin_settings = plugin_type_settings.get(plugin_name)
         if not plugin_settings:
             return
 
         print(">>> We have preset for {}".format(plugin_name))
         for option, value in plugin_settings.items():
+            if option == "representations":
+                continue
+
+            if option == "product_types":
+                # TODO remove the key conversion when loaders can filter by
+                #   product types
+                # convert 'product_types' to 'families'
+                option = "families"
+
+            elif option == "clip_name_template":
+                # TODO remove the formatting replacement
+                value = (
+                    value
+                    .replace("{folder[name]}", "{asset}")
+                    .replace("{product[name]}", "{subset}")
+                )
+
             if option == "enabled" and value is False:
                 print("  - is disabled by preset")
-            elif option == "representations":
-                continue
             else:
                 print("  - setting `{}`: `{}`".format(option, value))
             setattr(cls, option, value)
-
 
     def load(self, context, name, namespace, options):
         # add clip name template to options
@@ -90,10 +96,10 @@ class LoadClip(phiero.SequenceLoader):
         path = self.filepath_from_context(context)
         track_item = phiero.ClipLoader(self, context, path, **options).load()
         namespace = namespace or track_item.name()
-        version = context['version']
-        version_data = version.get("data", {})
-        version_name = version.get("name", None)
-        colorspace = version_data.get("colorspace", None)
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        version_name = version_entity["version"]
+        colorspace = version_attributes.get("colorSpace")
         object_name = self.clip_name_template.format(
             **context["representation"]["context"])
 
@@ -108,11 +114,11 @@ class LoadClip(phiero.SequenceLoader):
         ]
 
         # move all version data keys to tag data
-        data_imprint = {}
-        for key in add_keys:
-            data_imprint.update({
-                key: version_data.get(key, str(None))
-            })
+        data_imprint = {
+            key: version_attributes.get(key, str(None))
+            for key in add_keys
+
+        }
 
         # add variables related to version context
         data_imprint.update({
@@ -122,7 +128,9 @@ class LoadClip(phiero.SequenceLoader):
         })
 
         # update color of clip regarding the version order
-        self.set_item_color(track_item, version)
+        self.set_item_color(
+            context["project"]["name"], track_item, version_entity
+        )
 
         # deal with multiselection
         self.multiselection(track_item)
@@ -135,27 +143,27 @@ class LoadClip(phiero.SequenceLoader):
             self.__class__.__name__,
             data_imprint)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """ Updating previously loaded clips
         """
+        version_entity = context["version"]
+        repre_entity = context["representation"]
 
         # load clip to timeline and get main variables
-        name = container['name']
-        namespace = container['namespace']
+        name = container["name"]
+        namespace = container["namespace"]
         track_item = phiero.get_track_items(
             track_item_name=namespace).pop()
 
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
-
-        version_data = version_doc.get("data", {})
-        version_name = version_doc.get("name", None)
-        colorspace = version_data.get("colorspace", None)
+        version_attributes = version_entity["attrib"]
+        version_name = version_entity["version"]
+        colorspace = version_attributes.get("colorSpace")
         object_name = "{}_{}".format(name, namespace)
-        file = get_representation_path(representation).replace("\\", "/")
+
+        file = get_representation_path(repre_entity).replace("\\", "/")
         clip = track_item.source()
 
         # reconnect media to new path
@@ -165,29 +173,35 @@ class LoadClip(phiero.SequenceLoader):
         if colorspace:
             clip.setSourceMediaColourTransform(colorspace)
 
-        # add additional metadata from the version to imprint Avalon knob
-        add_keys = [
-            "frameStart", "frameEnd", "source", "author",
-            "fps", "handleStart", "handleEnd"
-        ]
+        # add additional metadata from the version to imprint metadata knob
 
         # move all version data keys to tag data
         data_imprint = {}
-        for key in add_keys:
+        for key in [
+            "frameStart",
+            "frameEnd",
+            "source",
+            "author",
+            "fps",
+            "handleStart",
+            "handleEnd",
+        ]:
             data_imprint.update({
-                key: version_data.get(key, str(None))
+                key: version_attributes.get(key, str(None))
             })
 
         # add variables related to version context
         data_imprint.update({
-            "representation": str(representation["_id"]),
+            "representation": repre_entity["id"],
             "version": version_name,
             "colorspace": colorspace,
             "objectName": object_name
         })
 
         # update color of clip regarding the version order
-        self.set_item_color(track_item, version_doc)
+        self.set_item_color(
+            context["project"]["name"], track_item, version_entity
+        )
 
         return phiero.update_container(track_item, data_imprint)
 
@@ -210,14 +224,13 @@ class LoadClip(phiero.SequenceLoader):
             cls.sequence = cls.track.parent()
 
     @classmethod
-    def set_item_color(cls, track_item, version_doc):
-        project_name = get_current_project_name()
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version_doc["parent"], fields=["_id"]
+    def set_item_color(cls, project_name, track_item, version_entity):
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
         clip = track_item.source()
         # set clip colour
-        if version_doc["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             clip.binItem().setColor(cls.clip_color_last)
         else:
             clip.binItem().setColor(cls.clip_color)

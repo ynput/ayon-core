@@ -4,7 +4,7 @@ from qtpy import QtWidgets, QtGui, QtCore
 import qtawesome
 
 from ayon_core.style import get_default_entity_icon_color
-from ayon_core.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils import DeselectableTreeView
 
 from .actions_utils import show_actions_menu

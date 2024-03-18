@@ -26,11 +26,11 @@ class ExtractOIIOTranscode(publish.Extractor):
     This dict contains source colorspace information, collected by hosts.
 
     Target colorspace is selected by profiles in the Settings, based on:
-    - families
-    - host
+    - host names
+    - product types
+    - product names
     - task types
     - task names
-    - subset names
 
     Can produce one or more representations (with different extensions) based
     on output definition in format:
@@ -81,6 +81,7 @@ class ExtractOIIOTranscode(publish.Extractor):
         if not profile:
             return
 
+        profile_output_defs = profile["outputs"]
         new_representations = []
         repres = instance.data["representations"]
         for idx, repre in enumerate(list(repres)):
@@ -98,7 +99,8 @@ class ExtractOIIOTranscode(publish.Extractor):
                 self.log.warning("Config file doesn't exist, skipping")
                 continue
 
-            for output_name, output_def in profile.get("outputs", {}).items():
+            for output_def in profile_output_defs:
+                output_name = output_def["name"]
                 new_repre = copy.deepcopy(repre)
 
                 original_staging_dir = new_repre["stagingDir"]
@@ -311,17 +313,17 @@ class ExtractOIIOTranscode(publish.Extractor):
     def _get_profile(self, instance):
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
-        family = instance.data["family"]
+        product_type = instance.data["productType"]
+        product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
-        subset = instance.data["subset"]
         filtering_criteria = {
             "hosts": host_name,
-            "families": family,
+            "product_types": product_type,
+            "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
-            "subsets": subset
         }
         profile = filter_profiles(self.profiles, filtering_criteria,
                                   logger=self.log)
@@ -329,9 +331,11 @@ class ExtractOIIOTranscode(publish.Extractor):
         if not profile:
             self.log.debug((
               "Skipped instance. None of profiles in presets are for"
-              " Host: \"{}\" | Families: \"{}\" | Task \"{}\""
-              " | Task type \"{}\" | Subset \"{}\" "
-            ).format(host_name, family, task_name, task_type, subset))
+              " Host: \"{}\" | Product types: \"{}\" | Product names: \"{}\""
+              " | Task name \"{}\" | Task type \"{}\""
+            ).format(
+                host_name, product_type, product_name, task_name, task_type
+            ))
 
         return profile
 

@@ -1,10 +1,10 @@
 import collections
 
+from ayon_api import get_representations, get_versions_links
+
 from ayon_core.lib import Logger
-from ayon_core.client.entities import get_representations
-from ayon_core.client import get_linked_representation_id
 from ayon_core.addon import AddonsManager
-from ayon_core.tools.ayon_utils.models import NestedCacheItem
+from ayon_core.tools.common_models import NestedCacheItem
 from ayon_core.tools.loader.abstract import ActionItem
 
 DOWNLOAD_IDENTIFIER = "sitesync.download"
@@ -322,24 +322,34 @@ class SiteSyncModel:
         active_site = self.get_active_site(project_name)
         remote_site = self.get_remote_site(project_name)
 
-        repre_docs = list(get_representations(
-            project_name, representation_ids=representation_ids
-        ))
-        families_per_repre_id = {
-            item["_id"]: item["context"]["family"]
-            for item in repre_docs
+        repre_entities_by_id = {
+            repre_entity["id"]: repre_entity
+            for repre_entity in get_representations(
+                project_name, representation_ids=representation_ids
+            )
         }
+        # TODO get product type from product entity instead of 'context'
+        #   on representation
+        product_type_by_repre_id = {}
+        for repre_id, repre_entity in repre_entities_by_id.items():
+            repre_context = repre_entity["context"]
+            product_type = repre_context.get("product", {}).get("type")
+            if not product_type:
+                product_type = repre_context.get("family")
+
+            product_type_by_repre_id[repre_id] = product_type
 
         for repre_id in representation_ids:
-            family = families_per_repre_id[repre_id]
+            repre_entity = repre_entities_by_id.get(repre_id)
+            product_type = product_type_by_repre_id[repre_id]
             if identifier == DOWNLOAD_IDENTIFIER:
                 self._add_site(
-                    project_name, repre_id, active_site, family
+                    project_name, repre_entity, active_site, product_type
                 )
 
             elif identifier == UPLOAD_IDENTIFIER:
                 self._add_site(
-                    project_name, repre_id, remote_site, family
+                    project_name, repre_entity, remote_site, product_type
                 )
 
             elif identifier == REMOVE_IDENTIFIER:
@@ -485,19 +495,19 @@ class SiteSyncModel:
             representation_ids=representation_ids,
         )
 
-    def _add_site(self, project_name, repre_id, site_name, family):
+    def _add_site(self, project_name, repre_entity, site_name, product_type):
         self._site_sync_addon.add_site(
-            project_name, repre_id, site_name, force=True
+            project_name, repre_entity["id"], site_name, force=True
         )
 
         # TODO this should happen in site sync addon
-        if family != "workfile":
+        if product_type != "workfile":
             return
 
-        links = get_linked_representation_id(
+        links = self._get_linked_representation_id(
             project_name,
-            repre_id=repre_id,
-            link_type="reference"
+            repre_entity,
+            "reference"
         )
         for link_repre_id in links:
             try:
@@ -512,3 +522,83 @@ class SiteSyncModel:
             except Exception:
                 # do not add/reset working site for references
                 log.debug("Site present", exc_info=True)
+
+    def _get_linked_representation_id(
+        self,
+        project_name,
+        repre_entity,
+        link_type,
+        max_depth=None
+    ):
+        """Returns list of linked ids of particular type (if provided).
+
+        One of representation document or representation id must be passed.
+        Note:
+            Representation links now works only from representation through
+                version back to representations.
+
+        Todos:
+            Missing depth query. Not sure how it did find more representations
+                in depth, probably links to version?
+            This function should probably live in sitesync addon?
+
+        Args:
+            project_name (str): Name of project where look for links.
+            repre_entity (dict[str, Any]): Representation entity.
+            link_type (str): Type of link (e.g. 'reference', ...).
+            max_depth (int): Limit recursion level. Default: 0
+
+        Returns:
+            List[ObjectId] Linked representation ids.
+        """
+
+        if not repre_entity:
+            return []
+
+        version_id = repre_entity["versionId"]
+        if max_depth is None or max_depth == 0:
+            max_depth = 1
+
+        link_types = None
+        if link_type:
+            link_types = [link_type]
+
+        # Store already found version ids to avoid recursion, and also to store
+        #   output -> Don't forget to remove 'version_id' at the end!!!
+        linked_version_ids = {version_id}
+        # Each loop of depth will reset this variable
+        versions_to_check = {version_id}
+        for _ in range(max_depth):
+            if not versions_to_check:
+                break
+
+            versions_links = get_versions_links(
+                project_name,
+                versions_to_check,
+                link_types=link_types,
+                link_direction="out")
+
+            versions_to_check = set()
+            for links in versions_links.values():
+                for link in links:
+                    # Care only about version links
+                    if link["entityType"] != "version":
+                        continue
+                    entity_id = link["entityId"]
+                    # Skip already found linked version ids
+                    if entity_id in linked_version_ids:
+                        continue
+                    linked_version_ids.add(entity_id)
+                    versions_to_check.add(entity_id)
+
+        linked_version_ids.remove(version_id)
+        if not linked_version_ids:
+            return []
+        representations = get_representations(
+            project_name,
+            version_ids=linked_version_ids,
+            fields=["id"])
+        return [
+            repre["id"]
+            for repre in representations
+        ]

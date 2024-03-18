@@ -69,9 +69,9 @@ class ApplicationAction(LauncherAction):
 
     _log = None
     required_session_keys = (
-        "AVALON_PROJECT",
-        "AVALON_ASSET",
-        "AVALON_TASK"
+        "AYON_PROJECT_NAME",
+        "AYON_FOLDER_PATH",
+        "AYON_TASK_NAME"
     )
 
     @property
@@ -85,7 +85,7 @@ class ApplicationAction(LauncherAction):
             if not session.get(key):
                 return False
 
-        project_name = session["AVALON_PROJECT"]
+        project_name = session["AYON_PROJECT_NAME"]
         project_entity = self.project_entities[project_name]
         apps = project_entity["attrib"].get("applications")
         if not apps or self.application.full_name not in apps:
@@ -119,13 +119,13 @@ class ApplicationAction(LauncherAction):
             ApplicationLaunchFailed,
         )
 
-        project_name = session["AVALON_PROJECT"]
-        asset_name = session["AVALON_ASSET"]
-        task_name = session["AVALON_TASK"]
+        project_name = session["AYON_PROJECT_NAME"]
+        folder_path = session["AYON_FOLDER_PATH"]
+        task_name = session["AYON_TASK_NAME"]
         try:
             self.application.launch(
                 project_name=project_name,
-                asset_name=asset_name,
+                folder_path=folder_path,
                 task_name=task_name,
                 **self.data
             )
@@ -293,6 +293,36 @@ class ActionsModel:
         self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
+    def _should_start_last_workfile(
+        self,
+        project_name,
+        task_id,
+        identifier,
+        host_name,
+        not_open_workfile_actions
+    ):
+        from ayon_core.lib.applications import should_start_last_workfile
+
+        if identifier in not_open_workfile_actions:
+            return not not_open_workfile_actions[identifier]
+
+        task_name = None
+        task_type = None
+        if task_id is not None:
+            task_entity = self._controller.get_task_entity(
+                project_name, task_id
+            )
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
+        output = should_start_last_workfile(
+            project_name,
+            host_name,
+            task_name,
+            task_type
+        )
+        return output
+
     def get_action_items(self, project_name, folder_id, task_id):
         """Get actions for project.
 
@@ -304,7 +334,6 @@ class ActionsModel:
         Returns:
             list[ActionItem]: List of actions.
         """
-
         not_open_workfile_actions = self._get_no_last_workfile_for_context(
             project_name, folder_id, task_id)
         session = self._prepare_session(project_name, folder_id, task_id)
@@ -318,8 +347,15 @@ class ActionsModel:
             # Handling of 'force_not_open_workfile' for applications
             if action_item.is_application:
                 action_item = action_item.copy()
+                start_last_workfile = self._should_start_last_workfile(
+                    project_name,
+                    task_id,
+                    identifier,
+                    action.application.host_name,
+                    not_open_workfile_actions
+                )
                 action_item.force_not_open_workfile = (
-                    not_open_workfile_actions.get(identifier, False)
+                    not start_last_workfile
                 )
 
             output.append(action_item)
@@ -359,11 +395,15 @@ class ActionsModel:
                 per_action = self._get_no_last_workfile_for_context(
                     project_name, folder_id, task_id
                 )
-                force_not_open_workfile = per_action.get(identifier, False)
-                if force_not_open_workfile:
-                    action.data["start_last_workfile"] = False
-                else:
-                    action.data.pop("start_last_workfile", None)
+                start_last_workfile = self._should_start_last_workfile(
+                    project_name,
+                    task_id,
+                    identifier,
+                    action.application.host_name,
+                    per_action
+                )
+                action.data["start_last_workfile"] = start_last_workfile
+
             action.process(session)
         except Exception as exc:
             self.log.warning("Action trigger failed.", exc_info=True)
@@ -416,6 +456,10 @@ class ActionsModel:
                 task_name = task["name"]
 
         return {
+            "AYON_PROJECT_NAME": project_name,
+            "AYON_FOLDER_PATH": folder_path,
+            "AYON_TASK_NAME": task_name,
+            # Deprecated - kept for backwards compatibility
             "AVALON_PROJECT": project_name,
             "AVALON_ASSET": folder_path,
             "AVALON_TASK": task_name,
@@ -457,9 +501,11 @@ class ActionsModel:
             if is_application:
                 action.project_entities[project_name] = project_entity
                 action.project_settings[project_name] = project_settings
+
             label = action.label or identifier
             variant_label = getattr(action, "label_variant", None)
             icon = get_action_icon(action)
+
             item = ActionItem(
                 identifier,
                 label,

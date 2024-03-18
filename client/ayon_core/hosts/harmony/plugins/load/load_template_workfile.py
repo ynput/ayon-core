@@ -40,17 +40,17 @@ class ImportTemplateLoader(load.LoaderPlugin):
 
         shutil.rmtree(temp_dir)
 
-        subset_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
 
         return harmony.containerise(
-            subset_name,
+            product_name,
             namespace,
-            subset_name,
+            product_name,
             context,
             self.__class__.__name__
         )
 
-        def update(self, container, representation):
+        def update(self, container, context):
             pass
 
         def remove(self, container):

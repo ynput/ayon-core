@@ -9,21 +9,21 @@ import json
 from contextlib import contextmanager
 
 import six
+import ayon_api
 
 from ayon_core.lib import StringTemplate
-from ayon_core.client import get_project, get_asset_by_name
 from ayon_core.settings import get_current_project_settings
 from ayon_core.pipeline import (
     Anatomy,
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     registered_host,
     get_current_context,
     get_current_host_name,
 )
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.template_data import get_template_data
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_project_folder
 from ayon_core.tools.utils import PopupUpdateKeys, SimplePopup
 from ayon_core.tools.utils.host_tools import get_tool_by_name
 
@@ -36,12 +36,12 @@ log = logging.getLogger(__name__)
 JSON_PREFIX = "JSON:::"
 
 
-def get_asset_fps(asset_doc=None):
-    """Return current asset fps."""
+def get_folder_fps(folder_entity=None):
+    """Return current folder fps."""
 
-    if asset_doc is None:
-        asset_doc = get_current_project_asset(fields=["data.fps"])
-    return asset_doc["data"]["fps"]
+    if folder_entity is None:
+        folder_entity = get_current_project_folder(fields=["attrib.fps"])
+    return folder_entity["attrib"]["fps"]
 
 
 def set_id(node, unique_id, overwrite=False):
@@ -68,7 +68,7 @@ def get_id(node):
         return node.parm("id")
 
 
-def generate_ids(nodes, asset_id=None):
+def generate_ids(nodes, folder_id=None):
     """Returns new unique ids for the given nodes.
 
     Note: This does not assign the new ids, it only generates the values.
@@ -85,28 +85,29 @@ def generate_ids(nodes, asset_id=None):
 
     Args:
         nodes (list): List of nodes.
-        asset_id (str or bson.ObjectId): The database id for the *asset* to
-            generate for. When None provided the current asset in the
-            active session is used.
+        folder_id (str): Folder id . Use current folder id if is ``None``.
 
     Returns:
         list: A list of (node, id) tuples.
 
     """
 
-    if asset_id is None:
+    if folder_id is None:
         project_name = get_current_project_name()
-        asset_name = get_current_asset_name()
-        # Get the asset ID from the database for the asset of current context
-        asset_doc = get_asset_by_name(project_name, asset_name, fields=["_id"])
+        folder_path = get_current_folder_path()
+        # Get folder id of current context folder
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields={"id"}
+        )
+        if not folder_entity:
+            raise ValueError("No current folder is set.")
 
-        assert asset_doc, "No current asset found in Session"
-        asset_id = asset_doc['_id']
+        folder_id = folder_entity["id"]
 
     node_ids = []
     for node in nodes:
         _, uid = str(uuid.uuid4()).rsplit("-", 1)
-        unique_id = "{}:{}".format(asset_id, uid)
+        unique_id = "{}:{}".format(folder_id, uid)
         node_ids.append((node, unique_id))
 
     return node_ids
@@ -199,7 +200,7 @@ def validate_fps():
 
     """
 
-    fps = get_asset_fps()
+    fps = get_folder_fps()
     current_fps = hou.fps()  # returns float
 
     if current_fps != fps:
@@ -526,28 +527,27 @@ def maintained_selection():
 
 
 def reset_framerange():
-    """Set frame range and FPS to current asset"""
+    """Set frame range and FPS to current folder."""
 
-    # Get asset data
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
-    # Get the asset ID from the database for the asset of current context
-    asset_doc = get_asset_by_name(project_name, asset_name)
-    asset_data = asset_doc["data"]
+    folder_path = get_current_folder_path()
+
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    folder_attributes = folder_entity["attrib"]
 
     # Get FPS
-    fps = get_asset_fps(asset_doc)
+    fps = get_folder_fps(folder_entity)
 
     # Get Start and End Frames
-    frame_start = asset_data.get("frameStart")
-    frame_end = asset_data.get("frameEnd")
+    frame_start = folder_attributes.get("frameStart")
+    frame_end = folder_attributes.get("frameEnd")
 
     if frame_start is None or frame_end is None:
-        log.warning("No edit information found for %s" % asset_name)
+        log.warning("No edit information found for '{}'".format(folder_path))
         return
 
-    handle_start = asset_data.get("handleStart", 0)
-    handle_end = asset_data.get("handleEnd", 0)
+    handle_start = folder_attributes.get("handleStart", 0)
+    handle_end = folder_attributes.get("handleEnd", 0)
 
     frame_start -= int(handle_start)
     frame_end += int(handle_end)
@@ -641,7 +641,7 @@ def get_frame_data(node, log=None):
 
         log.info(
             "Node '{}' has 'Render current frame' set.\n"
-            "Asset Handles are ignored.\n"
+            "Folder Handles are ignored.\n"
             "frameStart and frameEnd are set to the "
             "current frame.".format(node.path())
         )
@@ -780,31 +780,43 @@ def get_output_children(output_node, include_sops=True):
     return out_list
 
 
-def get_resolution_from_doc(doc):
-    """Get resolution from the given asset document. """
+def get_resolution_from_folder(folder_entity):
+    """Get resolution from the given folder entity.
 
-    if not doc or "data" not in doc:
-        print("Entered document is not valid. \"{}\"".format(str(doc)))
+    Args:
+        folder_entity (dict[str, Any]): Folder entity.
+
+    Returns:
+        Union[Tuple[int, int], None]: Resolution width and height.
+
+    """
+    if not folder_entity or "attrib" not in folder_entity:
+        print("Entered folder is not valid. \"{}\"".format(
+            str(folder_entity)
+        ))
         return None
 
-    resolution_width = doc["data"].get("resolutionWidth")
-    resolution_height = doc["data"].get("resolutionHeight")
+    folder_attributes = folder_entity["attrib"]
+    resolution_width = folder_attributes.get("resolutionWidth")
+    resolution_height = folder_attributes.get("resolutionHeight")
 
     # Make sure both width and height are set
     if resolution_width is None or resolution_height is None:
-        print("No resolution information found for \"{}\"".format(doc["name"]))
+        print("No resolution information found for '{}'".format(
+            folder_entity["path"]
+        ))
         return None
 
     return int(resolution_width), int(resolution_height)
 
 
-def set_camera_resolution(camera, asset_doc=None):
-    """Apply resolution to camera from asset document of the publish"""
+def set_camera_resolution(camera, folder_entity=None):
+    """Apply resolution to camera from folder entity of the publish"""
 
-    if not asset_doc:
-        asset_doc = get_current_project_asset()
+    if not folder_entity:
+        folder_entity = get_current_project_folder()
 
-    resolution = get_resolution_from_doc(asset_doc)
+    resolution = get_resolution_from_folder(folder_entity)
 
     if resolution:
         print("Setting camera resolution: {} -> {}x{}".format(
@@ -827,41 +839,47 @@ def get_camera_from_container(container):
     return cameras[0]
 
 
-def get_current_context_template_data_with_asset_data():
-    """
-    TODOs:
-        Support both 'assetData' and 'folderData' in future.
+def get_current_context_template_data_with_folder_attrs():
     """
 
+    Output contains 'folderAttributes' key with folder attribute values.
+
+    Returns:
+         dict[str, Any]: Template data to fill templates.
+
+    """
     context = get_current_context()
     project_name = context["project_name"]
-    asset_name = context["asset_name"]
+    folder_path = context["folder_path"]
     task_name = context["task_name"]
     host_name = get_current_host_name()
 
-    anatomy = Anatomy(project_name)
-    project_doc = get_project(project_name)
-    asset_doc = get_asset_by_name(project_name, asset_name)
+    project_entity = ayon_api.get_project(project_name)
+    anatomy = Anatomy(project_name, project_entity=project_entity)
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    task_entity = ayon_api.get_task_by_name(
+        project_name, folder_entity["id"], task_name
+    )
 
     # get context specific vars
-    asset_data = asset_doc["data"]
+    folder_attributes = folder_entity["attrib"]
 
     # compute `frameStartHandle` and `frameEndHandle`
-    frame_start = asset_data.get("frameStart")
-    frame_end = asset_data.get("frameEnd")
-    handle_start = asset_data.get("handleStart")
-    handle_end = asset_data.get("handleEnd")
+    frame_start = folder_attributes.get("frameStart")
+    frame_end = folder_attributes.get("frameEnd")
+    handle_start = folder_attributes.get("handleStart")
+    handle_end = folder_attributes.get("handleEnd")
     if frame_start is not None and handle_start is not None:
-        asset_data["frameStartHandle"] = frame_start - handle_start
+        folder_attributes["frameStartHandle"] = frame_start - handle_start
 
     if frame_end is not None and handle_end is not None:
-        asset_data["frameEndHandle"] = frame_end + handle_end
+        folder_attributes["frameEndHandle"] = frame_end + handle_end
 
     template_data = get_template_data(
-        project_doc, asset_doc, task_name, host_name
+        project_entity, folder_entity, task_entity, host_name
     )
     template_data["root"] = anatomy.roots
-    template_data["assetData"] = asset_data
+    template_data["folderAttributes"] = folder_attributes
 
     return template_data
 
@@ -885,7 +903,7 @@ def get_context_var_changes():
         return houdini_vars_to_update
 
     # Get Template data
-    template_data = get_current_context_template_data_with_asset_data()
+    template_data = get_current_context_template_data_with_folder_attrs()
 
     # Set Houdini Vars
     for item in houdini_vars:
@@ -917,7 +935,7 @@ def get_context_var_changes():
 
 
 def update_houdini_vars_context():
-    """Update asset context variables"""
+    """Update folder context variables"""
 
     for var, (_old, new, is_directory) in get_context_var_changes().items():
         if is_directory:
@@ -936,7 +954,7 @@ def update_houdini_vars_context():
 
 
 def update_houdini_vars_context_dialog():
-    """Show pop-up to update asset context variables"""
+    """Show pop-up to update folder context variables"""
     update_vars = get_context_var_changes()
     if not update_vars:
         # Nothing to change
@@ -952,7 +970,7 @@ def update_houdini_vars_context_dialog():
     parent = hou.ui.mainQtWindow()
     dialog = SimplePopup(parent=parent)
     dialog.setModal(True)
-    dialog.setWindowTitle("Houdini scene has outdated asset variables")
+    dialog.setWindowTitle("Houdini scene has outdated folder variables")
     dialog.set_message(message)
     dialog.set_button_text("Fix")
 

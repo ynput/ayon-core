@@ -4,10 +4,10 @@ from ayon_core.hosts.blender.api import plugin
 
 
 def append_workfile(context, fname, do_import):
-    asset = context['asset']['name']
-    subset = context['subset']['name']
+    folder_name = context["folder"]["name"]
+    product_name = context["product"]["name"]
 
-    group_name = plugin.prepare_scene_name(asset, subset)
+    group_name = plugin.prepare_scene_name(folder_name, product_name)
 
     # We need to preserve the original names of the scenes, otherwise,
     # if there are duplicate names in the current workfile, the imported
