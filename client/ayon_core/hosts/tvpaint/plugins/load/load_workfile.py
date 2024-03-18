@@ -24,7 +24,7 @@ from ayon_core.pipeline.version_start import get_versioning_start
 class LoadWorkfile(plugin.Loader):
     """Load workfile."""
 
-    families = ["workfile"]
+    product_types = ["workfile"]
     representations = ["tvpp"]
 
     label = "Load Workfile"

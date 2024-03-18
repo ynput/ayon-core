@@ -16,7 +16,7 @@ class FusionLoadUSD(load.LoaderPlugin):
     Support for USD was added since Fusion 18.5
     """
 
-    families = ["*"]
+    product_types = ["*"]
     representations = ["*"]
     extensions = {"usd", "usda", "usdz"}
 

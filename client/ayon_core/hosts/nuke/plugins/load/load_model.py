@@ -18,7 +18,7 @@ class AlembicModelLoader(load.LoaderPlugin):
     This will load alembic model or anim into script.
     """
 
-    families = ["model", "pointcache", "animation"]
+    product_types = ["model", "pointcache", "animation"]
     representations = ["*"]
     extensions = {"abc"}
 

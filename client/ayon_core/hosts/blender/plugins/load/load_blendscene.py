@@ -18,7 +18,7 @@ from ayon_core.hosts.blender.api.pipeline import (
 class BlendSceneLoader(plugin.AssetLoader):
     """Load assets from a .blend file."""
 
-    families = ["blendScene"]
+    product_types = ["blendScene"]
     representations = ["blend"]
 
     label = "Append Blend"

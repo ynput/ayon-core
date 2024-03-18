@@ -15,7 +15,7 @@ import unreal  # noqa
 class UAssetLoader(plugin.Loader):
     """Load UAsset."""
 
-    families = ["uasset"]
+    product_types = ["uasset"]
     label = "Load UAsset"
     representations = ["uasset"]
     icon = "cube"
@@ -164,7 +164,7 @@ class UAssetLoader(plugin.Loader):
 class UMapLoader(UAssetLoader):
     """Load Level."""
 
-    families = ["uasset"]
+    product_types = ["uasset"]
     label = "Load Level"
     representations = ["umap"]
 

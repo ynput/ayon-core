@@ -12,7 +12,7 @@ class FileLoader(api.AfterEffectsLoader):
     """
     label = "Load file"
 
-    families = ["image",
+    product_types = ["image",
                 "plate",
                 "render",
                 "prerender",

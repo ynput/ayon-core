@@ -18,7 +18,7 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
 
     """
 
-    families = ["vdbcache"]
+    product_types = ["vdbcache"]
     representations = ["vdb"]
 
     label = "Load VDB to RedShift"

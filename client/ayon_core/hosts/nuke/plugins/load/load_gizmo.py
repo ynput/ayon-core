@@ -21,7 +21,7 @@ from ayon_core.hosts.nuke.api import (
 class LoadGizmo(load.LoaderPlugin):
     """Loading nuke Gizmo"""
 
-    families = ["gizmo"]
+    product_types = ["gizmo"]
     representations = ["*"]
     extensions = {"nk"}
 

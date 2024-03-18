@@ -23,7 +23,7 @@ from ayon_core.lib.transcoding import (
 class LoadImage(load.LoaderPlugin):
     """Load still image into Nuke"""
 
-    families = [
+    product_types = [
         "render2d",
         "source",
         "plate",

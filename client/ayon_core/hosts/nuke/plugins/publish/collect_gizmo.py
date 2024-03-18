@@ -9,7 +9,7 @@ class CollectGizmo(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.22
     label = "Collect Gizmo (group)"
     hosts = ["nuke"]
-    families = ["gizmo"]
+    product_types = ["gizmo"]
 
     def process(self, instance):
 

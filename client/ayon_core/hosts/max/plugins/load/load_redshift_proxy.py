@@ -23,7 +23,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
     """Load rs files with Redshift Proxy"""
 
     label = "Load Redshift Proxy"
-    families = ["redshiftproxy"]
+    product_types = ["redshiftproxy"]
     representations = ["rs"]
     order = -9
     icon = "code-fork"

@@ -16,7 +16,7 @@ class FbxLoader(load.LoaderPlugin):
 
     order = -10
 
-    families = ["*"]
+    product_types = ["*"]
     representations = ["*"]
     extensions = {"fbx"}
 

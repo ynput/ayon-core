@@ -24,7 +24,7 @@ class ImageFromSequenceLoader(photoshop.PhotoshopLoader):
         difficult.
     """
 
-    families = ["render"]
+    product_types = ["render"]
     representations = ["*"]
     options = []
 

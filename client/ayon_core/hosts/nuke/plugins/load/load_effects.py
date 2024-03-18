@@ -18,7 +18,7 @@ from ayon_core.hosts.nuke.api import (
 class LoadEffects(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
-    families = ["effect"]
+    product_types = ["effect"]
     representations = ["*"]
     extensions = {"json"}
 

@@ -35,7 +35,7 @@ class LoadClip(plugin.NukeLoader):
     """
     log = Logger.get_logger(__name__)
 
-    families = [
+    product_types = [
         "source",
         "plate",
         "render",

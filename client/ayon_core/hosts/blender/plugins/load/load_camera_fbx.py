@@ -23,7 +23,7 @@ class FbxCameraLoader(plugin.AssetLoader):
     Stores the imported asset in an empty named after the asset.
     """
 
-    families = ["camera"]
+    product_types = ["camera"]
     representations = ["fbx"]
 
     label = "Load Camera (FBX)"

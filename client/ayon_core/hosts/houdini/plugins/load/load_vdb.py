@@ -11,7 +11,7 @@ from ayon_core.hosts.houdini.api import pipeline
 class VdbLoader(load.LoaderPlugin):
     """Load VDB"""
 
-    families = ["vdbcache"]
+    product_types = ["vdbcache"]
     label = "Load VDB"
     representations = ["vdb"]
     order = -10

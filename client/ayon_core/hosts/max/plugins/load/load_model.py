@@ -14,7 +14,7 @@ from ayon_core.hosts.max.api.lib import (
 class ModelAbcLoader(load.LoaderPlugin):
     """Loading model with the Alembic loader."""
 
-    families = ["model"]
+    product_types = ["model"]
     label = "Load Model with Alembic"
     representations = ["abc"]
     order = -10

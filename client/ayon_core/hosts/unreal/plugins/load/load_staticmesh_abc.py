@@ -18,7 +18,7 @@ import unreal  # noqa
 class StaticMeshAlembicLoader(plugin.Loader):
     """Load Unreal StaticMesh from Alembic"""
 
-    families = ["model", "staticMesh"]
+    product_types = ["model", "staticMesh"]
     label = "Import Alembic Static Mesh"
     representations = ["abc"]
     icon = "cube"

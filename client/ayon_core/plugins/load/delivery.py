@@ -29,7 +29,7 @@ class Delivery(load.ProductLoaderPlugin):
     sequence_splitter = "__sequence_splitter__"
 
     representations = ["*"]
-    families = ["*"]
+    product_types = ["*"]
     tool_names = ["library_loader"]
 
     label = "Deliver Versions"

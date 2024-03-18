@@ -7,7 +7,7 @@ from ayon_core.hosts.maya.api import lib
 class YetiRigLoader(plugin.ReferenceLoader):
     """This loader will load Yeti rig."""
 
-    families = ["yetiRig"]
+    product_types = ["yetiRig"]
     representations = ["ma"]
 
     label = "Load Yeti Rig"

@@ -14,7 +14,7 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
     "Cannot write to closing transport", possible refactor.
     """
 
-    families = ["image", "render"]
+    product_types = ["image", "render"]
     representations = ["*"]
 
     def load(self, context, name=None, namespace=None, data=None):

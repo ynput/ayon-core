@@ -21,7 +21,7 @@ from pymxs import runtime as rt
 class OxAbcLoader(load.LoaderPlugin):
     """Ornatrix Alembic loader."""
 
-    families = ["camera", "animation", "pointcache"]
+    product_types = ["camera", "animation", "pointcache"]
     label = "Load Alembic with Ornatrix"
     representations = ["abc"]
     order = -10
