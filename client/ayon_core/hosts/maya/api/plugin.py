@@ -608,7 +608,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         return get_product_name(
             project_name,
             task_name,
-            task_type
+            task_type,
             host_name,
             self.layer_instance_prefix or self.product_type,
             variant,
