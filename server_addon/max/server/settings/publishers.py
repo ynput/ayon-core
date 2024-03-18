@@ -191,7 +191,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ValidateRenderPasses": {
         "enabled": True,
-        "optional": True,
+        "optional": False,
         "active": True
     },
     "ExtractModelObj": {
