@@ -3,7 +3,7 @@ import collections
 from ayon_core.lib.attribute_definitions import BoolDef
 from ayon_core.pipeline import (
     get_representation_context,
-    register_host,
+    registered_host,
 )
 from ayon_core.hosts.tvpaint.api import plugin
 from ayon_core.hosts.tvpaint.api.lib import (
@@ -176,7 +176,7 @@ class LoadImage(plugin.Loader):
             return
         representation = container["representation"]
         members = self.get_members_from_container(container)
-        host = register_host()
+        host = registered_host()
         current_containers = host.get_containers()
         pop_idx = None
         for idx, cur_con in enumerate(current_containers):
