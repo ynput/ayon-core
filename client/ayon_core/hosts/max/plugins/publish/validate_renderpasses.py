@@ -121,7 +121,7 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
         else:
             cls.log.debug(
                 "Skipping render element validation "
-                f"for renderer : {renderer}")
+                f"for renderer: {renderer}")
         return invalid
 
     @classmethod
@@ -146,7 +146,7 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
             if not file_name.rstrip(".").endswith(renderpass):
                 cls.log.error(
                     f"Filename for {renderpass} should "
-                    f"end with {renderpass}"
+                    f"end with {renderpass}: {file_name}"
                 )
                 invalid.append((f"Invalid {renderpass}",
                                 os.path.basename(file_name)))
