@@ -120,12 +120,12 @@ def paint_image_with_color(image, color):
     return pixmap
 
 
-def format_version(value, hero_version=False):
+def format_version(value):
     """Formats integer to displayable version name"""
-    label = "v{0:03d}".format(value)
-    if not hero_version:
-        return label
-    return "[{}]".format(label)
+    label = "v{0:03d}".format(abs(value))
+    if value < 0:
+        return "[{}]".format(label)
+    return label
 
 
 @contextlib.contextmanager
@@ -238,34 +238,6 @@ def get_default_task_icon(color=None):
     if color is None:
         color = get_default_entity_icon_color()
     return get_qta_icon_by_name_and_color("fa.male", color)
-
-
-def get_task_icon(project_doc, asset_doc, task_name):
-    """Get icon for a task.
-
-    Icon should be defined by task type which is stored on project.
-    """
-
-    color = get_default_entity_icon_color()
-
-    tasks_info = asset_doc.get("data", {}).get("tasks") or {}
-    task_info = tasks_info.get(task_name) or {}
-    task_icon = task_info.get("icon")
-    if task_icon:
-        icon = get_qta_icon_by_name_and_color(task_icon, color)
-        if icon is not None:
-            return icon
-
-    task_type = task_info.get("type")
-    task_types = project_doc["config"]["tasks"]
-
-    task_type_info = task_types.get(task_type) or {}
-    task_type_icon = task_type_info.get("icon")
-    if task_type_icon:
-        icon = get_qta_icon_by_name_and_color(task_icon, color)
-        if icon is not None:
-            return icon
-    return get_default_task_icon(color)
 
 
 def iter_model_rows(model, column, include_root=False):

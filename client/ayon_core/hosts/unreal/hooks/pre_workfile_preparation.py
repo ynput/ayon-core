@@ -49,7 +49,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         # Prepare data for fill data and for getting workfile template key
         anatomy = self.data["anatomy"]
-        project_doc = self.data["project_doc"]
+        project_entity = self.data["project_entity"]
 
         # Use already prepared workdir data
         workdir_data = copy.deepcopy(self.data["workdir_data"])
@@ -61,9 +61,9 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         # Get workfile template key for current context
         workfile_template_key = get_workfile_template_key(
+            project_entity["name"],
             task_type,
             self.host_name,
-            project_name=project_doc["name"]
         )
         # Fill templates
         template_obj = anatomy.templates_obj[workfile_template_key]["file"]

@@ -4,11 +4,11 @@ import copy
 import platform
 import collections
 import numbers
-
-import six
 import time
 
-from ayon_core.client import get_project, get_ayon_server_api_connection
+import six
+import ayon_api
+
 from ayon_core.lib import Logger, get_local_site_id
 from ayon_core.lib.path_templates import (
     TemplateUnsolved,
@@ -50,13 +50,13 @@ class BaseAnatomy(object):
     root_key_regex = re.compile(r"{(root?[^}]+)}")
     root_name_regex = re.compile(r"root\[([^]]+)\]")
 
-    def __init__(self, project_doc, root_overrides=None):
-        project_name = project_doc["name"]
+    def __init__(self, project_entity, root_overrides=None):
+        project_name = project_entity["name"]
         self.project_name = project_name
-        self.project_code = project_doc["data"]["code"]
+        self.project_code = project_entity["code"]
 
         self._data = self._prepare_anatomy_data(
-            project_doc, root_overrides
+            project_entity, root_overrides
         )
         self._templates_obj = AnatomyTemplates(self)
         self._roots_obj = Roots(self)
@@ -78,13 +78,13 @@ class BaseAnatomy(object):
     def items(self):
         return copy.deepcopy(self._data).items()
 
-    def _prepare_anatomy_data(self, project_doc, root_overrides):
+    def _prepare_anatomy_data(self, project_entity, root_overrides):
         """Prepare anatomy data for further processing.
 
         Method added to replace `{task}` with `{task[name]}` in templates.
         """
 
-        anatomy_data = self._project_doc_to_anatomy_data(project_doc)
+        anatomy_data = self._project_entity_to_anatomy_data(project_entity)
 
         self._apply_local_settings_on_anatomy_data(
             anatomy_data,
@@ -280,13 +280,13 @@ class BaseAnatomy(object):
         ```
 
         ## Entered filepath
-        "P:/projects/project/asset/task/animation_v001.ma"
+        "P:/projects/project/folder/task/animation_v001.ma"
 
         ## Entered template
         "<{}>"
 
         ## Output
-        "<AYON_PROJECT_ROOT_NAS>/project/asset/task/animation_v001.ma"
+        "<AYON_PROJECT_ROOT_NAS>/project/folder/task/animation_v001.ma"
 
         Args:
             filepath (str): Full file path where root should be replaced.
@@ -311,14 +311,21 @@ class BaseAnatomy(object):
         data = self.root_environmets_fill_data(template)
         return rootless_path.format(**data)
 
-    def _project_doc_to_anatomy_data(self, project_doc):
+    def _project_entity_to_anatomy_data(self, project_entity):
         """Convert project document to anatomy data.
 
         Probably should fill missing keys and values.
         """
 
-        output = copy.deepcopy(project_doc["config"])
-        output["attributes"] = copy.deepcopy(project_doc["data"])
+        output = copy.deepcopy(project_entity["config"])
+        # TODO remove AYON convertion
+        task_types = copy.deepcopy(project_entity["taskTypes"])
+        new_task_types = {}
+        for task_type in task_types:
+            name = task_type["name"]
+            new_task_types[name] = task_type
+        output["tasks"] = new_task_types
+        output["attributes"] = copy.deepcopy(project_entity["attrib"])
 
         return output
 
@@ -418,7 +425,9 @@ class Anatomy(BaseAnatomy):
         lambda: collections.defaultdict(CacheItem)
     )
 
-    def __init__(self, project_name=None, site_name=None):
+    def __init__(
+        self, project_name=None, site_name=None, project_entity=None
+    ):
         if not project_name:
             project_name = os.environ.get("AYON_PROJECT_NAME")
 
@@ -428,16 +437,19 @@ class Anatomy(BaseAnatomy):
                 " to load data for specific project."
             ))
 
-        project_doc = self.get_project_doc_from_cache(project_name)
-        root_overrides = self._get_site_root_overrides(project_name, site_name)
+        if not project_entity:
+            project_entity = self.get_project_entity_from_cache(project_name)
+        root_overrides = self._get_site_root_overrides(
+            project_name, site_name
+        )
 
-        super(Anatomy, self).__init__(project_doc, root_overrides)
+        super(Anatomy, self).__init__(project_entity, root_overrides)
 
     @classmethod
-    def get_project_doc_from_cache(cls, project_name):
+    def get_project_entity_from_cache(cls, project_name):
         project_cache = cls._project_cache[project_name]
         if project_cache.is_outdated:
-            project_cache.update_data(get_project(project_name))
+            project_cache.update_data(ayon_api.get_project(project_name))
         return copy.deepcopy(project_cache.data)
 
     @classmethod
@@ -468,8 +480,7 @@ class Anatomy(BaseAnatomy):
         """
         if not project_name:
             return
-        con = get_ayon_server_api_connection()
-        return con.get_project_roots_for_site(
+        return ayon_api.get_project_roots_for_site(
             project_name, get_local_site_id()
         )
 
@@ -642,13 +653,76 @@ class AnatomyTemplates(TemplatesDict):
             return self._solve_dict(value, data)
         return super(AnatomyTemplates, self)._format_value(value, data)
 
+    @staticmethod
+    def _ayon_template_conversion(templates):
+        def _convert_template_item(template_item):
+            # Change 'directory' to 'folder'
+            if "directory" in template_item:
+                template_item["folder"] = template_item["directory"]
+
+            if (
+                "path" not in template_item
+                and "file" in template_item
+                and "folder" in template_item
+            ):
+                template_item["path"] = "/".join(
+                    (template_item["folder"], template_item["file"])
+                )
+
+        def _get_default_template_name(templates):
+            default_template = None
+            for name, template in templates.items():
+                if name == "default":
+                    return "default"
+
+                if default_template is None:
+                    default_template = name
+
+            return default_template
+
+        def _fill_template_category(templates, cat_templates, cat_key):
+            default_template_name = _get_default_template_name(cat_templates)
+            for template_name, cat_template in cat_templates.items():
+                _convert_template_item(cat_template)
+                if template_name == default_template_name:
+                    templates[cat_key] = cat_template
+                else:
+                    new_name = "{}_{}".format(cat_key, template_name)
+                    templates["others"][new_name] = cat_template
+
+        others_templates = templates.pop("others", None) or {}
+        new_others_templates = {}
+        templates["others"] = new_others_templates
+        for name, template in others_templates.items():
+            _convert_template_item(template)
+            new_others_templates[name] = template
+
+        for key in (
+            "work",
+            "publish",
+            "hero",
+        ):
+            cat_templates = templates.pop(key)
+            _fill_template_category(templates, cat_templates, key)
+
+        delivery_templates = templates.pop("delivery", None) or {}
+        new_delivery_templates = {}
+        for name, delivery_template in delivery_templates.items():
+            new_delivery_templates[name] = "/".join(
+                (delivery_template["directory"], delivery_template["file"])
+            )
+        templates["delivery"] = new_delivery_templates
+
     def set_templates(self, templates):
         if not templates:
             self.reset()
             return
 
-        self._raw_templates = copy.deepcopy(templates)
         templates = copy.deepcopy(templates)
+        # TODO remove AYON convertion
+        self._ayon_template_conversion(templates)
+
+        self._raw_templates = copy.deepcopy(templates)
         v_queue = collections.deque()
         v_queue.append(templates)
         while v_queue:
@@ -834,7 +908,7 @@ class AnatomyTemplates(TemplatesDict):
                     key_2: "value_2"
                     key_4: "value_3/value_2"
         """
-        default_key_values = templates.pop("defaults", {})
+        default_key_values = templates.pop("common", {})
         for key, value in tuple(templates.items()):
             if isinstance(value, dict):
                 continue
