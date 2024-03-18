@@ -51,7 +51,7 @@ class ValidateShaderName(pyblish.api.InstancePlugin,
 
         descendants = cmds.ls(descendants, noIntermediate=True, long=True)
         shapes = cmds.ls(descendants, type=["nurbsSurface", "mesh"], long=True)
-        asset_name = instance.data.get("folderPath")
+        folder_path = instance.data.get("folderPath")
 
         # Check the number of connected shadingEngines per shape
         regex_compile = re.compile(cls.regex)
@@ -71,12 +71,12 @@ class ValidateShaderName(pyblish.api.InstancePlugin,
                     cls.log.error(error_message.format(shape, shader))
                 else:
                     if 'asset' in regex_compile.groupindex:
-                        if m.group('asset') != asset_name:
+                        if m.group('asset') != folder_path:
                             invalid.append(shape)
                             message = error_message
-                            message += " with missing asset name \"{2}\""
+                            message += " with missing folder path \"{2}\""
                             cls.log.error(
-                                message.format(shape, shader, asset_name)
+                                message.format(shape, shader, folder_path)
                             )
 
         return invalid

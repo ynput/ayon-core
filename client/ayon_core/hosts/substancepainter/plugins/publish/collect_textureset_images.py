@@ -1,16 +1,16 @@
 import os
 import copy
-import pyblish.api
 
-from ayon_core.pipeline import publish
+import pyblish.api
+import ayon_api
 
 import substance_painter.textureset
+from ayon_core.pipeline import publish
 from ayon_core.hosts.substancepainter.api.lib import (
     get_parsed_export_maps,
     strip_template
 )
 from ayon_core.pipeline.create import get_product_name
-from ayon_core.client import get_asset_by_name
 
 
 class CollectTextureSet(pyblish.api.InstancePlugin):
@@ -26,10 +26,17 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         config = self.get_export_config(instance)
-        asset_doc = get_asset_by_name(
-            instance.context.data["projectName"],
+        project_name = instance.context.data["projectName"]
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name,
             instance.data["folderPath"]
         )
+        task_name = instance.data.get("task")
+        task_entity = None
+        if folder_entity and task_name:
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
 
         instance.data["exportConfig"] = config
         maps = get_parsed_export_maps(config)
@@ -41,12 +48,12 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
             for template, outputs in template_maps.items():
                 self.log.info(f"Processing {template}")
                 self.create_image_instance(instance, template, outputs,
-                                           asset_doc=asset_doc,
+                                           task_entity=task_entity,
                                            texture_set_name=texture_set_name,
                                            stack_name=stack_name)
 
     def create_image_instance(self, instance, template, outputs,
-                              asset_doc, texture_set_name, stack_name):
+                              task_entity, texture_set_name, stack_name):
         """Create a new instance per image or UDIM sequence.
 
         The new instances will be of product type `image`.
@@ -79,14 +86,19 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         map_identifier = strip_template(template)
         suffix += f".{map_identifier}"
 
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
         image_product_name = get_product_name(
             # TODO: The product type actually isn't 'texture' currently but
             #   for now this is only done so the product name starts with
             #   'texture'
-            project_name=context.data["projectName"],
-            asset_doc=asset_doc,
-            task_name=instance.data.get("task"),
-            host_name=context.data["hostName"],
+            context.data["projectName"],
+            task_name,
+            task_type,
+            context.data["hostName"],
             product_type="texture",
             variant=instance.data["variant"] + suffix,
             project_settings=context.data["project_settings"]
@@ -126,7 +138,7 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         image_instance.data["representations"] = [representation]
 
         # Group the textures together in the loader
-        image_instance.data["subsetGroup"] = image_product_name
+        image_instance.data["productGroup"] = image_product_name
 
         # Store the texture set name and stack name on the instance
         image_instance.data["textureSetName"] = texture_set_name

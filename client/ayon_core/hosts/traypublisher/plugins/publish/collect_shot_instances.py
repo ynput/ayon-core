@@ -169,9 +169,8 @@ class CollectShotInstance(pyblish.api.InstancePlugin):
 
         parents = instance.data.get('parents', [])
 
-        # Split by '/' for AYON where asset is a path
-        asset_name = instance.data["folderPath"].split("/")[-1]
-        actual = {asset_name: in_info}
+        folder_name = instance.data["folderPath"].split("/")[-1]
+        actual = {folder_name: in_info}
 
         for parent in reversed(parents):
             parent_name = parent["entity_name"]

@@ -4,12 +4,11 @@ import json
 import uuid
 import pyblish.api
 
-from ayon_api import slugify_string
+from ayon_api import slugify_string, get_folders, get_tasks
 from ayon_api.entity_hub import EntityHub
 
-from ayon_core.client import get_assets, get_asset_name_identifier
 from ayon_core.pipeline.template_data import (
-    get_asset_template_data,
+    get_folder_template_data,
     get_task_template_data,
 )
 
@@ -35,38 +34,74 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         self._fill_instance_entities(context, project_name)
 
     def _fill_instance_entities(self, context, project_name):
-        instances_by_asset_name = collections.defaultdict(list)
+        instances_by_folder_path = collections.defaultdict(list)
         for instance in context:
             if instance.data.get("publish") is False:
                 continue
 
-            instance_entity = instance.data.get("assetEntity")
+            instance_entity = instance.data.get("folderEntity")
             if instance_entity:
                 continue
 
-            # Skip if instance asset does not match
-            instance_asset_name = instance.data.get("folderPath")
-            instances_by_asset_name[instance_asset_name].append(instance)
+            folder_path = instance.data.get("folderPath")
+            instances_by_folder_path[folder_path].append(instance)
 
-        project_doc = context.data["projectEntity"]
-        asset_docs = get_assets(
-            project_name, asset_names=instances_by_asset_name.keys()
+        project_entity = context.data["projectEntity"]
+        folder_entities = get_folders(
+            project_name, folder_paths=instances_by_folder_path.keys()
         )
-        asset_docs_by_name = {
-            get_asset_name_identifier(asset_doc): asset_doc
-            for asset_doc in asset_docs
+        folder_entities_by_path = {
+            folder_entity["path"]: folder_entity
+            for folder_entity in folder_entities
         }
-        for asset_name, instances in instances_by_asset_name.items():
-            asset_doc = asset_docs_by_name[asset_name]
-            asset_data = get_asset_template_data(asset_doc, project_name)
+        all_task_names = set()
+        folder_ids = set()
+        # Fill folderEntity and prepare data for task entities
+        for folder_path, instances in instances_by_folder_path.items():
+            folder_entity = folder_entities_by_path[folder_path]
+            folder_ids.add(folder_entity["id"])
             for instance in instances:
                 task_name = instance.data.get("task")
-                template_data = get_task_template_data(
-                    project_doc, asset_doc, task_name)
-                template_data.update(copy.deepcopy(asset_data))
+                all_task_names.add(task_name)
+
+        # Query task entities
+        # Discard 'None' task names
+        all_task_names.discard(None)
+        tasks_by_name_by_folder_id = {
+            folder_id: {} for folder_id in folder_ids
+        }
+        task_entities = []
+        if all_task_names:
+            task_entities = get_tasks(
+                project_name,
+                task_names=all_task_names,
+                folder_ids=folder_ids,
+            )
+        for task_entity in task_entities:
+            task_name = task_entity["name"]
+            folder_id = task_entity["folderId"]
+            tasks_by_name_by_folder_id[folder_id][task_name] = task_entity
+
+        for folder_path, instances in instances_by_folder_path.items():
+            folder_entity = folder_entities_by_path[folder_path]
+            folder_id = folder_entity["id"]
+            folder_data = get_folder_template_data(
+                folder_entity, project_name
+            )
+            task_entities_by_name = tasks_by_name_by_folder_id[folder_id]
+            for instance in instances:
+                task_name = instance.data.get("task")
+                task_entity = task_entities_by_name.get(task_name)
+                template_data = {}
+                if task_entity:
+                    template_data = get_task_template_data(
+                        project_entity, task_entity
+                    )
+                template_data.update(copy.deepcopy(folder_data))
 
                 instance.data["anatomyData"].update(template_data)
-                instance.data["assetEntity"] = asset_doc
+                instance.data["folderEntity"] = folder_entity
+                instance.data["taskEntity"] = task_entity
 
     def _create_hierarchy(self, context, project_name):
         hierarchy_context = self._filter_hierarchy(context)
@@ -157,7 +192,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         Output example:
             {
                 "name": "MyProject",
-                "entity_type": "Project",
+                "entity_type": "project",
                 "attributes": {},
                 "tasks": [],
                 "children": [

@@ -8,7 +8,7 @@ from ayon_core.pipeline import AYONPyblishPluginMixin
 
 class CollectAssetHandles(pyblish.api.InstancePlugin,
                           AYONPyblishPluginMixin):
-    """Apply asset handles.
+    """Apply folder handles.
 
     If instance does not have:
         - frameStart
@@ -19,7 +19,7 @@ class CollectAssetHandles(pyblish.api.InstancePlugin,
         - frameStartHandle
         - frameEndHandle
 
-    Then we will retrieve the asset's handles to compute
+    Then we will retrieve the folder's handles to compute
     the exclusive frame range and actual handle ranges.
     """
 
@@ -29,7 +29,7 @@ class CollectAssetHandles(pyblish.api.InstancePlugin,
     # this plugin runs after CollectAnatomyInstanceData
     order = pyblish.api.CollectorOrder + 0.499
 
-    label = "Collect Asset Handles"
+    label = "Collect Folder Handles"
     use_asset_handles = True
 
     def process(self, instance):
@@ -52,9 +52,9 @@ class CollectAssetHandles(pyblish.api.InstancePlugin,
 
         attr_values = self.get_attr_values_from_data(instance.data)
         if attr_values.get("use_handles", self.use_asset_handles):
-            asset_data = instance.data["assetEntity"]["data"]
-            handle_start = asset_data.get("handleStart", 0)
-            handle_end = asset_data.get("handleEnd", 0)
+            folder_attributes = instance.data["folderEntity"]["attrib"]
+            handle_start = folder_attributes.get("handleStart", 0)
+            handle_end = folder_attributes.get("handleEnd", 0)
         else:
             handle_start = 0
             handle_end = 0
@@ -118,7 +118,7 @@ class CollectAssetHandles(pyblish.api.InstancePlugin,
             BoolDef("use_handles",
                     tooltip="Disable this if you want the publisher to"
                     " ignore start and end handles specified in the"
-                    " asset data for this publish instance",
+                    " folder attributes for this publish instance",
                     default=cls.use_asset_handles,
                     label="Use asset handles")
         ]

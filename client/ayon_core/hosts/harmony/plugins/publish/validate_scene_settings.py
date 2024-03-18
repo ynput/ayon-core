@@ -19,12 +19,12 @@ class ValidateSceneSettingsRepair(pyblish.api.Action):
 
     def process(self, context, plugin):
         """Repair action entry point."""
-        expected = harmony.get_asset_settings()
-        asset_settings = _update_frames(dict.copy(expected))
-        asset_settings["frameStart"] = 1
-        asset_settings["frameEnd"] = asset_settings["frameEnd"] + \
-            asset_settings["handleEnd"]
-        harmony.set_scene_settings(asset_settings)
+        expected = harmony.get_current_context_settings()
+        expected_settings = _update_frames(dict.copy(expected))
+        expected_settings["frameStart"] = 1
+        expected_settings["frameEnd"] = expected_settings["frameEnd"] + \
+            expected_settings["handleEnd"]
+        harmony.set_scene_settings(expected_settings)
         if not os.path.exists(context.data["scenePath"]):
             self.log.info("correcting scene name")
             scene_dir = os.path.dirname(context.data["currentFile"])
@@ -56,10 +56,10 @@ class ValidateSceneSettings(pyblish.api.InstancePlugin):
     def process(self, instance):
         """Plugin entry point."""
 
-        # TODO 'get_asset_settings' could expect asset document as argument
-        #   which is available on 'context.data["assetEntity"]'
+        # TODO 'get_current_context_settings' could expect folder entity
+        #   as an argument which is available on 'context.data["folderEntity"]'
         #   - the same approach can be used in 'ValidateSceneSettingsRepair'
-        expected_settings = harmony.get_asset_settings()
+        expected_settings = harmony.get_current_context_settings()
         self.log.info("scene settings from DB:{}".format(expected_settings))
         expected_settings.pop("entityType")  # not useful for the validation
 
@@ -87,8 +87,8 @@ class ValidateSceneSettings(pyblish.api.InstancePlugin):
             expected_settings.pop('frameStartHandle', None)
             expected_settings.pop('frameEndHandle', None)
 
-        asset_name = instance.context.data['anatomyData']['asset']
-        if any(re.search(pattern, asset_name)
+        folder_name = instance.context.data["folderPath"].rsplit("/", 1)[-1]
+        if any(re.search(pattern, folder_name)
                 for pattern in self.frame_check_filter):
             self.log.info("Skipping frames check because of "
                           "task name and pattern {}".format(
