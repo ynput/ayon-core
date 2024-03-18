@@ -155,7 +155,7 @@ class CollectShotInstance(pyblish.api.InstancePlugin):
 
         in_info = {
             "entity_type": "Shot",
-            "custom_attributes": {
+            "attributes": {
                 "handleStart": handle_start,
                 "handleEnd": handle_end,
                 "frameStart": instance.data["frameStart"],

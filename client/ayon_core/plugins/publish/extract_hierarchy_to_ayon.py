@@ -241,7 +241,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
             project_item["name"] = key
             project_item["tasks"] = []
             project_item["attributes"] = project_item.pop(
-                "custom_attributes", {}
+                "attributes", {}
             )
             project_item["children"] = []
 
@@ -280,7 +280,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                     task_info["name"] = task_name
                     task_items.append(task_info)
                 new_item["tasks"] = task_items
-                new_item["attributes"] = new_item.pop("custom_attributes", {})
+                new_item["attributes"] = new_item.pop("attributes", {})
 
                 items_by_id[item_id] = new_item
                 parent_id_by_item_id[item_id] = parent_id
