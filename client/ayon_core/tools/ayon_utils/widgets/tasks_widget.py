@@ -381,6 +381,15 @@ class TasksWidget(QtWidgets.QWidget):
             "task_type": task_type,
         }
 
+    def get_selected_task_id(self):
+        """Get selected task id.
+
+        Returns:
+            Union[str, None]: Task id.
+
+        """
+        return self.get_selected_task_info()["task_id"]
+
     def get_selected_task_name(self):
         """Get selected task name.
 
@@ -388,8 +397,7 @@ class TasksWidget(QtWidgets.QWidget):
             Union[str, None]: Task name.
         """
 
-        _, _, task_name, _ = self._get_selected_item_ids()
-        return task_name
+        return self.get_selected_task_info()["task_name"]
 
     def get_selected_task_type(self):
         """Get selected task type.
@@ -398,8 +406,7 @@ class TasksWidget(QtWidgets.QWidget):
             Union[str, None]: Task type.
 
         """
-        _, _, _, task_type = self._get_selected_item_ids()
-        return task_type
+        return self.get_selected_task_info()["task_type"]
 
     def set_selected_task(self, task_name):
         """Set selected task by name.

@@ -26,8 +26,7 @@ except ImportError:
 
 import six
 import appdirs
-
-from ayon_core.client import get_ayon_server_api_connection
+import ayon_api
 
 _PLACEHOLDER = object()
 
@@ -556,10 +555,9 @@ def get_ayon_username():
 
     Returns:
         str: Username.
-    """
 
-    con = get_ayon_server_api_connection()
-    return con.get_user()["name"]
+    """
+    return ayon_api.get_user()["name"]
 
 
 def get_openpype_username():

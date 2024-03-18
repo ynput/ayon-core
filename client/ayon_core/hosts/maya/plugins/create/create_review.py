@@ -1,6 +1,7 @@
 import json
 
 from maya import cmds
+import ayon_api
 
 from ayon_core.hosts.maya.api import (
     lib,
@@ -12,7 +13,6 @@ from ayon_core.lib import (
     EnumDef
 )
 from ayon_core.pipeline import CreatedInstance
-from ayon_core.client import get_asset_by_name
 
 TRANSPARENCIES = [
     "preset",
@@ -43,12 +43,17 @@ class CreateReview(plugin.MayaCreator):
             members = cmds.ls(selection=True)
 
         project_name = self.project_name
-        asset_name = instance_data["folderPath"]
-        asset_doc = get_asset_by_name(project_name, asset_name)
+        folder_path = instance_data["folderPath"]
         task_name = instance_data["task"]
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields={"id"}
+        )
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name, fields={"taskType"}
+        )
         preset = lib.get_capture_preset(
             task_name,
-            asset_doc["data"]["tasks"][task_name]["type"],
+            task_entity["taskType"],
             product_name,
             self.project_settings,
             self.log
@@ -91,9 +96,9 @@ class CreateReview(plugin.MayaCreator):
 
         defs = lib.collect_animation_defs()
 
-        # Option for using Maya or asset frame range in settings.
+        # Option for using Maya or folder frame range in settings.
         if not self.useMayaTimeline:
-            # Update the defaults to be the asset frame range
+            # Update the defaults to be the folder frame range
             frame_range = lib.get_frame_range()
             defs_by_key = {attr_def.key: attr_def for attr_def in defs}
             for key, value in frame_range.items():
@@ -106,13 +111,13 @@ class CreateReview(plugin.MayaCreator):
         defs.extend([
             NumberDef("review_width",
                       label="Review width",
-                      tooltip="A value of zero will use the asset resolution.",
+                      tooltip="A value of zero will use the folder resolution.",
                       decimals=0,
                       minimum=0,
                       default=0),
             NumberDef("review_height",
                       label="Review height",
-                      tooltip="A value of zero will use the asset resolution.",
+                      tooltip="A value of zero will use the folder resolution.",
                       decimals=0,
                       minimum=0,
                       default=0),

@@ -9,7 +9,7 @@ from ayon_core.hosts.houdini.api import lib
 class CollectInstances(pyblish.api.ContextPlugin):
     """Gather instances by all node in out graph and pre-defined attributes
 
-    This collector takes into account assets that are associated with
+    This collector takes into account folders that are associated with
     an specific node and marked with a unique identifier;
 
     Identifier:
