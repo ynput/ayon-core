@@ -56,20 +56,29 @@ class TVPaintCreatorCommon:
     def _custom_get_product_name(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name=None,
         instance=None
     ):
         dynamic_data = self.get_dynamic_data(
-            project_name, asset_doc, task_name, variant, host_name, instance
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance
         )
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
 
         return get_product_name(
             project_name,
-            asset_doc,
             task_name,
+            task_type,
             host_name,
             self.product_type,
             variant,
@@ -107,13 +116,15 @@ class TVPaintCreator(Creator, TVPaintCreatorCommon):
             self._remove_instance_from_context(instance)
 
     def get_dynamic_data(self, *args, **kwargs):
-        # Change asset and name by current workfile context
+        # Change folder and name by current workfile context
         create_context = self.create_context
-        asset_name = create_context.get_current_asset_name()
+        folder_path = create_context.get_current_folder_path()
         task_name = create_context.get_current_task_name()
         output = {}
-        if asset_name:
-            output["asset"] = asset_name
+        if folder_path:
+            folder_name = folder_path.rsplit("/")[-1]
+            output["asset"] = folder_name
+            output["folder"] = {"name": folder_name}
             if task_name:
                 output["task"] = task_name
         return output
@@ -152,22 +163,22 @@ class Loader(LoaderPlugin):
             ]
         return container["members"]
 
-    def get_unique_layer_name(self, asset_name, name):
+    def get_unique_layer_name(self, namespace, name):
         """Layer name with counter as suffix.
 
         Find higher 3 digit suffix from all layer names in scene matching regex
-        `{asset_name}_{name}_{suffix}`. Higher 3 digit suffix is used
+        `{namespace}_{name}_{suffix}`. Higher 3 digit suffix is used
         as base for next number if scene does not contain layer matching regex
         `0` is used ase base.
 
         Args:
-            asset_name (str): Name of product's parent asset document.
+            namespace (str): Usually folder name.
             name (str): Name of loaded product.
 
         Returns:
-            (str): `{asset_name}_{name}_{higher suffix + 1}`
+            str: `{namespace}_{name}_{higher suffix + 1}`
         """
-        layer_name_base = "{}_{}".format(asset_name, name)
+        layer_name_base = "{}_{}".format(namespace, name)
 
         counter_regex = re.compile(r"_(\d{3})$")
 

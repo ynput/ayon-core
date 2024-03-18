@@ -11,10 +11,10 @@ from ayon_core.hosts.fusion.api import comp_lock_and_undo_chunk
 class ValidateSaverResolution(
     pyblish.api.InstancePlugin, OptionalPyblishPluginMixin
 ):
-    """Validate that the saver input resolution matches the asset resolution"""
+    """Validate that the saver input resolution matches the folder resolution"""
 
     order = pyblish.api.ValidatorOrder
-    label = "Validate Asset Resolution"
+    label = "Validate Folder Resolution"
     families = ["render", "image"]
     hosts = ["fusion"]
     optional = True
@@ -29,7 +29,7 @@ class ValidateSaverResolution(
         if resolution != expected_resolution:
             raise PublishValidationError(
                 "The input's resolution does not match "
-                "the asset's resolution {}x{}.\n\n"
+                "the folder's resolution {}x{}.\n\n"
                 "The input's resolution is {}x{}.".format(
                     expected_resolution[0], expected_resolution[1],
                     resolution[0], resolution[1]
@@ -55,8 +55,8 @@ class ValidateSaverResolution(
 
     @classmethod
     def get_expected_resolution(cls, instance):
-        data = instance.data["assetEntity"]["data"]
-        return data["resolutionWidth"], data["resolutionHeight"]
+        attributes = instance.data["folderEntity"]["attrib"]
+        return attributes["resolutionWidth"], attributes["resolutionHeight"]
 
     @classmethod
     def get_tool_resolution(cls, tool, frame):

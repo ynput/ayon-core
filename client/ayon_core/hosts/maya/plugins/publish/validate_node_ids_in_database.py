@@ -1,14 +1,14 @@
 import pyblish.api
+import ayon_api
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.client import get_assets
 from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
     PublishValidationError, ValidatePipelineOrder)
 
 
 class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
-    """Validate if the CB Id is related to an asset in the database
+    """Validate if the CB Id is related to an folder in the database
 
     All nodes with the `cbId` attribute will be validated to ensure that
     the loaded asset in the scene is related to the current project.
@@ -30,7 +30,7 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                ("Found asset IDs which are not related to "
+                ("Found folder ids which are not related to "
                  "current project in instance: `{}`").format(instance.name))
 
     @classmethod
@@ -44,10 +44,10 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
 
         # check ids against database ids
         project_name = instance.context.data["projectName"]
-        asset_docs = get_assets(project_name, fields=["_id"])
-        db_asset_ids = {
-            str(asset_doc["_id"])
-            for asset_doc in asset_docs
+        folder_entities = ayon_api.get_folders(project_name, fields={"id"})
+        folder_ids = {
+            folder_entity["id"]
+            for folder_entity in folder_entities
         }
 
         # Get all asset IDs
@@ -58,9 +58,9 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
             if not cb_id:
                 continue
 
-            asset_id = cb_id.split(":", 1)[0]
-            if asset_id not in db_asset_ids:
-                cls.log.error("`%s` has unassociated asset ID" % node)
+            folder_id = cb_id.split(":", 1)[0]
+            if folder_id not in folder_ids:
+                cls.log.error("`%s` has unassociated folder id" % node)
                 invalid.append(node)
 
         return invalid
