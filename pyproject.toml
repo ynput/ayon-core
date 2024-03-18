@@ -18,6 +18,7 @@ pynput = "^1.7.2" # Timers manager - TODO remove
 speedcopy = "^2.1"
 six = "^1.15"
 qtawesome = "0.7.3"
+pre-commit = "^3.6.2"
 
 
 [tool.poetry.dev-dependencies]
