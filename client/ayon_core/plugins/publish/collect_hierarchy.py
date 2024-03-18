@@ -68,7 +68,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 next_dict[parent_name] = {}
                 next_dict[parent_name]["entity_type"] = parent[
                     "entity_type"].capitalize()
-                next_dict[parent_name]["childs"] = actual
+                next_dict[parent_name]["children"] = actual
                 actual = next_dict
 
             temp_context = self._update_dict(temp_context, actual)
@@ -77,7 +77,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
         if not temp_context:
             return
 
-        final_context[project_name]['childs'] = temp_context
+        final_context[project_name]['children'] = temp_context
 
         # adding hierarchy context to context
         context.data["hierarchyContext"] = final_context
@@ -85,8 +85,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             context.data["hierarchyContext"]))
 
     def _update_dict(self, parent_dict, child_dict):
-        """
-        Nesting each children into its parent.
+        """Nesting each child into its parent.
 
         Args:
             parent_dict (dict): parent dict wich should be nested with children

@@ -177,7 +177,7 @@ class CollectShotInstance(pyblish.api.InstancePlugin):
             next_dict = {
                 parent_name: {
                     "entity_type": parent["entity_type"],
-                    "childs": actual
+                    "children": actual
                 }
             }
             actual = next_dict

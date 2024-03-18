@@ -237,7 +237,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         hierarchy_context = copy.deepcopy(context.data["hierarchyContext"])
         for key, value in hierarchy_context.items():
             project_item = copy.deepcopy(value)
-            project_children_context = project_item.pop("childs", None)
+            project_children_context = project_item.pop("children", None)
             project_item["name"] = key
             project_item["tasks"] = []
             project_item["attributes"] = project_item.pop(
@@ -265,7 +265,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                 folder_path = "{}/{}".format(parent_path, folder_name)
                 if (
                     folder_path not in active_folder_paths
-                    and not folder_info.get("childs")
+                    and not folder_info.get("children")
                 ):
                     continue
 
@@ -273,7 +273,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                 new_item = copy.deepcopy(folder_info)
                 new_item["name"] = folder_name
                 new_item["children"] = []
-                new_children_context = new_item.pop("childs", None)
+                new_children_context = new_item.pop("children", None)
                 tasks = new_item.pop("tasks", {})
                 task_items = []
                 for task_name, task_info in tasks.items():
