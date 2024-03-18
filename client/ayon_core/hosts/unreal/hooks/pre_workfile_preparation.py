@@ -49,7 +49,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         # Prepare data for fill data and for getting workfile template key
         anatomy = self.data["anatomy"]
-        project_doc = self.data["project_doc"]
+        project_entity = self.data["project_entity"]
 
         # Use already prepared workdir data
         workdir_data = copy.deepcopy(self.data["workdir_data"])
@@ -61,9 +61,9 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         # Get workfile template key for current context
         workfile_template_key = get_workfile_template_key(
+            project_entity["name"],
             task_type,
             self.host_name,
-            project_name=project_doc["name"]
         )
         # Fill templates
         template_obj = anatomy.templates_obj[workfile_template_key]["file"]
@@ -146,7 +146,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
     def execute(self):
         """Hook entry method."""
-        workdir = self.launch_context.env["AVALON_WORKDIR"]
+        workdir = self.launch_context.env["AYON_WORKDIR"]
         executable = str(self.launch_context.executable)
         engine_version = self.app_name.split("/")[-1].replace("-", ".")
         try:

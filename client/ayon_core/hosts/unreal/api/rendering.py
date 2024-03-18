@@ -56,11 +56,11 @@ def start_rendering():
 
     for i in instances:
         data = pipeline.parse_container(i.get_path_name())
-        if data["family"] == "render":
+        if data["productType"] == "render":
             inst_data.append(data)
 
     try:
-        project = os.environ.get("AVALON_PROJECT")
+        project = os.environ.get("AYON_PROJECT_NAME")
         anatomy = Anatomy(project)
         root = anatomy.roots['renders']
     except Exception as e:

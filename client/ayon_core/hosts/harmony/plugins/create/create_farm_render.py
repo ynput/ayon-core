@@ -9,7 +9,7 @@ class CreateFarmRender(plugin.Creator):
 
     name = "renderDefault"
     label = "Render on Farm"
-    family = "renderFarm"
+    product_type = "renderFarm"
     node_type = "WRITE"
 
     def __init__(self, *args, **kwargs):

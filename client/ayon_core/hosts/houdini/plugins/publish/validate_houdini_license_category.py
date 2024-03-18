@@ -28,7 +28,7 @@ class ValidateHoudiniNotApprenticeLicense(pyblish.api.InstancePlugin):
 
         if hou.isApprentice():
             # Find which family was matched with the plug-in
-            families = {instance.data["family"]}
+            families = {instance.data["productType"]}
             families.update(instance.data.get("families", []))
             disallowed_families = families.intersection(self.families)
             families = " ".join(sorted(disallowed_families)).title()

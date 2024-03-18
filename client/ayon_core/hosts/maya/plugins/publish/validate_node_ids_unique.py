@@ -32,10 +32,10 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
         # Ensure all nodes have a cbId
         invalid = self.get_invalid(instance)
         if invalid:
-            label = "Nodes found with non-unique asset IDs"
+            label = "Nodes found with non-unique folder ids"
             raise PublishValidationError(
                 message="{}: {}".format(label, invalid),
-                title="Non-unique asset ids on nodes",
+                title="Non-unique folder ids on nodes",
                 description="{}\n- {}".format(label,
                                               "\n- ".join(sorted(invalid)))
             )

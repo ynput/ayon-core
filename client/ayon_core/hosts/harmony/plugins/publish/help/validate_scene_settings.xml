@@ -5,18 +5,18 @@
 <description>
 ## Invalid scene setting found
 
-One of the settings in a scene doesn't match to asset settings in database.
+One of the settings in a scene doesn't match to folder attributes on server.
 
 {invalid_setting_str}
 
 ### How to repair?
 
-Change values for {invalid_keys_str} in the scene OR change them in the asset database if they are wrong there.
+Change values for {invalid_keys_str} in the scene OR change them on the folder if they are wrong there.
 </description>
 <detail>
 ### __Detailed Info__ (optional)
 
-This error is shown when for example resolution in the scene doesn't match to resolution set on the asset in the database.
+This error is shown when for example resolution in the scene doesn't match to resolution set on the folder on the server.
 Either value in the database or in the scene is wrong.
 </detail>
 </error>

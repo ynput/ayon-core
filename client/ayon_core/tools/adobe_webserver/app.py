@@ -81,15 +81,19 @@ class WebServerTool:
         await client.connect()
 
         context = get_global_context()
-        project = context["project_name"]
-        asset = context["asset_name"]
-        task = context["task_name"]
-        log.info("Sending context change to {}-{}-{}".format(project,
-                                                             asset,
-                                                             task))
+        project_name = context["project_name"]
+        folder_path = context["folder_path"]
+        task_name = context["task_name"]
+        log.info("Sending context change to {}{}/{}".format(
+            project_name, folder_path, task_name
+        ))
 
-        await client.call('{}.set_context'.format(host),
-                          project=project, asset=asset, task=task)
+        await client.call(
+            '{}.set_context'.format(host),
+            project=project_name,
+            folder=folder_path,
+            task=task_name
+        )
         await client.close()
 
     def port_occupied(self, host_name, port):

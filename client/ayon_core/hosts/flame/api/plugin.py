@@ -353,9 +353,9 @@ class PublishableClip:
     rename_default = False
     hierarchy_default = "{_folder_}/{_sequence_}/{_track_}"
     clip_name_default = "shot_{_trackIndex_:0>3}_{_clipIndex_:0>4}"
-    subset_name_default = "[ track name ]"
     review_track_default = "[ none ]"
-    subset_family_default = "plate"
+    base_product_name_default = "[ track name ]"
+    base_product_type_default = "plate"
     count_from_default = 10
     count_steps_default = 10
     vertical_sync_default = False
@@ -368,7 +368,7 @@ class PublishableClip:
 
     def __init__(self, segment, **kwargs):
         self.rename_index = kwargs["rename_index"]
-        self.family = kwargs["family"]
+        self.product_type = kwargs["family"]
         self.log = kwargs["log"]
 
         # get main parent objects
@@ -486,10 +486,10 @@ class PublishableClip:
             "countFrom", {}).get("value") or self.count_from_default
         self.count_steps = self.ui_inputs.get(
             "countSteps", {}).get("value") or self.count_steps_default
-        self.subset_name = self.ui_inputs.get(
-            "subsetName", {}).get("value") or self.subset_name_default
-        self.subset_family = self.ui_inputs.get(
-            "subsetFamily", {}).get("value") or self.subset_family_default
+        self.base_product_name = self.ui_inputs.get(
+            "productName", {}).get("value") or self.base_product_name_default
+        self.base_product_type = self.ui_inputs.get(
+            "productType", {}).get("value") or self.base_product_type_default
         self.vertical_sync = self.ui_inputs.get(
             "vSyncOn", {}).get("value") or self.vertical_sync_default
         self.driving_layer = self.ui_inputs.get(
@@ -509,12 +509,14 @@ class PublishableClip:
             or self.retimed_framerange_default
         )
 
-        # build subset name from layer name
-        if self.subset_name == "[ track name ]":
-            self.subset_name = self.track_name
+        # build product name from layer name
+        if self.base_product_name == "[ track name ]":
+            self.base_product_name = self.track_name
 
-        # create subset for publishing
-        self.subset = self.subset_family + self.subset_name.capitalize()
+        # create product for publishing
+        self.product_name = (
+            self.base_product_type + self.base_product_name.capitalize()
+        )
 
     def _replace_hash_to_expression(self, name, text):
         """ Replace hash with number in correct padding. """
@@ -608,14 +610,14 @@ class PublishableClip:
                 _hero_data = deepcopy(hero_data)
                 _hero_data.update({"heroTrack": False})
                 if _in <= self.clip_in and _out >= self.clip_out:
-                    data_subset = hero_data["subset"]
+                    data_product_name = hero_data["productName"]
                     # add track index in case duplicity of names in hero data
-                    if self.subset in data_subset:
-                        _hero_data["subset"] = self.subset + str(
+                    if self.product_name in data_product_name:
+                        _hero_data["productName"] = self.product_name + str(
                             self.track_index)
-                    # in case track name and subset name is the same then add
-                    if self.subset_name == self.track_name:
-                        _hero_data["subset"] = self.subset
+                    # in case track name and product name is the same then add
+                    if self.base_product_name == self.track_name:
+                        _hero_data["productName"] = self.product_name
                     # assign data to return hierarchy data to tag
                     tag_hierarchy_data = _hero_data
                     break
@@ -637,9 +639,9 @@ class PublishableClip:
             "hierarchy": hierarchy_filled,
             "parents": self.parents,
             "hierarchyData": hierarchy_formatting_data,
-            "subset": self.subset,
-            "family": self.subset_family,
-            "families": [self.family]
+            "productName": self.product_name,
+            "productType": self.base_product_type,
+            "families": [self.base_product_type, self.product_type]
         }
 
     def _convert_to_entity(self, type, template):
@@ -704,7 +706,7 @@ class ClipLoader(LoaderPlugin):
     _mapping = None
     _host_settings = None
 
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
 
         plugin_type_settings = (
             project_settings
@@ -746,18 +748,16 @@ class ClipLoader(LoaderPlugin):
         Returns:
             str: colorspace name or None
         """
-        version = context['version']
-        version_data = version.get("data", {})
-        colorspace = version_data.get(
-            "colorspace", None
-        )
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        colorspace = version_attributes.get("colorSpace")
 
         if (
             not colorspace
             or colorspace == "Unknown"
         ):
             colorspace = context["representation"]["data"].get(
-                "colorspace", None)
+                "colorspace")
 
         return colorspace
 

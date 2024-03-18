@@ -8,7 +8,8 @@ from ayon_core.pipeline.publish import (
 
 class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
                              OptionalPyblishPluginMixin):
-    """Validate nodes have a related Colorbleed Id to the instance.data[asset]
+    """Validate nodes have a related Colorbleed Id to the
+    instance.data[folderPath]
 
     """
 
@@ -31,27 +32,28 @@ class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
         # Ensure all nodes have a cbId
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError(
-                ("Nodes IDs found that are not related to asset "
-                 "'{}' : {}").format(instance.data['asset'], invalid))
+            raise PublishValidationError((
+                "Nodes IDs found that are not related to folder '{}' : {}"
+            ).format(
+                instance.data["folderPath"], invalid
+            ))
 
     @classmethod
     def get_invalid(cls, instance):
         """Return the member nodes that are invalid"""
         invalid = list()
 
-        asset_id = str(instance.data['assetEntity']["_id"])
+        folder_id = instance.data["folderEntity"]["id"]
 
         # We do want to check the referenced nodes as we it might be
         # part of the end product
         for node in instance:
-
             _id = lib.get_id(node)
             if not _id:
                 continue
 
-            node_asset_id = _id.split(":", 1)[0]
-            if node_asset_id != asset_id:
+            node_folder_id = _id.split(":", 1)[0]
+            if node_folder_id != folder_id:
                 invalid.append(node)
 
         return invalid

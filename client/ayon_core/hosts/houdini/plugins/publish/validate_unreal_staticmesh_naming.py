@@ -23,8 +23,8 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
             - USP
             - UCX
 
-    This validator also checks if subset name is correct
-            - {static mesh prefix}_{Asset-Name}{Variant}.
+    This validator also checks if product name is correct
+            - {static mesh prefix}_{FolderName}{Variant}.
 
     """
 
@@ -39,7 +39,7 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
     static_mesh_prefix = ""
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
 
         settings = (
             project_settings["houdini"]["create"]["CreateStaticMesh"]

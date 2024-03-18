@@ -13,6 +13,9 @@ class ExtractBlend(publish.Extractor, publish.OptionalPyblishPluginMixin):
     families = ["model", "camera", "rig", "action", "layout", "blendScene"]
     optional = True
 
+    # From settings
+    compress = False
+
     def process(self, instance):
         if not self.is_active(instance.data):
             return
@@ -20,9 +23,9 @@ class ExtractBlend(publish.Extractor, publish.OptionalPyblishPluginMixin):
         # Define extract output file path
 
         stagingdir = self.staging_dir(instance)
-        asset_name = instance.data["assetEntity"]["name"]
-        subset = instance.data["subset"]
-        instance_name = f"{asset_name}_{subset}"
+        folder_name = instance.data["folderEntity"]["name"]
+        product_name = instance.data["productName"]
+        instance_name = f"{folder_name}_{product_name}"
         filename = f"{instance_name}.blend"
         filepath = os.path.join(stagingdir, filename)
 
@@ -53,7 +56,7 @@ class ExtractBlend(publish.Extractor, publish.OptionalPyblishPluginMixin):
                     if node.image and node.image.packed_file is None:
                         node.image.pack()
 
-        bpy.data.libraries.write(filepath, data_blocks)
+        bpy.data.libraries.write(filepath, data_blocks, compress=self.compress)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []

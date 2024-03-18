@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
 <error id="main">
-<title>Subset context</title>
-<description>## Invalid subset context
+<title>Product context</title>
+<description>## Invalid product context
 
-Context of the given subset doesn't match your current scene.
+Context of the given product doesn't match your current scene.
 
 ### How to repair?
 
-Yout can fix this with "Repair" button on the right. This will use '{expected_asset}' asset name and overwrite '{found_asset}' asset name in scene metadata.
+Yout can fix this with "Repair" button on the right. This will use '{expected_folder}' folder path and overwrite '{found_folder}' folder path in scene metadata.
 
 After that restart publishing with Reload button.
 </description>
 <detail>
 ### How could this happen?
 
-The subset was created in different scene with different context
+The product was created in different scene with different context
 or the scene file was copy pasted from different context.
 </detail>
 </error>

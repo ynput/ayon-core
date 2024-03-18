@@ -116,7 +116,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
     strict_error_checking = True
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         settings = project_settings["deadline"]["publish"]["MayaSubmitDeadline"]  # noqa
 
         # Take some defaults from settings
@@ -207,11 +207,11 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_WORKDIR",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "IS_TEST"
         ]
 
