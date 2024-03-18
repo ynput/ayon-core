@@ -397,9 +397,10 @@ class PhotoshopRoute(WebSocketRoute):
         # Define saving file extension
         extensions = host.get_workfile_extensions()
 
-        work_root = work_template["directory"].format_strict(data)
+        work_root = str(work_template["directory"].format_strict(data))
+        file_template = str(work_template["file"])
         last_workfile_path = get_last_workfile(
-            work_root, work_template["file"], data, extensions, True
+            work_root, file_template, data, extensions, True
         )
 
         return last_workfile_path

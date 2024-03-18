@@ -200,7 +200,7 @@ class WorkareaModel:
         self, workdir, file_template, fill_data, extensions
     ):
         version = get_last_workfile_with_version(
-            workdir, str(file_template), fill_data, extensions
+            workdir, file_template, fill_data, extensions
         )[1]
 
         if version is None:
@@ -300,7 +300,9 @@ class WorkareaModel:
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        file_template = anatomy.get_template("work", template_key, "file")
+        file_template = str(
+            anatomy.get_template("work", template_key, "file")
+        )
 
         comment_hints, comment = self._get_comments_from_root(
             file_template,
