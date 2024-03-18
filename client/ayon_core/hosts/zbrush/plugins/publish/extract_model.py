@@ -11,7 +11,7 @@ from ayon_core.hosts.zbrush.api.lib import export_tool
 class ExtractModel(publish.Extractor,
                    AYONPyblishPluginMixin):
     """
-    Extract PolyMesh(.ma, .fbx, .abc, .obj, .usd) in Zbrush
+    Extract PolyMesh(.fbx, .abc, .obj) in Zbrush
     """
 
     order = pyblish.api.ExtractorOrder - 0.05
