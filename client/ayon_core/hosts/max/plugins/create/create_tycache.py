@@ -9,3 +9,11 @@ class CreateTyCache(plugin.MaxCreator):
     label = "TyCache"
     product_type = "tycache"
     icon = "gear"
+
+
+class CreateTySpline(plugin.MaxCreator):
+    """Creator plugin for TyCache."""
+    identifier = "io.openpype.creators.max.tyspline"
+    label = "TyCache (TySpline)"
+    family = "tyspline"
+    icon = "gear"
