@@ -1,9 +1,9 @@
 from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.style import get_disabled_entity_icon_color
-from ayon_core.tools.utils import DeselectableTreeView
 
-from .utils import RefreshThread, get_qt_icon
+from .views import DeselectableTreeView
+from .lib import RefreshThread, get_qt_icon
 
 TASKS_MODEL_SENDER_NAME = "qt_tasks_model"
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
