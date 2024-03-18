@@ -245,7 +245,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         media_reference = self.otio.schema.ExternalReference(
             available_range=range,
-            target_url=f"file://{path}"
+            target_url=path
         )
 
         return self.otio.schema.Clip(
