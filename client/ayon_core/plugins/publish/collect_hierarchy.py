@@ -41,8 +41,9 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             if not instance.data.get("heroTrack"):
                 continue
 
+            shot_data["entity_type"] = "folder"
             # suppose that all instances are Shots
-            shot_data['entity_type'] = 'Shot'
+            shot_data["folder_type"] = "Shot"
             shot_data['tasks'] = instance.data.get("tasks") or {}
             shot_data["comments"] = instance.data.get("comments", [])
 
@@ -66,7 +67,8 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 next_dict = {}
                 parent_name = parent["entity_name"]
                 next_dict[parent_name] = {}
-                next_dict[parent_name]["entity_type"] = parent[
+                next_dict[parent_name]["entity_type"] = "folder"
+                next_dict[parent_name]["folder_type"] = parent[
                     "entity_type"].capitalize()
                 next_dict[parent_name]["children"] = actual
                 actual = next_dict
