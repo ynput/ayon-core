@@ -13,7 +13,7 @@ import hou
 class RedshiftProxyLoader(load.LoaderPlugin):
     """Load Redshift Proxy"""
 
-    families = ["redshiftproxy"]
+    product_types = ["redshiftproxy"]
     label = "Load Redshift Proxy"
     representations = ["rs"]
     order = -10

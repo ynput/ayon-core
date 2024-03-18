@@ -17,7 +17,7 @@ from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 class VRaySceneLoader(load.LoaderPlugin):
     """Load Vray scene"""
 
-    families = ["vrayscene_layer"]
+    product_types = ["vrayscene_layer"]
     representations = ["vrscene"]
 
     label = "Import VRay Scene"

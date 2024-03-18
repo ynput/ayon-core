@@ -20,7 +20,7 @@ from ayon_core.pipeline import get_representation_path
 class XgenLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Load Xgen as reference"""
 
-    families = ["xgen"]
+    product_types = ["xgen"]
     representations = ["ma", "mb"]
 
     label = "Reference Xgen"

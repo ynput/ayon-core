@@ -15,7 +15,7 @@ class LoadClip(phiero.SequenceLoader):
     during conforming to project
     """
 
-    families = ["render2d", "source", "plate", "render", "review"]
+    product_types = ["render2d", "source", "plate", "render", "review"]
     representations = ["*"]
     extensions = set(
         ext.lstrip(".") for ext in IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
@@ -59,13 +59,7 @@ class LoadClip(phiero.SequenceLoader):
             if option == "representations":
                 continue
 
-            if option == "product_types":
-                # TODO remove the key conversion when loaders can filter by
-                #   product types
-                # convert 'product_types' to 'families'
-                option = "families"
-
-            elif option == "clip_name_template":
+            if option == "clip_name_template":
                 # TODO remove the formatting replacement
                 value = (
                     value

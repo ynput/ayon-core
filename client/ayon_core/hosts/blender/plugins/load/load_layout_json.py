@@ -26,7 +26,7 @@ from ayon_core.hosts.blender.api import plugin
 class JsonLayoutLoader(plugin.AssetLoader):
     """Load layout published from Unreal."""
 
-    families = ["layout"]
+    product_types = ["layout"]
     representations = ["json"]
 
     label = "Load Layout"

@@ -17,7 +17,7 @@ from ayon_core.pipeline import get_representation_path, load
 class PointCloudLoader(load.LoaderPlugin):
     """Point Cloud Loader."""
 
-    families = ["pointcloud"]
+    product_types = ["pointcloud"]
     representations = ["prt"]
     order = -8
     icon = "code-fork"

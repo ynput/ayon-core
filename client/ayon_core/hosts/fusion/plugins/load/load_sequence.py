@@ -129,7 +129,7 @@ def loader_shift(loader, frame, relative=True):
 class FusionLoadSequence(load.LoaderPlugin):
     """Load image sequence into Fusion"""
 
-    families = [
+    product_types = [
         "imagesequence",
         "review",
         "render",

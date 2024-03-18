@@ -6,7 +6,7 @@ from ayon_core.hosts.tvpaint.api.lib import execute_george_through_file
 class ImportImage(plugin.Loader):
     """Load image or image sequence to TVPaint as new layer."""
 
-    families = ["render", "image", "background", "plate", "review"]
+    product_types = ["render", "image", "background", "plate", "review"]
     representations = ["*"]
 
     label = "Import Image"

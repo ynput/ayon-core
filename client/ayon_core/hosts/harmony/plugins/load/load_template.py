@@ -23,7 +23,7 @@ class TemplateLoader(load.LoaderPlugin):
 
     """
 
-    families = ["template", "workfile"]
+    product_types = ["template", "workfile"]
     representations = ["*"]
     label = "Load Template"
     icon = "gift"

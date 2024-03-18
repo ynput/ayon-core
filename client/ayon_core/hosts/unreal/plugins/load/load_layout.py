@@ -40,7 +40,7 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class LayoutLoader(plugin.Loader):
     """Load Layout from a JSON file"""
 
-    families = ["layout"]
+    product_types = ["layout"]
     representations = ["json"]
 
     label = "Load Layout"

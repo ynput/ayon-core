@@ -18,7 +18,7 @@ from ayon_core.pipeline import get_representation_path, load
 class FbxLoader(load.LoaderPlugin):
     """Fbx Loader."""
 
-    families = ["camera"]
+    product_types = ["camera"]
     representations = ["fbx"]
     order = -9
     icon = "code-fork"

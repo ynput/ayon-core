@@ -89,21 +89,23 @@ def preserve_modelpanel_cameras(container, log=None):
 class ReferenceLoader(plugin.ReferenceLoader):
     """Reference file"""
 
-    families = ["model",
-                "pointcache",
-                "proxyAbc",
-                "animation",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "camera",
-                "rig",
-                "camerarig",
-                "staticMesh",
-                "skeletalMesh",
-                "mvLook",
-                "matchmove"]
+    product_types = [
+        "model",
+        "pointcache",
+        "proxyAbc",
+        "animation",
+        "mayaAscii",
+        "mayaScene",
+        "setdress",
+        "layout",
+        "camera",
+        "rig",
+        "camerarig",
+        "staticMesh",
+        "skeletalMesh",
+        "mvLook",
+        "matchmove"
+    ]
 
     representations = ["ma", "abc", "fbx", "mb"]
 
@@ -270,7 +272,7 @@ class MayaUSDReferenceLoader(ReferenceLoader):
     """Reference USD file to native Maya nodes using MayaUSDImport reference"""
 
     label = "Reference Maya USD"
-    families = ["usd"]
+    product_types = ["usd"]
     representations = ["usd"]
     extensions = {"usd", "usda", "usdc"}
 

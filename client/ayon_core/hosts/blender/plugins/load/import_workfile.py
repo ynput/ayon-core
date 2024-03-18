@@ -44,7 +44,7 @@ class AppendBlendLoader(plugin.AssetLoader):
     """
 
     representations = ["blend"]
-    families = ["workfile"]
+    product_types = ["workfile"]
 
     label = "Append Workfile"
     order = 9
@@ -69,7 +69,7 @@ class ImportBlendLoader(plugin.AssetLoader):
     """
 
     representations = ["blend"]
-    families = ["workfile"]
+    product_types = ["workfile"]
 
     label = "Import Workfile"
     order = 9
