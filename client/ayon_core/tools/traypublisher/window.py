@@ -16,7 +16,7 @@ from ayon_core.pipeline import install_host
 from ayon_core.hosts.traypublisher.api import TrayPublisherHost
 from ayon_core.tools.publisher.control_qt import QtPublisherController
 from ayon_core.tools.publisher.window import PublisherWindow
-from ayon_core.tools.ayon_utils.models import ProjectsModel
+from ayon_core.tools.common_models import ProjectsModel
 from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     get_ayon_qt_app,

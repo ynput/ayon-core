@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.tools.ayon_utils.models import PROJECTS_MODEL_SENDER
+from ayon_core.tools.common_models import PROJECTS_MODEL_SENDER
 
 from .lib import RefreshThread, get_qt_icon
 

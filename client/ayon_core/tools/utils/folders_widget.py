@@ -3,7 +3,7 @@ import collections
 from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
 )
