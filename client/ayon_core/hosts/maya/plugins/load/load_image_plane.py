@@ -87,7 +87,7 @@ class CameraWindow(QtWidgets.QDialog):
 class ImagePlaneLoader(load.LoaderPlugin):
     """Specific loader of plate for image planes on selected camera."""
 
-    product_types = ["image", "plate", "render"]
+    product_types = {"image", "plate", "render"}
     label = "Load imagePlane"
     representations = ["mov", "exr", "preview", "png", "jpg"]
     icon = "image"

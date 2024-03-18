@@ -23,15 +23,15 @@ from ayon_core.lib.transcoding import (
 class LoadImage(load.LoaderPlugin):
     """Load still image into Nuke"""
 
-    product_types = [
+    product_types = {
         "render2d",
         "source",
         "plate",
         "render",
         "prerender",
         "review",
-        "image"
-    ]
+        "image",
+    }
     representations = ["*"]
     extensions = set(
         ext.lstrip(".") for ext in IMAGE_EXTENSIONS

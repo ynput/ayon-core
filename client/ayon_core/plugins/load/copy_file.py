@@ -6,7 +6,7 @@ class CopyFile(load.LoaderPlugin):
     """Copy the published file to be pasted at the desired location"""
 
     representations = ["*"]
-    product_types = ["*"]
+    product_types = {"*"}
 
     label = "Copy File"
     order = 10

@@ -17,7 +17,7 @@ import qargparse
 class SubstanceLoadProjectMesh(load.LoaderPlugin):
     """Load mesh for project"""
 
-    product_types = ["*"]
+    product_types = {"*"}
     representations = ["abc", "fbx", "obj", "gltf"]
 
     label = "Load mesh"

@@ -12,12 +12,13 @@ log = Logger.get_logger(__name__)
 class SetFrameRangeLoader(load.LoaderPlugin):
     """Set frame range excluding pre- and post-handles"""
 
-    product_types = [
+    product_types = {
         "animation",
         "camera",
         "write",
         "yeticache",
-        "pointcache"]
+        "pointcache",
+    }
     representations = ["*"]
     extensions = {"*"}
 
@@ -45,12 +46,13 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     """Set frame range including pre- and post-handles"""
 
-    product_types = [
+    product_types = {
         "animation",
         "camera",
         "write",
         "yeticache",
-        "pointcache"]
+        "pointcache",
+    }
     representations = ["*"]
 
     label = "Set frame range (with handles)"

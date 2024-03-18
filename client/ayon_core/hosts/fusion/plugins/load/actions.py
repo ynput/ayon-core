@@ -8,14 +8,15 @@ from ayon_core.pipeline import load
 class FusionSetFrameRangeLoader(load.LoaderPlugin):
     """Set frame range excluding pre- and post-handles"""
 
-    product_types = [
+    product_types = {
         "animation",
         "camera",
         "imagesequence",
         "render",
         "yeticache",
         "pointcache",
-        "render"]
+        "render",
+    }
     representations = ["*"]
     extensions = {"*"}
 
@@ -44,14 +45,15 @@ class FusionSetFrameRangeLoader(load.LoaderPlugin):
 class FusionSetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     """Set frame range including pre- and post-handles"""
 
-    product_types = [
+    product_types = {
         "animation",
         "camera",
         "imagesequence",
         "render",
         "yeticache",
         "pointcache",
-        "render"]
+        "render",
+    }
     representations = ["*"]
 
     label = "Set frame range (with handles)"

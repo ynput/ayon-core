@@ -20,7 +20,7 @@ from ayon_core.hosts.blender.api.pipeline import (
 class AudioLoader(plugin.AssetLoader):
     """Load audio in Blender."""
 
-    product_types = ["audio"]
+    product_types = {"audio"}
     representations = ["wav"]
 
     label = "Load Audio"

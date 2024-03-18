@@ -21,7 +21,7 @@ class ExistingLayoutLoader(plugin.Loader):
     Load Layout for an existing scene, and match the existing assets.
     """
 
-    product_types = ["layout"]
+    product_types = {"layout"}
     representations = ["json"]
 
     label = "Load Layout on Existing Scene"

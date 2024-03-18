@@ -24,7 +24,7 @@ class LoaderPlugin(list):
 
     """
 
-    product_types = []
+    product_types = set()
     representations = []
     extensions = {"*"}
     order = 0

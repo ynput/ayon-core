@@ -16,7 +16,7 @@ from ayon_core.pipeline import get_representation_path, load
 class TyCacheLoader(load.LoaderPlugin):
     """TyCache Loader."""
 
-    product_types = ["tycache"]
+    product_types = {"tycache"}
     representations = ["tyc"]
     order = -8
     icon = "code-fork"

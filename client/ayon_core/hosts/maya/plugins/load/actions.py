@@ -13,11 +13,12 @@ import ayon_core.hosts.maya.api.plugin
 class SetFrameRangeLoader(load.LoaderPlugin):
     """Set frame range excluding pre- and post-handles"""
 
-    product_types = [
+    product_types = {
         "animation",
         "camera",
         "proxyAbc",
-        "pointcache"]
+        "pointcache",
+    }
     representations = ["abc"]
 
     label = "Set frame range"
@@ -47,11 +48,12 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     """Set frame range including pre- and post-handles"""
 
-    product_types = [
+    product_types = {
         "animation",
         "camera",
         "proxyAbc",
-        "pointcache"]
+        "pointcache",
+    }
     representations = ["abc"]
 
     label = "Set frame range (with handles)"
@@ -93,7 +95,7 @@ class ImportMayaLoader(ayon_core.hosts.maya.api.plugin.Loader):
 
     """
     representations = ["ma", "mb", "obj"]
-    product_types = [
+    product_types = {
         "model",
         "pointcache",
         "proxyAbc",
@@ -106,8 +108,8 @@ class ImportMayaLoader(ayon_core.hosts.maya.api.plugin.Loader):
         "rig",
         "camerarig",
         "staticMesh",
-        "workfile"
-    ]
+        "workfile",
+    }
 
     label = "Import"
     order = 10

@@ -9,7 +9,7 @@ from ayon_core.hosts.houdini.api import pipeline
 class AbcLoader(load.LoaderPlugin):
     """Load Alembic"""
 
-    product_types = ["model", "animation", "pointcache", "gpuCache"]
+    product_types = {"model", "animation", "pointcache", "gpuCache"}
     label = "Load Alembic"
     representations = ["abc"]
     order = -10

@@ -20,7 +20,7 @@ from ayon_core.hosts.nuke.api import (
 class LoadOcioLookNodes(load.LoaderPlugin):
     """Loading Ocio look to the nuke.Node graph"""
 
-    product_types = ["ociolook"]
+    product_types = {"ociolook"}
     representations = ["*"]
     extensions = {"json"}
 

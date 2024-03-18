@@ -17,7 +17,7 @@ from ayon_core.hosts.max.api.lib import maintained_selection
 class FbxModelLoader(load.LoaderPlugin):
     """Fbx Model Loader."""
 
-    product_types = ["model"]
+    product_types = {"model"}
     representations = ["fbx"]
     order = -9
     icon = "code-fork"

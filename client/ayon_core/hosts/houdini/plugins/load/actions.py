@@ -8,13 +8,13 @@ from ayon_core.pipeline import load
 class SetFrameRangeLoader(load.LoaderPlugin):
     """Set frame range excluding pre- and post-handles"""
 
-    product_types = [
+    product_types = {
         "animation",
         "camera",
         "pointcache",
         "vdbcache",
         "usd",
-    ]
+    }
     representations = ["abc", "vdb", "usd"]
 
     label = "Set frame range"
@@ -45,13 +45,13 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     """Set frame range including pre- and post-handles"""
 
-    product_types = [
+    product_types = {
         "animation",
         "camera",
         "pointcache",
         "vdbcache",
         "usd",
-    ]
+    }
     representations = ["abc", "vdb", "usd"]
 
     label = "Set frame range (with handles)"
