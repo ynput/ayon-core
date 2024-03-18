@@ -19,7 +19,7 @@ from ayon_core.hosts.maya.api.pipeline import containerise
 class MultiverseUsdOverLoader(load.LoaderPlugin):
     """Reference file"""
 
-    product_types = ["mvUsdOverride"]
+    product_types = {"mvUsdOverride"}
     representations = ["usda", "usd", "udsz"]
 
     label = "Load Usd Override into Compound"

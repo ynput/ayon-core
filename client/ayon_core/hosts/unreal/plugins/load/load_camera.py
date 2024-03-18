@@ -28,7 +28,7 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class CameraLoader(plugin.Loader):
     """Load Unreal StaticMesh from FBX"""
 
-    product_types = ["camera"]
+    product_types = {"camera"}
     label = "Load Camera"
     representations = ["fbx"]
     icon = "cube"

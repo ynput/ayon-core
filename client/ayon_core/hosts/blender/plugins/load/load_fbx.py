@@ -23,7 +23,7 @@ class FbxModelLoader(plugin.AssetLoader):
     Stores the imported asset in an empty named after the asset.
     """
 
-    product_types = ["model", "rig"]
+    product_types = {"model", "rig"}
     representations = ["fbx"]
 
     label = "Load FBX"

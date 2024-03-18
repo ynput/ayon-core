@@ -6,7 +6,7 @@ from ayon_core.pipeline import load
 class CopyFilePath(load.LoaderPlugin):
     """Copy published file path to clipboard"""
     representations = ["*"]
-    product_types = ["*"]
+    product_types = {"*"}
 
     label = "Copy File Path"
     order = 20

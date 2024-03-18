@@ -10,7 +10,7 @@ from ayon_core.hosts.houdini.api import pipeline
 class HdaLoader(load.LoaderPlugin):
     """Load Houdini Digital Asset file."""
 
-    product_types = ["hda"]
+    product_types = {"hda"}
     label = "Load Hda"
     representations = ["hda"]
     order = -10

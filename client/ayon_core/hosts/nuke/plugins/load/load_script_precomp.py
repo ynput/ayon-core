@@ -16,7 +16,7 @@ from ayon_core.hosts.nuke.api import (
 class LinkAsGroup(load.LoaderPlugin):
     """Copy the published file to be pasted at the desired location"""
 
-    product_types = ["workfile", "nukenodes"]
+    product_types = {"workfile", "nukenodes"}
     representations = ["*"]
     extensions = {"nk"}
 

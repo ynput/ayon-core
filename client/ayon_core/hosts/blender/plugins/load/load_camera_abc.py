@@ -23,7 +23,7 @@ class AbcCameraLoader(plugin.AssetLoader):
     Stores the imported asset in an empty named after the asset.
     """
 
-    product_types = ["camera"]
+    product_types = {"camera"}
     representations = ["abc"]
 
     label = "Load Camera (ABC)"

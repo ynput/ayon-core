@@ -12,7 +12,7 @@ from ayon_core.hosts.fusion.api import (
 class FusionLoadFBXMesh(load.LoaderPlugin):
     """Load FBX mesh into Fusion"""
 
-    product_types = ["*"]
+    product_types = {"*"}
     representations = ["*"]
     extensions = {
         "3ds",

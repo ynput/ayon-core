@@ -582,7 +582,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
     """Load images
     Stores the imported asset in a container named after the asset.
     """
-    product_types = ["mindbender.imagesequence"]
+    product_types = {"mindbender.imagesequence"}
     representations = ["*"]
 
     def load(self, context, name=None, namespace=None, data=None):

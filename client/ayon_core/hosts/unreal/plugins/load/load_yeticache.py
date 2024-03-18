@@ -15,7 +15,7 @@ import unreal  # noqa
 class YetiLoader(plugin.Loader):
     """Load Yeti Cache"""
 
-    product_types = ["yeticacheUE"]
+    product_types = {"yeticacheUE"}
     label = "Import Yeti"
     representations = ["abc"]
     icon = "pagelines"

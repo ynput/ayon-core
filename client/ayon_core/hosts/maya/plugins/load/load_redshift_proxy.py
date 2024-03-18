@@ -22,7 +22,7 @@ from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 class RedshiftProxyLoader(load.LoaderPlugin):
     """Load Redshift proxy"""
 
-    product_types = ["redshiftproxy"]
+    product_types = {"redshiftproxy"}
     representations = ["rs"]
 
     label = "Import Redshift Proxy"

@@ -11,7 +11,7 @@ from ayon_core.hosts.houdini.api import pipeline
 class AssLoader(load.LoaderPlugin):
     """Load .ass with Arnold Procedural"""
 
-    product_types = ["ass"]
+    product_types = {"ass"}
     label = "Load Arnold Procedural"
     representations = ["ass"]
     order = -10

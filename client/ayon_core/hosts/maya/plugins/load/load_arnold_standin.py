@@ -29,9 +29,9 @@ def is_sequence(files):
 class ArnoldStandinLoader(load.LoaderPlugin):
     """Load as Arnold standin"""
 
-    product_types = [
+    product_types = {
         "ass", "animation", "model", "proxyAbc", "pointcache", "usd"
-    ]
+    }
     representations = ["ass", "abc", "usda", "usdc", "usd"]
 
     label = "Load as Arnold standin"

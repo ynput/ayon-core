@@ -11,7 +11,7 @@ import ayon_core.hosts.harmony.api as harmony
 class ImportPaletteLoader(load.LoaderPlugin):
     """Import palettes."""
 
-    product_types = ["palette", "harmony.palette"]
+    product_types = {"palette", "harmony.palette"}
     representations = ["plt"]
     label = "Import Palette"
 

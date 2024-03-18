@@ -20,7 +20,7 @@ from ayon_core.hosts.unreal.api import pipeline as unreal_pipeline
 class AnimationFBXLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from FBX."""
 
-    product_types = ["animation"]
+    product_types = {"animation"}
     label = "Import FBX Animation"
     representations = ["fbx"]
     icon = "cube"

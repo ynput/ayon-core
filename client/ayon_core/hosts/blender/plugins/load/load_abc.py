@@ -26,7 +26,7 @@ class CacheModelLoader(plugin.AssetLoader):
     Note:
         At least for now it only supports Alembic files.
     """
-    product_types = ["model", "pointcache", "animation"]
+    product_types = {"model", "pointcache", "animation"}
     representations = ["abc"]
 
     label = "Load Alembic"

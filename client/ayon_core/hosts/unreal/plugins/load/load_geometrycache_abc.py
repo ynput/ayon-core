@@ -19,7 +19,7 @@ import unreal  # noqa
 class PointCacheAlembicLoader(plugin.Loader):
     """Load Point Cache from Alembic"""
 
-    product_types = ["model", "pointcache"]
+    product_types = {"model", "pointcache"}
     label = "Import Alembic Point Cache"
     representations = ["abc"]
     icon = "cube"

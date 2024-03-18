@@ -20,14 +20,14 @@ from ayon_core.hosts.maya.api.pipeline import containerise
 class MultiverseUsdLoader(load.LoaderPlugin):
     """Read USD data in a Multiverse Compound"""
 
-    product_types = [
+    product_types = {
         "model",
         "usd",
         "mvUsdComposition",
         "mvUsdOverride",
         "pointcache",
-        "animation"
-    ]
+        "animation",
+    }
     representations = ["usd", "usda", "usdc", "usdz", "abc"]
 
     label = "Load USD to Multiverse"

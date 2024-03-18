@@ -16,7 +16,7 @@ class BlendAnimationLoader(plugin.AssetLoader):
         moment.
     """
 
-    product_types = ["animation"]
+    product_types = {"animation"}
     representations = ["blend"]
 
     label = "Link Animation"
