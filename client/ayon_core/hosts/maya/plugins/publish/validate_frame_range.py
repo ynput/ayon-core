@@ -1,3 +1,6 @@
+
+import dataclasses
+
 import pyblish.api
 
 from maya import cmds
@@ -53,12 +56,24 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
             )
             return
 
-        frame_start_handle = int(context.data.get("frameStartHandle"))
-        frame_end_handle = int(context.data.get("frameEndHandle"))
-        handle_start = int(context.data.get("handleStart"))
-        handle_end = int(context.data.get("handleEnd"))
-        frame_start = int(context.data.get("frameStart"))
-        frame_end = int(context.data.get("frameEnd"))
+        # Get frame information from task entity
+        # NOTE: If there is no task override then the asset
+        # value is automatically returned instead
+        frames = get_instance_task_frame_range(instance)
+        frame_start_handle = frames.frame_start_handle
+        frame_end_handle = frames.frame_end_handle
+        handle_start = frames.handle_start
+        handle_end = frames.handle_end
+        frame_start = frames.frame_start
+        frame_end = frames.frame_end
+
+        # Get frame information from asset context
+        # frame_start_handle = int(context.data.get("frameStartHandle"))
+        # frame_end_handle = int(context.data.get("frameEndHandle"))
+        # handle_start = int(context.data.get("handleStart"))
+        # handle_end = int(context.data.get("handleEnd"))
+        # frame_start = int(context.data.get("frameStart"))
+        # frame_end = int(context.data.get("frameEnd"))
 
         inst_start = int(instance.data.get("frameStartHandle"))
         inst_end = int(instance.data.get("frameEndHandle"))
@@ -130,12 +145,24 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
         node = instance.data["name"]
         context = instance.context
 
-        frame_start_handle = int(context.data.get("frameStartHandle"))
-        frame_end_handle = int(context.data.get("frameEndHandle"))
-        handle_start = int(context.data.get("handleStart"))
-        handle_end = int(context.data.get("handleEnd"))
-        frame_start = int(context.data.get("frameStart"))
-        frame_end = int(context.data.get("frameEnd"))
+        # Get frame information from task entity
+        # NOTE: If there is no task override then the asset
+        # value is automatically returned instead
+        frames = get_instance_task_frame_range(instance)
+        frame_start_handle = frames.frame_start_handle
+        frame_end_handle = frames.frame_end_handle
+        handle_start = frames.handle_start
+        handle_end = frames.handle_end
+        frame_start = frames.frame_start
+        frame_end = frames.frame_end
+
+        # Get frame information from asset context
+        # frame_start_handle = int(context.data.get("frameStartHandle"))
+        # frame_end_handle = int(context.data.get("frameEndHandle"))
+        # handle_start = int(context.data.get("handleStart"))
+        # handle_end = int(context.data.get("handleEnd"))
+        # frame_start = int(context.data.get("frameStart"))
+        # frame_end = int(context.data.get("frameEnd"))
 
         # Start
         if cmds.attributeQuery("handleStart", node=node, exists=True):
@@ -204,3 +231,38 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
                 value=value
             ))
             cmds.setAttr(node_attr, value)
+
+
+def get_instance_task_frame_range(instance):
+    # Get frame information from task entity
+    # NOTE: If there is no task override then the asset
+    # value is automatically returned instead
+    attrib = instance.data["taskEntity"]["attrib"]
+    return FrameRange(
+        frame_start=attrib["frameStart"],
+        frame_end=attrib["frameEnd"],
+        handle_start=attrib["handleStart"],
+        handle_end=attrib["handleEnd"])
+
+
+@dataclasses.dataclass
+class FrameRange:
+    """Frame range with handles.
+
+    The frame range excludes the handles - and thus the handles are outside
+    of the frame range. To get the inclusive start and end frame use
+    `frame_start_handle` and `frame_end_handle`.
+
+    """
+    frame_start: int
+    frame_end: int
+    handle_start: int
+    handle_end: int
+
+    @property
+    def frame_start_handle(self) -> int:
+        return self.frame_start - self.handle_start
+
+    @property
+    def frame_end_handle(self) -> int:
+        return self.frame_end + self.handle_end
