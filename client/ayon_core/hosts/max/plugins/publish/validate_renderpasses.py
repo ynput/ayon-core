@@ -12,19 +12,16 @@ from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
 
 class ValidateRenderPasses(OptionalPyblishPluginMixin,
                            pyblish.api.InstancePlugin):
-    """Validates Render Passes before Deadline Submission
+    """Validates Render Passes before farm submission
     """
 
     order = ValidateContentsOrder
     families = ["maxrender"]
     hosts = ["max"]
     label = "Validate Render Passes"
-    optional = True
     actions = [RepairAction]
 
     def process(self, instance):
-        if not self.is_active(instance.data):
-            return
         invalid = self.get_invalid(instance)
         if invalid:
             bullet_point_invalid_statement = "\n".join(
@@ -64,7 +61,7 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
 
         Args:
             instance (pyblish.api.Instance): instance
-            filename (str): filename of the Max scene
+            workfile_name (str): filename of the Max scene
 
         Returns:
             list: list of invalid filename which doesn't match
@@ -72,11 +69,11 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
         """
         invalid = []
         file = rt.maxFileName
-        filename, ext = os.path.splitext(file)
-        if filename not in rt.rendOutputFilename:
+        workfile_name, ext = os.path.splitext(file)
+        if workfile_name not in rt.rendOutputFilename:
             cls.log.error(
                 "Render output folder must include"
-                f" the max scene name {filename} "
+                f" the max scene name {workfile_name} "
             )
             invalid_folder_name = os.path.dirname(
                 rt.rendOutputFilename).replace(
@@ -104,13 +101,11 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
             render_elem_num = render_elem.NumRenderElements()
             for i in range(render_elem_num):
                 renderlayer_name = render_elem.GetRenderElement(i)
-                renderpass = str(renderlayer_name).split(":")[-1]
+                renderpass = str(renderlayer_name).rsplit(":", 1)[-1]
                 rend_file = render_elem.GetRenderElementFilename(i)
                 if not rend_file:
-                    cls.log.error(
-                        f"No filepath for render element {renderpass}")
-                    invalid.append((f"Invalid {renderpass}",
-                                    "No filepath"))
+                    continue
+
                 rend_fname, ext = os.path.splitext(
                     os.path.basename(rend_file))
                 invalid_filenames = cls.get_invalid_filenames(
@@ -123,6 +118,10 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
             cls.log.debug(
                 "Renderpass validation does not support Arnold yet,"
                 " validation skipped...")
+        else:
+            cls.log.debug(
+                "Skipping render element validation "
+                f"for renderer : {renderer}")
         return invalid
 
     @classmethod
@@ -140,7 +139,7 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
         """
         invalid = []
         if instance.name not in file_name:
-            cls.log.error("The renderpass should have instance name inside.")
+            cls.log.error("The renderpass filename should contain the instance name.")
             invalid.append((f"Invalid instance name",
                             file_name))
         if renderpass is not None:
