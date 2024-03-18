@@ -372,6 +372,12 @@ class TemplateCategory:
         """
         if key in self._category_data:
             return key
+
+        # Use default when the key is the category name
+        if key == self._name:
+            return "default"
+
+        # Remove prefix if is key prefixed
         if key.startswith(self._name_prefix):
             new_key = key[len(self._name_prefix):]
             if new_key in self._category_data:
