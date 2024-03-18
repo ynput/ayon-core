@@ -315,9 +315,9 @@ class BuildWorkfile:
                 ).format(json.dumps(profile, indent=4)))
                 continue
 
-            # Check families
-            profile_families = profile.get("product_types")
-            if not profile_families:
+            # Check product types
+            profile_product_types = profile.get("product_types")
+            if not profile_product_types:
                 self.log.warning((
                     "Build profile is missing families configuration: {0}"
                 ).format(json.dumps(profile, indent=4)))
@@ -334,7 +334,8 @@ class BuildWorkfile:
 
             # Prepare lowered families and representation names
             profile["product_types_lowered"] = [
-                fam.lower() for fam in profile_families
+                product_type.lower()
+                for product_type in profile_product_types
             ]
             profile["repre_names_lowered"] = [
                 name.lower() for name in profile_repre_names
