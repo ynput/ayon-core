@@ -42,7 +42,9 @@ def test_generated_traits():
     data = TraitsData()
     mc = traits_generated.openassetio_mediacreation
 
-    assert hasattr(traits, "openassetio_mediacreation"), "The module should have openassetio_mediacreation"
+    assert hasattr(
+        traits, "openassetio_mediacreation"
+    ), "The module should have openassetio_mediacreation"
     version_t = mc.traits.lifecycle.StableTrait
 
     version_t.imbueTo(data)
@@ -57,7 +59,28 @@ def test_get_available_traits_ids(printer):
         printer(trait_id)
 
 
+def _assert_files_integrity(files: list, sizes: list, hashes: list):
+    """Asserts that the files have the expected sizes and hashes.
+
+    This is helper function to assert the integrity of the files in
+    the func::`test_update_file_bundle_data` test.
+
+    """
+    for idx, file in enumerate(files):
+        file = Path(file)
+        calc_hash = hashlib.sha256(file.read_bytes()).hexdigest()
+        size = file.stat().st_size
+        assert sizes[idx] == size
+        assert hashes[idx] == calc_hash
+
+
 def test_update_file_bundle_data(printer, file_sequence):
+    """Test of FileBundle trait can be updated correctly.
+
+    This tests if files defined in FileBundle can be updated
+    with their sizes and hashes. This is temporary solution until
+    file sequences are handled more gracefully
+    """
     data = TraitsData()
     ayon = traits_generated.Ayon
     fb = ayon.traits.meta.FilesBundleTrait(data)
@@ -66,9 +89,8 @@ def test_update_file_bundle_data(printer, file_sequence):
     traits.update_file_bundle_data(data)
     assert fb.getSizes() is not None
     assert fb.getHashes() is not None
-    for idx, file in enumerate(json.loads(fb.getFiles())):
-        file = Path(file)
-        calc_hash = hashlib.sha256(file.read_bytes()).hexdigest()
-        size = file.stat().st_size
-        assert json.loads(fb.getSizes())[idx] == size
-        assert json.loads(fb.getHashes())[idx] == calc_hash
+    _assert_files_integrity(
+        json.loads(fb.getFiles()),
+        json.loads(fb.getSizes()),
+        json.loads(fb.getHashes()),
+    )
