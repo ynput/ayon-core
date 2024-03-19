@@ -37,22 +37,22 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
 
-        asset = instance.data.get("folderPath")
-        context_asset = self.get_context_asset(instance)
-        if asset != context_asset:
+        folder_path = instance.data.get("folderPath")
+        context_folder_path = self.get_context_folder_path(instance)
+        if folder_path != context_folder_path:
             raise PublishValidationError(
                 message=(
-                    "Instance '{}' publishes to different asset than current "
-                    "context: {}. Current context: {}".format(
-                        instance.name, asset, context_asset
+                    "Instance '{}' publishes to different folder than current"
+                    " context: {}. Current context: {}".format(
+                        instance.name, folder_path, context_folder_path
                     )
                 ),
                 description=(
-                    "## Publishing to a different asset\n"
+                    "## Publishing to a different folder\n"
                     "There are publish instances present which are publishing "
-                    "into a different asset than your current context.\n\n"
+                    "into a different folder than your current context.\n\n"
                     "Usually this is not what you want but there can be cases "
-                    "where you might want to publish into another asset or "
+                    "where you might want to publish into another folder or "
                     "shot. If that's the case you can disable the validation "
                     "on the instance to ignore it."
                 )
@@ -64,14 +64,14 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
 
     @classmethod
     def repair(cls, instance):
-        context_asset = cls.get_context_asset(instance)
+        context_folder_path = cls.get_context_folder_path(instance)
         instance_node = instance.data["instance_node"]
         cmds.setAttr(
             "{}.folderPath".format(instance_node),
-            context_asset,
+            context_folder_path,
             type="string"
         )
 
     @staticmethod
-    def get_context_asset(instance):
+    def get_context_folder_path(instance):
         return instance.context.data["folderPath"]

@@ -3,8 +3,8 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.tools.utils import PlaceholderLineEdit, GoToCurrentButton
 
-from ayon_core.tools.ayon_utils.models import HierarchyExpectedSelection
-from ayon_core.tools.ayon_utils.widgets import FoldersWidget, TasksWidget
+from ayon_core.tools.common_models import HierarchyExpectedSelection
+from ayon_core.tools.utils import FoldersWidget, TasksWidget
 
 
 class CreateSelectionModel(object):

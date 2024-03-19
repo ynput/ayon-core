@@ -66,8 +66,8 @@ class ModelUSDLoader(load.LoaderPlugin):
             namespace, loader=self.__class__.__name__)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         node = rt.GetNodeByName(node_name)
         namespace, name = get_namespace(node_name)
@@ -108,7 +108,7 @@ class ModelUSDLoader(load.LoaderPlugin):
             rt.Select(node)
 
         lib.imprint(node_name, {
-            "representation": str(repre_doc["_id"])
+            "representation": repre_entity["id"]
         })
 
     def switch(self, container, context):

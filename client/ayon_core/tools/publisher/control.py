@@ -14,10 +14,6 @@ import arrow
 import pyblish.api
 import ayon_api
 
-from ayon_core.client import (
-    get_asset_by_name,
-    get_subsets,
-)
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import (
     UIDef,
@@ -42,7 +38,7 @@ from ayon_core.pipeline.create.context import (
     ConvertorsOperationFailed,
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
-from ayon_core.tools.ayon_utils.models import HierarchyModel
+from ayon_core.tools.common_models import HierarchyModel
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
@@ -64,24 +60,6 @@ class MainThreadItem:
 
     def process(self):
         self.callback(*self.args, **self.kwargs)
-
-
-class AssetDocsCache:
-    """Cache asset documents for creation part."""
-
-    def __init__(self, controller):
-        self._controller = controller
-        self._asset_docs_by_path = {}
-
-    def reset(self):
-        self._asset_docs_by_path = {}
-
-    def get_asset_doc_by_folder_path(self, folder_path):
-        if folder_path not in self._asset_docs_by_path:
-            project_name = self._controller.project_name
-            asset_doc = get_asset_by_name(project_name, folder_path)
-            self._asset_docs_by_path[folder_path] = asset_doc
-        return copy.deepcopy(self._asset_docs_by_path[folder_path])
 
 
 class PublishReportMaker:
@@ -1653,7 +1631,6 @@ class PublisherController(BasePublisherController):
 
         # Cacher of avalon documents
         self._hierarchy_model = HierarchyModel(self)
-        self._asset_docs_cache = AssetDocsCache(self)
 
     @property
     def project_name(self):
@@ -1673,7 +1650,7 @@ class PublisherController(BasePublisherController):
             Union[str, None]: Folder path or None if folder is not set.
         """
 
-        return self._create_context.get_current_asset_name()
+        return self._create_context.get_current_folder_path()
 
     @property
     def current_task_name(self):
@@ -1796,14 +1773,14 @@ class PublisherController(BasePublisherController):
         if not folder_item:
             return None
 
-        subset_docs = get_subsets(
+        product_entities = ayon_api.get_products(
             project_name,
-            asset_ids=[folder_item.entity_id],
-            fields=["name"]
+            folder_ids={folder_item.entity_id},
+            fields={"name"}
         )
         return {
-            subset_doc["name"]
-            for subset_doc in subset_docs
+            product_entity["name"]
+            for product_entity in product_entities
         }
 
     def reset(self):
@@ -1816,11 +1793,10 @@ class PublisherController(BasePublisherController):
 
         self._create_context.reset_preparation()
 
-        # Reset avalon context
+        # Reset current context
         self._create_context.reset_current_context()
 
         self._hierarchy_model.reset()
-        self._asset_docs_cache.reset()
 
         self._reset_plugins()
         # Publish part must be reset after plugins
@@ -2052,16 +2028,37 @@ class PublisherController(BasePublisherController):
         """
 
         creator = self._creators[creator_identifier]
-        project_name = self.project_name
-        asset_doc = self._asset_docs_cache.get_asset_doc_by_folder_path(
-            folder_path
-        )
+
         instance = None
         if instance_id:
             instance = self.instances[instance_id]
 
+        project_name = self.project_name
+        folder_item = self._hierarchy_model.get_folder_item_by_path(
+            project_name, folder_path
+        )
+        folder_entity = None
+        task_item = None
+        task_entity = None
+        if folder_item is not None:
+            folder_entity = self._hierarchy_model.get_folder_entity(
+                project_name, folder_item.entity_id
+            )
+            task_item = self._hierarchy_model.get_task_item_by_name(
+                project_name, folder_item.entity_id, task_name, "controller"
+            )
+
+        if task_item is not None:
+            task_entity = self._hierarchy_model.get_task_entity(
+                project_name, task_item.task_id
+            )
+
         return creator.get_product_name(
-            project_name, asset_doc, task_name, variant, instance=instance
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            instance=instance
         )
 
     def trigger_convertor_items(self, convertor_identifiers):

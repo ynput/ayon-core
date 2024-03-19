@@ -24,7 +24,7 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
             - UCX
 
     This validator also checks if product name is correct
-            - {static mesh prefix}_{Asset-Name}{Variant}.
+            - {static mesh prefix}_{FolderName}{Variant}.
 
     """
 

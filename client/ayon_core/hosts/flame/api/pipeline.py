@@ -73,7 +73,7 @@ def containerise(flame_clip_segment,
         "name": str(name),
         "namespace": str(namespace),
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     if data:

@@ -380,6 +380,26 @@ class HierarchyModel(object):
         )
         return items.get(folder_path)
 
+    def get_task_item_by_name(
+        self, project_name, folder_id, task_name, sender
+    ):
+        """Get task item by name and folder id.
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder id.
+            task_name (str): Task name.
+            sender (Union[str, None]): Who requested the task item.
+
+        Returns:
+            Union[TaskItem, None]: Task item found by name and folder id.
+
+        """
+        for task_item in self.get_task_items(project_name, folder_id, sender):
+            if task_item.name == task_name:
+                return task_item
+        return None
+
     def get_task_items(self, project_name, folder_id, sender):
         if not project_name or not folder_id:
             return []

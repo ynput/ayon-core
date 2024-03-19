@@ -1,6 +1,5 @@
+import ayon_api
 import pyblish.api
-
-from ayon_core.client import get_representations
 
 
 class CollectInputRepresentationsToVersions(pyblish.api.ContextPlugin):
@@ -24,14 +23,14 @@ class CollectInputRepresentationsToVersions(pyblish.api.ContextPlugin):
             if inst_repre:
                 representations.update(inst_repre)
 
-        representations_docs = get_representations(
-            project_name=context.data["projectEntity"]["name"],
+        repre_entities = ayon_api.get_representations(
+            project_name=context.data["projectName"],
             representation_ids=representations,
-            fields=["_id", "parent"])
+            fields={"id", "versionId"})
 
         representation_id_to_version_id = {
-            str(repre["_id"]): repre["parent"]
-            for repre in representations_docs
+            repre["id"]: repre["versionId"]
+            for repre in repre_entities
         }
 
         for instance in context:

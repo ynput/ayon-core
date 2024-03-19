@@ -25,10 +25,10 @@ class MayaUsdLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name=None, namespace=None, options=None):
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -78,13 +78,13 @@ class MayaUsdLoader(load.LoaderPlugin):
         members = cmds.sets(node, query=True) or []
         shapes = cmds.ls(members, type="mayaUsdProxyShape")
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         for shape in shapes:
             cmds.setAttr("{}.filePath".format(shape), path, type="string")
 
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def switch(self, container, context):
