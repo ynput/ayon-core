@@ -735,7 +735,7 @@ def get_representation_path(representation, root=None):
 def is_compatible_loader(Loader, context):
     """Return whether a loader is compatible with a context.
 
-    This checks the version's families and the representation for the given
+    This checks the product type and the representation for the given
     Loader.
 
     Returns:
