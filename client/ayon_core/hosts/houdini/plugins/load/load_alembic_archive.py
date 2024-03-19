@@ -9,7 +9,7 @@ from ayon_core.hosts.houdini.api import pipeline
 class AbcArchiveLoader(load.LoaderPlugin):
     """Load Alembic as full geometry network hierarchy """
 
-    families = ["model", "animation", "pointcache", "gpuCache"]
+    product_types = {"model", "animation", "pointcache", "gpuCache"}
     label = "Load Alembic as Archive"
     representations = ["abc"]
     order = -5

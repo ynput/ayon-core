@@ -44,7 +44,7 @@ def get_image_avalon_container():
 class ImageLoader(load.LoaderPlugin):
     """Load images into COP2"""
 
-    families = ["imagesequence"]
+    product_types = {"imagesequence"}
     label = "Load Image (COP2)"
     representations = ["*"]
     order = -10
