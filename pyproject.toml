@@ -22,6 +22,7 @@ openassetio-traitgen = "*" # for generating traits from yaml definitions
 openassetio-mediacreation = "*" # for default media creation traits
 ayon-openassetio-manager-plugin = { git = "https://github.com/ynput/ayon-openassetio-manager-plugin.git", branch = "main" }
 deal = "^4.24.3"
+semver = "^3.0.2"
 
 
 [tool.poetry.dev-dependencies]
