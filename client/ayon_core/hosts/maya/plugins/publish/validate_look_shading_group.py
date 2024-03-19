@@ -14,7 +14,7 @@ class ValidateShadingEngine(pyblish.api.InstancePlugin):
 
     Shading engines should be named "{surface_shader}SG"
     """
-
+``
     order = ValidateContentsOrder
     families = ["look"]
     hosts = ["maya"]
@@ -22,9 +22,12 @@ class ValidateShadingEngine(pyblish.api.InstancePlugin):
     actions = [
         ayon_core.hosts.maya.api.action.SelectInvalidAction, RepairAction
     ]
+    optional = True
 
     # The default connections to check
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
 
         invalid = self.get_invalid(instance)
         if invalid:

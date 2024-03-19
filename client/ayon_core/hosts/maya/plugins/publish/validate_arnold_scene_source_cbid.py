@@ -16,6 +16,7 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
     families = ["ass"]
     label = "Validate Arnold Scene Source CBID"
     actions = [RepairAction]
+    optional = False
 
     @staticmethod
     def _get_nodes_by_name(nodes):
@@ -55,6 +56,8 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
         return invalid_couples
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         # Proxy validation.
         if not instance.data.get("proxy", []):
             return

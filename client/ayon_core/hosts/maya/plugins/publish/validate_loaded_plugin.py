@@ -15,6 +15,7 @@ class ValidateLoadedPlugin(pyblish.api.ContextPlugin):
     order = pyblish.api.ValidatorOrder
     host = ["maya"]
     actions = [RepairContextAction]
+    optional = True
 
     @classmethod
     def get_invalid(cls, context):
@@ -35,7 +36,8 @@ class ValidateLoadedPlugin(pyblish.api.ContextPlugin):
         return invalid
 
     def process(self, context):
-
+        if not self.is_active(context.data):
+            return
         invalid = self.get_invalid(context)
         if invalid:
             raise PublishValidationError(
