@@ -24,7 +24,7 @@ class ImageFromSequenceLoader(photoshop.PhotoshopLoader):
         difficult.
     """
 
-    families = ["render"]
+    product_types = {"render"}
     representations = ["*"]
     options = []
 
@@ -40,7 +40,7 @@ class ImageFromSequenceLoader(photoshop.PhotoshopLoader):
 
         stub = self.get_stub()
         layer_name = get_unique_layer_name(
-            stub.get_layers(), context["asset"]["name"], name
+            stub.get_layers(), context["folder"]["name"], name
         )
 
         with photoshop.maintained_selection():

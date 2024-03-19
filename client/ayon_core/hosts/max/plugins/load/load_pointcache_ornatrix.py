@@ -21,7 +21,7 @@ from pymxs import runtime as rt
 class OxAbcLoader(load.LoaderPlugin):
     """Ornatrix Alembic loader."""
 
-    families = ["camera", "animation", "pointcache"]
+    product_types = {"camera", "animation", "pointcache"}
     label = "Load Alembic with Ornatrix"
     representations = ["abc"]
     order = -10
@@ -63,8 +63,8 @@ class OxAbcLoader(load.LoaderPlugin):
         )
 
     def update(self, container, context):
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         namespace, name = get_namespace(node_name)
         node = rt.getNodeByName(node_name)
@@ -99,7 +99,7 @@ class OxAbcLoader(load.LoaderPlugin):
         update_custom_attribute_data(node, ox_abc_objects)
         lib.imprint(
             container["instance_node"],
-            {"representation": str(repre_doc["_id"])},
+            {"representation": repre_entity["id"]},
         )
 
     def switch(self, container, context):

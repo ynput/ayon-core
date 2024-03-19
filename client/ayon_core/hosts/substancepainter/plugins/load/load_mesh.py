@@ -17,7 +17,7 @@ import qargparse
 class SubstanceLoadProjectMesh(load.LoaderPlugin):
     """Load mesh for project"""
 
-    families = ["*"]
+    product_types = {"*"}
     representations = ["abc", "fbx", "obj", "gltf"]
 
     label = "Load mesh"
@@ -101,9 +101,9 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         self.update(container, context)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
 
         # Reload the mesh
         container_options = container.get("options", {})
@@ -122,7 +122,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
 
         # Update container representation
         object_name = container["objectName"]
-        update_data = {"representation": str(repre_doc["_id"])}
+        update_data = {"representation": repre_entity["id"]}
         set_container_metadata(object_name, update_data, update=True)
 
     def remove(self, container):

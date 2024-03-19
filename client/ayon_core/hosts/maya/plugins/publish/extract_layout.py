@@ -4,8 +4,8 @@ import json
 
 from maya import cmds
 from maya.api import OpenMaya as om
+from ayon_api import get_representation_by_id
 
-from ayon_core.client import get_representation_by_id
 from ayon_core.pipeline import publish
 
 
@@ -44,6 +44,8 @@ class ExtractLayout(publish.Extractor):
             grp_loaded_ass = instance.data.get("groupLoadedAssets", False)
             if grp_loaded_ass:
                 asset_list = cmds.listRelatives(asset, children=True)
+                # WARNING This does override 'asset' variable from parent loop
+                #   is it correct?
                 for asset in asset_list:
                     grp_name = asset.split(':')[0]
             else:
@@ -61,13 +63,18 @@ class ExtractLayout(publish.Extractor):
             representation = get_representation_by_id(
                 project_name,
                 representation_id,
-                fields=["parent", "context.family"]
+                fields={"versionId", "context"}
             )
 
             self.log.debug(representation)
 
-            version_id = representation.get("parent")
-            product_type = representation.get("context").get("family")
+            version_id = representation["versionId"]
+            # TODO use product entity to get product type rather than
+            #    data in representation 'context'
+            repre_context = representation["context"]
+            product_type = repre_context.get("product", {}).get("type")
+            if not product_type:
+                product_type = repre_context.get("family")
 
             json_element = {
                 "product_type": product_type,

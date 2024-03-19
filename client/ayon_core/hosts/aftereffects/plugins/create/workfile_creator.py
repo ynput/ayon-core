@@ -1,5 +1,6 @@
+import ayon_api
+
 import ayon_core.hosts.aftereffects.api as api
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     AutoCreator,
     CreatedInstance
@@ -39,32 +40,37 @@ class AEWorkfileCreator(AutoCreator):
 
         context = self.create_context
         project_name = context.get_current_project_name()
-        asset_name = context.get_current_asset_name()
+        folder_path = context.get_current_folder_path()
         task_name = context.get_current_task_name()
         host_name = context.host_name
 
-        existing_asset_name = None
+        existing_folder_path = None
         if existing_instance is not None:
-            existing_asset_name = existing_instance.get("folderPath")
+            existing_folder_path = existing_instance.get("folderPath")
 
         if existing_instance is None:
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 self.default_variant,
                 host_name,
             )
             data = {
-                "folderPath": asset_name,
+                "folderPath": folder_path,
                 "task": task_name,
                 "variant": self.default_variant,
             }
             data.update(self.get_dynamic_data(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 self.default_variant,
                 host_name,
                 None,
@@ -79,17 +85,22 @@ class AEWorkfileCreator(AutoCreator):
                                    new_instance.data_to_store())
 
         elif (
-            existing_asset_name != asset_name
+            existing_folder_path != folder_path
             or existing_instance["task"] != task_name
         ):
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 self.default_variant,
                 host_name,
             )
-            existing_instance["folderPath"] = asset_name
+            existing_instance["folderPath"] = folder_path
             existing_instance["task"] = task_name
             existing_instance["productName"] = product_name

@@ -11,7 +11,7 @@ class ShowInUsdview(load.LoaderPlugin):
 
     label = "Show in usdview"
     representations = ["*"]
-    families = ["*"]
+    product_types = {"*"}
     extensions = {"usd", "usda", "usdlc", "usdnc", "abc"}
     order = 15
 
