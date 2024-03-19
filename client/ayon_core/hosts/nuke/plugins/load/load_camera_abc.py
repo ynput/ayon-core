@@ -20,7 +20,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
     This will load alembic camera into script.
     """
 
-    families = ["camera"]
+    product_types = {"camera"}
     representations = ["*"]
     extensions = {"abc"}
 

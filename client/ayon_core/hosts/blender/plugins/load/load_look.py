@@ -23,7 +23,7 @@ class BlendLookLoader(plugin.AssetLoader):
     contains the model. There is no further need to 'containerise' it.
     """
 
-    families = ["look"]
+    product_types = {"look"}
     representations = ["json"]
 
     label = "Load Look"
