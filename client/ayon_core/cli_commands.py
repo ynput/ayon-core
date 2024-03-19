@@ -150,7 +150,7 @@ class Commands:
         log.info("Publish finished.")
 
     @staticmethod
-    def extractenvironments(output_json_path, project, asset, task, app,
+    def extractenvironments(output_json_path, project, folder, task, app,
                             env_group):
         """Produces json file with environment based on project and app.
 
@@ -162,10 +162,10 @@ class Commands:
             LaunchTypes,
         )
 
-        if all((project, asset, task, app)):
+        if all((project, folder, task, app)):
             env = get_app_environments_for_context(
                 project,
-                asset,
+                folder,
                 task,
                 app,
                 env_group=env_group,
