@@ -9,6 +9,7 @@ from . import lib
 from . import ops
 
 import pyblish.api
+import ayon_api
 
 from ayon_core.host import (
     HostBase,
@@ -16,16 +17,16 @@ from ayon_core.host import (
     IPublishHost,
     ILoadHost
 )
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     schema,
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     register_loader_plugin_path,
     register_creator_plugin_path,
     deregister_loader_plugin_path,
     deregister_creator_plugin_path,
     AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.lib import (
     Logger,
@@ -220,12 +221,12 @@ def message_window(title, message):
     _process_app_events()
 
 
-def get_asset_data():
+def get_folder_attributes():
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
-    asset_doc = get_asset_by_name(project_name, asset_name)
+    folder_path = get_current_folder_path()
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
 
-    return asset_doc.get("data")
+    return folder_entity["attrib"]
 
 
 def set_frame_range(data):
@@ -278,7 +279,7 @@ def on_new():
     set_resolution_startup = settings.get("set_resolution_startup")
     set_frames_startup = settings.get("set_frames_startup")
 
-    data = get_asset_data()
+    data = get_folder_attributes()
 
     if set_resolution_startup:
         set_resolution(data)
@@ -299,7 +300,7 @@ def on_open():
     set_resolution_startup = settings.get("set_resolution_startup")
     set_frames_startup = settings.get("set_frames_startup")
 
-    data = get_asset_data()
+    data = get_folder_attributes()
 
     if set_resolution_startup:
         set_resolution(data)
@@ -467,7 +468,7 @@ def containerise(name: str,
 
     """
 
-    node_name = f"{context['asset']['name']}_{name}"
+    node_name = f"{context['folder']['name']}_{name}"
     if namespace:
         node_name = f"{namespace}:{node_name}"
     if suffix:
@@ -483,7 +484,7 @@ def containerise(name: str,
         "name": name,
         "namespace": namespace or '',
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     metadata_update(container, data)
@@ -522,7 +523,7 @@ def containerise_existing(
         "name": name,
         "namespace": namespace or '',
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     metadata_update(container, data)
@@ -563,8 +564,9 @@ def ls() -> Iterator:
     called containers.
     """
 
-    for container in lib.lsattr("id", AVALON_CONTAINER_ID):
-        yield parse_container(container)
+    for id_type in {AYON_CONTAINER_ID, AVALON_CONTAINER_ID}:
+        for container in lib.lsattr("id", id_type):
+            yield parse_container(container)
 
 
 def publish():

@@ -27,6 +27,17 @@ class ValidateAttributesModel(BaseSettingsModel):
         return value
 
 
+class ValidateCameraAttributesModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    fov: float = SettingsField(0.0, title="Focal Length")
+    nearrange: float = SettingsField(0.0, title="Near Range")
+    farrange: float = SettingsField(0.0, title="Far Range")
+    nearclip: float = SettingsField(0.0, title="Near Clip")
+    farclip: float = SettingsField(0.0, title="Far Clip")
+
+
 class FamilyMappingItemModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
@@ -35,6 +46,20 @@ class FamilyMappingItemModel(BaseSettingsModel):
     plugins: list[str] = SettingsField(
         default_factory=list,
         title="Plugins"
+    )
+
+
+class ValidateModelNameModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    regex: str = SettingsField(
+        "(.*)_(?P<subset>.*)_(GEO)",
+        title="Validation regex",
+        description=(
+            "Regex for validating model name. You can use named "
+            " capturing groups:(?P<asset>.*) for Asset name"
+        )
     )
 
 
@@ -54,19 +79,46 @@ class BasicValidateModel(BaseSettingsModel):
 
 
 class PublishersModel(BaseSettingsModel):
+    ValidateInstanceInContext: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Instance In Context",
+        section="Validators"
+    )
     ValidateFrameRange: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Frame Range",
-        section="Validators"
+        title="Validate Frame Range"
     )
     ValidateAttributes: ValidateAttributesModel = SettingsField(
         default_factory=ValidateAttributesModel,
         title="Validate Attributes"
     )
-
+    ValidateCameraAttributes: ValidateCameraAttributesModel = SettingsField(
+        default_factory=ValidateCameraAttributesModel,
+        title="Validate Camera Attributes",
+        description=(
+            "If the value of the camera attributes set to 0, "
+            "the system automatically skips checking it"
+        )
+    )
+    ValidateNoAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate No Animation"
+    )
     ValidateLoadedPlugin: ValidateLoadedPluginModel = SettingsField(
         default_factory=ValidateLoadedPluginModel,
         title="Validate Loaded Plugin"
+    )
+    ValidateMeshHasUVs: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Mesh Has UVs"
+    )
+    ValidateModelName: ValidateModelNameModel = SettingsField(
+        default_factory=ValidateModelNameModel,
+        title="Validate Model Name"
+    )
+    ValidateRenderPasses: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Render Passes"
     )
     ExtractModelObj: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -92,6 +144,11 @@ class PublishersModel(BaseSettingsModel):
 
 
 DEFAULT_PUBLISH_SETTINGS = {
+    "ValidateInstanceInContext": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
     "ValidateFrameRange": {
         "enabled": True,
         "optional": True,
@@ -101,10 +158,41 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False,
         "attributes": "{}"
     },
+    "ValidateCameraAttributes": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+        "fov": 45.0,
+        "nearrange": 0.0,
+        "farrange": 1000.0,
+        "nearclip": 1.0,
+        "farclip": 1000.0
+    },
+    "ValidateModelName": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+        "regex": "(.*)_(?P<subset>.*)_(GEO)"
+    },
     "ValidateLoadedPlugin": {
         "enabled": False,
         "optional": True,
         "family_plugins_mapping": []
+    },
+    "ValidateMeshHasUVs": {
+        "enabled": True,
+        "optional": True,
+        "active": False
+    },
+    "ValidateNoAnimation": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+    },
+    "ValidateRenderPasses": {
+        "enabled": True,
+        "optional": False,
+        "active": True
     },
     "ExtractModelObj": {
         "enabled": True,

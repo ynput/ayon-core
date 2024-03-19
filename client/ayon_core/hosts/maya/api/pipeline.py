@@ -33,6 +33,7 @@ from ayon_core.pipeline import (
     deregister_loader_plugin_path,
     deregister_inventory_action_path,
     deregister_creator_plugin_path,
+    AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
@@ -376,9 +377,11 @@ def _ls():
             yield iterator.thisNode()
             iterator.next()
 
-    ids = {AVALON_CONTAINER_ID,
-           # Backwards compatibility
-           "pyblish.mindbender.container"}
+    ids = {
+        AYON_CONTAINER_ID,
+        # Backwards compatibility
+        AVALON_CONTAINER_ID
+    }
 
     # Iterate over all 'set' nodes in the scene to detect whether
     # they have the avalon container ".id" attribute.
@@ -446,7 +449,7 @@ def containerise(name,
         ("name", name),
         ("namespace", namespace),
         ("loader", loader),
-        ("representation", context["representation"]["_id"]),
+        ("representation", context["representation"]["id"]),
     ]
 
     for key, value in data:
@@ -585,7 +588,7 @@ def on_open():
     from ayon_core.tools.utils import SimplePopup
 
     # Validate FPS after update_task_from_path to
-    # ensure it is using correct FPS for the asset
+    # ensure it is using correct FPS for the folder
     lib.validate_fps()
     lib.fix_incompatible_containers()
 

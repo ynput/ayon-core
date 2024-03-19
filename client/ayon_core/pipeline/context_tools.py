@@ -6,21 +6,13 @@ import logging
 import platform
 import uuid
 
+import ayon_api
 import pyblish.api
 from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import HostBase
-from ayon_core.client import (
-    get_project,
-    get_asset_by_id,
-    get_asset_by_name,
-    version_is_latest,
-    get_asset_name_identifier,
-    get_ayon_server_api_connection,
-)
-from ayon_core.lib import is_in_tests
-from ayon_core.lib.events import emit_event
+from ayon_core.lib import is_in_tests, initialize_ayon_connection, emit_event
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -113,7 +105,7 @@ def install_host(host):
     _is_installed = True
 
     # Make sure global AYON connection has set site id and version
-    get_ayon_server_api_connection()
+    initialize_ayon_connection()
 
     addons_manager = _get_addons_manager()
 
@@ -162,7 +154,10 @@ def install_host(host):
 
 
 def install_ayon_plugins(project_name=None, host_name=None):
-    # Make sure modules are loaded
+    # Make sure global AYON connection has set site id and version
+    # - this is necessary if 'install_host' is not called
+    initialize_ayon_connection()
+    # Make sure addons are loaded
     load_addons()
 
     log.info("Registering global plug-ins..")
@@ -355,7 +350,7 @@ def get_global_context():
     Example:
         {
             "project_name": "Commercial",
-            "asset_name": "Bunny",
+            "folder_path": "Bunny",
             "task_name": "Animation",
         }
 
@@ -366,7 +361,7 @@ def get_global_context():
 
     return {
         "project_name": os.environ.get("AYON_PROJECT_NAME"),
-        "asset_name": os.environ.get("AYON_FOLDER_PATH"),
+        "folder_path": os.environ.get("AYON_FOLDER_PATH"),
         "task_name": os.environ.get("AYON_TASK_NAME"),
     }
 
@@ -385,11 +380,11 @@ def get_current_project_name():
     return get_global_context()["project_name"]
 
 
-def get_current_asset_name():
+def get_current_folder_path():
     host = registered_host()
     if isinstance(host, HostBase):
-        return host.get_current_asset_name()
-    return get_global_context()["asset_name"]
+        return host.get_current_folder_path()
+    return get_global_context()["folder_path"]
 
 
 def get_current_task_name():
@@ -399,51 +394,57 @@ def get_current_task_name():
     return get_global_context()["task_name"]
 
 
-def get_current_project(fields=None):
+def get_current_project_entity(fields=None):
     """Helper function to get project document based on global Session.
 
     This function should be called only in process where host is installed.
 
+    Args:
+        fields (Optional[Iterable[str]]): Limit returned data of project
+            entity.
+
     Returns:
-        dict: Project document.
-        None: Project is not set.
+        Union[dict[str, Any], None]: Project entity of current project or None.
+
     """
-
     project_name = get_current_project_name()
-    return get_project(project_name, fields=fields)
+    return ayon_api.get_project(project_name, fields=fields)
 
 
-def get_current_project_asset(asset_name=None, asset_id=None, fields=None):
-    """Helper function to get asset document based on global Session.
+def get_current_project_folder(folder_path=None, folder_id=None, fields=None):
+    """Helper function to get folder entity based on current context.
 
     This function should be called only in process where host is installed.
 
-    Asset is found out based on passed asset name or id (not both). Asset name
-    is not used for filtering if asset id is passed. When both asset name and
-    id are missing then asset name from current process is used.
+    Folder is found out based on passed folder path or id (not both). Folder
+    path is not used for filtering if folder id is passed. When both
+    folder path and id are missing then current folder path is used.
 
     Args:
-        asset_name (str): Name of asset used for filter.
-        asset_id (Union[str, ObjectId]): Asset document id. If entered then
+        folder_path (Union[str, None]): Folder path used for filter.
+        folder_id (Union[str, None]): Folder id. If entered then
             is used as only filter.
-        fields (Union[List[str], None]): Limit returned data of asset documents
+        fields (Optional[Iterable[str]]): Limit returned data of folder entity
             to specific keys.
 
     Returns:
-        dict: Asset document.
-        None: Asset is not set or not exist.
+        Union[dict[str, Any], None]: Fodler entity or None.
     """
 
     project_name = get_current_project_name()
-    if asset_id:
-        return get_asset_by_id(project_name, asset_id, fields=fields)
+    if folder_id:
+        return ayon_api.get_folder_by_id(
+            project_name, folder_id, fields=fields
+        )
 
-    if not asset_name:
-        asset_name = get_current_asset_name()
+    if not folder_path:
+        folder_path = get_current_folder_path()
         # Skip if is not set even on context
-        if not asset_name:
+        if not folder_path:
             return None
-    return get_asset_by_name(project_name, asset_name, fields=fields)
+    return ayon_api.get_folder_by_path(
+        project_name, folder_path, fields=fields
+    )
 
 
 def is_representation_from_latest(representation):
@@ -457,17 +458,19 @@ def is_representation_from_latest(representation):
     """
 
     project_name = get_current_project_name()
-    return version_is_latest(project_name, representation["parent"])
+    return ayon_api.version_is_latest(
+        project_name, representation["versionId"]
+    )
 
 
-def get_template_data_from_session(session=None, system_settings=None):
+def get_template_data_from_session(session=None, settings=None):
     """Template data for template fill from session keys.
 
     Args:
         session (Union[Dict[str, str], None]): The Session to use. If not
             provided use the currently active global Session.
-        system_settings (Union[Dict[str, Any], Any]): Prepared system settings.
-            Optional are auto received if not passed.
+        settings (Optional[Dict[str, Any]]): Prepared studio or project
+            settings.
 
     Returns:
         Dict[str, Any]: All available data from session.
@@ -475,26 +478,27 @@ def get_template_data_from_session(session=None, system_settings=None):
 
     if session is not None:
         project_name = session["AYON_PROJECT_NAME"]
-        asset_name = session["AYON_FOLDER_PATH"]
+        folder_path = session["AYON_FOLDER_PATH"]
         task_name = session["AYON_TASK_NAME"]
         host_name = session["AYON_HOST_NAME"]
     else:
         context = get_current_context()
         project_name = context["project_name"]
-        asset_name = context["asset_name"]
+        folder_path = context["folder_path"]
         task_name = context["task_name"]
         host_name = get_current_host_name()
 
     return get_template_data_with_names(
-        project_name, asset_name, task_name, host_name, system_settings
+        project_name, folder_path, task_name, host_name, settings
     )
 
 
-def get_current_context_template_data(system_settings=None):
+def get_current_context_template_data(settings=None):
     """Prepare template data for current context.
 
     Args:
-        system_settings (Optional[Dict[str, Any]]): Prepared system settings.
+        settings (Optional[Dict[str, Any]]): Prepared studio or
+            project settings.
 
     Returns:
         Dict[str, Any] Template data for current context.
@@ -502,12 +506,12 @@ def get_current_context_template_data(system_settings=None):
 
     context = get_current_context()
     project_name = context["project_name"]
-    asset_name = context["asset_name"]
+    folder_path = context["folder_path"]
     task_name = context["task_name"]
     host_name = get_current_host_name()
 
     return get_template_data_with_names(
-        project_name, asset_name, task_name, host_name, system_settings
+        project_name, folder_path, task_name, host_name, settings
     )
 
 
@@ -535,9 +539,9 @@ def get_workdir_from_session(session=None, template_key=None):
     if not template_key:
         task_type = template_data["task"]["type"]
         template_key = get_workfile_template_key(
+            project_name,
             task_type,
             host_name,
-            project_name=project_name
         )
 
     anatomy = Anatomy(project_name)
@@ -567,33 +571,56 @@ def get_custom_workfile_template_from_session(
 
     if session is not None:
         project_name = session["AYON_PROJECT_NAME"]
-        asset_name = session["AYON_FOLDER_PATH"]
+        folder_path = session["AYON_FOLDER_PATH"]
         task_name = session["AYON_TASK_NAME"]
         host_name = session["AYON_HOST_NAME"]
     else:
         context = get_current_context()
         project_name = context["project_name"]
-        asset_name = context["asset_name"]
+        folder_path = context["folder_path"]
         task_name = context["task_name"]
         host_name = get_current_host_name()
 
     return get_custom_workfile_template_by_string_context(
         project_name,
-        asset_name,
+        folder_path,
         task_name,
         host_name,
         project_settings=project_settings
     )
 
 
-def change_current_context(asset_doc, task_name, template_key=None):
-    """Update active Session to a new task work area.
+def get_current_context_custom_workfile_template(project_settings=None):
+    """Filter and fill workfile template profiles by current context.
 
-    This updates the live Session to a different task under asset.
+    This function can be used only inside host where context is set.
 
     Args:
-        asset_doc (Dict[str, Any]): The asset document to set.
-        task_name (str): The task to set under asset.
+        project_settings(Optional[Dict[str, Any]]): Project settings.
+
+    Returns:
+        str: Path to template or None if none of profiles match current
+            context. (Existence of formatted path is not validated.)
+
+    """
+    context = get_current_context()
+    return get_custom_workfile_template_by_string_context(
+        context["project_name"],
+        context["folder_path"],
+        context["task_name"],
+        get_current_host_name(),
+        project_settings=project_settings
+    )
+
+
+def change_current_context(folder_entity, task_entity, template_key=None):
+    """Update active Session to a new task work area.
+
+    This updates the live Session to a different task under folder.
+
+    Args:
+        folder_entity (Dict[str, Any]): Folder entity to set.
+        task_entity (Dict[str, Any]): Task entity to set.
         template_key (Union[str, None]): Prepared template key to be used for
             workfile template in Anatomy.
 
@@ -603,18 +630,22 @@ def change_current_context(asset_doc, task_name, template_key=None):
 
     project_name = get_current_project_name()
     workdir = None
-    if asset_doc:
-        project_doc = get_project(project_name)
+    folder_path = None
+    task_name = None
+    if folder_entity:
+        folder_path = folder_entity["path"]
+        if task_entity:
+            task_name = task_entity["name"]
+        project_entity = ayon_api.get_project(project_name)
         host_name = get_current_host_name()
         workdir = get_workdir(
-            project_doc,
-            asset_doc,
-            task_name,
+            project_entity,
+            folder_entity,
+            task_entity,
             host_name,
             template_key=template_key
         )
 
-    folder_path = get_asset_name_identifier(asset_doc)
     envs = {
         "AYON_PROJECT_NAME": project_name,
         "AYON_FOLDER_PATH": folder_path,
@@ -634,7 +665,7 @@ def change_current_context(asset_doc, task_name, template_key=None):
 
     # Convert env keys to human readable keys
     data["project_name"] = project_name
-    data["asset_name"] = get_asset_name_identifier(asset_doc)
+    data["folder_path"] = folder_path
     data["task_name"] = task_name
     data["workdir_path"] = workdir
 

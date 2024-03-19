@@ -9,13 +9,13 @@ class CreateMantraROP(plugin.HoudiniCreator):
     """Mantra ROP"""
     identifier = "io.openpype.creators.houdini.mantra_rop"
     label = "Mantra ROP"
-    family = "mantra_rop"
+    product_type = "mantra_rop"
     icon = "magic"
 
     # Default to split export and render jobs
     export_job = True
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
 
         instance_data.pop("active", None)
@@ -26,7 +26,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateMantraROP, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
@@ -34,9 +34,9 @@ class CreateMantraROP(plugin.HoudiniCreator):
 
         ext = pre_create_data.get("image_format")
 
-        filepath = "{renders_dir}{subset_name}/{subset_name}.$F4.{ext}".format(
+        filepath = "{renders_dir}{product_name}/{product_name}.$F4.{ext}".format(
             renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            subset_name=subset_name,
+            product_name=product_name,
             ext=ext,
         )
 
@@ -49,9 +49,9 @@ class CreateMantraROP(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             ifd_filepath = \
-                "{export_dir}{subset_name}/{subset_name}.$F4.ifd".format(
+                "{export_dir}{product_name}/{product_name}.$F4.ifd".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/ifd/"),
-                    subset_name=subset_name,
+                    product_name=product_name,
                 )
             parms["soho_outputmode"] = 1
             parms["soho_diskfile"] = ifd_filepath
@@ -75,7 +75,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock some Avalon attributes
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_pre_create_attr_defs(self):
