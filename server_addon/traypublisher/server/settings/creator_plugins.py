@@ -185,11 +185,11 @@ DEFAULT_CREATORS = {
                     "validation_pattern": "^([a-z0-9#._\\/]*)$"
                 },
                 {
-                    "name": "Folder Context",
+                    "name": "Folder Path",
                     "type": "text",
                     "default": "",
                     "required_column": True,
-                    "validation_pattern": "^([a-zA-Z0-9_]*)$"
+                    "validation_pattern": "^([a-zA-Z0-9_\\/]*)$"
                 },
                 {
                     "name": "Task Name",
