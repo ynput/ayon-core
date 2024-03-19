@@ -99,21 +99,20 @@ class BaseAnatomy(object):
         """Return `AnatomyTemplates` object of current Anatomy instance."""
         return self._templates_obj
 
-    def get_template(self, category_name, template_name, subkey=None):
+    def get_template_item(self, *args, **kwargs):
         """Get template item from category.
 
         Args:
             category_name (str): Category name.
             template_name (str): Template name.
             subkey (Optional[str]): Subkey name.
+            default (Any): Default value.
 
         Returns:
             Any: Template item, subkey value as AnatomyStringTemplate or None.
 
         """
-        return self._templates_obj.get_template(
-            category_name, template_name, subkey
-        )
+        return self._templates_obj.get_template_item(*args, **kwargs)
 
     def format(self, *args, **kwargs):
         """Wrap `format` method of Anatomy's `templates_obj`."""

@@ -568,7 +568,7 @@ class AnatomyTemplates:
         """
         return self.format(in_data, strict=False)
 
-    def get_template(
+    def get_template_item(
         self, category_name, template_name, subkey=None, default=_PLACEHOLDER
     ):
         """Get template item from category.
