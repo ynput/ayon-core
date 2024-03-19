@@ -192,6 +192,9 @@ class BaseAnatomy(object):
         keys_queue.append(data)
         while keys_queue:
             queue_data = keys_queue.popleft()
+            if isinstance(queue_data, StringTemplate):
+                queue_data = queue_data.template
+
             if isinstance(queue_data, dict):
                 for value in queue_data.values():
                     keys_queue.append(value)
