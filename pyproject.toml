@@ -1,3 +1,8 @@
+# WARNING: This file is used only for development done on this addon.
+# Be aware that dependencies used here might not match the ones used by
+# the specific addon bundle set up on the AYON server. This file should
+# be used only for local development and CI/CD purposes.
+
 [tool.poetry]
 name = "ayon-core"
 version = "0.3.0"
