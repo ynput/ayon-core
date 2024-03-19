@@ -392,13 +392,13 @@ class PhotoshopRoute(WebSocketRoute):
         )
         data["root"] = anatomy.roots
 
-        work_template = anatomy.get_template("work", template_key)
+        work_template = anatomy.get_template_item("work", template_key)
 
         # Define saving file extension
         extensions = host.get_workfile_extensions()
 
-        work_root = str(work_template["directory"].format_strict(data))
-        file_template = str(work_template["file"])
+        work_root = work_template["directory"].format_strict(data)
+        file_template = work_template["file"].template
         last_workfile_path = get_last_workfile(
             work_root, file_template, data, extensions, True
         )

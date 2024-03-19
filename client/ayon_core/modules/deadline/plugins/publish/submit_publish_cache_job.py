@@ -450,7 +450,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
             "type": product_type,
         }
 
-        render_dir_template = anatomy.get_template(
+        render_dir_template = anatomy.get_template_item(
             "publish", template_name, "directory"
         )
         return render_dir_template.format_strict(template_data)

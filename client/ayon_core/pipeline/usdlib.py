@@ -341,8 +341,8 @@ def get_usd_master_path(folder_entity, product_name, representation):
         "version": 0,  # stub version zero
     })
 
-    template_obj = anatomy.get_template(
-        "publish", "default","path"
+    template_obj = anatomy.get_template_item(
+        "publish", "default", "path"
     )
     path = template_obj.format_strict(template_data)
 

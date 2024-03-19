@@ -77,7 +77,9 @@ def check_destination_path(
     """
 
     anatomy_data.update(datetime_data)
-    path_template = anatomy.get_template("delivery", template_name, "path")
+    path_template = anatomy.get_template_item(
+        "delivery", template_name, "path"
+    )
     dest_path = path_template.format(anatomy_data)
     report_items = collections.defaultdict(list)
 
@@ -150,7 +152,9 @@ def deliver_single_file(
     if format_dict:
         anatomy_data = copy.deepcopy(anatomy_data)
         anatomy_data["root"] = format_dict["root"]
-    template_obj = anatomy.get_template("delivery", template_name, "path")
+    template_obj = anatomy.get_template_item(
+        "delivery", template_name, "path"
+    )
     delivery_path = template_obj.format_strict(anatomy_data)
 
     # Backwards compatibility when extension contained `.`
@@ -220,8 +224,8 @@ def deliver_sequence(
         report_items["Source file was not found"].append(msg)
         return report_items, 0
 
-    delivery_template = anatomy.get_template(
-        "delivery", template_name, "path"
+    delivery_template = anatomy.get_template_item(
+        "delivery", template_name, "path", default=None
     )
     if delivery_template is None:
         msg = (
@@ -233,7 +237,7 @@ def deliver_sequence(
 
     # Check if 'frame' key is available in template which is required
     #   for sequence delivery
-    if "{frame" not in delivery_template:
+    if "{frame" not in delivery_template.template:
         msg = (
             "Delivery template \"{}\" in anatomy of project \"{}\""
             "does not contain '{{frame}}' key to fill. Delivery of sequence"
@@ -278,8 +282,7 @@ def deliver_sequence(
     anatomy_data["frame"] = frame_indicator
     if format_dict:
         anatomy_data["root"] = format_dict["root"]
-    template_obj = anatomy.get_template("delivery", template_name, "path")
-    delivery_path = template_obj.format_strict(anatomy_data)
+    delivery_path = delivery_template.format_strict(anatomy_data)
 
     delivery_path = os.path.normpath(delivery_path.replace("\\", "/"))
     delivery_folder = os.path.dirname(delivery_path)

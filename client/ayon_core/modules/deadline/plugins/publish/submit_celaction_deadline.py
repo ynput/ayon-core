@@ -75,7 +75,9 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
         script_name = os.path.basename(script_path)
 
         anatomy = instance.context.data["anatomy"]
-        publish_template = anatomy.get_template("publish", "default", "path")
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "path"
+        )
         for item in instance.context:
             if "workfile" in item.data["productType"]:
                 msg = "Workfile (scene) must be published along"

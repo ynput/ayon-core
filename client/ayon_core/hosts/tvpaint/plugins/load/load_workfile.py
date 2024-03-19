@@ -80,7 +80,7 @@ class LoadWorkfile(plugin.Loader):
         )
         data["root"] = anatomy.roots
 
-        work_template = anatomy.get_template("work", template_key)
+        work_template = anatomy.get_template_item("work", template_key)
 
         # Define saving file extension
         extensions = host.get_workfile_extensions()
@@ -93,9 +93,9 @@ class LoadWorkfile(plugin.Loader):
 
         data["ext"] = extension.lstrip(".")
 
-        work_root = str(work_template["directory"].format_strict(data))
+        work_root = work_template["directory"].format_strict(data)
         version = get_last_workfile_with_version(
-            work_root, str(work_template["file"]), data, extensions
+            work_root, work_template["file"].template, data, extensions
         )[1]
 
         if version is None:

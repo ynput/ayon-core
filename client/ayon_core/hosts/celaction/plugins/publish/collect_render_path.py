@@ -33,7 +33,7 @@ class CollectRenderPath(pyblish.api.InstancePlugin):
         m_anatomy_key = self.anatomy_template_key_metadata
 
         # get folder and path for rendering images from celaction
-        r_template_item = anatomy.get_template("publish", r_anatomy_key)
+        r_template_item = anatomy.get_template_item("publish", r_anatomy_key)
         render_dir = r_template_item["directory"].format_strict(anatomy_data)
         render_path = r_template_item["path"].format_strict(anatomy_data)
         self.log.debug("__ render_path: `{}`".format(render_path))
@@ -50,7 +50,9 @@ class CollectRenderPath(pyblish.api.InstancePlugin):
         instance.data["path"] = render_path
 
         # get anatomy for published renders folder path
-        m_template_item = anatomy.get_template("publish", m_anatomy_key)
+        m_template_item = anatomy.get_template_item(
+            "publish", m_anatomy_key, default=None
+        )
         if m_template_item is not None:
             metadata_path = m_template_item["directory"].format_strict(
                 anatomy_data

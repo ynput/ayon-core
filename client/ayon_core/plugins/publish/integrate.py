@@ -665,9 +665,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         self.log.debug("Anatomy template name: {}".format(template_name))
         anatomy = instance.context.data["anatomy"]
-        publish_template = anatomy.get_template("publish", template_name)
+        publish_template = anatomy.get_template_item("publish", template_name)
         path_template_obj = publish_template["path"]
-        template = os.path.normpath(path_template_obj)
+        template = path_template_obj.template.replace("\\", "/")
 
         is_udim = bool(repre.get("udim"))
 

@@ -66,7 +66,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
             self.host_name,
         )
         # Fill templates
-        template_obj = anatomy.get_template(
+        template_obj = anatomy.get_template_item(
             "work", workfile_template_key, "file"
         )
 

@@ -40,7 +40,7 @@ class ExtractXgen(publish.Extractor):
         template_data = copy.deepcopy(instance.data["anatomyData"])
         template_data.update({"ext": "xgen"})
         anatomy = instance.context.data["anatomy"]
-        file_template = anatomy.get_template("publish", "default", "file")
+        file_template = anatomy.get_template_item("publish", "default", "file")
         xgen_filename = file_template.format(template_data)
 
         xgen_path = os.path.join(

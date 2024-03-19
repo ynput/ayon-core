@@ -79,7 +79,7 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
             "representation": "TEMP"
         })
 
-        publish_templates = anatomy.get_template(
+        publish_templates = anatomy.get_template_item(
             "publish", "default", "directory"
         )
         publish_folder = os.path.normpath(
