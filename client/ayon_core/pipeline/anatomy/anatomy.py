@@ -7,7 +7,7 @@ import time
 
 import ayon_api
 
-from ayon_core.lib import Logger, get_local_site_id
+from ayon_core.lib import Logger, get_local_site_id, StringTemplate
 from ayon_core.addon import AddonsManager
 
 from .exceptions import RootCombinationError, ProjectNotSet
@@ -204,6 +204,8 @@ class BaseAnatomy(object):
 
     def root_value_for_template(self, template):
         """Returns value of root key from template."""
+        if isinstance(template, StringTemplate):
+            template = template.template
         root_templates = []
         for group in re.findall(self.root_key_regex, template):
             root_templates.append("{" + group + "}")
