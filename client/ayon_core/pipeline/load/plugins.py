@@ -33,7 +33,7 @@ class LoaderPlugin(list):
 
     options = []
 
-    log = logging.getLogger("SubsetLoader")
+    log = logging.getLogger("ProductLoader")
     log.propagate = True
 
     @classmethod
@@ -76,11 +76,11 @@ class LoaderPlugin(list):
             setattr(cls, option, value)
 
     @classmethod
-    def has_valid_extension(cls, repre_doc):
+    def has_valid_extension(cls, repre_entity):
         """Has representation document valid extension for loader.
 
         Args:
-            repre_doc (dict[str, Any]): Representation document.
+            repre_entity (dict[str, Any]): Representation entity.
 
         Returns:
              bool: Representation has valid extension
@@ -90,11 +90,11 @@ class LoaderPlugin(list):
             return True
 
         # Get representation main file extension from 'context'
-        repre_context = repre_doc.get("context") or {}
+        repre_context = repre_entity.get("context") or {}
         ext = repre_context.get("ext")
         if not ext:
             # Legacy way how to get extensions
-            path = repre_doc.get("data", {}).get("path")
+            path = repre_entity.get("attrib", {}).get("path")
             if not path:
                 cls.log.info(
                     "Representation doesn't have known source of extension"
@@ -130,46 +130,36 @@ class LoaderPlugin(list):
         """
 
         plugin_repre_names = cls.get_representations()
-        plugin_families = cls.families
+        plugin_product_types = cls.families
         if (
             not plugin_repre_names
-            or not plugin_families
+            or not plugin_product_types
             or not cls.extensions
         ):
             return False
 
-        repre_doc = context.get("representation")
-        if not repre_doc:
+        repre_entity = context.get("representation")
+        if not repre_entity:
             return False
 
         plugin_repre_names = set(plugin_repre_names)
         if (
             "*" not in plugin_repre_names
-            and repre_doc["name"] not in plugin_repre_names
+            and repre_entity["name"] not in plugin_repre_names
         ):
             return False
 
-        if not cls.has_valid_extension(repre_doc):
+        if not cls.has_valid_extension(repre_entity):
             return False
 
-        plugin_families = set(plugin_families)
-        if "*" in plugin_families:
+        plugin_product_types = set(plugin_product_types)
+        if "*" in plugin_product_types:
             return True
 
-        subset_doc = context["subset"]
-        maj_version, _ = schema.get_schema_version(subset_doc["schema"])
-        if maj_version < 3:
-            families = context["version"]["data"].get("families")
-        else:
-            families = subset_doc["data"].get("families")
-            if families is None:
-                family = subset_doc["data"].get("family")
-                if family:
-                    families = [family]
+        product_entity = context["product"]
+        product_type = product_entity["productType"]
 
-        if not families:
-            return False
-        return any(family in plugin_families for family in families)
+        return product_type in plugin_product_types
 
     @classmethod
     def get_representations(cls):
@@ -245,7 +235,7 @@ class LoaderPlugin(list):
             return self._fname
 
 
-class SubsetLoaderPlugin(LoaderPlugin):
+class ProductLoaderPlugin(LoaderPlugin):
     """Load product into host application
     Arguments:
         context (dict): avalon-core:context-1.0

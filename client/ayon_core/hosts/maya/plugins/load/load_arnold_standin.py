@@ -49,15 +49,14 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         import mtoa.ui.arnoldmenu
 
-        version = context['version']
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        self.log.info("version_data: {}\n".format(version_data))
+        self.log.info("version_attributes: {}\n".format(version_attributes))
 
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -95,7 +94,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
 
-            fps = float(version["data"].get("fps")) or 25
+            fps = float(version_attributes.get("fps")) or 25
             cmds.setAttr(standin_shape + ".abcFPS", fps)
 
         nodes = [root, standin, standin_shape]
@@ -190,8 +189,8 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             if cmds.nodeType(shapes[0]) == "aiStandIn":
                 standin = shapes[0]
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         proxy_basename, proxy_path = self._get_proxy_path(path)
 
         # Whether there is proxy or so, we still update the string operator.
@@ -217,7 +216,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         cmds.setAttr(
             container["objectName"] + ".representation",
-            str(repre_doc["_id"]),
+            repre_entity["id"],
             type="string"
         )
 

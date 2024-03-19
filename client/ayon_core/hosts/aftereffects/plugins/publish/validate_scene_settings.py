@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Validate scene settings.
 Requires:
-    instance    -> assetEntity
+    instance    -> folderEntity
     instance    -> anatomyData
 """
 import os
@@ -13,7 +13,7 @@ from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.hosts.aftereffects.api import get_asset_settings
+from ayon_core.hosts.aftereffects.api import get_folder_settings
 
 
 class ValidateSceneSettings(OptionalPyblishPluginMixin,
@@ -48,7 +48,7 @@ class ValidateSceneSettings(OptionalPyblishPluginMixin,
             fps
             handleStart
             handleEnd
-        skip_resolution_check - fill entity type ('asset') to skip validation
+        skip_resolution_check - fill entity type ('folder') to skip validation
             resolutionWidth
             resolutionHeight
             TODO support in extension is missing for now
@@ -71,11 +71,11 @@ class ValidateSceneSettings(OptionalPyblishPluginMixin,
         if not self.is_active(instance.data):
             return
 
-        asset_doc = instance.data["assetEntity"]
-        expected_settings = get_asset_settings(asset_doc)
+        folder_entity = instance.data["folderEntity"]
+        expected_settings = get_folder_settings(folder_entity)
         self.log.info("config from DB::{}".format(expected_settings))
 
-        task_name = instance.data["anatomyData"]["task"]["name"]
+        task_name = instance.data["task"]
         if any(re.search(pattern, task_name)
                 for pattern in self.skip_resolution_check):
             expected_settings.pop("resolutionWidth")

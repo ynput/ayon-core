@@ -1,19 +1,20 @@
 from pprint import pformat
 
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_assets, get_asset_name_identifier
+from ayon_core.pipeline import KnownPublishError
 
 
 class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
-    """ Validating if editorial's asset names are not already created in db.
+    """ Validating if editorial's folder names are not already created in db.
 
     Checking variations of names with different size of caps or with
     or without underscores.
     """
 
     order = pyblish.api.ValidatorOrder
-    label = "Validate Editorial Asset Name"
+    label = "Validate Editorial Folder Name"
     hosts = [
         "hiero",
         "resolve",
@@ -23,62 +24,67 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
 
     def process(self, context):
 
-        asset_and_parents = self.get_parents(context)
-        self.log.debug("__ asset_and_parents: {}".format(asset_and_parents))
+        folder_and_parents = self.get_parents(context)
+        self.log.debug("__ folder_and_parents: {}".format(folder_and_parents))
 
         project_name = context.data["projectName"]
-        db_assets = list(get_assets(
-            project_name, fields=["name", "data.parents"]
+        folder_entities = list(ayon_api.get_folders(
+            project_name, fields={"path"}
         ))
-        self.log.debug("__ db_assets: {}".format(db_assets))
+        self.log.debug("__ folder_entities: {}".format(folder_entities))
 
-        asset_db_docs = {
-            get_asset_name_identifier(asset_doc): list(
-                asset_doc["data"]["parents"]
+        existing_folder_paths = {
+            folder_entity["path"]: (
+                folder_entity["path"].lstrip("/").rsplit("/")[0]
             )
-            for asset_doc in db_assets
+            for folder_entity in folder_entities
         }
 
         self.log.debug("__ project_entities: {}".format(
-            pformat(asset_db_docs)))
+            pformat(existing_folder_paths)))
 
-        assets_missing_name = {}
-        assets_wrong_parent = {}
-        for asset in asset_and_parents.keys():
-            if asset not in asset_db_docs.keys():
+        folders_missing_name = {}
+        folders_wrong_parent = {}
+        for folder_path in folder_and_parents.keys():
+            if folder_path not in existing_folder_paths.keys():
                 # add to some nonexistent list for next layer of check
-                assets_missing_name[asset] = asset_and_parents[asset]
+                folders_missing_name[folder_path] = (
+                    folder_and_parents[folder_path]
+                )
                 continue
 
-            if asset_and_parents[asset] != asset_db_docs[asset]:
+            existing_parents = existing_folder_paths[folder_path]
+            if folder_and_parents[folder_path] != existing_parents:
                 # add to some nonexistent list for next layer of check
-                assets_wrong_parent[asset] = {
-                    "required": asset_and_parents[asset],
-                    "already_in_db": asset_db_docs[asset]
+                folders_wrong_parent[folder_path] = {
+                    "required": folder_and_parents[folder_path],
+                    "already_in_db": existing_folder_paths[folder_path]
                 }
                 continue
 
-            self.log.debug("correct asset: {}".format(asset))
+            self.log.debug("correct folder: {}".format(folder_path))
 
-        if assets_missing_name:
+        if folders_missing_name:
             wrong_names = {}
             self.log.debug(
-                ">> assets_missing_name: {}".format(assets_missing_name))
+                ">> folders_missing_name: {}".format(folders_missing_name))
 
-            # This will create set asset names
-            asset_names = {
-                a.lower().replace("_", "") for a in asset_db_docs
+            # This will create set of folder paths
+            folder_paths = {
+                folder_path.lower().replace("_", "")
+                for folder_path in existing_folder_paths
             }
 
-            for asset in assets_missing_name:
-                _asset = asset.lower().replace("_", "")
-                if _asset in asset_names:
-                    wrong_names[asset].update(
+            for folder_path in folders_missing_name:
+                _folder_path = folder_path.lower().replace("_", "")
+                if _folder_path in folder_paths:
+                    wrong_names[folder_path].update(
                         {
-                            "required_name": asset,
+                            "required_name": folder_path,
                             "used_variants_in_db": [
-                                a for a in asset_db_docs
-                                if a.lower().replace("_", "") == _asset
+                                p
+                                for p in existing_folder_paths
+                                if p.lower().replace("_", "") == _folder_path
                             ]
                         }
                     )
@@ -87,33 +93,19 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
                 self.log.debug(
                     ">> wrong_names: {}".format(wrong_names))
                 raise Exception(
-                    "Some already existing asset name variants `{}`".format(
+                    "Some already existing folder name variants `{}`".format(
                         wrong_names))
 
-        if assets_wrong_parent:
+        if folders_wrong_parent:
             self.log.debug(
-                ">> assets_wrong_parent: {}".format(assets_wrong_parent))
-            raise Exception(
-                "Wrong parents on assets `{}`".format(assets_wrong_parent))
-
-    def _get_all_assets(self, input_dict):
-        """ Returns asset names in list.
-
-            List contains all asset names including parents
-        """
-        for key in input_dict.keys():
-            # check if child key is available
-            if input_dict[key].get("childs"):
-                # loop deeper
-                self._get_all_assets(
-                    input_dict[key]["childs"])
-            else:
-                self.all_testing_assets.append(key)
+                ">> folders_wrong_parent: {}".format(folders_wrong_parent))
+            raise KnownPublishError(
+                "Wrong parents on folders `{}`".format(folders_wrong_parent))
 
     def get_parents(self, context):
-        return_dict = {}
+        output = {}
         for instance in context:
-            asset = instance.data["folderPath"]
+            folder_path = instance.data["folderPath"]
             families = instance.data.get("families", []) + [
                 instance.data["family"]
             ]
@@ -123,8 +115,8 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
 
             parents = instance.data["parents"]
 
-            return_dict[asset] = [
+            output[folder_path] = [
                 str(p["entity_name"]) for p in parents
                 if p["entity_type"].lower() != "project"
             ]
-        return return_dict
+        return output
