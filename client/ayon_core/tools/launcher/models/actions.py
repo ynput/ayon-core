@@ -309,9 +309,11 @@ class ActionsModel:
         task_name = None
         task_type = None
         if task_id is not None:
-            task = self._controller.get_task_entity(project_name, task_id)
-            task_name = task["name"]
-            task_type = task["taskType"]
+            task_entity = self._controller.get_task_entity(
+                project_name, task_id
+            )
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
 
         output = should_start_last_workfile(
             project_name,

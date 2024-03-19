@@ -21,7 +21,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
         project_name = context.data["projectName"]
         final_context = {}
         final_context[project_name] = {}
-        final_context[project_name]['entity_type'] = 'Project'
+        final_context[project_name]["entity_type"] = "project"
 
         for instance in context:
             self.log.debug("Processing instance: `{}` ...".format(instance))
@@ -40,11 +40,6 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             # exclude if not masterLayer True
             if not instance.data.get("heroTrack"):
                 continue
-
-            # get asset build data if any available
-            shot_data["inputs"] = [
-                x["_id"] for x in instance.data.get("assetbuilds", [])
-            ]
 
             # suppose that all instances are Shots
             shot_data['entity_type'] = 'Shot'

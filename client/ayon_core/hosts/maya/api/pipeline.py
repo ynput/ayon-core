@@ -449,7 +449,7 @@ def containerise(name,
         ("name", name),
         ("namespace", namespace),
         ("loader", loader),
-        ("representation", context["representation"]["_id"]),
+        ("representation", context["representation"]["id"]),
     ]
 
     for key, value in data:
@@ -588,7 +588,7 @@ def on_open():
     from ayon_core.tools.utils import SimplePopup
 
     # Validate FPS after update_task_from_path to
-    # ensure it is using correct FPS for the asset
+    # ensure it is using correct FPS for the folder
     lib.validate_fps()
     lib.fix_incompatible_containers()
 

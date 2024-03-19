@@ -18,7 +18,7 @@ from ayon_core.pipeline import get_representation_path, load
 class FbxLoader(load.LoaderPlugin):
     """Fbx Loader."""
 
-    families = ["camera"]
+    product_types = {"camera"}
     representations = ["fbx"]
     order = -9
     icon = "code-fork"
@@ -54,8 +54,8 @@ class FbxLoader(load.LoaderPlugin):
     def update(self, container, context):
         from pymxs import runtime as rt
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         node = rt.getNodeByName(node_name)
         namespace, _ = get_namespace(node_name)
@@ -88,7 +88,7 @@ class FbxLoader(load.LoaderPlugin):
 
         update_custom_attribute_data(node, fbx_objects)
         lib.imprint(container["instance_node"], {
-            "representation": str(repre_doc["_id"])
+            "representation": repre_entity["id"]
         })
 
     def switch(self, container, context):

@@ -18,7 +18,7 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
 
     """
 
-    families = ["vdbcache"]
+    product_types = {"vdbcache"}
     representations = ["vdb"]
 
     label = "Load VDB to RedShift"
@@ -55,12 +55,10 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
                                "set the render engine to '%s<type>'"
                                % compatible)
 
-        asset = context['asset']
-
-        asset_name = asset["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset_name + "_",
-            prefix="_" if asset_name[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -98,8 +96,8 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
     def update(self, container, context):
         from maya import cmds
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
@@ -107,11 +105,11 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
         assert len(grid_nodes) == 1, "This is a bug"
 
         # Update the VRayVolumeGrid
-        self._set_path(grid_nodes[0], path=path, representation=repre_doc)
+        self._set_path(grid_nodes[0], path=path, representation=repre_entity)
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def remove(self, container):
@@ -143,7 +141,7 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
         if not os.path.exists(path):
             raise RuntimeError("Path does not exist: %s" % path)
 
-        is_sequence = bool(representation["context"].get("frame"))
+        is_sequence = "frame" in representation["context"]
         cmds.setAttr(grid_node + ".useFrameExtension", is_sequence)
 
         # Set file path
