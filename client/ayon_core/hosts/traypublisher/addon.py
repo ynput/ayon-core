@@ -62,25 +62,25 @@ def launch():
 
 @cli_main.command()
 @click_wrap.option(
-    "--csv-filepath",
+    "--filepath",
     help="Full path to CSV file with data",
     type=str,
     required=True
 )
 @click_wrap.option(
-    "--project-name",
+    "--project",
     help="Project name in which the context will be used",
     type=str,
     required=True
 )
 @click_wrap.option(
-    "--asset-name",
+    "--folder",
     help="Asset name in which the context will be used",
     type=str,
     required=True
 )
 @click_wrap.option(
-    "--task-name",
+    "--task",
     help="Task name under Asset in which the context will be used",
     type=str,
     required=False
@@ -93,10 +93,10 @@ def launch():
     required=False
 )
 def ingestcsv(
-    csv_filepath,
-    project_name,
-    asset_name,
-    task_name,
+    filepath,
+    project,
+    folder,
+    task,
     ignore_validators
 ):
     """Ingest CSV file into project.
@@ -107,13 +107,13 @@ def ingestcsv(
     from .csv_publish import csvpublish
 
     # use Path to check if csv_filepath exists
-    if not Path(csv_filepath).exists():
-        raise FileNotFoundError(f"File {csv_filepath} does not exist.")
+    if not Path(filepath).exists():
+        raise FileNotFoundError(f"File {filepath} does not exist.")
 
     csvpublish(
-        csv_filepath,
-        project_name,
-        asset_name,
-        task_name,
+        filepath,
+        project,
+        folder,
+        task,
         ignore_validators
     )

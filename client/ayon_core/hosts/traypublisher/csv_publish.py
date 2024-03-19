@@ -3,7 +3,7 @@ import os
 import pyblish.api
 import pyblish.util
 
-from ayon_core.client import get_asset_by_name
+from ayon_api import get_folder_by_name
 from ayon_core.lib.attribute_definitions import FileDefItem
 from ayon_core.pipeline import install_host
 from ayon_core.pipeline.create import CreateContext
@@ -12,18 +12,18 @@ from ayon_core.hosts.traypublisher.api import TrayPublisherHost
 
 
 def csvpublish(
-    csv_filepath,
+    filepath,
     project_name,
-    asset_name,
+    folder_name,
     task_name=None,
     ignore_validators=False
 ):
     """Publish CSV file.
 
     Args:
-        csv_filepath (str): Path to CSV file.
+        filepath (str): Path to CSV file.
         project_name (str): Project name.
-        asset_name (str): Asset name.
+        folder_name (str): Folder name.
         task_name (Optional[str]): Task name.
         ignore_validators (Optional[bool]): Option to ignore validators.
     """
@@ -36,16 +36,16 @@ def csvpublish(
     host.set_project_name(project_name)
 
     # form precreate data with field values
-    file_field = FileDefItem.from_paths([csv_filepath], False).pop().to_dict()
+    file_field = FileDefItem.from_paths([filepath], False).pop().to_dict()
     precreate_data = {
         "csv_filepath_data": file_field,
     }
 
     # create context initialization
     create_context = CreateContext(host, headless=True)
-    asset_doc = get_asset_by_name(
+    asset_doc = get_folder_by_name(
         project_name,
-        asset_name
+        folder_name=folder_name
     )
 
     create_context.create(
