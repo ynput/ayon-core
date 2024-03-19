@@ -18,6 +18,16 @@ class ServerListSubmodel(BaseSettingsModel):
     value: str = SettingsField(title="Value")
 
 
+class LocalSubmodel(BaseSettingsModel):
+    """Select your local and remote site"""
+    username: str = SettingsField("",
+                                  title="Username",
+                                  scope=["site"])
+    password: str = SettingsField("",
+                                  title="Password",
+                                  scope=["site"])
+
+
 async def defined_deadline_ws_name_enum_resolver(
     addon: "BaseServerAddon",
     settings_variant: str = "production",
@@ -48,15 +58,28 @@ class DeadlineSettings(BaseSettingsModel):
         scope=["project"],
         enum_resolver=defined_deadline_ws_name_enum_resolver
     )
+    require_authentication: bool = SettingsField(
+        False,
+        title="Require Authentication",
+        scope=["project"],
+    )
     publish: PublishPluginsModel = SettingsField(
         default_factory=PublishPluginsModel,
         title="Publish Plugins",
+    )
+
+    local_settings: LocalSubmodel = SettingsField(
+        default_factory=LocalSubmodel,
+        title="Local setting",
+        scope=["site"],
+        description="This setting is only applicable for artist's site",
     )
 
     @validator("deadline_urls")
     def validate_unique_names(cls, value):
         ensure_unique_names(value)
         return value
+
 
 
 DEFAULT_VALUES = {
