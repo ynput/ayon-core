@@ -2,6 +2,7 @@ import os
 import re
 import csv
 import clique
+from io import StringIO
 from copy import deepcopy, copy
 
 from ayon_api import get_folder_by_path, get_task_by_name
@@ -335,7 +336,7 @@ configuration in project settings.
 
         # get extension of file
         basename = os.path.basename(filepath)
-        _, extension = os.path.splitext(filepath)
+        extension = os.path.splitext(filepath)[-1].lower()
 
         # validate filepath is having correct extension based on output
         repre_name = repre_data["representationName"]
@@ -448,100 +449,92 @@ configuration in project settings.
             column["name"] for column in self.columns_config["columns"]
             if column["required_column"]
         ]
-        # get data from csv file
+
+        # read csv file
         with open(csv_file_path, "r") as csv_file:
-            csv_reader = csv.DictReader(
-                csv_file, delimiter=self.columns_config["csv_delimiter"])
+            csv_content = csv_file.read()
 
-            # fix fieldnames
-            # sometimes someone can keep extra space at the start or end of
-            # the column name
-            all_columns = [
-                " ".join(column.rsplit()) for column in csv_reader.fieldnames]
-            # return back fixed fieldnames
-            csv_reader.fieldnames = all_columns
+        # read csv file with DictReader
+        csv_reader = csv.DictReader(
+            StringIO(csv_content),
+            delimiter=self.columns_config["csv_delimiter"]
+        )
 
-            # check if csv file contains all required columns
-            if any(column not in all_columns for column in required_columns):
+        # fix fieldnames
+        # sometimes someone can keep extra space at the start or end of
+        # the column name
+        all_columns = [
+            " ".join(column.rsplit()) for column in csv_reader.fieldnames]
+
+        # return back fixed fieldnames
+        csv_reader.fieldnames = all_columns
+
+        # check if csv file contains all required columns
+        if any(column not in all_columns for column in required_columns):
+            raise CreatorError(
+                f"Missing required columns: {required_columns}"
+            )
+
+        csv_data = {}
+        # get data from csv file
+        for row in csv_reader:
+            # Get required columns first
+            # TODO: will need to be folder path in CSV
+            # TODO: `context_asset_name` is now `folder_path`
+            folder_path = self._get_row_value_with_validation(
+                "Folder Path", row)
+            task_name = self._get_row_value_with_validation(
+                "Task Name", row)
+            version = self._get_row_value_with_validation(
+                "Version", row)
+
+            # Get optional columns
+            variant = self._get_row_value_with_validation(
+                "Variant", row)
+            product_type = self._get_row_value_with_validation(
+                "Product Type", row)
+
+            pre_product_name = (
+                f"{task_name}{variant}{product_type}"
+                f"{version}".replace(" ", "").lower()
+            )
+
+            # get representation data
+            filename, representation_data = \
+                self._get_representation_row_data(row)
+
+            # TODO: batch query of all folder paths and task names
+
+            # get folder entity from folder path
+            folder_entity = get_folder_by_path(
+                project_name, folder_path)
+
+            # make sure asset exists
+            if not folder_entity:
                 raise CreatorError(
-                    f"Missing required columns: {required_columns}"
+                    f"Asset '{folder_path}' not found."
                 )
 
-            csv_data = {}
-            # get data from csv file
-            for row in csv_reader:
-                # Get required columns first
-                # TODO: will need to be folder path in CSV
-                # TODO: `context_asset_name` is now `folder_path`
-                folder_path = self._get_row_value_with_validation(
-                    "Folder Path", row)
-                task_name = self._get_row_value_with_validation(
-                    "Task Name", row)
-                version = self._get_row_value_with_validation(
-                    "Version", row)
+            # first get all tasks on the folder entity and then find
+            task_entity = get_task_by_name(
+                project_name, folder_entity["id"], task_name)
 
-                # Get optional columns
-                variant = self._get_row_value_with_validation(
-                    "Variant", row)
-                product_type = self._get_row_value_with_validation(
-                    "Product Type", row)
-
-                pre_product_name = (
-                    f"{task_name}{variant}{product_type}"
-                    f"{version}".replace(" ", "").lower()
+            # check if task name is valid task in asset doc
+            if not task_entity:
+                raise CreatorError(
+                    f"Task '{task_name}' not found in asset doc."
                 )
 
-                # get representation data
-                filename, representation_data = \
-                    self._get_representation_row_data(row)
-
-                # TODO: batch query of all folder paths and task names
-
-                # get folder entity from folder path
-                folder_entity = get_folder_by_path(
-                    project_name, folder_path)
-
-                # make sure asset exists
-                if not folder_entity:
-                    raise CreatorError(
-                        f"Asset '{folder_path}' not found."
-                    )
-
-                # first get all tasks on the folder entity and then find
-                task_entity = get_task_by_name(
-                    project_name, folder_entity["id"], task_name)
-
-                # check if task name is valid task in asset doc
-                if not task_entity:
-                    raise CreatorError(
-                        f"Task '{task_name}' not found in asset doc."
-                    )
-
-                # get all csv data into one dict and make sure there are no
-                # duplicates data are already validated and sorted under
-                # correct existing asset also check if asset exists and if
-                # task name is valid task in asset doc and representations
-                # are distributed under products following variants
-                if folder_path not in csv_data:
-                    csv_data[folder_path] = {
-                        "folder_entity": folder_entity,
-                        "products": {
-                            pre_product_name: {
-                                "task_name": task_name,
-                                "task_type": task_entity["taskType"],
-                                "variant": variant,
-                                "product_type": product_type,
-                                "version": version,
-                                "representations": {
-                                    filename: representation_data,
-                                },
-                            }
-                        }
-                    }
-                else:
-                    csv_products = csv_data[folder_path]["products"]
-                    if pre_product_name not in csv_products:
-                        csv_products[pre_product_name] = {
+            # get all csv data into one dict and make sure there are no
+            # duplicates data are already validated and sorted under
+            # correct existing asset also check if asset exists and if
+            # task name is valid task in asset doc and representations
+            # are distributed under products following variants
+            if folder_path not in csv_data:
+                csv_data[folder_path] = {
+                    "folder_entity": folder_entity,
+                    "products": {
+                        pre_product_name: {
                             "task_name": task_name,
                             "task_type": task_entity["taskType"],
                             "variant": variant,
@@ -551,14 +544,29 @@ configuration in project settings.
                                 filename: representation_data,
                             },
                         }
-                    else:
-                        csv_representations = \
-                            csv_products[pre_product_name]["representations"]
-                        if filename in csv_representations:
-                            raise CreatorError(
-                                f"Duplicate filename '{filename}' in csv file."
-                            )
-                        csv_representations[filename] = representation_data
+                    }
+                }
+            else:
+                csv_products = csv_data[folder_path]["products"]
+                if pre_product_name not in csv_products:
+                    csv_products[pre_product_name] = {
+                        "task_name": task_name,
+                        "task_type": task_entity["taskType"],
+                        "variant": variant,
+                        "product_type": product_type,
+                        "version": version,
+                        "representations": {
+                            filename: representation_data,
+                        },
+                    }
+                else:
+                    csv_representations = \
+                        csv_products[pre_product_name]["representations"]
+                    if filename in csv_representations:
+                        raise CreatorError(
+                            f"Duplicate filename '{filename}' in csv file."
+                        )
+                    csv_representations[filename] = representation_data
 
         return csv_data
 
