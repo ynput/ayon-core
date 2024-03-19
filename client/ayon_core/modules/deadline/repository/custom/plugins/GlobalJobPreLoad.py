@@ -476,7 +476,7 @@ def inject_ayon_environment(deadlinePlugin):
         # Support backwards compatible keys
         for key, env_keys in (
             ("project", ["AYON_PROJECT_NAME", "AVALON_PROJECT"]),
-            ("asset", ["AYON_FOLDER_PATH", "AVALON_ASSET"]),
+            ("folder", ["AYON_FOLDER_PATH", "AVALON_ASSET"]),
             ("task", ["AYON_TASK_NAME", "AVALON_TASK"]),
             ("app", ["AYON_APP_NAME", "AVALON_APP_NAME"]),
         ):
@@ -490,14 +490,18 @@ def inject_ayon_environment(deadlinePlugin):
         if job.GetJobEnvironmentKeyValue("IS_TEST"):
             args.append("--automatic-tests")
 
-        if all(add_kwargs.values()):
-            for key, value in add_kwargs.items():
-                args.extend(["--{}".format(key), value])
-        else:
+        if not all(add_kwargs.values()):
             raise RuntimeError((
                 "Missing required env vars: AYON_PROJECT_NAME,"
                 " AYON_FOLDER_PATH, AYON_TASK_NAME, AYON_APP_NAME"
             ))
+
+        legacy_args = list(args)
+        for key, value in add_kwargs.items():
+            args.extend(["--{}".format(key), value])
+            if key == "folder":
+                key = "asset"
+            legacy_args.extend(["--{}".format(key), value])
 
         environment = {
             "AYON_SERVER_URL": ayon_server_url,
@@ -517,9 +521,18 @@ def inject_ayon_environment(deadlinePlugin):
         )
 
         if process_exitcode != 0:
-            raise RuntimeError(
-                "Failed to run Ayon process to extract environments."
+            print(
+                "Failed to run AYON process to extract environments. Trying"
+                " to use legacy arguments."
             )
+            legacy_args_str = subprocess.list2cmdline(legacy_args)
+            process_exitcode = deadlinePlugin.RunProcess(
+                exe, legacy_args_str, os.path.dirname(exe), -1
+            )
+            if process_exitcode != 0:
+                raise RuntimeError(
+                    "Failed to run AYON process to extract environments."
+                )
 
         print(">>> Loading file ...")
         with open(export_url) as fp:
