@@ -18,7 +18,7 @@ def open(filepath):
 class OpenFile(load.LoaderPlugin):
     """Open Image Sequence or Video with system default"""
 
-    families = ["render2d"]
+    product_types = {"render2d"}
     representations = ["*"]
 
     label = "Open"

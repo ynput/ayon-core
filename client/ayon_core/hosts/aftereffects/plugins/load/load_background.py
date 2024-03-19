@@ -20,7 +20,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
         metadata
     """
     label = "Load JSON Background"
-    families = ["background"]
+    product_types = {"background"}
     representations = ["json"]
 
     def load(self, context, name=None, namespace=None, data=None):

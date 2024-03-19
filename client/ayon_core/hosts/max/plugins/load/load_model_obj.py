@@ -20,7 +20,7 @@ from ayon_core.pipeline import get_representation_path, load
 class ObjLoader(load.LoaderPlugin):
     """Obj Loader."""
 
-    families = ["model"]
+    product_types = {"model"}
     representations = ["obj"]
     order = -9
     icon = "code-fork"
