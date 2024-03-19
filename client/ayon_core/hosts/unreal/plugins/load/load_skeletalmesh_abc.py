@@ -18,7 +18,7 @@ import unreal  # noqa
 class SkeletalMeshAlembicLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from Alembic"""
 
-    families = ["pointcache", "skeletalMesh"]
+    product_types = {"pointcache", "skeletalMesh"}
     label = "Import Alembic Skeletal Mesh"
     representations = ["abc"]
     icon = "cube"

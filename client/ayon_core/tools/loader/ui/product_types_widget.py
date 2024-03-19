@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtGui, QtCore
 
-from ayon_core.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon
 
 PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 1
 

@@ -24,7 +24,7 @@ import maya.app.renderSetup.model.renderSetup as renderSetup
 class RenderSetupLoader(load.LoaderPlugin):
     """Load json preset for RenderSetup overwriting current one."""
 
-    families = ["rendersetup"]
+    product_types = {"rendersetup"}
     representations = ["json"]
     defaults = ['Main']
 
