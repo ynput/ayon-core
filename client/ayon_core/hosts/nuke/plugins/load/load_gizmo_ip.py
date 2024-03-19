@@ -23,7 +23,7 @@ from ayon_core.hosts.nuke.api import (
 class LoadGizmoInputProcess(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
-    families = ["gizmo"]
+    product_types = {"gizmo"}
     representations = ["*"]
     extensions = {"nk"}
 
