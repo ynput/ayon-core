@@ -461,7 +461,6 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
         self.aux_files = self.get_aux_files()
 
         auth = context.data.get("deadline_auth")
-        self.log.info(f"auth::{auth}")
         job_id = self.process_submission(auth)
         self.log.info("Submitted job to Deadline: {}.".format(job_id))
 
