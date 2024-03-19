@@ -38,7 +38,8 @@ class ValidateDeadlinePools(OptionalPyblishPluginMixin,
             return
 
         deadline_url = self.get_deadline_url(instance)
-        pools = self.get_pools(deadline_url)
+        pools = self.get_pools(deadline_url,
+                               instance.context.data["deadline_auth"])
 
         invalid_pools = {}
         primary_pool = instance.data.get("primaryPool")
@@ -69,13 +70,14 @@ class ValidateDeadlinePools(OptionalPyblishPluginMixin,
             deadline_url = instance.data.get("deadlineUrl")
         return deadline_url
 
-    def get_pools(self, deadline_url):
+    def get_pools(self, deadline_url, auth):
         if deadline_url not in self.pools_per_url:
             self.log.debug(
                 "Querying available pools for Deadline url: {}".format(
                     deadline_url)
             )
             pools = DeadlineModule.get_deadline_pools(deadline_url,
+                                                      auth=auth,
                                                       log=self.log)
             self.log.info("Available pools: {}".format(pools))
             self.pools_per_url[deadline_url] = pools
