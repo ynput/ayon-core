@@ -20,9 +20,11 @@ class ValidateCurrentRenderLayerIsRenderable(pyblish.api.ContextPlugin):
     order = pyblish.api.ValidatorOrder
     hosts = ["maya"]
     families = ["renderlayer"]
+    optional = False
 
     def process(self, context):
-
+        if not self.is_active(context.data):
+            return
         # Workaround bug pyblish-base#250
         if not context_plugin_should_run(self, context):
             return
