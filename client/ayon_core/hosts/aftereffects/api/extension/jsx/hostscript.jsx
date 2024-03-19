@@ -598,7 +598,7 @@ function addItemAsLayerToComp(comp_id, item_id, found_comp){
      * Args:
      *  comp_id (int): id of target composition
      *  item_id (int): FootageItem.id
-     *  found_comp (CompItem, optional): to limit quering if
+     *  found_comp (CompItem, optional): to limit querying if
      *      comp already found previously
      */
     var comp = found_comp || app.project.itemByID(comp_id);
@@ -709,10 +709,10 @@ function reloadBackground(comp_id, composition_name, files_to_import){
     }
 
     var existing_layer_names = [];
-    var existing_layer_ids = []; // because ExtendedScript doesnt have keys()
+    var existing_layer_ids = []; // because ExtendedScript doesn't have keys()
     for (i = 1; i <= folder.items.length; ++i){
         layer = folder.items[i];
-        //because comp.layers[i] doesnt have 'id' accessible
+        //because comp.layers[i] doesn't have 'id' accessible
         if (layer instanceof CompItem){
             continue;
         }
@@ -781,7 +781,7 @@ function _delete_obsolete_items(folder, new_filenames){
     delete_ids = []
     for (i = 1; i <= folder.items.length; ++i){
         layer = folder.items[i];
-        //because comp.layers[i] doesnt have 'id' accessible
+        //because comp.layers[i] doesn't have 'id' accessible
         if (layer instanceof CompItem){
             continue;
         }

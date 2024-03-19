@@ -1075,7 +1075,7 @@ class AddonsManager:
         """Print out report of time spent on addons initialization parts.
 
         Reporting is not automated must be implemented for each initialization
-        part separatelly. Reports must be stored to `_report` attribute.
+        part separately. Reports must be stored to `_report` attribute.
         Print is skipped if `_report` is empty.
 
         Attribute `_report` is dictionary where key is "label" describing
@@ -1267,7 +1267,7 @@ class TrayAddonsManager(AddonsManager):
     def add_doubleclick_callback(self, addon, callback):
         """Register doubleclick callbacks on tray icon.
 
-        Currently there is no way how to determine which is launched. Name of
+        Currently, there is no way how to determine which is launched. Name of
         callback can be defined with `doubleclick_callback` attribute.
 
         Missing feature how to define default callback.

@@ -12,13 +12,13 @@ WSRPC.TRACE = false;
 
 // get websocket server url from environment value
 async function startUp(url){
-    promis = runEvalScript("getEnv('" + url + "')");
+    promise = runEvalScript("getEnv('" + url + "')");
 
-    var res = await promis;
+    var res = await promise;
     log.warn("res: " + res);
 
-    promis = runEvalScript("getEnv('AYON_DEBUG')");
-    var debug = await promis;
+    promise = runEvalScript("getEnv('AYON_DEBUG')");
+    var debug = await promise;
     log.warn("debug: " + debug);
     if (debug && debug.toString() == '3'){
         WSRPC.DEBUG = true;
