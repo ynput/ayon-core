@@ -29,34 +29,6 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _CACHED = False
 
 
-def get_schema_version(schema_name):
-    """Extract version form schema name.
-
-    It is expected that schema name contain only major and minor version.
-
-    Expected name should match to:
-    "{name}:{type}-{major version}.{minor version}"
-    - `name` - must not contain colon
-    - `type` - must not contain dash
-    - major and minor versions must be numbers separated by dot
-
-    Args:
-    schema_name(str): Name of schema that should be parsed.
-
-    Returns:
-    tuple: Contain two values major version as first and minor version as
-    second. When schema does not match parsing regex then `(0, 0)` is
-    returned.
-    """
-    schema_regex = re.compile(r"[^:]+:[^-]+-(\d.\d)")
-    groups = schema_regex.findall(schema_name)
-    if not groups:
-        return 0, 0
-
-    maj_version, min_version = groups[0].split(".")
-    return int(maj_version), int(min_version)
-
-
 def validate(data, schema=None):
     """Validate `data` with `schema`
 

@@ -207,14 +207,14 @@ class CreateShotClip(opfapi.Creator):
                         "value": ["[ track name ]", "main", "bg", "fg", "bg",
                                 "animatic"],
                         "type": "QComboBox",
-                        "label": "Subset Name",
+                        "label": "Product Name",
                         "target": "ui",
                         "toolTip": "chose product name pattern, if [ track name ] is selected, name of track layer will be used",  # noqa
                         "order": 0},
                     "productType": {
                         "value": ["plate", "take"],
                         "type": "QComboBox",
-                        "label": "Subset Family",
+                        "label": "Product Type",
                         "target": "ui", "toolTip": "What use of this product is for",  # noqa
                         "order": 1},
                     "reviewTrack": {

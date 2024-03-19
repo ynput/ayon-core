@@ -22,7 +22,7 @@ class ImportSound(plugin.Loader):
     file contain any audio.
     """
 
-    families = ["audio", "review", "plate"]
+    product_types = {"audio", "review", "plate"}
     representations = ["*"]
 
     label = "Import Sound"
