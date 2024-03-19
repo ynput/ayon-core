@@ -1,5 +1,7 @@
 import pyblish.api
 
+from ayon_core.pipeline import PublishXmlValidationError
+
 from openpype_modules.deadline.abstract_submit_deadline import requests_get
 
 
@@ -15,8 +17,9 @@ class ValidateDeadlineConnection(pyblish.api.InstancePlugin):
     responses = {}
 
     def process(self, instance):
+        context = instance.context
         # get default deadline webservice url from deadline module
-        deadline_url = instance.context.data["defaultDeadline"]
+        deadline_url = context.data["defaultDeadline"]
         # if custom one is set in instance, use that
         if instance.data.get("deadlineUrl"):
             deadline_url = instance.data.get("deadlineUrl")
@@ -25,8 +28,19 @@ class ValidateDeadlineConnection(pyblish.api.InstancePlugin):
             )
         assert deadline_url, "Requires Deadline Webservice URL"
 
+        kwargs = {}
+        if context.data["deadline_require_authentication"]:
+            kwargs["auth"] = context.data["deadline_auth"]
+
+            if not context.data["deadline_auth"]:
+                raise PublishXmlValidationError(
+                    self,
+                    "Deadline requires authentication. "
+                    "At least username is required to be set in "
+                    "Site Settings.")
+
         if deadline_url not in self.responses:
-            self.responses[deadline_url] = requests_get(deadline_url)
+            self.responses[deadline_url] = requests_get(deadline_url, **kwargs)
 
         response = self.responses[deadline_url]
         assert response.ok, "Response must be ok"
