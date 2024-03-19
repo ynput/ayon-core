@@ -142,9 +142,20 @@ class RenderSettings(object):
         current_aovs = AOVInterface().getAOVs()
         remove_aovs = render_settings["remove_aovs"]
         if remove_aovs:
-        # Remove fetched AOVs
+            # Remove fetched AOVs
             AOVInterface().removeAOVs(current_aovs)
+
+        # Need to reset the cameras renderable state after
+        # "unifiedRenderGlobalsRevertToDefault".
+        renderable_by_camera = {}
+        for camera in cmds.ls(type="camera"):
+            renderable_by_camera[camera] = cmds.getAttr(camera + ".renderable")
+
         mel.eval("unifiedRenderGlobalsRevertToDefault")
+
+        for camera, value in renderable_by_camera.items():
+            cmds.setAttr(camera + ".renderable", value)
+
         img_ext = arnold_render_presets["image_format"]
         img_prefix = arnold_render_presets["image_prefix"]
         aovs = arnold_render_presets["aov_list"]
