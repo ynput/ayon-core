@@ -346,14 +346,14 @@ configuration in project settings.
                 break
 
         if not repre_config_data:
-            raise KeyError(
+            raise CreatorError(
                 f"Representation '{repre_name}' not found "
                 "in config representation data."
             )
 
         validate_extensions = repre_config_data["extensions"]
         if extension not in validate_extensions:
-            raise TypeError(
+            raise CreatorError(
                 f"File extension '{extension}' not valid for "
                 f"output '{validate_extensions}'."
             )
@@ -373,7 +373,7 @@ configuration in project settings.
 
         # check if dirname exists
         if not os.path.isdir(dirname):
-            raise NotADirectoryError(
+            raise CreatorError(
                 f"Directory '{dirname}' does not exist."
             )
 
@@ -389,7 +389,7 @@ configuration in project settings.
             collections = collections[0]
         else:
             if is_sequence:
-                raise ValueError(
+                raise CreatorError(
                     f"No collections found in directory '{dirname}'."
                 )
 
@@ -463,7 +463,7 @@ configuration in project settings.
 
             # check if csv file contains all required columns
             if any(column not in all_columns for column in required_columns):
-                raise KeyError(
+                raise CreatorError(
                     f"Missing required columns: {required_columns}"
                 )
 
@@ -555,7 +555,7 @@ configuration in project settings.
                         csv_representations = \
                             csv_products[pre_product_name]["representations"]
                         if filename in csv_representations:
-                            raise ValueError(
+                            raise CreatorError(
                                 f"Duplicate filename '{filename}' in csv file."
                             )
                         csv_representations[filename] = representation_data
@@ -633,7 +633,7 @@ configuration in project settings.
                 break
 
         if not column_data:
-            raise KeyError(
+            raise CreatorError(
                 f"Column '{column_name}' not found in column config."
             )
 
@@ -643,7 +643,7 @@ configuration in project settings.
 
         # check if column value is not empty string and column is required
         if column_value == "" and column_required:
-            raise ValueError(
+            raise CreatorError(
                 f"Value in column '{column_name}' is required."
             )
 
@@ -675,7 +675,7 @@ configuration in project settings.
             column_value is not None and
             not re.match(str(column_validation), str(column_value))
         ):
-            raise ValueError(
+            raise CreatorError(
                 f"Column '{column_name}' value '{column_value}' "
                 f"does not match validation regex '{column_validation}' \n"
                 f"Row data: {row_data} \n"
@@ -719,7 +719,7 @@ configuration in project settings.
         Returns:
             list: list of attribute object instances
         """
-        # Use same attributes as for instance attrobites
+        # Use same attributes as for instance attributes
         attr_defs = [
             FileDef(
                 "csv_filepath_data",
