@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <error id="main">
+        <title>Deadline Authentication</title>
+        <description>
+## Deadline authenticatin is required
+
+This project has set in Settings that Deadline requires authentication.
+
+### How to repair?
+
+Please go to Ayon Server Site settings and provide your Deadline username and
+            most likely password too. (Deadline could run in configuration that empty passwords are allowed. Ask your administrator for details.)
+
+        </description>
+    </error>
+</root>
