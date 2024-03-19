@@ -27,7 +27,7 @@ from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 class VRayProxyLoader(load.LoaderPlugin):
     """Load VRay Proxy with Alembic or VrayMesh."""
 
-    families = ["vrayproxy", "model", "pointcache", "animation"]
+    product_types = {"vrayproxy", "model", "pointcache", "animation"}
     representations = ["vrmesh", "abc"]
 
     label = "Import VRay Proxy"
