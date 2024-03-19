@@ -1986,6 +1986,8 @@ class CreateContext:
                 raise CreatorError(
                     "Folder '{}' was not found".format(folder_path)
                 )
+
+        task_name = None
         if task_entity is None:
             task_name = self.get_current_task_name()
             task_entity = ayon_api.get_task_by_name(
