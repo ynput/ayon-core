@@ -1,6 +1,6 @@
 import os
 
-from ayon_core.hosts.max.api import lib, maintained_selection
+from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.lib import (
     unique_namespace,
     get_namespace,
@@ -9,7 +9,8 @@ from ayon_core.hosts.max.api.lib import (
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
-    update_custom_attribute_data
+    update_custom_attribute_data,
+    remove_container_data
 )
 from ayon_core.pipeline import get_representation_path, load
 
@@ -17,7 +18,7 @@ from ayon_core.pipeline import get_representation_path, load
 class FbxLoader(load.LoaderPlugin):
     """Fbx Loader."""
 
-    families = ["camera"]
+    product_types = {"camera"}
     representations = ["fbx"]
     order = -9
     icon = "code-fork"
@@ -50,10 +51,11 @@ class FbxLoader(load.LoaderPlugin):
             name, selections, context,
             namespace, loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         from pymxs import runtime as rt
 
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         node = rt.getNodeByName(node_name)
         namespace, _ = get_namespace(node_name)
@@ -86,14 +88,14 @@ class FbxLoader(load.LoaderPlugin):
 
         update_custom_attribute_data(node, fbx_objects)
         lib.imprint(container["instance_node"], {
-            "representation": str(representation["_id"])
+            "representation": repre_entity["id"]
         })
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         from pymxs import runtime as rt
 
         node = rt.GetNodeByName(container["instance_node"])
-        rt.Delete(node)
+        remove_container_data(node)

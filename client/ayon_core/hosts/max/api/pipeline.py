@@ -12,6 +12,7 @@ from ayon_core.pipeline import (
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.hosts.max.api.menu import OpenPypeMenu
 from ayon_core.hosts.max.api import lib
@@ -151,7 +152,9 @@ def ls() -> list:
     objs = rt.objects
     containers = [
         obj for obj in objs
-        if rt.getUserProp(obj, "id") == AVALON_CONTAINER_ID
+        if rt.getUserProp(obj, "id") in {
+            AYON_CONTAINER_ID, AVALON_CONTAINER_ID
+        }
     ]
 
     for container in sorted(containers, key=attrgetter("name")):
@@ -166,7 +169,7 @@ def containerise(name: str, nodes: list, context,
         "name": name,
         "namespace": namespace or "",
         "loader": loader,
-        "representation": context["representation"]["_id"],
+        "representation": context["representation"]["id"],
     }
     container_name = f"{namespace}:{name}{suffix}"
     container = rt.container(name=container_name)
@@ -242,3 +245,27 @@ def get_previous_loaded_object(container: str):
         if str(obj) in sel_list:
             node_list.append(obj)
     return node_list
+
+
+def remove_container_data(container_node: str):
+    """Function to remove container data after updating, switching or deleting it.
+
+    Args:
+        container_node (str): container node
+    """
+    if container_node.modifiers[0].name == "OP Data":
+        all_set_members_names = [
+            member.node for member
+            in container_node.modifiers[0].openPypeData.all_handles]
+        # clean up the children of alembic dummy objects
+        for current_set_member in all_set_members_names:
+            shape_list = [members for members in current_set_member.Children
+                          if rt.ClassOf(members) == rt.AlembicObject
+                          or rt.isValidNode(members)]
+            if shape_list:  # noqa
+                rt.Delete(shape_list)
+            rt.Delete(current_set_member)
+        rt.deleteModifier(container_node, container_node.modifiers[0])
+
+    rt.Delete(container_node)
+    rt.redrawViews()

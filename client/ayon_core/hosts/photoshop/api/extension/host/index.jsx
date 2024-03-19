@@ -213,7 +213,7 @@ function getActiveDocumentFullName(){
 function imprint(payload){
     /**
      *  Sets headline content of current document with metadata. Stores
-     *  information about assets created through Avalon.
+     *  information about assets created through AYON.
      *  Content accessible in PS through File > File Info
      * 
      **/

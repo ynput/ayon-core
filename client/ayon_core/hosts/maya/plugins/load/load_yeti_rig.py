@@ -7,7 +7,7 @@ from ayon_core.hosts.maya.api import lib
 class YetiRigLoader(plugin.ReferenceLoader):
     """This loader will load Yeti rig."""
 
-    families = ["yetiRig"]
+    product_types = {"yetiRig"}
     representations = ["ma"]
 
     label = "Load Yeti Rig"
@@ -40,7 +40,7 @@ class YetiRigLoader(plugin.ReferenceLoader):
                 groupName=group_name
             )
 
-        color = plugin.get_load_color_for_family("yetiRig")
+        color = plugin.get_load_color_for_product_type("yetiRig")
         if color is not None:
             red, green, blue = color
             cmds.setAttr(group_name + ".useOutlinerColor", 1)

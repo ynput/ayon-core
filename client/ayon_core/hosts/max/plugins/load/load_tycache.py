@@ -7,7 +7,8 @@ from ayon_core.hosts.max.api.lib import (
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
-    update_custom_attribute_data
+    update_custom_attribute_data,
+    remove_container_data
 )
 from ayon_core.pipeline import get_representation_path, load
 
@@ -15,7 +16,7 @@ from ayon_core.pipeline import get_representation_path, load
 class TyCacheLoader(load.LoaderPlugin):
     """TyCache Loader."""
 
-    families = ["tycache"]
+    product_types = {"tycache"}
     representations = ["tyc"]
     order = -8
     icon = "code-fork"
@@ -38,11 +39,12 @@ class TyCacheLoader(load.LoaderPlugin):
             name, [obj], context,
             namespace, loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """update the container"""
         from pymxs import runtime as rt
 
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node = rt.GetNodeByName(container["instance_node"])
         node_list = get_previous_loaded_object(node)
         update_custom_attribute_data(node, node_list)
@@ -50,15 +52,14 @@ class TyCacheLoader(load.LoaderPlugin):
             for tyc in node_list:
                 tyc.filename = path
         lib.imprint(container["instance_node"], {
-            "representation": str(representation["_id"])
+            "representation": repre_entity["id"]
         })
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         """remove the container"""
         from pymxs import runtime as rt
-
         node = rt.GetNodeByName(container["instance_node"])
-        rt.Delete(node)
+        remove_container_data(node)

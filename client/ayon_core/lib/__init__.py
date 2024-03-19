@@ -15,7 +15,18 @@ python_version_dir = os.path.join(
 sys.path.insert(0, python_version_dir)
 site.addsitedir(python_version_dir)
 
-
+from .local_settings import (
+    IniSettingRegistry,
+    JSONSettingRegistry,
+    AYONSecureRegistry,
+    AYONSettingsRegistry,
+    OpenPypeSecureRegistry,
+    OpenPypeSettingsRegistry,
+    get_local_site_id,
+    get_ayon_username,
+    get_openpype_username,
+)
+from .ayon_connection import initialize_ayon_connection
 from .events import (
     emit_event,
     register_event_callback
@@ -112,18 +123,6 @@ from .transcoding import (
     get_rescaled_command_arguments,
 )
 
-from .local_settings import (
-    IniSettingRegistry,
-    JSONSettingRegistry,
-    AYONSecureRegistry,
-    AYONSettingsRegistry,
-    OpenPypeSecureRegistry,
-    OpenPypeSettingsRegistry,
-    get_local_site_id,
-    get_ayon_username,
-    get_openpype_username,
-)
-
 from .applications import (
     ApplicationLaunchFailed,
     ApplictionExecutableNotFound,
@@ -161,15 +160,21 @@ from .ayon_info import (
     is_in_tests,
 )
 
-
-from .connections import (
-    requests_get,
-    requests_post
-)
-
 terminal = Terminal
 
 __all__ = [
+    "IniSettingRegistry",
+    "JSONSettingRegistry",
+    "AYONSecureRegistry",
+    "AYONSettingsRegistry",
+    "OpenPypeSecureRegistry",
+    "OpenPypeSettingsRegistry",
+    "get_local_site_id",
+    "get_ayon_username",
+    "get_openpype_username",
+
+    "initialize_ayon_connection",
+
     "emit_event",
     "register_event_callback",
 
@@ -228,16 +233,6 @@ __all__ = [
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
 
-    "IniSettingRegistry",
-    "JSONSettingRegistry",
-    "AYONSecureRegistry",
-    "AYONSettingsRegistry",
-    "OpenPypeSecureRegistry",
-    "OpenPypeSettingsRegistry",
-    "get_local_site_id",
-    "get_ayon_username",
-    "get_openpype_username",
-
     "ApplicationLaunchFailed",
     "ApplictionExecutableNotFound",
     "ApplicationNotFound",
@@ -283,7 +278,4 @@ __all__ = [
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
-
-    "requests_get",
-    "requests_post"
 ]

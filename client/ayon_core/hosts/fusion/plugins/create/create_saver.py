@@ -12,10 +12,10 @@ class CreateSaver(GenericCreateSaver):
     identifier = "io.openpype.creators.fusion.saver"
     label = "Render (saver)"
     name = "render"
-    family = "render"
+    product_type = "render"
     description = "Fusion Saver to generate image sequence"
 
-    default_frame_range_option = "asset_db"
+    default_frame_range_option = "current_folder"
 
     def get_detail_description(self):
         return """Fusion Saver to generate image sequence.
@@ -24,7 +24,7 @@ class CreateSaver(GenericCreateSaver):
         product type. (But can publish even single frame 'render'.)
 
         Select what should be source of render range:
-        - "Current asset context" - values set on Asset in DB (Ftrack)
+        - "Current Folder context" - values set on folder on AYON server
         - "From render in/out" - from node itself
         - "From composition timeline" - from timeline
 
@@ -50,7 +50,7 @@ class CreateSaver(GenericCreateSaver):
 
     def _get_frame_range_enum(self):
         frame_range_options = {
-            "asset_db": "Current asset context",
+            "current_folder": "Current Folder context",
             "render_range": "From render in/out",
             "comp_range": "From composition timeline",
         }

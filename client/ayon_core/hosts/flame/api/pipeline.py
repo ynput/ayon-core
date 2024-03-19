@@ -73,7 +73,7 @@ def containerise(flame_clip_segment,
         "name": str(name),
         "namespace": str(namespace),
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     if data:
@@ -147,8 +147,8 @@ def imprint(segment, data=None):
     Examples:
         data = {
             'asset': 'sq020sh0280',
-            'family': 'render',
-            'subset': 'subsetMain'
+            'productType': 'render',
+            'productName': 'productMain'
         }
     """
     data = data or {}

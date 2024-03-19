@@ -45,7 +45,7 @@ class ExtractWorkfileXgen(publish.Extractor):
 
             is_renderlayer = (
                 "renderlayer" in i.data.get("families", []) or
-                i.data["family"] == "renderlayer"
+                i.data["productType"] == "renderlayer"
             )
             return is_renderlayer
 

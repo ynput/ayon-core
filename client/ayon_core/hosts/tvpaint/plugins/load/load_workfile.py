@@ -24,7 +24,7 @@ from ayon_core.pipeline.version_start import get_versioning_start
 class LoadWorkfile(plugin.Loader):
     """Load workfile."""
 
-    families = ["workfile"]
+    product_types = {"workfile"}
     representations = ["tvpp"]
 
     label = "Load Workfile"
@@ -51,26 +51,32 @@ class LoadWorkfile(plugin.Loader):
 
         # Save workfile.
         host_name = "tvpaint"
-        project_name = work_context.get("project")
-        asset_name = work_context.get("asset")
-        task_name = work_context.get("task")
+        if "project_name" in work_context:
+            project_name = context["project_name"]
+            folder_path = context["folder_path"]
+            task_name = context["task_name"]
+        else:
+            project_name = work_context.get("project")
+            folder_path = work_context.get("asset")
+            task_name = work_context.get("task")
+
         # Far cases when there is workfile without work_context
-        if not asset_name:
+        if not folder_path:
             context = get_current_context()
             project_name = context["project_name"]
-            asset_name = context["asset_name"]
+            folder_path = context["folder_path"]
             task_name = context["task_name"]
 
         template_key = get_workfile_template_key_from_context(
-            asset_name,
+            project_name,
+            folder_path,
             task_name,
             host_name,
-            project_name=project_name
         )
         anatomy = Anatomy(project_name)
 
         data = get_template_data_with_names(
-            project_name, asset_name, task_name, host_name
+            project_name, folder_path, task_name, host_name
         )
         data["root"] = anatomy.roots
 
@@ -101,7 +107,7 @@ class LoadWorkfile(plugin.Loader):
                 "tvpaint",
                 task_name=task_name,
                 task_type=data["task"]["type"],
-                family="workfile"
+                product_type="workfile"
             )
         else:
             version += 1
