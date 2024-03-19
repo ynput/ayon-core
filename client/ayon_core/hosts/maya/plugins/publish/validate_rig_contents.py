@@ -162,6 +162,8 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
             if cmds.nodeType(shape) not in cls.accepted_output:
                 invalid.append(shape)
 
+        return invalid
+
     @classmethod
     def validate_controls(cls, set_members):
         """
