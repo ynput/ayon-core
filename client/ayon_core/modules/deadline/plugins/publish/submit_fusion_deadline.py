@@ -124,7 +124,9 @@ class FusionSubmitDeadline(
         script_path = context.data["currentFile"]
 
         anatomy = instance.context.data["anatomy"]
-        publish_template = anatomy.get_template("publish", "default", "path")
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "path"
+        )
         for item in context:
             if "workfile" in item.data["families"]:
                 msg = "Workfile (scene) must be published along"

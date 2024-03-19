@@ -103,7 +103,9 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         project_name = anatomy.project_name
 
         template_key = self._get_template_key(project_name, instance)
-        hero_template = anatomy.get_template("hero", template_key, "path")
+        hero_template = anatomy.get_template_item(
+            "hero", template_key, "path", default=None
+        )
 
         if hero_template is None:
             self.log.warning((
@@ -320,7 +322,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         try:
             src_to_dst_file_paths = []
             repre_integrate_data = []
-            path_template_obj = anatomy.get_template(
+            path_template_obj = anatomy.get_template_item(
                 "hero", template_key, "path"
             )
             for repre_info in published_repres.values():
@@ -335,7 +337,9 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 anatomy_data.pop("version", None)
 
                 # Get filled path to repre context
-                template_filled = path_template_obj.format_strict(anatomy_data)
+                template_filled = path_template_obj.format_strict(
+                    anatomy_data
+                )
                 repre_context = template_filled.used_values
                 for key in self.db_representation_context_keys:
                     value = anatomy_data.get(key)
@@ -538,7 +542,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 "originalBasename": instance.data.get("originalBasename")
             })
 
-        template_obj = anatomy.get_template(
+        template_obj = anatomy.get_template_item(
             "hero", template_key, "directory"
         )
         publish_folder = os.path.normpath(

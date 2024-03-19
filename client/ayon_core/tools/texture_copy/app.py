@@ -40,7 +40,7 @@ class TextureCopy:
             },
         })
         anatomy = Anatomy(project_name, project_entity=project_entity)
-        template_obj = anatomy.get_template(
+        template_obj = anatomy.get_template_item(
             "publish", "texture", "path"
         )
         return template_obj.format_strict(template_data)

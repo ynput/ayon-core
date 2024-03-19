@@ -135,7 +135,9 @@ def get_workdir_with_workdir_data(
             project_settings
         )
 
-    template_obj = anatomy.get_template("work", template_key, "directory")
+    template_obj = anatomy.get_template_item(
+        "work", template_key, "directory"
+    )
     # Output is TemplateResult object which contain useful data
     output = template_obj.format_strict(workdir_data)
     if output:

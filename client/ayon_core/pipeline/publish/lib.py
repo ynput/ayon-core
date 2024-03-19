@@ -743,8 +743,8 @@ def get_custom_staging_dir_info(
 
     template_name = profile["template_name"] or TRANSIENT_DIR_TEMPLATE
 
-    custom_staging_dir = anatomy.get_template(
-        "staging", template_name, "directory"
+    custom_staging_dir = anatomy.get_template_item(
+        "staging", template_name, "directory", default=None
     )
     if custom_staging_dir is None:
         raise ValueError((
@@ -753,7 +753,7 @@ def get_custom_staging_dir_info(
         ).format(project_name, template_name))
     is_persistent = profile["custom_staging_dir_persistent"]
 
-    return str(custom_staging_dir), is_persistent
+    return custom_staging_dir.template, is_persistent
 
 
 def get_published_workfile_instance(context):
@@ -805,7 +805,7 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data["anatomy"]
-    template = anatomy.get_template("publish", "default", "path")
+    template = anatomy.get_template_item("publish", "default", "path")
     template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 

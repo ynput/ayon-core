@@ -973,8 +973,8 @@ class ProjectPushItemProcess:
             "version": version_entity["version"]
         })
 
-        publish_template = anatomy.get_template("publish", template_name)
-        path_template = publish_template["path"].replace("\\", "/")
+        publish_template = anatomy.get_template_item("publish", template_name)
+        path_template = publish_template["path"].template.replace("\\", "/")
         file_template = publish_template["file"]
         self._log_info("Preparing files to transfer")
         processed_repre_items = self._prepare_file_transactions(
@@ -1011,7 +1011,7 @@ class ProjectPushItemProcess:
             if repre_output_name is not None:
                 repre_format_data["output"] = repre_output_name
 
-            template_obj = anatomy.get_template(
+            template_obj = anatomy.get_template_item(
                 "publish", template_name, "directory"
             )
             folder_path = template_obj.format_strict(formatting_data)

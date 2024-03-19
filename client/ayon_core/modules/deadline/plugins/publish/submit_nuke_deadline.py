@@ -198,7 +198,9 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         AbstractSubmitDeadline"""
         anatomy = context.data["anatomy"]
         # WARNING Hardcoded template name 'default' > may not be used
-        publish_template = anatomy.get_template("publish", "default", "path")
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "path"
+        )
         for instance in context:
             if (
                 instance.data["productType"] != "workfile"
