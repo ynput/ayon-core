@@ -32,7 +32,7 @@ class ValidateDeadlineConnection(pyblish.api.InstancePlugin):
         if context.data["deadline_require_authentication"]:
             kwargs["auth"] = context.data["deadline_auth"]
 
-            if not context.data["deadline_auth"]:
+            if not context.data["deadline_auth"][0]:
                 raise PublishXmlValidationError(
                     self,
                     "Deadline requires authentication. "
@@ -43,6 +43,12 @@ class ValidateDeadlineConnection(pyblish.api.InstancePlugin):
             self.responses[deadline_url] = requests_get(deadline_url, **kwargs)
 
         response = self.responses[deadline_url]
+        if response.status_code == 401:
+            raise PublishXmlValidationError(
+                self,
+                "Deadline requires authentication. "
+                "Provided credentials are not working. "
+                "Please change them in Site Settings")
         assert response.ok, "Response must be ok"
         assert response.text.startswith("Deadline Web Service "), (
             "Web service did not respond with 'Deadline Web Service'"
