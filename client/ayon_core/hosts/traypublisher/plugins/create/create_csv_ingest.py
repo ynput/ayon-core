@@ -4,14 +4,14 @@ import csv
 import clique
 from copy import deepcopy, copy
 
-from ayon_core.client import get_asset_by_name
+from ayon_api import get_folder_by_path, get_task_by_name
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline import CreatedInstance
 from ayon_core.lib import FileDef, BoolDef
 from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 )
-
+from ayon_core.pipeline.create import CreatorError
 from ayon_core.hosts.traypublisher.api.plugin import (
     TrayPublishCreator
 )
@@ -54,7 +54,7 @@ configuration in project settings.
 
         folder = csv_filepath_data.get("directory", "")
         if not os.path.exists(folder):
-            raise FileNotFoundError(
+            raise CreatorError(
                 f"Directory '{folder}' does not exist."
             )
         filename = csv_filepath_data.get("filenames", [])
@@ -105,14 +105,14 @@ configuration in project settings.
     ):
         """Create instances from csv data"""
 
-        for asset_name, _data in csv_data_for_instances.items():
+        for folder_path, prepared_data in csv_data_for_instances.items():
             project_name = self.create_context.get_current_project_name()
-            asset_doc = _data["asset_doc"]
-            products = _data["products"]
+            products = prepared_data["products"]
 
             for instance_name, product_data in products.items():
                 # get important instance variables
                 task_name = product_data["task_name"]
+                task_type = product_data["task_type"]
                 variant = product_data["variant"]
                 product_type = product_data["product_type"]
                 version = product_data["version"]
@@ -120,8 +120,8 @@ configuration in project settings.
                 # create subset/product name
                 product_name = get_product_name(
                     project_name,
-                    asset_doc,
                     task_name,
+                    task_type,
                     self.host_name,
                     product_type,
                     variant
@@ -155,7 +155,7 @@ configuration in project settings.
 
                 # get representations from product data
                 representations = product_data["representations"]
-                label = f"{asset_name}_{product_name}_v{version:>03}"
+                label = f"{folder_path}_{product_name}_v{version:>03}"
 
                 families = ["csv_ingest"]
                 if slate_exists:
@@ -166,7 +166,7 @@ configuration in project settings.
                 # make product data
                 product_data = {
                     "name": instance_name,
-                    "asset": asset_name,
+                    "folderPath": folder_path,
                     "families": families,
                     "label": label,
                     "task": task_name,
@@ -471,8 +471,10 @@ configuration in project settings.
             # get data from csv file
             for row in csv_reader:
                 # Get required columns first
-                context_asset_name = self._get_row_value_with_validation(
-                    "Folder Context", row)
+                # TODO: will need to be folder path in CSV
+                # TODO: `context_asset_name` is now `folder_path`
+                folder_path = self._get_row_value_with_validation(
+                    "Folder Path", row)
                 task_name = self._get_row_value_with_validation(
                     "Task Name", row)
                 version = self._get_row_value_with_validation(
@@ -493,31 +495,40 @@ configuration in project settings.
                 filename, representation_data = \
                     self._get_representation_row_data(row)
 
+                # TODO: batch query of all folder paths and task names
+
+                # get folder entity from folder path
+                folder_entity = get_folder_by_path(
+                    project_name, folder_path)
+
+                # make sure asset exists
+                if not folder_entity:
+                    raise CreatorError(
+                        f"Asset '{folder_path}' not found."
+                    )
+
+                # first get all tasks on the folder entity and then find
+                task_entity = get_task_by_name(
+                    project_name, folder_entity["id"], task_name)
+
+                # check if task name is valid task in asset doc
+                if not task_entity:
+                    raise CreatorError(
+                        f"Task '{task_name}' not found in asset doc."
+                    )
+
                 # get all csv data into one dict and make sure there are no
                 # duplicates data are already validated and sorted under
                 # correct existing asset also check if asset exists and if
                 # task name is valid task in asset doc and representations
                 # are distributed under products following variants
-                if context_asset_name not in csv_data:
-                    asset_doc = get_asset_by_name(
-                        project_name, context_asset_name)
-
-                    # make sure asset exists
-                    if not asset_doc:
-                        raise ValueError(
-                            f"Asset '{context_asset_name}' not found."
-                        )
-                    # check if task name is valid task in asset doc
-                    if task_name not in asset_doc["data"]["tasks"]:
-                        raise ValueError(
-                            f"Task '{task_name}' not found in asset doc."
-                        )
-
-                    csv_data[context_asset_name] = {
-                        "asset_doc": asset_doc,
+                if folder_path not in csv_data:
+                    csv_data[folder_path] = {
+                        "folder_entity": folder_entity,
                         "products": {
                             pre_product_name: {
                                 "task_name": task_name,
+                                "task_type": task_entity["taskType"],
                                 "variant": variant,
                                 "product_type": product_type,
                                 "version": version,
@@ -528,11 +539,11 @@ configuration in project settings.
                         }
                     }
                 else:
-                    asset_doc = csv_data[context_asset_name]["asset_doc"]
-                    csv_products = csv_data[context_asset_name]["products"]
+                    csv_products = csv_data[folder_path]["products"]
                     if pre_product_name not in csv_products:
                         csv_products[pre_product_name] = {
                             "task_name": task_name,
+                            "task_type": task_entity["taskType"],
                             "variant": variant,
                             "product_type": product_type,
                             "version": version,
