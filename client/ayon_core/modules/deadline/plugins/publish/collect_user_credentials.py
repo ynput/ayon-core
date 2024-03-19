@@ -11,7 +11,7 @@ Provides:
 import pyblish.api
 
 
-class CollectUserCredentials(pyblish.api.ContextPlugin):
+class CollectDeadlineUserCredentials(pyblish.api.ContextPlugin):
     """Collects user name and password for artist if DL requires authentication
     """
 
