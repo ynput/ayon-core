@@ -5,11 +5,11 @@ import json
 import re
 from copy import deepcopy
 
-import requests
 import clique
 import ayon_api
 import pyblish.api
 
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -303,7 +303,11 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         self.log.debug("Submitting Deadline publish job ...")
 
         url = "{}/api/jobs".format(self.deadline_url)
-        response = requests.post(url, json=payload, timeout=10)
+        kwargs = {}
+        if instance.context.data["deadline_auth"]:
+            kwargs["auth"] = instance.context.data["deadline_auth"]
+        response = requests_post(url, json=payload, timeout=10,
+                                 **kwargs)
         if not response.ok:
             raise Exception(response.text)
 

@@ -4,9 +4,9 @@ import json
 import getpass
 from datetime import datetime
 
-import requests
 import pyblish.api
 
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
@@ -434,7 +434,11 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
 
         self.log.debug("__ expectedFiles: `{}`".format(
             instance.data["expectedFiles"]))
-        response = requests.post(self.deadline_url, json=payload, timeout=10)
+        kwargs = {}
+        if instance.context.data["deadline_auth"]:
+            kwargs["auth"] = instance.context.data["deadline_auth"]
+        response = requests_post(self.deadline_url, json=payload, timeout=10,
+                                 **kwargs)
 
         if not response.ok:
             raise Exception(response.text)

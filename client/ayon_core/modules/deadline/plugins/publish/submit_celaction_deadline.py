@@ -2,8 +2,9 @@ import os
 import re
 import json
 import getpass
-import requests
 import pyblish.api
+
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 
 
 class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
@@ -193,7 +194,10 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
         self.log.debug("__ expectedFiles: `{}`".format(
             instance.data["expectedFiles"]))
 
-        response = requests.post(self.deadline_url, json=payload)
+        kwargs = {}
+        if instance.context.data["deadline_auth"]:
+            kwargs["auth"] = instance.context.data["deadline_auth"]
+        response = requests_post(self.deadline_url, json=payload, **kwargs)
 
         if not response.ok:
             self.log.error(

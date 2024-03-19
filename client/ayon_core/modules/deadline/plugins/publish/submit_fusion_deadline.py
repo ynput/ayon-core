@@ -2,10 +2,9 @@ import os
 import json
 import getpass
 
-import requests
-
 import pyblish.api
 
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
@@ -251,7 +250,10 @@ class FusionSubmitDeadline(
 
         # E.g. http://192.168.0.1:8082/api/jobs
         url = "{}/api/jobs".format(deadline_url)
-        response = requests.post(url, json=payload)
+        kwargs = {}
+        if instance.context.data["deadline_auth"]:
+            kwargs["auth"] = instance.context.data["deadline_auth"]
+        response = requests_post(url, json=payload, **kwargs)
         if not response.ok:
             raise Exception(response.text)
 

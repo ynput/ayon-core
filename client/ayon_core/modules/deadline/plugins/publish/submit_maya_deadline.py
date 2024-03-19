@@ -290,7 +290,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
         return plugin_payload
 
-    def process_submission(self):
+    def process_submission(self, auth=None):
         from maya import cmds
         instance = self._instance
 
@@ -330,7 +330,8 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         if "vrayscene" in instance.data["families"]:
             self.log.debug("Submitting V-Ray scene render..")
             vray_export_payload = self._get_vray_export_payload(payload_data)
-            export_job = self.submit(vray_export_payload)
+            export_job = self.submit(vray_export_payload,
+                                     instance.context.data["deadline_auth"])
 
             payload = self._get_vray_render_payload(payload_data)
 
@@ -349,7 +350,8 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         else:
             # Submit main render job
             job_info, plugin_info = payload
-            self.submit(self.assemble_payload(job_info, plugin_info))
+            self.submit(self.assemble_payload(job_info, plugin_info),
+                        instance.context.data["deadline_auth"])
 
     def _tile_render(self, payload):
         """Submit as tile render per frame with dependent assembly jobs."""
@@ -449,7 +451,8 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         # Submit frame tile jobs
         frame_tile_job_id = {}
         for frame, tile_job_payload in frame_payloads.items():
-            job_id = self.submit(tile_job_payload)
+            job_id = self.submit(tile_job_payload,
+                                 instance.context.data["deadline_auth"])
             frame_tile_job_id[frame] = job_id
 
         # Define assembly payloads
@@ -557,7 +560,8 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
                 "submitting assembly job {} of {}".format(i + 1,
                                                           num_assemblies)
             )
-            assembly_job_id = self.submit(payload)
+            assembly_job_id = self.submit(payload,
+                instance.context.data["deadline_auth"])
             assembly_job_ids.append(assembly_job_id)
 
         instance.data["assemblySubmissionJobs"] = assembly_job_ids
