@@ -173,6 +173,7 @@ class CacheModelLoader(plugin.AssetLoader):
 
         self._link_objects(objects, asset_group, containers, asset_group)
 
+        product_type = context["product"]["productType"]
         asset_group[AVALON_PROPERTY] = {
             "schema": "openpype:container-2.0",
             "id": AVALON_CONTAINER_ID,
