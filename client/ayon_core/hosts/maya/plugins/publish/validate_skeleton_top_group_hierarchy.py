@@ -21,8 +21,12 @@ class ValidateSkeletonTopGroupHierarchy(pyblish.api.InstancePlugin,
     order = ValidateContentsOrder + 0.05
     label = "Skeleton Rig Top Group Hierarchy"
     families = ["rig.fbx"]
+    optional = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         invalid = []
         skeleton_mesh_data = instance.data("skeleton_mesh", [])
         if skeleton_mesh_data:
