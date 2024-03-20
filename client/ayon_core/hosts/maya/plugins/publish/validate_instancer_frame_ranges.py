@@ -3,8 +3,10 @@ import re
 
 import pyblish.api
 
-from ayon_core.pipeline.publish import PublishValidationError
-
+from ayon_core.pipeline.publish import (
+    PublishValidationError,
+    OptionalPyblishPluginMixin
+)
 
 def is_cache_resource(resource):
     """Return whether resource is a cacheFile resource"""
@@ -34,7 +36,8 @@ def filter_ticks(files):
     return tick_files, ticks
 
 
-class ValidateInstancerFrameRanges(pyblish.api.InstancePlugin):
+class ValidateInstancerFrameRanges(pyblish.api.InstancePlugin,
+                                   OptionalPyblishPluginMixin):
     """Validates all instancer particle systems are cached correctly.
 
     This means they should have the files/frames as required by the start-end
@@ -46,10 +49,12 @@ class ValidateInstancerFrameRanges(pyblish.api.InstancePlugin):
     order = pyblish.api.ValidatorOrder
     label = 'Instancer Cache Frame Ranges'
     families = ['instancer']
+    optional = False
 
     @classmethod
     def get_invalid(cls, instance):
-
+        if not self.is_active(instance.data):
+            return
         import pyseq
 
         start_frame = instance.data.get("frameStart", 0)

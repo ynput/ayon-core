@@ -7,9 +7,9 @@ loader will use them instead of native vray vrmesh format.
 """
 import os
 
-from ayon_api import get_representation_by_name
 import maya.cmds as cmds
 
+import ayon_api
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     load,
