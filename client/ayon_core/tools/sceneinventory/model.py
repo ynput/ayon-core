@@ -293,14 +293,11 @@ class InventoryModel(TreeModel):
 
         # Query the highest available version so the model can know
         # whether current version is currently up-to-date.
-        highest_versions = ayon_api.get_versions(
+        highest_versions = ayon_api.get_last_versions(
             project_name,
             product_ids={
                 group["version"]["productId"] for group in grouped.values()
             },
-            latest=True,
-            standard=True,
-            hero=False,
             fields=["productId", "version"]
         )
         highest_version_by_product_id = {
