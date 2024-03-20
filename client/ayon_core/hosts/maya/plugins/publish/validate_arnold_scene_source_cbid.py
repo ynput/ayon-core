@@ -1,11 +1,15 @@
 import pyblish.api
 from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder, PublishValidationError, RepairAction
+    ValidateContentsOrder,
+    PublishValidationError,
+    RepairAction,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
+class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin,
+                                    OptionalPyblishPluginMixin):
     """Validate Arnold Scene Source Cbid.
 
     It is required for the proxy and content nodes to share the same cbid.
