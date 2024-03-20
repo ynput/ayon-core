@@ -8,10 +8,7 @@ import ayon_api
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from ayon_core.pipeline import (
-    get_current_project_name,
-    HeroVersionType,
-)
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.models import TreeModel, Item
