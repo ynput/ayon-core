@@ -1,3 +1,4 @@
+import inspect
 from typing import List
 
 import mathutils
@@ -5,29 +6,26 @@ import bpy
 
 import pyblish.api
 
+from ayon_core.hosts.blender.api import plugin
 import ayon_core.hosts.blender.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    RepairAction
 )
 
 
 class ValidateTransformZero(pyblish.api.InstancePlugin,
                             OptionalPyblishPluginMixin):
-    """Transforms can't have any values
-
-    To solve this issue, try freezing the transforms. So long
-    as the transforms, rotation and scale values are zero,
-    you're all good.
-
-    """
+    """Transforms can't have any values"""
 
     order = ValidateContentsOrder
     hosts = ["blender"]
     families = ["model"]
     label = "Transform Zero"
-    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction,
+               RepairAction]
 
     _identity = mathutils.Matrix()
 
@@ -51,5 +49,41 @@ class ValidateTransformZero(pyblish.api.InstancePlugin,
             names = ", ".join(obj.name for obj in invalid)
             raise PublishValidationError(
                 "Objects found in instance which do not"
-                f" have transform set to zero: {names}"
+                f" have transform set to zero: {names}",
+                description=self.get_description()
             )
+
+    @classmethod
+    def repair(cls, instance):
+
+        invalid = cls.get_invalid(instance)
+        if not invalid:
+            return
+
+        context = plugin.create_blender_context(
+            active=invalid[0], selected=invalid
+        )
+        with bpy.context.temp_override(**context):
+            # TODO: Preferably this does allow custom pivot point locations
+            #  and if so, this should likely apply to the delta instead
+            #  using `bpy.ops.object.transforms_to_deltas(mode="ALL")`
+            bpy.ops.object.transform_apply(location=True,
+                                           rotation=True,
+                                           scale=True)
+
+    def get_description(self):
+        return inspect.cleandoc(
+            """## Transforms can't have any values.
+
+            The location, rotation and scale on the transform must be at
+            the default values. This also goes for the delta transforms.
+
+            To solve this issue, try freezing the transforms:
+            - `Object` > `Apply` > `All Transforms`
+
+            Using the Repair action directly will do the same.
+
+            So long as the transforms, rotation and scale values are zero,
+            you're all good.
+            """
+        )
