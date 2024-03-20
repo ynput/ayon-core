@@ -37,7 +37,8 @@ class ValidateFileSaved(pyblish.api.ContextPlugin,
         if not context.data["currentFile"]:
             # File has not been saved at all and has no filename
             raise PublishValidationError(
-                "Current file is empty. Save the file before continuing."
+                "Current workfile has not been saved yet.\n"
+                "Save the workfile before continuing."
             )
 
         # Do not validate workfile has unsaved changes if only instances
