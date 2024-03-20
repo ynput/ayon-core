@@ -26,10 +26,11 @@ class CacheModelLoader(plugin.AssetLoader):
     Note:
         At least for now it only supports Alembic files.
     """
-    product_types = {"model", "pointcache", "animation"}
-    representations = ["abc"]
+    product_types = {"model", "pointcache", "animation", "usd"}
+    representations = ["abc", "usd"]
 
-    label = "Load Alembic"
+    # TODO: Should USD loader be a separate loader instead?
+    label = "Load Alembic/USD"
     icon = "code-fork"
     color = "orange"
 
@@ -53,10 +54,21 @@ class CacheModelLoader(plugin.AssetLoader):
         plugin.deselect_all()
 
         relative = bpy.context.preferences.filepaths.use_relative_paths
-        bpy.ops.wm.alembic_import(
-            filepath=libpath,
-            relative_path=relative
-        )
+
+        if any(libpath.lower().endswith(ext)
+               for ext in [".usd", ".usda", ".usdc"]):
+            # USD
+            bpy.ops.wm.usd_import(
+                filepath=libpath,
+                relative_path=relative
+            )
+
+        else:
+            # Alembic
+            bpy.ops.wm.alembic_import(
+                filepath=libpath,
+                relative_path=relative
+            )
 
         imported = lib.get_selection()
 
@@ -161,7 +173,6 @@ class CacheModelLoader(plugin.AssetLoader):
 
         self._link_objects(objects, asset_group, containers, asset_group)
 
-        product_type = context["product"]["productType"]
         asset_group[AVALON_PROPERTY] = {
             "schema": "openpype:container-2.0",
             "id": AVALON_CONTAINER_ID,
