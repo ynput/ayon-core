@@ -6,10 +6,12 @@ import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateShapeRenderStats(pyblish.api.Validator):
+class ValidateShapeRenderStats(pyblish.api.Validator,
+                               OptionalPyblishPluginMixin):
     """Ensure all render stats are set to the default values."""
 
     order = ValidateMeshOrder
@@ -18,6 +20,7 @@ class ValidateShapeRenderStats(pyblish.api.Validator):
     label = 'Shape Default Render Stats'
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
+    optional = True
 
     defaults = {'castsShadows': 1,
                 'receiveShadows': 1,
@@ -46,7 +49,8 @@ class ValidateShapeRenderStats(pyblish.api.Validator):
         return invalid
 
     def process(self, instance):
-
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
 
         if invalid:
