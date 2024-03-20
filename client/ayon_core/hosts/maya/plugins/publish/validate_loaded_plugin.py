@@ -4,11 +4,13 @@ import maya.cmds as cmds
 
 from ayon_core.pipeline.publish import (
     RepairContextAction,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateLoadedPlugin(pyblish.api.ContextPlugin):
+class ValidateLoadedPlugin(pyblish.api.ContextPlugin,
+                           OptionalPyblishPluginMixin):
     """Ensure there are no unauthorized loaded plugins"""
 
     label = "Loaded Plugin"

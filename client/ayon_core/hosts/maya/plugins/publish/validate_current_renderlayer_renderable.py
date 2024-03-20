@@ -1,10 +1,13 @@
 import pyblish.api
 
 from maya import cmds
-from ayon_core.pipeline.publish import context_plugin_should_run
+from ayon_core.pipeline.publish import (
+    context_plugin_should_run,
+    OptionalPyblishPluginMixin
+)
 
-
-class ValidateCurrentRenderLayerIsRenderable(pyblish.api.ContextPlugin):
+class ValidateCurrentRenderLayerIsRenderable(pyblish.api.ContextPlugin,
+                                             OptionalPyblishPluginMixin):
     """Validate if current render layer has a renderable camera
 
     There is a bug in Redshift which occurs when the current render layer
