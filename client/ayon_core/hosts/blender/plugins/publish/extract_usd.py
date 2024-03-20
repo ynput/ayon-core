@@ -49,21 +49,21 @@ class ExtractUSD(publish.Extractor):
             active=root, selected=selected)
 
         # Export USD
-        bpy.ops.wm.usd_export(
-            context,
-            filepath=filepath,
-            selected_objects_only=True,
-            export_textures=False,
-            relative_paths=False,
-            export_animation=False,
-            export_hair=False,
-            export_uvmaps=True,
-            # TODO: add for new version of Blender (4+?)
-            # export_mesh_colors=True,
-            export_normals=True,
-            export_materials=True,
-            use_instancing=True
-        )
+        with bpy.context.temp_override(**context):
+            bpy.ops.wm.usd_export(
+                filepath=filepath,
+                selected_objects_only=True,
+                export_textures=False,
+                relative_paths=False,
+                export_animation=False,
+                export_hair=False,
+                export_uvmaps=True,
+                # TODO: add for new version of Blender (4+?)
+                # export_mesh_colors=True,
+                export_normals=True,
+                export_materials=True,
+                use_instancing=True
+            )
 
         plugin.deselect_all()
 
