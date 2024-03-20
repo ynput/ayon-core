@@ -80,7 +80,7 @@ class ExtractABC(publish.Extractor, publish.OptionalPyblishPluginMixin):
                         "excludes the mesh's normals.\n"
                         "Enabling this usually result in smaller file size "
                         "due to lack of normals.",
-                default=True
+                default=False
             )
         ]
 
