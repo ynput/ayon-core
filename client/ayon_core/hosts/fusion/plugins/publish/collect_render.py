@@ -53,7 +53,7 @@ class CollectFusionRender(
             if product_type not in ["render", "image"]:
                 continue
 
-            task_name = context.data["task"]
+            task_name = inst.data["task"]
             tool = inst.data["transientData"]["tool"]
 
             instance_families = inst.data.get("families", [])
