@@ -479,15 +479,10 @@ def update_container(container, version=-1):
             project_name, current_version["productId"]
         )
     elif version == -1:
-        # TODO: Use `ayon_api.get_last_version_by_product_id` when fixed
-        #   to not return hero versions instead of the last version
-        new_version = next(ayon_api.get_versions(
-            project_name,
-            product_ids=[current_version["productId"]],
-            standard=True,
-            hero=False,
-            latest=True,
-        ), None)
+        new_version = ayon_api.get_last_version_by_product_id(
+            project_name, current_version["productId"]
+        )
+
     else:
         new_version = ayon_api.get_version_by_name(
             project_name, version, current_version["productId"]
