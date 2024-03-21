@@ -130,10 +130,18 @@ class LoadClip(plugin.NukeLoader):
             first = 1
             last = first + duration
 
-        # If a slate is present, the frame range is 1 frame longer.
+        # If a slate is present, the frame range is 1 frame longer for movies,
+        # but file sequences its the first frame that is 1 frame lower.
         slate_frame = repre_entity["data"].get("slateFrame", False)
         if slate_frame:
-            last += 1
+            extension = "." + repre_entity["context"]["ext"]
+
+            if extension in VIDEO_EXTENSIONS:
+                last += 1
+
+            files_count = len(repre_entity["files"])
+            if extension in IMAGE_EXTENSIONS and files_count != 1:
+                first -= 1
 
         # Fallback to folder name when namespace is None
         if namespace is None:
