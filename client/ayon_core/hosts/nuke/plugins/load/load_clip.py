@@ -130,6 +130,11 @@ class LoadClip(plugin.NukeLoader):
             first = 1
             last = first + duration
 
+        # If a slate is present, the frame range is 1 frame longer.
+        slate_frame = repre_entity["data"].get("slateFrame", False)
+        if slate_frame:
+            last += 1
+
         # Fallback to folder name when namespace is None
         if namespace is None:
             namespace = context["folder"]["name"]
@@ -167,7 +172,9 @@ class LoadClip(plugin.NukeLoader):
                 repre_entity
             )
 
-            self._set_range_to_node(read_node, first, last, start_at_workfile)
+            self._set_range_to_node(
+                read_node, first, last, start_at_workfile, slate_frame
+            )
 
             version_name = version_entity["version"]
             if version_name < 0:
@@ -402,14 +409,23 @@ class LoadClip(plugin.NukeLoader):
             for member in members:
                 nuke.delete(member)
 
-    def _set_range_to_node(self, read_node, first, last, start_at_workfile):
+    def _set_range_to_node(
+        self, read_node, first, last, start_at_workfile, slate_frame=False
+    ):
         read_node['origfirst'].setValue(int(first))
         read_node['first'].setValue(int(first))
         read_node['origlast'].setValue(int(last))
         read_node['last'].setValue(int(last))
 
         # set start frame depending on workfile or version
-        self._loader_shift(read_node, start_at_workfile)
+        if start_at_workfile:
+            read_node['frame_mode'].setValue("start at")
+
+            start_frame = self.script_start
+            if slate_frame:
+                start_frame -= 1
+
+            read_node['frame'].setValue(str(start_frame))
 
     def _make_retimes(self, parent_node, version_data):
         ''' Create all retime and timewarping nodes with copied animation '''
@@ -465,18 +481,6 @@ class LoadClip(plugin.NukeLoader):
                 # connect to original inputs
                 for i, n in enumerate(dependent_nodes):
                     last_node.setInput(i, n)
-
-    def _loader_shift(self, read_node, workfile_start=False):
-        """ Set start frame of read node to a workfile start
-
-        Args:
-            read_node (nuke.Node): The nuke's read node
-            workfile_start (bool): set workfile start frame if true
-
-        """
-        if workfile_start:
-            read_node['frame_mode'].setValue("start at")
-            read_node['frame'].setValue(str(self.script_start))
 
     def _get_node_name(self, context):
         folder_entity = context["folder"]
