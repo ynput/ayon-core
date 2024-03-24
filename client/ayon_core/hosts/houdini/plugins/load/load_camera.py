@@ -167,6 +167,9 @@ class CameraLoader(load.LoaderPlugin):
 
         temp_camera.destroy()
 
+    def switch(self, container, context):
+        self.update(container, context)
+
     def remove(self, container):
 
         node = container["node"]
