@@ -322,7 +322,9 @@ class ExtractCameraAlembicModel(BaseSettingsModel):
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     bake_attributes: str = SettingsField(
-        "[]", title="Base Attributes", widget="textarea"
+        "[]", title="Bake Attributes", widget="textarea",
+        description="List of attributes that will be included in the alembic "
+                    "export.",
     )
 
     @validator("bake_attributes")
