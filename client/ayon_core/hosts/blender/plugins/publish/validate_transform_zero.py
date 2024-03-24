@@ -6,7 +6,7 @@ import bpy
 
 import pyblish.api
 
-from ayon_core.hosts.blender.api import plugin
+from ayon_core.hosts.blender.api import plugin, lib
 import ayon_core.hosts.blender.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
@@ -63,13 +63,18 @@ class ValidateTransformZero(pyblish.api.InstancePlugin,
         context = plugin.create_blender_context(
             active=invalid[0], selected=invalid
         )
-        with bpy.context.temp_override(**context):
-            # TODO: Preferably this does allow custom pivot point locations
-            #  and if so, this should likely apply to the delta instead
-            #  using `bpy.ops.object.transforms_to_deltas(mode="ALL")`
-            bpy.ops.object.transform_apply(location=True,
-                                           rotation=True,
-                                           scale=True)
+        with lib.maintained_selection():
+            with bpy.context.temp_override(**context):
+                plugin.deselect_all()
+                for obj in invalid:
+                    obj.select_set(True)
+
+                # TODO: Preferably this does allow custom pivot point locations
+                #  and if so, this should likely apply to the delta instead
+                #  using `bpy.ops.object.transforms_to_deltas(mode="ALL")`
+                bpy.ops.object.transform_apply(location=True,
+                                               rotation=True,
+                                               scale=True)
 
     def get_description(self):
         return inspect.cleandoc(
