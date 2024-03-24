@@ -84,7 +84,7 @@ class ValidateModelMeshUvMap1(
 
     def get_description(self):
         return inspect.cleandoc(
-            """## Meshes must have `map1` uv set
+            """## Meshes must have map1 uv set
 
             To accompany a better Maya-focused pipeline with Alembics it is
             expected that a Mesh has a `map1` UV set. Blender defaults to
