@@ -1,6 +1,11 @@
-from ayon_core.lib import EnumDef
+from ayon_core.lib import (
+    UILabelDef,
+    NumberDef,
+    EnumDef
+)
 
 from ayon_core.hosts.fusion.api.plugin import GenericCreateSaver
+from ayon_core.hosts.fusion.api.lib import get_current_comp
 
 
 class CreateSaver(GenericCreateSaver):
@@ -44,6 +49,7 @@ class CreateSaver(GenericCreateSaver):
             self._get_render_target_enum(),
             self._get_reviewable_bool(),
             self._get_frame_range_enum(),
+            self._get_custom_frame_range_attribute_defs(),
             self._get_image_format_enum(),
         ]
         return attr_defs
@@ -53,6 +59,7 @@ class CreateSaver(GenericCreateSaver):
             "current_folder": "Current Folder context",
             "render_range": "From render in/out",
             "comp_range": "From composition timeline",
+            "custom_range": "Custom frame range",
         }
 
         return EnumDef(
@@ -61,3 +68,66 @@ class CreateSaver(GenericCreateSaver):
             label="Frame range source",
             default=self.default_frame_range_option
         )
+
+    @staticmethod
+    def _get_custom_frame_range_attribute_defs() -> list:
+
+        # Define custom frame range defaults based on current comp
+        # timeline settings (if a comp is currently open)
+        comp = get_current_comp()
+        if comp is not None:
+            attrs = comp.GetAttrs()
+            frame_defaults = {
+                "frameStart": int(attrs["COMPN_GlobalStart"]),
+                "frameEnd": int(attrs["COMPN_GlobalEnd"]),
+                "handleStart": int(
+                    attrs["COMPN_RenderStart"] - attrs["COMPN_GlobalStart"]
+                ),
+                "handleEnd": int(
+                    attrs["COMPN_GlobalEnd"] - attrs["COMPN_RenderEnd"]
+                ),
+            }
+        else:
+            frame_defaults = {
+                "frameStart": 1001,
+                "frameEnd": 1100,
+                "handleStart": 0,
+                "handleEnd": 0
+            }
+
+        return [
+            UILabelDef(
+                label="<br><b>Custom Frame Range</b>"
+            ),
+            UILabelDef(
+                label="<i>only used with 'Custom frame range' source</i>"
+            ),
+            NumberDef(
+                "custom_frameStart",
+                label="Frame Start",
+                default=frame_defaults["frameStart"],
+                minimum=0,
+                decimals=0
+            ),
+            NumberDef(
+                "custom_frameEnd",
+                label="Frame End",
+                default=frame_defaults["frameEnd"],
+                minimum=0,
+                decimals=0
+            ),
+            NumberDef(
+                "custom_handleStart",
+                label="Handle Start",
+                default=frame_defaults["handleStart"],
+                minimum=0,
+                decimals=0
+            ),
+            NumberDef(
+                "custom_handleEnd",
+                label="Handle End",
+                default=frame_defaults["handleEnd"],
+                minimum=0,
+                decimals=0
+            )
+        ]
