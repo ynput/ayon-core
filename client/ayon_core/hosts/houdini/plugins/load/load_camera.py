@@ -198,7 +198,6 @@ class CameraLoader(load.LoaderPlugin):
     def _match_maya_render_mask(self, camera):
         """Workaround to match Maya render mask in Houdini"""
 
-        # print("Setting match maya render mask ")
         parm = camera.parm("aperture")
         expression = parm.expression()
         expression = expression.replace("return ", "aperture = ")
