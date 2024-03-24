@@ -1,4 +1,5 @@
 import os
+import json
 
 from maya import cmds
 
@@ -25,6 +26,7 @@ class ExtractAlembic(publish.Extractor):
     hosts = ["maya"]
     families = ["pointcache", "model", "vrayproxy.alembic"]
     targets = ["local", "remote"]
+    bake_attributes = "[]"
 
     def process(self, instance):
         if instance.data.get("farm"):
@@ -41,6 +43,13 @@ class ExtractAlembic(publish.Extractor):
         attrs = [value for value in attrs if value.strip()]
         attrs += instance.data.get("userDefinedAttributes", [])
         attrs += ["cbId"]
+
+        # bake specified attributes in preset
+        bake_attributes = json.loads(self.bake_attributes)
+        assert isinstance(bake_attributes, list), (
+            "Attributes to bake must be specified as a list"
+        )
+        attrs += bake_attributes
 
         attr_prefixes = instance.data.get("attrPrefix", "").split(";")
         attr_prefixes = [value for value in attr_prefixes if value.strip()]

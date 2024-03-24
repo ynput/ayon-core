@@ -299,6 +299,11 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
+    bake_attributes: str = SettingsField(
+        "[]", title="Bake Attributes", widget="textarea",
+        description="List of attributes that will be included in the alembic "
+                    "export.",
+    )
 
 
 class ExtractObjModel(BaseSettingsModel):
@@ -1193,7 +1198,8 @@ DEFAULT_PUBLISH_SETTINGS = {
             "pointcache",
             "model",
             "vrayproxy.alembic"
-        ]
+        ],
+        "bake_attributes": "[]"
     },
     "ExtractObj": {
         "enabled": False,
