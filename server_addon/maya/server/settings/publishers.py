@@ -300,12 +300,12 @@ class ExtractAlembicModel(BaseSettingsModel):
         default_factory=list,
         title="Families")
     bake_attributes: list[str] = SettingsField(
-        "", title="Bake Attributes", widget="textarea",
+        default_factory=list, title="Bake Attributes",
         description="List of attributes that will be included in the alembic "
                     "export.",
-    ),
+    )
     bake_attribute_prefixes: list[str] = SettingsField(
-        "", title="Bake Attribute Prefixes", widget="textarea",
+        default_factory=list, title="Bake Attribute Prefixes",
         description="List of attribute prefixes for attributes that will be "
                     "included in the alembic export.",
     )
@@ -1205,7 +1205,7 @@ DEFAULT_PUBLISH_SETTINGS = {
             "vrayproxy.alembic"
         ],
         "bake_attributes": [],
-        "bake_attribute_prefixes": [],
+        "bake_attribute_prefixes": []
     },
     "ExtractObj": {
         "enabled": False,
