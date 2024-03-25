@@ -72,7 +72,7 @@ class FlamePrelaunch(PreLaunchHook):
         project_data = {
             "Name": project_entity["name"],
             "Nickname": project_entity["code"],
-            "Description": "Created by OpenPype",
+            "Description": "Created by AYON",
             "SetupDir": project_entity["name"],
             "FrameWidth": int(width),
             "FrameHeight": int(height),
