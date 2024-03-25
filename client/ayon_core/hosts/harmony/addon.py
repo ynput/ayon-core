@@ -18,3 +18,16 @@ class HarmonyAddon(AYONAddon, IHostAddon):
 
     def get_workfile_extensions(self):
         return [".zip"]
+
+    def get_launch_hook_paths(self, app):
+        if app.host_name != self.host_name:
+            return []
+        return [
+            os.path.join(HARMONY_ADDON_ROOT, "hooks")
+        ]
+
+
+def get_launch_script_path():
+    return os.path.join(
+        HARMONY_ADDON_ROOT, "api", "launch_script.py"
+    )
