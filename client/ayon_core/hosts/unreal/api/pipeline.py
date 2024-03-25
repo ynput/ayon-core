@@ -98,7 +98,7 @@ class UnrealHost(HostBase, ILoadHost, IPublishHost):
 
 
 def install():
-    """Install Unreal configuration for OpenPype."""
+    """Install Unreal configuration for AYON."""
     print("-=" * 40)
     logo = '''.
 .

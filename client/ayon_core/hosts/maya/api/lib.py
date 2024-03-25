@@ -2931,13 +2931,13 @@ def bake_to_world_space(nodes,
 
 
 def load_capture_preset(data):
-    """Convert OpenPype Extract Playblast settings to `capture` arguments
+    """Convert AYON Extract Playblast settings to `capture` arguments
 
     Input data is the settings from:
         `project_settings/maya/publish/ExtractPlayblast/capture_preset`
 
     Args:
-        data (dict): Capture preset settings from OpenPype settings
+        data (dict): Capture preset settings from AYON settings
 
     Returns:
         dict: `capture.capture` compatible keyword arguments
@@ -3288,7 +3288,7 @@ def set_colorspace():
     else:
         # TODO: deprecated code from 3.15.5 - remove
         # Maya 2022+ introduces new OCIO v2 color management settings that
-        # can override the old color management preferences. OpenPype has
+        # can override the old color management preferences. AYON has
         # separate settings for both so we fall back when necessary.
         use_ocio_v2 = imageio["colorManagementPreference_v2"]["enabled"]
         if use_ocio_v2 and not ocio_v2_support:

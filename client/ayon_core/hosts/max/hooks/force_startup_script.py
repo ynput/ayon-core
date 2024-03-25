@@ -6,7 +6,7 @@ from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
 
 
 class ForceStartupScript(PreLaunchHook):
-    """Inject OpenPype environment to 3ds max.
+    """Inject AYON environment to 3ds max.
 
     Note that this works in combination whit 3dsmax startup script that
     is translating it back to PYTHONPATH for cases when 3dsmax drops PYTHONPATH

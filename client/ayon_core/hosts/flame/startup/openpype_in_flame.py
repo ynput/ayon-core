@@ -12,7 +12,7 @@ from ayon_core.pipeline import (
 
 
 def openpype_install():
-    """Registering OpenPype in context
+    """Registering AYON in context
     """
     install_host(opfapi)
     print("Registered host: {}".format(registered_host()))

@@ -1726,7 +1726,7 @@ class PlaceholderCreateMixin(object):
                 items=creator_items,
                 tooltip=(
                     "Creator"
-                    "\nDefines what OpenPype creator will be used to"
+                    "\nDefines what AYON creator will be used to"
                     " create publishable instance."
                     "\nUseable creator depends on current host's creator list."
                     "\nField is case sensitive."
