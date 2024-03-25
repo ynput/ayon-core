@@ -10,7 +10,7 @@ from ayon_core.tools.utils.widgets import (
     OptionalAction,
     OptionDialog,
 )
-from ayon_core.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon
 
 
 def show_actions_menu(action_items, global_point, one_item_selected, parent):

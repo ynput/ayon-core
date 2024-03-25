@@ -5,8 +5,6 @@ import json
 
 import pyblish.api
 
-from ayon_core.client import get_asset_name_identifier
-
 
 class CollectFrameTagInstances(pyblish.api.ContextPlugin):
     """Collect frames from tags.
@@ -104,8 +102,7 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
 
         # first collect all available product tag frames
         product_data = {}
-        context_asset_doc = context.data["assetEntity"]
-        context_folder_path = get_asset_name_identifier(context_asset_doc)
+        context_folder_path = context.data["folderEntity"]["path"]
 
         for tag_data in sequence_tags:
             frame = int(tag_data["start"])

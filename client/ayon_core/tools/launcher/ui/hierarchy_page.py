@@ -6,7 +6,7 @@ from ayon_core.tools.utils import (
     SquareButton,
     RefreshButton,
 )
-from ayon_core.tools.ayon_utils.widgets import (
+from ayon_core.tools.utils import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,

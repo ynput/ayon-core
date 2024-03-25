@@ -85,7 +85,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 if k not in ("id", "applieswhole", "label")
             })
 
-            asset, asset_name = self._get_asset_data(tag_data)
+            asset, asset_name = self._get_folder_data(tag_data)
 
             product_name = tag_data.get("productName")
             if product_name is None:
@@ -242,13 +242,13 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         self.log.debug(
             "_ instance.data: {}".format(pformat(instance.data)))
 
-    def _get_asset_data(self, data):
+    def _get_folder_data(self, data):
         folder_path = data.pop("folderPath", None)
 
         if data.get("asset_name"):
-            asset_name = data["asset_name"]
+            folder_name = data["asset_name"]
         else:
-            asset_name = data["asset"]
+            folder_name = data["asset"]
 
         # backward compatibility for clip tags
         # which are missing folderPath key
@@ -257,10 +257,10 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             hierarchy_path = data["hierarchy"]
             folder_path = "/{}/{}".format(
                 hierarchy_path,
-                asset_name
+                folder_name
             )
 
-        return folder_path, asset_name
+        return folder_path, folder_name
 
     def create_audio_instance(self, context, **data):
         product_name = "audioMain"

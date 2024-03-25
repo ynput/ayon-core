@@ -127,7 +127,7 @@ def containerise(timeline_item,
         "name": str(name),
         "namespace": str(namespace),
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     })
 
     if data:
