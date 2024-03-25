@@ -9,7 +9,6 @@ class CollectAutoImage(pyblish.api.ContextPlugin):
     """
 
     label = "Collect Auto Image"
-    order = pyblish.api.CollectorOrder
     hosts = ["photoshop"]
     order = pyblish.api.CollectorOrder + 0.2
 
