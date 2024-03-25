@@ -39,7 +39,7 @@ def is_running_from_build():
     return True
 
 
-def is_using_ui_executable():
+def is_using_ayon_console():
     """AYON launcher UI windows executable is used.
 
     This function make sense only on Windows platform. For other platforms

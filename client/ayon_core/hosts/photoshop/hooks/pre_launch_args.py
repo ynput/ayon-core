@@ -4,7 +4,7 @@ import subprocess
 
 from ayon_core.lib import (
     get_ayon_launcher_args,
-    is_using_ui_executable,
+    is_using_ayon_console,
 )
 from ayon_core.lib.applications import (
     PreLaunchHook,
@@ -30,7 +30,7 @@ def get_launch_kwargs(kwargs):
     if platform.system().lower() != "windows":
         return kwargs
 
-    if is_using_ui_executable():
+    if is_using_ayon_console():
         kwargs.update({
             "creationflags": subprocess.CREATE_NO_WINDOW,
             "stdout": subprocess.DEVNULL,
