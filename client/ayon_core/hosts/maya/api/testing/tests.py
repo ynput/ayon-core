@@ -5,7 +5,11 @@ import maya.cmds as cmds
 
 import pyblish.util
 
-from ayon_core.pipeline import registered_host
+from ayon_core.pipeline import (
+    registered_host,
+    get_current_folder_path,
+    get_current_task_name
+)
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.hosts.maya.api.workfile_template_builder import (
     MayaTemplateBuilder
@@ -59,12 +63,12 @@ def test_create():
         creator_plugin = context.creators[instance.data["creator_identifier"]]
 
         instance_data_keys = [
-            "folderPath",
-            "task",
             "variant",
             product_type_key_name
         ]
         instance_data = {x: instance.data[x] for x in instance_data_keys}
+        instance_data["task"] = get_current_task_name()
+        instance_data["folderPath"] = get_current_folder_path()
 
         hierarchy = {}
         if "instance_node" in instance.data:
