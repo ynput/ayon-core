@@ -330,7 +330,7 @@ def launch_zip_file(filepath):
     kwargs = {}
     if (
         platform.system().lower() == "windows"
-        and is_using_ayon_console()
+        and not is_using_ayon_console()
     ):
         kwargs.update({
             "creationflags": subprocess.CREATE_NO_WINDOW,
