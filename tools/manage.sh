@@ -83,16 +83,19 @@ realpath () {
   echo $(cd $(dirname "$1"); pwd)/$(basename "$1")
 }
 
-main () {
-  detect_python || return 1
-
+##############################################################################
+# Create Virtual Environment
+# Globals:
+#   repo_root
+#   POETRY_HOME
+#   poetry_verbosity
+# Arguments:
+#   Path to resolve
+# Returns:
+#   None
+###############################################################################
+create_env () {
   # Directories
-  repo_root=$(realpath $(dirname $(dirname "${BASH_SOURCE[0]}")))
-
-  if [[ -z $POETRY_HOME ]]; then
-    export POETRY_HOME="$repo_root/.poetry"
-  fi
-
   pushd "$repo_root" > /dev/null || return > /dev/null
 
   echo -e "${BIGreen}>>>${RST} Reading Poetry ... \c"
@@ -115,10 +118,105 @@ main () {
     return 1
   fi
 
-  echo -e "${BIGreen}>>>${RST} Installing pre-commit hooks ..."
-  "$POETRY_HOME/bin/poetry" run pre-commit install
+  echo -e "${BIGreen}>>>${RST} Cleaning cache files ..."
+  clean_pyc
+
+  "$POETRY_HOME/bin/poetry" run python -m pip install --disable-pip-version-check --force-reinstall pip
+
+  if [ -d "$repo_root/.git" ]; then
+    echo -e "${BIGreen}>>>${RST} Installing pre-commit hooks ..."
+    "$POETRY_HOME/bin/poetry" run pre-commit install
+  fi
+}
+
+print_art() {
+  echo -e "${BGreen}"
+  cat <<-EOF
+
+                    ▄██▄
+         ▄███▄ ▀██▄ ▀██▀ ▄██▀ ▄██▀▀▀██▄    ▀███▄      █▄
+        ▄▄ ▀██▄  ▀██▄  ▄██▀ ██▀      ▀██▄  ▄  ▀██▄    ███
+       ▄██▀  ██▄   ▀ ▄▄ ▀  ██         ▄██  ███  ▀██▄  ███
+      ▄██▀    ▀██▄   ██    ▀██▄      ▄██▀  ███    ▀██ ▀█▀
+     ▄██▀      ▀██▄  ▀█      ▀██▄▄▄▄██▀    █▀      ▀██▄
+
+     ·  · - =[ by YNPUT ]:[ http://ayon.ynput.io ]= - ·  ·
+
+EOF
+  echo -e "${RST}"
+}
+
+default_help() {
+  print_art
+  echo -e "${BWhite}AYON Addon management script${RST}"
+  echo ""
+  echo -e "Usage: ${BWhite}./manage.sh${RST} ${BICyan}[command]${RST}"
+  echo ""
+  echo "${BWhite}Commands:${RST}"
+  echo "  ${BWhite}create-env${RST}      ${BCyan}Install Poetry and update venv by lock file${RST}"
+  echo "  ${BWhite}ruff-check${RST}      ${BCyan}Run Ruff check for the repository${RST}"
+  echo "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
+  echo "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
+  echo ""
+}
+
+run_ruff () {
+  echo -e "${BIGreen}>>>${RST} Running Ruff check ..."
+  "$POETRY_HOME/bin/poetry" run ruff
+}
+
+run_ruff_check () {
+  echo -e "${BIGreen}>>>${RST} Running Ruff fix ..."
+  "$POETRY_HOME/bin/poetry" run ruff --fix
+}
+
+run_codespell () {
+  echo -e "${BIGreen}>>>${RST} Running codespell check ..."
+  "$POETRY_HOME/bin/poetry" run codespell
+}
+
+main () {
+  detect_python || return 1
+
+  # Directories
+  repo_root=$(realpath $(dirname $(dirname "${BASH_SOURCE[0]}")))
+
+  if [[ -z $POETRY_HOME ]]; then
+    export POETRY_HOME="$repo_root/.poetry"
+  fi
+
+  pushd "$repo_root" > /dev/null || return > /dev/null
+
+  # Use first argument, lower and keep only characters
+  function_name="$(echo "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z]*//g')"
+
+  case $function_name in
+    "createenv")
+      create_env || return_code=$?
+      exit $return_code
+      ;;
+    "ruffcheck")
+      run_ruff || return_code=$?
+      exit $return_code
+      ;;
+    "rufffix")
+      run_ruff_check || return_code=$?
+      exit $return_code
+      ;;
+    "codespell")
+      run_codespell || return_code=$?
+      exit $return_code
+      ;;
+  esac
+
+  if [ "$function_name" != "" ]; then
+    echo -e "${BIRed}!!!${RST} Unknown function name: $function_name"
+  fi
+
+  default_help
+  exit $return_code
 }
 
 return_code=0
-main || return_code=$?
+main "$@" || return_code=$?
 exit $return_code
