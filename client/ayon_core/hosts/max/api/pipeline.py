@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Pipeline tools for OpenPype Houdini integration."""
+"""Pipeline tools for AYON Houdini integration."""
 import os
 import logging
 from operator import attrgetter
@@ -148,7 +148,7 @@ attributes "OpenPypeContext"
 
 
 def ls() -> list:
-    """Get all OpenPype instances."""
+    """Get all AYON containers."""
     objs = rt.objects
     containers = [
         obj for obj in objs

@@ -125,7 +125,7 @@ class OpenPypeMenu(QtWidgets.QWidget):
         self._pulse = FusionPulse(parent=self)
         self._pulse.start()
 
-        # Detect Fusion events as OpenPype events
+        # Detect Fusion events as AYON events
         self._event_handler = FusionEventHandler(parent=self)
         self._event_handler.start()
 
