@@ -1,4 +1,4 @@
-""" OpenPype custom script for setting up write nodes for non-publish """
+""" AYON custom script for setting up write nodes for non-publish """
 import os
 import nuke
 import nukescripts
