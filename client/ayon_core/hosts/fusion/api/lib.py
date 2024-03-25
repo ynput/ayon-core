@@ -4,19 +4,8 @@ import re
 import contextlib
 
 from ayon_core.lib import Logger
-from ayon_core.client import (
-    get_asset_by_name,
-    get_subset_by_name,
-    get_last_version_by_subset_id,
-    get_representation_by_id,
-    get_representation_by_name,
-    get_representation_parents,
-)
-from ayon_core.pipeline import (
-    switch_container,
-    get_current_project_name,
-)
-from ayon_core.pipeline.context_tools import get_current_project_asset
+
+from ayon_core.pipeline.context_tools import get_current_project_folder
 
 self = sys.modules[__name__]
 self._project = None
@@ -63,23 +52,25 @@ def update_frame_range(start, end, comp=None, set_render_range=True,
         comp.SetAttrs(attrs)
 
 
-def set_asset_framerange():
-    """Set Comp's frame range based on current asset"""
-    asset_doc = get_current_project_asset()
-    start = asset_doc["data"]["frameStart"]
-    end = asset_doc["data"]["frameEnd"]
-    handle_start = asset_doc["data"]["handleStart"]
-    handle_end = asset_doc["data"]["handleEnd"]
+def set_current_context_framerange():
+    """Set Comp's frame range based on current folder."""
+    folder_entity = get_current_project_folder()
+    folder_attributes = folder_entity["attrib"]
+    start = folder_attributes["frameStart"]
+    end = folder_attributes["frameEnd"]
+    handle_start = folder_attributes["handleStart"]
+    handle_end = folder_attributes["handleEnd"]
     update_frame_range(start, end, set_render_range=True,
                        handle_start=handle_start,
                        handle_end=handle_end)
 
 
-def set_asset_resolution():
-    """Set Comp's resolution width x height default based on current asset"""
-    asset_doc = get_current_project_asset()
-    width = asset_doc["data"]["resolutionWidth"]
-    height = asset_doc["data"]["resolutionHeight"]
+def set_current_context_resolution():
+    """Set Comp's resolution width x height default based on current folder"""
+    folder_entity = get_current_project_folder()
+    folder_attributes = folder_entity["attrib"]
+    width = folder_attributes["resolutionWidth"]
+    height = folder_attributes["resolutionHeight"]
     comp = get_current_comp()
 
     print("Setting comp frame format resolution to {}x{}".format(width,
@@ -91,7 +82,7 @@ def set_asset_resolution():
 
 
 def validate_comp_prefs(comp=None, force_repair=False):
-    """Validate current comp defaults with asset settings.
+    """Validate current comp defaults with folder settings.
 
     Validates fps, resolutionWidth, resolutionHeight, aspectRatio.
 
@@ -103,22 +94,23 @@ def validate_comp_prefs(comp=None, force_repair=False):
 
     log = Logger.get_logger("validate_comp_prefs")
 
-    fields = [
-        "name",
-        "data.fps",
-        "data.resolutionWidth",
-        "data.resolutionHeight",
-        "data.pixelAspect"
-    ]
-    asset_doc = get_current_project_asset(fields=fields)
-    asset_data = asset_doc["data"]
+    fields = {
+        "path",
+        "attrib.fps",
+        "attrib.resolutionWidth",
+        "attrib.resolutionHeight",
+        "attrib.pixelAspect",
+    }
+    folder_entity = get_current_project_folder(fields=fields)
+    folder_path = folder_entity["path"]
+    folder_attributes = folder_entity["attrib"]
 
     comp_frame_format_prefs = comp.GetPrefs("Comp.FrameFormat")
 
     # Pixel aspect ratio in Fusion is set as AspectX and AspectY so we convert
     # the data to something that is more sensible to Fusion
-    asset_data["pixelAspectX"] = asset_data.pop("pixelAspect")
-    asset_data["pixelAspectY"] = 1.0
+    folder_attributes["pixelAspectX"] = folder_attributes.pop("pixelAspect")
+    folder_attributes["pixelAspectY"] = 1.0
 
     validations = [
         ("fps", "Rate", "FPS"),
@@ -130,23 +122,23 @@ def validate_comp_prefs(comp=None, force_repair=False):
 
     invalid = []
     for key, comp_key, label in validations:
-        asset_value = asset_data[key]
+        folder_value = folder_attributes[key]
         comp_value = comp_frame_format_prefs.get(comp_key)
-        if asset_value != comp_value:
+        if folder_value != comp_value:
             invalid_msg = "{} {} should be {}".format(label,
                                                       comp_value,
-                                                      asset_value)
+                                                      folder_value)
             invalid.append(invalid_msg)
 
             if not force_repair:
                 # Do not log warning if we force repair anyway
                 log.warning(
-                    "Comp {pref} {value} does not match asset "
-                    "'{asset_name}' {pref} {asset_value}".format(
+                    "Comp {pref} {value} does not match folder "
+                    "'{folder_path}' {pref} {folder_value}".format(
                         pref=label,
                         value=comp_value,
-                        asset_name=asset_doc["name"],
-                        asset_value=asset_value)
+                        folder_path=folder_path,
+                        folder_value=folder_value)
                 )
 
     if invalid:
@@ -154,7 +146,7 @@ def validate_comp_prefs(comp=None, force_repair=False):
         def _on_repair():
             attributes = dict()
             for key, comp_key, _label in validations:
-                value = asset_data[key]
+                value = folder_value[key]
                 comp_key_full = "Comp.FrameFormat.{}".format(comp_key)
                 attributes[comp_key_full] = value
             comp.SetPrefs(attributes)
@@ -170,7 +162,7 @@ def validate_comp_prefs(comp=None, force_repair=False):
         dialog = SimplePopup(parent=menu.menu)
         dialog.setWindowTitle("Fusion comp has invalid configuration")
 
-        msg = "Comp preferences mismatches '{}'".format(asset_doc["name"])
+        msg = "Comp preferences mismatches '{}'".format(folder_path)
         msg += "\n" + "\n".join(invalid)
         dialog.set_message(msg)
         dialog.set_button_text("Repair")

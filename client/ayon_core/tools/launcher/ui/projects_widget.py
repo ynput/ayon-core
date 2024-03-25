@@ -1,12 +1,13 @@
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import PlaceholderLineEdit, RefreshButton
-from ayon_core.tools.ayon_utils.widgets import (
+from ayon_core.tools.utils import (
+    PlaceholderLineEdit,
+    RefreshButton,
     ProjectsQtModel,
     ProjectSortFilterProxy,
 )
-from ayon_core.tools.ayon_utils.models import PROJECTS_MODEL_SENDER
+from ayon_core.tools.common_models import PROJECTS_MODEL_SENDER
 
 
 class ProjectIconView(QtWidgets.QListView):

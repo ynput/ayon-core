@@ -100,8 +100,8 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
 
             cl_r = re.compile(regex_collision)
 
-            asset_name = instance.data["assetEntity"]["name"]
-            mesh_name = "{}{}".format(asset_name,
+            folder_name = instance.data["folderEntity"]["name"]
+            mesh_name = "{}{}".format(folder_name,
                                       instance.data.get("variant", []))
 
             for obj in collision_set:

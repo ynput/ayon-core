@@ -18,7 +18,7 @@ import os
 import pyblish.api
 
 from openpype_modules.webpublisher.lib import (
-    get_batch_asset_task_info,
+    get_batch_context_info,
     parse_json
 )
 from ayon_core.lib import is_in_tests
@@ -64,14 +64,14 @@ class CollectBatchData(pyblish.api.ContextPlugin):
         context.data["batchDir"] = batch_dir
         context.data["batchData"] = batch_data
 
-        asset_name, task_name, task_type = get_batch_asset_task_info(
+        folder_path, task_name, task_type = get_batch_context_info(
             batch_data["context"]
         )
 
-        os.environ["AYON_FOLDER_PATH"] = asset_name
+        os.environ["AYON_FOLDER_PATH"] = folder_path
         os.environ["AYON_TASK_NAME"] = task_name
 
-        context.data["folderPath"] = asset_name
+        context.data["folderPath"] = folder_path
         context.data["task"] = task_name
         context.data["taskType"] = task_type
         context.data["project_name"] = project_name

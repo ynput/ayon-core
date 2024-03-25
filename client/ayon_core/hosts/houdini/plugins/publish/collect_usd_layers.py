@@ -64,4 +64,4 @@ class CollectUsdLayers(pyblish.api.InstancePlugin):
             layer_inst.append((layer, save_path))
 
             # Allow this product to be grouped into a USD Layer on creation
-            layer_inst.data["subsetGroup"] = "USD Layer"
+            layer_inst.data["productGroup"] = "USD Layer"

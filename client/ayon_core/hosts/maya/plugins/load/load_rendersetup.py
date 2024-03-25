@@ -24,7 +24,7 @@ import maya.app.renderSetup.model.renderSetup as renderSetup
 class RenderSetupLoader(load.LoaderPlugin):
     """Load json preset for RenderSetup overwriting current one."""
 
-    families = ["rendersetup"]
+    product_types = {"rendersetup"}
     representations = ["json"]
     defaults = ['Main']
 
@@ -37,10 +37,10 @@ class RenderSetupLoader(load.LoaderPlugin):
 
         # from ayon_core.hosts.maya.api.lib import namespaced
 
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or lib.unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
         path = self.filepath_from_context(context)
@@ -91,8 +91,8 @@ class RenderSetupLoader(load.LoaderPlugin):
             "Render setup setting will be overwritten by new version. All "
             "setting specified by user not included in loaded version "
             "will be lost.")
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         with open(path, "r") as file:
             try:
                 renderSetup.instance().decode(
@@ -104,7 +104,7 @@ class RenderSetupLoader(load.LoaderPlugin):
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
         self.log.info("... updated")
 
