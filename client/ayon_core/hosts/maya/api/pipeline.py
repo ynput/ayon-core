@@ -673,7 +673,7 @@ def workfile_save_before_xgen(event):
     switching context.
 
     Args:
-        event (Event) - openpype/lib/events.py
+        event (Event) - ayon_core/lib/events.py
     """
     if not cmds.pluginInfo("xgenToolkit", query=True, loaded=True):
         return
