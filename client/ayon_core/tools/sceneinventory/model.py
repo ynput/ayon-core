@@ -322,15 +322,15 @@ class InventoryModel(TreeModel):
             group_node["representation"] = repre_id
             group_node["version"] = version_entity["version"]
 
-            # We check against `abs(version)` because we allow a hero version
-            # which is represented by a negative number to also count as
-            # latest version
-            # If a hero version for whatever reason does not match the latest
-            # positive version number, we also consider it outdated
-            group_node["isOutdated"] = (
-                abs(version_entity["version"]) !=
-                highest_version_by_product_id.get(version_entity["productId"])
-            )
+            # Check if the version is outdated. If the version is below 0 it
+            # is a hero version and will never be considered outdated
+            is_outdated = False
+            if version_entity["version"] >= 0:
+                last_version = highest_version_by_product_id.get(
+                    version_entity["productId"])
+                if last_version is not None:
+                    is_outdated = version_entity["version"] != last_version
+            group_node["isOutdated"] = is_outdated
 
             group_node["productType"] = product_type or ""
             group_node["productTypeIcon"] = product_type_icon
