@@ -12,22 +12,6 @@ from .publish_plugins import (
 )
 
 
-class ServerListSubmodel(BaseSettingsModel):
-    _layout = "compact"
-    name: str = SettingsField(title="Name")
-    value: str = SettingsField(title="Value")
-
-
-class LocalSubmodel(BaseSettingsModel):
-    """Select your local and remote site"""
-    username: str = SettingsField("",
-                                  title="Username",
-                                  scope=["site"])
-    password: str = SettingsField("",
-                                  title="Password",
-                                  scope=["site"])
-
-
 async def defined_deadline_ws_name_enum_resolver(
     addon: "BaseServerAddon",
     settings_variant: str = "production",
@@ -39,40 +23,37 @@ async def defined_deadline_ws_name_enum_resolver(
 
     settings = await addon.get_studio_settings(variant=settings_variant)
 
-    ws_urls = []
+    ws_server_name = []
     for deadline_url_item in settings.deadline_urls:
-        ws_urls.append(deadline_url_item.name)
+        ws_server_name.append(deadline_url_item.name)
 
-    return ws_urls
+    return ws_server_name
+
+class ServerListSubmodel(BaseSettingsModel):
+    _layout = "compact"
+    name: str = SettingsField(title="Name")
+    value: str = SettingsField(title="Url")
+    require_authentication: bool = SettingsField(title="Require authentication")
+    ssl: bool = SettingsField(title="SSL")
 
 
 class DeadlineSettings(BaseSettingsModel):
     deadline_urls: list[ServerListSubmodel] = SettingsField(
         default_factory=list,
-        title="System Deadline Webservice URLs",
+        title="System Deadline Webservice Info",
         scope=["studio"],
     )
+
     deadline_server: str = SettingsField(
-        title="Project deadline server",
+        title="Project Deadline server name",
         section="---",
         scope=["project"],
         enum_resolver=defined_deadline_ws_name_enum_resolver
     )
-    require_authentication: bool = SettingsField(
-        False,
-        title="Require Authentication",
-        scope=["project"],
-    )
+
     publish: PublishPluginsModel = SettingsField(
         default_factory=PublishPluginsModel,
         title="Publish Plugins",
-    )
-
-    local_settings: LocalSubmodel = SettingsField(
-        default_factory=LocalSubmodel,
-        title="Local setting",
-        scope=["site"],
-        description="This setting is only applicable for artist's site",
     )
 
     @validator("deadline_urls")
@@ -86,7 +67,9 @@ DEFAULT_VALUES = {
     "deadline_urls": [
         {
             "name": "default",
-            "value": "http://127.0.0.1:8082"
+            "value": "http://127.0.0.1:8082",
+            "require_authentication": False,
+            "ssl": False
         }
     ],
     "deadline_server": "default",
