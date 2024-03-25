@@ -152,22 +152,22 @@ default_help() {
   echo ""
   echo -e "Usage: ${BWhite}./manage.sh${RST} ${BICyan}[command]${RST}"
   echo ""
-  echo "${BWhite}Commands:${RST}"
-  echo "  ${BWhite}create-env${RST}      ${BCyan}Install Poetry and update venv by lock file${RST}"
-  echo "  ${BWhite}ruff-check${RST}      ${BCyan}Run Ruff check for the repository${RST}"
-  echo "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
-  echo "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
+  echo -e "${BWhite}Commands:${RST}"
+  echo -e "  ${BWhite}create-env${RST}      ${BCyan}Install Poetry and update venv by lock file${RST}"
+  echo -e "  ${BWhite}ruff-check${RST}      ${BCyan}Run Ruff check for the repository${RST}"
+  echo -e "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
+  echo -e "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
   echo ""
 }
 
 run_ruff () {
   echo -e "${BIGreen}>>>${RST} Running Ruff check ..."
-  "$POETRY_HOME/bin/poetry" run ruff
+  "$POETRY_HOME/bin/poetry" run ruff check
 }
 
 run_ruff_check () {
   echo -e "${BIGreen}>>>${RST} Running Ruff fix ..."
-  "$POETRY_HOME/bin/poetry" run ruff --fix
+  "$POETRY_HOME/bin/poetry" run ruff check --fix
 }
 
 run_codespell () {
