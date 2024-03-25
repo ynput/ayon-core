@@ -40,10 +40,10 @@ def is_running_from_build():
 
 
 def is_using_ayon_console():
-    """AYON launcher UI windows executable is used.
+    """AYON launcher console executable is used.
 
     This function make sense only on Windows platform. For other platforms
-    always returns False. False is also returned if process is running from
+    always returns True. True is also returned if process is running from
     code.
 
     AYON launcher on windows has 2 executable files. First 'ayon_console.exe'
@@ -52,17 +52,17 @@ def is_using_ayon_console():
     handled (especially when calling subprocess).
 
     Returns:
-        bool: True if UI executable is used.
+        bool: True if console executable is used.
 
     """
     if (
         platform.system().lower() != "windows"
         or is_running_from_build()
     ):
-        return False
+        return True
     executable_path = os.environ["AYON_EXECUTABLE"]
     executable_filename = os.path.basename(executable_path)
-    return "ayon_console" not in executable_filename
+    return "ayon_console" in executable_filename
 
 
 def is_staging_enabled():
