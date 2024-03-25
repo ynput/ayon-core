@@ -519,14 +519,6 @@ class FilterProxyModel(QtCore.QSortFilterProxyModel):
             if version is None:
                 return True
 
-            # If either a version or highest is present but not the other
-            # consider the item invalid.
-            if not self._hierarchy_view:
-                # Skip this check if in hierarchy view, or the child item
-                # node will be hidden even it's actually outdated.
-                if version is None:
-                    return False
-
             return node.get("isOutdated", True)
 
         index = self.sourceModel().index(row, self.filterKeyColumn(), parent)
