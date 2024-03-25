@@ -2,7 +2,10 @@ import os
 import platform
 import subprocess
 
-from ayon_core.lib import get_ayon_launcher_args
+from ayon_core.lib import (
+    get_ayon_launcher_args,
+    is_using_ui_executable,
+)
 from ayon_core.lib.applications import (
     PreLaunchHook,
     LaunchTypes,
@@ -27,14 +30,7 @@ def get_launch_kwargs(kwargs):
     if platform.system().lower() != "windows":
         return kwargs
 
-    executable_path = os.environ.get("AYON_EXECUTABLE")
-
-    executable_filename = ""
-    if executable_path:
-        executable_filename = os.path.basename(executable_path)
-
-    is_in_ui_launcher = "ayon_console" not in executable_filename
-    if is_in_ui_launcher:
+    if is_using_ui_executable():
         kwargs.update({
             "creationflags": subprocess.CREATE_NO_WINDOW,
             "stdout": subprocess.DEVNULL,

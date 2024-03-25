@@ -15,14 +15,16 @@ import json
 import signal
 import time
 from uuid import uuid4
-from qtpy import QtWidgets, QtCore, QtGui
 import collections
 
-from .server import Server
+from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib import is_using_ui_executable
 from ayon_core.tools.stdout_broker.app import StdOutBroker
 from ayon_core.tools.utils import host_tools
 from ayon_core import style
+
+from .server import Server
 
 # Setup logging.
 log = logging.getLogger(__name__)
@@ -326,16 +328,15 @@ def launch_zip_file(filepath):
     print("Launching {}".format(scene_path))
     # QUESTION Could we use 'run_detached_process' from 'ayon_core.lib'?
     kwargs = {}
-    if platform.system().lower() == "windows":
-        executable_filename = os.path.basename(
-            os.getenv("AYON_EXECUTABLE", "")
-        )
-        if "ayon_console" not in executable_filename:
-            kwargs.update({
-                "creationflags": subprocess.CREATE_NO_WINDOW,
-                "stdout": subprocess.DEVNULL,
-                "stderr": subprocess.DEVNULL
-            })
+    if (
+        platform.system().lower() == "windows"
+        and is_using_ui_executable()
+    ):
+        kwargs.update({
+            "creationflags": subprocess.CREATE_NO_WINDOW,
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL
+        })
 
     process = subprocess.Popen(
         [ProcessContext.application_path, scene_path],

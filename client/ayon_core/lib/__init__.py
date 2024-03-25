@@ -155,6 +155,7 @@ from .path_tools import (
 
 from .ayon_info import (
     is_running_from_build,
+    is_using_ui_executable,
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
@@ -275,6 +276,7 @@ __all__ = [
     "Logger",
 
     "is_running_from_build",
+    "is_using_ui_executable",
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
