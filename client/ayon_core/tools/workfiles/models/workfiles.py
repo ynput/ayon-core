@@ -302,10 +302,11 @@ class WorkareaModel:
 
         file_template = anatomy.get_template_item(
             "work", template_key, "file"
-        ).template
+        )
+        file_template_str = file_template.template
 
-        template_has_version = "{version" in file_template
-        template_has_comment = "{comment" in file_template
+        template_has_version = "{version" in file_template_str
+        template_has_comment = "{comment" in file_template_str
 
         comment_hints, comment = self._get_comments_from_root(
             file_template,
@@ -315,7 +316,8 @@ class WorkareaModel:
             current_filename,
         )
         last_version = self._get_last_workfile_version(
-            workdir, file_template, fill_data, extensions)
+            workdir, file_template_str, fill_data, extensions
+        )
 
         return {
             "template_key": template_key,
@@ -340,17 +342,18 @@ class WorkareaModel:
     ):
         anatomy = self._controller.project_anatomy
         fill_data = self._prepare_fill_data(folder_id, task_id)
+
         template_key = self._get_template_key(fill_data)
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
         file_template = anatomy.get_template_item(
             "work", template_key, "file"
-        ).template
+        )
 
         if use_last_version:
             version = self._get_last_workfile_version(
-                workdir, file_template, fill_data, self._extensions
+                workdir, file_template.template, fill_data, self._extensions
             )
         fill_data["version"] = version
         fill_data["ext"] = extension.lstrip(".")
