@@ -19,10 +19,6 @@ from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
 
 
-class OpenPypeCreatorError(CreatorError):
-    pass
-
-
 class Creator(LegacyCreator):
     """Creator plugin to create instances in Houdini
 
@@ -92,8 +88,8 @@ class Creator(LegacyCreator):
 
         except hou.Error as er:
             six.reraise(
-                OpenPypeCreatorError,
-                OpenPypeCreatorError("Creator error: {}".format(er)),
+                CreatorError,
+                CreatorError("Creator error: {}".format(er)),
                 sys.exc_info()[2])
 
 
@@ -209,8 +205,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
         except hou.Error as er:
             six.reraise(
-                OpenPypeCreatorError,
-                OpenPypeCreatorError("Creator error: {}".format(er)),
+                CreatorError,
+                CreatorError("Creator error: {}".format(er)),
                 sys.exc_info()[2])
 
     def lock_parameters(self, node, parameters):
