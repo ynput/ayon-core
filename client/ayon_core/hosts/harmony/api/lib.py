@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Utility functions used for Avalon - Harmony integration."""
+import platform
 import subprocess
 import threading
 import os
@@ -22,7 +23,6 @@ from .server import Server
 from ayon_core.tools.stdout_broker.app import StdOutBroker
 from ayon_core.tools.utils import host_tools
 from ayon_core import style
-from ayon_core.lib.applications import get_non_python_host_kwargs
 
 # Setup logging.
 log = logging.getLogger(__name__)
@@ -324,7 +324,18 @@ def launch_zip_file(filepath):
         return
 
     print("Launching {}".format(scene_path))
-    kwargs = get_non_python_host_kwargs({}, False)
+    kwargs = {}
+    if platform.system().lower() == "windows":
+        executable_filename = os.path.basename(
+            os.getenv("AYON_EXECUTABLE", "")
+        )
+        if "ayon_console" not in executable_filename:
+            kwargs.update({
+                "creationflags": subprocess.CREATE_NO_WINDOW,
+                "stdout": subprocess.DEVNULL,
+                "stderr": subprocess.DEVNULL
+            })
+
     process = subprocess.Popen(
         [ProcessContext.application_path, scene_path],
         **kwargs
