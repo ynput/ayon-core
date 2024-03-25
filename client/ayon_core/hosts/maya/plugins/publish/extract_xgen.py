@@ -39,8 +39,9 @@ class ExtractXgen(publish.Extractor):
         # Get published xgen file name.
         template_data = copy.deepcopy(instance.data["anatomyData"])
         template_data.update({"ext": "xgen"})
-        templates = instance.context.data["anatomy"].templates["publish"]
-        xgen_filename = StringTemplate(templates["file"]).format(template_data)
+        anatomy = instance.context.data["anatomy"]
+        file_template = anatomy.get_template_item("publish", "default", "file")
+        xgen_filename = file_template.format(template_data)
 
         xgen_path = os.path.join(
             self.staging_dir(instance), xgen_filename
