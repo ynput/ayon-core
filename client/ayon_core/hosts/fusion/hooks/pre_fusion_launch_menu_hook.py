@@ -4,7 +4,7 @@ from ayon_core.hosts.fusion import FUSION_HOST_DIR
 
 
 class FusionLaunchMenuHook(PreLaunchHook):
-    """Launch OpenPype menu on start of Fusion"""
+    """Launch AYON menu on start of Fusion"""
     app_groups = ["fusion"]
     order = 9
 
