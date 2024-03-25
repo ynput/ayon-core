@@ -218,5 +218,27 @@ def test_load():
         - Yeti Rig
     """
     builder = MayaTemplateBuilder(registered_host())
-    builder.populate_scene_placeholders(keep_placeholders=True)
+    success, placeholders = builder.populate_scene_placeholders(
+        keep_placeholders=True
+    )
+
+    error_message = ""
+    for placeholder in placeholders:
+        for err in placeholder.get_errors():
+            msg = "Failed to process placeholder \"{}\" with plugin \"{}\""
+            error_message += msg.format(
+                placeholder.scene_identifier,
+                placeholder.plugin.__class__.__name__
+            )
+            formatted_traceback = "".join(
+                traceback.format_exception(
+                    type(err),
+                    err,
+                    err.__traceback__
+                )
+            )
+            error_message += "\n" + formatted_traceback
+
+    assert success, error_message
+
     print("Load was successfull!")

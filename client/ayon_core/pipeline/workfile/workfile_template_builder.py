@@ -688,6 +688,7 @@ class AbstractTemplateBuilder(object):
         # Counter is checked at the ned of a loop so the loop happens at least
         #   once.
         iter_counter = 0
+        success = True
         while not all_processed:
             filtered_placeholders = []
             for placeholder in placeholders:
@@ -716,6 +717,7 @@ class AbstractTemplateBuilder(object):
                     placeholder_plugin.populate_placeholder(placeholder)
 
                 except Exception as exc:
+                    success = False
                     self.log.warning(
                         (
                             "Failed to process placeholder {} with plugin {}"
@@ -748,6 +750,8 @@ class AbstractTemplateBuilder(object):
                 placeholders.append(placeholder)
 
         self.refresh()
+
+        return success, placeholders
 
     def _get_build_profiles(self):
         """Get build profiles for workfile build template path.
@@ -1231,12 +1235,7 @@ class PlaceholderItem(object):
         self._state = 2
 
     def set_failed(self, exception):
-        self.add_error(str(exception))
-
-    def add_error(self, error):
-        """Set placeholder item as failed and mark it as finished."""
-
-        self._errors.append(error)
+        self._errors.append(exception)
 
     def get_errors(self):
         """Exception with which the placeholder process failed.
@@ -1879,17 +1878,6 @@ class LoadPlaceholderItem(PlaceholderItem):
     def __init__(self, *args, **kwargs):
         super(LoadPlaceholderItem, self).__init__(*args, **kwargs)
         self._failed_representations = []
-
-    def get_errors(self):
-        if not self._failed_representations:
-            return []
-        message = (
-            "Failed to load {} representations using Loader {}"
-        ).format(
-            len(self._failed_representations),
-            self.data["loader"]
-        )
-        return [message]
 
     def load_failed(self, representation):
         self._failed_representations.append(representation)
