@@ -38,9 +38,9 @@ class Spacer(QtWidgets.QWidget):
         self.setLayout(layout)
 
 
-class OpenPypeMenu(QtWidgets.QWidget):
+class AYONMenu(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
-        super(OpenPypeMenu, self).__init__(*args, **kwargs)
+        super(AYONMenu, self).__init__(*args, **kwargs)
 
         self.setObjectName(f"{MENU_LABEL}Menu")
 
@@ -174,11 +174,11 @@ class OpenPypeMenu(QtWidgets.QWidget):
 def launch_pype_menu():
     app = QtWidgets.QApplication(sys.argv)
 
-    pype_menu = OpenPypeMenu()
+    ayon_menu = AYONMenu()
 
     stylesheet = load_stylesheet()
-    pype_menu.setStyleSheet(stylesheet)
+    ayon_menu.setStyleSheet(stylesheet)
 
-    pype_menu.show()
+    ayon_menu.show()
 
     sys.exit(app.exec_())
