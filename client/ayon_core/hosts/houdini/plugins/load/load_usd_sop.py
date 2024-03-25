@@ -39,8 +39,6 @@ class SopUsdImportLoader(load.LoaderPlugin):
         # Set new position for unpack node else it gets cluttered
         nodes = [container, usdimport]
 
-        self[:] = nodes
-
         return pipeline.containerise(
             node_name,
             namespace,
