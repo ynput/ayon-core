@@ -13,7 +13,10 @@ from ayon_api.operations import (
 from ayon_api.utils import create_entity_id
 
 from ayon_core.lib import create_hard_link, source_hash
-from ayon_core.pipeline.publish import get_publish_template_name
+from ayon_core.pipeline.publish import (
+    get_publish_template_name,
+    OptionalPyblishPluginMixin,
+)
 
 
 def prepare_changes(old_entity, new_entity):
@@ -46,7 +49,9 @@ def prepare_changes(old_entity, new_entity):
     return changes
 
 
-class IntegrateHeroVersion(pyblish.api.InstancePlugin):
+class IntegrateHeroVersion(
+    OptionalPyblishPluginMixin, pyblish.api.InstancePlugin
+):
     label = "Integrate Hero Version"
     # Must happen after IntegrateNew
     order = pyblish.api.IntegratorOrder + 0.1
