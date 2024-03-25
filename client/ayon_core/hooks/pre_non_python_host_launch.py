@@ -17,7 +17,7 @@ class NonPythonHostHook(PreLaunchHook):
     python script which launch the host. For these cases it is necessary to
     prepend python (or ayon) executable and script path before application's.
     """
-    app_groups = {"harmony", "aftereffects"}
+    app_groups = {"harmony"}
 
     order = 20
     launch_types = {LaunchTypes.local}
