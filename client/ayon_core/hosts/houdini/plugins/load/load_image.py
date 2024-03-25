@@ -166,6 +166,10 @@ class ImageLoader(load.LoaderPlugin):
             dict: Parm to value mapping if colorspace data is defined.
 
         """
+        # Using OCIO colorspace on COP2 File node is only supported in Hou 20+
+        major, _, _ = hou.applicationVersion()
+        if major < 20:
+            return {}
 
         data = representation.get("data", {}).get("colorspaceData", {})
         if not data:
