@@ -28,7 +28,7 @@ def exeption_handler(exctype, value, _traceback):
         tb (str): traceback to show
     """
     import traceback
-    msg = "OpenPype: Python exception {} in {}".format(value, exctype)
+    msg = "AYON: Python exception {} in {}".format(value, exctype)
     mbox = QtWidgets.QMessageBox()
     mbox.setText(msg)
     mbox.setDetailedText(
