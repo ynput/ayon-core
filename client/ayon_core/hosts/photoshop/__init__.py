@@ -1,10 +1,10 @@
 from .addon import (
+    PHOTOSHOP_ADDON_ROOT,
     PhotoshopAddon,
-    PHOTOSHOP_HOST_DIR,
 )
 
 
 __all__ = (
+    "PHOTOSHOP_ADDON_ROOT",
     "PhotoshopAddon",
-    "PHOTOSHOP_HOST_DIR",
 )
