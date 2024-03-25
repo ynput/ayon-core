@@ -156,10 +156,6 @@ MS_CUSTOM_ATTRIB = """attributes "openPypeData"
 )"""
 
 
-class OpenPypeCreatorError(CreatorError):
-    pass
-
-
 class MaxCreatorBase(object):
 
     @staticmethod
