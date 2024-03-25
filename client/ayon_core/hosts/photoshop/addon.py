@@ -1,7 +1,7 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
-PHOTOSHOP_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
+PHOTOSHOP_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class PhotoshopAddon(AYONAddon, IHostAddon):
