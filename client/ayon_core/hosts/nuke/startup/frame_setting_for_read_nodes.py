@@ -1,4 +1,4 @@
-""" OpenPype custom script for resetting read nodes start frame values """
+""" AYON custom script for resetting read nodes start frame values """
 
 import nuke
 import nukescripts
