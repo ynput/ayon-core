@@ -124,7 +124,7 @@ def setup(env=None):
     # synchronize resolve utility scripts
     _sync_utility_scripts(env)
 
-    log.info("Flame OpenPype wrapper has been installed")
+    log.info("Flame AYON wrapper has been installed")
 
 
 def get_flame_version():
