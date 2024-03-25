@@ -8,7 +8,10 @@ import ayon_api
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from ayon_core.pipeline import get_current_project_name
+from ayon_core.pipeline import (
+    get_current_project_name,
+    HeroVersionType,
+)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.models import TreeModel, Item
@@ -320,12 +323,17 @@ class InventoryModel(TreeModel):
                 repre_entity["name"]
             )
             group_node["representation"] = repre_id
-            group_node["version"] = version_entity["version"]
 
-            # Check if the version is outdated. If the version is below 0 it
-            # is a hero version and will never be considered outdated
+            # Detect hero version type
+            version = version_entity["version"]
+            if version < 0:
+                version = HeroVersionType(version)
+            group_node["version"] = version
+
+            # Check if the version is outdated.
+            # Hero versions are never considered to be outdated.
             is_outdated = False
-            if version_entity["version"] >= 0:
+            if not isinstance(version, HeroVersionType):
                 last_version = highest_version_by_product_id.get(
                     version_entity["productId"])
                 if last_version is not None:
