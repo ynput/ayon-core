@@ -3,10 +3,14 @@ from maya import cmds
 import pyblish.api
 import ayon_core.hosts.maya.api.action
 from ayon_core.hosts.maya.api import lib
-from ayon_core.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline.publish import (
+    ValidateContentsOrder,
+    OptionalPyblishPluginMixin
+)
 
 
-class ValidateMeshNgons(pyblish.api.Validator):
+class ValidateMeshNgons(pyblish.api.Validator,
+                        OptionalPyblishPluginMixin):
     """Ensure that meshes don't have ngons
 
     Ngon are faces with more than 4 sides.
@@ -21,6 +25,7 @@ class ValidateMeshNgons(pyblish.api.Validator):
     families = ["model"]
     label = "Mesh ngons"
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = True
 
     @staticmethod
     def get_invalid(instance):
@@ -39,6 +44,8 @@ class ValidateMeshNgons(pyblish.api.Validator):
 
     def process(self, instance):
         """Process all the nodes in the instance "objectSet"""
+        if not self.is_active(instance.data):
+            return
 
         invalid = self.get_invalid(instance)
         if invalid:

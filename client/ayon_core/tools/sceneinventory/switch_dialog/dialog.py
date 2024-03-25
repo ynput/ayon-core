@@ -240,7 +240,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         return ayon_api.get_last_versions(
             project_name,
             product_ids,
-            fields={"id", "folderId", "version"}
+            fields={"id", "productId", "version"}
         )
 
     def _on_show_timer(self):

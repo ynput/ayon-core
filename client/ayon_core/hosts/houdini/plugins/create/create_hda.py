@@ -16,7 +16,7 @@ class CreateHDA(plugin.HoudiniCreator):
     maintain_selection = False
 
     def _check_existing(self, folder_path, product_name):
-        # type: (str) -> bool
+        # type: (str, str) -> bool
         """Check if existing product name versions already exists."""
         # Get all products of the current folder
         project_name = self.project_name
