@@ -7,7 +7,9 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    OptionalPyblishPluginMixin,
+    get_plugin_settings,
+    apply_plugin_settings_automatically
 )
 
 
@@ -38,6 +40,13 @@ class ValidateOutRelatedNodeIds(pyblish.api.InstancePlugin,
         if not project_settings["maya"].get("use_cbid_workflow", True):
             cls.enabled = False
             return
+
+        # Preserve automatic settings applying logic
+        settings = get_plugin_settings(plugin=cls,
+                                       project_settings=project_settings,
+                                       log=cls.log,
+                                       category="maya")
+        apply_plugin_settings_automatically(cls, settings, logger=cls.log)
 
     def process(self, instance):
         """Process all meshes"""
