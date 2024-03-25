@@ -513,12 +513,6 @@ class FilterProxyModel(QtCore.QSortFilterProxyModel):
 
         """
         def outdated(node):
-            version = node.get("version", None)
-
-            # Always allow indices that have no version data at all
-            if version is None:
-                return True
-
             return node.get("isOutdated", True)
 
         index = self.sourceModel().index(row, self.filterKeyColumn(), parent)
