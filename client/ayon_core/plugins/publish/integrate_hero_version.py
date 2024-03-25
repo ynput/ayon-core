@@ -353,7 +353,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 repre_entity["context"] = repre_context
                 repre_entity["attrib"] = {
                     "path": str(template_filled),
-                    "template": hero_template
+                    "template": hero_template.template
                 }
 
                 dst_paths = []
