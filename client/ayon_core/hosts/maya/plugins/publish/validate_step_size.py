@@ -29,7 +29,7 @@ class ValidateStepSize(pyblish.api.InstancePlugin,
     @classmethod
     def get_invalid(cls, instance):
 
-        objset = instance.data['name']
+        objset = instance.data['instance_node']
         step = instance.data.get("step", 1.0)
 
         if step < cls.MIN or step > cls.MAX:
