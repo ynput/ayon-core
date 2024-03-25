@@ -13,7 +13,7 @@ class SyncClockifyLocal(BaseAction):
     #: Action description.
     description = 'Synchronise data to Clockify workspace'
     #: roles that are allowed to register this action
-    role_list = ["Pypeclub", "Administrator", "project Manager"]
+    role_list = ["Administrator", "project Manager"]
     #: icon
     icon = statics_icon("app_icons", "clockify-white.png")
 

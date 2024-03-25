@@ -50,7 +50,7 @@ def get_context_label():
 
 def install(project_settings):
     if cmds.about(batch=True):
-        log.info("Skipping openpype.menu initialization in batch mode..")
+        log.info("Skipping AYON menu initialization in batch mode..")
         return
 
     def add_menu():
@@ -261,7 +261,7 @@ def popup():
 
 
 def update_menu_task_label():
-    """Update the task label in Avalon menu to current session"""
+    """Update the task label in AYON menu to current session"""
 
     if IS_HEADLESS:
         return
