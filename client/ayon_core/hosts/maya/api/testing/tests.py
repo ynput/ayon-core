@@ -106,17 +106,41 @@ def test_create():
     print("Create was successfull!")
 
 
-def test_publish():
-    """Test publishing."""
+def recursive_validate(valid_action_names):
+    """ Recursively validate until until it is either successfull or there are
+    no more approved actions to run in which case its failing.
+    """
+    context = pyblish.util.collect()
+    pyblish.util.validate(context)
 
-    context = pyblish.util.publish()
     success = True
-    error_message = ""
+    actions_to_run = []
     for result in context.data["results"]:
         if result["success"]:
             continue
 
         success = False
+
+        for action in result["plugin"].actions:
+            if action.__name__ not in valid_action_names:
+                continue
+            actions_to_run.append(action)
+            action().process(context, result["plugin"])
+
+    if not success and not actions_to_run:
+        return False, context
+
+    if success:
+        return True, context
+
+    return recursive_validate(valid_action_names)
+
+
+def create_error_report(context):
+    error_message = ""
+    for result in context.data["results"]:
+        if result["success"]:
+            continue
 
         err = result["error"]
         formatted_traceback = "".join(
@@ -139,7 +163,27 @@ def test_publish():
         error_message += "\n"
         error_message += formatted_traceback
 
-    assert success, error_message
+    return error_message
+
+
+def test_publish():
+    """Test publishing."""
+    success, context = recursive_validate(
+        ["RepairAction", "GenerateUUIDsOnInvalidAction"]
+    )
+
+    assert success, create_error_report(context)
+
+    # Validation should be successful so running a complete publish.
+    context = pyblish.util.publish()
+    success = True
+    for result in context.data["results"]:
+        if not result["success"]:
+            success = False
+            break
+
+    assert success, create_error_report(context)
+
     print("Publish was successfull!")
 
 
