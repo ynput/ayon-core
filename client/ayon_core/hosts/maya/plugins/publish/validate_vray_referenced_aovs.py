@@ -45,7 +45,7 @@ class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin,
                 self.log.warning((
                     "Referenced AOVs are enabled in Vray "
                     "Render Settings and are detected in scene, but "
-                    "Pype render instance option for referenced AOVs is "
+                    "AYON render instance option for referenced AOVs is "
                     "disabled. Those AOVs will be rendered but not published "
                     "by Pype."
                 ))

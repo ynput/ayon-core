@@ -135,7 +135,9 @@ def get_workdir_with_workdir_data(
             project_settings
         )
 
-    template_obj = anatomy.templates_obj[template_key]["folder"]
+    template_obj = anatomy.get_template_item(
+        "work", template_key, "directory"
+    )
     # Output is TemplateResult object which contain useful data
     output = template_obj.format_strict(workdir_data)
     if output:
@@ -309,11 +311,12 @@ def get_last_workfile(
     Returns file with version 1 if there is not workfile yet.
 
     Args:
-        workdir(str): Path to dir where workfiles are stored.
-        file_template(str): Template of file name.
-        fill_data(Dict[str, Any]): Data for filling template.
-        extensions(Iterable[str]): All allowed file extensions of workfile.
-        full_path(bool): Full path to file is returned if set to True.
+        workdir (str): Path to dir where workfiles are stored.
+        file_template (str): Template of file name.
+        fill_data (Dict[str, Any]): Data for filling template.
+        extensions (Iterable[str]): All allowed file extensions of workfile.
+        full_path (Optional[bool]): Full path to file is returned if
+            set to True.
 
     Returns:
         str: Last or first workfile as filename of full path to filename.
@@ -334,7 +337,7 @@ def get_last_workfile(
         data.pop("comment", None)
         if not data.get("ext"):
             data["ext"] = extensions[0]
-        data["ext"] = data["ext"].replace('.', '')
+        data["ext"] = data["ext"].lstrip(".")
         filename = StringTemplate.format_strict_template(file_template, data)
 
     if full_path:
