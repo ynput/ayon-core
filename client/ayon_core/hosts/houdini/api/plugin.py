@@ -147,7 +147,6 @@ class HoudiniCreatorBase(object):
     def create_instance_node(
         folder_path, node_name, parent, node_type="geometry"
     ):
-        # type: (str, str, str) -> hou.Node
         """Create node representing instance.
 
         Arguments:
