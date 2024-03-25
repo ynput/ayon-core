@@ -2,6 +2,7 @@
 """Creator plugin for creating publishable Houdini Digital Assets."""
 import ayon_api
 
+from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
 import hou
 
@@ -52,7 +53,7 @@ class CreateHDA(plugin.HoudiniCreator):
             # if node type has not its definition, it is not user
             # created hda. We test if hda can be created from the node.
             if not to_hda.canCreateDigitalAsset():
-                raise plugin.OpenPypeCreatorError(
+                raise CreatorError(
                     "cannot create hda from node {}".format(to_hda))
 
             hda_node = to_hda.createDigitalAsset(
@@ -61,7 +62,7 @@ class CreateHDA(plugin.HoudiniCreator):
             )
             hda_node.layoutChildren()
         elif self._check_existing(folder_path, node_name):
-            raise plugin.OpenPypeCreatorError(
+            raise CreatorError(
                 ("product {} is already published with different HDA"
                  "definition.").format(node_name))
         else:
