@@ -5,16 +5,18 @@ import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateShadingEngine(pyblish.api.InstancePlugin):
+class ValidateShadingEngine(pyblish.api.InstancePlugin,
+                            OptionalPyblishPluginMixin):
     """Validate all shading engines are named after the surface material.
 
     Shading engines should be named "{surface_shader}SG"
     """
-
+``
     order = ValidateContentsOrder
     families = ["look"]
     hosts = ["maya"]
@@ -22,9 +24,12 @@ class ValidateShadingEngine(pyblish.api.InstancePlugin):
     actions = [
         ayon_core.hosts.maya.api.action.SelectInvalidAction, RepairAction
     ]
+    optional = True
 
     # The default connections to check
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
 
         invalid = self.get_invalid(instance)
         if invalid:
