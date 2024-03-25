@@ -108,7 +108,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
 
         from maya import cmds
 
-        # Get all members of the avalon container, ensure they are unlocked
+        # Get all members of the AYON container, ensure they are unlocked
         # and delete everything
         members = cmds.sets(container['objectName'], query=True)
         cmds.lockNode(members, lock=False)
