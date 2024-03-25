@@ -204,7 +204,7 @@ class ApplicationGroup:
     Application group wraps different versions(variants) of application.
     e.g. "maya" is group and "maya_2020" is variant.
 
-    Group hold `host_name` which is implementation name used in pype. Also
+    Group hold `host_name` which is implementation name used in AYON. Also
     holds `enabled` if whole app group is enabled or `icon` for application
     icon path in resources.
 
