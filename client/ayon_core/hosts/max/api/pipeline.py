@@ -14,7 +14,7 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     AYON_CONTAINER_ID,
 )
-from ayon_core.hosts.max.api.menu import OpenPypeMenu
+from ayon_core.hosts.max.api.menu import AYONMenu
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.plugin import MS_CUSTOM_ATTRIB
 from ayon_core.hosts.max import MAX_HOST_DIR
@@ -48,7 +48,7 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_creator_plugin_path(CREATE_PATH)
 
         # self._register_callbacks()
-        self.menu = OpenPypeMenu()
+        self.menu = AYONMenu()
 
         self._has_been_setup = True
 
@@ -94,7 +94,7 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def _deferred_menu_creation(self):
         self.log.info("Building menu ...")
-        self.menu = OpenPypeMenu()
+        self.menu = AYONMenu()
 
     @staticmethod
     def create_context_node():
