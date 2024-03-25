@@ -508,8 +508,7 @@ class FilterProxyModel(QtCore.QSortFilterProxyModel):
     def _is_outdated(self, row, parent):
         """Return whether row is outdated.
 
-        A row is considered outdated if it has no "version" or the "isOutdated"
-        value is True.
+        A row is considered outdated if `isOutdated` data is true or not set.
 
         """
         def outdated(node):
