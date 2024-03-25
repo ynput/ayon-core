@@ -324,6 +324,7 @@ def launch_zip_file(filepath):
         return
 
     print("Launching {}".format(scene_path))
+    # QUESTION Could we use 'run_detached_process' from 'ayon_core.lib'?
     kwargs = {}
     if platform.system().lower() == "windows":
         executable_filename = os.path.basename(
