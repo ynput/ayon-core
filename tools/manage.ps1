@@ -243,7 +243,7 @@ function Write-Help {
     Write-Host ""
     Write-Info -Text "Usage: ", "./manage.ps1 ", "[command]" -Color Gray, White, Cyan
     Write-Host ""
-    Write-Host "Runtime targets:"
+    Write-Host "Commands:"
     Write-Info -Text "  create-env                    ", "Install Poetry and update venv by lock file" -Color White, Cyan
     Write-Info -Text "  ruff-check                    ", "Run Ruff check for the repository" -Color White, Cyan
     Write-Info -Text "  ruff-fix                      ", "Run Ruff fix for the repository" -Color White, Cyan
