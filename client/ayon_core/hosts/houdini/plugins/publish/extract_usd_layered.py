@@ -1,17 +1,12 @@
 import os
 import contextlib
-import hou
 import sys
 from collections import deque
+import hou
 
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import (
-    get_asset_by_name,
-    get_subset_by_name,
-    get_last_version_by_subset_id,
-    get_representation_by_name,
-)
 from ayon_core.pipeline import (
     get_representation_path,
     publish,
@@ -284,29 +279,29 @@ class ExtractUSDLayered(publish.Extractor):
         # Compare this dependency with the latest published version
         # to detect whether we should make this into a new publish
         # version. If not, skip it.
-        asset = get_asset_by_name(
-            project_name, dependency.data["folderPath"], fields=["_id"]
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, dependency.data["folderPath"], fields={"id"}
         )
-        subset = get_subset_by_name(
+        product_entity = ayon_api.get_product_by_name(
             project_name,
-            dependency.data["subset"],
-            asset["_id"],
-            fields=["_id"]
+            dependency.data["productName"],
+            folder_entity["id"],
+            fields={"id"}
         )
-        if not subset:
+        if not product_entity:
             # Subset doesn't exist yet. Definitely new file
-            self.log.debug("No existing subset..")
+            self.log.debug("No existing product..")
             return False
 
-        version = get_last_version_by_subset_id(
-            project_name, subset["_id"], fields=["_id"]
+        version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, product_entity["id"], fields={"id"}
         )
-        if not version:
+        if not version_entity:
             self.log.debug("No existing version..")
             return False
 
-        representation = get_representation_by_name(
-            project_name, ext.lstrip("."), version["_id"]
+        representation = ayon_api.get_representation_by_name(
+            project_name, ext.lstrip("."), version_entity["id"]
         )
         if not representation:
             self.log.debug("No existing representation..")

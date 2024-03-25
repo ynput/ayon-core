@@ -18,7 +18,7 @@ import unreal  # noqa
 class SkeletalMeshFBXLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from FBX."""
 
-    families = ["rig", "skeletalMesh"]
+    product_types = {"rig", "skeletalMesh"}
     label = "Import FBX Skeletal Mesh"
     representations = ["fbx"]
     icon = "cube"
@@ -78,19 +78,28 @@ class SkeletalMeshFBXLoader(plugin.Loader):
         create_container(container=container_name, path=asset_dir)
 
     def imprint(
-        self, asset, asset_dir, container_name, asset_name, representation
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        representation,
+        product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": representation["_id"],
-            "parent": representation["parent"],
-            "family": representation["context"]["family"]
+            "representation": representation["id"],
+            "parent": representation["versionId"],
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -99,7 +108,7 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -110,19 +119,21 @@ class SkeletalMeshFBXLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and Ayon container
-        asset = context.get('asset').get('name')
+        folder_name = context["folder"]["name"]
+        product_type = context["product"]["productType"]
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
-        version = context.get('version')
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        version_entity = context["version"]
         # Check if version is hero version and use different name
-        if not version.get("name") and version.get('type') == "hero_version":
+        version = version_entity["version"]
+        if version < 0:
             name_version = f"{name}_hero"
         else:
-            name_version = f"{name}_v{version.get('name'):03d}"
+            name_version = f"{name}_v{version:03d}"
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{asset}/{name_version}", suffix=""
+            f"{self.root}/{folder_name}/{name_version}", suffix=""
         )
 
         container_name += suffix
@@ -134,8 +145,13 @@ class SkeletalMeshFBXLoader(plugin.Loader):
                 path, asset_dir, asset_name, container_name)
 
         self.imprint(
-            asset, asset_dir, container_name, asset_name,
-            context["representation"])
+            folder_name,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            product_type
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
@@ -146,34 +162,44 @@ class SkeletalMeshFBXLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
-        context = representation.get("context", {})
-
-        if not context:
-            raise RuntimeError("No context found in representation")
+    def update(self, container, context):
+        folder_path = context["folder"]["path"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        product_type = context["product"]["productType"]
+        version = context["version"]["version"]
+        repre_entity = context["representation"]
 
         # Create directory for asset and Ayon container
-        asset = context.get('asset')
-        name = context.get('subset')
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
-        version = context.get('version')
+        asset_name = product_name
+        if folder_name:
+            asset_name = f"{folder_name}_{product_name}"
         # Check if version is hero version and use different name
-        name_version = f"{name}_v{version:03d}" if version else f"{name}_hero"
+        if version < 0:
+            name_version = f"{product_name}_hero"
+        else:
+            name_version = f"{product_name}_v{version:03d}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{asset}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(representation)
+            path = get_representation_path(repre_entity)
 
             self.import_and_containerize(
                 path, asset_dir, asset_name, container_name)
 
         self.imprint(
-            asset, asset_dir, container_name, asset_name, representation)
+            folder_path, 
+            asset_dir,
+            container_name,
+            asset_name,
+            repre_entity,
+            product_type
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False

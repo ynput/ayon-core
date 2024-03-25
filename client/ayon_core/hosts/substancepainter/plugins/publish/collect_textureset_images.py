@@ -1,16 +1,16 @@
 import os
 import copy
-import pyblish.api
 
-from ayon_core.pipeline import publish
+import pyblish.api
+import ayon_api
 
 import substance_painter.textureset
+from ayon_core.pipeline import publish
 from ayon_core.hosts.substancepainter.api.lib import (
     get_parsed_export_maps,
     strip_template
 )
-from ayon_core.pipeline.create import get_subset_name
-from ayon_core.client import get_asset_by_name
+from ayon_core.pipeline.create import get_product_name
 
 
 class CollectTextureSet(pyblish.api.InstancePlugin):
@@ -26,30 +26,37 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         config = self.get_export_config(instance)
-        asset_doc = get_asset_by_name(
-            instance.context.data["projectName"],
+        project_name = instance.context.data["projectName"]
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name,
             instance.data["folderPath"]
         )
+        task_name = instance.data.get("task")
+        task_entity = None
+        if folder_entity and task_name:
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
 
         instance.data["exportConfig"] = config
         maps = get_parsed_export_maps(config)
 
         # Let's break the instance into multiple instances to integrate
-        # a subset per generated texture or texture UDIM sequence
+        # a product per generated texture or texture UDIM sequence
         for (texture_set_name, stack_name), template_maps in maps.items():
             self.log.info(f"Processing {texture_set_name}/{stack_name}")
             for template, outputs in template_maps.items():
                 self.log.info(f"Processing {template}")
                 self.create_image_instance(instance, template, outputs,
-                                           asset_doc=asset_doc,
+                                           task_entity=task_entity,
                                            texture_set_name=texture_set_name,
                                            stack_name=stack_name)
 
     def create_image_instance(self, instance, template, outputs,
-                              asset_doc, texture_set_name, stack_name):
+                              task_entity, texture_set_name, stack_name):
         """Create a new instance per image or UDIM sequence.
 
-        The new instances will be of family `image`.
+        The new instances will be of product type `image`.
 
         """
 
@@ -66,7 +73,7 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         )
 
         # Define the suffix we want to give this particular texture
-        # set and set up a remapped subset naming for it.
+        # set and set up a remapped product naming for it.
         suffix = ""
         if always_include_texture_set_name or len(all_texture_sets) > 1:
             # More than one texture set, include texture set name
@@ -79,15 +86,21 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         map_identifier = strip_template(template)
         suffix += f".{map_identifier}"
 
-        image_subset = get_subset_name(
-            # TODO: The family actually isn't 'texture' currently but for now
-            #       this is only done so the subset name starts with 'texture'
-            family="texture",
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
+        image_product_name = get_product_name(
+            # TODO: The product type actually isn't 'texture' currently but
+            #   for now this is only done so the product name starts with
+            #   'texture'
+            context.data["projectName"],
+            task_name,
+            task_type,
+            context.data["hostName"],
+            product_type="texture",
             variant=instance.data["variant"] + suffix,
-            task_name=instance.data.get("task"),
-            asset_doc=asset_doc,
-            project_name=context.data["projectName"],
-            host_name=context.data["hostName"],
             project_settings=context.data["project_settings"]
         )
 
@@ -112,18 +125,20 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         representation["stagingDir"] = staging_dir
 
         # Clone the instance
-        image_instance = context.create_instance(image_subset)
+        product_type = "image"
+        image_instance = context.create_instance(image_product_name)
         image_instance[:] = instance[:]
         image_instance.data.update(copy.deepcopy(dict(instance.data)))
-        image_instance.data["name"] = image_subset
-        image_instance.data["label"] = image_subset
-        image_instance.data["subset"] = image_subset
-        image_instance.data["family"] = "image"
-        image_instance.data["families"] = ["image", "textures"]
+        image_instance.data["name"] = image_product_name
+        image_instance.data["label"] = image_product_name
+        image_instance.data["productName"] = image_product_name
+        image_instance.data["productType"] = product_type
+        image_instance.data["family"] = product_type
+        image_instance.data["families"] = [product_type, "textures"]
         image_instance.data["representations"] = [representation]
 
         # Group the textures together in the loader
-        image_instance.data["subsetGroup"] = instance.data["subset"]
+        image_instance.data["productGroup"] = image_product_name
 
         # Store the texture set name and stack name on the instance
         image_instance.data["textureSetName"] = texture_set_name
@@ -133,7 +148,7 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         # Note: The extractor will assign it to the representation
         colorspace = outputs[0].get("colorSpace")
         if colorspace:
-            self.log.debug(f"{image_subset} colorspace: {colorspace}")
+            self.log.debug(f"{image_product_name} colorspace: {colorspace}")
             image_instance.data["colorspace"] = colorspace
 
         # Store the instance in the original instance as a member

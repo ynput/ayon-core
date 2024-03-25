@@ -12,7 +12,7 @@ class CreateMultiverseUsd(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.mvusdasset"
     label = "Multiverse USD Asset"
-    family = "usd"
+    product_type = "usd"
     icon = "cubes"
     description = "Create Multiverse USD Asset"
 

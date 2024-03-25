@@ -15,7 +15,7 @@ import unreal  # noqa
 class UAssetLoader(plugin.Loader):
     """Load UAsset."""
 
-    families = ["uasset"]
+    product_types = {"uasset"}
     label = "Load UAsset"
     representations = ["uasset"]
     icon = "cube"
@@ -28,7 +28,7 @@ class UAssetLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -42,12 +42,13 @@ class UAssetLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         root = unreal_pipeline.AYON_ASSET_DIR
-        asset = context.get('asset').get('name')
+        folder_path = context["folder"]["path"]
+        folder_name = context["folder"]["name"]
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{asset}/{name}", suffix=""
+            f"{root}/{folder_name}/{name}", suffix=""
         )
 
         unique_number = 1
@@ -73,17 +74,21 @@ class UAssetLoader(plugin.Loader):
         unreal_pipeline.create_container(
             container=container_name, path=asset_dir)
 
+        product_type = context["product"]["productType"]
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
             "namespace": asset_dir,
+            "folder_path": folder_path,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["_id"],
-            "parent": context["representation"]["parent"],
-            "family": context["representation"]["context"]["family"],
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -96,11 +101,13 @@ class UAssetLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
+    def update(self, container, context):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
         asset_dir = container["namespace"]
-        name = representation["context"]["subset"]
+
+        product_name = context["product"]["name"]
+        repre_entity = context["representation"]
 
         unique_number = container["container_name"].split("_")[-2]
 
@@ -116,19 +123,20 @@ class UAssetLoader(plugin.Loader):
             if obj.get_class().get_name() != "AyonAssetContainer":
                 unreal.EditorAssetLibrary.delete_asset(asset)
 
-        update_filepath = get_representation_path(representation)
+        update_filepath = get_representation_path(repre_entity)
 
         shutil.copy(
             update_filepath,
-            f"{destination_path}/{name}_{unique_number}.{self.extension}")
+            f"{destination_path}/{product_name}_{unique_number}.{self.extension}"
+        )
 
         container_path = f'{container["namespace"]}/{container["objectName"]}'
         # update metadata
         unreal_pipeline.imprint(
             container_path,
             {
-                "representation": str(representation["_id"]),
-                "parent": str(representation["parent"]),
+                "representation": repre_entity["id"],
+                "parent": repre_entity["versionId"],
             }
         )
 
@@ -156,7 +164,7 @@ class UAssetLoader(plugin.Loader):
 class UMapLoader(UAssetLoader):
     """Load Level."""
 
-    families = ["uasset"]
+    product_types = {"uasset"}
     label = "Load Level"
     representations = ["umap"]
 

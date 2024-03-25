@@ -1,7 +1,8 @@
 import re
 
+import ayon_api
+
 import ayon_core.hosts.photoshop.api as api
-from ayon_core.client import get_asset_by_name
 from ayon_core.lib import prepare_template_data
 from ayon_core.pipeline import (
     AutoCreator,
@@ -34,70 +35,93 @@ class PSAutoCreator(AutoCreator):
     def create(self, options=None):
         existing_instance = None
         for instance in self.create_context.instances:
-            if instance.family == self.family:
+            if instance.product_type == self.product_type:
                 existing_instance = instance
                 break
 
         context = self.create_context
         project_name = context.get_current_project_name()
-        asset_name = context.get_current_asset_name()
+        folder_path = context.get_current_folder_path()
         task_name = context.get_current_task_name()
         host_name = context.host_name
 
         if existing_instance is None:
-            existing_instance_asset = None
+            existing_instance_folder = None
         else:
-            existing_instance_asset = existing_instance["folderPath"]
+            existing_instance_folder = existing_instance["folderPath"]
 
         if existing_instance is None:
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
+            product_name = self.get_product_name(
+                project_name,
+                folder_entity,
+                task_entity,
+                self.default_variant,
+                host_name,
             )
             data = {
-                "folderPath": asset_name,
+                "folderPath": folder_path,
                 "task": task_name,
                 "variant": self.default_variant
             }
             data.update(self.get_dynamic_data(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name, None
+                project_name,
+                folder_entity,
+                task_entity,
+                self.default_variant,
+                host_name,
+                None
             ))
 
             if not self.active_on_create:
                 data["active"] = False
 
             new_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             self._add_instance_to_context(new_instance)
             api.stub().imprint(new_instance.get("instance_id"),
                                new_instance.data_to_store())
 
         elif (
-            existing_instance_asset != asset_name
+            existing_instance_folder != folder_path
             or existing_instance["task"] != task_name
         ):
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
             )
-            existing_instance["folderPath"] = asset_name
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
+            product_name = self.get_product_name(
+                project_name,
+                folder_entity,
+                task_entity,
+                self.default_variant,
+                host_name,
+            )
+            existing_instance["folderPath"] = folder_path
             existing_instance["task"] = task_name
-            existing_instance["subset"] = subset_name
+            existing_instance["productName"] = product_name
 
 
-def clean_subset_name(subset_name):
-    """Clean all variants leftover {layer} from subset name."""
+def clean_product_name(product_name):
+    """Clean all variants leftover {layer} from product name."""
     dynamic_data = prepare_template_data({"layer": "{layer}"})
     for value in dynamic_data.values():
-        if value in subset_name:
-            subset_name = (subset_name.replace(value, "")
-                                      .replace("__", "_")
-                                      .replace("..", "."))
+        if value in product_name:
+            product_name = (
+                product_name
+                .replace(value, "")
+                .replace("__", "_")
+                .replace("..", ".")
+            )
     # clean trailing separator as Main_
     pattern = r'[\W_]+$'
     replacement = ''
-    return re.sub(pattern, replacement, subset_name)
+    return re.sub(pattern, replacement, product_name)

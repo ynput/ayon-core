@@ -1,9 +1,5 @@
-from ayon_core.client import (
-    get_assets,
-    get_subsets,
-    get_last_versions,
-    get_asset_name_identifier,
-)
+import ayon_api
+
 from ayon_core.lib.attribute_definitions import (
     FileDef,
     BoolDef,
@@ -111,16 +107,18 @@ class SettingsCreator(TrayPublishCreator):
 
     extensions = []
 
-    def create(self, subset_name, data, pre_create_data):
+    def create(self, product_name, data, pre_create_data):
         # Pass precreate data to creator attributes
         thumbnail_path = pre_create_data.pop(PRE_CREATE_THUMBNAIL_KEY, None)
 
         # Fill 'version_to_use' if version control is enabled
         if self.allow_version_control:
-            asset_name = data["folderPath"]
-            subset_docs_by_asset_id = self._prepare_next_versions(
-                [asset_name], [subset_name])
-            version = subset_docs_by_asset_id[asset_name].get(subset_name)
+            folder_path = data["folderPath"]
+            product_entities_by_folder_path = self._prepare_next_versions(
+                [folder_path], [product_name])
+            version = product_entities_by_folder_path[folder_path].get(
+                product_name
+            )
             pre_create_data["version_to_use"] = version
             data["_previous_last_version"] = version
 
@@ -128,73 +126,78 @@ class SettingsCreator(TrayPublishCreator):
         data["settings_creator"] = True
 
         # Create new instance
-        new_instance = CreatedInstance(self.family, subset_name, data, self)
+        new_instance = CreatedInstance(
+            self.product_type, product_name, data, self
+        )
 
         self._store_new_instance(new_instance)
 
         if thumbnail_path:
             self.set_instance_thumbnail_path(new_instance.id, thumbnail_path)
 
-    def _prepare_next_versions(self, asset_names, subset_names):
-        """Prepare next versions for given asset and subset names.
+    def _prepare_next_versions(self, folder_paths, product_names):
+        """Prepare next versions for given folder and product names.
 
         Todos:
-            Expect combination of subset names by asset name to avoid
-                unnecessary server calls for unused subsets.
+            Expect combination of product names by folder path to avoid
+                unnecessary server calls for unused products.
 
         Args:
-            asset_names (Iterable[str]): Asset names.
-            subset_names (Iterable[str]): Subset names.
+            folder_paths (Iterable[str]): Folder paths.
+            product_names (Iterable[str]): Product names.
 
         Returns:
-            dict[str, dict[str, int]]: Last versions by asset
-                and subset names.
+            dict[str, dict[str, int]]: Last versions by fodler path
+                and product names.
         """
 
         # Prepare all versions for all combinations to '1'
-        subset_docs_by_asset_id = {
-            asset_name: {
-                subset_name: 1
-                for subset_name in subset_names
+        # TODO use 'ayon_core.pipeline.version_start' logic
+        product_entities_by_folder_path = {
+            folder_path: {
+                product_name: 1
+                for product_name in product_names
             }
-            for asset_name in asset_names
+            for folder_path in folder_paths
         }
-        if not asset_names or not subset_names:
-            return subset_docs_by_asset_id
+        if not folder_paths or not product_names:
+            return product_entities_by_folder_path
 
-        asset_docs = get_assets(
+        folder_entities = ayon_api.get_folders(
             self.project_name,
-            asset_names=asset_names,
-            fields=["_id", "name", "data.parents"]
+            folder_paths=folder_paths,
+            fields={"id", "path"}
         )
-        asset_names_by_id = {
-            asset_doc["_id"]: get_asset_name_identifier(asset_doc)
-            for asset_doc in asset_docs
+        folder_paths_by_id = {
+            folder_entity["id"]: folder_entity["path"]
+            for folder_entity in folder_entities
         }
-        subset_docs = list(get_subsets(
+        product_entities = list(ayon_api.get_products(
             self.project_name,
-            asset_ids=asset_names_by_id.keys(),
-            subset_names=subset_names,
-            fields=["_id", "name", "parent"]
+            folder_ids=folder_paths_by_id.keys(),
+            product_names=product_names,
+            fields={"id", "name", "folderId"}
         ))
 
-        subset_ids = {subset_doc["_id"] for subset_doc in subset_docs}
-        last_versions = get_last_versions(
+        product_ids = {p["id"] for p in product_entities}
+        last_versions = ayon_api.get_last_versions(
             self.project_name,
-            subset_ids,
-            fields=["name", "parent"])
+            product_ids,
+            fields={"version", "productId"})
 
-        for subset_doc in subset_docs:
-            asset_id = subset_doc["parent"]
-            asset_name = asset_names_by_id[asset_id]
-            subset_name = subset_doc["name"]
-            subset_id = subset_doc["_id"]
-            last_version = last_versions.get(subset_id)
+        for product_entity in product_entities:
+            product_id = product_entity["id"]
+            product_name = product_entity["name"]
+            folder_id = product_entity["folderId"]
+            folder_path = folder_paths_by_id[folder_id]
+            last_version = last_versions.get(product_id)
             version = 0
             if last_version is not None:
-                version = last_version["name"]
-            subset_docs_by_asset_id[asset_name][subset_name] += version
-        return subset_docs_by_asset_id
+                version = last_version["version"]
+            product_entities_by_folder_path[folder_path][product_name] += (
+                version
+            )
+        return product_entities_by_folder_path
 
     def _fill_next_versions(self, instances_data):
         """Fill next version for instances.
@@ -219,20 +222,20 @@ class SettingsCreator(TrayPublishCreator):
             ):
                 filtered_instance_data.append(instance)
 
-        asset_names = {
+        folder_paths = {
             instance["folderPath"]
             for instance in filtered_instance_data
         }
-        subset_names = {
-            instance["subset"]
+        product_names = {
+            instance["productName"]
             for instance in filtered_instance_data}
-        subset_docs_by_asset_id = self._prepare_next_versions(
-            asset_names, subset_names
+        product_entities_by_folder_path = self._prepare_next_versions(
+            folder_paths, product_names
         )
         for instance in filtered_instance_data:
-            asset_name = instance["folderPath"]
-            subset_name = instance["subset"]
-            version = subset_docs_by_asset_id[asset_name][subset_name]
+            folder_path = instance["folderPath"]
+            product_name = instance["productName"]
+            version = product_entities_by_folder_path[folder_path][product_name]
             instance["creator_attributes"]["version_to_use"] = version
             instance["_previous_last_version"] = version
 
@@ -311,14 +314,14 @@ class SettingsCreator(TrayPublishCreator):
     @classmethod
     def from_settings(cls, item_data):
         identifier = item_data["identifier"]
-        family = item_data["product_type"]
+        product_type = item_data["product_type"]
         if not identifier:
-            identifier = "settings_{}".format(family)
+            identifier = "settings_{}".format(product_type)
         return type(
             "{}{}".format(cls.__name__, identifier),
             (cls, ),
             {
-                "family": family,
+                "product_type": product_type,
                 "identifier": identifier,
                 "label": item_data["label"].strip(),
                 "icon": item_data["icon"],

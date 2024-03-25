@@ -48,7 +48,7 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
     group = None
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         settings = project_settings["deadline"]["publish"]["MaxSubmitDeadline"]  # noqa
 
         # Take some defaults from settings

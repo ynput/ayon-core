@@ -1,8 +1,8 @@
 from maya import cmds, mel
 
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_subset_by_name
 from ayon_core.pipeline import KnownPublishError
 from ayon_core.hosts.maya.api import lib
 
@@ -57,26 +57,26 @@ class CollectReview(pyblish.api.InstancePlugin):
             burninDataMembers["focalLength"] = focal_length
 
         # Account for nested instances like model.
-        reviewable_subsets = list(set(members) & objectset)
-        if reviewable_subsets:
-            if len(reviewable_subsets) > 1:
+        reviewable_products = list(set(members) & objectset)
+        if reviewable_products:
+            if len(reviewable_products) > 1:
                 raise KnownPublishError(
-                    "Multiple attached subsets for review are not supported. "
-                    "Attached: {}".format(", ".join(reviewable_subsets))
+                    "Multiple attached products for review are not supported. "
+                    "Attached: {}".format(", ".join(reviewable_products))
                 )
 
-            reviewable_subset = reviewable_subsets[0]
+            reviewable_product = reviewable_products[0]
             self.log.debug(
-                "Subset attached to review: {}".format(reviewable_subset)
+                "Product attached to review: {}".format(reviewable_product)
             )
 
             # Find the relevant publishing instance in the current context
             reviewable_inst = next(inst for inst in context
-                                   if inst.name == reviewable_subset)
+                                   if inst.name == reviewable_product)
             data = reviewable_inst.data
 
             self.log.debug(
-                'Adding review family to {}'.format(reviewable_subset)
+                'Adding review family to {}'.format(reviewable_product)
             )
             if data.get('families'):
                 data['families'].append('review')
@@ -117,18 +117,18 @@ class CollectReview(pyblish.api.InstancePlugin):
 
         else:
             project_name = instance.context.data["projectName"]
-            asset_doc = instance.context.data['assetEntity']
+            folder_entity = instance.context.data["folderEntity"]
             task = instance.context.data["task"]
-            legacy_subset_name = task + 'Review'
-            subset_doc = get_subset_by_name(
+            legacy_product_name = task + 'Review'
+            product_entity = ayon_api.get_product_by_name(
                 project_name,
-                legacy_subset_name,
-                asset_doc["_id"],
-                fields=["_id"]
+                legacy_product_name,
+                folder_entity["id"],
+                fields={"id"}
             )
-            if subset_doc:
-                self.log.debug("Existing subsets found, keep legacy name.")
-                instance.data['subset'] = legacy_subset_name
+            if product_entity:
+                self.log.debug("Existing products found, keep legacy name.")
+                instance.data["productName"] = legacy_product_name
 
             instance.data["cameras"] = cameras
             instance.data['review_camera'] = camera

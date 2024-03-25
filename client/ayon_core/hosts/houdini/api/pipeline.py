@@ -68,7 +68,7 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         self._has_been_setup = True
 
-        # Set asset settings for the empty scene directly after launch of
+        # Set folder settings for the empty scene directly after launch of
         # Houdini so it initializes into the correct scene FPS,
         # Frame Range, etc.
         # TODO: make sure this doesn't trigger when
@@ -235,7 +235,7 @@ def containerise(name,
         "name": name,
         "namespace": namespace,
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     lib.imprint(container, data)
@@ -338,7 +338,7 @@ def on_open():
     lib.update_houdini_vars_context_dialog()
 
     # Validate FPS after update_task_from_path to
-    # ensure it is using correct FPS for the asset
+    # ensure it is using correct FPS for the folder
     lib.validate_fps()
 
     if any_outdated_containers():
@@ -388,7 +388,7 @@ def on_new():
 def _set_context_settings():
     """Apply the project settings from the project definition
 
-    Settings can be overwritten by an asset if the asset.data contains
+    Settings can be overwritten by a folder if the folder.attrib contains
     any information regarding those settings.
 
     Examples of settings:

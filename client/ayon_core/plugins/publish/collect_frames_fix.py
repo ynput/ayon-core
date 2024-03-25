@@ -1,14 +1,11 @@
 import pyblish.api
+import ayon_api
+
 from ayon_core.lib.attribute_definitions import (
     TextDef,
     BoolDef
 )
-
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
-from ayon_core.client.entities import (
-    get_last_version_by_subset_name,
-    get_representations
-)
 
 
 class CollectFramesFixDef(
@@ -17,7 +14,7 @@ class CollectFramesFixDef(
 ):
     """Provides text field to insert frame(s) to be rerendered.
 
-    Published files of last version of an instance subset are collected into
+    Published files of last version of an instance product are collected into
     instance.data["last_version_published_files"]. All these but frames
     mentioned in text field will be reused for new version.
     """
@@ -40,29 +37,35 @@ class CollectFramesFixDef(
 
         instance.data["frames_to_fix"] = frames_to_fix
 
-        subset_name = instance.data["subset"]
-        asset_name = instance.data["folderPath"]
+        product_name = instance.data["productName"]
+        folder_entity = instance.data["folderEntity"]
 
         project_entity = instance.data["projectEntity"]
         project_name = project_entity["name"]
 
-        version = get_last_version_by_subset_name(
+        version_entity = ayon_api.get_last_version_by_product_name(
             project_name,
-            subset_name,
-            asset_name=asset_name
+            product_name,
+            folder_entity["id"]
         )
-        if not version:
+        if not version_entity:
             self.log.warning(
                 "No last version found, re-render not possible"
             )
             return
 
-        representations = get_representations(
-            project_name, version_ids=[version["_id"]]
+        representations = ayon_api.get_representations(
+            project_name, version_ids={version_entity["id"]}
         )
         published_files = []
         for repre in representations:
-            if repre["context"]["family"] not in self.families:
+            # TODO get product type from product entity instead of
+            #   representation 'context' data.
+            repre_context = repre["context"]
+            product_type = repre_context.get("product", {}).get("type")
+            if not product_type:
+                product_type = repre_context.get("family")
+            if product_type not in self.families:
                 continue
 
             for file_info in repre.get("files"):
@@ -73,7 +76,7 @@ class CollectFramesFixDef(
             instance.data["last_version_published_files"]))
 
         if self.rewrite_version_enable and rewrite_version:
-            instance.data["version"] = version["name"]
+            instance.data["version"] = version_entity["version"]
             # limits triggering version validator
             instance.data.pop("latestVersion")
 

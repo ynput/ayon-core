@@ -36,18 +36,18 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
 
     def _load_json(self, path):
         path = path.strip('\"')
-        assert os.path.isfile(path), (
-            "Path to json file doesn't exist. \"{}\"".format(path)
-        )
+
+        if not os.path.isfile(path):
+            raise FileNotFoundError(
+                f"Path to json file doesn't exist. \"{path}\"")
+
         data = None
         with open(path, "r") as json_file:
             try:
                 data = json.load(json_file)
             except Exception as exc:
                 self.log.error(
-                    "Error loading json: "
-                    "{} - Exception: {}".format(path, exc)
-                )
+                    "Error loading json: %s - Exception: %s", path, exc)
         return data
 
     def _fill_staging_dir(self, data_object, anatomy):
@@ -73,39 +73,32 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
         data_err = "invalid json file - missing data"
         required = ["user", "comment",
                     "job", "instances", "version"]
-        assert all(elem in data.keys() for elem in required), data_err
+
+        if any(elem not in data for elem in required):
+            raise ValueError(data_err)
+
         if "folderPath" not in data and "asset" not in data:
-            raise AssertionError(data_err)
+            raise ValueError(data_err)
 
         if "folderPath" not in data:
             data["folderPath"] = data.pop("asset")
 
-        # set context by first json file
-        ctx = self._context.data
-
-        ctx["folderPath"] = ctx.get("folderPath") or data.get("folderPath")
-        ctx["intent"] = ctx.get("intent") or data.get("intent")
-        ctx["comment"] = ctx.get("comment") or data.get("comment")
-        ctx["user"] = ctx.get("user") or data.get("user")
-        ctx["version"] = ctx.get("version") or data.get("version")
-
-        # basic sanity check to see if we are working in same context
-        # if some other json file has different context, bail out.
-        ctx_err = "inconsistent contexts in json files - %s"
-        assert ctx.get("folderPath") == data.get("folderPath"), ctx_err % "folderPath"
-        assert ctx.get("intent") == data.get("intent"), ctx_err % "intent"
-        assert ctx.get("comment") == data.get("comment"), ctx_err % "comment"
-        assert ctx.get("user") == data.get("user"), ctx_err % "user"
-        assert ctx.get("version") == data.get("version"), ctx_err % "version"
+        # ftrack credentials are passed as environment variables by Deadline
+        # to publish job, but Muster doesn't pass them.
+        if data.get("ftrack") and not os.environ.get("FTRACK_API_USER"):
+            ftrack = data.get("ftrack")
+            os.environ["FTRACK_API_USER"] = ftrack["FTRACK_API_USER"]
+            os.environ["FTRACK_API_KEY"] = ftrack["FTRACK_API_KEY"]
+            os.environ["FTRACK_SERVER"] = ftrack["FTRACK_SERVER"]
 
         # now we can just add instances from json file and we are done
         any_staging_dir_persistent = False
         for instance_data in data.get("instances"):
 
             self.log.debug("  - processing instance for {}".format(
-                instance_data.get("subset")))
+                instance_data.get("productName")))
             instance = self._context.create_instance(
-                instance_data.get("subset")
+                instance_data.get("productName")
             )
 
             self._fill_staging_dir(instance_data, anatomy)

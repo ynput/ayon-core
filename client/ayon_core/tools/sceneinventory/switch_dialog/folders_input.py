@@ -5,8 +5,8 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     BaseClickableFrame,
     set_style_property,
+    FoldersWidget,
 )
-from ayon_core.tools.ayon_utils.widgets import FoldersWidget
 
 NOT_SET = object()
 
@@ -196,19 +196,19 @@ class FoldersField(BaseClickableFrame):
 
     def __init__(self, controller, parent):
         super(FoldersField, self).__init__(parent)
-        self.setObjectName("AssetNameInputWidget")
+        self.setObjectName("FolderPathInputWidget")
 
         # Don't use 'self' for parent!
         # - this widget has specific styles
         dialog = FoldersDialog(controller, parent)
 
         name_input = ClickableLineEdit(self)
-        name_input.setObjectName("AssetNameInput")
+        name_input.setObjectName("FolderPathInput")
 
         icon = qtawesome.icon("fa.window-maximize", color="white")
         icon_btn = QtWidgets.QPushButton(self)
         icon_btn.setIcon(icon)
-        icon_btn.setObjectName("AssetNameInputButton")
+        icon_btn.setObjectName("FolderPathInputButton")
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

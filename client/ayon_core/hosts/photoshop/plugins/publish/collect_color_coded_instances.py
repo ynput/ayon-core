@@ -13,17 +13,17 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
 
     Used in remote publishing when artists marks publishable layers by color-
     coding. Top level layers (group) must be marked by specific color to be
-    published as an instance of 'image' family.
+    published as an instance of 'image' product type.
 
     Can add group for all publishable layers to allow creation of flattened
     image. (Cannot contain special background layer as it cannot be grouped!)
 
     Based on value `create_flatten_image` from Settings:
-    - "yes": create flattened 'image' subset of all publishable layers + create
-        'image' subset per publishable layer
-    - "only": create ONLY flattened 'image' subset of all publishable layers
-    - "no": do not create flattened 'image' subset at all,
-        only separate subsets per marked layer.
+    - "yes": create flattened 'image' product of all publishable layers + create
+        'image' product per publishable layer
+    - "only": create ONLY flattened 'image' product of all publishable layers
+    - "no": do not create flattened 'image' product at all,
+        only separate products per marked layer.
 
     Identifier:
         id (str): "ayon.create.instance"
@@ -36,9 +36,6 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
 
     # configurable by Settings
     color_code_mapping = []
-    # TODO check if could be set globally, probably doesn't make sense when
-    # flattened template cannot
-    subset_template_name = ""
     create_flatten_image = "no"
     flatten_product_name_template = ""
 
@@ -48,15 +45,19 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
             os.environ.get("AYON_PUBLISH_DATA")
             or os.environ.get("OPENPYPE_PUBLISH_DATA")
         )
-        if (is_in_tests() and
-                (not batch_dir or not os.path.exists(batch_dir))):
+        if (
+            is_in_tests()
+            and (
+                not batch_dir or not os.path.exists(batch_dir)
+            )
+        ):
             self.log.debug("Automatic testing, no batch data, skipping")
             return
 
-        existing_subset_names = self._get_existing_subset_names(context)
+        existing_product_names = self._get_existing_product_names(context)
 
         # from CollectBatchData
-        asset_name = context.data["folderPath"]
+        folder_path = context.data["folderPath"]
         task_name = context.data["task"]
         variant = context.data["variant"]
         project_name = context.data["projectEntity"]["name"]
@@ -71,7 +72,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
 
         publishable_layers = []
         created_instances = []
-        family_from_settings = None
+        product_type_from_settings = None
         for layer in layers:
             self.log.debug("Layer:: {}".format(layer))
             if layer.parents:
@@ -82,42 +83,50 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
                 self.log.debug("Not visible, skip")
                 continue
 
-            resolved_family, resolved_subset_template = self._resolve_mapping(
-                layer
+            resolved_product_type, resolved_product_template = (
+                self._resolve_mapping(layer)
             )
 
-            if not resolved_subset_template or not resolved_family:
-                self.log.debug("!!! Not found family or template, skip")
+            if not resolved_product_template or not resolved_product_type:
+                self.log.debug("!!! Not found product type or template, skip")
                 continue
 
-            if not family_from_settings:
-                family_from_settings = resolved_family
+            if not product_type_from_settings:
+                product_type_from_settings = resolved_product_type
 
             fill_pairs = {
                 "variant": variant,
-                "family": resolved_family,
+                "family": resolved_product_type,
+                "product": {"type": resolved_product_type},
                 "task": task_name,
                 "layer": layer.clean_name
             }
 
-            subset = resolved_subset_template.format(
+            product_name = resolved_product_template.format(
                 **prepare_template_data(fill_pairs))
 
-            subset = self._clean_subset_name(stub, naming_conventions,
-                                             subset, layer)
+            product_name = self._clean_product_name(
+                stub, naming_conventions, product_name, layer
+            )
 
-            if subset in existing_subset_names:
-                self.log.info(
-                    "Subset {} already created, skipping.".format(subset))
+            if product_name in existing_product_names:
+                self.log.info((
+                    "Product {} already created, skipping."
+                ).format(product_name))
                 continue
 
             if self.create_flatten_image != "flatten_only":
-                instance = self._create_instance(context, layer,
-                                                 resolved_family,
-                                                 asset_name, subset, task_name)
+                instance = self._create_instance(
+                    context,
+                    layer,
+                    resolved_product_type,
+                    folder_path,
+                    product_name,
+                    task_name
+                )
                 created_instances.append(instance)
 
-            existing_subset_names.append(subset)
+            existing_product_names.append(product_name)
             publishable_layers.append(layer)
 
         if self.create_flatten_image != "no" and publishable_layers:
@@ -127,15 +136,20 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
                 return
 
             fill_pairs.pop("layer")
-            subset = self.flatten_product_name_template.format(
+            product_name = self.flatten_product_name_template.format(
                 **prepare_template_data(fill_pairs))
 
             first_layer = publishable_layers[0]  # dummy layer
-            first_layer.name = subset
-            family = family_from_settings  # inherit family
-            instance = self._create_instance(context, first_layer,
-                                             family,
-                                             asset_name, subset, task_name)
+            first_layer.name = product_name
+            product_type = product_type_from_settings  # inherit product type
+            instance = self._create_instance(
+                context,
+                first_layer,
+                product_type,
+                folder_path,
+                product_name,
+                task_name
+            )
             instance.data["ids"] = [layer.id for layer in publishable_layers]
             created_instances.append(instance)
 
@@ -145,29 +159,37 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
             self.log.info("Found: \"%s\" " % instance.data["name"])
             self.log.info("instance: {} ".format(instance.data))
 
-    def _get_existing_subset_names(self, context):
+    def _get_existing_product_names(self, context):
         """Collect manually created instances from workfile.
 
         Shouldn't be any as Webpublisher bypass publishing via Openpype, but
         might be some if workfile published through OP is reused.
         """
-        existing_subset_names = []
+        existing_product_names = []
         for instance in context:
-            if instance.data.get('publish'):
-                existing_subset_names.append(instance.data.get('subset'))
+            if instance.data.get("publish") is not False:
+                existing_product_names.append(instance.data.get("productName"))
 
-        return existing_subset_names
+        return existing_product_names
 
-    def _create_instance(self, context, layer, family,
-                         asset, subset, task_name):
+    def _create_instance(
+        self,
+        context,
+        layer,
+        product_type,
+        folder_path,
+        product_name,
+        task_name
+    ):
         instance = context.create_instance(layer.name)
-        instance.data["family"] = family
         instance.data["publish"] = True
-        instance.data["folderPath"] = asset
+        instance.data["productType"] = product_type
+        instance.data["productName"] = product_name
+        instance.data["folderPath"] = folder_path
         instance.data["task"] = task_name
-        instance.data["subset"] = subset
         instance.data["layer"] = layer
-        instance.data["families"] = []
+        instance.data["family"] = product_type
+        instance.data["families"] = [product_type]
 
         return instance
 
@@ -177,50 +199,63 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
             If both color code AND name regex is configured, BOTH must be valid
             If layer matches to multiple mappings, only first is used!
         """
-        family_list = []
-        family = None
-        subset_name_list = []
-        resolved_subset_template = None
+        product_type_list = []
+        product_name_list = []
         for mapping in self.color_code_mapping:
-            if mapping["color_code"] and \
-                    layer.color_code not in mapping["color_code"]:
+            if (
+                mapping["color_code"]
+                and layer.color_code not in mapping["color_code"]
+            ):
                 continue
 
-            if mapping["layer_name_regex"] and \
-                    not any(re.search(pattern, layer.name)
-               for pattern in mapping["layer_name_regex"]):
+            if (
+                mapping["layer_name_regex"]
+                and not any(
+                    re.search(pattern, layer.name)
+                    for pattern in mapping["layer_name_regex"]
+                )
+            ):
                 continue
 
-            family_list.append(mapping["family"])
-            subset_name_list.append(mapping["subset_template_name"])
-        if len(subset_name_list) > 1:
-            self.log.warning("Multiple mappings found for '{}'".
-                             format(layer.name))
-            self.log.warning("Only first subset name template used!")
-            subset_name_list[:] = subset_name_list[0]
+            product_type_list.append(mapping["product_type"])
+            product_name_list.append(mapping["product_name_template"])
 
-        if len(family_list) > 1:
-            self.log.warning("Multiple mappings found for '{}'".
-                             format(layer.name))
-            self.log.warning("Only first family used!")
-            family_list[:] = family_list[0]
-        if subset_name_list:
-            resolved_subset_template = subset_name_list.pop()
-        if family_list:
-            family = family_list.pop()
+        if len(product_name_list) > 1:
+            self.log.warning(
+                "Multiple mappings found for '{}'".format(layer.name)
+            )
+            self.log.warning("Only first product name template used!")
+            product_name_list[:] = product_name_list[0]
 
-        self.log.debug("resolved_family {}".format(family))
-        self.log.debug("resolved_subset_template {}".format(
-            resolved_subset_template))
-        return family, resolved_subset_template
+        if len(product_type_list) > 1:
+            self.log.warning(
+                "Multiple mappings found for '{}'".format(layer.name)
+            )
+            self.log.warning("Only first product type used!")
+            product_type_list[:] = product_type_list[0]
 
-    def _clean_subset_name(self, stub, naming_conventions, subset, layer):
-        """Cleans invalid characters from subset name and layer name."""
-        if re.search(naming_conventions["invalid_chars"], subset):
-            subset = re.sub(
+        resolved_product_template = None
+        if product_name_list:
+            resolved_product_template = product_name_list.pop()
+
+        product_type = None
+        if product_type_list:
+            product_type = product_type_list.pop()
+
+        self.log.debug("resolved_product_type {}".format(product_type))
+        self.log.debug("resolved_product_template {}".format(
+            resolved_product_template))
+        return product_type, resolved_product_template
+
+    def _clean_product_name(
+        self, stub, naming_conventions, product_name, layer
+    ):
+        """Cleans invalid characters from product name and layer name."""
+        if re.search(naming_conventions["invalid_chars"], product_name):
+            product_name = re.sub(
                 naming_conventions["invalid_chars"],
                 naming_conventions["replace_char"],
-                subset
+                product_name
             )
             layer_name = re.sub(
                 naming_conventions["invalid_chars"],
@@ -230,4 +265,4 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
             layer.name = layer_name
             stub.rename_layer(layer.id, layer_name)
 
-        return subset
+        return product_name

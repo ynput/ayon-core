@@ -15,12 +15,12 @@ import shutil
 import hiero
 
 from qtpy import QtWidgets, QtCore
+import ayon_api
 try:
     from PySide import QtXml
 except ImportError:
     from PySide2 import QtXml
 
-from ayon_core.client import get_project
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     Anatomy,
@@ -588,9 +588,9 @@ def imprint(track_item, data=None):
 
     Examples:
         data = {
-            'asset': 'sq020sh0280',
-            'family': 'render',
-            'subset': 'subsetMain'
+            'folderPath': '/shots/sq020sh0280',
+            'productType': 'render',
+            'productName': 'productMain'
         }
     """
     data = data or {}
@@ -654,17 +654,17 @@ def sync_avalon_data_to_workfile():
         project.setProjectRoot(active_project_root)
 
     # get project data from avalon db
-    project_doc = get_project(project_name)
-    project_data = project_doc["data"]
+    project_entity = ayon_api.get_project(project_name)
+    project_attribs = project_entity["attrib"]
 
-    log.debug("project_data: {}".format(project_data))
+    log.debug("project attributes: {}".format(project_attribs))
 
     # get format and fps property from avalon db on project
-    width = project_data["resolutionWidth"]
-    height = project_data["resolutionHeight"]
-    pixel_aspect = project_data["pixelAspect"]
-    fps = project_data['fps']
-    format_name = project_data['code']
+    width = project_attribs["resolutionWidth"]
+    height = project_attribs["resolutionHeight"]
+    pixel_aspect = project_attribs["pixelAspect"]
+    fps = project_attribs["fps"]
+    format_name = project_entity["code"]
 
     # create new format in hiero project
     format = hiero.core.Format(width, height, pixel_aspect, format_name)

@@ -1,24 +1,19 @@
 import collections
 
-from ayon_core.client import (
-    get_assets,
-    get_subsets,
-    get_last_versions,
-    get_asset_name_identifier,
-)
+import ayon_api
 
 
 def get_last_versions_for_instances(
     project_name, instances, use_value_for_missing=False
 ):
-    """Get last versions for instances by their asset and subset name.
+    """Get last versions for instances by their folder path and product name.
 
     Args:
         project_name (str): Project name.
         instances (list[CreatedInstance]): Instances to get next versions for.
         use_value_for_missing (Optional[bool]): Missing values are replaced
             with negative value if True. Otherwise None is used. -2 is used
-            for instances without filled asset or subset name. -1 is used
+            for instances without filled folder or product name. -1 is used
             for missing entities.
 
     Returns:
@@ -29,80 +24,81 @@ def get_last_versions_for_instances(
         instance.id: -1 if use_value_for_missing else None
         for instance in instances
     }
-    subset_names_by_asset_name = collections.defaultdict(set)
+    product_names_by_folder_path = collections.defaultdict(set)
     instances_by_hierarchy = {}
     for instance in instances:
-        asset_name = instance.data.get("folderPath")
-        subset_name = instance.subset_name
-        if not asset_name or not subset_name:
+        folder_path = instance.data.get("folderPath")
+        product_name = instance.product_name
+        if not folder_path or not product_name:
             if use_value_for_missing:
                 output[instance.id] = -2
             continue
 
         (
             instances_by_hierarchy
-            .setdefault(asset_name, {})
-            .setdefault(subset_name, [])
+            .setdefault(folder_path, {})
+            .setdefault(product_name, [])
             .append(instance)
         )
-        subset_names_by_asset_name[asset_name].add(subset_name)
+        product_names_by_folder_path[folder_path].add(product_name)
 
-    subset_names = set()
-    for names in subset_names_by_asset_name.values():
-        subset_names |= names
+    product_names = set()
+    for names in product_names_by_folder_path.values():
+        product_names |= names
 
-    if not subset_names:
+    if not product_names:
         return output
 
-    asset_docs = get_assets(
+    folder_entities = ayon_api.get_folders(
         project_name,
-        asset_names=subset_names_by_asset_name.keys(),
-        fields=["name", "_id", "data.parents"]
+        folder_paths=product_names_by_folder_path.keys(),
+        fields={"id", "path"}
     )
-    asset_names_by_id = {
-        asset_doc["_id"]: get_asset_name_identifier(asset_doc)
-        for asset_doc in asset_docs
+    folder_paths_by_id = {
+        folder_entity["id"]: folder_entity["path"]
+        for folder_entity in folder_entities
     }
-    if not asset_names_by_id:
+    if not folder_paths_by_id:
         return output
 
-    subset_docs = get_subsets(
+    product_entities = ayon_api.get_products(
         project_name,
-        asset_ids=asset_names_by_id.keys(),
-        subset_names=subset_names,
-        fields=["_id", "name", "parent"]
+        folder_ids=folder_paths_by_id.keys(),
+        product_names=product_names,
+        fields={"id", "name", "folderId"}
     )
-    subset_docs_by_id = {}
-    for subset_doc in subset_docs:
-        # Filter subset docs by subset names under parent
-        asset_id = subset_doc["parent"]
-        asset_name = asset_names_by_id[asset_id]
-        subset_name = subset_doc["name"]
-        if subset_name not in subset_names_by_asset_name[asset_name]:
+    product_entities_by_id = {}
+    for product_entity in product_entities:
+        # Filter product entities by names under parent
+        folder_id = product_entity["folderId"]
+        product_name = product_entity["name"]
+        folder_path = folder_paths_by_id[folder_id]
+        if product_name not in product_names_by_folder_path[folder_path]:
             continue
-        subset_docs_by_id[subset_doc["_id"]] = subset_doc
+        product_entities_by_id[product_entity["id"]] = product_entity
 
-    if not subset_docs_by_id:
+    if not product_entities_by_id:
         return output
 
-    last_versions_by_subset_id = get_last_versions(
+    last_versions_by_product_id = ayon_api.get_last_versions(
         project_name,
-        subset_docs_by_id.keys(),
-        fields=["name", "parent"]
+        product_entities_by_id.keys(),
+        fields={"version", "productId"}
     )
-    for subset_id, version_doc in last_versions_by_subset_id.items():
-        subset_doc = subset_docs_by_id[subset_id]
-        asset_id = subset_doc["parent"]
-        asset_name = asset_names_by_id[asset_id]
-        _instances = instances_by_hierarchy[asset_name][subset_doc["name"]]
+    for product_id, version_entity in last_versions_by_product_id.items():
+        product_entity = product_entities_by_id[product_id]
+        product_name = product_entity["name"]
+        folder_id = product_entity["folderId"]
+        folder_path = folder_paths_by_id[folder_id]
+        _instances = instances_by_hierarchy[folder_path][product_name]
         for instance in _instances:
-            output[instance.id] = version_doc["name"]
+            output[instance.id] = version_entity["version"]
 
     return output
 
 
 def get_next_versions_for_instances(project_name, instances):
-    """Get next versions for instances by their asset and subset name.
+    """Get next versions for instances by their folder path and product name.
 
     Args:
         project_name (str): Project name.
@@ -110,7 +106,7 @@ def get_next_versions_for_instances(project_name, instances):
 
     Returns:
         dict[str, Union[int, None]]: Next versions by instance id. Version is
-            'None' if instance has no asset or subset name.
+            'None' if instance has no folder path or product name.
     """
 
     last_versions = get_last_versions_for_instances(

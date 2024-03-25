@@ -65,7 +65,7 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
         # Collect and store current context to have reference
         current_context = {
             "project_name": context.data["projectName"],
-            "asset_name": context.data["folderPath"],
+            "folder_path": context.data["folderPath"],
             "task_name": context.data["task"]
         }
         self.log.debug("Current context is: {}".format(current_context))
@@ -77,7 +77,7 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
         if "project" in workfile_context:
             workfile_context = {
                 "project_name": workfile_context.get("project"),
-                "asset_name": workfile_context.get("asset"),
+                "folder_path": workfile_context.get("asset"),
                 "task_name": workfile_context.get("task"),
             }
         # Store workfile context to pyblish context
@@ -85,18 +85,18 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
         if workfile_context:
             # Change current context with context from workfile
             key_map = (
-                ("AYON_FOLDER_PATH", "asset_name"),
+                ("AYON_FOLDER_PATH", "folder_path"),
                 ("AYON_TASK_NAME", "task_name")
             )
             for env_key, key in key_map:
                 os.environ[env_key] = workfile_context[key]
             self.log.info("Context changed to: {}".format(workfile_context))
 
-            asset_name = workfile_context["asset_name"]
+            folder_path = workfile_context["folder_path"]
             task_name = workfile_context["task_name"]
 
         else:
-            asset_name = current_context["asset_name"]
+            folder_path = current_context["folder_path"]
             task_name = current_context["task_name"]
             # Handle older workfiles or workfiles without metadata
             self.log.warning((
@@ -104,12 +104,12 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
                 " Using current Session context."
             ))
 
-        # Store context asset name
-        context.data["folderPath"] = asset_name
+        # Store context folder path
+        context.data["folderPath"] = folder_path
         context.data["task"] = task_name
         self.log.info(
-            "Context is set to Asset: \"{}\" and Task: \"{}\"".format(
-                asset_name, task_name
+            "Context is set to Folder: \"{}\" and Task: \"{}\"".format(
+                folder_path, task_name
             )
         )
 

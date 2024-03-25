@@ -10,7 +10,7 @@ class CollectMayaHistory(pyblish.api.InstancePlugin):
         This removes render layers collected in the history
 
     This is separate from Collect Instances so we can target it towards only
-    specific family types.
+    specific product types.
 
     """
 

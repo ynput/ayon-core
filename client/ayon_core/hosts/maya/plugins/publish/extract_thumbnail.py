@@ -27,7 +27,7 @@ class ExtractThumbnail(publish.Extractor):
         capture_preset = lib.get_capture_preset(
             task_data.get("name"),
             task_data.get("type"),
-            instance.data["subset"],
+            instance.data["productName"],
             instance.context.data["project_settings"],
             self.log
         )

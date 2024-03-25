@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
 <error id="main">
-<title>Subset name</title>
+<title>Product name</title>
 <description>
-## Invalid subset or layer name
+## Invalid product or layer name
 
-Subset or layer name cannot contain specific characters (spaces etc) which could cause issue when subset name is used in a published file name.
+Product or layer name cannot contain specific characters (spaces etc) which could cause issue when product name is used in a published file name.
     {msg}
 
 ### How to repair?

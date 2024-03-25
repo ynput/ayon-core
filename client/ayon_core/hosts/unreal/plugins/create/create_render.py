@@ -24,11 +24,11 @@ class CreateRender(UnrealAssetCreator):
 
     identifier = "io.ayon.creators.unreal.render"
     label = "Render"
-    family = "render"
+    product_type = "render"
     icon = "eye"
 
     def create_instance(
-            self, instance_data, subset_name, pre_create_data,
+            self, instance_data, product_name, pre_create_data,
             selected_asset_path, master_seq, master_lvl, seq_data
     ):
         instance_data["members"] = [selected_asset_path]
@@ -40,12 +40,12 @@ class CreateRender(UnrealAssetCreator):
         instance_data["frameEnd"] = seq_data.get('frame_range')[1]
 
         super(CreateRender, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
     def create_with_new_sequence(
-            self, subset_name, instance_data, pre_create_data
+            self, product_name, instance_data, pre_create_data
     ):
         # If the option to create a new level sequence is selected,
         # create a new level sequence and a master level.
@@ -53,7 +53,7 @@ class CreateRender(UnrealAssetCreator):
         root = f"/Game/Ayon/Sequences"
 
         # Create a new folder for the sequence in root
-        sequence_dir_name = create_folder(root, subset_name)
+        sequence_dir_name = create_folder(root, product_name)
         sequence_dir = f"{root}/{sequence_dir_name}"
 
         unreal.log_warning(f"sequence_dir: {sequence_dir}")
@@ -61,7 +61,7 @@ class CreateRender(UnrealAssetCreator):
         # Create the level sequence
         asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
         seq = asset_tools.create_asset(
-            asset_name=subset_name,
+            asset_name=product_name,
             package_path=sequence_dir,
             asset_class=unreal.LevelSequence,
             factory=unreal.LevelSequenceFactoryNew())
@@ -92,7 +92,7 @@ class CreateRender(UnrealAssetCreator):
             else:
                 unreal.EditorLevelLibrary.save_current_level()
 
-        ml_path = f"{sequence_dir}/{subset_name}_MasterLevel"
+        ml_path = f"{sequence_dir}/{product_name}_MasterLevel"
 
         if UNREAL_VERSION.major >= 5:
             unreal.LevelEditorSubsystem().new_level(ml_path)
@@ -107,11 +107,11 @@ class CreateRender(UnrealAssetCreator):
                 seq.get_playback_end())}
 
         self.create_instance(
-            instance_data, subset_name, pre_create_data,
+            instance_data, product_name, pre_create_data,
             seq.get_path_name(), seq.get_path_name(), ml_path, seq_data)
 
     def create_from_existing_sequence(
-            self, subset_name, instance_data, pre_create_data
+            self, product_name, instance_data, pre_create_data
     ):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
@@ -224,16 +224,16 @@ class CreateRender(UnrealAssetCreator):
                 continue
 
             self.create_instance(
-                instance_data, subset_name, pre_create_data,
+                instance_data, product_name, pre_create_data,
                 selected_asset_path, master_seq, master_lvl, seq_data)
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         if pre_create_data.get("create_seq"):
             self.create_with_new_sequence(
-                subset_name, instance_data, pre_create_data)
+                product_name, instance_data, pre_create_data)
         else:
             self.create_from_existing_sequence(
-                subset_name, instance_data, pre_create_data)
+                product_name, instance_data, pre_create_data)
 
     def get_pre_create_attr_defs(self):
         return [

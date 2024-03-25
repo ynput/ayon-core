@@ -3,7 +3,7 @@ import re
 import pyblish.api
 
 from ayon_core.hosts.photoshop import api as photoshop
-from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
@@ -11,7 +11,7 @@ from ayon_core.pipeline.publish import (
 
 
 class ValidateNamingRepair(pyblish.api.Action):
-    """Repair the instance asset."""
+    """Repair the instance folder."""
 
     label = "Repair"
     icon = "wrench"
@@ -22,8 +22,11 @@ class ValidateNamingRepair(pyblish.api.Action):
         # Get the errored instances
         failed = []
         for result in context.data["results"]:
-            if (result["error"] is not None and result["instance"] is not None
-                    and result["instance"] not in failed):
+            if (
+                result["error"] is not None
+                and result["instance"] is not None
+                and result["instance"] not in failed
+            ):
                 failed.append(result["instance"])
 
         invalid_chars, replace_char = plugin.get_replace_chars()
@@ -51,17 +54,17 @@ class ValidateNamingRepair(pyblish.api.Action):
 
             stub.rename_layer(current_layer_state.id, layer_name)
 
-            subset_name = re.sub(invalid_chars, replace_char,
-                                 instance.data["subset"])
+            product_name = re.sub(invalid_chars, replace_char,
+                                 instance.data["productName"])
 
             # format from Tool Creator
-            subset_name = re.sub(
-                "[^{}]+".format(SUBSET_NAME_ALLOWED_SYMBOLS),
+            product_name = re.sub(
+                "[^{}]+".format(PRODUCT_NAME_ALLOWED_SYMBOLS),
                 "",
-                subset_name
+                product_name
             )
 
-            layer_meta["subset"] = subset_name
+            layer_meta["productName"] = product_name
             stub.imprint(instance_id, layer_meta)
 
         return True
@@ -88,21 +91,24 @@ class ValidateNaming(pyblish.api.InstancePlugin):
 
         layer = instance.data.get("layer")
         if layer:
-            msg = "Name \"{}\" is not allowed.{}".format(layer.clean_name,
-                                                         help_msg)
-
+            msg = "Name \"{}\" is not allowed.{}".format(
+                layer.clean_name, help_msg
+            )
             formatting_data = {"msg": msg}
             if re.search(self.invalid_chars, layer.clean_name):
-                raise PublishXmlValidationError(self, msg,
-                                                formatting_data=formatting_data
-                                                )
+                raise PublishXmlValidationError(
+                    self, msg, formatting_data=formatting_data
+                )
 
-        msg = "Subset \"{}\" is not allowed.{}".format(instance.data["subset"],
-                                                       help_msg)
+        product_name = instance.data["productName"]
+        msg = "Product \"{}\" is not allowed.{}".format(
+            product_name, help_msg
+        )
         formatting_data = {"msg": msg}
-        if re.search(self.invalid_chars, instance.data["subset"]):
-            raise PublishXmlValidationError(self, msg,
-                                            formatting_data=formatting_data)
+        if re.search(self.invalid_chars, product_name):
+            raise PublishXmlValidationError(
+                self, msg, formatting_data=formatting_data
+            )
 
     @classmethod
     def get_replace_chars(cls):

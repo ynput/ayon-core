@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
+import ayon_api
+
 from ayon_core.pipeline import CreatedInstance, AutoCreator
-from ayon_core.client import get_asset_by_name, get_asset_name_identifier
 from ayon_core.hosts.max.api import plugin
 from ayon_core.hosts.max.api.lib import read, imprint
 from pymxs import runtime as rt
@@ -11,7 +12,7 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
     """Workfile auto-creator."""
     identifier = "io.ayon.creators.max.workfile"
     label = "Workfile"
-    family = "workfile"
+    product_type = "workfile"
     icon = "fa5.file"
 
     default_variant = "Main"
@@ -24,52 +25,74 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
                 if instance.creator_identifier == self.identifier
             ), None)
         project_name = self.project_name
-        asset_name = self.create_context.get_current_asset_name()
+        folder_path = self.create_context.get_current_folder_path()
         task_name = self.create_context.get_current_task_name()
         host_name = self.create_context.host_name
 
         if current_instance is None:
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                variant, task_name, asset_doc, project_name, host_name
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
+            product_name = self.get_product_name(
+                project_name,
+                folder_entity,
+                task_entity,
+                variant,
+                host_name,
             )
             data = {
-                "folderPath": asset_name,
+                "folderPath": folder_path,
                 "task": task_name,
                 "variant": variant
             }
 
             data.update(
                 self.get_dynamic_data(
-                    variant, task_name, asset_doc,
-                    project_name, host_name, current_instance)
+                    project_name,
+                    folder_entity,
+                    task_entity,
+                    variant,
+                    host_name,
+                    current_instance)
             )
             self.log.info("Auto-creating workfile instance...")
-            instance_node = self.create_node(subset_name)
+            instance_node = self.create_node(product_name)
             data["instance_node"] = instance_node.name
             current_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             self._add_instance_to_context(current_instance)
             imprint(instance_node.name, current_instance.data)
         elif (
-            current_instance["folderPath"] != asset_name
+            current_instance["folderPath"] != folder_path
             or current_instance["task"] != task_name
         ):
             # Update instance context if is not the same
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                variant, task_name, asset_doc, project_name, host_name
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
             )
-            asset_name = get_asset_name_identifier(asset_doc)
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
+            product_name = self.get_product_name(
+                project_name,
+                folder_entity,
+                task_entity,
+                variant,
+                host_name,
+            )
 
-            current_instance["folderPath"] = asset_name
+            current_instance["folderPath"] = folder_entity["path"]
             current_instance["task"] = task_name
-            current_instance["subset"] = subset_name
+            current_instance["productName"] = product_name
 
     def collect_instances(self):
-        self.cache_subsets(self.collection_shared_data)
-        for instance in self.collection_shared_data["max_cached_subsets"].get(self.identifier, []):  # noqa
+        self.cache_instance_data(self.collection_shared_data)
+        cached_instances = self.collection_shared_data["max_cached_instances"]
+        for instance in cached_instances.get(self.identifier, []):
             if not rt.getNodeByName(instance):
                 continue
             created_instance = CreatedInstance.from_existing(
@@ -85,25 +108,10 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
                 created_inst.data_to_store()
             )
 
-    def remove_instances(self, instances):
-        """Remove specified instance from the scene.
-
-        This is only removing `id` parameter so instance is no longer
-        instance, because it might contain valuable data for artist.
-
-        """
-        for instance in instances:
-            instance_node = rt.GetNodeByName(
-                instance.data.get("instance_node"))
-            if instance_node:
-                rt.Delete(instance_node)
-
-            self._remove_instance_from_context(instance)
-
-    def create_node(self, subset_name):
-        if rt.getNodeByName(subset_name):
-            node = rt.getNodeByName(subset_name)
+    def create_node(self, product_name):
+        if rt.getNodeByName(product_name):
+            node = rt.getNodeByName(product_name)
             return node
-        node = rt.Container(name=subset_name)
+        node = rt.Container(name=product_name)
         node.isHidden = True
         return node

@@ -117,8 +117,8 @@ class PhotoshopServerStub:
         Stores metadata in format:
         [{
             "active":true,
-            "subset":"imageBG",
-            "family":"image",
+            "productName":"imageBG",
+            "productType":"image",
             "id":"ayon.create.instance",
             "folderPath":"Town",
             "uuid": "8"
@@ -419,8 +419,8 @@ class PhotoshopServerStub:
         Returns:
             (list)
             example:
-                {"8":{"active":true,"subset":"imageBG",
-                      "family":"image","id":"ayon.create.instance",
+                {"8":{"active":true,"productName":"imageBG",
+                      "productType":"image","id":"ayon.create.instance",
                       "folderPath":"/Town"}}
                 8 is layer(group) id - used for deletion, update etc.
         """

@@ -21,28 +21,25 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
         project_name = context.data["projectName"]
         final_context = {}
         final_context[project_name] = {}
-        final_context[project_name]['entity_type'] = 'Project'
+        final_context[project_name]["entity_type"] = "project"
 
         for instance in context:
             self.log.debug("Processing instance: `{}` ...".format(instance))
 
             # shot data dict
             shot_data = {}
-            family = instance.data["family"]
+            product_type = instance.data["productType"]
             families = instance.data["families"]
 
             # exclude other families then self.families with intersection
-            if not set(self.families).intersection(set(families + [family])):
+            if not set(self.families).intersection(
+                set(families + [product_type])
+            ):
                 continue
 
             # exclude if not masterLayer True
             if not instance.data.get("heroTrack"):
                 continue
-
-            # get asset build data if any available
-            shot_data["inputs"] = [
-                x["_id"] for x in instance.data.get("assetbuilds", [])
-            ]
 
             # suppose that all instances are Shots
             shot_data['entity_type'] = 'Shot'
