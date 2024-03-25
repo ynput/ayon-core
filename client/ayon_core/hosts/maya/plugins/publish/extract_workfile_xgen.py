@@ -128,9 +128,11 @@ class ExtractWorkfileXgen(publish.Extractor):
             alembic_files.append(alembic_file)
 
         template_data = copy.deepcopy(instance.data["anatomyData"])
-        published_maya_path = StringTemplate(
-            instance.context.data["anatomy"].templates["publish"]["file"]
-        ).format(template_data)
+        anatomy = instance.context.data["anatomy"]
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "file"
+        )
+        published_maya_path = publish_template.format(template_data)
         published_basename, _ = os.path.splitext(published_maya_path)
 
         for source in alembic_files:
