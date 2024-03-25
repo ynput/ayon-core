@@ -32,24 +32,12 @@ class SopUsdImportLoader(load.LoaderPlugin):
         # Create a new geo node
         container = obj.createNode("geo", node_name=node_name)
 
-        # Remove the file node, it only loads static meshes
-        # Houdini 17 has removed the file node from the geo node
-        file_node = container.node("file1")
-        if file_node:
-            file_node.destroy()
-
         # Create a usdimport node
         usdimport = container.createNode("usdimport", node_name=node_name)
         usdimport.setParms({"filepath1": file_path})
 
-        # Ensure display flag is on the first input node and not on the OUT
-        # node to optimize "debug" displaying in the viewport.
-        usdimport.setDisplayFlag(True)
-
         # Set new position for unpack node else it gets cluttered
         nodes = [container, usdimport]
-        for nr, node in enumerate(nodes):
-            node.setPosition([0, (0 - nr)])
 
         self[:] = nodes
 
