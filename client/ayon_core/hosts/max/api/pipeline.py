@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Pipeline tools for AYON Houdini integration."""
+"""Pipeline tools for AYON 3ds max integration."""
 import os
 import logging
 from operator import attrgetter
