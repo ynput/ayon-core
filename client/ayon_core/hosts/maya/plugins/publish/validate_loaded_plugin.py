@@ -24,7 +24,7 @@ class ValidateLoadedPlugin(pyblish.api.ContextPlugin,
 
         invalid = []
         loaded_plugin = cmds.pluginInfo(query=True, listPlugins=True)
-        # get variable from OpenPype settings
+        # get variable from AYON settings
         whitelist_native_plugins = cls.whitelist_native_plugins
         authorized_plugins = cls.authorized_plugins or []
 
