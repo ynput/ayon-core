@@ -1,7 +1,7 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
-HARMONY_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
+HARMONY_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class HarmonyAddon(AYONAddon, IHostAddon):
@@ -11,7 +11,7 @@ class HarmonyAddon(AYONAddon, IHostAddon):
     def add_implementation_envs(self, env, _app):
         """Modify environments to contain all required for implementation."""
         openharmony_path = os.path.join(
-            HARMONY_HOST_DIR, "vendor", "OpenHarmony"
+            HARMONY_ADDON_ROOT, "vendor", "OpenHarmony"
         )
         # TODO check if is already set? What to do if is already set?
         env["LIB_OPENHARMONY_PATH"] = openharmony_path
