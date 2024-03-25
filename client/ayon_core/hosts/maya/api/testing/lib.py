@@ -35,13 +35,13 @@ def _save_repository_workfile():
         folder["id"],
         current_context["task_name"]
     )
-    template_key = get_workfile_template_key(
+    category_name = get_workfile_template_key(
         project_name,
         task["taskType"],
         get_current_host_name(),
     )
-    template_info = anatomy.templates_obj[template_key]
-    directory_template = template_info["folder"]
+    template_info = anatomy.get_template_item(category_name, "default")
+    directory_template = template_info["directory"]
     project = ayon_api.get_project(project_name)
     fill_data = get_template_data(project)
     fill_data.update(get_folder_template_data(folder, project_name))
