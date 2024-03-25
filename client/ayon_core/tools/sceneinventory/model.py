@@ -298,7 +298,7 @@ class InventoryModel(TreeModel):
             product_ids={
                 group["version"]["productId"] for group in grouped.values()
             },
-            fields=["productId", "version"]
+            fields={"productId", "version"}
         )
         # Map value to `version` key
         highest_version_by_product_id = {
