@@ -45,15 +45,16 @@ class CollectUsdLayers(pyblish.api.InstancePlugin):
         # Create configured layer instances so User can disable updating
         # specific configured layers for publishing.
         context = instance.context
+        product_type = "usdlayer"
         for layer, save_path in save_layers:
             name = os.path.basename(save_path)
             label = "{0} -> {1}".format(instance.data["name"], name)
             layer_inst = context.create_instance(name)
 
-            family = "usdlayer"
-            layer_inst.data["family"] = family
-            layer_inst.data["families"] = [family]
-            layer_inst.data["subset"] = "__stub__"
+            layer_inst.data["productType"] = product_type
+            layer_inst.data["family"] = product_type
+            layer_inst.data["families"] = [product_type]
+            layer_inst.data["productName"] = "__stub__"
             layer_inst.data["label"] = label
             layer_inst.data["folderPath"] = instance.data["folderPath"]
             layer_inst.data["instance_node"] = instance.data["instance_node"]
@@ -62,5 +63,5 @@ class CollectUsdLayers(pyblish.api.InstancePlugin):
             # include layer data
             layer_inst.append((layer, save_path))
 
-            # Allow this subset to be grouped into a USD Layer on creation
-            layer_inst.data["subsetGroup"] = "USD Layer"
+            # Allow this product to be grouped into a USD Layer on creation
+            layer_inst.data["productGroup"] = "USD Layer"

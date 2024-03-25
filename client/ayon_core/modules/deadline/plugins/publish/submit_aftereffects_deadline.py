@@ -112,7 +112,7 @@ class AfterEffectsSubmitDeadline(
         file_name, frame = list(collect_frames([render_path]).items())[0]
         if frame:
             # replace frame ('000001') with Deadline's required '[#######]'
-            # expects filename in format project_asset_subset_version.FRAME.ext
+            # expects filename in format project_folder_product_version.FRAME.ext
             render_dir = os.path.dirname(render_path)
             file_name = os.path.basename(render_path)
             hashed = '[{}]'.format(len(frame) * "#")

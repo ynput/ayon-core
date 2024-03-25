@@ -15,10 +15,10 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
     As opposed to storing `ayon.create.instance` as id on the node we store
     `pyblish.avalon.usdlayered`.
 
-    Additionally this instance has no need for storing family, asset, subset
-    or name on the nodes. Instead all information is retrieved solely from
-    the output filepath, which is an Avalon URI:
-        avalon://{asset}/{subset}.{representation}
+    Additionally this instance has no need for storing folder, product type,
+    product name or name on the nodes. Instead all information is retrieved
+    solely from the output filepath, which is an Avalon URI:
+        avalon://{folder}/{product}.{representation}
 
     Each final ROP node is considered a dependency for any of the Configured
     Save Path layers it sets along the way. As such, the instances shown in
@@ -50,14 +50,19 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
             if node.evalParm("id") != "pyblish.avalon.usdlayered":
                 continue
 
-            has_family = node.evalParm("family")
-            assert has_family, "'%s' is missing 'family'" % node.name()
+            has_product_type = node.evalParm("productType")
+            assert has_product_type, (
+                "'%s' is missing 'productType'" % node.name()
+            )
 
             self.process_node(node, context)
 
         def sort_by_family(instance):
             """Sort by family"""
-            return instance.data.get("families", instance.data.get("family"))
+            return instance.data.get(
+                "families",
+                instance.data.get("productType")
+            )
 
         # Sort/grouped by family (preserving local index)
         context[:] = sorted(context, key=sort_by_family)
@@ -82,9 +87,9 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
         # instead use the "colorbleed.usd" family to integrate.
         data["publishFamilies"] = ["colorbleed.usd"]
 
-        # For now group ALL of them into USD Layer subset group
-        # Allow this subset to be grouped into a USD Layer on creation
-        data["subsetGroup"] = "USD Layer"
+        # For now group ALL of them into USD Layer product group
+        # Allow this product to be grouped into a USD Layer on creation
+        data["productGroup"] = "USD Layer"
 
         instances = list()
         dependencies = []
@@ -97,7 +102,7 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
             dependency.append(ropnode)
             dependency.data.update(data)
             dependency.data.update(dependency_save_data)
-            dependency.data["family"] = "colorbleed.usd.dependency"
+            dependency.data["productType"] = "colorbleed.usd.dependency"
             dependency.data["optional"] = False
             dependencies.append(dependency)
 
@@ -137,9 +142,9 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
             self.log.warning("Non Avalon URI Layer Path: %s" % save_path)
             return {}
 
-        # Collect asset + subset from URI
-        name = "{subset} ({asset})".format(**uri_data)
-        fname = "{asset}_{subset}.{ext}".format(**uri_data)
+        # Collect folder + product from URI
+        name = "{product[name]} ({folder[path]})".format(**uri_data)
+        fname = "{folder[path]}_{product[name]}.{ext}".format(**uri_data)
 
         data = dict(uri_data)
         data["usdSavePath"] = save_path

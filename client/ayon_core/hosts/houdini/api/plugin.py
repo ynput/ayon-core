@@ -99,24 +99,21 @@ class Creator(LegacyCreator):
 
 class HoudiniCreatorBase(object):
     @staticmethod
-    def cache_subsets(shared_data):
+    def cache_instance_data(shared_data):
         """Cache instances for Creators to shared data.
 
-        Create `houdini_cached_subsets` key when needed in shared data and
+        Create `houdini_cached_instances` key when needed in shared data and
         fill it with all collected instances from the scene under its
         respective creator identifiers.
 
-        Create `houdini_cached_legacy_subsets` key for any legacy instances
+        Create `houdini_cached_legacy_instance` key for any legacy instances
         detected in the scene as instances per family.
 
         Args:
             Dict[str, Any]: Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data dictionary.
-
         """
-        if shared_data.get("houdini_cached_subsets") is None:
+        if shared_data.get("houdini_cached_instances") is None:
             cache = dict()
             cache_legacy = dict()
 
@@ -141,20 +138,19 @@ class HoudiniCreatorBase(object):
                     family = family_parm.eval()
                     cache_legacy.setdefault(family, []).append(node)
 
-            shared_data["houdini_cached_subsets"] = cache
-            shared_data["houdini_cached_legacy_subsets"] = cache_legacy
+            shared_data["houdini_cached_instances"] = cache
+            shared_data["houdini_cached_legacy_instance"] = cache_legacy
 
         return shared_data
 
     @staticmethod
     def create_instance_node(
-        asset_name, node_name, parent, node_type="geometry"
+        folder_path, node_name, parent, node_type="geometry"
     ):
-        # type: (str, str, str) -> hou.Node
         """Create node representing instance.
 
         Arguments:
-            asset_name (str): Asset name.
+            folder_path (str): Folder path.
             node_name (str): Name of the new node.
             parent (str): Name of the parent node.
             node_type (str, optional): Type of the node.
@@ -177,7 +173,7 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
     settings_name = None
     add_publish_button = False
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         try:
             self.selected_nodes = []
 
@@ -189,18 +185,18 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             if node_type is None:
                 node_type = "geometry"
 
-            asset_name = instance_data["folderPath"]
+            folder_path = instance_data["folderPath"]
 
             instance_node = self.create_instance_node(
-                asset_name, subset_name, "/out", node_type)
+                folder_path, product_name, "/out", node_type)
 
             self.customize_node_look(instance_node)
 
             instance_data["instance_node"] = instance_node.path()
             instance_data["instance_id"] = instance_node.path()
             instance = CreatedInstance(
-                self.family,
-                subset_name,
+                self.product_type,
+                product_name,
                 instance_data,
                 self)
             self._add_instance_to_context(instance)
@@ -234,9 +230,9 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
     def collect_instances(self):
         # cache instances  if missing
-        self.cache_subsets(self.collection_shared_data)
+        self.cache_instance_data(self.collection_shared_data)
         for instance in self.collection_shared_data[
-                "houdini_cached_subsets"].get(self.identifier, []):
+                "houdini_cached_instances"].get(self.identifier, []):
 
             node_data = read(instance)
 
@@ -246,6 +242,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             node_path = instance.path()
             node_data["instance_id"] = node_path
             node_data["instance_node"] = node_path
+            if "AYON_productName" in node_data:
+                node_data["productName"] = node_data.pop("AYON_productName")
 
             created_instance = CreatedInstance.from_existing(
                 node_data, self
@@ -269,6 +267,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
     def imprint(self, node, values, update=False):
         # Never store instance node and instance id since that data comes
         # from the node's path
+        if "productName" in values:
+            values["AYON_productName"] = values.pop("productName")
         values.pop("instance_node", None)
         values.pop("instance_id", None)
         imprint(node, values, update=update)

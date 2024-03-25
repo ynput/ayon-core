@@ -59,6 +59,6 @@ class CollectTestSelection(pyblish.api.ContextPlugin):
 
                 opfapi.imprint(segment, {
                     'asset': segment.name.get_value(),
-                    'family': 'render',
-                    'subset': 'subsetMain'
+                    'productType': 'render',
+                    'productName': 'productMain'
                 })

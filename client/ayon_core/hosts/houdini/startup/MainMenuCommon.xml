@@ -6,10 +6,10 @@
 import os
 return os.environ.get("AYON_MENU_LABEL") or "AYON"
 ]]></labelExpression>
-            <actionItem id="asset_name">
+            <actionItem id="folder_path">
                     <labelExpression><![CDATA[
-from ayon_core.pipeline import get_current_asset_name, get_current_task_name
-label = "{}, {}".format(get_current_asset_name(), get_current_task_name())
+from ayon_core.pipeline import get_current_folder_path, get_current_task_name
+label = "{}, {}".format(get_current_folder_path(), get_current_task_name())
 return label
 ]]></labelExpression>
             </actionItem>

@@ -2,9 +2,9 @@ import copy
 import platform
 from collections import defaultdict
 
+import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 
@@ -22,14 +22,14 @@ from ayon_core.pipeline.delivery import (
 )
 
 
-class Delivery(load.SubsetLoaderPlugin):
+class Delivery(load.ProductLoaderPlugin):
     """Export selected versions to folder structure from Template"""
 
     is_multiple_contexts_compatible = True
     sequence_splitter = "__sequence_splitter__"
 
     representations = ["*"]
-    families = ["*"]
+    product_types = {"*"}
     tool_names = ["library_loader"]
 
     label = "Deliver Versions"
@@ -202,7 +202,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             )
 
             anatomy_data = copy.deepcopy(repre["context"])
-            new_report_items = check_destination_path(str(repre["_id"]),
+            new_report_items = check_destination_path(repre["id"],
                                                       self.anatomy,
                                                       anatomy_data,
                                                       datetime_data,
@@ -260,7 +260,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                     report_items.update(new_report_items)
                     self._update_progress(uploaded)
             else:  # fallback for Pype2 and representations without files
-                frame = repre['context'].get('frame')
+                frame = repre["context"].get("frame")
                 if frame:
                     repre["context"]["frame"] = len(str(frame)) * "#"
 
@@ -290,9 +290,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         return templates
 
     def _set_representations(self, project_name, contexts):
-        version_ids = [context["version"]["_id"] for context in contexts]
+        version_ids = {context["version"]["id"] for context in contexts}
 
-        repres = list(get_representations(
+        repres = list(ayon_api.get_representations(
             project_name, version_ids=version_ids
         ))
 

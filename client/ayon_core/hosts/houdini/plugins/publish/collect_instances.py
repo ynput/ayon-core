@@ -9,7 +9,7 @@ from ayon_core.hosts.houdini.api import lib
 class CollectInstances(pyblish.api.ContextPlugin):
     """Gather instances by all node in out graph and pre-defined attributes
 
-    This collector takes into account assets that are associated with
+    This collector takes into account folders that are associated with
     an specific node and marked with a unique identifier;
 
     Identifier:
@@ -17,7 +17,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
 
     Specific node:
         The specific node is important because it dictates in which way the
-        subset is being exported.
+        product is being exported.
 
         alembic: will export Alembic file which supports cascading attributes
                  like 'cbId' and 'path'
@@ -80,7 +80,9 @@ class CollectInstances(pyblish.api.ContextPlugin):
             instance = context.create_instance(label)
 
             # Include `families` using `family` data
-            instance.data["families"] = [instance.data["family"]]
+            product_type = data["family"]
+            data["productType"] = product_type
+            instance.data["families"] = [product_type]
 
             instance[:] = [node]
             instance.data["instance_node"] = node.path()
@@ -88,7 +90,9 @@ class CollectInstances(pyblish.api.ContextPlugin):
 
         def sort_by_family(instance):
             """Sort by family"""
-            return instance.data.get("families", instance.data.get("family"))
+            return instance.data.get(
+                "families", instance.data.get("productType")
+            )
 
         # Sort/grouped by family (preserving local index)
         context[:] = sorted(context, key=sort_by_family)

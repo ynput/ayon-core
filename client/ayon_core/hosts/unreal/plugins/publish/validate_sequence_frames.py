@@ -22,8 +22,12 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         representations = instance.data.get("representations")
+        folder_attributes = (
+            instance.data
+            .get("folderEntity", {})
+            .get("attrib", {})
+        )
         for repr in representations:
-            data = instance.data.get("assetEntity", {}).get("data", {})
             repr_files = repr["files"]
             if isinstance(repr_files, str):
                 continue
@@ -64,8 +68,8 @@ class ValidateSequenceFrames(pyblish.api.InstancePlugin):
                 frames = frames[1:]
 
             current_range = (frames[0], frames[-1])
-            required_range = (data["clipIn"],
-                              data["clipOut"])
+            required_range = (folder_attributes["clipIn"],
+                              folder_attributes["clipOut"])
 
             if current_range != required_range:
                 raise PublishValidationError(

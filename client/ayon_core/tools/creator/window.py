@@ -2,19 +2,19 @@ import sys
 import traceback
 import re
 
+import ayon_api
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.client import get_asset_by_name, get_subsets
 from ayon_core import style
 from ayon_core.settings import get_current_project_settings
 from ayon_core.tools.utils.lib import qt_app_context
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
 )
 from ayon_core.pipeline.create import (
-    SUBSET_NAME_ALLOWED_SYMBOLS,
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
     legacy_create,
     CreatorError,
 )
@@ -23,7 +23,7 @@ from .model import CreatorsModel
 from .widgets import (
     CreateErrorMessageBox,
     VariantLineEdit,
-    FamilyDescriptionWidget
+    ProductTypeDescriptionWidget
 )
 from .constants import (
     ITEM_ID_ROLE,
@@ -45,7 +45,7 @@ class CreatorWindow(QtWidgets.QDialog):
                 self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint
             )
 
-        creator_info = FamilyDescriptionWidget(self)
+        creator_info = ProductTypeDescriptionWidget(self)
 
         creators_model = CreatorsModel()
 
@@ -56,19 +56,19 @@ class CreatorWindow(QtWidgets.QDialog):
         creators_view.setObjectName("CreatorsView")
         creators_view.setModel(creators_proxy)
 
-        asset_name_input = QtWidgets.QLineEdit(self)
+        folder_path_input = QtWidgets.QLineEdit(self)
         variant_input = VariantLineEdit(self)
-        subset_name_input = QtWidgets.QLineEdit(self)
-        subset_name_input.setEnabled(False)
+        product_name_input = QtWidgets.QLineEdit(self)
+        product_name_input.setEnabled(False)
 
-        subset_button = QtWidgets.QPushButton()
-        subset_button.setFixedWidth(18)
-        subset_menu = QtWidgets.QMenu(subset_button)
-        subset_button.setMenu(subset_menu)
+        variants_btn = QtWidgets.QPushButton()
+        variants_btn.setFixedWidth(18)
+        variants_menu = QtWidgets.QMenu(variants_btn)
+        variants_btn.setMenu(variants_menu)
 
         name_layout = QtWidgets.QHBoxLayout()
         name_layout.addWidget(variant_input)
-        name_layout.addWidget(subset_button)
+        name_layout.addWidget(variants_btn)
         name_layout.setSpacing(3)
         name_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -76,13 +76,13 @@ class CreatorWindow(QtWidgets.QDialog):
         body_layout.setContentsMargins(0, 0, 0, 0)
 
         body_layout.addWidget(creator_info, 0)
-        body_layout.addWidget(QtWidgets.QLabel("Family", self), 0)
+        body_layout.addWidget(QtWidgets.QLabel("Product type", self), 0)
         body_layout.addWidget(creators_view, 1)
-        body_layout.addWidget(QtWidgets.QLabel("Asset", self), 0)
-        body_layout.addWidget(asset_name_input, 0)
-        body_layout.addWidget(QtWidgets.QLabel("Subset", self), 0)
+        body_layout.addWidget(QtWidgets.QLabel("Folder path", self), 0)
+        body_layout.addWidget(folder_path_input, 0)
+        body_layout.addWidget(QtWidgets.QLabel("Product name", self), 0)
         body_layout.addLayout(name_layout, 0)
-        body_layout.addWidget(subset_name_input, 0)
+        body_layout.addWidget(product_name_input, 0)
 
         useselection_chk = QtWidgets.QCheckBox("Use selection", self)
         useselection_chk.setCheckState(QtCore.Qt.Checked)
@@ -116,7 +116,7 @@ class CreatorWindow(QtWidgets.QDialog):
         variant_input.returnPressed.connect(self._on_create)
         variant_input.textChanged.connect(self._on_data_changed)
         variant_input.report.connect(self.echo)
-        asset_name_input.textChanged.connect(self._on_data_changed)
+        folder_path_input.textChanged.connect(self._on_data_changed)
         creators_view.selectionModel().currentChanged.connect(
             self._on_selection_changed
         )
@@ -134,15 +134,15 @@ class CreatorWindow(QtWidgets.QDialog):
         self._create_btn = create_btn
         self._useselection_chk = useselection_chk
         self._variant_input = variant_input
-        self._subset_name_input = subset_name_input
-        self._asset_name_input = asset_name_input
+        self._product_name_input = product_name_input
+        self._folder_path_input = folder_path_input
 
         self._creators_model = creators_model
         self._creators_proxy = creators_proxy
         self._creators_view = creators_view
 
-        self._subset_btn = subset_button
-        self._subset_menu = subset_menu
+        self._variants_btn = variants_btn
+        self._variants_menu = variants_menu
 
         self._msg_label = msg_label
 
@@ -160,7 +160,7 @@ class CreatorWindow(QtWidgets.QDialog):
         self._create_btn.setEnabled(valid)
 
     def _build_menu(self, default_names=None):
-        """Create optional predefined subset names
+        """Create optional predefined variants.
 
         Args:
             default_names(list): all predefined names
@@ -171,8 +171,8 @@ class CreatorWindow(QtWidgets.QDialog):
         if not default_names:
             default_names = []
 
-        menu = self._subset_menu
-        button = self._subset_btn
+        menu = self._variants_menu
+        button = self._variants_btn
 
         # Get and destroy the action group
         group = button.findChild(QtWidgets.QActionGroup)
@@ -211,78 +211,81 @@ class CreatorWindow(QtWidgets.QDialog):
         item_id = index.data(ITEM_ID_ROLE)
         creator_plugin = self._creators_model.get_creator_by_id(item_id)
         user_input_text = self._variant_input.text()
-        asset_name = self._asset_name_input.text()
+        folder_path = self._folder_path_input.text()
 
-        # Early exit if no asset name
-        if not asset_name:
+        # Early exit if no folder path
+        if not folder_path:
             self._build_menu()
-            self.echo("Asset name is required ..")
+            self.echo("Folder is required ..")
             self._set_valid_state(False)
             return
 
         project_name = get_current_project_name()
-        asset_doc = None
+        folder_entity = None
         if creator_plugin:
-            # Get the asset from the database which match with the name
-            asset_doc = get_asset_by_name(
-                project_name, asset_name, fields=["_id"]
+            # Get the folder from the database which match with the name
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path, fields={"id"}
             )
 
         # Get plugin
-        if not asset_doc or not creator_plugin:
-            subset_name = user_input_text
+        if not folder_entity or not creator_plugin:
             self._build_menu()
 
             if not creator_plugin:
-                self.echo("No registered families ..")
+                self.echo("No registered product types ..")
             else:
-                self.echo("Asset '%s' not found .." % asset_name)
+                self.echo("Folder '{}' not found ..".format(folder_path))
             self._set_valid_state(False)
             return
 
-        asset_id = asset_doc["_id"]
-        task_name = get_current_task_name()
+        folder_id = folder_entity["id"]
 
-        # Calculate subset name with Creator plugin
-        subset_name = creator_plugin.get_subset_name(
-            user_input_text, task_name, asset_id, project_name
+        task_name = get_current_task_name()
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_id, task_name
+        )
+
+        # Calculate product name with Creator plugin
+        product_name = creator_plugin.get_product_name(
+            project_name, folder_entity, task_entity, user_input_text
         )
         # Force replacement of prohibited symbols
         # QUESTION should Creator care about this and here should be only
         #   validated with schema regex?
 
-        # Allow curly brackets in subset name for dynamic keys
+        # Allow curly brackets in product name for dynamic keys
         curly_left = "__cbl__"
         curly_right = "__cbr__"
-        tmp_subset_name = (
-            subset_name
+        tmp_product_name = (
+            product_name
             .replace("{", curly_left)
             .replace("}", curly_right)
         )
         # Replace prohibited symbols
-        tmp_subset_name = re.sub(
-            "[^{}]+".format(SUBSET_NAME_ALLOWED_SYMBOLS),
+        tmp_product_name = re.sub(
+            "[^{}]+".format(PRODUCT_NAME_ALLOWED_SYMBOLS),
             "",
-            tmp_subset_name
+            tmp_product_name
         )
-        subset_name = (
-            tmp_subset_name
+        product_name = (
+            tmp_product_name
             .replace(curly_left, "{")
             .replace(curly_right, "}")
         )
-        self._subset_name_input.setText(subset_name)
+        self._product_name_input.setText(product_name)
 
-        # Get all subsets of the current asset
-        subset_docs = get_subsets(
-            project_name, asset_ids=[asset_id], fields=["name"]
+        # Get all products of the current folder
+        product_entities = ayon_api.get_products(
+            project_name, folder_ids={folder_id}, fields={"name"}
         )
-        existing_subset_names = {
-            subset_doc["name"]
-            for subset_doc in subset_docs
+        existing_product_names = {
+            product_entity["name"]
+            for product_entity in product_entities
         }
-        existing_subset_names_low = set(
+        existing_product_names_low = set(
             _name.lower()
-            for _name in existing_subset_names
+            for _name in existing_product_names
         )
 
         # Defaults to dropdown
@@ -296,26 +299,26 @@ class CreatorWindow(QtWidgets.QDialog):
 
         # Replace
         compare_regex = re.compile(re.sub(
-            user_input_text, "(.+)", subset_name, flags=re.IGNORECASE
+            user_input_text, "(.+)", product_name, flags=re.IGNORECASE
         ))
-        subset_hints = set()
+        variant_hints = set()
         if user_input_text:
-            for _name in existing_subset_names:
+            for _name in existing_product_names:
                 _result = compare_regex.search(_name)
                 if _result:
-                    subset_hints |= set(_result.groups())
+                    variant_hints |= set(_result.groups())
 
-        if subset_hints:
+        if variant_hints:
             if defaults:
                 defaults.append(SEPARATOR)
-            defaults.extend(subset_hints)
+            defaults.extend(variant_hints)
         self._build_menu(defaults)
 
-        # Indicate subset existence
+        # Indicate product existence
         if not user_input_text:
             self._variant_input.as_empty()
-        elif subset_name.lower() in existing_subset_names_low:
-            # validate existence of subset name with lowered text
+        elif product_name.lower() in existing_product_names_low:
+            # validate existence of product name with lowered text
             #   - "renderMain" vs. "rensermain" mean same path item for
             #   windows
             self._variant_input.as_exists()
@@ -323,7 +326,7 @@ class CreatorWindow(QtWidgets.QDialog):
             self._variant_input.as_new()
 
         # Update the valid state
-        valid = subset_name.strip() != ""
+        valid = product_name.strip() != ""
 
         self._set_valid_state(valid)
 
@@ -373,19 +376,19 @@ class CreatorWindow(QtWidgets.QDialog):
             self.setStyleSheet(style.load_stylesheet())
 
     def refresh(self):
-        self._asset_name_input.setText(get_current_asset_name())
+        self._folder_path_input.setText(get_current_folder_path())
 
         self._creators_model.reset()
 
         product_types_smart_select = (
             get_current_project_settings()
-            ["global"]
+            ["core"]
             ["tools"]
             ["creator"]
             ["product_types_smart_select"]
         )
         current_index = None
-        family = None
+        product_type = None
         task_name = get_current_task_name() or None
         lowered_task_name = task_name.lower()
         if task_name:
@@ -395,13 +398,15 @@ class CreatorWindow(QtWidgets.QDialog):
                 }
                 for _task_name in _low_task_names:
                     if _task_name in lowered_task_name:
-                        family = smart_item["name"]
+                        product_type = smart_item["name"]
                         break
-                if family:
+                if product_type:
                     break
 
-        if family:
-            indexes = self._creators_model.get_indexes_by_family(family)
+        if product_type:
+            indexes = self._creators_model.get_indexes_by_product_type(
+                product_type
+            )
             if indexes:
                 index = indexes[0]
                 current_index = self._creators_proxy.mapFromSource(index)
@@ -422,8 +427,8 @@ class CreatorWindow(QtWidgets.QDialog):
         if creator_plugin is None:
             return
 
-        subset_name = self._subset_name_input.text()
-        asset_name = self._asset_name_input.text()
+        product_name = self._product_name_input.text()
+        folder_path = self._folder_path_input.text()
         use_selection = self._useselection_chk.isChecked()
 
         variant = self._variant_input.text()
@@ -432,8 +437,8 @@ class CreatorWindow(QtWidgets.QDialog):
         try:
             legacy_create(
                 creator_plugin,
-                subset_name,
-                asset_name,
+                product_name,
+                folder_path,
                 options={"useSelection": use_selection},
                 data={"variant": variant}
             )
@@ -453,9 +458,9 @@ class CreatorWindow(QtWidgets.QDialog):
 
         if error_info:
             box = CreateErrorMessageBox(
-                creator_plugin.family,
-                subset_name,
-                asset_name,
+                creator_plugin.product_type,
+                product_name,
+                folder_path,
                 *error_info,
                 parent=self
             )
@@ -464,7 +469,7 @@ class CreatorWindow(QtWidgets.QDialog):
             self._message_dialog = box
 
         else:
-            self.echo("Created %s .." % subset_name)
+            self.echo("Created %s .." % product_name)
 
     def _on_msg_timer(self):
         self._msg_label.setText("")
@@ -475,7 +480,7 @@ class CreatorWindow(QtWidgets.QDialog):
 
 
 def show(parent=None):
-    """Display asset creator GUI
+    """Display product creator GUI
 
     Arguments:
         debug (bool, optional): Run loader in debug-mode,

@@ -5,16 +5,14 @@ import json
 
 import pyblish.api
 
-from ayon_core.client import get_asset_name_identifier
-
 
 class CollectFrameTagInstances(pyblish.api.ContextPlugin):
     """Collect frames from tags.
 
     Tag is expected to have metadata:
     {
-        "family": "frame"
-        "subset": "main"
+        "productType": "frame"
+        "productName": "main"
     }
     """
 
@@ -26,14 +24,14 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
         self._context = context
 
         # collect all sequence tags
-        subset_data = self._create_frame_subset_data_sequence(context)
+        product_data = self._create_frame_product_data_sequence(context)
 
-        self.log.debug("__ subset_data: {}".format(
-            pformat(subset_data)
+        self.log.debug("__ product_data: {}".format(
+            pformat(product_data)
         ))
 
         # create instances
-        self._create_instances(subset_data)
+        self._create_instances(product_data)
 
     def _get_tag_data(self, tag):
         data = {}
@@ -66,7 +64,7 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
 
         return data
 
-    def _create_frame_subset_data_sequence(self, context):
+    def _create_frame_product_data_sequence(self, context):
 
         sequence_tags = []
         sequence = context.data["activeTimeline"]
@@ -87,10 +85,13 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
             if not tag_data:
                 continue
 
-            if "family" not in tag_data:
+            product_type = tag_data.get("productType")
+            if product_type is None:
+                product_type = tag_data.get("family")
+            if not product_type:
                 continue
 
-            if tag_data["family"] != "frame":
+            if product_type != "frame":
                 continue
 
             sequence_tags.append(tag_data)
@@ -99,10 +100,9 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
             pformat(sequence_tags)
         ))
 
-        # first collect all available subset tag frames
-        subset_data = {}
-        context_asset_doc = context.data["assetEntity"]
-        context_folder_path = get_asset_name_identifier(context_asset_doc)
+        # first collect all available product tag frames
+        product_data = {}
+        context_folder_path = context.data["folderEntity"]["path"]
 
         for tag_data in sequence_tags:
             frame = int(tag_data["start"])
@@ -110,33 +110,37 @@ class CollectFrameTagInstances(pyblish.api.ContextPlugin):
             if frame not in publish_frames:
                 continue
 
-            subset = tag_data["subset"]
+            product_name = tag_data.get("productName")
+            if product_name is None:
+                product_name = tag_data["subset"]
 
-            if subset in subset_data:
-                # update existing subset key
-                subset_data[subset]["frames"].append(frame)
+            if product_name in product_data:
+                # update existing product key
+                product_data[product_name]["frames"].append(frame)
             else:
-                # create new subset key
-                subset_data[subset] = {
+                # create new product key
+                product_data[product_name] = {
                     "frames": [frame],
                     "format": tag_data["format"],
                     "folderPath": context_folder_path
                 }
-        return subset_data
+        return product_data
 
-    def _create_instances(self, subset_data):
-        # create instance per subset
-        for subset_name, subset_data in subset_data.items():
-            name = "frame" + subset_name.title()
+    def _create_instances(self, product_data):
+        # create instance per product
+        product_type = "image"
+        for product_name, product_data in product_data.items():
+            name = "frame" + product_name.title()
             data = {
                 "name": name,
-                "label": "{} {}".format(name, subset_data["frames"]),
-                "family": "image",
-                "families": ["frame"],
-                "folderPath": subset_data["folderPath"],
-                "subset": name,
-                "format": subset_data["format"],
-                "frames": subset_data["frames"]
+                "label": "{} {}".format(name, product_data["frames"]),
+                "productType": product_type,
+                "family": product_type,
+                "families": [product_type, "frame"],
+                "folderPath": product_data["folderPath"],
+                "productName": name,
+                "format": product_data["format"],
+                "frames": product_data["frames"]
             }
             self._context.create_instance(**data)
 

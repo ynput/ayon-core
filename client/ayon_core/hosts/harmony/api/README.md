@@ -204,7 +204,7 @@ class CreateComposite(harmony.Creator):
 
     name = "compositeDefault"
     label = "Composite"
-    family = "mindbender.template"
+    product_type = "mindbender.template"
 
     def __init__(self, *args, **kwargs):
         super(CreateComposite, self).__init__(*args, **kwargs)
@@ -221,7 +221,7 @@ class CreateRender(harmony.Creator):
 
     name = "writeDefault"
     label = "Write"
-    family = "mindbender.imagesequence"
+    product_type = "mindbender.imagesequence"
     node_type = "WRITE"
 
     def __init__(self, *args, **kwargs):
@@ -582,7 +582,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
     """Load images
     Stores the imported asset in a container named after the asset.
     """
-    families = ["mindbender.imagesequence"]
+    product_types = {"mindbender.imagesequence"}
     representations = ["*"]
 
     def load(self, context, name=None, namespace=None, data=None):
@@ -597,7 +597,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         read_node = harmony.send(
             {
                 "function": copy_files + import_files,
-                "args": ["Top", files, context["version"]["data"]["subset"], 1]
+                "args": ["Top", files, context["product"]["name"], 1]
             }
         )["result"]
 
@@ -611,11 +611,12 @@ class ImageSequenceLoader(load.LoaderPlugin):
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         node = container.pop("node")
 
+        repre_entity = context["representation"]
         project_name = get_current_project_name()
-        version = get_version_by_id(project_name, representation["parent"])
+        version = get_version_by_id(project_name, repre_entity["versionId"])
         files = []
         for f in version["data"]["files"]:
             files.append(
@@ -632,7 +633,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )
 
         harmony.imprint(
-            node, {"representation": str(representation["_id"])}
+            node, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):
@@ -648,8 +649,8 @@ class ImageSequenceLoader(load.LoaderPlugin):
             {"function": func, "args": [node]}
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 ```
 
 ## Resources

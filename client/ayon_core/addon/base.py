@@ -14,14 +14,10 @@ from abc import ABCMeta, abstractmethod
 
 import six
 import appdirs
+import ayon_api
 
-from ayon_core.lib import Logger
-from ayon_core.client import get_ayon_server_api_connection
-from ayon_core.settings import get_system_settings
-from ayon_core.settings.ayon_settings import (
-    is_dev_mode_enabled,
-    get_ayon_settings,
-)
+from ayon_core.lib import Logger, is_dev_mode_enabled
+from ayon_core.settings import get_studio_settings
 
 from .interfaces import (
     IPluginPaths,
@@ -151,8 +147,7 @@ def load_addons(force=False):
 
 
 def _get_ayon_bundle_data():
-    con = get_ayon_server_api_connection()
-    bundles = con.get_bundles()["bundles"]
+    bundles = ayon_api.get_bundles()["bundles"]
 
     bundle_name = os.getenv("AYON_BUNDLE_NAME")
 
@@ -180,8 +175,7 @@ def _get_ayon_addons_information(bundle_info):
 
     output = []
     bundle_addons = bundle_info["addons"]
-    con = get_ayon_server_api_connection()
-    addons = con.get_addons_info()["addons"]
+    addons = ayon_api.get_addons_info()["addons"]
     for addon in addons:
         name = addon["name"]
         versions = addon.get("versions")
@@ -648,7 +642,6 @@ class AddonsManager:
 
     def __init__(self, settings=None, initialize=True):
         self._settings = settings
-        self._system_settings = None
 
         self._addons = []
         self._addons_by_id = {}
@@ -738,14 +731,9 @@ class AddonsManager:
         # Prepare settings for addons
         settings = self._settings
         if settings is None:
-            settings = get_ayon_settings()
+            settings = get_studio_settings()
 
-        # OpenPype settings
-        system_settings = self._system_settings
-        if system_settings is None:
-            system_settings = get_system_settings()
-
-        modules_settings = system_settings["modules"]
+        modules_settings = {}
 
         report = {}
         time_start = time.time()

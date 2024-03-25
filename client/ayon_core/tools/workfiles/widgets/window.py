@@ -6,9 +6,13 @@ from ayon_core.tools.utils import (
     MessageOverlayObject,
 )
 
-from ayon_core.tools.ayon_utils.widgets import FoldersWidget, TasksWidget
 from ayon_core.tools.workfiles.control import BaseWorkfileController
-from ayon_core.tools.utils import GoToCurrentButton, RefreshButton
+from ayon_core.tools.utils import (
+    GoToCurrentButton,
+    RefreshButton,
+    FoldersWidget,
+    TasksWidget,
+)
 
 from .side_panel import SidePanelWidget
 from .files_widget import FilesWidget

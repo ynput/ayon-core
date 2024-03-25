@@ -7,10 +7,10 @@ from ayon_core.hosts.fusion.api.action import SelectInvalidAction
 
 
 class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
-    """Ensure all instances have a unique subset name"""
+    """Ensure all instances have a unique product name"""
 
     order = pyblish.api.ValidatorOrder
-    label = "Validate Unique Subsets"
+    label = "Validate Unique Products"
     families = ["render", "image"]
     hosts = ["fusion"]
     actions = [SelectInvalidAction]
@@ -18,27 +18,31 @@ class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
     @classmethod
     def get_invalid(cls, context):
 
-        # Collect instances per subset per asset
-        instances_per_subset_asset = defaultdict(lambda: defaultdict(list))
+        # Collect instances per product per folder
+        instances_per_product_folder = defaultdict(lambda: defaultdict(list))
         for instance in context:
-            asset = instance.data.get(
-                "folderPath", context.data.get("folderPath")
+            folder_path = instance.data["folderPath"]
+            product_name = instance.data["productName"]
+            instances_per_product_folder[folder_path][product_name].append(
+                instance
             )
-            subset = instance.data.get("subset", context.data.get("subset"))
-            instances_per_subset_asset[asset][subset].append(instance)
 
-        # Find which asset + subset combination has more than one instance
+        # Find which folder + subset combination has more than one instance
         # Those are considered invalid because they'd integrate to the same
         # destination.
         invalid = []
-        for asset, instances_per_subset in instances_per_subset_asset.items():
-            for subset, instances in instances_per_subset.items():
+        for folder_path, instances_per_product in (
+            instances_per_product_folder.items()
+        ):
+            for product_name, instances in instances_per_product.items():
                 if len(instances) > 1:
                     cls.log.warning(
-                        "{asset} > {subset} used by more than "
-                        "one instance: {instances}".format(
-                            asset=asset,
-                            subset=subset,
+                        (
+                            "{folder_path} > {product_name} used by more than "
+                            "one instance: {instances}"
+                        ).format(
+                            folder_path=folder_path,
+                            product_name=product_name,
                             instances=instances
                         )
                     )
@@ -52,6 +56,7 @@ class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
     def process(self, context):
         invalid = self.get_invalid(context)
         if invalid:
-            raise PublishValidationError("Multiple instances are set to "
-                                         "the same asset > subset.",
-                                         title=self.label)
+            raise PublishValidationError(
+                "Multiple instances are set to the same folder > product.",
+                title=self.label
+            )

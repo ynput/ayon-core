@@ -85,24 +85,49 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 if k not in ("id", "applieswhole", "label")
             })
 
-            asset, asset_name = self._get_asset_data(tag_data)
+            asset, asset_name = self._get_folder_data(tag_data)
 
-            subset = tag_data["subset"]
+            product_name = tag_data.get("productName")
+            if product_name is None:
+                product_name = tag_data["subset"]
 
-            # insert family into families
             families = [str(f) for f in tag_data["families"]]
 
             # form label
             label = "{} -".format(asset)
             if asset_name != clip_name:
                 label += " ({})".format(clip_name)
-            label += " {}".format(subset)
+            label += " {}".format(product_name)
+
+            # TODO: remove backward compatibility
+            product_name = tag_data.get("productName")
+            if product_name is None:
+                # backward compatibility: subset -> productName
+                product_name = tag_data.get("subset")
+
+            # backward compatibility: product_name should not be missing
+            if not product_name:
+                self.log.error(
+                    "Product name is not defined for: {}".format(asset))
+
+            # TODO: remove backward compatibility
+            product_type = tag_data.get("productType")
+            if product_type is None:
+                # backward compatibility: family -> productType
+                product_type = tag_data.get("family")
+
+            # backward compatibility: product_type should not be missing
+            if not product_type:
+                self.log.error(
+                    "Product type is not defined for: {}".format(asset))
 
             data.update({
-                "name": "{}_{}".format(asset, subset),
+                "name": "{}_{}".format(asset, product_name),
                 "label": label,
                 "folderPath": asset,
                 "asset_name": asset_name,
+                "productName": product_name,
+                "productType": product_type,
                 "item": track_item,
                 "families": families,
                 "publish": tag_data["publish"],
@@ -146,7 +171,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             if not with_audio:
                 continue
 
-            # create audio subset instance
+            # create audio product instance
             self.create_audio_instance(context, **data)
 
             # add audioReview attribute to plate instance data
@@ -180,7 +205,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             })
 
     def create_shot_instance(self, context, **data):
-        subset = "shotMain"
+        product_name = "shotMain"
         master_layer = data.get("heroTrack")
         hierarchy_data = data.get("hierarchyData")
         item = data.get("item")
@@ -195,21 +220,21 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         asset = data["folderPath"]
         asset_name = data["asset_name"]
 
-        # insert family into families
-        family = "shot"
+        product_type = "shot"
 
         # form label
         label = "{} -".format(asset)
         if asset_name != clip_name:
             label += " ({}) ".format(clip_name)
-        label += " {}".format(subset)
+        label += " {}".format(product_name)
 
         data.update({
-            "name": "{}_{}".format(asset, subset),
+            "name": "{}_{}".format(asset, product_name),
             "label": label,
-            "subset": subset,
-            "family": family,
-            "families": []
+            "productName": product_name,
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type]
         })
 
         instance = context.create_instance(**data)
@@ -217,13 +242,13 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         self.log.debug(
             "_ instance.data: {}".format(pformat(instance.data)))
 
-    def _get_asset_data(self, data):
+    def _get_folder_data(self, data):
         folder_path = data.pop("folderPath", None)
 
         if data.get("asset_name"):
-            asset_name = data["asset_name"]
+            folder_name = data["asset_name"]
         else:
-            asset_name = data["asset"]
+            folder_name = data["asset"]
 
         # backward compatibility for clip tags
         # which are missing folderPath key
@@ -232,13 +257,13 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             hierarchy_path = data["hierarchy"]
             folder_path = "/{}/{}".format(
                 hierarchy_path,
-                asset_name
+                folder_name
             )
 
-        return folder_path, asset_name
+        return folder_path, folder_name
 
     def create_audio_instance(self, context, **data):
-        subset = "audioMain"
+        product_name = "audioMain"
         master_layer = data.get("heroTrack")
 
         if not master_layer:
@@ -254,21 +279,21 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         asset = data["folderPath"]
         asset_name = data["asset_name"]
 
-        # insert family into families
-        family = "audio"
+        product_type = "audio"
 
         # form label
         label = "{} -".format(asset)
         if asset_name != clip_name:
             label += " ({}) ".format(clip_name)
-        label += " {}".format(subset)
+        label += " {}".format(product_name)
 
         data.update({
-            "name": "{}_{}".format(asset, subset),
+            "name": "{}_{}".format(asset, product_name),
             "label": label,
-            "subset": subset,
-            "family": family,
-            "families": ["clip"]
+            "productName": product_name,
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type, "clip"]
         })
         # remove review track attr if any
         data.pop("reviewTrack")

@@ -34,7 +34,7 @@ from ayon_core.lib.transcoding import (
 from .lib import (
     INSTANCE_DATA_KNOB,
     Knobby,
-    check_subsetname_exists,
+    check_product_name_exists,
     maintained_selection,
     get_avalon_knob_data,
     set_avalon_knob_data,
@@ -87,15 +87,15 @@ class NukeCreator(NewCreator):
         for pass_key in keys:
             creator_attrs[pass_key] = pre_create_data[pass_key]
 
-    def check_existing_subset(self, subset_name):
-        """Make sure subset name is unique.
+    def check_existing_product(self, product_name):
+        """Make sure product name is unique.
 
         It search within all nodes recursively
-        and checks if subset name is found in
+        and checks if product name is found in
         any node having instance data knob.
 
         Arguments:
-            subset_name (str): Subset name
+            product_name (str): Product name
         """
 
         for node in nuke.allNodes(recurseGroups=True):
@@ -108,14 +108,14 @@ class NukeCreator(NewCreator):
                 # a node has no instance data
                 continue
 
-            # test if subset name is matching
-            if node_data.get("subset") == subset_name:
+            # test if product name is matching
+            if node_data.get("productType") == product_name:
                 raise NukeCreatorError(
                     (
                         "A publish instance for '{}' already exists "
                         "in nodes! Please change the variant "
                         "name to ensure unique output."
-                    ).format(subset_name)
+                    ).format(product_name)
                 )
 
     def create_instance_node(
@@ -167,22 +167,22 @@ class NukeCreator(NewCreator):
         else:
             self.selected_nodes = []
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         # make sure selected nodes are added
         self.set_selected_nodes(pre_create_data)
 
-        # make sure subset name is unique
-        self.check_existing_subset(subset_name)
+        # make sure product name is unique
+        self.check_existing_product(product_name)
 
         try:
             instance_node = self.create_instance_node(
-                subset_name,
+                product_name,
                 node_type=instance_data.pop("node_type", None)
             )
             instance = CreatedInstance(
-                self.family,
-                subset_name,
+                self.product_type,
+                product_name,
                 instance_data,
                 self
             )
@@ -227,10 +227,10 @@ class NukeCreator(NewCreator):
         for created_inst, changes in update_list:
             instance_node = created_inst.transient_data["node"]
 
-            # update instance node name if subset name changed
-            if "subset" in changes.changed_keys:
+            # update instance node name if product name changed
+            if "productName" in changes.changed_keys:
                 instance_node["name"].setValue(
-                    changes["subset"].new_value
+                    changes["productName"].new_value
                 )
 
             # in case node is not existing anymore (user erased it manually)
@@ -271,7 +271,7 @@ class NukeWriteCreator(NukeCreator):
 
     identifier = "create_write"
     label = "Create Write"
-    family = "write"
+    product_type = "write"
     icon = "sign-out"
 
     def get_linked_knobs(self):
@@ -355,22 +355,22 @@ class NukeWriteCreator(NukeCreator):
             label="Review"
         )
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         # make sure selected nodes are added
         self.set_selected_nodes(pre_create_data)
 
-        # make sure subset name is unique
-        self.check_existing_subset(subset_name)
+        # make sure product name is unique
+        self.check_existing_product(product_name)
 
         instance_node = self.create_instance_node(
-            subset_name,
+            product_name,
             instance_data
         )
 
         try:
             instance = CreatedInstance(
-                self.family,
-                subset_name,
+                self.product_type,
+                product_name,
                 instance_data,
                 self
             )
@@ -415,54 +415,6 @@ class NukeWriteCreator(NukeCreator):
         self.default_variants = plugin_settings.get(
             "default_variants") or self.default_variants
         self.temp_rendering_path_template = temp_rendering_path_template
-
-
-class OpenPypeCreator(LegacyCreator):
-    """Pype Nuke Creator class wrapper"""
-    node_color = "0xdfea5dff"
-
-    def __init__(self, *args, **kwargs):
-        super(OpenPypeCreator, self).__init__(*args, **kwargs)
-        if check_subsetname_exists(
-                nuke.allNodes(),
-                self.data["subset"]):
-            msg = ("The subset name `{0}` is already used on a node in"
-                   "this workfile.".format(self.data["subset"]))
-            self.log.error(msg + "\n\nPlease use other subset name!")
-            raise NameError("`{0}: {1}".format(__name__, msg))
-        return
-
-    def process(self):
-        from nukescripts import autoBackdrop
-
-        instance = None
-
-        if (self.options or {}).get("useSelection"):
-
-            nodes = nuke.selectedNodes()
-            if not nodes:
-                nuke.message("Please select nodes that you "
-                             "wish to add to a container")
-                return
-
-            elif len(nodes) == 1:
-                # only one node is selected
-                instance = nodes[0]
-
-        if not instance:
-            # Not using selection or multiple nodes selected
-            bckd_node = autoBackdrop()
-            bckd_node["tile_color"].setValue(int(self.node_color, 16))
-            bckd_node["note_font_size"].setValue(24)
-            bckd_node["label"].setValue("[{}]".format(self.name))
-
-            instance = bckd_node
-
-        # add avalon knobs
-        set_avalon_knob_data(instance, self.data)
-        add_publish_knob(instance)
-
-        return instance
 
 
 def get_instance_group_node_childs(instance):
@@ -919,8 +871,8 @@ class ExporterReviewMov(ExporterReview):
         self.log.info(
             "__ add_custom_tags: `{0}`".format(add_custom_tags))
 
-        subset = self.instance.data["subset"]
-        self._temp_nodes[subset] = []
+        product_name = self.instance.data["productName"]
+        self._temp_nodes[product_name] = []
 
         # Read node
         r_node = nuke.createNode("Read")
@@ -940,7 +892,9 @@ class ExporterReviewMov(ExporterReview):
             r_node["raw"].setValue(1)
 
         # connect to Read node
-        self._shift_to_previous_node_and_temp(subset, r_node, "Read...   `{}`")
+        self._shift_to_previous_node_and_temp(
+            product_name, r_node, "Read...   `{}`"
+        )
 
         # add reformat node
         reformat_nodes_config = kwargs["reformat_nodes_config"]
@@ -954,7 +908,7 @@ class ExporterReviewMov(ExporterReview):
 
                 # connect in order
                 self._connect_to_above_nodes(
-                    node, subset, "Reposition node...   `{}`"
+                    node, product_name, "Reposition node...   `{}`"
                 )
             # append reformated tag
             add_tags.append("reformated")
@@ -966,7 +920,9 @@ class ExporterReviewMov(ExporterReview):
                 ipn = get_view_process_node()
                 if ipn is not None:
                     # connect to ViewProcess node
-                    self._connect_to_above_nodes(ipn, subset, "ViewProcess...   `{}`")
+                    self._connect_to_above_nodes(
+                        ipn, product_name, "ViewProcess...   `{}`"
+                    )
 
             if not self.viewer_lut_raw:
                 # OCIODisplay
@@ -990,7 +946,9 @@ class ExporterReviewMov(ExporterReview):
                         view=viewer
                     )
 
-                self._connect_to_above_nodes(dag_node, subset, "OCIODisplay...   `{}`")
+                self._connect_to_above_nodes(
+                    dag_node, product_name, "OCIODisplay...   `{}`"
+                )
         # Write node
         write_node = nuke.createNode("Write")
         self.log.debug("Path: {}".format(self.path))
@@ -1017,8 +975,10 @@ class ExporterReviewMov(ExporterReview):
         write_node["raw"].setValue(1)
         # connect
         write_node.setInput(0, self.previous_node)
-        self._temp_nodes[subset].append(write_node)
-        self.log.debug("Write...   `{}`".format(self._temp_nodes[subset]))
+        self._temp_nodes[product_name].append(write_node)
+        self.log.debug("Write...   `{}`".format(
+            self._temp_nodes[product_name])
+        )
         # ---------- end nodes creation
 
         # ---------- render or save to nk
@@ -1043,172 +1003,19 @@ class ExporterReviewMov(ExporterReview):
 
         self.log.debug("Representation...   `{}`".format(self.data))
 
-        self.clean_nodes(subset)
+        self.clean_nodes(product_name)
         nuke.scriptSave()
 
         return self.data
 
-    def _shift_to_previous_node_and_temp(self, subset, node, message):
-        self._temp_nodes[subset].append(node)
+    def _shift_to_previous_node_and_temp(self, product_name, node, message):
+        self._temp_nodes[product_name].append(node)
         self.previous_node = node
-        self.log.debug(message.format(self._temp_nodes[subset]))
+        self.log.debug(message.format(self._temp_nodes[product_name]))
 
-    def _connect_to_above_nodes(self, node, subset, message):
+    def _connect_to_above_nodes(self, node, product_name, message):
         node.setInput(0, self.previous_node)
-        self._shift_to_previous_node_and_temp(subset, node, message)
-
-
-@deprecated("ayon_core.hosts.nuke.api.plugin.NukeWriteCreator")
-class AbstractWriteRender(OpenPypeCreator):
-    """Abstract creator to gather similar implementation for Write creators"""
-    name = ""
-    label = ""
-    hosts = ["nuke"]
-    n_class = "Write"
-    family = "render"
-    icon = "sign-out"
-    defaults = ["Main", "Mask"]
-    knobs = []
-    prenodes = []
-
-    def __init__(self, *args, **kwargs):
-        super(AbstractWriteRender, self).__init__(*args, **kwargs)
-
-        data = OrderedDict()
-
-        data["family"] = self.family
-        data["families"] = self.n_class
-
-        for k, v in self.data.items():
-            if k not in data.keys():
-                data.update({k: v})
-
-        self.data = data
-        self.nodes = nuke.selectedNodes()
-
-    def process(self):
-
-        inputs = []
-        outputs = []
-        instance = nuke.toNode(self.data["subset"])
-        selected_node = None
-
-        # use selection
-        if (self.options or {}).get("useSelection"):
-            nodes = self.nodes
-
-            if not (len(nodes) < 2):
-                msg = ("Select only one node. "
-                       "The node you want to connect to, "
-                       "or tick off `Use selection`")
-                self.log.error(msg)
-                nuke.message(msg)
-                return
-
-            if len(nodes) == 0:
-                msg = (
-                    "No nodes selected. Please select a single node to connect"
-                    " to or tick off `Use selection`"
-                )
-                self.log.error(msg)
-                nuke.message(msg)
-                return
-
-            selected_node = nodes[0]
-            inputs = [selected_node]
-            outputs = selected_node.dependent()
-
-            if instance:
-                if (instance.name() in selected_node.name()):
-                    selected_node = instance.dependencies()[0]
-
-        # if node already exist
-        if instance:
-            # collect input / outputs
-            inputs = instance.dependencies()
-            outputs = instance.dependent()
-            selected_node = inputs[0]
-            # remove old one
-            nuke.delete(instance)
-
-        # recreate new
-        write_data = {
-            "nodeclass": self.n_class,
-            "families": [self.family],
-            "avalon": self.data,
-            "subset": self.data["subset"],
-            "knobs": self.knobs
-        }
-
-        # add creator data
-        creator_data = {"creator": self.__class__.__name__}
-        self.data.update(creator_data)
-        write_data.update(creator_data)
-
-        write_node = self._create_write_node(
-            selected_node,
-            inputs,
-            outputs,
-            write_data
-        )
-
-        # relinking to collected connections
-        for i, input in enumerate(inputs):
-            write_node.setInput(i, input)
-
-        write_node.autoplace()
-
-        for output in outputs:
-            output.setInput(0, write_node)
-
-        write_node = self._modify_write_node(write_node)
-
-        return write_node
-
-    def is_legacy(self):
-        """Check if it needs to run legacy code
-
-        In case where `type` key is missing in single
-        knob it is legacy project anatomy.
-
-        Returns:
-            bool: True if legacy
-        """
-        imageio_nodes = get_nuke_imageio_settings()["nodes"]
-        node = imageio_nodes["required_nodes"][0]
-        if "type" not in node["knobs"][0]:
-            # if type is not yet in project anatomy
-            return True
-        elif next(iter(
-            _k for _k in node["knobs"]
-            if _k.get("type") == "__legacy__"
-        ), None):
-            # in case someone re-saved anatomy
-            # with old configuration
-            return True
-
-    @abstractmethod
-    def _create_write_node(self, selected_node, inputs, outputs, write_data):
-        """Family dependent implementation of Write node creation
-
-        Args:
-            selected_node (nuke.Node)
-            inputs (list of nuke.Node) - input dependencies (what is connected)
-            outputs (list of nuke.Node) - output dependencies
-            write_data (dict) - values used to fill Knobs
-        Returns:
-            node (nuke.Node): group node with  data as Knobs
-        """
-        pass
-
-    @abstractmethod
-    def _modify_write_node(self, write_node):
-        """Family dependent modification of created 'write_node'
-
-        Returns:
-            node (nuke.Node): group node with data as Knobs
-        """
-        pass
+        self._shift_to_previous_node_and_temp(product_name, node, message)
 
 
 def convert_to_valid_instaces():
@@ -1216,7 +1023,7 @@ def convert_to_valid_instaces():
 
     Also save as new minor version of workfile.
     """
-    def family_to_identifier(family):
+    def product_type_to_identifier(product_type):
         mapping = {
             "render": "create_write_render",
             "prerender": "create_write_prerender",
@@ -1228,7 +1035,7 @@ def convert_to_valid_instaces():
             "source": "create_source"
 
         }
-        return mapping[family]
+        return mapping[product_type]
 
     from ayon_core.hosts.nuke.api import workio
 
@@ -1287,7 +1094,10 @@ def convert_to_valid_instaces():
 
         transfer_data["task"] = task_name
 
-        family = avalon_knob_data["family"]
+        product_type = avalon_knob_data.get("productType")
+        if product_type is None:
+            product_type = avalon_knob_data["family"]
+
         # establish families
         families_ak = avalon_knob_data.get("families", [])
 
@@ -1305,11 +1115,13 @@ def convert_to_valid_instaces():
                 node["publish"].value())
 
         # add idetifier
-        transfer_data["creator_identifier"] = family_to_identifier(family)
+        transfer_data["creator_identifier"] = product_type_to_identifier(
+            product_type
+        )
 
         # Add all nodes in group instances.
         if node.Class() == "Group":
-            # only alter families for render family
+            # only alter families for render product type
             if families_ak and "write" in families_ak.lower():
                 target = node["render"].value()
                 if target == "Use existing frames":
