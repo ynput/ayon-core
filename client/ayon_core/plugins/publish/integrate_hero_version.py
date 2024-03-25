@@ -84,8 +84,6 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
     # permissions error on files (files were used or user didn't have perms)
     # *but all other plugins must be sucessfully completed
 
-    _default_template_name = "hero"
-
     def process(self, instance):
         self.log.debug(
             "--- Integration of Hero version for product `{}` begins.".format(
