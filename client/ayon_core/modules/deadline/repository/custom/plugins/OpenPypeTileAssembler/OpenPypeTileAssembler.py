@@ -404,7 +404,7 @@ class OpenPypeTileAssembler(DeadlinePlugin):
         Args:
             output_width (int): Width of output image.
             output_height (int): Height of output image.
-            tiles_info (list): List of tile items, each item must be
+            tile_info (list): List of tile items, each item must be
                 dictionary with `filepath`, `pos_x` and `pos_y` keys
                 representing path to file and x, y coordinates on output
                 image where top-left point of tile item should start.

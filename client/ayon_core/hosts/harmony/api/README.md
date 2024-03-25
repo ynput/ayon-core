@@ -204,7 +204,7 @@ class CreateComposite(harmony.Creator):
 
     name = "compositeDefault"
     label = "Composite"
-    product_type = "mindbender.template"
+    product_type = "template"
 
     def __init__(self, *args, **kwargs):
         super(CreateComposite, self).__init__(*args, **kwargs)
@@ -221,7 +221,7 @@ class CreateRender(harmony.Creator):
 
     name = "writeDefault"
     label = "Write"
-    product_type = "mindbender.imagesequence"
+    product_type = "render"
     node_type = "WRITE"
 
     def __init__(self, *args, **kwargs):
@@ -304,7 +304,7 @@ class ExtractImage(pyblish.api.InstancePlugin):
     label = "Extract Image Sequence"
     order = pyblish.api.ExtractorOrder
     hosts = ["harmony"]
-    families = ["mindbender.imagesequence"]
+    families = ["render"]
 
     def process(self, instance):
         project_path = harmony.send(
@@ -582,8 +582,16 @@ class ImageSequenceLoader(load.LoaderPlugin):
     """Load images
     Stores the imported asset in a container named after the asset.
     """
-    product_types = {"mindbender.imagesequence"}
+    product_types = {
+        "shot",
+        "render",
+        "image",
+        "plate",
+        "reference",
+        "review",
+    }
     representations = ["*"]
+    extensions = {"jpeg", "png", "jpg"}
 
     def load(self, context, name=None, namespace=None, data=None):
         files = []
