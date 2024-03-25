@@ -9,8 +9,10 @@ class FusionLaunchMenuHook(PreLaunchHook):
     order = 9
 
     def execute(self):
-
-        # TODO: Make this optional via project settings
+        # Prelaunch hook is optional
+        settings = self.data["project_settings"][self.host_name]
+        if not settings["hooks"]["FusionLaunchMenuHook"]["enabled"]:
+            return
 
         variant = self.application.name
         if variant.isnumeric():
