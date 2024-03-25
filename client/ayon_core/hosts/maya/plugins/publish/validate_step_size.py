@@ -47,4 +47,4 @@ class ValidateStepSize(pyblish.api.InstancePlugin,
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                "Invalid instances found: {0}".format(invalid))
+                "Instance found with invalid step size: {0}".format(invalid))
