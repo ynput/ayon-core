@@ -741,7 +741,7 @@ class AddonsManager:
 
         addon_classes = []
         for module in openpype_modules:
-            # Go through globals in `pype.modules`
+            # Go through globals in `ayon_core.modules`
             for name in dir(module):
                 modules_item = getattr(module, name, None)
                 # Filter globals that are not classes which inherit from

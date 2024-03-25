@@ -102,8 +102,8 @@ def get_all_current_info():
 def extract_ayon_info_to_file(dirpath, filename=None):
     """Extract all current info to a file.
 
-    It is possible to define only directory path. Filename is concatenated with
-    pype version, workstation site id and timestamp.
+    It is possible to define only directory path. Filename is concatenated
+    with AYON version, workstation site id and timestamp.
 
     Args:
         dirpath (str): Path to directory where file will be stored.
