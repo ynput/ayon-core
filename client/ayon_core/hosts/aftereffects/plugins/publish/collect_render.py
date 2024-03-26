@@ -146,6 +146,7 @@ class CollectAERender(publish.AbstractCollectRender):
                 if "review" in instance.families:
                     # to skip ExtractReview locally
                     instance.families.remove("review")
+                instance.deadline = inst.data.get("deadline")
 
             instances.append(instance)
             instances_to_remove.append(inst)
