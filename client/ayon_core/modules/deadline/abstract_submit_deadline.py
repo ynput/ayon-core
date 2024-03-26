@@ -49,6 +49,10 @@ def requests_post(*args, **kwargs):
     if 'verify' not in kwargs:
         kwargs['verify'] = False if os.getenv("OPENPYPE_DONT_VERIFY_SSL",
                                               True) else True  # noqa
+
+    auth = kwargs.get("auth")
+    if auth:
+        kwargs["auth"] = tuple(auth)  # explicit cast to tuple
     # add 10sec timeout before bailing out
     kwargs['timeout'] = 10
     return requests.post(*args, **kwargs)
@@ -70,6 +74,9 @@ def requests_get(*args, **kwargs):
     if 'verify' not in kwargs:
         kwargs['verify'] = False if os.getenv("OPENPYPE_DONT_VERIFY_SSL",
                                               True) else True  # noqa
+    auth = kwargs.get("auth")
+    if auth:
+        kwargs["auth"] = tuple(auth)
     # add 10sec timeout before bailing out
     kwargs['timeout'] = 10
     return requests.get(*args, **kwargs)
