@@ -1789,6 +1789,10 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     from ayon_core.addon import AddonsManager
     from ayon_core.pipeline import HOST_WORKFILE_EXTENSIONS
+    from ayon_core.pipeline.workfile import (
+        should_use_last_workfile_on_launch,
+        should_open_workfiles_tool_on_launch,
+    )
 
     if not addons_manager:
         addons_manager = AddonsManager()
@@ -1811,7 +1815,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     start_last_workfile = data.get("start_last_workfile")
     if start_last_workfile is None:
-        start_last_workfile = should_start_last_workfile(
+        start_last_workfile = should_use_last_workfile_on_launch(
             project_name, app.host_name, task_name, task_type
         )
     else:
@@ -1819,7 +1823,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     data["start_last_workfile"] = start_last_workfile
 
-    workfile_startup = should_workfile_tool_start(
+    workfile_startup = should_open_workfiles_tool_on_launch(
         project_name, app.host_name, task_name, task_type
     )
     data["workfile_startup"] = workfile_startup
@@ -1887,106 +1891,6 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     data["env"]["AYON_LAST_WORKFILE"] = last_workfile_path
     data["last_workfile_path"] = last_workfile_path
-
-
-def should_start_last_workfile(
-    project_name, host_name, task_name, task_type, default_output=False
-):
-    """Define if host should start last version workfile if possible.
-
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_OPEN_LAST_WORKFILE`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
-
-    Args:
-        project_name (str): Project name.
-        host_name (str): Host name.
-        task_name (str): Task name.
-        task_type (str): Task type.
-        default_output (Optional[bool]): Default output if no profile is
-            found.
-
-    Returns:
-        bool: True if host should start workfile.
-
-    """
-
-    project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["last_workfile_on_startup"]
-    )
-
-    if not profiles:
-        return default_output
-
-    filter_data = {
-        "tasks": task_name,
-        "task_types": task_type,
-        "hosts": host_name
-    }
-    matching_item = filter_profiles(profiles, filter_data)
-
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
-
-    if output is None:
-        return default_output
-    return output
-
-
-def should_workfile_tool_start(
-    project_name, host_name, task_name, task_type, default_output=False
-):
-    """Define if host should start workfile tool at host launch.
-
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_WORKFILE_TOOL_ON_START`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
-
-    Args:
-        project_name (str): Project name.
-        host_name (str): Host name.
-        task_name (str): Task name.
-        task_type (str): Task type.
-        default_output (Optional[bool]): Default output if no profile is
-            found.
-
-    Returns:
-        bool: True if host should start workfile.
-
-    """
-
-    project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["open_workfile_tool_on_startup"]
-    )
-
-    if not profiles:
-        return default_output
-
-    filter_data = {
-        "tasks": task_name,
-        "task_types": task_type,
-        "hosts": host_name
-    }
-    matching_item = filter_profiles(profiles, filter_data)
-
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
-
-    if output is None:
-        return default_output
-    return output
 
 
 def get_non_python_host_kwargs(kwargs, allow_console=True):
