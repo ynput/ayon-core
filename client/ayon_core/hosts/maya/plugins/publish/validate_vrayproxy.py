@@ -21,7 +21,7 @@ class ValidateVrayProxy(pyblish.api.InstancePlugin,
             return
         if not data["setMembers"]:
             raise PublishValidationError(
-                "'%s' is empty! This is a bug" % instance.name
+                f"Instance '{instance.name}' is empty."
             )
 
         if data["animation"]:
