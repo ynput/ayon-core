@@ -70,7 +70,9 @@ class OpenTaskPath(LauncherAction):
         data = get_template_data(project_entity, folder_entity, task_entity)
 
         anatomy = Anatomy(project_name)
-        workdir = anatomy.templates_obj["work"]["folder"].format(data)
+        workdir = anatomy.get_template_item(
+            "work", "default", "folder"
+        ).format(data)
 
         # Remove any potential un-formatted parts of the path
         valid_workdir = self._find_first_filled_path(workdir)
@@ -85,7 +87,9 @@ class OpenTaskPath(LauncherAction):
             return valid_workdir
 
         data.pop("task", None)
-        workdir = anatomy.templates_obj["work"]["folder"].format(data)
+        workdir = anatomy.get_template_item(
+            "work", "default", "folder"
+        ).format(data)
         valid_workdir = self._find_first_filled_path(workdir)
         if valid_workdir:
             # Normalize

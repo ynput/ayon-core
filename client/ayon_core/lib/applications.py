@@ -204,7 +204,7 @@ class ApplicationGroup:
     Application group wraps different versions(variants) of application.
     e.g. "maya" is group and "maya_2020" is variant.
 
-    Group hold `host_name` which is implementation name used in pype. Also
+    Group hold `host_name` which is implementation name used in AYON. Also
     holds `enabled` if whole app group is enabled or `icon` for application
     icon path in resources.
 
@@ -1789,6 +1789,10 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     from ayon_core.addon import AddonsManager
     from ayon_core.pipeline import HOST_WORKFILE_EXTENSIONS
+    from ayon_core.pipeline.workfile import (
+        should_use_last_workfile_on_launch,
+        should_open_workfiles_tool_on_launch,
+    )
 
     if not addons_manager:
         addons_manager = AddonsManager()
@@ -1811,7 +1815,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     start_last_workfile = data.get("start_last_workfile")
     if start_last_workfile is None:
-        start_last_workfile = should_start_last_workfile(
+        start_last_workfile = should_use_last_workfile_on_launch(
             project_name, app.host_name, task_name, task_type
         )
     else:
@@ -1819,7 +1823,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     data["start_last_workfile"] = start_last_workfile
 
-    workfile_startup = should_workfile_tool_start(
+    workfile_startup = should_open_workfiles_tool_on_launch(
         project_name, app.host_name, task_name, task_type
     )
     data["workfile_startup"] = workfile_startup
@@ -1862,7 +1866,9 @@ def _prepare_last_workfile(data, workdir, addons_manager):
                 project_settings=project_settings
             )
             # Find last workfile
-            file_template = str(anatomy.templates[template_key]["file"])
+            file_template = anatomy.get_template_item(
+                "work", template_key, "file"
+            ).template
 
             workdir_data.update({
                 "version": 1,
@@ -1885,106 +1891,6 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     data["env"]["AYON_LAST_WORKFILE"] = last_workfile_path
     data["last_workfile_path"] = last_workfile_path
-
-
-def should_start_last_workfile(
-    project_name, host_name, task_name, task_type, default_output=False
-):
-    """Define if host should start last version workfile if possible.
-
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_OPEN_LAST_WORKFILE`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
-
-    Args:
-        project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
-
-    Returns:
-        bool: True if host should start workfile.
-
-    """
-
-    project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["last_workfile_on_startup"]
-    )
-
-    if not profiles:
-        return default_output
-
-    filter_data = {
-        "tasks": task_name,
-        "task_types": task_type,
-        "hosts": host_name
-    }
-    matching_item = filter_profiles(profiles, filter_data)
-
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
-
-    if output is None:
-        return default_output
-    return output
-
-
-def should_workfile_tool_start(
-    project_name, host_name, task_name, task_type, default_output=False
-):
-    """Define if host should start workfile tool at host launch.
-
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_WORKFILE_TOOL_ON_START`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
-
-    Args:
-        project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
-
-    Returns:
-        bool: True if host should start workfile.
-
-    """
-
-    project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["open_workfile_tool_on_startup"]
-    )
-
-    if not profiles:
-        return default_output
-
-    filter_data = {
-        "tasks": task_name,
-        "task_types": task_type,
-        "hosts": host_name
-    }
-    matching_item = filter_profiles(profiles, filter_data)
-
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
-
-    if output is None:
-        return default_output
-    return output
 
 
 def get_non_python_host_kwargs(kwargs, allow_console=True):
