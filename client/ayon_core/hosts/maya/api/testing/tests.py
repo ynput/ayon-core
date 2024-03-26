@@ -14,6 +14,7 @@ from ayon_core.pipeline.create import CreateContext
 from ayon_core.hosts.maya.api.workfile_template_builder import (
     MayaTemplateBuilder
 )
+from ayon_core.hosts.maya.api.lib import set_attribute
 
 
 # Needed for transition phase for asset/subset renaming. Can be hardcoded once
@@ -27,6 +28,7 @@ def test_create():
     TODO:
         - Arnold Scene Source
         - Assembly
+        - Animation
         - Camera Rig
         - Layout
         - Matchmove
@@ -36,7 +38,6 @@ def test_create():
         - Multiverse USD Asset
         - Multiverse USD Composition
         - Multiverse USD Override
-        - Pointcache
         - Proxy Alembic
         - Redshift Proxy
         - Set Dress
@@ -79,6 +80,10 @@ def test_create():
             for set in cmds.ls(members, type="objectSet"):
                 hierarchy[set] = cmds.sets(set, query=True)
 
+        creator_attributes = {}
+        for key, value in instance.data["creator_attributes"].items():
+            creator_attributes[key] = value
+
         create_data.append(
             {
                 "plugin": creator_plugin,
@@ -87,7 +92,8 @@ def test_create():
                     instance.data[product_key_name],
                     instance_data,
                     {"use_selection": False}
-                ]
+                ],
+                "creator_attributes": creator_attributes
             }
         )
 
@@ -96,12 +102,15 @@ def test_create():
     context.remove_instances(instances_to_remove)
 
     for data in create_data:
-        data["plugin"].create(*data["args"])
+        instance = data["plugin"].create(*data["args"])
         for set, nodes in data["hierarchy"].items():
             if not nodes:
                 continue
 
             cmds.sets(nodes, forceElement=set)
+        if instance:
+            for key, value in data["creator_attributes"].items():
+                set_attribute(key, value, instance.data["instance_node"])
 
     print("Create was successfull!")
 
@@ -194,6 +203,7 @@ def test_load():
         - Look
         - Review
         - Arnold Scene Source
+        - Animation
         - Assembly
         - Camera Rig
         - Layout
@@ -204,7 +214,6 @@ def test_load():
         - Multiverse USD Asset
         - Multiverse USD Composition
         - Multiverse USD Override
-        - Pointcache
         - Proxy Alembic
         - Redshift Proxy
         - Set Dress
