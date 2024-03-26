@@ -50,11 +50,11 @@ class ImportTemplateLoader(load.LoaderPlugin):
             self.__class__.__name__
         )
 
-        def update(self, container, context):
-            pass
+    def update(self, container, context):
+        pass
 
-        def remove(self, container):
-            pass
+    def remove(self, container):
+        pass
 
 
 class ImportWorkfileLoader(ImportTemplateLoader):
