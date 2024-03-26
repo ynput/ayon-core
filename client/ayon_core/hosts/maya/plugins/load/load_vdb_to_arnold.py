@@ -25,10 +25,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         from ayon_core.hosts.maya.api.pipeline import containerise
         from ayon_core.hosts.maya.api.lib import unique_namespace
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vdbcache"
+        product_type = context["product"]["productType"]
 
         # Check if the plugin for arnold is available on the pc
         try:
