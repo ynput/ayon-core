@@ -545,7 +545,7 @@ def get_workdir_from_session(session=None, template_key=None):
         )
 
     anatomy = Anatomy(project_name)
-    template_obj = anatomy.templates_obj[template_key]["folder"]
+    template_obj = anatomy.get_template_item("work", template_key, "directory")
     path = template_obj.format_strict(template_data)
     if path:
         path = os.path.normpath(path)

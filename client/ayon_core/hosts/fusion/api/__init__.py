@@ -15,7 +15,7 @@ from .lib import (
     comp_lock_and_undo_chunk
 )
 
-from .menu import launch_openpype_menu
+from .menu import launch_ayon_menu
 
 
 __all__ = [
@@ -35,5 +35,5 @@ __all__ = [
     "comp_lock_and_undo_chunk",
 
     # menu
-    "launch_openpype_menu",
+    "launch_ayon_menu",
 ]
