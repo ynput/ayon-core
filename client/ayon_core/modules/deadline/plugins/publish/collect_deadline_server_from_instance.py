@@ -16,6 +16,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
     # Run before collect_render.
     order = pyblish.api.CollectorOrder + 0.005
     label = "Deadline Webservice from the Instance"
+    targets = ["local"]
     families = ["render",
                 "rendering",
                 "render.farm",

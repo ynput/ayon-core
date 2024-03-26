@@ -199,11 +199,7 @@ class ValidateExpectedFiles(pyblish.api.InstancePlugin):
             (dict): Job info from Deadline
 
         """
-        # get default deadline webservice url from deadline module
-        deadline_url = instance.context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            deadline_url = instance.data.get("deadlineUrl")
+        deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
 
         url = "{}/api/jobs?JobID={}".format(deadline_url, job_id)
