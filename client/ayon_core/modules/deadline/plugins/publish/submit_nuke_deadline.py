@@ -435,8 +435,9 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         self.log.debug("__ expectedFiles: `{}`".format(
             instance.data["expectedFiles"]))
         kwargs = {}
-        if instance.context.data["deadline_auth"]:
-            kwargs["auth"] = instance.context.data["deadline_auth"]
+        auth = instance.data["deadline"]["auth"]
+        if auth:
+            kwargs["auth"] = auth
         response = requests_post(self.deadline_url, json=payload, timeout=10,
                                  **kwargs)
 

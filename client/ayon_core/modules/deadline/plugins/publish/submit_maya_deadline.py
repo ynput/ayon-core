@@ -331,7 +331,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             self.log.debug("Submitting V-Ray scene render..")
             vray_export_payload = self._get_vray_export_payload(payload_data)
             export_job = self.submit(vray_export_payload,
-                                     instance.context.data["deadline_auth"])
+                                     instance.data["deadline"]["auth"])
 
             payload = self._get_vray_render_payload(payload_data)
 
@@ -351,7 +351,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             # Submit main render job
             job_info, plugin_info = payload
             self.submit(self.assemble_payload(job_info, plugin_info),
-                        instance.context.data["deadline_auth"])
+                        instance.data["deadline"]["auth"])
 
     def _tile_render(self, payload):
         """Submit as tile render per frame with dependent assembly jobs."""
@@ -452,7 +452,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         frame_tile_job_id = {}
         for frame, tile_job_payload in frame_payloads.items():
             job_id = self.submit(tile_job_payload,
-                                 instance.context.data["deadline_auth"])
+                                 instance.data["deadline"]["auth"])
             frame_tile_job_id[frame] = job_id
 
         # Define assembly payloads
@@ -561,7 +561,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
                                                           num_assemblies)
             )
             assembly_job_id = self.submit(payload,
-                instance.context.data["deadline_auth"])
+                instance.data["deadline"]["auth"])
             assembly_job_ids.append(assembly_job_id)
 
         instance.data["assemblySubmissionJobs"] = assembly_job_ids

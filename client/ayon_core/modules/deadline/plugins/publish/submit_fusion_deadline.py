@@ -94,10 +94,7 @@ class FusionSubmitDeadline(
         from ayon_core.hosts.fusion.api.lib import get_frame_path
 
         # get default deadline webservice url from deadline module
-        deadline_url = instance.context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            deadline_url = instance.data.get("deadlineUrl")
+        deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
 
         # Collect all saver instances in context that are to be rendered
@@ -251,8 +248,9 @@ class FusionSubmitDeadline(
         # E.g. http://192.168.0.1:8082/api/jobs
         url = "{}/api/jobs".format(deadline_url)
         kwargs = {}
-        if instance.context.data["deadline_auth"]:
-            kwargs["auth"] = instance.context.data["deadline_auth"]
+        auth = instance.data["deadline"]["auth"]
+        if auth:
+            kwargs["auth"] = auth
         response = requests_post(url, json=payload, **kwargs)
         if not response.ok:
             raise Exception(response.text)

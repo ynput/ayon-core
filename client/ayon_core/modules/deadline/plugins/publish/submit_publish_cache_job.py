@@ -210,8 +210,9 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
 
         url = "{}/api/jobs".format(self.deadline_url)
         kwargs = {}
-        if instance.context.data["deadline_auth"]:
-            kwargs["auth"] = instance.context.data["deadline_auth"]
+        auth = instance.data["deadline"]["auth"]
+        if auth:
+            kwargs["auth"] = auth
         response = requests_post(url, json=payload, timeout=10,
                                  **kwargs)
         if not response.ok:
