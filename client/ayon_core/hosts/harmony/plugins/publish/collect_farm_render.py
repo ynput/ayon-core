@@ -177,7 +177,8 @@ class CollectFarmRender(publish.AbstractCollectRender):
                 outputFormat=info[1],
                 outputStartFrame=info[3],
                 leadingZeros=info[2],
-                ignoreFrameHandleCheck=True
+                ignoreFrameHandleCheck=True,
+                # deadline=inst.data.get("deadline")  TODO
 
             )
             render_instance.context = context
