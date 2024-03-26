@@ -2,6 +2,7 @@
 """Creator plugin to create Redshift ROP."""
 import hou  # noqa
 
+from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
 from ayon_core.lib import EnumDef, BoolDef
 
@@ -42,7 +43,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                 "Redshift_IPR", node_name=f"{basename}_IPR"
             )
         except hou.OperationFailed as e:
-            raise plugin.OpenPypeCreatorError(
+            raise CreatorError(
                 (
                     "Cannot create Redshift node. Is Redshift "
                     "installed and enabled?"

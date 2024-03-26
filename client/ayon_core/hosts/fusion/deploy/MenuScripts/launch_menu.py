@@ -35,7 +35,7 @@ def main(env):
     log = Logger.get_logger(__name__)
     log.info(f"Registered host: {registered_host()}")
 
-    menu.launch_openpype_menu()
+    menu.launch_ayon_menu()
 
     # Initiate a QTimer to check if Fusion is still alive every X interval
     # If Fusion is not found - kill itself
