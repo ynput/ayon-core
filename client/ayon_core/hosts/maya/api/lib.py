@@ -2647,31 +2647,115 @@ def reset_scene_resolution():
     set_scene_resolution(width, height, pixelAspect)
 
 
-def set_context_settings():
+def set_context_settings(
+        fps=True,
+        resolution=True,
+        frame_range=True,
+        colorspace=True
+):
     """Apply the project settings from the project definition
 
-    Settings can be overwritten by an folder if the folder.attrib contains
+    Settings can be overwritten by an asset if the asset.data contains
     any information regarding those settings.
 
-    Examples of settings:
-        fps
-        resolution
-        renderer
+    Args:
+        fps (bool): Whether to set the scene FPS.
+        resolution (bool): Whether to set the render resolution.
+        frame_range (bool): Whether to reset the time slide frame ranges.
+        colorspace (bool): Whether to reset the colorspace.
 
     Returns:
         None
 
     """
-    # Set project fps
-    set_scene_fps(get_fps_for_current_context())
+    if fps:
+        # Set project fps
+        set_scene_fps(get_fps_for_current_context())
 
-    reset_scene_resolution()
+    if resolution:
+        reset_scene_resolution()
 
     # Set frame range.
-    reset_frame_range()
+    if frame_range:
+        reset_frame_range(fps=False)
 
     # Set colorspace
-    set_colorspace()
+    if colorspace:
+        set_colorspace()
+
+
+def prompt_reset_context():
+    """Prompt the user what context settings to reset.
+    This prompt is used on saving to a different task to allow the scene to
+    get matched to the new context.
+    """
+    # TODO: Cleanup this prototyped mess of imports and odd dialog
+    from ayon_core.tools.attribute_defs.dialog import (
+        AttributeDefinitionsDialog
+    )
+    from ayon_core.style import load_stylesheet
+    from ayon_core.lib import BoolDef, UILabelDef
+
+    definitions = [
+        UILabelDef(
+            label=(
+                "You are saving your scene into a different task."
+                "\n\n"
+                "Would you like to reset some settings for the "
+                "for the new context?\n"
+            )
+        ),
+        BoolDef(
+            "fps",
+            label="FPS",
+            tooltip="Reset Comp FPS",
+            default=True
+        ),
+        BoolDef(
+            "frame_range",
+            label="Frame Range",
+            tooltip="Reset Comp start and end frame ranges",
+            default=True
+        ),
+        BoolDef(
+            "resolution",
+            label="Resolution",
+            tooltip="Reset Comp resolution",
+            default=True
+        ),
+        BoolDef(
+            "colorspace",
+            label="Colorspace",
+            tooltip="Reset Comp resolution",
+            default=True
+        ),
+        BoolDef(
+            "instances",
+            label="Publish instances",
+            tooltip="Update all publish instance's folder and task to match "
+                    "the new folder and task",
+            default=True
+        ),
+    ]
+
+    dialog = AttributeDefinitionsDialog(definitions)
+    dialog.setWindowTitle("Saving to different context. Reset options")
+    dialog.setStyleSheet(load_stylesheet())
+    if not dialog.exec_():
+        return None
+
+    options = dialog.get_values()
+    with suspended_refresh():
+        set_context_settings(
+            fps=options["fps"],
+            resolution=options["resolution"],
+            frame_range=options["frame_range"],
+            colorspace=options["colorspace"]
+        )
+        if options["instances"]:
+            update_content_on_context_change()
+
+    dialog.deleteLater()
 
 
 # Valid FPS
