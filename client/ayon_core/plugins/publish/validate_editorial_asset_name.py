@@ -117,6 +117,6 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
 
             output[folder_path] = [
                 str(p["entity_name"]) for p in parents
-                if p["entity_type"].lower() != "project"
+                if p.get("entity_type") != "project"
             ]
         return output
