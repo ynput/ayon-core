@@ -29,7 +29,7 @@ class Delivery(load.ProductLoaderPlugin):
     sequence_splitter = "__sequence_splitter__"
 
     representations = ["*"]
-    families = ["*"]
+    product_types = {"*"}
     tool_names = ["library_loader"]
 
     label = "Deliver Versions"
@@ -282,7 +282,11 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         """Adds list of delivery templates from Anatomy to dropdown."""
         templates = {}
         for template_name, value in anatomy.templates["delivery"].items():
-            if not isinstance(value, str) or not value.startswith('{root'):
+            path_template = value["path"]
+            if (
+                not isinstance(path_template, str)
+                or not path_template.startswith('{root')
+            ):
                 continue
 
             templates[template_name] = value

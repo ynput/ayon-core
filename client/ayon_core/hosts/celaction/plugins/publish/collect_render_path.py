@@ -18,7 +18,7 @@ class CollectRenderPath(pyblish.api.InstancePlugin):
     def process(self, instance):
         anatomy = instance.context.data["anatomy"]
         anatomy_data = copy.deepcopy(instance.data["anatomyData"])
-        padding = anatomy.templates.get("frame_padding", 4)
+        padding = anatomy.templates_obj.frame_padding
         product_type = "render"
         anatomy_data.update({
             "frame": f"%0{padding}d",
@@ -28,15 +28,14 @@ class CollectRenderPath(pyblish.api.InstancePlugin):
         })
         anatomy_data["product"]["type"] = product_type
 
-        anatomy_filled = anatomy.format(anatomy_data)
-
         # get anatomy rendering keys
         r_anatomy_key = self.anatomy_template_key_render_files
         m_anatomy_key = self.anatomy_template_key_metadata
 
         # get folder and path for rendering images from celaction
-        render_dir = anatomy_filled[r_anatomy_key]["folder"]
-        render_path = anatomy_filled[r_anatomy_key]["path"]
+        r_template_item = anatomy.get_template_item("publish", r_anatomy_key)
+        render_dir = r_template_item["directory"].format_strict(anatomy_data)
+        render_path = r_template_item["path"].format_strict(anatomy_data)
         self.log.debug("__ render_path: `{}`".format(render_path))
 
         # create dir if it doesnt exists
@@ -51,11 +50,14 @@ class CollectRenderPath(pyblish.api.InstancePlugin):
         instance.data["path"] = render_path
 
         # get anatomy for published renders folder path
-        if anatomy_filled.get(m_anatomy_key):
-            instance.data["publishRenderMetadataFolder"] = anatomy_filled[
-                m_anatomy_key]["folder"]
-            self.log.info("Metadata render path: `{}`".format(
-                instance.data["publishRenderMetadataFolder"]
-            ))
+        m_template_item = anatomy.get_template_item(
+            "publish", m_anatomy_key, default=None
+        )
+        if m_template_item is not None:
+            metadata_path = m_template_item["directory"].format_strict(
+                anatomy_data
+            )
+            instance.data["publishRenderMetadataFolder"] = metadata_path
+            self.log.info("Metadata render path: `{}`".format(metadata_path))
 
         self.log.info(f"Render output path set to: `{render_path}`")

@@ -6,19 +6,17 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
 )
-from ayon_core.tools.ayon_utils.widgets import (
+from ayon_core.tools.utils import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
-)
-from ayon_core.tools.utils.lib import (
-    center_window,
     get_ayon_qt_app,
 )
+from ayon_core.tools.utils.lib import center_window
 
 
 class SelectionModel(object):

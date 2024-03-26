@@ -12,7 +12,7 @@ from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 class LoadVDBtoArnold(load.LoaderPlugin):
     """Load OpenVDB for Arnold in aiVolume"""
 
-    families = ["vdbcache"]
+    product_types = {"vdbcache"}
     representations = ["vdb"]
 
     label = "Load VDB to Arnold"
@@ -108,7 +108,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
 
         from maya import cmds
 
-        # Get all members of the avalon container, ensure they are unlocked
+        # Get all members of the AYON container, ensure they are unlocked
         # and delete everything
         members = cmds.sets(container['objectName'], query=True)
         cmds.lockNode(members, lock=False)

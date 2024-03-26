@@ -24,7 +24,7 @@ class BlendActionLoader(plugin.AssetLoader):
         moment.
     """
 
-    families = ["action"]
+    product_types = {"action"}
     representations = ["blend"]
 
     label = "Link Action"

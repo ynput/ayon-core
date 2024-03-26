@@ -11,7 +11,7 @@ class SyncClockifyServer(ServerAction):
     label = "Sync To Clockify (server)"
     description = "Synchronise data to Clockify workspace"
 
-    role_list = ["Pypeclub", "Administrator", "project Manager"]
+    role_list = ["Administrator", "project Manager"]
 
     def __init__(self, *args, **kwargs):
         super(SyncClockifyServer, self).__init__(*args, **kwargs)
