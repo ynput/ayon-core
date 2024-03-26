@@ -346,12 +346,8 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
 
         deadline_publish_job_id = None
         if submission_type == "deadline":
-            # get default deadline webservice url from deadline module
-            self.deadline_url = instance.context.data["defaultDeadline"]
-            # if custom one is set in instance, use that
-            if instance.data.get("deadlineUrl"):
-                self.deadline_url = instance.data.get("deadlineUrl")
-            assert self.deadline_url, "Requires Deadline Webservice URL"
+            deadline_url = instance.data["deadline"]["url"]
+            assert deadline_url, "Requires Deadline Webservice URL"
 
             deadline_publish_job_id = \
                 self._submit_deadline_post_job(instance, render_job)
