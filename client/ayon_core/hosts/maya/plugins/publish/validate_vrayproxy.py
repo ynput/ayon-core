@@ -1,7 +1,10 @@
 import pyblish.api
 
-from ayon_core.pipeline import KnownPublishError
-from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError
+)
+
 
 class ValidateVrayProxy(pyblish.api.InstancePlugin,
                         OptionalPyblishPluginMixin):
@@ -17,18 +20,18 @@ class ValidateVrayProxy(pyblish.api.InstancePlugin,
         if not self.is_active(data):
             return
         if not data["setMembers"]:
-            raise KnownPublishError(
+            raise PublishValidationError(
                 "'%s' is empty! This is a bug" % instance.name
             )
 
         if data["animation"]:
             if data["frameEnd"] < data["frameStart"]:
-                raise KnownPublishError(
+                raise PublishValidationError(
                     "End frame is smaller than start frame"
                 )
 
         if not data["vrmesh"] and not data["alembic"]:
-            raise KnownPublishError(
+            raise PublishValidationError(
                 "Both vrmesh and alembic are off. Needs at least one to"
                 " publish."
             )
