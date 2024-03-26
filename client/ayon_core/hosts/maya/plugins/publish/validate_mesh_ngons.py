@@ -30,7 +30,7 @@ class ValidateMeshNgons(pyblish.api.Validator,
 
     description = (
         "## Meshes with NGONs Faces\n"
-        "Detected meshes with NGON faces. <b>NGONS<b> are faces that "
+        "Detected meshes with NGON faces. **NGONS** are faces that "
         "with more than four sides.\n\n"
         "### How to repair?\n"
         "You can repair them by usings Maya's modeling tool Mesh > Cleanup.. "
