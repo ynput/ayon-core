@@ -205,8 +205,9 @@ class ValidateExpectedFiles(pyblish.api.InstancePlugin):
         url = "{}/api/jobs?JobID={}".format(deadline_url, job_id)
         try:
             kwargs = {}
-            if instance.context.data["deadline_auth"]:
-                kwargs["auth"] = instance.context.data["deadline_auth"]
+            auth = instance.data["deadline"]["auth"]
+            if auth:
+                kwargs["auth"] = auth
             response = requests_get(url, **kwargs)
         except requests.exceptions.ConnectionError:
             self.log.error("Deadline is not accessible at "
