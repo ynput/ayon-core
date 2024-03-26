@@ -10,29 +10,22 @@ class ValidateDeadlineConnection(pyblish.api.InstancePlugin):
 
     label = "Validate Deadline Web Service"
     order = pyblish.api.ValidatorOrder
-    hosts = ["maya", "nuke"]
-    families = ["renderlayer", "render"]
+    hosts = ["maya", "nuke", "aftereffects", "harmony", "fusion"]
+    families = ["renderlayer", "render", "render.farm"]
 
     # cache
     responses = {}
 
     def process(self, instance):
-        context = instance.context
-        # get default deadline webservice url from deadline module
-        deadline_url = context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            deadline_url = instance.data.get("deadlineUrl")
-            self.log.debug(
-                "We have deadline URL on instance {}".format(deadline_url)
-            )
+        deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
 
         kwargs = {}
-        if context.data["deadline_require_authentication"]:
-            kwargs["auth"] = context.data["deadline_auth"]
+        if instance.data["deadline"]["require_authentication"]:
+            auth = instance.data["deadline"]["auth"]
+            kwargs["auth"] = auth
 
-            if not context.data["deadline_auth"][0]:
+            if not auth[0]:
                 raise PublishXmlValidationError(
                     self,
                     "Deadline requires authentication. "
