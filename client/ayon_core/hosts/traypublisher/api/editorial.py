@@ -186,7 +186,7 @@ class ShotMetadataSolver:
             # in case first parent is project then start parents from start
             if (
                 _index == 0
-                and parent_token_type == "project"
+                and parent_token_type == "Project"
             ):
                 project_parent = parents[0]
                 parents = [project_parent]
@@ -194,7 +194,7 @@ class ShotMetadataSolver:
 
             parents.append({
                 "entity_type": "folder",
-                "folder_type": parent_token_type,
+                "folder_type": parent_token_type.lower(),
                 "entity_name": parent_name
             })
 
