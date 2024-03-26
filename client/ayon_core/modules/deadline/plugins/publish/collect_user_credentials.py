@@ -4,7 +4,6 @@
 Requires:
     context -> project_settings
     instance.data["deadline"]["url"]
-        or instance.data["deadlineUrl"] for backward compatibility, remove soon
 
 Provides:
     instance.data["deadline"] -> require_authentication (bool)
@@ -26,9 +25,10 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.200
     label = "Collect Deadline User Credentials"
 
+    targets = ["local"]
     hosts = ["aftereffects",
              "fusion",
-             "harmony"
+             "harmony",
              "nuke",
              "maya",
              "max",
@@ -49,11 +49,9 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
                 "publish.hou"]
 
     def process(self, instance):
-        # backward compatibility, remove soon
-        collected_deadline_url = (instance.data.get("deadlineUrl") or
-            instance.data.get("deadline", {}).get("url"))
+        collected_deadline_url = instance.data["deadline"]["url"]
         if not collected_deadline_url:
-            raise ValueError("Instance doesn't have 'deadlineUrl'.")
+            raise ValueError("Instance doesn't have '[deadline][url]'.")
         context_data = instance.context.data
         deadline_settings = context_data["project_settings"]["deadline"]
 
