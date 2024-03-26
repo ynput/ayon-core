@@ -906,7 +906,7 @@ class PublishClip:
             "hierarchyData": hierarchy_formatting_data,
             "productName": self.product_name,
             "productType": self.product_type,
-            "families": [self.product_type, self.data["family"]]
+            "families": [self.product_type, self.data["productType"]]
         }
 
     def _convert_to_entity(self, src_type, template):
