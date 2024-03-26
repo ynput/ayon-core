@@ -123,6 +123,10 @@ class FusionSubmitDeadline(
 
         script_path = context.data["currentFile"]
 
+        anatomy = instance.context.data["anatomy"]
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "path"
+        )
         for item in context:
             if "workfile" in item.data["families"]:
                 msg = "Workfile (scene) must be published along"
@@ -133,8 +137,9 @@ class FusionSubmitDeadline(
                 template_data["representation"] = rep
                 template_data["ext"] = rep
                 template_data["comment"] = None
-                anatomy_filled = context.data["anatomy"].format(template_data)
-                template_filled = anatomy_filled["publish"]["path"]
+                template_filled = publish_template.format_strict(
+                    template_data
+                )
                 script_path = os.path.normpath(template_filled)
 
                 self.log.info(

@@ -1,14 +1,14 @@
 
 """
-OpenPype Flame api constances
+AYON Flame api constances
 """
-# OpenPype marker workflow variables
+# AYON marker workflow variables
 MARKER_NAME = "OpenPypeData"
 MARKER_DURATION = 0
 MARKER_COLOR = "cyan"
 MARKER_PUBLISH_DEFAULT = False
 
-# OpenPype color definitions
+# AYON color definitions
 COLOR_MAP = {
     "red": (1.0, 0.0, 0.0),
     "orange": (1.0, 0.5, 0.0),
