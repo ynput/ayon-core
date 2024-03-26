@@ -6,7 +6,7 @@ from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError,
+    PublishXmlValidationError,
     OptionalPyblishPluginMixin,
     get_plugin_settings,
     apply_plugin_settings_automatically
@@ -56,40 +56,39 @@ class ValidateOutRelatedNodeIds(pyblish.api.InstancePlugin,
         # if a deformer has been created on the shape
         invalid = self.get_invalid(instance)
         if invalid:
-            # TODO: Message formatting can be improved
-            raise PublishValidationError("Nodes found with mismatching "
-                                         "IDs: {0}".format(invalid),
-                                         title="Invalid node ids")
+
+            # Use the short names
+            invalid = cmds.ls(invalid)
+            invalid.sort()
+
+            # Construct a human-readable list
+            invalid = "\n".join("- {}".format(node) for node in invalid)
+
+            raise PublishXmlValidationError(
+                plugin=self,
+                message=(
+                    "Nodes have different IDs than their input "
+                    "history: \n{0}".format(invalid)
+                )
+            )
 
     @classmethod
     def get_invalid(cls, instance):
         """Get all nodes which do not match the criteria"""
 
         invalid = []
-        types_to_skip = ["locator"]
+        types = ["mesh", "nurbsCurve", "nurbsSurface"]
 
         # get asset id
         nodes = instance.data.get("out_hierarchy", instance[:])
-        for node in nodes:
+        for node in cmds.ls(nodes, type=types, long=True):
 
             # We only check when the node is *not* referenced
             if cmds.referenceQuery(node, isNodeReferenced=True):
                 continue
 
-            # Check if node is a shape as deformers only work on shapes
-            obj_type = cmds.objectType(node, isAType="shape")
-            if not obj_type:
-                continue
-
-            # Skip specific types
-            if cmds.objectType(node) in types_to_skip:
-                continue
-
             # Get the current id of the node
             node_id = lib.get_id(node)
-            if not node_id:
-                invalid.append(node)
-                continue
 
             history_id = lib.get_id_from_sibling(node)
             if history_id is not None and node_id != history_id:
