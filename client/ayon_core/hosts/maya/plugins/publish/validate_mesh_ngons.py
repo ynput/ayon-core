@@ -28,6 +28,15 @@ class ValidateMeshNgons(pyblish.api.Validator,
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     optional = True
 
+    description = (
+        "## Meshes with NGONs Faces\n"
+        "Detected meshes with NGON faces. <b>NGONS<b> are faces that "
+        "with more than four sides.\n\n"
+        "### How to repair?\n"
+        "You can repair them by usings Maya's modeling tool Mesh > Cleanup.. "
+        "and select to cleanup matching polygons for lamina faces."
+    )
+
     @staticmethod
     def get_invalid(instance):
 
@@ -51,4 +60,5 @@ class ValidateMeshNgons(pyblish.api.Validator,
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                "Meshes found with n-gons: {0}".format(invalid))
+                "Meshes found with n-gons: {0}".format(invalid),
+                description=self.description)
