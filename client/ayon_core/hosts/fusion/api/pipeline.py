@@ -70,7 +70,7 @@ class FusionHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     name = "fusion"
 
     def install(self):
-        """Install fusion-specific functionality of OpenPype.
+        """Install fusion-specific functionality of AYON.
 
         This is where you install menus and register families, data
         and loaders into fusion.
@@ -177,7 +177,7 @@ def on_after_open(event):
     if any_outdated_containers():
         log.warning("Scene has outdated content.")
 
-        # Find OpenPype menu to attach to
+        # Find AYON menu to attach to
         from . import menu
 
         def _on_show_scene_inventory():
@@ -326,9 +326,9 @@ class FusionEventThread(QtCore.QThread):
 
 
 class FusionEventHandler(QtCore.QObject):
-    """Emits OpenPype events based on Fusion events captured in a QThread.
+    """Emits AYON events based on Fusion events captured in a QThread.
 
-    This will emit the following OpenPype events based on Fusion actions:
+    This will emit the following AYON events based on Fusion actions:
         save: Comp_Save, Comp_SaveAs
         open: Comp_Opened
         new: Comp_New
@@ -374,7 +374,7 @@ class FusionEventHandler(QtCore.QObject):
         self._event_thread.stop()
 
     def _on_event(self, event):
-        """Handle Fusion events to emit OpenPype events"""
+        """Handle Fusion events to emit AYON events"""
         if not event:
             return
 
