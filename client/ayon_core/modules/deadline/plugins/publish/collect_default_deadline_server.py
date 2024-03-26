@@ -33,15 +33,17 @@ class CollectDefaultDeadlineServer(pyblish.api.ContextPlugin):
         deadline_settings = context.data["project_settings"]["deadline"]
         deadline_server_name = deadline_settings["deadline_server"]
 
-        deadline_webservice = None
+        dl_ws_item = None
         if deadline_server_name:
-            deadline_webservice = deadline_module.deadline_urls.get(
+            dl_ws_item = deadline_module.deadline_server_info.get(
                 deadline_server_name)
 
-        default_deadline_webservice = deadline_module.deadline_urls["default"]
-        deadline_webservice = (
-            deadline_webservice
-            or default_deadline_webservice
-        )
+        if dl_ws_item:
+            deadline_url = dl_ws_item["value"]
+        else:
+            default_dl_item = deadline_module.deadline_server_info.pop()
+            deadline_url = default_dl_item["value"]
 
-        context.data["defaultDeadline"] = deadline_webservice.strip().rstrip("/")  # noqa
+        context.data["deadline"] = {}
+        context.data["deadline"]["defaultDeadline"] = (
+            deadline_url.strip().rstrip("/"))
