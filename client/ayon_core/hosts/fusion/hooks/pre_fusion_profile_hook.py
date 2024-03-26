@@ -19,7 +19,7 @@ class FusionCopyPrefsPrelaunch(PreLaunchHook):
     Prepares local Fusion profile directory, copies existing Fusion profile.
     This also sets FUSION MasterPrefs variable, which is used
     to apply Master.prefs file to override some Fusion profile settings to:
-        - enable the OpenPype menu
+        - enable the AYON menu
         - force Python 3 over Python 2
         - force English interface
     Master.prefs is defined in openpype/hosts/fusion/deploy/fusion_shared.prefs

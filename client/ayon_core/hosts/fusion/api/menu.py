@@ -28,9 +28,9 @@ self = sys.modules[__name__]
 self.menu = None
 
 
-class OpenPypeMenu(QtWidgets.QWidget):
+class AYONMenu(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
-        super(OpenPypeMenu, self).__init__(*args, **kwargs)
+        super(AYONMenu, self).__init__(*args, **kwargs)
 
         self.setObjectName(f"{MENU_LABEL}Menu")
 
@@ -125,7 +125,7 @@ class OpenPypeMenu(QtWidgets.QWidget):
         self._pulse = FusionPulse(parent=self)
         self._pulse.start()
 
-        # Detect Fusion events as OpenPype events
+        # Detect Fusion events as AYON events
         self._event_handler = FusionEventHandler(parent=self)
         self._event_handler.start()
 
@@ -174,16 +174,16 @@ class OpenPypeMenu(QtWidgets.QWidget):
         set_current_context_framerange()
 
 
-def launch_openpype_menu():
+def launch_ayon_menu():
     app = get_qt_app()
 
-    pype_menu = OpenPypeMenu()
+    ayon_menu = AYONMenu()
 
     stylesheet = load_stylesheet()
-    pype_menu.setStyleSheet(stylesheet)
+    ayon_menu.setStyleSheet(stylesheet)
 
-    pype_menu.show()
-    self.menu = pype_menu
+    ayon_menu.show()
+    self.menu = ayon_menu
 
     result = app.exec_()
     print("Shutting down..")
