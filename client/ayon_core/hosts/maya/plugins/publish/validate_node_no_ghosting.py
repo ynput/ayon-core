@@ -4,8 +4,7 @@ import pyblish.api
 
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder
 
 )
 class ValidateNodeNoGhosting(pyblish.api.InstancePlugin.

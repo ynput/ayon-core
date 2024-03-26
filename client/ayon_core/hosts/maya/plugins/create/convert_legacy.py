@@ -12,7 +12,7 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
                           plugin.MayaCreatorBase):
     """Find and convert any legacy products in the scene.
 
-    This Convertor will find all legacy products in the scene and will
+    This Converter will find all legacy products in the scene and will
     transform them to the current system. Since the old products doesn't
     retain any information about their original creators, the only mapping
     we can do is based on their families.
@@ -83,7 +83,7 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
                 ).format(product_type))
                 continue
 
-            creator_id = product_type_to_id[family]
+            creator_id = product_type_to_id[product_type]
             creator = self.create_context.creators[creator_id]
             data["creator_identifier"] = creator_id
 

@@ -58,7 +58,7 @@ class AbcLoader(load.LoaderPlugin):
 
         normal_node.setInput(0, unpack)
 
-        null = container.createNode("null", node_name="OUT".format(name))
+        null = container.createNode("null", node_name="OUT".format())
         null.setInput(0, normal_node)
 
         # Ensure display flag is on the Alembic input node and not on the OUT

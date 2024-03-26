@@ -2,7 +2,6 @@
 """Tools to work with FBX."""
 import logging
 
-from pyblish.api import Instance
 
 from maya import cmds  # noqa
 import maya.mel as mel  # noqa

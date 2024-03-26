@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating alembic camera products."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance, CreatorError
+from ayon_core.pipeline import CreatorError
 
 import hou
 

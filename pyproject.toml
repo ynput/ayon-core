@@ -58,6 +58,12 @@ exclude = [
     "generated",
 ]
 
+# we should clean those vendorized scripts too
+extend-exclude = [
+    "*/hiero/api/startup/Python/StartupUI/*",
+    "*/hiero/api/startup/Python/Startup/*"
+]
+
 # Same as Black.
 line-length = 79
 indent-width = 4
@@ -77,6 +83,10 @@ unfixable = []
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+# Ignore 'E402' (module level import not at top of file) __init__.py files.
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
+
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
 quote-style = "double"
@@ -90,11 +100,11 @@ skip-magic-trailing-comma = false
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
 
+
 [tool.codespell]
 # Ignore words that are not in the dictionary.
-ignore-words-list = "ayon,ynput,doubleclick"
+ignore-words-list = "ayon,ynput,doubleclick,parms,parm,ue,discreet,everytime"
 skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
-count = true
 quiet-level = 3
 
 [build-system]

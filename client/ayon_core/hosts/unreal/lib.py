@@ -219,7 +219,6 @@ def create_unreal_project(project_name: str,
     env = env or os.environ
 
     preset = get_project_settings(project_name)["unreal"]["project_setup"]
-    ue_id = ".".join(ue_version.split(".")[:2])
     # get unreal engine identifier
     # -------------------------------------------------------------------------
     # FIXME (antirotor): As of 4.26 this is problem with UE4 built from
@@ -240,7 +239,7 @@ def create_unreal_project(project_name: str,
     print("--- Generating a new project ...")
     commandlet_cmd = [f'{ue_editor_exe.as_posix()}',
                       f'{cmdlet_project.as_posix()}',
-                      f'-run=AyonGenerateProject',
+                      '-run=AyonGenerateProject',
                       f'{project_file.resolve().as_posix()}']
 
     if dev_mode or preset["dev_mode"]:
@@ -268,7 +267,7 @@ def create_unreal_project(project_name: str,
         pf.seek(0)
         json.dump(pf_json, pf, indent=4)
         pf.truncate()
-        print(f'--- Engine ID has been written into the project file')
+        print('--- Engine ID has been written into the project file')
 
     if dev_mode or preset["dev_mode"]:
         u_build_tool = get_path_to_ubt(engine_path, ue_version)

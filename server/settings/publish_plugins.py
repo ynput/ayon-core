@@ -9,7 +9,7 @@ from ayon_server.settings import (
     task_types_enum,
 )
 
-from ayon_server.types import ColorRGB_uint8, ColorRGBA_uint8
+from ayon_server.types import ColorRGBA_uint8
 
 
 class ValidateBaseModel(BaseSettingsModel):
@@ -424,7 +424,7 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         title="Scale pixel aspect",
         description=(
             "Rescale input when it's pixel aspect ratio is not 1."
-            " Usefull for anamorph reviews."
+            " Useful for anamorphic reviews."
         )
     )
     bg_color: ColorRGBA_uint8 = SettingsField(
@@ -720,7 +720,7 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
 
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
-    paterns: list[str] = SettingsField(
+    patterns: list[str] = SettingsField(
         default_factory=list,
         title="Patterns (regex)"
     )
@@ -1071,7 +1071,7 @@ DEFAULT_PUBLISH_VALUES = {
         ]
     },
     "CleanUp": {
-        "paterns": [],
+        "patterns": [],
         "remove_temp_renders": False
     },
     "CleanUpFarm": {

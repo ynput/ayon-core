@@ -7,7 +7,6 @@ import os
 import hiero.core
 from hiero.core import util
 
-import opentimelineio as otio
 from ayon_core.hosts.hiero.api.otio import hiero_export
 
 class OTIOExportTask(hiero.core.TaskBase):

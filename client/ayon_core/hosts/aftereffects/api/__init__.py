@@ -9,7 +9,6 @@ from .ws_stub import (
 )
 
 from .pipeline import (
-    AfterEffectsHost,
     ls,
     containerise
 )

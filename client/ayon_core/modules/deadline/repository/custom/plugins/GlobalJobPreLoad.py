@@ -12,7 +12,6 @@ from Deadline.Scripting import (
     RepositoryUtils,
     FileUtils,
     DirectoryUtils,
-    ProcessUtils,
 )
 __version__ = "1.0.1"
 VERSION_REGEX = re.compile(
@@ -142,9 +141,9 @@ class OpenPypeVersion:
         if not other.prerelease:
             return True
 
-        pres = [self.prerelease, other.prerelease]
-        pres.sort()
-        return pres[0] == self.prerelease
+        pre_releases = [self.prerelease, other.prerelease]
+        pre_releases.sort()
+        return pre_releases[0] == self.prerelease
 
 
 def get_openpype_version_from_path(path, build=True):

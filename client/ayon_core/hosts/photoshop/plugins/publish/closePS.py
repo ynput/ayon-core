@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Close PS after publish. For Webpublishing only."""
-import os
 
 import pyblish.api
 

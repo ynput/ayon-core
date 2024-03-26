@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# flake8: noqa E402
+# noqa: E402
 """AYON lib functions."""
 # add vendor to sys path based on Python version
 import sys

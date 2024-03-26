@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating pointcache bgeo files."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance, CreatorError
+from ayon_core.pipeline import CreatorError
 import hou
 from ayon_core.lib import EnumDef, BoolDef
 

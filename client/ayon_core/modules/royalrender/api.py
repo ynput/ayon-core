@@ -5,7 +5,7 @@ import os
 
 from ayon_core.lib.local_settings import AYONSettingsRegistry
 from ayon_core.lib import Logger, run_subprocess
-from .rr_job import RRJob, SubmitFile, SubmitterParameter
+from .rr_job import SubmitFile
 from ayon_core.lib.vendor_bin_utils import find_tool_in_custom_paths
 
 
