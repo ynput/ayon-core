@@ -8,7 +8,7 @@ workfile or others.
 import os
 import sys
 
-from ayon_core.hosts.harmony.api.lib import main
+from ayon_core.hosts.harmony.api.lib import main as host_main
 
 # Get current file to locate start point of sys.argv
 CURRENT_FILE = os.path.abspath(__file__)
@@ -83,7 +83,7 @@ def main(argv):
 
     if launch_args:
         # Launch host implementation
-        main(*launch_args)
+        host_main(*launch_args)
     else:
         # Show message box
         on_invalid_args(after_script_idx is None)
