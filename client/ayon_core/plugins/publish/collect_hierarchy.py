@@ -18,14 +18,13 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
     def process(self, context):
         project_name = context.data["projectName"]
-        temp_context = {}
         final_context = {
             project_name: {
                 "entity_type": "project",
-                "children": temp_context
+                "children": {}
             },
         }
-
+        temp_context = {}
         for instance in context:
             self.log.debug("Processing instance: `{}` ...".format(instance))
 
@@ -68,21 +67,11 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             actual = {name: shot_data}
 
             for parent in reversed(instance.data["parents"]):
-                next_dict = {}
-                parent_name = parent["entity_name"]
-                next_dict[parent_name] = {}
-                next_dict[parent_name]["entity_type"] = "folder"
-                next_dict[parent_name]["folder_type"] = parent[
-                    "entity_type"].capitalize()
-                next_dict[parent_name]["children"] = actual
-
-            for parent in reversed(instance.data["parents"]):
-                parent_name = parent["entity_name"]
                 next_dict = {
-                    parent_name: {
+                    parent["entity_name"]: {
                         "entity_type": "folder",
-                        "folder_type": parent["entity_type"].capitalize(),
-                        "children": actual
+                        "folder_type": parent["folder_type"],
+                        "children": actual,
                     }
                 }
                 actual = next_dict
@@ -92,6 +81,8 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
         # skip if nothing for hierarchy available
         if not temp_context:
             return
+
+        final_context[project_name]["children"] = temp_context
 
         # adding hierarchy context to context
         context.data["hierarchyContext"] = final_context
