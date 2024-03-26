@@ -7,6 +7,7 @@ attribute or using default server if that attribute doesn't exists.
 """
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.context_tools import get_current_host_name
 
 
 class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
@@ -15,15 +16,37 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
     # Run before collect_render.
     order = pyblish.api.CollectorOrder + 0.005
     label = "Deadline Webservice from the Instance"
-    families = ["rendering", "renderlayer"]
-    hosts = ["maya"]
+    families = ["render",
+                "rendering",
+                "render.farm",
+                "renderFarm",
+                "renderlayer",
+                "maxrender",
+                "usdrender",
+                "redshift_rop",
+                "arnold_rop",
+                "mantra_rop",
+                "karma_rop",
+                "vray_rop",
+                "publish.hou",
+                "image"]  # for Fusion
 
     def process(self, instance):
-        instance.data["deadlineUrl"] = self._collect_deadline_url(instance)
-        instance.data["deadlineUrl"] = \
-            instance.data["deadlineUrl"].strip().rstrip("/")
+        if not "deadline" in instance.data:
+            instance.data["deadline"] = {}
+
+        host_name = get_current_host_name()
+        if host_name == "maya":
+            deadline_url = self._collect_deadline_url(instance)
+        else:
+            deadline_url = (instance.data.get("deadlineUrl") or  # backwards
+                            instance.data.get("deadline", {}).get("url"))
+        if deadline_url:
+            instance.data["deadline"]["url"] = deadline_url.strip().rstrip("/")
+        else:
+            instance.data["deadline"]["url"] = instance.context.data["deadline"]["defaultDeadline"]  # noqa
         self.log.debug(
-            "Using {} for submission.".format(instance.data["deadlineUrl"]))
+            "Using {} for submission".format(instance.data["deadline"]["url"]))
 
     def _collect_deadline_url(self, render_instance):
         # type: (pyblish.api.Instance) -> str
@@ -49,8 +72,8 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
             ["project_settings"]
             ["deadline"]
         )
-
-        default_server = render_instance.context.data["defaultDeadline"]
+        default_server = (render_instance.context.data["deadline"]
+                                                      ["defaultDeadline"])
         # QUESTION How and where is this is set? Should be removed?
         instance_server = render_instance.data.get("deadlineServers")
         if not instance_server:
@@ -66,7 +89,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
 
         default_servers = {
             url_item["name"]: url_item["value"]
-            for url_item in deadline_settings["deadline_urls"]
+            for url_item in deadline_settings["deadline_server_info"]
         }
         project_servers = (
             render_instance.context.data
