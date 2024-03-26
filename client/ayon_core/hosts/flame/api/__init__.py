@@ -1,5 +1,5 @@
 """
-OpenPype Autodesk Flame api
+AYON Autodesk Flame api
 """
 from .constants import (
     COLOR_MAP,
