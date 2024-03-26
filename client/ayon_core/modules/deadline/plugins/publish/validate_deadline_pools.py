@@ -37,9 +37,9 @@ class ValidateDeadlinePools(OptionalPyblishPluginMixin,
             self.log.debug("Skipping local instance.")
             return
 
-        deadline_url = self.get_deadline_url(instance)
+        deadline_url = instance.data["deadline"]["url"]
         pools = self.get_pools(deadline_url,
-                               instance.context.data["deadline_auth"])
+                               instance.data["deadline"].get("auth"))
 
         invalid_pools = {}
         primary_pool = instance.data.get("primaryPool")
@@ -61,14 +61,6 @@ class ValidateDeadlinePools(OptionalPyblishPluginMixin,
                 message=message,
                 formatting_data={"pools_str": ", ".join(pools)}
             )
-
-    def get_deadline_url(self, instance):
-        # get default deadline webservice url from deadline module
-        deadline_url = instance.context.data["defaultDeadline"]
-        if instance.data.get("deadlineUrl"):
-            # if custom one is set in instance, use that
-            deadline_url = instance.data.get("deadlineUrl")
-        return deadline_url
 
     def get_pools(self, deadline_url, auth):
         if deadline_url not in self.pools_per_url:
