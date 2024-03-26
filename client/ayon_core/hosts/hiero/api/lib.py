@@ -632,7 +632,9 @@ def sync_avalon_data_to_workfile():
     project_name = get_current_project_name()
 
     anatomy = Anatomy(project_name)
-    work_template = anatomy.templates["work"]["path"]
+    work_template = anatomy.get_template_item(
+        "work", "default", "path"
+    )
     work_root = anatomy.root_value_for_template(work_template)
     active_project_root = (
         os.path.join(work_root, project_name)
@@ -825,7 +827,7 @@ class PublishAction(QtWidgets.QAction):
 #     root_node = hiero.core.nuke.RootNode()
 #
 #     anatomy = Anatomy(get_current_project_name())
-#     work_template = anatomy.templates["work"]["path"]
+#     work_template = anatomy.get_template_item("work", "default", "path")
 #     root_path = anatomy.root_value_for_template(work_template)
 #
 #     nuke_script.addNode(root_node)

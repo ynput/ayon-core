@@ -16,7 +16,7 @@ class CreateShotClip(phiero.Creator):
 
     gui_tracks = [track.name()
                   for track in phiero.get_current_sequence().videoTracks()]
-    gui_name = "Pype publish attributes creator"
+    gui_name = "AYON publish attributes creator"
     gui_info = "Define sequential rename and fill hierarchy data."
     gui_inputs = {
         "renameHierarchy": {

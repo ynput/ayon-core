@@ -257,6 +257,7 @@ class ExtractOIIOTranscode(publish.Extractor):
             return
 
         new_repre["ext"] = output_extension
+        new_repre["outputName"] = output_name
 
         renamed_files = []
         for file_name in files_to_convert:

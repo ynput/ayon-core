@@ -13,7 +13,10 @@ from ayon_api.operations import (
 from ayon_api.utils import create_entity_id
 
 from ayon_core.lib import create_hard_link, source_hash
-from ayon_core.pipeline.publish import get_publish_template_name
+from ayon_core.pipeline.publish import (
+    get_publish_template_name,
+    OptionalPyblishPluginMixin,
+)
 
 
 def prepare_changes(old_entity, new_entity):
@@ -46,7 +49,9 @@ def prepare_changes(old_entity, new_entity):
     return changes
 
 
-class IntegrateHeroVersion(pyblish.api.InstancePlugin):
+class IntegrateHeroVersion(
+    OptionalPyblishPluginMixin, pyblish.api.InstancePlugin
+):
     label = "Integrate Hero Version"
     # Must happen after IntegrateNew
     order = pyblish.api.IntegratorOrder + 0.1
@@ -84,8 +89,6 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
     # permissions error on files (files were used or user didn't have perms)
     # *but all other plugins must be sucessfully completed
 
-    _default_template_name = "hero"
-
     def process(self, instance):
         self.log.debug(
             "--- Integration of Hero version for product `{}` begins.".format(
@@ -103,22 +106,17 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         project_name = anatomy.project_name
 
         template_key = self._get_template_key(project_name, instance)
+        hero_template = anatomy.get_template_item(
+            "hero", template_key, "path", default=None
+        )
 
-        if template_key not in anatomy.templates:
+        if hero_template is None:
             self.log.warning((
                 "!!! Anatomy of project \"{}\" does not have set"
                 " \"{}\" template key!"
             ).format(project_name, template_key))
             return
 
-        if "path" not in anatomy.templates[template_key]:
-            self.log.warning((
-                "!!! There is not set \"path\" template in \"{}\" anatomy"
-                " for project \"{}\"."
-            ).format(template_key, project_name))
-            return
-
-        hero_template = anatomy.templates[template_key]["path"]
         self.log.debug("`hero` template check was successful. `{}`".format(
             hero_template
         ))
@@ -327,7 +325,9 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         try:
             src_to_dst_file_paths = []
             repre_integrate_data = []
-            path_template_obj = anatomy.templates_obj[template_key]["path"]
+            path_template_obj = anatomy.get_template_item(
+                "hero", template_key, "path"
+            )
             for repre_info in published_repres.values():
 
                 # Skip if new repre does not have published repre files
@@ -340,7 +340,9 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 anatomy_data.pop("version", None)
 
                 # Get filled path to repre context
-                template_filled = path_template_obj.format_strict(anatomy_data)
+                template_filled = path_template_obj.format_strict(
+                    anatomy_data
+                )
                 repre_context = template_filled.used_values
                 for key in self.db_representation_context_keys:
                     value = anatomy_data.get(key)
@@ -354,7 +356,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 repre_entity["context"] = repre_context
                 repre_entity["attrib"] = {
                     "path": str(template_filled),
-                    "template": hero_template
+                    "template": hero_template.template
                 }
 
                 dst_paths = []
@@ -383,9 +385,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                         anatomy_data
                     )
                     head, tail = _template_filled.split(frame_splitter)
-                    padding = int(
-                        anatomy.templates[template_key]["frame_padding"]
-                    )
+                    padding = anatomy.templates_obj.frame_padding
 
                     dst_col = clique.Collection(
                         head=head, padding=padding, tail=tail
@@ -545,29 +545,12 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 "originalBasename": instance.data.get("originalBasename")
             })
 
-        if "folder" in anatomy.templates[template_key]:
-            template_obj = anatomy.templates_obj[template_key]["folder"]
-            publish_folder = template_obj.format_strict(template_data)
-        else:
-            # This is for cases of Deprecated anatomy without `folder`
-            # TODO remove when all clients have solved this issue
-            self.log.warning((
-                "Deprecation warning: Anatomy does not have set `folder`"
-                " key underneath `publish` (in global of for project `{}`)."
-            ).format(anatomy.project_name))
-            # solve deprecated situation when `folder` key is not underneath
-            # `publish` anatomy
-            template_data.update({
-                "frame": "FRAME_TEMP",
-                "representation": "TEMP"
-            })
-            template_obj = anatomy.templates_obj[template_key]["path"]
-            file_path = template_obj.format_strict(template_data)
-
-            # Directory
-            publish_folder = os.path.dirname(file_path)
-
-        publish_folder = os.path.normpath(publish_folder)
+        template_obj = anatomy.get_template_item(
+            "hero", template_key, "directory"
+        )
+        publish_folder = os.path.normpath(
+            template_obj.format_strict(template_data)
+        )
 
         self.log.debug("hero publish dir: \"{}\"".format(publish_folder))
 
