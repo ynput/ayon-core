@@ -1113,10 +1113,9 @@ def prompt_reset_context():
     definitions = [
         UILabelDef(
             label=(
-                "You are saving your scene into a different task."
+                "You are saving your workfile into a different folder or task."
                 "\n\n"
-                "Would you like to reset some settings for the "
-                "for the new context?\n"
+                "Would you like to update some settings to the new context?\n"
             )
         ),
         BoolDef(
@@ -1141,7 +1140,7 @@ def prompt_reset_context():
     ]
 
     dialog = AttributeDefinitionsDialog(definitions)
-    dialog.setWindowTitle("Saving to different context. Reset options")
+    dialog.setWindowTitle("Saving to different context.")
     dialog.setStyleSheet(load_stylesheet())
     if not dialog.exec_():
         return None
