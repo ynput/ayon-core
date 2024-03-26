@@ -1953,11 +1953,11 @@ class CreateContext:
         """Trigger create of plugins with standartized arguments.
 
         Arguments 'folder_entity' and 'task_name' use current context as
-        default values. If only 'task_name' is provided it will be overriden
-        by task name from current context. If 'task_name' is not provided
-        when 'folder_entity' is, it is considered that task name is not
-        specified, which can lead to error if product name template requires
-        task name.
+        default values. If only 'task_entity' is provided it will be
+        overridden by task name from current context. If 'task_name' is not
+        provided when 'folder_entity' is, it is considered that task name is
+        not specified, which can lead to error if product name template
+        requires task name.
 
         Args:
             creator_identifier (str): Identifier of creator plugin.
@@ -1986,6 +1986,8 @@ class CreateContext:
                 raise CreatorError(
                     "Folder '{}' was not found".format(folder_path)
                 )
+
+        task_name = None
         if task_entity is None:
             task_name = self.get_current_task_name()
             task_entity = ayon_api.get_task_by_name(

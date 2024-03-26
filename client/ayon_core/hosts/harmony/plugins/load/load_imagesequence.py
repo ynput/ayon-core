@@ -20,7 +20,14 @@ class ImageSequenceLoader(load.LoaderPlugin):
     Stores the imported asset in a container named after the asset.
     """
 
-    families = ["shot", "render", "image", "plate", "reference", "review"]
+    product_types = {
+        "shot",
+        "render",
+        "image",
+        "plate",
+        "reference",
+        "review",
+    }
     representations = ["*"]
     extensions = {"jpeg", "png", "jpg"}
 

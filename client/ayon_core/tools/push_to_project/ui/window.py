@@ -5,8 +5,6 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     SeparatorWidget,
     set_style_property,
-)
-from ayon_core.tools.ayon_utils.widgets import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,

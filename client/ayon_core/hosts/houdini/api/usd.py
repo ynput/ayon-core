@@ -8,8 +8,11 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.pipeline import get_current_project_name
-from ayon_core.tools.utils import PlaceholderLineEdit, RefreshButton
-from ayon_core.tools.ayon_utils.widgets import SimpleFoldersWidget
+from ayon_core.tools.utils import (
+    PlaceholderLineEdit,
+    RefreshButton,
+    SimpleFoldersWidget,
+)
 
 from pxr import Sdf
 

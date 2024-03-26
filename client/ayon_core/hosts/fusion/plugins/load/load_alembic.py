@@ -12,7 +12,7 @@ from ayon_core.hosts.fusion.api import (
 class FusionLoadAlembicMesh(load.LoaderPlugin):
     """Load Alembic mesh into Fusion"""
 
-    families = ["pointcache", "model"]
+    product_types = {"pointcache", "model"}
     representations = ["*"]
     extensions = {"abc"}
 

@@ -17,7 +17,7 @@ from ayon_core.pipeline.load import (
     LoadError,
     IncompatibleLoaderError,
 )
-from ayon_core.tools.ayon_utils.models import NestedCacheItem
+from ayon_core.tools.common_models import NestedCacheItem
 from ayon_core.tools.loader.abstract import ActionItem
 
 ACTIONS_MODEL_SENDER = "actions.model"

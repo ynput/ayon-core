@@ -3,16 +3,15 @@ import collections
 from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
 )
-from ayon_core.tools.utils import (
-    RecursiveSortFilterProxyModel,
-    TreeView,
-)
 
-from .utils import RefreshThread, get_qt_icon
+from .models import RecursiveSortFilterProxyModel
+from .views import TreeView
+from .lib import RefreshThread, get_qt_icon
+
 
 FOLDERS_MODEL_SENDER_NAME = "qt_folders_model"
 FOLDER_ID_ROLE = QtCore.Qt.UserRole + 1

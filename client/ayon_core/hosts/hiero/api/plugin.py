@@ -45,7 +45,7 @@ class CreatorWidget(QtWidgets.QDialog):
             | QtCore.Qt.WindowCloseButtonHint
             | QtCore.Qt.WindowStaysOnTopHint
         )
-        self.setWindowTitle(name or "Pype Creator Input")
+        self.setWindowTitle(name or "AYON Creator Input")
         self.resize(500, 700)
 
         # Where inputs and labels are set

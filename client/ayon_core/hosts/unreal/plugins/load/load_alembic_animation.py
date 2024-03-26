@@ -14,7 +14,7 @@ import unreal  # noqa
 class AnimationAlembicLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from Alembic"""
 
-    families = ["animation"]
+    product_types = {"animation"}
     label = "Import Alembic Animation"
     representations = ["abc"]
     icon = "cube"

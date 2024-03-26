@@ -608,7 +608,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         return get_product_name(
             project_name,
             task_name,
-            task_type
+            task_type,
             host_name,
             self.layer_instance_prefix or self.product_type,
             variant,
@@ -899,7 +899,7 @@ class ReferenceLoader(Loader):
                             cmds.disconnectAttr(input, node_attr)
                         cmds.setAttr(node_attr, data["value"])
 
-        # Fix PLN-40 for older containers created with Avalon that had the
+        # Fix PLN-40 for older containers created with AYON that had the
         # `.verticesOnlySet` set to True.
         if cmds.getAttr("{}.verticesOnlySet".format(node)):
             self.log.info("Setting %s.verticesOnlySet to False", node)

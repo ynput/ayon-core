@@ -7,9 +7,9 @@ loader will use them instead of native vray vrmesh format.
 """
 import os
 
-from ayon_api import get_representation_by_name
 import maya.cmds as cmds
 
+import ayon_api
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     load,
@@ -27,7 +27,7 @@ from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 class VRayProxyLoader(load.LoaderPlugin):
     """Load VRay Proxy with Alembic or VrayMesh."""
 
-    families = ["vrayproxy", "model", "pointcache", "animation"]
+    product_types = {"vrayproxy", "model", "pointcache", "animation"}
     representations = ["vrmesh", "abc"]
 
     label = "Import VRay Proxy"

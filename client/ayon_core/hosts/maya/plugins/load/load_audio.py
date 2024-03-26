@@ -11,7 +11,7 @@ from ayon_core.hosts.maya.api.lib import unique_namespace, get_container_members
 class AudioLoader(load.LoaderPlugin):
     """Specific loader of audio."""
 
-    families = ["audio"]
+    product_types = {"audio"}
     label = "Load audio"
     representations = ["wav"]
     icon = "volume-up"

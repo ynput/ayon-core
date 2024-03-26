@@ -13,7 +13,7 @@ import ayon_core.hosts.harmony.api as harmony
 class ImportTemplateLoader(load.LoaderPlugin):
     """Import templates."""
 
-    families = ["harmony.template", "workfile"]
+    product_types = {"harmony.template", "workfile"}
     representations = ["*"]
     label = "Import Template"
 
@@ -50,16 +50,16 @@ class ImportTemplateLoader(load.LoaderPlugin):
             self.__class__.__name__
         )
 
-        def update(self, container, context):
-            pass
+    def update(self, container, context):
+        pass
 
-        def remove(self, container):
-            pass
+    def remove(self, container):
+        pass
 
 
 class ImportWorkfileLoader(ImportTemplateLoader):
     """Import workfiles."""
 
-    families = ["workfile"]
+    product_types = {"workfile"}
     representations = ["zip"]
     label = "Import Workfile"

@@ -24,7 +24,7 @@ class LoaderPlugin(list):
 
     """
 
-    families = []
+    product_types = set()
     representations = []
     extensions = {"*"}
     order = 0
@@ -118,7 +118,7 @@ class LoaderPlugin(list):
 
         On override make sure it is overriden as class or static method.
 
-        This checks the version's families and the representation for the given
+        This checks the product type and the representation for the given
         loader plugin.
 
         Args:
@@ -130,7 +130,7 @@ class LoaderPlugin(list):
         """
 
         plugin_repre_names = cls.get_representations()
-        plugin_product_types = cls.families
+        plugin_product_types = cls.product_types
         if (
             not plugin_repre_names
             or not plugin_product_types

@@ -4,7 +4,7 @@ from ayon_api import get_representations, get_versions_links
 
 from ayon_core.lib import Logger
 from ayon_core.addon import AddonsManager
-from ayon_core.tools.ayon_utils.models import NestedCacheItem
+from ayon_core.tools.common_models import NestedCacheItem
 from ayon_core.tools.loader.abstract import ActionItem
 
 DOWNLOAD_IDENTIFIER = "sitesync.download"

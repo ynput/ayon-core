@@ -6,7 +6,7 @@ import ayon_api
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     NestedCacheItem,

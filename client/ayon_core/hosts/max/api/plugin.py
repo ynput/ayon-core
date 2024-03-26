@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""3dsmax specific Avalon/Pyblish plugin definitions."""
+"""3dsmax specific AYON/Pyblish plugin definitions."""
 from abc import ABCMeta
 
 import six
@@ -154,10 +154,6 @@ MS_CUSTOM_ATTRIB = """attributes "openPypeData"
         )
     )
 )"""
-
-
-class OpenPypeCreatorError(CreatorError):
-    pass
 
 
 class MaxCreatorBase(object):

@@ -290,8 +290,8 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
             "colorspaceView": colorspace_data["view"],
         }
 
-        rr_settings = context.data["project_settings"]["royalrender"]
-        if rr_settings["enabled"]:
+        manager = context.data["ayonAddonsManager"]
+        if manager.get_enabled_addon("royalrender") is not None:
             data["rrPathName"] = instance.data.get("rrPathName")
             self.log.debug(data["rrPathName"])
 

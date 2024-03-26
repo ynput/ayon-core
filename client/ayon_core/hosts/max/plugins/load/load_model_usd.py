@@ -22,7 +22,7 @@ from ayon_core.pipeline import get_representation_path, load
 class ModelUSDLoader(load.LoaderPlugin):
     """Loading model with the USD loader."""
 
-    families = ["model"]
+    product_types = {"model"}
     label = "Load Model(USD)"
     representations = ["usda"]
     order = -10
