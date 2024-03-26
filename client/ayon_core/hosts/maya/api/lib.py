@@ -2708,25 +2708,25 @@ def prompt_reset_context():
         BoolDef(
             "fps",
             label="FPS",
-            tooltip="Reset Comp FPS",
+            tooltip="Reset workfile FPS",
             default=True
         ),
         BoolDef(
             "frame_range",
             label="Frame Range",
-            tooltip="Reset Comp start and end frame ranges",
+            tooltip="Reset workfile start and end frame ranges",
             default=True
         ),
         BoolDef(
             "resolution",
             label="Resolution",
-            tooltip="Reset Comp resolution",
+            tooltip="Reset workfile resolution",
             default=True
         ),
         BoolDef(
             "colorspace",
             label="Colorspace",
-            tooltip="Reset Comp resolution",
+            tooltip="Reset workfile resolution",
             default=True
         ),
         BoolDef(
