@@ -3,11 +3,13 @@ from maya import cmds
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     PublishValidationError,
-    ValidateContentsOrder
+    ValidateContentsOrder,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateRigContents(pyblish.api.InstancePlugin):
+class ValidateRigContents(pyblish.api.InstancePlugin,
+                          OptionalPyblishPluginMixin):
     """Ensure rig contains pipeline-critical content
 
     Every rig must contain at least two object sets:
@@ -21,11 +23,14 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["rig"]
     action = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = True
 
     accepted_output = ["mesh", "transform"]
     accepted_controllers = ["transform"]
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
@@ -87,9 +92,9 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
         """Validate missing objectsets in rig sets
 
         Args:
-            instance (str): instance
-            required_objsets (list): list of objectset names
-            rig_sets (list): list of rig sets
+            instance (pyblish.api.Instance): instance
+            required_objsets (list[str]): list of objectset names
+            rig_sets (list[str]): list of rig sets
 
         Raises:
             PublishValidationError: When the error is raised, it will show
@@ -109,15 +114,15 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
         Check if all rig set members are within the hierarchy of the rig root
 
         Args:
-            instance (str): instance
-            content (list): list of content from rig sets
+            instance (pyblish.api.Instance): instance
+            content (list[str]): list of content from rig sets
 
         Raises:
             PublishValidationError: It means no dag nodes in
                 the rig instance
 
         Returns:
-            list: invalid hierarchy
+            List[str]: invalid hierarchy
         """
         # Ensure there are at least some transforms or dag nodes
         # in the rig instance
@@ -140,15 +145,13 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
 
     @classmethod
     def validate_geometry(cls, set_members):
-        """
-        Checks if the node types of the set members valid
+        """Checks if the node types of the set members valid
 
         Args:
-            set_members: list of nodes of the controls_set
-            hierarchy: list of nodes which reside under the root node
+            set_members (list[str]): nodes of the out_set
 
         Returns:
-            errors (list)
+            list[str]: Nodes of invalid types.
         """
 
         # Validate all shape types
@@ -162,18 +165,17 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
             if cmds.nodeType(shape) not in cls.accepted_output:
                 invalid.append(shape)
 
+        return invalid
+
     @classmethod
     def validate_controls(cls, set_members):
-        """
-        Checks if the control set members are allowed node types.
-        Checks if the node types of the set members valid
+        """Checks if the node types of the set members are valid for controls.
 
         Args:
-            set_members: list of nodes of the controls_set
-            hierarchy: list of nodes which reside under the root node
+            set_members (list[str]): list of nodes of the controls_set
 
         Returns:
-            errors (list)
+            list: Controls of disallowed node types.
         """
 
         # Validate control types
@@ -189,7 +191,7 @@ class ValidateRigContents(pyblish.api.InstancePlugin):
         """Get the target objectsets and rig sets nodes
 
         Args:
-            instance (str): instance
+            instance (pyblish.api.Instance): instance
 
         Returns:
             tuple: 2-tuple of list of objectsets,
@@ -213,6 +215,7 @@ class ValidateSkeletonRigContents(ValidateRigContents):
     label = "Skeleton Rig Contents"
     hosts = ["maya"]
     families = ["rig.fbx"]
+    optional = True
 
     @classmethod
     def get_invalid(cls, instance):
@@ -247,11 +250,10 @@ class ValidateSkeletonRigContents(ValidateRigContents):
         """Get the target objectsets and rig sets nodes
 
         Args:
-            instance (str): instance
+            instance (pyblish.api.Instance): instance
 
         Returns:
-            tuple: 2-tuple of list of objectsets,
-                list of rig sets nodes
+            tuple: 2-tuple of list of objectsets, list of rig sets nodes
         """
         objectsets = ["skeletonMesh_SET"]
         skeleton_mesh_nodes = instance.data.get("skeleton_mesh", [])
