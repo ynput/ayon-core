@@ -125,8 +125,9 @@ class AssetOutliner(QtWidgets.QWidget):
         folder_items = {}
         namespaces_by_folder_path = defaultdict(set)
         for item in items:
-            folder_id = item["folder"]["id"]
-            folder_path = item["folder"]["path"]
+            folder_entity = item["folder_entity"]
+            folder_id = folder_entity["id"]
+            folder_path = folder_entity["path"]
             namespaces_by_folder_path[folder_path].add(item.get("namespace"))
 
             if folder_path in folder_items:
