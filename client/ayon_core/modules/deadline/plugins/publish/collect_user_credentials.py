@@ -20,8 +20,6 @@ from ayon_core.modules.deadline import __version__
 class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
     """Collects user name and password for artist if DL requires authentication
     """
-
-    # Run before collect_deadline_server_instance.
     order = pyblish.api.CollectorOrder + 0.200
     label = "Collect Deadline User Credentials"
 
