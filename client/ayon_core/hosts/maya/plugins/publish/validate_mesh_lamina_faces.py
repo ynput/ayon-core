@@ -24,6 +24,16 @@ class ValidateMeshLaminaFaces(pyblish.api.InstancePlugin,
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     optional = True
 
+    description = (
+        "## Meshes with Lamina Faces\n"
+        "Detected meshes with lamina faces. <b>Lamina faces</b> are faces "
+        "that share all of their edges and thus are merged together on top of "
+        "each other.\n\n"
+        "### How to repair?\n"
+        "You can repair them by using Maya's modeling tool `Mesh > Cleanup..` "
+        "and select to cleanup matching polygons for lamina faces."
+    )
+
     @staticmethod
     def get_invalid(instance):
         meshes = cmds.ls(instance, type='mesh', long=True)
@@ -41,4 +51,5 @@ class ValidateMeshLaminaFaces(pyblish.api.InstancePlugin,
 
         if invalid:
             raise PublishValidationError(
-                "Meshes found with lamina faces: {0}".format(invalid))
+                "Meshes found with lamina faces: {0}".format(invalid),
+                description=self.description)
