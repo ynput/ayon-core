@@ -3,32 +3,85 @@
 
 Requires:
     context -> project_settings
+    instance.data["deadline"]["url"]
+        or instance.data["deadlineUrl"] for backward compatibility, remove soon
 
 Provides:
-    context -> deadline_require_authentication (bool)
-    context -> deadline_auth (tuple (str, str)) - (username, password) or None
+    instance.data["deadline"] -> require_authentication (bool)
+    instance.data["deadline"] -> auth (tuple (str, str)) -
+        (username, password) or None
 """
 import pyblish.api
 
+from ayon_api import get_server_api_connection
+from ayon_core.modules.deadline.deadline_module import DeadlineModule
+from ayon_core.modules.deadline import __version__
 
-class CollectDeadlineUserCredentials(pyblish.api.ContextPlugin):
+
+class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
     """Collects user name and password for artist if DL requires authentication
     """
 
     # Run before collect_deadline_server_instance.
-    order = pyblish.api.CollectorOrder
+    order = pyblish.api.CollectorOrder + 0.200
     label = "Collect Deadline User Credentials"
 
-    def process(self, context):
-        deadline_settings = context.data["project_settings"]["deadline"]
+    hosts = ["aftereffects",
+             "fusion",
+             "harmony"
+             "nuke",
+             "maya",
+             "max",
+             "houdini"]
 
-        context.data["deadline_require_authentication"] = (
-            deadline_settings)["require_authentication"]
-        context.data["deadline_auth"] = None
+    families = ["render",
+                "rendering",
+                "render.farm",
+                "renderFarm",
+                "renderlayer",
+                "maxrender",
+                "usdrender",
+                "redshift_rop",
+                "arnold_rop",
+                "mantra_rop",
+                "karma_rop",
+                "vray_rop",
+                "publish.hou"]
 
-        if not context.data["deadline_require_authentication"]:
+    def process(self, instance):
+        # backward compatibility, remove soon
+        collected_deadline_url = (instance.data.get("deadlineUrl") or
+            instance.data.get("deadline", {}).get("url"))
+        if not collected_deadline_url:
+            raise ValueError("Instance doesn't have 'deadlineUrl'.")
+        context_data = instance.context.data
+        deadline_settings = context_data["project_settings"]["deadline"]
+
+        deadline_server_name = None
+        # deadline url might be set directly from instance, need to find
+        # metadata for it
+        for deadline_info in deadline_settings["deadline_urls"]:
+            dl_settings_url = deadline_info["value"].strip().rstrip("/")
+            if dl_settings_url == collected_deadline_url:
+                deadline_server_name = deadline_info["name"]
+                break
+
+        if not deadline_server_name:
+            raise ValueError(f"Collected {collected_deadline_url} doesn't " 
+                              "match any site configured in Studio Settings")
+
+        instance.data["deadline"]["require_authentication"] = (
+            deadline_info["require_authentication"]
+        )
+        instance.data["deadline"]["auth"] = None
+
+        if not deadline_info["require_authentication"]:
             return
 
-        local_settings = deadline_settings["local_settings"]
-        context.data["deadline_auth"] = (local_settings["username"],
-                                         local_settings["password"])
+        local_settings = get_server_api_connection().get_addon_site_settings(
+            DeadlineModule.name, __version__)
+        local_settings = local_settings["local_settings"]
+        for server_info in local_settings:
+            if deadline_server_name == server_info["server_name"]:
+                instance.data["deadline"]["auth"] = (server_info["username"],
+                                                     server_info["password"])
