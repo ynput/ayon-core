@@ -347,7 +347,7 @@ def prompt_reset_context():
     definitions = [
         UILabelDef(
             label=(
-                "You are saving your scene into a different task."
+                "You are saving your workfile into a different folder or task."
                 "\n\n"
                 "Would you like to update some settings to the new context?\n"
             )
