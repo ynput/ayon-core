@@ -16,7 +16,7 @@ class ValidateShadingEngine(pyblish.api.InstancePlugin,
 
     Shading engines should be named "{surface_shader}SG"
     """
-``
+
     order = ValidateContentsOrder
     families = ["look"]
     hosts = ["maya"]
