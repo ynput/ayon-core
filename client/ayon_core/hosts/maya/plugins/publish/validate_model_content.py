@@ -28,13 +28,15 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
     validate_top_group = True
     optional = False
 
+    allowed = ('mesh', 'transform', 'nurbsCurve', 'nurbsSurface', 'locator')
+
     @classmethod
     def get_invalid(cls, instance):
 
         content_instance = instance.data.get("setMembers", None)
         if not content_instance:
             cls.log.error("Instance has no nodes!")
-            return [instance.data["name"]]
+            return [instance.data["instance_node"]]
 
         # All children will be included in the extracted export so we also
         # validate *all* descendents of the set members and we skip any
@@ -46,30 +48,39 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
         content_instance = list(set(content_instance + descendants))
 
         # Ensure only valid node types
-        allowed = ('mesh', 'transform', 'nurbsCurve', 'nurbsSurface', 'locator')
         nodes = cmds.ls(content_instance, long=True)
-        valid = cmds.ls(content_instance, long=True, type=allowed)
+        valid = cmds.ls(content_instance, long=True, type=cls.allowed)
         invalid = set(nodes) - set(valid)
 
         if invalid:
-            cls.log.error("These nodes are not allowed: %s" % invalid)
+            cls.log.error(
+                "These nodes are not allowed: {}.\n"
+                "The valid node types are: {}".format(", ".join(invalid),
+                                                      ", ".join(cls.allowed))
+            )
             return list(invalid)
 
         if not valid:
-            cls.log.error("No valid nodes in the instance")
-            return True
+            cls.log.error(
+                "No valid nodes in the model instance.\n"
+                "The valid node types are: {}".format(", ".join(cls.allowed))
+            )
+            return [instance.data["instance_node"]]
 
         # Ensure it has shapes
         shapes = cmds.ls(valid, long=True, shapes=True)
         if not shapes:
             cls.log.error("No shapes in the model instance")
-            return True
+            return [instance.data["instance_node"]]
 
-        # Top group
-        top_parents = set([x.split("|")[1] for x in content_instance])
+        # Ensure single top group
+        top_parents = {x.split("|", 2)[1] for x in content_instance}
         if cls.validate_top_group and len(top_parents) != 1:
-            cls.log.error("Must have exactly one top group")
-            return top_parents
+            cls.log.error(
+                "A model instance must have exactly one top group. "
+                "Found top groups: {}".format(", ".join(top_parents))
+            )
+            return list(top_parents)
 
         def _is_visible(node):
             """Return whether node is visible"""
@@ -101,5 +112,11 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
         if invalid:
             raise PublishValidationError(
                 title="Model content is invalid",
-                message="See log for more details"
+                message="Model content is invalid. See log for more details.",
+                description=(
+                    "## Model content is invalid\n"
+                    "Your model instance does not adhere to the rules of a "
+                    "model.\n\n"
+                    "See log for more details."
+                )
             )
