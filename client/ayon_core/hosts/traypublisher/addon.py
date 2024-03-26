@@ -74,7 +74,7 @@ def launch():
     required=True
 )
 @click_wrap.option(
-    "--folder",
+    "--folder-path",
     help="Asset name in which the context will be used",
     type=str,
     required=True
@@ -95,7 +95,7 @@ def launch():
 def ingestcsv(
     filepath,
     project,
-    folder,
+    folder_path,
     task,
     ignore_validators
 ):
@@ -113,7 +113,7 @@ def ingestcsv(
     csvpublish(
         filepath,
         project,
-        folder,
+        folder_path,
         task,
         ignore_validators
     )
