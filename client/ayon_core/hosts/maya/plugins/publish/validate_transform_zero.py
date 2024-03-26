@@ -69,14 +69,13 @@ class ValidateTransformZero(pyblish.api.Validator,
             return
         invalid = self.get_invalid(instance)
         if invalid:
-
-            names = "<br>".join(
-                " - {}".format(node) for node in invalid
+            names = "\n".join(
+                "- {}".format(node) for node in invalid
             )
 
             raise PublishValidationError(
                 title="Transform Zero",
-                message="The model publish allows no transformations. You must"
-                        " <b>freeze transformations</b> to continue.<br><br>"
-                        "Nodes found with transform values: "
+                message="The model publish allows no transformations. "
+                        "You must **freeze transformations** to continue.\n\n"
+                        "Nodes found with transform values:\n"
                         "{0}".format(names))
