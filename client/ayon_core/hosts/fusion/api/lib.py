@@ -349,8 +349,7 @@ def prompt_reset_context():
             label=(
                 "You are saving your scene into a different task."
                 "\n\n"
-                "Would you like to reset some settings for the "
-                "for the new context?\n"
+                "Would you like to update some settings to the new context?\n"
             )
         ),
         BoolDef(
@@ -384,7 +383,7 @@ def prompt_reset_context():
     dialog.setWindowFlags(
         dialog.windowFlags() | QtCore.Qt.WindowStaysOnTopHint
     )
-    dialog.setWindowTitle("Saving to different context. Reset options")
+    dialog.setWindowTitle("Saving to different context.")
     dialog.setStyleSheet(load_stylesheet())
     if not dialog.exec_():
         return None
