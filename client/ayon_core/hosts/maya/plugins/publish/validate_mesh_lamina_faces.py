@@ -2,7 +2,11 @@ from maya import cmds
 
 import pyblish.api
 import ayon_core.hosts.maya.api.action
-from ayon_core.pipeline.publish import ValidateMeshOrder, OptionalPyblishPluginMixin
+from ayon_core.pipeline.publish import (
+    ValidateMeshOrder,
+    OptionalPyblishPluginMixin,
+    PublishValidationError
+)
 
 
 class ValidateMeshLaminaFaces(pyblish.api.InstancePlugin,
@@ -36,5 +40,5 @@ class ValidateMeshLaminaFaces(pyblish.api.InstancePlugin,
         invalid = self.get_invalid(instance)
 
         if invalid:
-            raise ValueError("Meshes found with lamina faces: "
-                             "{0}".format(invalid))
+            raise PublishValidationError(
+                "Meshes found with lamina faces: {0}".format(invalid))

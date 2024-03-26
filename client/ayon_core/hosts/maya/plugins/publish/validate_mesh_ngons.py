@@ -5,7 +5,8 @@ import ayon_core.hosts.maya.api.action
 from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
-    OptionalPyblishPluginMixin
+    OptionalPyblishPluginMixin,
+    PublishValidationError
 )
 
 
@@ -49,5 +50,5 @@ class ValidateMeshNgons(pyblish.api.Validator,
 
         invalid = self.get_invalid(instance)
         if invalid:
-            raise ValueError("Meshes found with n-gons"
-                             "values: {0}".format(invalid))
+            raise PublishValidationError(
+                "Meshes found with n-gons: {0}".format(invalid))
