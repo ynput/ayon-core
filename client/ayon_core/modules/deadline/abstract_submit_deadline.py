@@ -441,9 +441,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
         """Plugin entry point."""
         self._instance = instance
         context = instance.context
-        self._deadline_url = context.data.get("defaultDeadline")
-        self._deadline_url = instance.data.get(
-            "deadlineUrl", self._deadline_url)
+        self._deadline_url = instance.data["deadline"]["url"]
 
         assert self._deadline_url, "Requires Deadline Webservice URL"
 
@@ -467,7 +465,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
         self.plugin_info = self.get_plugin_info()
         self.aux_files = self.get_aux_files()
 
-        auth = context.data.get("deadline_auth")
+        auth = instance.data["deadline"]["auth"]
         job_id = self.process_submission(auth)
         self.log.info("Submitted job to Deadline: {}.".format(job_id))
 
