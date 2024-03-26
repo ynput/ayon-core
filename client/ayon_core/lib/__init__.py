@@ -81,11 +81,8 @@ from .log import (
 )
 
 from .path_templates import (
-    merge_dict,
-    TemplateMissingKey,
     TemplateUnsolved,
     StringTemplate,
-    TemplatesDict,
     FormatObject,
 )
 
@@ -259,11 +256,8 @@ __all__ = [
     "get_version_from_path",
     "get_last_version_from_path",
 
-    "merge_dict",
-    "TemplateMissingKey",
     "TemplateUnsolved",
     "StringTemplate",
-    "TemplatesDict",
     "FormatObject",
 
     "terminal",

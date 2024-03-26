@@ -44,11 +44,6 @@ def validate(data, schema=None):
         _precache()
 
     root, schema = data["schema"].rsplit(":", 1)
-    # assert root in (
-    #     "mindbender-core",  # Backwards compatiblity
-    #     "avalon-core",
-    #     "pype"
-    # )
 
     if isinstance(schema, six.string_types):
         schema = _cache[schema + ".json"]
