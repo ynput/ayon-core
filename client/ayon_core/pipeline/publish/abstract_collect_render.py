@@ -215,6 +215,25 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
             render_instance_dict = attr.asdict(render_instance)
 
             instance = context.create_instance(render_instance.name)
+
+            # TODO: Avoid this transfer instance id hack
+            # Transfer the id from another instance, e.g. when the render
+            # instance is intended to "replace" an existing instance like
+            # fusion does in `CollectRender`. Without matching the ids any
+            # logs produced for the instance prior to the "replacement" will
+            # not show artist-facing logs in reports
+            transfer_id = getattr(render_instance, "id")
+            if transfer_id:
+                instance._id = transfer_id
+                # The `instance_id` data may be overridden on the Creator
+                # to e.g. maybe make unique by node name instead of uuid,
+                # like in Maya, Fusion, Houdini integration.
+                # This transfers that unique (named) instance id.
+                # This transfer logic is currently (only?) used in Fusion.
+                transfer_instance_id = getattr(render_instance, "instance_id")
+                if transfer_instance_id:
+                    instance.data["instance_id"] = transfer_instance_id
+
             instance.data["label"] = render_instance.label
             instance.data.update(render_instance_dict)
             instance.data.update(data)
