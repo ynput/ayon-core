@@ -43,8 +43,10 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
 
         template_name = self.get_template_name(instance)
         anatomy = instance.context.data["anatomy"]
-        publish_template_category = anatomy.templates[template_name]
-        template = os.path.normpath(publish_template_category["path"])
+        publish_path_template = anatomy.get_template_item(
+            "publish", template_name, "path"
+        ).template
+        template = os.path.normpath(publish_path_template)
         self.log.debug(
             ">> template: {}".format(template))
 
