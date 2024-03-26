@@ -29,7 +29,8 @@ async def defined_deadline_ws_name_enum_resolver(
 
     return ws_server_name
 
-class ServerListSubmodel(BaseSettingsModel):
+class ServerItemSubmodel(BaseSettingsModel):
+    """Connection info about configured DL servers."""
     _layout = "compact"
     name: str = SettingsField(title="Name")
     value: str = SettingsField(title="Url")
@@ -38,12 +39,14 @@ class ServerListSubmodel(BaseSettingsModel):
 
 
 class DeadlineSettings(BaseSettingsModel):
-    deadline_urls: list[ServerListSubmodel] = SettingsField(
+    # configured DL servers
+    deadline_urls: list[ServerItemSubmodel] = SettingsField(
         default_factory=list,
         title="System Deadline Webservice Info",
         scope=["studio"],
     )
 
+    # name(key) of selected server for project
     deadline_server: str = SettingsField(
         title="Project Deadline server name",
         section="---",
