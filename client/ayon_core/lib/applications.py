@@ -204,7 +204,7 @@ class ApplicationGroup:
     Application group wraps different versions(variants) of application.
     e.g. "maya" is group and "maya_2020" is variant.
 
-    Group hold `host_name` which is implementation name used in pype. Also
+    Group hold `host_name` which is implementation name used in AYON. Also
     holds `enabled` if whole app group is enabled or `icon` for application
     icon path in resources.
 
@@ -1862,7 +1862,9 @@ def _prepare_last_workfile(data, workdir, addons_manager):
                 project_settings=project_settings
             )
             # Find last workfile
-            file_template = str(anatomy.templates[template_key]["file"])
+            file_template = anatomy.get_template_item(
+                "work", template_key, "file"
+            ).template
 
             workdir_data.update({
                 "version": 1,
@@ -1897,12 +1899,12 @@ def should_start_last_workfile(
     `"0", "1", "true", "false", "yes", "no"`.
 
     Args:
-        project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
+        project_name (str): Project name.
+        host_name (str): Host name.
+        task_name (str): Task name.
+        task_type (str): Task type.
+        default_output (Optional[bool]): Default output if no profile is
+            found.
 
     Returns:
         bool: True if host should start workfile.
@@ -1947,12 +1949,12 @@ def should_workfile_tool_start(
     `"0", "1", "true", "false", "yes", "no"`.
 
     Args:
-        project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
+        project_name (str): Project name.
+        host_name (str): Host name.
+        task_name (str): Task name.
+        task_type (str): Task type.
+        default_output (Optional[bool]): Default output if no profile is
+            found.
 
     Returns:
         bool: True if host should start workfile.
