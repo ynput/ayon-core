@@ -68,12 +68,15 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
         files_by_aov = {
             "_": self.generate_expected_files(instance,
                                               beauty_product)}
-        
+
         aovs_rop = rop.parm("RS_aovGetFromNode").evalAsNode()
         if aovs_rop:
             rop = aovs_rop
 
-        num_aovs = rop.evalParm("RS_aov")
+        num_aovs = 0
+        if not rop.evalParm('RS_aovAllAOVsDisabled'):
+            num_aovs = rop.evalParm("RS_aov")
+
         for index in range(num_aovs):
             i = index + 1
 
