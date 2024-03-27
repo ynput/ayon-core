@@ -1,7 +1,6 @@
 import os
 import sys
 import re
-import json
 import shutil
 import argparse
 import zipfile

@@ -2,7 +2,6 @@ import os
 import logging
 
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import schema
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,

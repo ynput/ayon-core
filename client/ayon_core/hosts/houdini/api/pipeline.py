@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Pipeline tools for OpenPype Houdini integration."""
 import os
-import sys
 import logging
 
 import hou  # noqa
