@@ -14,3 +14,15 @@ AYON_SERVER_ENABLED = True
 # Indicate if AYON entities should be used instead of OpenPype entities
 USE_AYON_ENTITIES = True
 # -------------------------
+
+
+__all__ = (
+    "__version__",
+
+    # Deprecated
+    "AYON_CORE_ROOT",
+    "PACKAGE_DIR",
+    "PLUGINS_DIR",
+    "AYON_SERVER_ENABLED",
+    "USE_AYON_ENTITIES",
+)
