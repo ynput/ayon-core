@@ -146,7 +146,8 @@ def prep_url(url_in):
     if url.startswith("file://localhost/"):
         return url.replace("file://localhost/", "")
 
-    url = "{url}".format(url=url.startswith(os.sep) and url[1:] or url)
+    if url.startswith(os.sep):
+        url = url[1:]
 
     return url
 
