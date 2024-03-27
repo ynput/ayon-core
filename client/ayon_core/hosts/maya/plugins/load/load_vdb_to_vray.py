@@ -77,7 +77,7 @@ def _fix_duplicate_vvg_callbacks():
 class LoadVDBtoVRay(load.LoaderPlugin):
     """Load OpenVDB in a V-Ray Volume Grid"""
 
-    families = ["vdbcache"]
+    product_types = {"vdbcache"}
     representations = ["vdb"]
 
     label = "Load VDB to VRay"
@@ -94,10 +94,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
             "Path does not exist: %s" % path
         )
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vdbcache"
+        product_type = context["product"]["productType"]
 
         # Ensure V-ray is loaded with the vrayvolumegrid
         if not cmds.pluginInfo("vrayformaya", query=True, loaded=True):
@@ -277,7 +274,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
     def remove(self, container):
 
-        # Get all members of the avalon container, ensure they are unlocked
+        # Get all members of the AYON container, ensure they are unlocked
         # and delete everything
         members = cmds.sets(container['objectName'], query=True)
         cmds.lockNode(members, lock=False)

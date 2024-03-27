@@ -21,7 +21,7 @@ class ExistingLayoutLoader(plugin.Loader):
     Load Layout for an existing scene, and match the existing assets.
     """
 
-    families = ["layout"]
+    product_types = {"layout"}
     representations = ["json"]
 
     label = "Load Layout on Existing Scene"
@@ -393,7 +393,7 @@ class ExistingLayoutLoader(plugin.Loader):
 
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
-        product_type = context["representation"]["context"]["family"]
+        product_type = context["product"]["productType"]
         asset_name = f"{folder_name}_{name}" if folder_name else name
         container_name = f"{folder_name}_{name}_CON"
 

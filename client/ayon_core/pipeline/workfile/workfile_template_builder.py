@@ -1286,14 +1286,14 @@ class PlaceholderLoadMixin(object):
         loader_items = list(sorted(loader_items, key=lambda i: i["label"]))
         options = options or {}
 
-        # Get families from all loaders excluding "*"
-        families = set()
+        # Get product types from all loaders excluding "*"
+        product_types = set()
         for loader in loaders_by_name.values():
-            families.update(loader.families)
-        families.discard("*")
+            product_types.update(loader.product_types)
+        product_types.discard("*")
 
         # Sort for readability
-        families = list(sorted(families))
+        product_types = list(sorted(product_types))
 
         builder_type_enum_items = [
             {"label": "Current folder", "value": "context_folder"},
@@ -1333,7 +1333,7 @@ class PlaceholderLoadMixin(object):
                 "product_type",
                 label="Product type",
                 default=product_type,
-                items=families
+                items=product_types
             ),
             attribute_definitions.TextDef(
                 "representation",
@@ -1726,7 +1726,7 @@ class PlaceholderCreateMixin(object):
                 items=creator_items,
                 tooltip=(
                     "Creator"
-                    "\nDefines what OpenPype creator will be used to"
+                    "\nDefines what AYON creator will be used to"
                     " create publishable instance."
                     "\nUseable creator depends on current host's creator list."
                     "\nField is case sensitive."
@@ -1865,7 +1865,7 @@ class PlaceholderCreateMixin(object):
         self.log.debug("Clean up of placeholder is not implemented.")
 
     def _before_instance_create(self, placeholder):
-        """Can be overriden. Is called before instance is created."""
+        """Can be overridden. Is called before instance is created."""
 
         pass
 

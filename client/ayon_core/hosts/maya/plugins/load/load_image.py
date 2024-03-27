@@ -1,10 +1,8 @@
-import os
 import copy
 
 from ayon_core.lib import EnumDef
 from ayon_core.pipeline import (
     load,
-    get_representation_context,
     get_current_host_name,
 )
 from ayon_core.pipeline.load.utils import get_representation_path_from_context
@@ -93,7 +91,7 @@ def create_stencil():
 class FileNodeLoader(load.LoaderPlugin):
     """File node loader."""
 
-    families = ["image", "plate", "render"]
+    product_types = {"image", "plate", "render"}
     label = "Load file node"
     representations = ["exr", "tif", "png", "jpg"]
     icon = "image"

@@ -18,7 +18,7 @@ class OpenInDJV(load.LoaderPlugin):
     """Open Image Sequence with system default"""
 
     djv_list = existing_djv_path()
-    families = ["*"] if djv_list else []
+    product_types = {"*"} if djv_list else []
     representations = ["*"]
     extensions = {
         "cin", "dpx", "avi", "dv", "gif", "flv", "mkv", "mov", "mpg", "mpeg",

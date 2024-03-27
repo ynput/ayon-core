@@ -36,7 +36,7 @@ def set_attribute(node, attr, value):
 class YetiCacheLoader(load.LoaderPlugin):
     """Load Yeti Cache with one or more Yeti nodes"""
 
-    families = ["yeticache", "yetiRig"]
+    product_types = {"yeticache", "yetiRig"}
     representations = ["fur"]
 
     label = "Load Yeti Cache"
@@ -56,10 +56,7 @@ class YetiCacheLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "yeticache"
+        product_type = context["product"]["productType"]
 
         # Build namespace
         folder_name = context["folder"]["name"]

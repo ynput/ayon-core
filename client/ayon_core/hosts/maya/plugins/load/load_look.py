@@ -17,7 +17,7 @@ from ayon_core.tools.utils import ScrollMessageBox
 class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Specific loader for lookdev"""
 
-    families = ["look"]
+    product_types = {"look"}
     representations = ["ma"]
 
     label = "Reference look"

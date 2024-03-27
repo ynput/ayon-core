@@ -2,10 +2,13 @@ import ayon_api
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.pipeline.publish import PublishValidationError
+from ayon_core.pipeline.publish import (
+    PublishValidationError,
+    OptionalPyblishPluginMixin
+)
 
-
-class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
+class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin,
+                              OptionalPyblishPluginMixin):
     """Validate created AOVs / RenderElement is registered in the database
 
     Each render element is registered as a product which is formatted based on
@@ -26,8 +29,12 @@ class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["renderlayer"]
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = False
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(

@@ -81,11 +81,8 @@ from .log import (
 )
 
 from .path_templates import (
-    merge_dict,
-    TemplateMissingKey,
     TemplateUnsolved,
     StringTemplate,
-    TemplatesDict,
     FormatObject,
 )
 
@@ -155,6 +152,7 @@ from .path_tools import (
 
 from .ayon_info import (
     is_running_from_build,
+    is_using_ayon_console,
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
@@ -259,11 +257,8 @@ __all__ = [
     "get_version_from_path",
     "get_last_version_from_path",
 
-    "merge_dict",
-    "TemplateMissingKey",
     "TemplateUnsolved",
     "StringTemplate",
-    "TemplatesDict",
     "FormatObject",
 
     "terminal",
@@ -275,6 +270,7 @@ __all__ = [
     "Logger",
 
     "is_running_from_build",
+    "is_using_ayon_console",
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",

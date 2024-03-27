@@ -72,9 +72,11 @@ class MaterialDupOptionsWindow(QtWidgets.QDialog):
 class MaxSceneLoader(load.LoaderPlugin):
     """Max Scene Loader."""
 
-    families = ["camera",
-                "maxScene",
-                "model"]
+    product_types = {
+        "camera",
+        "maxScene",
+        "model",
+    }
 
     representations = ["max"]
     order = -8
