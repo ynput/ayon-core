@@ -21,7 +21,7 @@ def frames_to_seconds(frames, framerate):
     return otio.opentime.to_seconds(rt)
 
 
-def get_reformated_filename(filename, padded=True):
+def get_reformatted_filename(filename, padded=True):
     """
     Return fixed python expression path
 
@@ -32,7 +32,7 @@ def get_reformated_filename(filename, padded=True):
         type: string with reformatted path
 
     Example:
-        get_reformated_filename("plate.1001.exr") > plate.%04d.exr
+        get_reformatted_filename("plate.1001.exr") > plate.%04d.exr
 
     """
     found = FRAME_PATTERN.search(filename)
