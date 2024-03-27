@@ -1,7 +1,12 @@
+from typing import List
+
 import maya.cmds as cmds
 
 from ayon_core.hosts.maya.api import plugin
 from ayon_core.hosts.maya.api import lib
+
+from openpype.pipeline import registered_host
+from openpype.pipeline.create import CreateContext
 
 
 class YetiRigLoader(plugin.ReferenceLoader):
@@ -49,4 +54,40 @@ class YetiRigLoader(plugin.ReferenceLoader):
             )
         self[:] = nodes
 
+        # Automatically create in instance to allow publishing the loaded
+        # yeti rig into a yeti cache
+        self._create_yeti_cache_instance(nodes, variant=namespace)
+
         return nodes
+
+    def _create_yeti_cache_instance(self, nodes: List[str], variant: str):
+        """Create a yeticache product type instance to publish the output.
+
+        This is similar to how loading animation rig will automatically create
+        an animation instance for publishing any loaded character rigs, but
+        then for yeti rigs.
+
+        Args:
+            nodes (List[str]): Nodes generated on load.
+            variant (str): Variant for the yeti cache instance to create.
+
+        """
+
+        # Find the roots amongst the loaded nodes
+        yeti_nodes = cmds.ls(nodes, type="pgYetiMaya", long=True)
+        assert yeti_nodes, "No pgYetiMaya nodes in rig, this is a bug."
+
+        self.log.info("Creating variant: {}".format(variant))
+
+        creator_identifier = "io.openpype.creators.maya.yeticache"
+
+        host = registered_host()
+        create_context = CreateContext(host)
+
+        with lib.maintained_selection():
+            cmds.select(yeti_nodes, noExpand=True)
+            create_context.create(
+                creator_identifier=creator_identifier,
+                variant=variant,
+                pre_create_data={"use_selection": True}
+            )
