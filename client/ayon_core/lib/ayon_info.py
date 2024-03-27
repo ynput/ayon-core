@@ -10,6 +10,12 @@ from .local_settings import get_local_site_id
 
 
 def get_ayon_launcher_version():
+    """Get AYON launcher version.
+
+    Returns:
+        str: Version string.
+
+    """
     version_filepath = os.path.join(os.environ["AYON_ROOT"], "version.py")
     if not os.path.exists(version_filepath):
         return None
@@ -24,13 +30,39 @@ def is_running_from_build():
 
     Returns:
         bool: True if running from build.
-    """
 
+    """
     executable_path = os.environ["AYON_EXECUTABLE"]
     executable_filename = os.path.basename(executable_path)
     if "python" in executable_filename.lower():
         return False
     return True
+
+
+def is_using_ayon_console():
+    """AYON launcher console executable is used.
+
+    This function make sense only on Windows platform. For other platforms
+    always returns True. True is also returned if process is running from
+    code.
+
+    AYON launcher on windows has 2 executable files. First 'ayon_console.exe'
+    works as 'python.exe' executable, the second 'ayon.exe' works as
+    'pythonw.exe' executable. The difference is way how stdout/stderr is
+    handled (especially when calling subprocess).
+
+    Returns:
+        bool: True if console executable is used.
+
+    """
+    if (
+        platform.system().lower() != "windows"
+        or is_running_from_build()
+    ):
+        return True
+    executable_path = os.environ["AYON_EXECUTABLE"]
+    executable_filename = os.path.basename(executable_path)
+    return "ayon_console" in executable_filename
 
 
 def is_staging_enabled():
