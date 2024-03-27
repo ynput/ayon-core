@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""OpenPype script commands to be used directly in Maya."""
+"""AYON script commands to be used directly in Maya."""
 from maya import cmds
 
 from ayon_api import get_project, get_folder_by_path

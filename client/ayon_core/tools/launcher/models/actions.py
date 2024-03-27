@@ -6,6 +6,7 @@ from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherAction,
 )
+from ayon_core.pipeline.workfile import should_use_last_workfile_on_launch
 
 
 # class Action:
@@ -301,8 +302,6 @@ class ActionsModel:
         host_name,
         not_open_workfile_actions
     ):
-        from ayon_core.lib.applications import should_start_last_workfile
-
         if identifier in not_open_workfile_actions:
             return not not_open_workfile_actions[identifier]
 
@@ -315,7 +314,7 @@ class ActionsModel:
             task_name = task_entity["name"]
             task_type = task_entity["taskType"]
 
-        output = should_start_last_workfile(
+        output = should_use_last_workfile_on_launch(
             project_name,
             host_name,
             task_name,

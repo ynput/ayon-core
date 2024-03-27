@@ -325,14 +325,13 @@ class ExtractMayaSceneRawModel(BaseSettingsModel):
 
 
 class ExtractCameraAlembicModel(BaseSettingsModel):
-    """
-    List of attributes that will be added to the baked alembic camera. Needs to be written in python list syntax.
-    """
     enabled: bool = SettingsField(title="ExtractCameraAlembic")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     bake_attributes: str = SettingsField(
-        "[]", title="Base Attributes", widget="textarea"
+        "[]", title="Bake Attributes", widget="textarea",
+        description="List of attributes that will be included in the alembic "
+                    "camera export. Needs to be written as a JSON list.",
     )
 
     @validator("bake_attributes")
@@ -762,14 +761,6 @@ class PublishersModel(BaseSettingsModel):
     ValidateAssRelativePaths: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Ass Relative Paths"
-    )
-    ValidateInstancerContent: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Instancer Content"
-    )
-    ValidateInstancerFrameRanges: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Instancer Cache Frame Ranges"
     )
     ValidateNoDefaultCameras: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -1308,16 +1299,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ValidateAssRelativePaths": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
-    "ValidateInstancerContent": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
-    "ValidateInstancerFrameRanges": {
         "enabled": True,
         "optional": False,
         "active": True
