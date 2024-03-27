@@ -298,10 +298,6 @@ def on_save():
     # update houdini vars
     lib.update_houdini_vars_context_dialog()
 
-    nodes = lib.get_id_required_nodes()
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
-
 
 def _show_outdated_content_popup():
     # Get main window
