@@ -16,7 +16,7 @@ import bpy
 import bpy.utils.previews
 
 from ayon_core import style
-from ayon_core.pipeline import get_current_asset_name, get_current_task_name
+from ayon_core.pipeline import get_current_folder_path, get_current_task_name
 from ayon_core.tools.utils import host_tools
 
 from .workio import OpenFileCacher
@@ -191,7 +191,7 @@ def _process_app_events() -> Optional[float]:
 
 
 class LaunchQtApp(bpy.types.Operator):
-    """A Base class for opertors to launch a Qt app."""
+    """A Base class for operators to launch a Qt app."""
 
     _app: QtWidgets.QApplication
     _window = Union[QtWidgets.QDialog, ModuleType]
@@ -355,7 +355,7 @@ class SetFrameRange(bpy.types.Operator):
     bl_label = "Set Frame Range"
 
     def execute(self, context):
-        data = pipeline.get_asset_data()
+        data = pipeline.get_folder_attributes()
         pipeline.set_frame_range(data)
         return {"FINISHED"}
 
@@ -365,7 +365,7 @@ class SetResolution(bpy.types.Operator):
     bl_label = "Set Resolution"
 
     def execute(self, context):
-        data = pipeline.get_asset_data()
+        data = pipeline.get_folder_attributes()
         pipeline.set_resolution(data)
         return {"FINISHED"}
 
@@ -388,9 +388,9 @@ class TOPBAR_MT_avalon(bpy.types.Menu):
         else:
             pyblish_menu_icon_id = 0
 
-        asset = get_current_asset_name()
-        task = get_current_task_name()
-        context_label = f"{asset}, {task}"
+        folder_path = get_current_folder_path()
+        task_name = get_current_task_name()
+        context_label = f"{folder_path}, {task_name}"
         context_label_item = layout.row()
         context_label_item.operator(
             LaunchWorkFiles.bl_idname, text=context_label

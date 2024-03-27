@@ -10,7 +10,7 @@ class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
     """Ensure all instances have a unique product name"""
 
     order = pyblish.api.ValidatorOrder
-    label = "Validate Unique Subsets"
+    label = "Validate Unique Products"
     families = ["render", "image"]
     hosts = ["fusion"]
     actions = [SelectInvalidAction]
@@ -27,7 +27,7 @@ class ValidateUniqueSubsets(pyblish.api.ContextPlugin):
                 instance
             )
 
-        # Find which asset + subset combination has more than one instance
+        # Find which folder + subset combination has more than one instance
         # Those are considered invalid because they'd integrate to the same
         # destination.
         invalid = []

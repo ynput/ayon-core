@@ -1,18 +1,13 @@
 import collections
+
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import (
-    get_assets,
-    get_subsets,
-    get_last_versions,
-    get_representations,
-    get_asset_name_identifier,
-)
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 
 class CollectAudio(pyblish.api.ContextPlugin):
-    """Collect asset's last published audio.
+    """Collect folders's last published audio.
 
     The audio product name searched for is defined in:
         project settings > Collect Audio
@@ -23,7 +18,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
             converted to context plugin which requires only 4 queries top.
     """
 
-    label = "Collect Asset Audio"
+    label = "Collect Folder Audio"
     order = pyblish.api.CollectorOrder + 0.1
     families = ["review"]
     hosts = [
@@ -67,36 +62,36 @@ class CollectAudio(pyblish.api.ContextPlugin):
             return
 
         # Add audio to instance if exists.
-        instances_by_asset_name = collections.defaultdict(list)
+        instances_by_folder_path = collections.defaultdict(list)
         for instance in filtered_instances:
-            asset_name = instance.data["folderPath"]
-            instances_by_asset_name[asset_name].append(instance)
+            folder_path = instance.data["folderPath"]
+            instances_by_folder_path[folder_path].append(instance)
 
-        asset_names = set(instances_by_asset_name.keys())
+        folder_paths = set(instances_by_folder_path.keys())
         self.log.debug((
-            "Searching for audio product '{product}' in assets {assets}"
+            "Searching for audio product '{product}' in folders {folders}"
         ).format(
             product=self.audio_product_name,
-            assets=", ".join([
-                '"{}"'.format(asset_name)
-                for asset_name in asset_names
+            folders=", ".join([
+                '"{}"'.format(folder_path)
+                for folder_path in folder_paths
             ])
         ))
 
         # Query all required documents
         project_name = context.data["projectName"]
         anatomy = context.data["anatomy"]
-        repre_docs_by_asset_names = self.query_representations(
-            project_name, asset_names)
+        repre_entities_by_folder_paths = self.query_representations(
+            project_name, folder_paths)
 
-        for asset_name, instances in instances_by_asset_name.items():
-            repre_docs = repre_docs_by_asset_names[asset_name]
-            if not repre_docs:
+        for folder_path, instances in instances_by_folder_path.items():
+            repre_entities = repre_entities_by_folder_paths[folder_path]
+            if not repre_entities:
                 continue
 
-            repre_doc = repre_docs[0]
+            repre_entity = repre_entities[0]
             repre_path = get_representation_path_with_anatomy(
-                repre_doc, anatomy
+                repre_entity, anatomy
             )
             for instance in instances:
                 instance.data["audio"] = [{
@@ -106,7 +101,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
                 self.log.debug("Audio Data added to instance ...")
 
     def query_representations(self, project_name, folder_paths):
-        """Query representations related to audio products for passed assets.
+        """Query representations related to audio products for passed folders.
 
         Args:
             project_name (str): Project in which we're looking for all
@@ -116,67 +111,74 @@ class CollectAudio(pyblish.api.ContextPlugin):
 
         Returns:
             collections.defaultdict[str, List[Dict[Str, Any]]]: Representations
-                related to audio products by asset name.
-        """
+                related to audio products by folder path.
 
+        """
         output = collections.defaultdict(list)
-        # Query asset documents
-        asset_docs = get_assets(
+        # Skip the queries if audio product name is not defined
+        if not self.audio_product_name:
+            return output
+
+        # Query folder entities
+        folder_entities = ayon_api.get_folders(
             project_name,
-            asset_names=folder_paths,
-            fields=["_id", "name", "data.parents"]
+            folder_paths=folder_paths,
+            fields={"id", "path"}
         )
 
         folder_id_by_path = {
-            get_asset_name_identifier(asset_doc): asset_doc["_id"]
-            for asset_doc in asset_docs
+            folder_entity["path"]: folder_entity["id"]
+            for folder_entity in folder_entities
         }
         folder_ids = set(folder_id_by_path.values())
 
         # Query products with name define by 'audio_product_name' attr
-        # - one or none products with the name should be available on an asset
-        subset_docs = get_subsets(
+        # - one or none products with the name should be available on
+        #   an folder
+        product_entities = ayon_api.get_products(
             project_name,
-            subset_names=[self.audio_product_name],
-            asset_ids=folder_ids,
-            fields=["_id", "parent"]
+            product_names=[self.audio_product_name],
+            folder_ids=folder_ids,
+            fields={"id", "folderId"}
         )
         product_id_by_folder_id = {}
-        for subset_doc in subset_docs:
-            folder_id = subset_doc["parent"]
-            product_id_by_folder_id[folder_id] = subset_doc["_id"]
+        for product_entity in product_entities:
+            folder_id = product_entity["folderId"]
+            product_id_by_folder_id[folder_id] = product_entity["id"]
 
         product_ids = set(product_id_by_folder_id.values())
         if not product_ids:
             return output
 
         # Find all latest versions for the products
-        version_docs_by_product_id = get_last_versions(
-            project_name, subset_ids=product_ids, fields=["_id", "parent"]
+        last_versions_by_product_id = ayon_api.get_last_versions(
+            project_name, product_ids=product_ids, fields={"id", "productId"}
         )
         version_id_by_product_id = {
-            product_id: version_doc["_id"]
-            for product_id, version_doc in version_docs_by_product_id.items()
+            product_id: version_entity["id"]
+            for product_id, version_entity in (
+                last_versions_by_product_id.items()
+            )
         }
         version_ids = set(version_id_by_product_id.values())
         if not version_ids:
             return output
 
         # Find representations under latest versions of audio products
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, version_ids=version_ids
         )
-        repre_docs_by_version_id = collections.defaultdict(list)
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
-            repre_docs_by_version_id[version_id].append(repre_doc)
+        repre_entities_by_version_id = collections.defaultdict(list)
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            repre_entities_by_version_id[version_id].append(repre_entity)
 
-        if not repre_docs_by_version_id:
+        if not repre_entities_by_version_id:
             return output
 
         for folder_path in folder_paths:
             folder_id = folder_id_by_path.get(folder_path)
             product_id = product_id_by_folder_id.get(folder_id)
             version_id = version_id_by_product_id.get(product_id)
-            output[folder_path] = repre_docs_by_version_id[version_id]
+            output[folder_path] = repre_entities_by_version_id[version_id]
         return output

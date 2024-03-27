@@ -14,9 +14,9 @@ from abc import ABCMeta, abstractmethod
 
 import six
 import appdirs
+import ayon_api
 
 from ayon_core.lib import Logger, is_dev_mode_enabled
-from ayon_core.client import get_ayon_server_api_connection
 from ayon_core.settings import get_studio_settings
 
 from .interfaces import (
@@ -147,8 +147,7 @@ def load_addons(force=False):
 
 
 def _get_ayon_bundle_data():
-    con = get_ayon_server_api_connection()
-    bundles = con.get_bundles()["bundles"]
+    bundles = ayon_api.get_bundles()["bundles"]
 
     bundle_name = os.getenv("AYON_BUNDLE_NAME")
 
@@ -176,8 +175,7 @@ def _get_ayon_addons_information(bundle_info):
 
     output = []
     bundle_addons = bundle_info["addons"]
-    con = get_ayon_server_api_connection()
-    addons = con.get_addons_info()["addons"]
+    addons = ayon_api.get_addons_info()["addons"]
     for addon in addons:
         name = addon["name"]
         versions = addon.get("versions")
@@ -743,7 +741,7 @@ class AddonsManager:
 
         addon_classes = []
         for module in openpype_modules:
-            # Go through globals in `pype.modules`
+            # Go through globals in `ayon_core.modules`
             for name in dir(module):
                 modules_item = getattr(module, name, None)
                 # Filter globals that are not classes which inherit from
@@ -1077,7 +1075,7 @@ class AddonsManager:
         """Print out report of time spent on addons initialization parts.
 
         Reporting is not automated must be implemented for each initialization
-        part separatelly. Reports must be stored to `_report` attribute.
+        part separately. Reports must be stored to `_report` attribute.
         Print is skipped if `_report` is empty.
 
         Attribute `_report` is dictionary where key is "label" describing
@@ -1269,7 +1267,7 @@ class TrayAddonsManager(AddonsManager):
     def add_doubleclick_callback(self, addon, callback):
         """Register doubleclick callbacks on tray icon.
 
-        Currently there is no way how to determine which is launched. Name of
+        Currently, there is no way how to determine which is launched. Name of
         callback can be defined with `doubleclick_callback` attribute.
 
         Missing feature how to define default callback.

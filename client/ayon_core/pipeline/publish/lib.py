@@ -742,29 +742,18 @@ def get_custom_staging_dir_info(
         anatomy = Anatomy(project_name)
 
     template_name = profile["template_name"] or TRANSIENT_DIR_TEMPLATE
-    _validate_transient_template(project_name, template_name, anatomy)
 
-    custom_staging_dir = anatomy.templates[template_name]["folder"]
+    custom_staging_dir = anatomy.get_template_item(
+        "staging", template_name, "directory", default=None
+    )
+    if custom_staging_dir is None:
+        raise ValueError((
+            "Anatomy of project \"{}\" does not have set"
+            " \"{}\" template key!"
+        ).format(project_name, template_name))
     is_persistent = profile["custom_staging_dir_persistent"]
 
-    return custom_staging_dir, is_persistent
-
-
-def _validate_transient_template(project_name, template_name, anatomy):
-    """Check that transient template is correctly configured.
-
-    Raises:
-        ValueError - if misconfigured template
-    """
-    if template_name not in anatomy.templates:
-        raise ValueError(("Anatomy of project \"{}\" does not have set"
-                          " \"{}\" template key!"
-                          ).format(project_name, template_name))
-
-    if "folder" not in anatomy.templates[template_name]:
-        raise ValueError(("There is not set \"folder\" template in \"{}\" anatomy"  # noqa
-                             " for project \"{}\"."
-                         ).format(template_name, project_name))
+    return custom_staging_dir.template, is_persistent
 
 
 def get_published_workfile_instance(context):
@@ -815,9 +804,9 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["ext"] = rep.get("ext")
     template_data["comment"] = None
 
-    anatomy = instance.context.data['anatomy']
-    anatomy_filled = anatomy.format(template_data)
-    template_filled = anatomy_filled["publish"]["path"]
+    anatomy = instance.context.data["anatomy"]
+    template = anatomy.get_template_item("publish", "default", "path")
+    template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
     log.info("Using published scene for render {}".format(file_path))

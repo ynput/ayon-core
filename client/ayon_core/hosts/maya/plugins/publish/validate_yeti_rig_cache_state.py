@@ -1,14 +1,17 @@
+import inspect
+
 import pyblish.api
 import maya.cmds as cmds
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     RepairAction,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-
-class ValidateYetiRigCacheState(pyblish.api.InstancePlugin):
+class ValidateYetiRigCacheState(pyblish.api.InstancePlugin,
+                                OptionalPyblishPluginMixin):
     """Validate the I/O attributes of the node
 
     Every pgYetiMaya cache node per instance should have:
@@ -23,11 +26,17 @@ class ValidateYetiRigCacheState(pyblish.api.InstancePlugin):
     families = ["yetiRig"]
     actions = [RepairAction,
                ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = False
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError("Nodes have incorrect I/O settings")
+            raise PublishValidationError(
+                "Nodes have incorrect I/O settings",
+                description=inspect.getdoc(self)
+            )
 
     @classmethod
     def get_invalid(cls, instance):

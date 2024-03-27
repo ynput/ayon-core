@@ -19,12 +19,12 @@ class ImageFromSequenceLoader(photoshop.PhotoshopLoader):
         This loader will be triggered multiple times, but selected name will
         match only to proper path.
 
-        Loader doesnt do containerization as there is currently no data model
+        Loader doesn't do containerization as there is currently no data model
         of 'frame of rendered files' (only rendered sequence), update would be
         difficult.
     """
 
-    families = ["render"]
+    product_types = {"render"}
     representations = ["*"]
     options = []
 
@@ -40,7 +40,7 @@ class ImageFromSequenceLoader(photoshop.PhotoshopLoader):
 
         stub = self.get_stub()
         layer_name = get_unique_layer_name(
-            stub.get_layers(), context["asset"]["name"], name
+            stub.get_layers(), context["folder"]["name"], name
         )
 
         with photoshop.maintained_selection():

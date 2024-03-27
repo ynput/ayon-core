@@ -21,7 +21,7 @@ from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
     registered_host,
 )
@@ -128,7 +128,7 @@ class NukeHost(
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
 
-        # Register Avalon event for workfiles loading.
+        # Register AYON event for workfiles loading.
         register_event_callback("workio.open_file", check_inventory_versions)
         register_event_callback("taskChanged", change_context_label)
 
@@ -224,15 +224,15 @@ def _show_workfiles():
 
 def get_context_label():
     return "{0}, {1}".format(
-        get_current_asset_name(),
+        get_current_folder_path(),
         get_current_task_name()
     )
 
 
 def _install_menu():
-    """Install Avalon menu into Nuke's main menu bar."""
+    """Install AYON menu into Nuke's main menu bar."""
 
-    # uninstall original avalon menu
+    # uninstall original AYON menu
     main_window = get_main_window()
     menubar = nuke.menu("Nuke")
     menu = menubar.addMenu(MENU_LABEL)
@@ -432,7 +432,7 @@ def containerise(node,
             ("name", name),
             ("namespace", namespace),
             ("loader", str(loader)),
-            ("representation", context["representation"]["_id"]),
+            ("representation", context["representation"]["id"]),
         ],
 
         **data or dict()

@@ -44,7 +44,7 @@ class IntegrateAnimation(
                     break
             if not rep:
                 continue
-            obj_id = rep["representation"]["_id"]
+            obj_id = rep["representation"]["id"]
 
             if obj_id:
                 json_dict["representation_id"] = str(obj_id)
