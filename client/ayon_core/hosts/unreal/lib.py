@@ -216,10 +216,8 @@ def create_unreal_project(project_name: str,
         since 3.16.0
 
     """
-    env = env or os.environ
 
     preset = get_project_settings(project_name)["unreal"]["project_setup"]
-    ue_id = ".".join(ue_version.split(".")[:2])
     # get unreal engine identifier
     # -------------------------------------------------------------------------
     # FIXME (antirotor): As of 4.26 this is problem with UE4 built from

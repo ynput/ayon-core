@@ -254,12 +254,6 @@ def add_markers(otio_item, hiero_item, tagsbin):
         if _tag is None:
             _tag = hiero.core.Tag(marker_color_map[marker.color])
 
-        start = marker.marked_range.start_time.value
-        end = (
-            marker.marked_range.start_time.value +
-            marker.marked_range.duration.value
-        )
-
         tag = hiero_item.addTag(_tag)
         tag.setName(marker.name or marker_color_map[marker_color])
 
