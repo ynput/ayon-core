@@ -22,7 +22,7 @@ from ayon_core.addon import AddonsManager
 from .constants import DEFAULT_ENV_SUBGROUP
 from .exceptions import (
     ApplicationNotFound,
-    ApplictionExecutableNotFound,
+    ApplicationExecutableNotFound,
 )
 from .hooks import PostLaunchHook, PreLaunchHook
 from .defs import EnvironmentToolGroup, ApplicationGroup, LaunchTypes
@@ -151,7 +151,7 @@ class ApplicationManager:
         """
 
         if not launch_context.executable:
-            raise ApplictionExecutableNotFound(launch_context.application)
+            raise ApplicationExecutableNotFound(launch_context.application)
         return launch_context.launch()
 
     def launch(self, app_name, **data):
@@ -168,7 +168,7 @@ class ApplicationManager:
         Raises:
             ApplicationNotFound: Application was not found by entered
                 argument `app_name`.
-            ApplictionExecutableNotFound: Executables in application definition
+            ApplicationExecutableNotFound: Executables in application definition
                 were not found on this machine.
             ApplicationLaunchFailed: Something important for application launch
                 failed. Exception should contain explanation message,
