@@ -42,7 +42,7 @@ def prepare_changes(old_entity, new_entity):
 
     Returns:
         dict[str, Any]: Changes that have new entity.
-        
+
     """
     changes = {}
     for key in set(new_entity.keys()):
@@ -108,68 +108,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
     label = "Integrate Asset"
     order = pyblish.api.IntegratorOrder
-    families = ["workfile",
-                "pointcache",
-                "pointcloud",
-                "proxyAbc",
-                "camera",
-                "animation",
-                "model",
-                "maxScene",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "ass",
-                "vdbcache",
-                "scene",
-                "vrayproxy",
-                "vrayscene_layer",
-                "render",
-                "prerender",
-                "imagesequence",
-                "review",
-                "rendersetup",
-                "rig",
-                "plate",
-                "look",
-                "ociolook",
-                "audio",
-                "yetiRig",
-                "yeticache",
-                "nukenodes",
-                "gizmo",
-                "source",
-                "matchmove",
-                "image",
-                "assembly",
-                "fbx",
-                "gltf",
-                "textures",
-                "action",
-                "harmony.template",
-                "harmony.palette",
-                "editorial",
-                "background",
-                "camerarig",
-                "redshiftproxy",
-                "effect",
-                "xgen",
-                "hda",
-                "usd",
-                "staticMesh",
-                "skeletalMesh",
-                "mvLook",
-                "mvUsd",
-                "mvUsdComposition",
-                "mvUsdOverride",
-                "online",
-                "uasset",
-                "blendScene",
-                "yeticacheUE",
-                "tycache"
-                ]
-
     default_template_name = "publish"
 
     # Representation context keys that should always be written to
