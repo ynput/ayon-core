@@ -202,8 +202,12 @@ class LoadMedia(LoaderPlugin):
         data = json.loads(item.GetMetadata(lib.pype_tag_name))
 
         # Update path
-        path = self._get_filepath(representation)
-        item.ReplaceClip(path)
+        path = get_representation_path(representation)
+        success = item.ReplaceClip(path)
+        if not success:
+            raise RuntimeError(
+                f"Failed to replace media pool item clip to filepath: {path}"
+            )
 
         # Update the metadata
         update_data = self._get_container_data(representation)
