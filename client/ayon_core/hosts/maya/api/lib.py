@@ -2152,9 +2152,13 @@ def get_related_sets(node):
     sets = cmds.ls(sets)
 
     # Ignore `avalon.container`
-    sets = [s for s in sets if
-            not cmds.attributeQuery("id", node=s, exists=True) or
-            not cmds.getAttr("%s.id" % s) in ignored]
+    sets = [
+        s for s in sets
+        if (
+           not cmds.attributeQuery("id", node=s, exists=True)
+           or cmds.getAttr(f"{s}.id") not in ignored
+        )
+    ]
 
     # Exclude deformer sets (`type=2` for `maya.cmds.listSets`)
     deformer_sets = cmds.listSets(object=node,
