@@ -2,8 +2,8 @@
 import inspect
 
 import pyblish.api
-from openpype.pipeline import PublishValidationError
-from openpype.hosts.houdini.api.action import SelectROPAction
+from ayon_core.pipeline import PublishValidationError
+from ayon_core.hosts.houdini.api.action import SelectROPAction
 
 
 class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
