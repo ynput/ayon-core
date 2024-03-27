@@ -166,7 +166,7 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         if not op_ctx:
             op_ctx = self.create_context_node()
 
-        lib.imprint(op_ctx, data)
+        lib.imprint(op_ctx, data, update=True)
 
     def get_context_data(self):
         op_ctx = hou.node(CONTEXT_CONTAINER)
