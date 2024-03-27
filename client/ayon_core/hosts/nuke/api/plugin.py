@@ -910,7 +910,7 @@ class ExporterReviewMov(ExporterReview):
                 self._connect_to_above_nodes(
                     node, product_name, "Reposition node...   `{}`"
                 )
-            # append reformated tag
+            # append reformatted tag
             add_tags.append("reformated")
 
         # only create colorspace baking if toggled on
@@ -1114,7 +1114,7 @@ def convert_to_valid_instaces():
             transfer_data["active"] = (
                 node["publish"].value())
 
-        # add idetifier
+        # add identifier
         transfer_data["creator_identifier"] = product_type_to_identifier(
             product_type
         )

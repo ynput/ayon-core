@@ -1865,7 +1865,7 @@ class PlaceholderCreateMixin(object):
         self.log.debug("Clean up of placeholder is not implemented.")
 
     def _before_instance_create(self, placeholder):
-        """Can be overriden. Is called before instance is created."""
+        """Can be overridden. Is called before instance is created."""
 
         pass
 
