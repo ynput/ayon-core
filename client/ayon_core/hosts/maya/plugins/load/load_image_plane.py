@@ -142,7 +142,7 @@ class ImagePlaneLoader(load.LoaderPlugin):
         with namespaced(namespace):
             # Create inside the namespace
             image_plane_transform, image_plane_shape = cmds.imagePlane(
-                fileName=context["representation"]["data"]["path"],
+                fileName=self.filepath_from_context(context),
                 camera=camera
             )
 
