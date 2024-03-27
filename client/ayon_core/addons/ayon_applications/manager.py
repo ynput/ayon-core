@@ -27,12 +27,6 @@ from .exceptions import (
 from .hooks import PostLaunchHook, PreLaunchHook
 from .defs import EnvironmentToolGroup, ApplicationGroup, LaunchTypes
 
-_logger = None
-
-CUSTOM_LAUNCH_APP_GROUPS = {
-    "djvview"
-}
-
 
 class ApplicationManager:
     """Load applications and tools and store them by their full name.
