@@ -921,7 +921,7 @@ def writes_version_sync():
 
     for each in nuke.allNodes(filter="Write"):
         # check if the node is avalon tracked
-        if _NODE_TAB_NAME not in each.knobs():
+        if NODE_TAB_NAME not in each.knobs():
             continue
 
         avalon_knob_data = read_avalon_data(each)
