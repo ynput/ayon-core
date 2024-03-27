@@ -83,7 +83,7 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
                 ).format(product_type))
                 continue
 
-            creator_id = product_type_to_id[family]
+            creator_id = product_type_to_id[product_type]
             creator = self.create_context.creators[creator_id]
             data["creator_identifier"] = creator_id
 
