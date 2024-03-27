@@ -318,8 +318,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
         e.g. specify `usd` and `usdrop`.
 
         There is no need to override this method if you only have the
-        primary family defined by the `family` property as that will always
-        be set.
+        primary family defined by the `product_type` property as that will
+        always be set.
 
         Returns:
             List[str]: families for instances of this creator
