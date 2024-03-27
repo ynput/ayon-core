@@ -867,6 +867,7 @@ class CreatedInstance:
         creator_identifier (str): Identifier of creator plugin.
         creator_label (str): Creator plugin label.
         group_label (str): Default group label from creator plugin.
+        extra_label (str): Extra label that can be made custom for a creator
         creator_attr_defs (List[AbstractAttrDef]): Attribute definitions from
             creator.
     """
@@ -893,11 +894,13 @@ class CreatedInstance:
         creator_identifier=None,
         creator_label=None,
         group_label=None,
+        extra_label=None,
         creator_attr_defs=None,
     ):
         if creator is not None:
             creator_identifier = creator.identifier
             group_label = creator.get_group_label()
+            extra_label = creator.get_extra_label()
             creator_label = creator.label
             creator_attr_defs = creator.get_instance_attr_defs()
 
@@ -945,6 +948,7 @@ class CreatedInstance:
         self._data["productName"] = product_name
         self._data["active"] = data.get("active", True)
         self._data["creator_identifier"] = creator_identifier
+        self._data["extra_label"] = extra_label
 
         # Pop from source data all keys that are defined in `_data` before
         #   this moment and through their values away
@@ -1048,6 +1052,11 @@ class CreatedInstance:
         if label:
             return label
         return self._group_label
+
+    @property
+    def extra_label(self):
+        extra_label = self._data.get("extra_label")
+        return extra_label
 
     @property
     def origin_data(self):

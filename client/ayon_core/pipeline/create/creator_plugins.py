@@ -788,6 +788,10 @@ class Creator(BaseCreator):
         """
         return self.pre_create_attr_defs
 
+    def get_extra_label(self):
+        """Extra label that can be made custom for a creator"""
+        return
+
 
 class HiddenCreator(BaseCreator):
     @abstractmethod
@@ -804,6 +808,10 @@ class AutoCreator(BaseCreator):
     def remove_instances(self, instances):
         """Skip removement."""
         pass
+
+    def get_extra_label(self):
+        """Extra label that can be made custom for a creator"""
+        return
 
 
 def discover_creator_plugins(*args, **kwargs):

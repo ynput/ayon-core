@@ -496,7 +496,10 @@ class InstanceCardWidget(CardWidget):
             for part in found_parts:
                 replacement = "<b>{}</b>".format(part)
                 label = label.replace(part, replacement)
-
+        # Add the extra label (if any)
+        extra_label = self.instance.extra_label
+        if extra_label:
+            label = "{} - {}".format(label, extra_label)
         self._label_widget.setText(label)
         # HTML text will cause that label start catch mouse clicks
         # - disabling with changing interaction flag
