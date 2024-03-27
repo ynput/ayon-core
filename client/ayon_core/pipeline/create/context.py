@@ -529,7 +529,7 @@ class AttributeValues(object):
     Has dictionary like methods. Not all of them are allowed all the time.
 
     Args:
-        attr_defs(AbstractAttrDef): Defintions of value type and properties.
+        attr_defs(AbstractAttrDef): Definitions of value type and properties.
         values(dict): Values after possible conversion.
         origin_data(dict): Values loaded from host before conversion.
     """

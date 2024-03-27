@@ -3,7 +3,7 @@
 import hou
 
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
+from ayon_core.pipeline import CreatedInstance, CreatorError
 from ayon_core.lib import EnumDef, BoolDef
 
 
@@ -42,7 +42,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
                 "vray", node_name=basename + "_IPR"
             )
         except hou.OperationFailed:
-            raise plugin.OpenPypeCreatorError(
+            raise CreatorError(
                 "Cannot create Vray render node. "
                 "Make sure Vray installed and enabled!"
             )
