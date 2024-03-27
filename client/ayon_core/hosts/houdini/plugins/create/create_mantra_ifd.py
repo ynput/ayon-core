@@ -32,9 +32,13 @@ class CreateMantraIFD(plugin.HoudiniCreator):
         parms = {
             # Render frame range
             "trange": 1,
-            # Arnold ROP settings
+            # Mantra ROP settings
             "soho_diskfile": filepath,
-            "soho_outputmode": 1
+            "soho_outputmode": 1,
+            # Enable `Save Geometery Inline`
+            # As it's hard to update the geo reference
+            # inside the IFD file after publishing the IFDs.
+            "vm_inlinestorage": 1
         }
 
         instance_node.setParms(parms)

@@ -3,7 +3,7 @@ import os
 import pyblish.api
 
 from ayon_core.pipeline import publish
-
+from ayon_core.hosts.houdini.api.lib import render_rop
 import hou
 
 
@@ -22,20 +22,13 @@ class ExtractMantraIFD(publish.Extractor):
 
         ropnode = hou.node(instance.data.get("instance_node"))
         output = ropnode.evalParm("soho_diskfile")
-        staging_dir = os.path.dirname(output)
+        staging_dir, file_name = os.path.split(output)
         instance.data["stagingDir"] = staging_dir
+        # render rop
+        self.log.debug("Writing IFD '{}' to '{}'".format(file_name, staging_dir))
+        render_rop(ropnode)
 
         files = instance.data["frames"]
-        missing_frames = [
-            frame
-            for frame in instance.data["frames"]
-            if not os.path.exists(
-                os.path.normpath(os.path.join(staging_dir, frame)))
-        ]
-        if missing_frames:
-            raise RuntimeError("Failed to complete Mantra ifd extraction. "
-                               "Missing output files: {}".format(
-                                   missing_frames))
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
