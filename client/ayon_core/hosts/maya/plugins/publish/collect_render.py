@@ -314,7 +314,7 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
         if not extend_frames:
             instance.data["overrideExistingFrame"] = False
 
-        # Update the instace
+        # Update the instance
         instance.data.update(data)
 
     @staticmethod
