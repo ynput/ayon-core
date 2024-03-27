@@ -651,7 +651,6 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         return job_info, attr.asdict(plugin_info)
 
     def _get_arnold_render_payload(self, data):
-        from maya import cmds
         # Job Info
         job_info = copy.deepcopy(self.job_info)
         job_info.Name = self._job_info_label("Render")
@@ -856,10 +855,10 @@ def _format_tiles(
     """
     # Math used requires integers for correct output - as such
     # we ensure our inputs are correct.
-    assert type(tiles_x) is int, "tiles_x must be an integer"
-    assert type(tiles_y) is int, "tiles_y must be an integer"
-    assert type(width) is int, "width must be an integer"
-    assert type(height) is int, "height must be an integer"
+    assert isinstance(tiles_x, int), "tiles_x must be an integer"
+    assert isinstance(tiles_y, int), "tiles_y must be an integer"
+    assert isinstance(width, int), "width must be an integer"
+    assert isinstance(height, int), "height must be an integer"
 
     out = {"JobInfo": {}, "PluginInfo": {}}
     cfg = OrderedDict()

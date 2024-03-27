@@ -6,7 +6,7 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
-from ayon_server.types import ColorRGBA_uint8, ColorRGB_float
+from ayon_server.types import ColorRGBA_uint8
 
 
 def hardware_falloff_enum():

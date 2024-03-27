@@ -568,7 +568,7 @@ def save_scene():
     """Save the Harmony scene safely.
 
     The built-in (to Avalon) background zip and moving of the Harmony scene
-    folder, interfers with server/client communication by sending two requests
+    folder, interferes with server/client communication by sending two requests
     at the same time. This only happens when sending "scene.saveAll()". This
     method prevents this double request and safely saves the scene.
 

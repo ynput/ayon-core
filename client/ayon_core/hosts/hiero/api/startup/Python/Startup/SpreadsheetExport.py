@@ -5,7 +5,8 @@
 # Usage: Copy to ~/.hiero/Python/StartupUI
 import hiero.core.events
 import hiero.ui
-import os, csv
+import os
+import csv
 try:
     from PySide.QtGui import *
     from PySide.QtCore import *

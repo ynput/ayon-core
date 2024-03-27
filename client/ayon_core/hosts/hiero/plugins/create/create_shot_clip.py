@@ -166,7 +166,7 @@ class CreateShotClip(phiero.Creator):
                     "type": "QCheckBox",
                     "label": "Source resolution",
                     "target": "tag",
-                    "toolTip": "Is resloution taken from timeline or source?",  # noqa
+                    "toolTip": "Is resolution taken from timeline or source?",  # noqa
                     "order": 4},
             }
         },
@@ -211,7 +211,7 @@ class CreateShotClip(phiero.Creator):
         presets = deepcopy(self.presets)
         gui_inputs = deepcopy(self.gui_inputs)
 
-        # get key pares from presets and match it on ui inputs
+        # get key pairs from presets and match it on ui inputs
         for k, v in gui_inputs.items():
             if v["type"] in ("dict", "section"):
                 # nested dictionary (only one level allowed

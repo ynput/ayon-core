@@ -6,13 +6,11 @@ from copy import deepcopy
 
 import attr
 import ayon_api
-import pyblish.api
 import clique
 
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
-    Anatomy,
 )
 from ayon_core.lib import Logger
 from ayon_core.pipeline.publish import KnownPublishError

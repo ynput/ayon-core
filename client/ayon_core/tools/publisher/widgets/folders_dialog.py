@@ -1,4 +1,4 @@
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtWidgets
 
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.tools.utils import PlaceholderLineEdit, FoldersWidget

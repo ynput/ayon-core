@@ -38,7 +38,7 @@ class CollectRenderPath(pyblish.api.InstancePlugin):
         render_path = r_template_item["path"].format_strict(anatomy_data)
         self.log.debug("__ render_path: `{}`".format(render_path))
 
-        # create dir if it doesnt exists
+        # create dir if it doesn't exists
         try:
             if not os.path.isdir(render_dir):
                 os.makedirs(render_dir, exist_ok=True)

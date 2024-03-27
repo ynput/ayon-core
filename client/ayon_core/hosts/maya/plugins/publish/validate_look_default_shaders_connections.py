@@ -2,7 +2,6 @@ from maya import cmds
 
 import pyblish.api
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
     RepairContextAction,
     PublishValidationError
 )

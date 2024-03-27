@@ -72,5 +72,5 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         if output_node.type().category().name() != "Cop2":
             raise PublishValidationError(
                 ("Output node %s is not of category Cop2. "
-                 "This is a bug...").format(output_node.path()),
+                 "This is a bug...").format(),
                 title=cls.label)

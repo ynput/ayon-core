@@ -8,8 +8,8 @@ for path in os.environ["PYTHONPATH"].split(os.pathsep):
     if path and path not in sys.path:
         sys.path.append(path)
 
-from ayon_core.hosts.max.api import MaxHost
-from ayon_core.pipeline import install_host
+from ayon_core.hosts.max.api import MaxHost  # noqa: E402
+from ayon_core.pipeline import install_host  # noqa: E402
 
 host = MaxHost()
 install_host(host)

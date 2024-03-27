@@ -1,4 +1,3 @@
-import os
 import pyblish.api
 import clique
 from ayon_core.pipeline import PublishXmlValidationError

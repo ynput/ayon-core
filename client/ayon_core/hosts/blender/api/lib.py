@@ -33,7 +33,8 @@ def load_scripts(paths):
         if register:
             try:
                 register()
-            except:
+            except:  # noqa: E722
+                # TODO: replace with more specific Exception
                 traceback.print_exc()
         else:
             print("\nWarning! '%s' has no register function, "
@@ -45,7 +46,8 @@ def load_scripts(paths):
         if unregister:
             try:
                 unregister()
-            except:
+            except:  # noqa: E722
+                # TODO: replace with more specific Exception
                 traceback.print_exc()
 
     def test_reload(mod):
@@ -57,7 +59,8 @@ def load_scripts(paths):
 
         try:
             return importlib.reload(mod)
-        except:
+        except:  # noqa: E722
+            # TODO: replace with more specific Exception
             traceback.print_exc()
 
     def test_register(mod):

@@ -14,7 +14,6 @@ from .exceptions import (
     TemplateMissingKey,
     AnatomyTemplateUnsolved,
 )
-from .roots import RootItem
 
 _PLACEHOLDER = object()
 

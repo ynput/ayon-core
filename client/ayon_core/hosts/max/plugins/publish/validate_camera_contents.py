@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
-from pymxs import runtime as rt
 
 
 class ValidateCameraContent(pyblish.api.InstancePlugin):

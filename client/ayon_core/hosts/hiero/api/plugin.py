@@ -449,7 +449,6 @@ class ClipLoader:
         repr = self.context["representation"]
         repr_cntx = repr["context"]
         folder_path = self.context["folder"]["path"]
-        folder_name = self.context["folder"]["name"]
         product_name = self.context["product"]["name"]
         representation = repr["name"]
         self.data["clip_name"] = self.clip_name_template.format(**repr_cntx)

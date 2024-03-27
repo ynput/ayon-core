@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating USDs."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
 
 import hou
 
