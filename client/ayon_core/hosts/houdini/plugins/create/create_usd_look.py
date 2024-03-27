@@ -10,6 +10,7 @@ import hou
 
 class CreateUSDLook(plugin.HoudiniCreator):
     """Universal Scene Description Look"""
+
     identifier = "io.openpype.creators.houdini.usd.look"
     label = "Look"
     product_type = "look"
@@ -17,20 +18,20 @@ class CreateUSDLook(plugin.HoudiniCreator):
     enabled = True
     description = "Create USD Look"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "usd"})
 
         instance = super(CreateUSDLook, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
 
         parms = {
-            "lopoutput": "$HIP/pyblish/{}.usd".format(subset_name),
+            "lopoutput": "$HIP/pyblish/{}.usd".format(product_name),
             "enableoutputprocessor_simplerelativepaths": False,
 
             # Set the 'default prim' by default to the asset being published to
