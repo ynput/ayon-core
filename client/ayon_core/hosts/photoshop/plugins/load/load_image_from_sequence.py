@@ -19,7 +19,7 @@ class ImageFromSequenceLoader(photoshop.PhotoshopLoader):
         This loader will be triggered multiple times, but selected name will
         match only to proper path.
 
-        Loader doesnt do containerization as there is currently no data model
+        Loader doesn't do containerization as there is currently no data model
         of 'frame of rendered files' (only rendered sequence), update would be
         difficult.
     """
