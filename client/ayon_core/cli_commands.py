@@ -67,8 +67,6 @@ class Commands:
             install_ayon_plugins,
             get_global_context,
         )
-        from ayon_core.tools.utils.host_tools import show_publish
-        from ayon_core.tools.utils.lib import qt_app_context
 
         # Register target and host
         import pyblish.api
@@ -134,6 +132,8 @@ class Commands:
             print(plugin)
 
         if gui:
+            from ayon_core.tools.utils.host_tools import show_publish
+            from ayon_core.tools.utils.lib import qt_app_context
             with qt_app_context():
                 show_publish()
         else:

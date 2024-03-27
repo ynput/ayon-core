@@ -19,7 +19,7 @@ class MayaLegacyConvertor(ProductConvertorPlugin,
 
     Its limitation is that you can have multiple creators creating product
     of the same type and there is no way to handle it. This code should
-    nevertheless cover all creators that came with OpenPype.
+    nevertheless cover all creators that came with AYON.
 
     """
     identifier = "io.openpype.creators.maya.legacy"

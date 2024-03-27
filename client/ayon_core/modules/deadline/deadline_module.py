@@ -46,7 +46,6 @@ class DeadlineModule(AYONAddon, IPluginPaths):
 
     @staticmethod
     def get_deadline_pools(webservice, log=None):
-        # type: (str) -> list
         """Get pools from Deadline.
         Args:
             webservice (str): Server url.
