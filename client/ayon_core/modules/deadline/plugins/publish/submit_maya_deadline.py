@@ -651,7 +651,6 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         return job_info, attr.asdict(plugin_info)
 
     def _get_arnold_render_payload(self, data):
-        from maya import cmds
         # Job Info
         job_info = copy.deepcopy(self.job_info)
         job_info.Name = self._job_info_label("Render")

@@ -7,7 +7,6 @@ from maya import cmds
 import pyblish.api
 from ayon_core.hosts.maya.api.lib import extract_alembic
 from ayon_core.pipeline import publish
-from ayon_core.lib import StringTemplate
 
 
 class ExtractWorkfileXgen(publish.Extractor):
