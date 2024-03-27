@@ -15,6 +15,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
     product_type = "redshift_rop"
     icon = "magic"
     ext = "exr"
+    multi_layered_mode = "No Multi-Layered EXR File"
 
     # Default to split export and render jobs
     split_render = True
@@ -55,25 +56,36 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
         # Set the linked rop to the Redshift ROP
         ipr_rop.parm("linked_rop").set(instance_node.path())
-
         ext = pre_create_data.get("image_format")
-        filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
-            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            product_name=product_name,
-            fmt="${aov}.$F4.{ext}".format(aov="AOV", ext=ext)
-        )
+        multi_layered_mode = pre_create_data.get("multi_layered_mode")
 
         ext_format_index = {"exr": 0, "tif": 1, "jpg": 2, "png": 3}
+        multilayer_mode_index = {"No Multi-Layered EXR File": "1",
+                                 "Full Multi-Layered EXR File": "2" }
+
+        filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
+                renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
+                product_name=product_name,
+                fmt="$AOV.$F4.{ext}".format(ext=ext)
+            )
+
+        if multilayer_mode_index[multi_layered_mode] == "1":
+            multipart = False
+
+        elif multilayer_mode_index[multi_layered_mode] == "2":
+            multipart = True
 
         parms = {
             # Render frame range
             "trange": 1,
             # Redshift ROP settings
             "RS_outputFileNamePrefix": filepath,
-            "RS_outputMultilayerMode": "1",  # no multi-layered exr
             "RS_outputBeautyAOVSuffix": "beauty",
             "RS_outputFileFormat": ext_format_index[ext],
         }
+        if ext == "exr":
+            parms["RS_outputMultilayerMode"] = multilayer_mode_index[multi_layered_mode]
+            parms["RS_aovMultipart"] = multipart
 
         if self.selected_nodes:
             # set up the render camera from the selected node
@@ -111,6 +123,11 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         image_format_enum = [
             "exr", "tif", "jpg", "png",
         ]
+        multi_layered_mode = [
+            "No Multi-Layered EXR File",
+            "Full Multi-Layered EXR File"
+        ]
+
 
         return attrs + [
             BoolDef("farm",
@@ -122,5 +139,9 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
-                    label="Image Format Options")
+                    label="Image Format Options"),
+            EnumDef("multi_layered_mode",
+                    multi_layered_mode,
+                    default=self.multi_layered_mode,
+                    label="Multi-Layered EXR")
         ]
