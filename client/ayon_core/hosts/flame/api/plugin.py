@@ -38,7 +38,7 @@ class CreatorWidget(QtWidgets.QDialog):
             | QtCore.Qt.WindowCloseButtonHint
             | QtCore.Qt.WindowStaysOnTopHint
         )
-        self.setWindowTitle(name or "Pype Creator Input")
+        self.setWindowTitle(name or "AYON Creator Input")
         self.resize(500, 700)
 
         # Where inputs and labels are set
@@ -1018,7 +1018,7 @@ class OpenClipSolver(flib.MediaInfoFile):
                             self.feed_version_name))
                 else:
                     self.log.debug("adding new track element ..")
-                    # create new track as it doesnt exists yet
+                    # create new track as it doesn't exist yet
                     # set current version to feeds on tmp
                     tmp_xml_feeds = tmp_xml_track.find('feeds')
                     tmp_xml_feeds.set('currentVersion', self.feed_version_name)

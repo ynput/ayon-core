@@ -665,8 +665,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         self.log.debug("Anatomy template name: {}".format(template_name))
         anatomy = instance.context.data["anatomy"]
-        publish_template_category = anatomy.templates[template_name]
-        template = os.path.normpath(publish_template_category["path"])
+        publish_template = anatomy.get_template_item("publish", template_name)
+        path_template_obj = publish_template["path"]
+        template = path_template_obj.template.replace("\\", "/")
 
         is_udim = bool(repre.get("udim"))
 
@@ -698,7 +699,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # - template_data (Dict[str, Any]): source data used to fill template
         #   - to add required data to 'repre_context' not used for
         #       formatting
-        path_template_obj = anatomy.templates_obj[template_name]["path"]
 
         # Treat template with 'orignalBasename' in special way
         if "{originalBasename}" in template:
@@ -753,9 +753,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             if not is_udim:
                 # Change padding for frames if template has defined higher
                 #   padding.
-                template_padding = int(
-                    publish_template_category["frame_padding"]
-                )
+                template_padding = anatomy.templates_obj.frame_padding
                 if template_padding > destination_padding:
                     destination_padding = template_padding
 
@@ -841,7 +839,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # todo: Are we sure the assumption each representation
         #       ends up in the same folder is valid?
         if not instance.data.get("publishDir"):
-            template_obj = anatomy.templates_obj[template_name]["folder"]
+            template_obj = publish_template["directory"]
             template_filled = template_obj.format_strict(template_data)
             instance.data["publishDir"] = template_filled
 

@@ -25,7 +25,7 @@ def get_reformated_path(path, padded=True, first=False):
         path (str): path url or simple file name
 
     Returns:
-        type: string with reformated path
+        type: string with reformatted path
 
     Example:
         get_reformated_path("plate.[0001-1008].exr") > plate.%04d.exr

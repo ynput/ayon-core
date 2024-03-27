@@ -21,14 +21,14 @@ from ayon_core.host import (
 )
 
 from ayon_core.pipeline.load import any_outdated_containers
-from ayon_core.hosts.photoshop import PHOTOSHOP_HOST_DIR
+from ayon_core.hosts.photoshop import PHOTOSHOP_ADDON_ROOT
 from ayon_core.tools.utils import get_ayon_qt_app
 
 from . import lib
 
 log = Logger.get_logger(__name__)
 
-PLUGINS_DIR = os.path.join(PHOTOSHOP_HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(PHOTOSHOP_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")

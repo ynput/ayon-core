@@ -659,7 +659,7 @@ class LayoutLoader(plugin.Loader):
             "loader": str(self.__class__.__name__),
             "representation": context["representation"]["id"],
             "parent": context["representation"]["versionId"],
-            "family": context["representation"]["context"]["family"],
+            "family": context["product"]["productType"],
             "loaded_assets": loaded_assets
         }
         imprint(
