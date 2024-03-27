@@ -151,7 +151,7 @@ DEFAULT_VALUES = {
             "enabled": True
         },
         "FusionLaunchMenuHook": {
-            "enabled": True
+            "enabled": False
         }
     },
     "create": {
