@@ -131,7 +131,7 @@ def get_main_window():
 def suspended_refresh(suspend=True):
     """Suspend viewport refreshes
 
-    cmds.ogs(pause=True) is a toggle so we cant pass False.
+    cmds.ogs(pause=True) is a toggle so we can't pass False.
     """
     if IS_HEADLESS:
         yield
@@ -583,7 +583,7 @@ def pairwise(iterable):
 
 
 def collect_animation_defs(fps=False):
-    """Get the basic animation attribute defintions for the publisher.
+    """Get the basic animation attribute definitions for the publisher.
 
     Returns:
         OrderedDict
@@ -3834,7 +3834,7 @@ def get_color_management_output_transform():
 
 def image_info(file_path):
     # type: (str) -> dict
-    """Based on tha texture path, get its bit depth and format information.
+    """Based on the texture path, get its bit depth and format information.
     Take reference from makeTx.py in Arnold:
         ImageInfo(filename): Get Image Information for colorspace
         AiTextureGetFormat(filename): Get Texture Format

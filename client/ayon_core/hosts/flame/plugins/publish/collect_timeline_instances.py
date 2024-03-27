@@ -37,7 +37,7 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
         self.otio_timeline = context.data["otioTimeline"]
         self.fps = context.data["fps"]
 
-        # process all sellected
+        # process all selected
         for segment in selected_segments:
             # get openpype tag data
             marker_data = opfapi.get_segment_data_marker(segment)
