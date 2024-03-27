@@ -4,7 +4,8 @@ import pyblish.api
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 import ayon_core.hosts.maya.api.action
@@ -24,7 +25,8 @@ def get_namespace(node_name):
     return node_name.rpartition(":")[0]
 
 
-class ValidateNoNamespace(pyblish.api.InstancePlugin):
+class ValidateNoNamespace(pyblish.api.InstancePlugin,
+                          OptionalPyblishPluginMixin):
     """Ensure the nodes don't have a namespace"""
 
     order = ValidateContentsOrder
@@ -33,6 +35,7 @@ class ValidateNoNamespace(pyblish.api.InstancePlugin):
     label = 'No Namespaces'
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
+    optional = False
 
     @staticmethod
     def get_invalid(instance):
@@ -41,14 +44,22 @@ class ValidateNoNamespace(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         """Process all the nodes in the instance"""
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
 
         if invalid:
+            invalid_namespaces = {get_namespace(node) for node in invalid}
             raise PublishValidationError(
-                "Namespaces found:\n\n{0}".format(
-                    _as_report_list(sorted(invalid))
+                message="Namespaces found:\n\n{0}".format(
+                    _as_report_list(sorted(invalid_namespaces))
                 ),
-                title="Namespaces in model"
+                title="Namespaces in model",
+                description=(
+                    "## Namespaces found in model\n"
+                    "It is not allowed to publish a model that contains "
+                    "namespaces."
+                )
             )
 
     @classmethod

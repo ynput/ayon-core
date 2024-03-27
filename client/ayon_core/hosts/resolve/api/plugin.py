@@ -481,14 +481,16 @@ class ClipLoader:
         )
         _clip_property = media_pool_item.GetClipProperty
 
-        source_in = int(_clip_property("Start"))
-        source_out = int(_clip_property("End"))
+        # Read trimming from timeline item
+        timeline_item_in = timeline_item.GetLeftOffset()
+        timeline_item_len = timeline_item.GetDuration()
+        timeline_item_out = timeline_item_in + timeline_item_len
 
         lib.swap_clips(
             timeline_item,
             media_pool_item,
-            source_in,
-            source_out
+            timeline_item_in,
+            timeline_item_out
         )
 
         print("Loading clips: `{}`".format(self.data["clip_name"]))
@@ -873,14 +875,14 @@ class PublishClip:
     def _convert_to_entity(self, key):
         """ Converting input key to key with type. """
         # convert to entity type
-        entity_type = self.types.get(key)
+        folder_type = self.types.get(key)
 
-        assert entity_type, "Missing entity type for `{}`".format(
+        assert folder_type, "Missing folder type for `{}`".format(
             key
         )
 
         return {
-            "entity_type": entity_type,
+            "folder_type": folder_type,
             "entity_name": self.hierarchy_data[key]["value"].format(
                 **self.timeline_item_default_data
             )

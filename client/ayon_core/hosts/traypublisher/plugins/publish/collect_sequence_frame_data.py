@@ -43,7 +43,6 @@ class CollectSequenceFrameData(
             instance.data[key] = value
             self.log.debug(f"Collected Frame range data '{key}':{value} ")
 
-
     def get_frame_data_from_repre_sequence(self, instance):
         repres = instance.data.get("representations")
         folder_attributes = instance.data["folderEntity"]["attrib"]
@@ -56,6 +55,9 @@ class CollectSequenceFrameData(
                 return
 
             files = first_repre["files"]
+            if not isinstance(files, list):
+                files = [files]
+
             collections, _ = clique.assemble(files)
             if not collections:
                 # No sequences detected and we can't retrieve
