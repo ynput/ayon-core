@@ -47,10 +47,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vrayproxy"
+        product_type = context["product"]["productType"]
 
         #  get all representations for this version
         filename = self._get_abc(
