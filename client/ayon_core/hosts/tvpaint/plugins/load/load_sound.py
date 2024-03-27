@@ -54,7 +54,7 @@ class ImportSound(plugin.Loader):
     def load(self, context, name, namespace, options):
         # Create temp file for output
         output_file = tempfile.NamedTemporaryFile(
-            mode="w", prefix="pype_tvp_", suffix=".txt", delete=False
+            mode="w", prefix="ayon_tvp_", suffix=".txt", delete=False
         )
         output_file.close()
         output_filepath = output_file.name.replace("\\", "/")

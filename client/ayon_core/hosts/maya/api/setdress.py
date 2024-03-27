@@ -150,7 +150,7 @@ def load_package(filepath, name, namespace=None):
             containers.append(container)
 
     # TODO: Do we want to cripple? Or do we want to add a 'parent' parameter?
-    # Cripple the original avalon containers so they don't show up in the
+    # Cripple the original AYON containers so they don't show up in the
     # manager
     # for container in containers:
     #     cmds.setAttr("%s.id" % container,
@@ -175,7 +175,7 @@ def _add(instance, representation_id, loaders, namespace, root="|"):
         namespace (str):
 
     Returns:
-        str: The created Avalon container.
+        str: The created AYON container.
 
     """
 
@@ -244,7 +244,7 @@ def _instances_by_namespace(data):
 
 
 def get_contained_containers(container):
-    """Get the Avalon containers in this container
+    """Get the AYON containers in this container
 
     Args:
         container (dict): The container dict.
@@ -256,7 +256,7 @@ def get_contained_containers(container):
 
     from .pipeline import parse_container
 
-    # Get avalon containers in this package setdress container
+    # Get AYON containers in this package setdress container
     containers = []
     members = cmds.sets(container['objectName'], query=True)
     for node in cmds.ls(members, type="objectSet"):
