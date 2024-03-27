@@ -12,6 +12,7 @@ class CreateBGEO(plugin.HoudiniCreator):
     label = "PointCache (Bgeo)"
     product_type = "pointcache"
     icon = "gears"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -29,14 +30,13 @@ class CreateBGEO(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
-        file_path = "{}{}".format(
-            hou.text.expandString("$HIP/pyblish/"),
-            "{}.$F4.{}".format(
-                product_name,
-                pre_create_data.get("bgeo_type") or "bgeo.sc")
+        filepath = self.staging_dir.format(
+            product={"name": "`chs(\"AYON_productName\")`"},
+            ext=pre_create_data.get("bgeo_type") or "bgeo.sc"
         )
+
         parms = {
-            "sopoutput": file_path
+            "sopoutput": filepath
         }
 
         instance_node.parm("trange").set(1)

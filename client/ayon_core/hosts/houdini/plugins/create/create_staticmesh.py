@@ -15,6 +15,8 @@ class CreateStaticMesh(plugin.HoudiniCreator):
     icon = "fa5s.cubes"
 
     default_variants = ["Main"]
+    ext = "fbx"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -29,13 +31,14 @@ class CreateStaticMesh(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         # prepare parms
-        output_path = hou.text.expandString(
-            "$HIP/pyblish/{}.fbx".format(product_name)
+        filepath = self.staging_dir.format(
+            product={"name": "`chs(\"AYON_productName\")`"},
+            ext=self.ext
         )
 
         parms = {
             "startnode": self.get_selection(),
-            "sopoutput": output_path,
+            "sopoutput": filepath,
             # vertex cache format
             "vcformat": pre_create_data.get("vcformat"),
             "convertunits": pre_create_data.get("convertunits"),

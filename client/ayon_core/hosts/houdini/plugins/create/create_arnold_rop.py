@@ -9,6 +9,8 @@ class CreateArnoldRop(plugin.HoudiniCreator):
     label = "Arnold ROP"
     product_type = "arnold_rop"
     icon = "magic"
+    render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}"
+    ass_dir = "$HIP/ayon/{product[name]}/ass/{product[name]}.$F4.{ext}"
 
     # Default extension
     ext = "exr"
@@ -36,12 +38,12 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         ext = pre_create_data.get("image_format")
-
-        filepath = "{renders_dir}{product_name}/{product_name}.$F4.{ext}".format(
-            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            product_name=product_name,
-            ext=ext,
+        
+        filepath = self.render_staging_dir.format(
+            product={"name": "`chs(\"AYON_productName\")`"},
+            ext=ext
         )
+
         parms = {
             # Render frame range
             "trange": 1,
@@ -52,11 +54,11 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         }
 
         if pre_create_data.get("export_job"):
-            ass_filepath = \
-                "{export_dir}{product_name}/{product_name}.$F4.ass".format(
-                    export_dir=hou.text.expandString("$HIP/pyblish/ass/"),
-                    product_name=product_name,
-                )
+            ass_filepath = self.ass_dir.format(
+                product={"name": "`chs(\"AYON_productName\")`"},
+                ext="ass"
+            )
+            
             parms["ar_ass_export_enable"] = 1
             parms["ar_ass_file"] = ass_filepath
 

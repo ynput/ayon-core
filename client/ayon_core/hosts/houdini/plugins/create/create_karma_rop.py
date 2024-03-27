@@ -11,6 +11,9 @@ class CreateKarmaROP(plugin.HoudiniCreator):
     label = "Karma ROP"
     product_type = "karma_rop"
     icon = "magic"
+    render_staging_dir = "$HIP/ayon/{product[name]}/render/{product[name]}.$F4.{ext}"
+    checkpoint_dir = "$HIP/ayon/{product[name]}/checkpoint/{product[name]}.$F4.{ext}"
+    usd_dir = "$HIP/ayon/{product_name}/usd/{product_name}_$RENDERID"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
@@ -31,19 +34,18 @@ class CreateKarmaROP(plugin.HoudiniCreator):
 
         ext = pre_create_data.get("image_format")
 
-        filepath = "{renders_dir}{product_name}/{product_name}.$F4.{ext}".format(
-            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            product_name=product_name,
-            ext=ext,
-        )
-        checkpoint = "{cp_dir}{product_name}.$F4.checkpoint".format(
-            cp_dir=hou.text.expandString("$HIP/pyblish/"),
-            product_name=product_name
+        filepath = self.render_staging_dir.format(
+            product={"name": "`chs(\"AYON_productName\")`"},
+            ext=ext
         )
 
-        usd_directory = "{usd_dir}{product_name}_$RENDERID".format(
-            usd_dir=hou.text.expandString("$HIP/pyblish/renders/usd_renders/"),     # noqa
-            product_name=product_name
+        checkpoint = self.checkpoint_dir.format(
+            product={"name": "`chs(\"AYON_productName\")`"},
+            ext="checkpoint"
+        )
+
+        usd_directory = self.usd_dir.format(
+            product={"name": "`chs(\"AYON_productName\")`"},
         )
 
         parms = {

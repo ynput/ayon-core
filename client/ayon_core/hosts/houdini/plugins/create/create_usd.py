@@ -13,6 +13,8 @@ class CreateUSD(plugin.HoudiniCreator):
     product_type = "usd"
     icon = "gears"
     enabled = False
+    ext = "usd"
+    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -26,8 +28,13 @@ class CreateUSD(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
+        filepath = self.staging_dir.format(
+            product={"name": "`chs(\"AYON_productName\")`"},
+            ext=self.ext
+        )
+
         parms = {
-            "lopoutput": "$HIP/pyblish/{}.usd".format(product_name),
+            "lopoutput": filepath,
             "enableoutputprocessor_simplerelativepaths": False,
         }
 
