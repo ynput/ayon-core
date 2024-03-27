@@ -54,7 +54,7 @@ def from_published_scene(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data['anatomy']
-    template_obj = anatomy.templates_obj["publish"]["path"]
+    template_obj = anatomy.get_template_item("publish", "default", "path")
     template_filled = template_obj.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
