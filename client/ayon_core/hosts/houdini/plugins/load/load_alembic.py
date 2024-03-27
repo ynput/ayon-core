@@ -45,33 +45,11 @@ class AbcLoader(load.LoaderPlugin):
         alembic = container.createNode("alembic", node_name=node_name)
         alembic.setParms({"fileName": file_path})
 
-        # Add unpack node
-        unpack_name = "unpack_{}".format(name)
-        unpack = container.createNode("unpack", node_name=unpack_name)
-        unpack.setInput(0, alembic)
-        unpack.setParms({"transfer_attributes": "path"})
+        # Position nodes nicely
+        container.moveToGoodPosition()
+        container.layoutChildren()
 
-        # Add normal to points
-        # Order of menu ['point', 'vertex', 'prim', 'detail']
-        normal_name = "normal_{}".format(name)
-        normal_node = container.createNode("normal", node_name=normal_name)
-        normal_node.setParms({"type": 0})
-
-        normal_node.setInput(0, unpack)
-
-        null = container.createNode("null", node_name="OUT".format(name))
-        null.setInput(0, normal_node)
-
-        # Ensure display flag is on the Alembic input node and not on the OUT
-        # node to optimize "debug" displaying in the viewport.
-        alembic.setDisplayFlag(True)
-
-        # Set new position for unpack node else it gets cluttered
-        nodes = [container, alembic, unpack, normal_node, null]
-        for nr, node in enumerate(nodes):
-            node.setPosition([0, (0 - nr)])
-
-        self[:] = nodes
+        nodes = [container, alembic]
 
         return pipeline.containerise(
             node_name,
