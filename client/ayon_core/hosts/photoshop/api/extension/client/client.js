@@ -69,7 +69,7 @@
       log.warn("websocket_url", websocket_url);   
       var default_url = 'ws://localhost:8099/ws/';
       
-      if  (websocket_url == ''){
+      if  (!websocket_url || websocket_url == ''){
            websocket_url = default_url;
       }
       log.warn("connecting to:", websocket_url);  

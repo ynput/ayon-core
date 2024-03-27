@@ -6,7 +6,8 @@ var LogFactory=function(file,write,store,level,defaultStatus,continuing){if(file
 var log = new LogFactory('myLog.log'); // =>; creates the new log factory - put full path where
 
 function getEnv(variable){
-    return $.getenv(variable);
+    // return blank if env does not exist - otherwise "null" was being returned
+    return $.getenv(variable) || "";
 }
 
 function fileOpen(path){
