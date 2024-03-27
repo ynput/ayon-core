@@ -23,7 +23,7 @@ log = Logger.get_logger(__name__)
 
 
 class CachedData:
-    remapping = None
+    remapping = {}
     has_compatible_ocio_package = None
     config_version_data = {}
     ocio_config_colorspaces = {}
