@@ -84,6 +84,11 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 k: v for k, v in tag_data.items()
                 if k not in ("id", "applieswhole", "label")
             })
+            # Backward compatibility fix of 'entity_type' > 'folder_type'
+            if "parents" in data:
+                for parent in data["parents"]:
+                    if "entity_type" in parent:
+                        parent["folder_type"] = parent.pop("entity_type")
 
             asset, asset_name = self._get_folder_data(tag_data)
 
