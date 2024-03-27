@@ -814,7 +814,7 @@ def on_script_load():
 
 def check_inventory_versions():
     """
-    Actual version idetifier of Loaded containers
+    Actual version identifier of Loaded containers
 
     Any time this function is run it will check all nodes and filter only
     Loader nodes for its version. It will get all versions from database
@@ -921,7 +921,7 @@ def writes_version_sync():
 
     for each in nuke.allNodes(filter="Write"):
         # check if the node is avalon tracked
-        if _NODE_TAB_NAME not in each.knobs():
+        if NODE_TAB_NAME not in each.knobs():
             continue
 
         avalon_knob_data = read_avalon_data(each)
@@ -982,26 +982,18 @@ def format_anatomy(data):
 
     project_name = get_current_project_name()
     anatomy = Anatomy(project_name)
-    log.debug("__ anatomy.templates: {}".format(anatomy.templates))
 
-    padding = None
-    if "frame_padding" in anatomy.templates.keys():
-        padding = int(anatomy.templates["frame_padding"])
-    elif "render" in anatomy.templates.keys():
-        padding = int(
-            anatomy.templates["render"].get(
-                "frame_padding"
-            )
-        )
+    frame_padding = anatomy.templates_obj.frame_padding
 
-    version = data.get("version", None)
-    if not version:
+    version = data.get("version")
+    if version is None:
         file = script_name()
         data["version"] = get_version_from_path(file)
 
     folder_path = data["folderPath"]
     task_name = data["task"]
     host_name = get_current_host_name()
+
     context_data = get_template_data_with_names(
         project_name, folder_path, task_name, host_name
     )
@@ -1013,7 +1005,7 @@ def format_anatomy(data):
             "name": data["productName"],
             "type": data["productType"],
         },
-        "frame": "#" * padding,
+        "frame": "#" * frame_padding,
     })
     return anatomy.format(data)
 
@@ -1171,7 +1163,9 @@ def create_write_node(
     anatomy_filled = format_anatomy(data)
 
     # build file path to workfiles
-    fdir = str(anatomy_filled["work"]["folder"]).replace("\\", "/")
+    fdir = str(
+        anatomy_filled["work"]["default"]["directory"]
+    ).replace("\\", "/")
     data["work"] = fdir
     fpath = StringTemplate(data["fpath_template"]).format_strict(data)
 
@@ -2387,7 +2381,7 @@ def launch_workfiles_app():
 
     Context.workfiles_launched = True
 
-    # get all imortant settings
+    # get all important settings
     open_at_start = env_value_to_bool(
         env_key="AYON_WORKFILE_TOOL_ON_START",
         default=None)

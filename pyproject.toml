@@ -1,0 +1,102 @@
+# WARNING: This file is used only for development done on this addon.
+# Be aware that dependencies used here might not match the ones used by
+# the specific addon bundle set up on the AYON server. This file should
+# be used only for local development and CI/CD purposes.
+
+[tool.poetry]
+name = "ayon-core"
+version = "0.3.0"
+description = ""
+authors = ["Ynput Team <team@ynput.io>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9.1,<3.10"
+
+
+[tool.poetry.dev-dependencies]
+# test dependencies
+pytest = "^8.0"
+pytest-print = "^1.0"
+ayon-python-api = "^1.0"
+# linting dependencies
+ruff = "^0.3.3"
+pre-commit = "^3.6.2"
+codespell = "^2.2.6"
+
+
+[tool.ruff]
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+    "vendor",
+    "generated",
+]
+
+# Same as Black.
+line-length = 79
+indent-width = 4
+
+# Assume Python 3.9
+target-version = "py39"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+select = ["E4", "E7", "E9", "F"]
+ignore = []
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
+[tool.codespell]
+# Ignore words that are not in the dictionary.
+ignore-words-list = "ayon,ynput"
+skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
+count = true
+quiet-level = 3
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

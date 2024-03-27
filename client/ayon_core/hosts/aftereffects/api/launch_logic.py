@@ -7,7 +7,6 @@ import asyncio
 import functools
 import traceback
 
-
 from wsrpc_aiohttp import (
     WebSocketRoute,
     WebSocketAsync

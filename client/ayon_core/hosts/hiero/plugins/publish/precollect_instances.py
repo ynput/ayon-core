@@ -43,7 +43,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         tracks_effect_items = self.collect_sub_track_items(all_tracks)
         context.data["tracksEffectItems"] = tracks_effect_items
 
-        # process all sellected timeline track items
+        # process all selected timeline track items
         for track_item in selected_timeline_items:
             data = {}
             clip_name = track_item.name()
@@ -62,7 +62,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             }:
                 continue
 
-            # get clips subtracks and anotations
+            # get clips subtracks and annotations
             annotations = self.clip_annotations(source_clip)
             subtracks = self.clip_subtrack(track_item)
             self.log.debug("Annotations: {}".format(annotations))
@@ -84,6 +84,11 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 k: v for k, v in tag_data.items()
                 if k not in ("id", "applieswhole", "label")
             })
+            # Backward compatibility fix of 'entity_type' > 'folder_type'
+            if "parents" in data:
+                for parent in data["parents"]:
+                    if "entity_type" in parent:
+                        parent["folder_type"] = parent.pop("entity_type")
 
             asset, asset_name = self._get_folder_data(tag_data)
 
@@ -378,12 +383,10 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         # collect all subtrack items
         sub_track_items = {}
         for track in tracks:
-            items = track.items()
-
-            effet_items = track.subTrackItems()
+            effect_items = track.subTrackItems()
 
             # skip if no clips on track > need track with effect only
-            if not effet_items:
+            if not effect_items:
                 continue
 
             # skip all disabled tracks
@@ -391,7 +394,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 continue
 
             track_index = track.trackIndex()
-            _sub_track_items = phiero.flatten(effet_items)
+            _sub_track_items = phiero.flatten(effect_items)
 
             _sub_track_items = list(_sub_track_items)
             # continue only if any subtrack items are collected
@@ -439,10 +442,10 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         for item in subTrackItems:
             if "TimeWarp" in item.name():
                 continue
-            # avoid all anotation
+            # avoid all annotation
             if isinstance(item, hiero.core.Annotation):
                 continue
-            # # avoid all not anaibled
+            # avoid all disabled
             if not item.isEnabled():
                 continue
             subtracks.append(item)
