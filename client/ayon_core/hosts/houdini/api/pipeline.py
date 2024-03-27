@@ -166,7 +166,7 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         if not op_ctx:
             op_ctx = self.create_context_node()
 
-        lib.imprint(op_ctx, data)
+        lib.imprint(op_ctx, data, update=True)
 
     def get_context_data(self):
         op_ctx = hou.node(CONTEXT_CONTAINER)
@@ -297,10 +297,6 @@ def on_save():
 
     # update houdini vars
     lib.update_houdini_vars_context_dialog()
-
-    nodes = lib.get_id_required_nodes()
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
 
 
 def _show_outdated_content_popup():

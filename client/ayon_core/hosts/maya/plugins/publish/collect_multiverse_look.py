@@ -40,9 +40,11 @@ class _NodeTypeAttrib(object):
         return "{}.{}".format(node, self.colour_space)
 
     def __str__(self):
-        return "_NodeTypeAttrib(name={}, fname={}, "
-        "computed_fname={}, colour_space={})".format(
-            self.name, self.fname, self.computed_fname, self.colour_space)
+        return (
+            "_NodeTypeAttrib(name={}, fname={}, "
+            "computed_fname={}, colour_space={})".format(
+                self.name, self.fname, self.computed_fname, self.colour_space)
+        )
 
 
 NODETYPES = {

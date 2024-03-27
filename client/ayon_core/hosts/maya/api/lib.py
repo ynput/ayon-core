@@ -131,7 +131,7 @@ def get_main_window():
 def suspended_refresh(suspend=True):
     """Suspend viewport refreshes
 
-    cmds.ogs(pause=True) is a toggle so we cant pass False.
+    cmds.ogs(pause=True) is a toggle so we can't pass False.
     """
     if IS_HEADLESS:
         yield
@@ -583,7 +583,7 @@ def pairwise(iterable):
 
 
 def collect_animation_defs(fps=False):
-    """Get the basic animation attribute defintions for the publisher.
+    """Get the basic animation attribute definitions for the publisher.
 
     Returns:
         OrderedDict
@@ -2931,13 +2931,13 @@ def bake_to_world_space(nodes,
 
 
 def load_capture_preset(data):
-    """Convert OpenPype Extract Playblast settings to `capture` arguments
+    """Convert AYON Extract Playblast settings to `capture` arguments
 
     Input data is the settings from:
         `project_settings/maya/publish/ExtractPlayblast/capture_preset`
 
     Args:
-        data (dict): Capture preset settings from OpenPype settings
+        data (dict): Capture preset settings from AYON settings
 
     Returns:
         dict: `capture.capture` compatible keyword arguments
@@ -3288,7 +3288,7 @@ def set_colorspace():
     else:
         # TODO: deprecated code from 3.15.5 - remove
         # Maya 2022+ introduces new OCIO v2 color management settings that
-        # can override the old color management preferences. OpenPype has
+        # can override the old color management preferences. AYON has
         # separate settings for both so we fall back when necessary.
         use_ocio_v2 = imageio["colorManagementPreference_v2"]["enabled"]
         if use_ocio_v2 and not ocio_v2_support:
@@ -3834,7 +3834,7 @@ def get_color_management_output_transform():
 
 def image_info(file_path):
     # type: (str) -> dict
-    """Based on tha texture path, get its bit depth and format information.
+    """Based on the texture path, get its bit depth and format information.
     Take reference from makeTx.py in Arnold:
         ImageInfo(filename): Get Image Information for colorspace
         AiTextureGetFormat(filename): Get Texture Format

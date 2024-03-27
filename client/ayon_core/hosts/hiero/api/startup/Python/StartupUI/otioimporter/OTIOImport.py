@@ -90,7 +90,7 @@ def apply_transition(otio_track, otio_item, track):
         kind = "Audio"
 
     try:
-        # Gather TrackItems involved in trasition
+        # Gather TrackItems involved in transition
         item_in, item_out = get_neighboring_trackitems(
             otio_item,
             otio_track,

@@ -22,6 +22,13 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin,
     actions = [RepairAction]
     optional = False
 
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Disable plug-in if cbId workflow is disabled
+        if not project_settings["maya"].get("use_cbid_workflow", True):
+            cls.enabled = False
+            return
+
     @staticmethod
     def _get_nodes_by_name(nodes):
         nodes_by_name = {}
