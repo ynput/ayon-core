@@ -1356,6 +1356,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
+        self._attr_def_id_to_label = {}
 
         # To store content of scroll area to prevent garbage collection
         self._content_widget = None
@@ -1381,6 +1382,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._content_widget = None
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
+        self._attr_def_id_to_label = {}
 
         result = self._controller.get_creator_attribute_definitions(
             instances
@@ -1397,14 +1399,20 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         row = 0
         for attr_def, attr_instances, values in result:
             widget = create_widget_for_attr_def(attr_def, content_widget)
+            is_default = True
             if attr_def.is_value_def:
                 if len(values) == 1:
                     value = values[0]
                     if value is not None:
                         widget.set_value(values[0])
+                        is_default = value == attr_def.default
                 else:
                     widget.set_value(values, True)
-
+                    is_default = True
+                    for value in values:
+                        is_default = value == attr_def.default
+                        if not is_default:
+                            break
             widget.value_changed.connect(self._input_value_changed)
             self._attr_def_id_to_instances[attr_def.id] = attr_instances
             self._attr_def_id_to_attr_def[attr_def.id] = attr_def
@@ -1423,6 +1431,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 label = attr_def.label or attr_def.key
             if label:
                 label_widget = QtWidgets.QLabel(label, self)
+                self._attr_def_id_to_label[attr_def.id] = label_widget
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
@@ -1431,6 +1440,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                         QtCore.Qt.AlignRight
                         | QtCore.Qt.AlignVCenter
                     )
+                if is_default:
+                    label_widget.setStyleSheet("")
+                else:
+                    label_widget.setStyleSheet("color: #4287f5")
                 content_layout.addWidget(
                     label_widget, row, 0, 1, expand_cols
                 )
@@ -1450,6 +1463,15 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         attr_def = self._attr_def_id_to_attr_def.get(attr_id)
         if not instances or not attr_def:
             return
+
+        # Update the styling of the associated label if is default or override
+        label_widget = self._attr_def_id_to_label.get(attr_id)
+        if label_widget:
+            is_default = value == attr_def.default
+            if is_default:
+                label_widget.setStyleSheet("")
+            else:
+                label_widget.setStyleSheet("color: #4287f5")
 
         for instance in instances:
             creator_attributes = instance["creator_attributes"]
@@ -1495,6 +1517,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
         self._attr_def_id_to_plugin_name = {}
+        self._attr_def_id_to_label = {}
 
         # Store content of scroll area to prevent garbage collection
         self._content_widget = None
@@ -1521,6 +1544,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
         self._attr_def_id_to_plugin_name = {}
+        self._attr_def_id_to_label = {}
 
         result = self._controller.get_publish_attribute_definitions(
             instances, context_selected
@@ -1565,6 +1589,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                         label = attr_def.label or attr_def.key
                     if label:
                         label_widget = QtWidgets.QLabel(label, content_widget)
+                        self._attr_def_id_to_label[attr_def.id] = label_widget
                         tooltip = attr_def.tooltip
                         if tooltip:
                             label_widget.setToolTip(tooltip)
@@ -1573,6 +1598,8 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                                 QtCore.Qt.AlignRight
                                 | QtCore.Qt.AlignVCenter
                             )
+                            label_widget
+
                         attr_def_layout.addWidget(
                             label_widget, row, 0, 1, expand_cols
                         )
@@ -1602,8 +1629,18 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 if multivalue:
                     widget.set_value(values, multivalue)
+                    is_default = True
+                    for value in values:
+                        is_default = value == attr_def.default
+                        if not is_default:
+                            break
                 else:
                     widget.set_value(values[0])
+                    is_default = values[0] == attr_def.default
+                if is_default:
+                    label_widget.setStyleSheet("")
+                else:
+                    label_widget.setStyleSheet("color: #4287f5")
 
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
@@ -1614,6 +1651,15 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         plugin_name = self._attr_def_id_to_plugin_name.get(attr_id)
         if not instances or not attr_def or not plugin_name:
             return
+
+        # Update the styling of the associated label if is default or override
+        label_widget = self._attr_def_id_to_label.get(attr_id)
+        if label_widget:
+            is_default = value == attr_def.default
+            if is_default:
+                label_widget.setStyleSheet("")
+            else:
+                label_widget.setStyleSheet("color: #4287f5")
 
         for instance in instances:
             plugin_val = instance.publish_attributes[plugin_name]
