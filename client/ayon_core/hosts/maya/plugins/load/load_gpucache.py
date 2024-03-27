@@ -1,5 +1,3 @@
-import os
-
 import maya.cmds as cmds
 
 from ayon_core.hosts.maya.api.pipeline import containerise
