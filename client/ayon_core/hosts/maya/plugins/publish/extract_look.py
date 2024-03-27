@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 """Maya look extractor."""
+import os
 import sys
-from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
 import contextlib
 import json
 import logging
-import os
 import tempfile
+import platform
+from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+
 import six
 import attr
-
 import pyblish.api
 
 from maya import cmds  # noqa
@@ -105,10 +106,10 @@ class TextureProcessor:
         self.log = log
 
     def apply_settings(self, project_settings):
-        """Apply OpenPype system/project settings to the TextureProcessor
+        """Apply AYON system/project settings to the TextureProcessor
 
         Args:
-            project_settings (dict): OpenPype project settings
+            project_settings (dict): AYON project settings
 
         Returns:
             None
@@ -277,7 +278,7 @@ class MakeTX(TextureProcessor):
         """Process the texture.
 
         This function requires the `maketx` executable to be available in an
-        OpenImageIO toolset detectable by OpenPype.
+        OpenImageIO toolset detectable by AYON.
 
         Args:
             source (str): Path to source file.

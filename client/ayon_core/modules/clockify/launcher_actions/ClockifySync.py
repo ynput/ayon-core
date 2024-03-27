@@ -1,4 +1,5 @@
-from ayon_core.client import get_projects, get_project
+import ayon_api
+
 from openpype_modules.clockify.clockify_api import ClockifyAPI
 from ayon_core.pipeline import LauncherAction
 
@@ -21,7 +22,7 @@ class ClockifySync(LauncherAction):
     def is_compatible(self, session):
         """Check if there's some projects to sync"""
         try:
-            next(get_projects())
+            next(ayon_api.get_projects())
             return True
         except StopIteration:
             return False
@@ -38,16 +39,18 @@ class ClockifySync(LauncherAction):
             )
         project_name = session.get("AYON_PROJECT_NAME") or ""
 
-        projects_to_sync = []
         if project_name.strip():
-            projects_to_sync = [get_project(project_name)]
+            projects_to_sync = [ayon_api.get_project(project_name)]
         else:
-            projects_to_sync = get_projects()
+            projects_to_sync = ayon_api.get_projects()
 
-        projects_info = {}
-        for project in projects_to_sync:
-            task_types = project["config"]["tasks"].keys()
-            projects_info[project["name"]] = task_types
+        projects_info = {
+            project["name"]: {
+                task_type["name"]
+                for task_type in project["taskTypes"]
+            }
+            for project in projects_to_sync
+        }
 
         clockify_projects = self.clockify_api.get_projects(workspace_id)
         for project_name, task_types in projects_info.items():

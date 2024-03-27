@@ -78,7 +78,7 @@ def collect_frames(files):
         files(list) or (set with single value): list of source paths
 
     Returns:
-        (dict): {'/asset/subset_v001.0001.png': '0001', ....}
+        dict: {'/folder/product_v001.0001.png': '0001', ....}
     """
 
     patterns = [clique.PATTERNS["frames"]]

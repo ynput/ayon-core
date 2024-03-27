@@ -7,12 +7,9 @@ import os
 
 import pyblish.api
 
-from ayon_core.host import IWorkfileHost, ILoadHost
+from ayon_core.host import ILoadHost
 from ayon_core.lib import Logger
-from ayon_core.pipeline import (
-    registered_host,
-    get_current_asset_name,
-)
+from ayon_core.pipeline import registered_host
 
 from .lib import qt_app_context
 
