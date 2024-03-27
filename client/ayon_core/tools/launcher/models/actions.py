@@ -2,6 +2,7 @@ import os
 
 from ayon_core import resources
 from ayon_core.lib import Logger, AYONSettingsRegistry
+from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherAction,
@@ -116,7 +117,7 @@ class ApplicationAction(LauncherAction):
         """Process the full Application action"""
 
         from ayon_core.lib import (
-            ApplictionExecutableNotFound,
+            ApplicationExecutableNotFound,
             ApplicationLaunchFailed,
         )
 
@@ -131,7 +132,7 @@ class ApplicationAction(LauncherAction):
                 **self.data
             )
 
-        except ApplictionExecutableNotFound as exc:
+        except ApplicationExecutableNotFound as exc:
             details = exc.details
             msg = exc.msg
             log_msg = str(msg)
@@ -279,6 +280,8 @@ class ActionsModel:
 
         self._launcher_tool_reg = AYONSettingsRegistry("launcher_tool")
 
+        self._addons_manager = None
+
     @property
     def log(self):
         if self._log is None:
@@ -419,6 +422,11 @@ class ActionsModel:
             }
         )
 
+    def _get_addons_manager(self):
+        if self._addons_manager is None:
+            self._addons_manager = AddonsManager()
+        return self._addons_manager
+
     def _get_no_last_workfile_reg_data(self):
         try:
             no_workfile_reg_data = self._launcher_tool_reg.get_item(
@@ -519,19 +527,16 @@ class ActionsModel:
         return action_items
 
     def _get_applications_action_classes(self):
-        from ayon_core.lib.applications import (
-            CUSTOM_LAUNCH_APP_GROUPS,
-            ApplicationManager,
-        )
-
         actions = []
 
-        manager = ApplicationManager()
+        addons_manager = self._get_addons_manager()
+        applications_addon = addons_manager.get_enabled_addon("applications")
+        if applications_addon is None:
+            return actions
+
+        manager = applications_addon.get_applications_manager()
         for full_name, application in manager.applications.items():
-            if (
-                application.group.name in CUSTOM_LAUNCH_APP_GROUPS
-                or not application.enabled
-            ):
+            if not application.enabled:
                 continue
 
             action = type(
