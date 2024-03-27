@@ -2,7 +2,7 @@
 import os
 import pyblish.api
 
-from ayon_core.pipeline import PublishValidationError
+from openpype.pipeline import PublishValidationError
 
 
 class ValidateUSDRenderProductNames(pyblish.api.InstancePlugin):
@@ -17,7 +17,7 @@ class ValidateUSDRenderProductNames(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         invalid = []
-        for filepath in instance.data["files"]:
+        for filepath in instance.data.get("files", []):
 
             if not filepath:
                 invalid.append("Detected empty output filepath.")
