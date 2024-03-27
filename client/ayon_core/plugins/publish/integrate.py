@@ -167,7 +167,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "uasset",
                 "blendScene",
                 "yeticacheUE",
-                "tycache"
+                "tycache",
+                "csv_ingest_file",
                 ]
 
     default_template_name = "publish"
