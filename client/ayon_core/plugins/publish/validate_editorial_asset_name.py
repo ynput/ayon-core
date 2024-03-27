@@ -35,7 +35,7 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
 
         existing_folder_paths = {
             folder_entity["path"]: (
-                folder_entity["path"].lstrip("/").rsplit("/")[0]
+                folder_entity["path"].lstrip("/").rsplit("/")[:-1]
             )
             for folder_entity in folder_entities
         }
