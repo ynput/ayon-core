@@ -72,16 +72,16 @@ class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
             other_folder_ids = set(nodes_by_other_folder_ids.keys())
             folder_entities = get_folders(project_name=project_name,
                                           folder_ids=other_folder_ids,
-                                          fields=["name"])
+                                          fields=["path"])
             if folder_entities:
                 # Log names of other assets detected
                 # We disregard logging nodes/ids for asset ids where no asset
                 # was found in the database because ValidateNodeIdsInDatabase
                 # takes care of that.
-                folder_names = {entity["name"] for entity in folder_entities}
+                folder_paths = {entity["path"] for entity in folder_entities}
                 cls.log.error(
                     "Found nodes related to other assets: {}"
-                    .format(", ".join(sorted(folder_names)))
+                    .format(", ".join(sorted(folder_paths)))
                 )
 
         return invalid
