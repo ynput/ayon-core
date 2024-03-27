@@ -7,8 +7,6 @@ from __future__ import (
 
 import os
 import sys
-import numbers
-import copy
 import collections
 
 from qtpy import QtCore

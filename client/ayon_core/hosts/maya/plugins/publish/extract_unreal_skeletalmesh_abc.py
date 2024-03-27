@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Create Unreal Skeletal Mesh data to be extracted as FBX."""
 import os
-from contextlib import contextmanager
 
 from maya import cmds  # noqa
 
