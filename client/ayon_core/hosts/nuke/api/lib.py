@@ -814,7 +814,7 @@ def on_script_load():
 
 def check_inventory_versions():
     """
-    Actual version idetifier of Loaded containers
+    Actual version identifier of Loaded containers
 
     Any time this function is run it will check all nodes and filter only
     Loader nodes for its version. It will get all versions from database
@@ -2381,7 +2381,7 @@ def launch_workfiles_app():
 
     Context.workfiles_launched = True
 
-    # get all imortant settings
+    # get all important settings
     open_at_start = env_value_to_bool(
         env_key="AYON_WORKFILE_TOOL_ON_START",
         default=None)

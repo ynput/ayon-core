@@ -102,7 +102,7 @@ class StringTemplate(object):
         """ Figure out with whole formatting.
 
         Separate advanced keys (*Like '{project[name]}') from string which must
-        be formatted separatelly in case of missing or incomplete keys in data.
+        be formatted separately in case of missing or incomplete keys in data.
 
         Args:
             data (dict): Containing keys to be filled into template.
