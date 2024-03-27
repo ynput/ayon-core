@@ -78,10 +78,10 @@ class CreatePluginsModel(BaseSettingsModel):
         title="Create Static Mesh")
     CreateUSD: CreatorModel = SettingsField(
         default_factory=CreatorModel,
-        title="Create USD (experimental)")
+        title="Create USD")
     CreateUSDRender: CreatorModel = SettingsField(
         default_factory=CreatorModel,
-        title="Create USD render (experimental)")
+        title="Create USD render")
     CreateVDBCache: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create VDB Cache")
