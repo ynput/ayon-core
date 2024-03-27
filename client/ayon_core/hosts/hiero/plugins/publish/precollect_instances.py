@@ -378,8 +378,6 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         # collect all subtrack items
         sub_track_items = {}
         for track in tracks:
-            items = track.items()
-
             effet_items = track.subTrackItems()
 
             # skip if no clips on track > need track with effect only

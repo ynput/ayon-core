@@ -36,8 +36,8 @@ class PrecollectRetime(api.InstancePlugin):
         speed = track_item.playbackSpeed()
 
         # calculate available material before retime
-        available_in = int(track_item.handleInLength() * speed)
-        available_out = int(track_item.handleOutLength() * speed)
+        # available_in = int(track_item.handleInLength() * speed)
+        # available_out = int(track_item.handleOutLength() * speed)
 
         self.log.debug((
             "_BEFORE: \n timeline_in: `{0}`,\n timeline_out: `{1}`, \n "
