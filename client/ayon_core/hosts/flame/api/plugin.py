@@ -1018,7 +1018,7 @@ class OpenClipSolver(flib.MediaInfoFile):
                             self.feed_version_name))
                 else:
                     self.log.debug("adding new track element ..")
-                    # create new track as it doesnt exists yet
+                    # create new track as it doesn't exist yet
                     # set current version to feeds on tmp
                     tmp_xml_feeds = tmp_xml_track.find('feeds')
                     tmp_xml_feeds.set('currentVersion', self.feed_version_name)

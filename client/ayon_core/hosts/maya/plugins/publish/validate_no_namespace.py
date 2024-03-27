@@ -49,11 +49,17 @@ class ValidateNoNamespace(pyblish.api.InstancePlugin,
         invalid = self.get_invalid(instance)
 
         if invalid:
+            invalid_namespaces = {get_namespace(node) for node in invalid}
             raise PublishValidationError(
-                "Namespaces found:\n\n{0}".format(
-                    _as_report_list(sorted(invalid))
+                message="Namespaces found:\n\n{0}".format(
+                    _as_report_list(sorted(invalid_namespaces))
                 ),
-                title="Namespaces in model"
+                title="Namespaces in model",
+                description=(
+                    "## Namespaces found in model\n"
+                    "It is not allowed to publish a model that contains "
+                    "namespaces."
+                )
             )
 
     @classmethod

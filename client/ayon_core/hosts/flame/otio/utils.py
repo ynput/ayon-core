@@ -29,7 +29,7 @@ def get_reformated_filename(filename, padded=True):
         filename (str): file name
 
     Returns:
-        type: string with reformated path
+        type: string with reformatted path
 
     Example:
         get_reformated_filename("plate.1001.exr") > plate.%04d.exr
