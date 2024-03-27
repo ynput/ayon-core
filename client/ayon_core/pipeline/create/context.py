@@ -1790,10 +1790,10 @@ class CreateContext:
 
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
-                self.log.warning((
-                    "Duplicated Creator identifier. "
-                    "Using first and skipping following"
-                ))
+                self.log.warning(
+                    "Duplicate Creator identifier: '%s'. Using first Creator "
+                    "and skipping: %s", creator_identifier, creator_class
+                )
                 continue
 
             # Filter by host name
