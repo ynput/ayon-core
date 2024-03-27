@@ -45,7 +45,7 @@ ARRAY_TYPE_REGEX = re.compile(r"^(int|float|string)\[\d+\]$")
 
 IMAGE_EXTENSIONS = {
     ".ani", ".anim", ".apng", ".art", ".bmp", ".bpg", ".bsave",
-    ".cal", ".cin", ".cpc", ".cpt", ".dds", ".dpx", ".ecw", ".exr",
+    ".cal", ".cin", ".cpc", ".cpt", ".dds", ".dng", ".dpx", ".ecw", ".exr",
     ".fits", ".flic", ".flif", ".fpx", ".gif", ".hdri", ".hevc",
     ".icer", ".icns", ".ico", ".cur", ".ics", ".ilbm", ".jbig", ".jbig2",
     ".jng", ".jpeg", ".jpeg-ls", ".jpeg-hdr", ".2000", ".jpg",
