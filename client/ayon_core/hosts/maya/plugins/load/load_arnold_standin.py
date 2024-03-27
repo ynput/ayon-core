@@ -12,7 +12,6 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace,
     get_attribute_input,
     maintained_selection,
-    convert_to_maya_fps
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
 from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type

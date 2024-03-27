@@ -424,7 +424,7 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         title="Scale pixel aspect",
         description=(
             "Rescale input when it's pixel aspect ratio is not 1."
-            " Usefull for anamorph reviews."
+            " Useful for anamorphic reviews."
         )
     )
     bg_color: ColorRGBA_uint8 = SettingsField(
