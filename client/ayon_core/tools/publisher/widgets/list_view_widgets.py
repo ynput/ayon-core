@@ -317,6 +317,7 @@ class InstanceListGroupWidget(QtWidgets.QFrame):
 class InstanceTreeView(QtWidgets.QTreeView):
     """View showing instances and their groups."""
     toggle_requested = QtCore.Signal(int)
+    double_clicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super(InstanceTreeView, self).__init__(*args, **kwargs)
@@ -379,7 +380,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
         "double click" as 2x "single click".
         """
         if event.button() != QtCore.Qt.LeftButton:
-            return
+            return False
 
         pressed_group_index = None
         pos_index = self.indexAt(event.pos())
@@ -388,13 +389,18 @@ class InstanceTreeView(QtWidgets.QTreeView):
 
         self._pressed_group_index = pressed_group_index
 
+        return True
+
     def mousePressEvent(self, event):
-        self._mouse_press(event)
-        super(InstanceTreeView, self).mousePressEvent(event)
+        handled = self._mouse_press(event)
+        if handled:
+            super(InstanceTreeView, self).mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        self._mouse_press(event)
-        super(InstanceTreeView, self).mouseDoubleClickEvent(event)
+        handled = self._mouse_press(event)
+        if handled:
+            self.double_clicked.emit()
+            super(InstanceTreeView, self).mouseDoubleClickEvent(event)
 
     def _mouse_release(self, event, pressed_index):
         if event.button() != QtCore.Qt.LeftButton:
@@ -425,6 +431,9 @@ class InstanceListView(AbstractInstanceView):
 
     This is public access to and from list view.
     """
+
+    double_clicked = QtCore.Signal()
+
     def __init__(self, controller, parent):
         super(InstanceListView, self).__init__(parent)
 
@@ -454,6 +463,7 @@ class InstanceListView(AbstractInstanceView):
         instance_view.collapsed.connect(self._on_collapse)
         instance_view.expanded.connect(self._on_expand)
         instance_view.toggle_requested.connect(self._on_toggle_request)
+        instance_view.double_clicked.connect(self.double_clicked)
 
         self._group_items = {}
         self._group_widgets = {}

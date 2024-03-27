@@ -534,6 +534,8 @@ class InstanceCardView(AbstractInstanceView):
     Wrapper of all widgets in card view.
     """
 
+    double_clicked = QtCore.Signal()
+
     def __init__(self, controller, parent):
         super(InstanceCardView, self).__init__(parent)
 
@@ -577,6 +579,10 @@ class InstanceCardView(AbstractInstanceView):
             QtWidgets.QSizePolicy.Minimum,
             self.sizePolicy().verticalPolicy()
         )
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self.double_clicked.emit()
 
     def sizeHint(self):
         """Modify sizeHint based on visibility of scroll bars."""
