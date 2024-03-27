@@ -2156,7 +2156,7 @@ def get_related_sets(node):
         s for s in sets
         if (
            not cmds.attributeQuery("id", node=s, exists=True)
-           or cmds.getAttr("%s.id" % s) not in ignored
+           or cmds.getAttr(f"{s}.id") not in ignored
         )
     ]
 
