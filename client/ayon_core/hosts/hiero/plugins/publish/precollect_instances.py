@@ -378,12 +378,10 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         # collect all subtrack items
         sub_track_items = {}
         for track in tracks:
-            items = track.items()
-
-            effet_items = track.subTrackItems()
+            effect_items = track.subTrackItems()
 
             # skip if no clips on track > need track with effect only
-            if not effet_items:
+            if not effect_items:
                 continue
 
             # skip all disabled tracks
@@ -391,7 +389,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 continue
 
             track_index = track.trackIndex()
-            _sub_track_items = phiero.flatten(effet_items)
+            _sub_track_items = phiero.flatten(effect_items)
 
             _sub_track_items = list(_sub_track_items)
             # continue only if any subtrack items are collected
