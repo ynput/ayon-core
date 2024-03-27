@@ -26,7 +26,7 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                ("Output node '{}' are incorrect. "
+                ("Output node '{}' is incorrect. "
                  "See plug-in log for details.").format(invalid),
                 title=self.label
             )
