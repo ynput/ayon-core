@@ -2,27 +2,27 @@ import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 
 
-class ValidateAssetDocs(pyblish.api.InstancePlugin):
-    """Validate existence of asset documents on instances.
+class ValidateFolderEntities(pyblish.api.InstancePlugin):
+    """Validate existence of folder entity on instances.
 
-    Without asset document it is not possible to publish the instance.
+    Without folder entity it is not possible to publish the instance.
 
-    If context has set asset document the validation is skipped.
+    If context has set folder entity the validation is skipped.
 
-    Plugin was added because there are cases when context asset is not defined
-    e.g. in tray publisher.
+    Plugin was added because there are cases when context folder is not
+    defined e.g. in tray publisher.
     """
 
-    label = "Validate Asset docs"
+    label = "Validate Folder entities"
     order = pyblish.api.ValidatorOrder
 
     def process(self, instance):
-        context_asset_doc = instance.context.data.get("assetEntity")
-        if context_asset_doc:
+        context_folder_entity = instance.context.data.get("folderEntity")
+        if context_folder_entity:
             return
 
-        if instance.data.get("assetEntity"):
-            self.log.debug("Instance has set asset document in its data.")
+        if instance.data.get("folderEntity"):
+            self.log.debug("Instance has set fodler entity in its data.")
 
         elif instance.data.get("newAssetPublishing"):
             # skip if it is editorial
@@ -30,6 +30,6 @@ class ValidateAssetDocs(pyblish.api.InstancePlugin):
 
         else:
             raise PublishValidationError((
-                "Instance \"{}\" doesn't have asset document "
+                "Instance \"{}\" doesn't have folder entity "
                 "set which is needed for publishing."
             ).format(instance.data["name"]))

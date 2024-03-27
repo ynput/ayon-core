@@ -33,7 +33,7 @@ class CreatorError(Exception):
 
 
 @six.add_metaclass(ABCMeta)
-class SubsetConvertorPlugin(object):
+class ProductConvertorPlugin(object):
     """Helper for conversion of instances created using legacy creators.
 
     Conversion from legacy creators would mean to loose legacy instances,
@@ -347,7 +347,7 @@ class BaseCreator:
 
         Returns:
             str: Group label that can be used for grouping of instances in UI.
-                Group label can be overriden by instance itself.
+                Group label can be overridden by instance itself.
         """
 
         if self._cached_group_label is None:
@@ -472,8 +472,8 @@ class BaseCreator:
     def get_dynamic_data(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name,
         instance
@@ -489,31 +489,21 @@ class BaseCreator:
     def get_product_name(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name=None,
         instance=None
     ):
         """Return product name for passed context.
 
-        CHANGES:
-        Argument `asset_id` was replaced with `asset_doc`. It is easier to
-        query asset before. In some cases would this method be called multiple
-        times and it would be too slow to query asset document on each
-        callback.
-
-        NOTE:
-        Asset document is not used yet but is required if would like to use
-        task type in product templates.
-
         Method is also called on product name update. In that case origin
         instance is passed in.
 
         Args:
             project_name (str): Project name.
-            asset_doc (dict): Asset document for which product is created.
-            task_name (str): For which task product is created.
+            folder_entity (dict): Folder entity.
+            task_entity (dict): Task entity.
             variant (str): Product name variant. In most of cases user input.
             host_name (Optional[str]): Which host creates product. Defaults
                 to host name on create context.
@@ -524,10 +514,16 @@ class BaseCreator:
 
         if host_name is None:
             host_name = self.create_context.host_name
+
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
         dynamic_data = self.get_dynamic_data(
             project_name,
-            asset_doc,
-            task_name,
+            folder_entity,
+            task_entity,
             variant,
             host_name,
             instance
@@ -535,8 +531,8 @@ class BaseCreator:
 
         return get_product_name(
             project_name,
-            asset_doc,
             task_name,
+            task_type,
             host_name,
             self.product_type,
             variant,
@@ -611,18 +607,19 @@ class Creator(BaseCreator):
     """
 
     # GUI Purposes
-    # - default_variants may not be used if `get_default_variants` is overriden
+    # - default_variants may not be used if `get_default_variants`
+    #   is overridden
     default_variants = []
 
     # Default variant used in 'get_default_variant'
     _default_variant = None
 
     # Short description of product type
-    # - may not be used if `get_description` is overriden
+    # - may not be used if `get_description` is overridden
     description = None
 
     # Detailed description of product type for artists
-    # - may not be used if `get_detail_description` is overriden
+    # - may not be used if `get_detail_description` is overridden
     detailed_description = None
 
     # It does make sense to change context on creation
@@ -815,7 +812,7 @@ def discover_creator_plugins(*args, **kwargs):
 
 
 def discover_convertor_plugins(*args, **kwargs):
-    return discover(SubsetConvertorPlugin, *args, **kwargs)
+    return discover(ProductConvertorPlugin, *args, **kwargs)
 
 
 def discover_legacy_creator_plugins():
@@ -874,8 +871,8 @@ def register_creator_plugin(plugin):
     elif issubclass(plugin, LegacyCreator):
         register_plugin(LegacyCreator, plugin)
 
-    elif issubclass(plugin, SubsetConvertorPlugin):
-        register_plugin(SubsetConvertorPlugin, plugin)
+    elif issubclass(plugin, ProductConvertorPlugin):
+        register_plugin(ProductConvertorPlugin, plugin)
 
 
 def deregister_creator_plugin(plugin):
@@ -885,20 +882,20 @@ def deregister_creator_plugin(plugin):
     elif issubclass(plugin, LegacyCreator):
         deregister_plugin(LegacyCreator, plugin)
 
-    elif issubclass(plugin, SubsetConvertorPlugin):
-        deregister_plugin(SubsetConvertorPlugin, plugin)
+    elif issubclass(plugin, ProductConvertorPlugin):
+        deregister_plugin(ProductConvertorPlugin, plugin)
 
 
 def register_creator_plugin_path(path):
     register_plugin_path(BaseCreator, path)
     register_plugin_path(LegacyCreator, path)
-    register_plugin_path(SubsetConvertorPlugin, path)
+    register_plugin_path(ProductConvertorPlugin, path)
 
 
 def deregister_creator_plugin_path(path):
     deregister_plugin_path(BaseCreator, path)
     deregister_plugin_path(LegacyCreator, path)
-    deregister_plugin_path(SubsetConvertorPlugin, path)
+    deregister_plugin_path(ProductConvertorPlugin, path)
 
 
 def cache_and_get_instances(creator, shared_key, list_instances_func):

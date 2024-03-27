@@ -1,7 +1,8 @@
+import ayon_api
+
 from ayon_core.hosts.fusion.api import (
     get_current_comp
 )
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     AutoCreator,
     CreatedInstance,
@@ -54,7 +55,6 @@ class FusionWorkfileCreator(AutoCreator):
             comp.SetData(self.data_key, data)
 
     def create(self, options=None):
-
         comp = get_current_comp()
         if not comp:
             self.log.error("Unable to find current comp")
@@ -67,33 +67,37 @@ class FusionWorkfileCreator(AutoCreator):
                 break
 
         project_name = self.create_context.get_current_project_name()
-        asset_name = self.create_context.get_current_asset_name()
+        folder_path = self.create_context.get_current_folder_path()
         task_name = self.create_context.get_current_task_name()
         host_name = self.create_context.host_name
 
-        if existing_instance is None:
-            existing_instance_asset = None
-        else:
-            existing_instance_asset = existing_instance["folderPath"]
+        existing_folder_path = None
+        if existing_instance is not None:
+            existing_folder_path = existing_instance["folderPath"]
 
         if existing_instance is None:
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 self.default_variant,
                 host_name,
             )
             data = {
-                "folderPath": asset_name,
+                "folderPath": folder_path,
                 "task": task_name,
                 "variant": self.default_variant,
             }
             data.update(self.get_dynamic_data(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 self.default_variant,
                 host_name,
                 None
@@ -107,17 +111,22 @@ class FusionWorkfileCreator(AutoCreator):
             self._add_instance_to_context(new_instance)
 
         elif (
-            existing_instance_asset != asset_name
+            existing_folder_path != folder_path
             or existing_instance["task"] != task_name
         ):
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 self.default_variant,
                 host_name,
             )
-            existing_instance["folderPath"] = asset_name
+            existing_instance["folderPath"] = folder_path
             existing_instance["task"] = task_name
             existing_instance["productName"] = product_name

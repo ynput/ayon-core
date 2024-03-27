@@ -19,10 +19,6 @@ from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
 
 
-class OpenPypeCreatorError(CreatorError):
-    pass
-
-
 class Creator(LegacyCreator):
     """Creator plugin to create instances in Houdini
 
@@ -92,8 +88,8 @@ class Creator(LegacyCreator):
 
         except hou.Error as er:
             six.reraise(
-                OpenPypeCreatorError,
-                OpenPypeCreatorError("Creator error: {}".format(er)),
+                CreatorError,
+                CreatorError("Creator error: {}".format(er)),
                 sys.exc_info()[2])
 
 
@@ -145,13 +141,12 @@ class HoudiniCreatorBase(object):
 
     @staticmethod
     def create_instance_node(
-        asset_name, node_name, parent, node_type="geometry"
+        folder_path, node_name, parent, node_type="geometry"
     ):
-        # type: (str, str, str) -> hou.Node
         """Create node representing instance.
 
         Arguments:
-            asset_name (str): Asset name.
+            folder_path (str): Folder path.
             node_name (str): Name of the new node.
             parent (str): Name of the parent node.
             node_type (str, optional): Type of the node.
@@ -186,10 +181,10 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             if node_type is None:
                 node_type = "geometry"
 
-            asset_name = instance_data["folderPath"]
+            folder_path = instance_data["folderPath"]
 
             instance_node = self.create_instance_node(
-                asset_name, product_name, "/out", node_type)
+                folder_path, product_name, "/out", node_type)
 
             self.customize_node_look(instance_node)
 
@@ -210,8 +205,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
         except hou.Error as er:
             six.reraise(
-                OpenPypeCreatorError,
-                OpenPypeCreatorError("Creator error: {}".format(er)),
+                CreatorError,
+                CreatorError("Creator error: {}".format(er)),
                 sys.exc_info()[2])
 
     def lock_parameters(self, node, parameters):

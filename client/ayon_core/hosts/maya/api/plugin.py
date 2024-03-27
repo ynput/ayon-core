@@ -4,6 +4,7 @@ from abc import ABCMeta
 
 import qargparse
 import six
+import ayon_api
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup
 
@@ -28,7 +29,6 @@ from ayon_core.pipeline import (
     get_current_project_name,
 )
 from ayon_core.pipeline.load import LoadError
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline.create import get_product_name
 
 from . import lib
@@ -454,17 +454,23 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
                 # this instance will not have the `instance_node` data yet
                 # until it's been saved/persisted at least once.
                 project_name = self.create_context.get_current_project_name()
-                asset_name = self.create_context.get_current_asset_name()
+                folder_path = self.create_context.get_current_folder_path()
+                task_name = self.create_context.get_current_task_name()
                 instance_data = {
-                    "folderPath": asset_name,
-                    "task": self.create_context.get_current_task_name(),
+                    "folderPath": folder_path,
+                    "task": task_name,
                     "variant": layer.name(),
                 }
-                asset_doc = get_asset_by_name(project_name, asset_name)
+                folder_entity = ayon_api.get_folder_by_path(
+                    project_name, folder_path
+                )
+                task_entity = ayon_api.get_task_by_name(
+                    project_name, folder_entity["id"], task_name
+                )
                 product_name = self.get_product_name(
                     project_name,
-                    asset_doc,
-                    instance_data["task"],
+                    folder_entity,
+                    task_entity,
                     layer.name(),
                     host_name,
                 )
@@ -578,8 +584,8 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
     def get_product_name(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name=None,
         instance=None
@@ -587,13 +593,22 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         if host_name is None:
             host_name = self.create_context.host_name
         dynamic_data = self.get_dynamic_data(
-            project_name, asset_doc, task_name, variant, host_name, instance
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance
         )
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         # creator.product_type != 'render' as expected
         return get_product_name(
             project_name,
-            asset_doc,
             task_name,
+            task_type,
             host_name,
             self.layer_instance_prefix or self.product_type,
             variant,
@@ -668,21 +683,19 @@ class Loader(LoaderPlugin):
             self.log.debug("No custom group_name, no group will be created.")
             options["attach_to_root"] = False
 
-        asset_doc = context["asset"]
-        subset_doc = context["subset"]
-        product_type = (
-            subset_doc["data"].get("family")
-            or subset_doc["data"]["families"][0]
-        )
+        folder_entity = context["folder"]
+        product_entity = context["product"]
+        product_name = product_entity["name"]
+        product_type = product_entity["productType"]
         formatting_data = {
-            "asset_name": asset_doc["name"],
-            "asset_type": asset_doc["type"],
+            "asset_name": folder_entity["name"],
+            "asset_type": "asset",
             "folder": {
-                "name": asset_doc["name"],
+                "name": folder_entity["name"],
             },
-            "subset": subset_doc["name"],
+            "subset": product_name,
             "product": {
-                "name": subset_doc["name"],
+                "name": product_name,
                 "type": product_type,
             },
             "family": product_type
@@ -801,9 +814,9 @@ class ReferenceLoader(Loader):
         node = container["objectName"]
 
         project_name = context["project"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
 
         # Get reference node from container members
         members = get_container_members(node)
@@ -816,9 +829,9 @@ class ReferenceLoader(Loader):
             "abc": "Alembic",
             "fbx": "FBX",
             "usd": "USD Import"
-        }.get(repre_doc["name"])
+        }.get(repre_entity["name"])
 
-        assert file_type, "Unsupported representation: %s" % repre_doc
+        assert file_type, "Unsupported representation: %s" % repre_entity
 
         assert os.path.exists(path), "%s does not exist." % path
 
@@ -826,7 +839,7 @@ class ReferenceLoader(Loader):
         # them to incoming data.
         alembic_attrs = ["speed", "offset", "cycleType", "time"]
         alembic_data = {}
-        if repre_doc["name"] == "abc":
+        if repre_entity["name"] == "abc":
             alembic_nodes = cmds.ls(
                 "{}:*".format(namespace), type="AlembicNode"
             )
@@ -867,7 +880,7 @@ class ReferenceLoader(Loader):
         self._organize_containers(content, container["objectName"])
 
         # Reapply alembic settings.
-        if repre_doc["name"] == "abc" and alembic_data:
+        if repre_entity["name"] == "abc" and alembic_data:
             alembic_nodes = cmds.ls(
                 "{}:*".format(namespace), type="AlembicNode"
             )
@@ -886,7 +899,7 @@ class ReferenceLoader(Loader):
                             cmds.disconnectAttr(input, node_attr)
                         cmds.setAttr(node_attr, data["value"])
 
-        # Fix PLN-40 for older containers created with Avalon that had the
+        # Fix PLN-40 for older containers created with AYON that had the
         # `.verticesOnlySet` set to True.
         if cmds.getAttr("{}.verticesOnlySet".format(node)):
             self.log.info("Setting %s.verticesOnlySet to False", node)
@@ -901,7 +914,7 @@ class ReferenceLoader(Loader):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
         # When an animation or pointcache gets connected to an Xgen container,

@@ -1,9 +1,10 @@
 import os
-import requests
-import six
 import sys
 
-from ayon_core.lib import requests_get, Logger
+import requests
+import six
+
+from ayon_core.lib import Logger
 from ayon_core.modules import AYONAddon, IPluginPaths
 
 
@@ -45,7 +46,6 @@ class DeadlineModule(AYONAddon, IPluginPaths):
 
     @staticmethod
     def get_deadline_pools(webservice, log=None):
-        # type: (str) -> list
         """Get pools from Deadline.
         Args:
             webservice (str): Server url.
@@ -56,6 +56,8 @@ class DeadlineModule(AYONAddon, IPluginPaths):
             RuntimeError: If deadline webservice is unreachable.
 
         """
+        from .abstract_submit_deadline import requests_get
+
         if not log:
             log = Logger.get_logger(__name__)
 

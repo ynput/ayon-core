@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Validate if instance asset is the same as context asset."""
+"""Validate if instance folder is the same as context folder."""
 from __future__ import absolute_import
 
 import pyblish.api
@@ -17,10 +17,10 @@ class ValidateCorrectAssetContext(
     pyblish.api.InstancePlugin,
     OptionalPyblishPluginMixin
 ):
-    """Validator to check if instance asset context match context asset.
+    """Validator to check if instance folder context match context folder.
 
     When working in per-shot style you always publish data in context of
-    current asset (shot). This validator checks if this is so. It is optional
+    current folder (shot). This validator checks if this is so. It is optional
     so it can be disabled when needed.
 
     Checking `folderPath` and `task` keys.

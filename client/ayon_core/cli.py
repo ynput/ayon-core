@@ -11,6 +11,7 @@ import acre
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_general_environments
+from ayon_core.lib import initialize_ayon_connection
 
 from .cli_commands import Commands
 
@@ -102,19 +103,18 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
 
 
 @main_cli.command()
-@click.argument("paths", nargs=-1)
-@click.option("-t", "--targets", help="Targets module", default=None,
+@click.argument("path", required=True)
+@click.option("-t", "--targets", help="Targets", default=None,
               multiple=True)
 @click.option("-g", "--gui", is_flag=True,
               help="Show Publish UI", default=False)
-def publish(paths, targets, gui):
+def publish(path, targets, gui):
     """Start CLI publishing.
 
-    Publish collects json from paths provided as an argument.
-    More than one path is allowed.
+    Publish collects json from path provided as an argument.
+S
     """
-
-    Commands.publish(list(paths), targets, gui)
+    Commands.publish(path, targets, gui)
 
 
 @main_cli.command(context_settings={"ignore_unknown_options": True})
@@ -243,6 +243,7 @@ def _set_addons_environments():
 
 
 def main(*args, **kwargs):
+    initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
 

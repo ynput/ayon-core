@@ -1,4 +1,5 @@
-from ayon_core.client import get_representations
+import ayon_api
+
 from ayon_core.addon import AddonsManager
 
 NOT_SET = object()
@@ -69,14 +70,16 @@ class SiteSyncModel:
 
         project_name = self._controller.get_current_project_name()
         site_sync = self._get_sync_server_module()
-        repre_docs = get_representations(project_name, representation_ids)
+        repre_entities = ayon_api.get_representations(
+            project_name, representation_ids
+        )
         active_site = self._get_active_site()
         remote_site = self._get_remote_site()
 
-        for repre_doc in repre_docs:
-            repre_output = output[repre_doc["_id"]]
+        for repre_entity in repre_entities:
+            repre_output = output[repre_entity["id"]]
             result = site_sync.get_progress_for_repre(
-                repre_doc, active_site, remote_site
+                repre_entity, active_site, remote_site
             )
             repre_output["active_site"] = result[active_site]
             repre_output["remote_site"] = result[remote_site]

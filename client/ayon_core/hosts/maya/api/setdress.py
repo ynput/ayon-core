@@ -6,16 +6,10 @@ import contextlib
 import copy
 
 import six
+import ayon_api
 
 from maya import cmds
 
-from ayon_core.client import (
-    get_version_by_name,
-    get_last_version_by_subset_id,
-    get_representation_by_id,
-    get_representation_by_name,
-    get_representation_parents,
-)
 from ayon_core.pipeline import (
     schema,
     discover_loader_plugins,
@@ -156,7 +150,7 @@ def load_package(filepath, name, namespace=None):
             containers.append(container)
 
     # TODO: Do we want to cripple? Or do we want to add a 'parent' parameter?
-    # Cripple the original avalon containers so they don't show up in the
+    # Cripple the original AYON containers so they don't show up in the
     # manager
     # for container in containers:
     #     cmds.setAttr("%s.id" % container,
@@ -181,7 +175,7 @@ def _add(instance, representation_id, loaders, namespace, root="|"):
         namespace (str):
 
     Returns:
-        str: The created Avalon container.
+        str: The created AYON container.
 
     """
 
@@ -250,7 +244,7 @@ def _instances_by_namespace(data):
 
 
 def get_contained_containers(container):
-    """Get the Avalon containers in this container
+    """Get the AYON containers in this container
 
     Args:
         container (dict): The container dict.
@@ -262,7 +256,7 @@ def get_contained_containers(container):
 
     from .pipeline import parse_container
 
-    # Get avalon containers in this package setdress container
+    # Get AYON containers in this package setdress container
     containers = []
     members = cmds.sets(container['objectName'], query=True)
     for node in cmds.ls(members, type="objectSet"):
@@ -290,41 +284,43 @@ def update_package_version(container, version):
 
     # Versioning (from `core.maya.pipeline`)
     project_name = get_current_project_name()
-    current_representation = get_representation_by_id(
-        project_name, container["representation"]
+    repre_id = container["representation"]
+    current_representation = ayon_api.get_representation_by_id(
+        project_name, repre_id
     )
 
     assert current_representation is not None, "This is a bug"
 
-    version_doc, subset_doc, asset_doc, project_doc = (
-        get_representation_parents(project_name, current_representation)
-    )
+    (
+        version_entity,
+        product_entity,
+        folder_entity,
+        project_entity
+    ) = ayon_api.get_representation_parents(project_name, repre_id)
 
     if version == -1:
-        new_version = get_last_version_by_subset_id(
-            project_name, subset_doc["_id"]
+        new_version = ayon_api.get_last_version_by_product_id(
+            project_name, product_entity["id"]
         )
     else:
-        new_version = get_version_by_name(
-            project_name, version, subset_doc["_id"]
+        new_version = ayon_api.get_version_by_name(
+            project_name, version, product_entity["id"]
         )
 
-    assert new_version is not None, "This is a bug"
+    if new_version is None:
+        raise ValueError("Version not found: {}".format(version))
 
     # Get the new representation (new file)
-    new_representation = get_representation_by_name(
-        project_name, current_representation["name"], new_version["_id"]
+    new_representation = ayon_api.get_representation_by_name(
+        project_name, current_representation["name"], new_version["id"]
     )
     # TODO there is 'get_representation_context' to get the context which
     #   could be possible to use here
     new_context = {
-        "project": {
-            "name": project_doc["name"],
-            "code": project_doc["data"].get("code", "")
-        },
-        "asset": asset_doc,
-        "subset": subset_doc,
-        "version": version_doc,
+        "project": project_entity,
+        "folder": folder_entity,
+        "product": product_entity,
+        "version": version_entity,
         "representation": new_representation,
     }
     update_package(container, new_context)
@@ -344,8 +340,8 @@ def update_package(set_container, context):
 
     # Load the original package data
     project_name = context["project"]["name"]
-    repre_doc = context["representation"]
-    current_representation = get_representation_by_id(
+    repre_entity = context["representation"]
+    current_representation = ayon_api.get_representation_by_id(
         project_name, set_container["representation"]
     )
 
@@ -355,7 +351,7 @@ def update_package(set_container, context):
         current_data = json.load(fp)
 
     # Load the new package data
-    new_file = get_representation_path(repre_doc)
+    new_file = get_representation_path(repre_entity)
     assert new_file.endswith(".json")
     with open(new_file, "r") as fp:
         new_data = json.load(fp)
@@ -366,7 +362,7 @@ def update_package(set_container, context):
 
     # TODO: This should be handled by the pipeline itself
     cmds.setAttr(set_container['objectName'] + ".representation",
-                 str(repre_doc['_id']), type="string")
+                 context["representation"]["id"], type="string")
 
 
 def update_scene(set_container, containers, current_data, new_data, new_file):
@@ -413,6 +409,8 @@ def update_scene(set_container, containers, current_data, new_data, new_file):
 
     new_lookup = _instances_by_namespace(new_data)
     old_lookup = _instances_by_namespace(current_data)
+    repre_ids = set()
+    containers_for_repre_compare = []
     for container in containers:
         container_ns = container['namespace']
 
@@ -421,98 +419,121 @@ def update_scene(set_container, containers, current_data, new_data, new_file):
         processed_namespaces.add(container_ns)
         processed_containers.append(container['objectName'])
 
-        if container_ns in new_lookup:
-            root = get_container_transforms(container, root=True)
-            if not root:
-                log.error("Can't find root for %s", container['objectName'])
-                continue
-
-            old_instance = old_lookup.get(container_ns, {})
-            new_instance = new_lookup[container_ns]
-
-            # Update the matrix
-            # check matrix against old_data matrix to find local overrides
-            current_matrix = cmds.xform(root,
-                                        query=True,
-                                        matrix=True,
-                                        objectSpace=True)
-
-            original_matrix = old_instance.get("matrix", identity)
-            has_matrix_override = not matrix_equals(current_matrix,
-                                                    original_matrix)
-
-            if has_matrix_override:
-                log.warning("Matrix override preserved on %s", container_ns)
-            else:
-                new_matrix = new_instance.get("matrix", identity)
-                cmds.xform(root, matrix=new_matrix, objectSpace=True)
-
-            # Update the parenting
-            if old_instance.get("parent", None) != new_instance["parent"]:
-
-                parent = to_namespace(new_instance['parent'], set_namespace)
-                if not cmds.objExists(parent):
-                    log.error("Can't find parent %s", parent)
-                    continue
-
-                # Set the new parent
-                cmds.lockNode(root, lock=False)
-                root = cmds.parent(root, parent, relative=True)
-                cmds.lockNode(root, lock=True)
-
-            # Update the representation
-            representation_current = container['representation']
-            representation_old = old_instance['representation']
-            representation_new = new_instance['representation']
-            has_representation_override = (representation_current !=
-                                           representation_old)
-
-            if representation_new != representation_current:
-
-                if has_representation_override:
-                    log.warning("Your scene had local representation "
-                                "overrides within the set. New "
-                                "representations not loaded for %s.",
-                                container_ns)
-                    continue
-
-                # We check it against the current 'loader' in the scene instead
-                # of the original data of the package that was loaded because
-                # an Artist might have made scene local overrides
-                if new_instance['loader'] != container['loader']:
-                    log.warning("Loader is switched - local edits will be "
-                                "lost. Removing: %s",
-                                container_ns)
-
-                    # Remove this from the "has been processed" list so it's
-                    # considered as new element and added afterwards.
-                    processed_containers.pop()
-                    processed_namespaces.remove(container_ns)
-                    remove_container(container)
-                    continue
-
-                # Check whether the conversion can be done by the Loader.
-                # They *must* use the same asset, product and Loader for
-                # `update_container` to make sense.
-                old = get_representation_by_id(
-                    project_name, representation_current
-                )
-                new = get_representation_by_id(
-                    project_name, representation_new
-                )
-                is_valid = compare_representations(old=old, new=new)
-                if not is_valid:
-                    log.error("Skipping: %s. See log for details.",
-                              container_ns)
-                    continue
-
-                new_version = new["context"]["version"]
-                update_container(container, version=new_version)
-
-        else:
+        if container_ns not in new_lookup:
             # Remove this container because it's not in the new data
             log.warning("Removing content: %s", container_ns)
             remove_container(container)
+            continue
+
+        root = get_container_transforms(container, root=True)
+        if not root:
+            log.error("Can't find root for %s", container['objectName'])
+            continue
+
+        old_instance = old_lookup.get(container_ns, {})
+        new_instance = new_lookup[container_ns]
+
+        # Update the matrix
+        # check matrix against old_data matrix to find local overrides
+        current_matrix = cmds.xform(root,
+                                    query=True,
+                                    matrix=True,
+                                    objectSpace=True)
+
+        original_matrix = old_instance.get("matrix", identity)
+        has_matrix_override = not matrix_equals(current_matrix,
+                                                original_matrix)
+
+        if has_matrix_override:
+            log.warning("Matrix override preserved on %s", container_ns)
+        else:
+            new_matrix = new_instance.get("matrix", identity)
+            cmds.xform(root, matrix=new_matrix, objectSpace=True)
+
+        # Update the parenting
+        if old_instance.get("parent", None) != new_instance["parent"]:
+
+            parent = to_namespace(new_instance['parent'], set_namespace)
+            if not cmds.objExists(parent):
+                log.error("Can't find parent %s", parent)
+                continue
+
+            # Set the new parent
+            cmds.lockNode(root, lock=False)
+            root = cmds.parent(root, parent, relative=True)
+            cmds.lockNode(root, lock=True)
+
+        # Update the representation
+        representation_current = container['representation']
+        representation_old = old_instance['representation']
+        representation_new = new_instance['representation']
+        has_representation_override = (representation_current !=
+                                       representation_old)
+
+        if representation_new == representation_current:
+            continue
+
+        if has_representation_override:
+            log.warning("Your scene had local representation "
+                        "overrides within the set. New "
+                        "representations not loaded for %s.",
+                        container_ns)
+            continue
+
+        # We check it against the current 'loader' in the scene instead
+        # of the original data of the package that was loaded because
+        # an Artist might have made scene local overrides
+        if new_instance['loader'] != container['loader']:
+            log.warning("Loader is switched - local edits will be "
+                        "lost. Removing: %s",
+                        container_ns)
+
+            # Remove this from the "has been processed" list so it's
+            # considered as new element and added afterwards.
+            processed_containers.pop()
+            processed_namespaces.remove(container_ns)
+            remove_container(container)
+            continue
+
+        # Check whether the conversion can be done by the Loader.
+        # They *must* use the same folder, product and Loader for
+        # `update_container` to make sense.
+        repre_ids.add(representation_current)
+        repre_ids.add(representation_new)
+
+        containers_for_repre_compare.append(
+            (container, representation_current, representation_new)
+        )
+
+    repre_entities_by_id = {
+        repre_entity["id"]: repre_entity
+        for repre_entity in ayon_api.get_representations(
+            project_name, representation_ids=repre_ids
+        )
+    }
+    repre_parents_by_id = ayon_api.get_representations_parents(
+        project_name, repre_ids
+    )
+    for (
+        container,
+        repre_current_id,
+        repre_new_id
+    ) in containers_for_repre_compare:
+        current_repre = repre_entities_by_id[repre_current_id]
+        current_parents = repre_parents_by_id[repre_current_id]
+        new_repre = repre_entities_by_id[repre_new_id]
+        new_parents = repre_parents_by_id[repre_new_id]
+
+        is_valid = compare_representations(
+            current_repre, current_parents, new_repre, new_parents
+        )
+        if not is_valid:
+            log.error("Skipping: %s. See log for details.",
+                      container["namespace"])
+            continue
+
+        new_version = new_parents.version["version"]
+        update_container(container, version=new_version)
 
     # Add new assets
     all_loaders = discover_loader_plugins()
@@ -543,43 +564,43 @@ def update_scene(set_container, containers, current_data, new_data, new_file):
     return processed_containers
 
 
-def compare_representations(old, new):
+def compare_representations(
+    current_repre, current_parents, new_repre, new_parents
+):
     """Check if the old representation given can be updated
 
     Due to limitations of the `update_container` function we cannot allow
     differences in the following data:
 
     * Representation name (extension)
-    * Asset name
-    * Subset name (variation)
+    * Folder id
+    * Product id
 
     If any of those data values differs, the function will raise an
     RuntimeError
 
     Args:
-        old(dict): representation data from the database
-        new(dict): representation data from the database
+        current_repre (dict[str, Any]): Current representation entity.
+        current_parents (RepresentationParents): Current
+            representation parents.
+        new_repre (dict[str, Any]): New representation entity.
+        new_parents (RepresentationParents): New representation parents.
 
     Returns:
         bool: False if the representation is not invalid else True
-    """
 
-    if new["name"] != old["name"]:
+    """
+    if current_repre["name"] != new_repre["name"]:
         log.error("Cannot switch extensions")
         return False
 
-    new_context = new["context"]
-    old_context = old["context"]
-
     # TODO add better validation e.g. based on parent ids
-    if new_context["asset"] != old_context["asset"]:
-        log.error("Changing assets between updates is "
-                  "not supported.")
+    if current_parents.folder["id"] != new_parents.folder["id"]:
+        log.error("Changing folders between updates is not supported.")
         return False
 
-    if new_context["subset"] != old_context["subset"]:
-        log.error("Changing products between updates is "
-                  "not supported.")
+    if current_parents.product["id"] != new_parents.product["id"]:
+        log.error("Changing products between updates is not supported.")
         return False
 
     return True

@@ -1,7 +1,8 @@
 import re
 from copy import deepcopy
 
-from ayon_core.client import get_asset_by_id
+import ayon_api
+
 from ayon_core.pipeline.create import CreatorError
 
 
@@ -88,7 +89,7 @@ class ShotMetadataSolver:
         if not self.clip_name_tokenizer:
             return output_data
 
-        parent_name = source_data["selected_asset_doc"]["name"]
+        parent_name = source_data["selected_folder_entity"]["name"]
 
         search_text = parent_name + clip_name
 
@@ -157,11 +158,11 @@ class ShotMetadataSolver:
                     **_parent_tokens_formatting_data)
             except KeyError as _error:
                 raise CreatorError((
-                    "Make sure all keys in settings are correct : \n\n"
-                    f"`{_error}` from template string "
-                    f"{shot_hierarchy['parents_path']}, "
-                    f" has no equivalent in \n"
-                    f"{list(_parent_tokens_formatting_data.keys())} parents"
+                    "Make sure all keys in settings are correct:\n\n"
+                    f"`{_error}` from template string"
+                    f" {shot_hierarchy['parents_path']},"
+                    f" has no equivalent in"
+                    f"\n{list(_parent_tokens_formatting_data.keys())} parents"
                 ))
 
             parent_token_name = (
@@ -174,7 +175,8 @@ class ShotMetadataSolver:
             # find parent type
             parent_token_type = _parent_tokens_type[parent_token_name]
 
-            # in case selected context is set to the same asset
+            # in case selected context is set to the same folder
+            # TODO keep index with 'parents' - name check is not enough
             if (
                 _index == 0
                 and parents[-1]["entity_name"] == parent_name
@@ -184,14 +186,15 @@ class ShotMetadataSolver:
             # in case first parent is project then start parents from start
             if (
                 _index == 0
-                and parent_token_type == "Project"
+                and parent_token_type.lower() == "project"
             ):
                 project_parent = parents[0]
                 parents = [project_parent]
                 continue
 
             parents.append({
-                "entity_type": parent_token_type,
+                "entity_type": "folder",
+                "folder_type": parent_token_type.lower(),
                 "entity_name": parent_name
             })
 
@@ -209,58 +212,70 @@ class ShotMetadataSolver:
         return "/".join(
             [
                 p["entity_name"] for p in parents
-                if p["entity_type"] != "Project"
+                if p["entity_type"] != "project"
             ]
         ) if parents else ""
 
-    def _get_parents_from_selected_asset(
+    def _get_parents_from_selected_folder(
         self,
-        asset_doc,
-        project_doc
+        project_entity,
+        folder_entity,
     ):
-        """Returning parents from context on selected asset.
+        """Returning parents from context on selected folder.
 
         Context defined in Traypublisher project tree.
 
         Args:
-            asset_doc (db obj): selected asset doc
-            project_doc (db obj): actual project doc
+            project_entity (dict[str, Any]): Project entity.
+            folder_entity (dict[str, Any]): Selected folder entity.
 
         Returns:
-            list:  list of dict parent components
+            list: list of dict parent components
         """
-        project_name = project_doc["name"]
-        visual_hierarchy = [asset_doc]
-        current_doc = asset_doc
 
-        # looping through all available visual parents
-        # if they are not available anymore than it breaks
-        while True:
-            visual_parent_id = current_doc["data"]["visualParent"]
-            visual_parent = None
-            if visual_parent_id:
-                visual_parent = get_asset_by_id(project_name, visual_parent_id)
+        project_name = project_entity["name"]
+        path_entries = folder_entity["path"].split("/")
+        subpaths = []
+        subpath_items = []
+        for name in path_entries:
+            subpath_items.append(name)
+            if name:
+                subpaths.append("/".join(subpath_items))
+        # Remove last name because we already have folder entity
+        subpaths.pop(-1)
 
-            if not visual_parent:
-                visual_hierarchy.append(project_doc)
-                break
-            visual_hierarchy.append(visual_parent)
-            current_doc = visual_parent
+        folder_entity_by_path = {}
+        if subpaths:
+            folder_entity_by_path = {
+                parent_folder["path"]: parent_folder
+                for parent_folder in ayon_api.get_folders(
+                    project_name, folder_paths=subpaths
+                )
+            }
+        folders_hierarchy = [
+            folder_entity_by_path[folder_path]
+            for folder_path in subpaths
+        ]
+        folders_hierarchy.append(folder_entity)
 
         # add current selection context hierarchy
-        return [
-            {
-                "entity_type": entity["data"]["entityType"],
+        output = [{
+            "entity_type": "project",
+            "entity_name": project_name,
+        }]
+        for entity in folders_hierarchy:
+            output.append({
+                "entity_type": "folder",
+                "folder_type": entity["folderType"],
                 "entity_name": entity["name"]
-            }
-            for entity in reversed(visual_hierarchy)
-        ]
+            })
+        return output
 
-    def _generate_tasks_from_settings(self, project_doc):
+    def _generate_tasks_from_settings(self, project_entity):
         """Convert settings inputs to task data.
 
         Args:
-            project_doc (db obj): actual project doc
+            project_entity (dict): Project entity.
 
         Raises:
             KeyError: Missing task type in project doc
@@ -270,19 +285,23 @@ class ShotMetadataSolver:
         """
         tasks_to_add = {}
 
-        project_task_types = project_doc["config"]["tasks"]
+        project_task_types = project_entity["taskTypes"]
+        task_type_names = {
+            task_type["name"]
+            for task_type in project_task_types
+        }
         for task_item in self.shot_add_tasks:
             task_name = task_item["name"]
             task_type = task_item["task_type"]
 
             # check if task type in project task types
-            if task_type not in project_task_types.keys():
+            if task_type not in task_type_names:
                 raise KeyError(
                     "Missing task type `{}` for `{}` is not"
                     " existing in `{}``".format(
                         task_type,
                         task_name,
-                        list(project_task_types.keys())
+                        list(task_type_names)
                     )
                 )
             tasks_to_add[task_name] = {"type": task_type}
@@ -303,8 +322,8 @@ class ShotMetadataSolver:
         """
 
         tasks = {}
-        asset_doc = source_data["selected_asset_doc"]
-        project_doc = source_data["project_doc"]
+        folder_entity = source_data["selected_folder_entity"]
+        project_entity = source_data["project_entity"]
 
         # match clip to shot name at start
         shot_name = clip_name
@@ -312,8 +331,10 @@ class ShotMetadataSolver:
         # parse all tokens and generate formatting data
         formatting_data = self._generate_tokens(shot_name, source_data)
 
-        # generate parents from selected asset
-        parents = self._get_parents_from_selected_asset(asset_doc, project_doc)
+        # generate parents from selected folder
+        parents = self._get_parents_from_selected_folder(
+            project_entity, folder_entity
+        )
 
         if self.shot_rename["enabled"]:
             shot_name = self._rename_template(formatting_data)
@@ -325,7 +346,7 @@ class ShotMetadataSolver:
 
         if self.shot_add_tasks:
             tasks = self._generate_tasks_from_settings(
-                project_doc)
+                project_entity)
 
         # generate hierarchy path from parents
         hierarchy_path = self._create_hierarchy_path(parents)

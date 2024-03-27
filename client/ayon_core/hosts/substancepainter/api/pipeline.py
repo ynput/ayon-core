@@ -12,17 +12,14 @@ import substance_painter.project
 import pyblish.api
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-from ayon_core.settings import (
-    get_current_project_settings,
-    get_project_settings,
-)
+from ayon_core.settings import get_current_project_settings
 
 from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline import (
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
-    Anatomy
+    Anatomy,
 )
 from ayon_core.lib import (
     StringTemplate,
@@ -245,16 +242,15 @@ class SubstanceHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             return
 
         # Prepare formatting data if we detect any path which might have
-        # template tokens like {asset} in there.
+        # template tokens like {folder[name]} in there.
         formatting_data = {}
         has_formatting_entries = any("{" in item["value"] for item in shelves)
         if has_formatting_entries:
             project_name = self.get_current_project_name()
-            asset_name = self.get_current_asset_name()
-            task_name = self.get_current_asset_name()
-            project_settings = get_project_settings(project_name)
+            folder_path = self.get_current_folder_path()
+            task_name = self.get_current_task_name()
             formatting_data = get_template_data_with_names(
-                project_name, asset_name, task_name, project_settings
+                project_name, folder_path, task_name, project_settings
             )
             anatomy = Anatomy(project_name)
             formatting_data["root"] = anatomy.roots
@@ -338,7 +334,7 @@ def imprint_container(container,
         ("name", str(name)),
         ("namespace", str(namespace) if namespace else None),
         ("loader", str(loader.__class__.__name__)),
-        ("representation", str(context["representation"]["_id"])),
+        ("representation", context["representation"]["id"]),
     ]
     for key, value in data:
         container[key] = value

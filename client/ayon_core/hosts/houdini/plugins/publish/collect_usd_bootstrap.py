@@ -1,11 +1,7 @@
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import (
-    get_subset_by_name,
-    get_asset_by_name,
-    get_asset_name_identifier,
-)
-from ayon_core.pipeline import usdlib
+from ayon_core.pipeline import usdlib, KnownPublishError
 
 
 class CollectUsdBootstrap(pyblish.api.InstancePlugin):
@@ -54,9 +50,13 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
         self.log.debug("Add bootstrap for: %s" % bootstrap)
 
         project_name = instance.context.data["projectName"]
-        asset_name = instance.data["folderPath"]
-        asset_doc = get_asset_by_name(project_name, asset_name)
-        assert asset_doc, "Asset must exist: %s" % asset_name
+        folder_path = instance.data["folderPath"]
+        folder_name = folder_path.rsplit("/", 1)[-1]
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        if not folder_entity:
+            raise KnownPublishError(
+                "Folder '{}' does not exist".format(folder_path)
+            )
 
         # Check which are not about to be created and don't exist yet
         required = {"shot": ["usdShot"], "asset": ["usdAsset"]}.get(bootstrap)
@@ -73,20 +73,20 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
         self.log.debug("Checking required bootstrap: %s" % required)
         for product_name in required:
             if self._product_exists(
-                project_name, instance, product_name, asset_doc
+                project_name, instance, product_name, folder_entity
             ):
                 continue
 
             self.log.debug(
                 "Creating {0} USD bootstrap: {1} {2}".format(
-                    bootstrap, asset_name, product_name
+                    bootstrap, folder_path, product_name
                 )
             )
 
             product_type = "usd.bootstrap"
             new = instance.context.create_instance(product_name)
             new.data["productName"] = product_name
-            new.data["label"] = "{0} ({1})".format(product_name, asset_name)
+            new.data["label"] = "{0} ({1})".format(product_name, folder_name)
             new.data["productType"] = product_type
             new.data["family"] = product_type
             new.data["comment"] = "Automated bootstrap USD file."
@@ -100,24 +100,24 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
                 new.data[key] = instance.data[key]
 
     def _product_exists(
-        self, project_name, instance, product_name, asset_doc
+        self, project_name, instance, product_name, folder_entity
     ):
         """Return whether product exists in current context or in database."""
         # Allow it to be created during this publish session
         context = instance.context
 
-        asset_doc_name = get_asset_name_identifier(asset_doc)
+        folder_path = folder_entity["path"]
         for inst in context:
             if (
                 inst.data["productName"] == product_name
-                and inst.data["folderPath"] == asset_doc_name
+                and inst.data["folderPath"] == folder_path
             ):
                 return True
 
         # Or, if they already exist in the database we can
         # skip them too.
-        if get_subset_by_name(
-            project_name, product_name, asset_doc["_id"], fields=["_id"]
+        if ayon_api.get_product_by_name(
+            project_name, product_name, folder_entity["id"], fields={"id"}
         ):
             return True
         return False

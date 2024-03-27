@@ -116,6 +116,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ValidateModelNameModel,
         title="Validate Model Name"
     )
+    ValidateRenderPasses: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Render Passes"
+    )
     ExtractModelObj: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Extract OBJ",
@@ -184,6 +188,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": False,
+    },
+    "ValidateRenderPasses": {
+        "enabled": True,
+        "optional": False,
+        "active": True
     },
     "ExtractModelObj": {
         "enabled": True,

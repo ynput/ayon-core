@@ -1,9 +1,7 @@
 import numbers
 
-from ayon_core.client import (
-    get_versions,
-    get_hero_versions,
-)
+import ayon_api
+
 from ayon_core.pipeline import HeroVersionType
 from ayon_core.tools.utils.models import TreeModel
 from ayon_core.tools.utils.lib import format_version
@@ -27,7 +25,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
     def displayText(self, value, locale):
         if isinstance(value, HeroVersionType):
-            return format_version(value, True)
+            return format_version(value)
         if not isinstance(value, numbers.Integral):
             # For cases where no version is resolved like NOT FOUND cases
             # where a representation might not exist in current database
@@ -113,71 +111,35 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         # Current value of the index
         item = index.data(TreeModel.ItemRole)
         value = index.data(QtCore.Qt.DisplayRole)
-        if item["version_document"]["type"] != "hero_version":
-            assert isinstance(value, numbers.Integral), (
-                "Version is not integer"
-            )
 
         project_name = self.get_project_name()
         # Add all available versions to the editor
-        parent_id = item["version_document"]["parent"]
-        version_docs = [
-            version_doc
-            for version_doc in sorted(
-                get_versions(project_name, subset_ids=[parent_id]),
-                key=lambda item: item["name"]
-            )
-            if version_doc["data"].get("active", True)
-        ]
-
-        hero_versions = list(
-            get_hero_versions(
-                project_name,
-                subset_ids=[parent_id],
-                fields=["name", "data.tags", "version_id"]
-            )
-        )
-        hero_version_doc = None
-        if hero_versions:
-            hero_version_doc = hero_versions[0]
-
-        doc_for_hero_version = None
+        product_id = item["version_entity"]["productId"]
+        version_entities = list(sorted(
+            ayon_api.get_versions(
+                project_name, product_ids={product_id}, active=True
+            ),
+            key=lambda item: abs(item["version"])
+        ))
 
         selected = None
         items = []
-        for version_doc in version_docs:
-            version_tags = version_doc["data"].get("tags") or []
-            if "deleted" in version_tags:
-                continue
+        is_hero_version = value < 0
+        for version_entity in version_entities:
+            version = version_entity["version"]
+            label = format_version(version)
+            item = QtGui.QStandardItem(label)
+            item.setData(version_entity, QtCore.Qt.UserRole)
+            items.append(item)
 
             if (
-                hero_version_doc
-                and doc_for_hero_version is None
-                and hero_version_doc["version_id"] == version_doc["_id"]
+                version == value
+                or is_hero_version and version < 0
             ):
-                doc_for_hero_version = version_doc
-
-            label = format_version(version_doc["name"])
-            item = QtGui.QStandardItem(label)
-            item.setData(version_doc, QtCore.Qt.UserRole)
-            items.append(item)
-
-            if version_doc["name"] == value:
                 selected = item
 
-        if hero_version_doc and doc_for_hero_version:
-            version_name = doc_for_hero_version["name"]
-            label = format_version(version_name, True)
-            if isinstance(value, HeroVersionType):
-                index = len(version_docs)
-            hero_version_doc["name"] = HeroVersionType(version_name)
-
-            item = QtGui.QStandardItem(label)
-            item.setData(hero_version_doc, QtCore.Qt.UserRole)
-            items.append(item)
-
         # Reverse items so latest versions be upper
-        items = list(reversed(items))
+        items.reverse()
         for item in items:
             editor.model().appendRow(item)
 
