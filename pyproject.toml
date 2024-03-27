@@ -23,6 +23,11 @@ ayon-python-api = "^1.0"
 ruff = "^0.3.3"
 pre-commit = "^3.6.2"
 codespell = "^2.2.6"
+deal = "^4.24.3"
+semver = "^3.0.2"
+openassetio-traitgen = "*" # for generating traits from yaml definitions
+openassetio-mediacreation = "*" # for default media creation traits
+ayon-openassetio-manager-plugin = { git = "https://github.com/ynput/ayon-openassetio-manager-plugin.git", branch = "main" }
 
 
 [tool.ruff]
