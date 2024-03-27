@@ -6,16 +6,15 @@ from urllib.parse import urlparse, parse_qs
 import pyblish.api
 
 from ayon_api import (
-    get_folder_by_name,
+    get_folder_by_path,
     get_product_by_name,
     get_representation_by_name,
     get_hero_version_by_product_id,
     get_version_by_name,
     get_last_version_by_product_id
 )
-from ayon_core.pipeline import (
-    get_representation_path
-)
+from ayon_core.pipeline.template_data import get_template_data_with_names
+from ayon_core.pipeline import get_representation_path
 
 
 def parse_ayon_uri(uri: str) -> Optional[dict]:
@@ -34,15 +33,15 @@ def parse_ayon_uri(uri: str) -> Optional[dict]:
 
     Example:
     >>> parse_ayon_uri(
-    >>>     "ayon://test/villain?product=modelMain&version=2&representation=usd"  # noqa: E501
+    >>>     "ayon://test/char/villain?product=modelMain&version=2&representation=usd"  # noqa: E501
     >>> )
-    {'project': 'test', 'folder': 'villain',
+    {'project': 'test', 'folderPath': '/char/villain',
      'product': 'modelMain', 'version': 1,
      'representation': 'usd'}
     >>> parse_ayon_uri(
     >>>     "ayon+entity://project/folder?product=renderMain&version=3&representation=exr"  # noqa: E501
     >>> )
-    {'project': 'project', 'folder': 'folder',
+    {'project': 'project', 'folderPath': '/folder',
      'product': 'renderMain', 'version': 3,
      'representation': 'exr'}
 
@@ -61,7 +60,7 @@ def parse_ayon_uri(uri: str) -> Optional[dict]:
 
     result = {
         "project": parsed.netloc,
-        "folder": parsed.path.strip("/")
+        "folderPath": "/" + parsed.path.strip("/")
     }
     query = parse_qs(parsed.query)
     for key in ["product", "version", "representation"]:
@@ -125,7 +124,7 @@ def get_representation_by_names(
         # Allow explicitly passing asset document
         folder_entity = folder_path
     else:
-        folder_entity = get_folder_by_name(project_name,
+        folder_entity = get_folder_by_path(project_name,
                                            folder_path,
                                            fields=["id"])
     if not folder_entity:
@@ -137,7 +136,7 @@ def get_representation_by_names(
     else:
         product_entity = get_product_by_name(project_name,
                                              product_name,
-                                             asset_id=folder_entity["id"],
+                                             folder_id=folder_entity["id"],
                                              fields=["id"])
     if not product_entity:
         return
@@ -168,7 +167,7 @@ def get_representation_path_by_names(
         product_name: str,
         version_name: str,
         representation_name: str) -> Optional[str]:
-    """Get (latest) filepath for representation for asset and subset.
+    """Get (latest) filepath for representation for folder and product.
 
     See `get_representation_by_names` for more details.
 
@@ -217,10 +216,10 @@ def get_representation_path_by_ayon_uri(
 
         specific_version = isinstance(query["version"], int)
         for instance in context:
-            if instance.data.get("asset") != query["asset"]:
+            if instance.data.get("folderPath") != query["folderPath"]:
                 continue
 
-            if instance.data.get("subset") != query["product"]:
+            if instance.data.get("productName") != query["product"]:
                 continue
 
             # Only consider if the instance has a representation by
@@ -276,16 +275,22 @@ def get_instance_expected_output_path(
 
     context = instance.context
     anatomy = context.data["anatomy"]
-    path_template_obj = anatomy.templates_obj["publish"]["path"]
+
     template_data = copy.deepcopy(instance.data["anatomyData"])
+    template_data.update(get_template_data_with_names(
+        project_name=context.data["projectName"],
+        folder_path=instance.data["folderPath"],
+        task_name=instance.data["task"],
+        host_name=context.data["hostName"],
+        settings=context.data["project_settings"]
+    ))
     template_data.update({
         "ext": ext,
         "representation": representation_name,
-        "subset": instance.data["subset"],
-        "folderPath": instance.data["folderPath"],
         "variant": instance.data.get("variant"),
         "version": version
     })
 
+    path_template_obj = anatomy.get_template_item("publish", "default")["path"]
     template_filled = path_template_obj.format_strict(template_data)
     return os.path.normpath(template_filled)
