@@ -33,6 +33,7 @@ from ayon_core.pipeline import (
     deregister_loader_plugin_path,
     deregister_inventory_action_path,
     deregister_creator_plugin_path,
+    AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
@@ -360,13 +361,13 @@ def parse_container(container):
 
 
 def _ls():
-    """Yields Avalon container node names.
+    """Yields AYON container node names.
 
     Used by `ls()` to retrieve the nodes and then query the full container's
     data.
 
     Yields:
-        str: Avalon container node name (objectSet)
+        str: AYON container node name (objectSet)
 
     """
 
@@ -376,12 +377,14 @@ def _ls():
             yield iterator.thisNode()
             iterator.next()
 
-    ids = {AVALON_CONTAINER_ID,
-           # Backwards compatibility
-           "pyblish.mindbender.container"}
+    ids = {
+        AYON_CONTAINER_ID,
+        # Backwards compatibility
+        AVALON_CONTAINER_ID
+    }
 
     # Iterate over all 'set' nodes in the scene to detect whether
-    # they have the avalon container ".id" attribute.
+    # they have the ayon container ".id" attribute.
     fn_dep = om.MFnDependencyNode()
     iterator = om.MItDependencyNodes(om.MFn.kSet)
     for mobject in _maya_iterate(iterator):
@@ -446,7 +449,7 @@ def containerise(name,
         ("name", name),
         ("namespace", namespace),
         ("loader", loader),
-        ("representation", context["representation"]["_id"]),
+        ("representation", context["representation"]["id"]),
     ]
 
     for key, value in data:
@@ -585,7 +588,7 @@ def on_open():
     from ayon_core.tools.utils import SimplePopup
 
     # Validate FPS after update_task_from_path to
-    # ensure it is using correct FPS for the asset
+    # ensure it is using correct FPS for the folder
     lib.validate_fps()
     lib.fix_incompatible_containers()
 
@@ -670,7 +673,7 @@ def workfile_save_before_xgen(event):
     switching context.
 
     Args:
-        event (Event) - openpype/lib/events.py
+        event (Event) - ayon_core/lib/events.py
     """
     if not cmds.pluginInfo("xgenToolkit", query=True, loaded=True):
         return

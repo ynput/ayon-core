@@ -42,7 +42,7 @@ class ValidateLoadedPlugin(OptionalPyblishPluginMixin,
 
         invalid = []
         # Find all plug-in requirements for current instance
-        instance_families = {instance.data["family"]}
+        instance_families = {instance.data["productType"]}
         instance_families.update(instance.data.get("families", []))
         cls.log.debug("Checking plug-in validation "
                       f"for instance families: {instance_families}")

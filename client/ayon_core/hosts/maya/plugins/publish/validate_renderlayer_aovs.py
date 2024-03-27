@@ -1,14 +1,17 @@
+import ayon_api
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.client import get_subset_by_name
-from ayon_core.pipeline.publish import PublishValidationError
+from ayon_core.pipeline.publish import (
+    PublishValidationError,
+    OptionalPyblishPluginMixin
+)
 
-
-class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
+class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin,
+                              OptionalPyblishPluginMixin):
     """Validate created AOVs / RenderElement is registered in the database
 
-    Each render element is registered as a subset which is formatted based on
+    Each render element is registered as a product which is formatted based on
     the render layer and the render element, example:
 
         <render layer>.<render element>
@@ -26,31 +29,37 @@ class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["renderlayer"]
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = False
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                "Found unregistered subsets: {}".format(invalid))
+                "Found unregistered products: {}".format(invalid))
 
     def get_invalid(self, instance):
         invalid = []
 
         project_name = instance.context.data["projectName"]
-        asset_doc = instance.data["assetEntity"]
+        folder_entity = instance.data["folderEntity"]
         render_passes = instance.data.get("renderPasses", [])
         for render_pass in render_passes:
-            is_valid = self.validate_subset_registered(
-                project_name, asset_doc, render_pass
+            is_valid = self.validate_product_registered(
+                project_name, folder_entity, render_pass
             )
             if not is_valid:
                 invalid.append(render_pass)
 
         return invalid
 
-    def validate_subset_registered(self, project_name, asset_doc, subset_name):
-        """Check if subset is registered in the database under the asset"""
+    def validate_product_registered(
+        self, project_name, folder_entity, product_name
+    ):
+        """Check if product is registered in the database under the folder"""
 
-        return get_subset_by_name(
-            project_name, subset_name, asset_doc["_id"], fields=["_id"]
+        return ayon_api.get_product_by_name(
+            project_name, product_name, folder_entity["id"], fields={"id"}
         )

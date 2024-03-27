@@ -3,6 +3,7 @@
 import os
 import sys
 import json
+import warnings
 
 
 class Commands:
@@ -41,21 +42,21 @@ class Commands:
         return click_func
 
     @staticmethod
-    def publish(paths, targets=None, gui=False):
+    def publish(path: str, targets: list=None, gui:bool=False) -> None:
         """Start headless publishing.
 
-        Publish use json from passed paths argument.
+        Publish use json from passed path argument.
 
         Args:
-            paths (list): Paths to jsons.
-            targets (string): What module should be targeted
-                (to choose validator for example)
+            path (str): Path to JSON.
+            targets (list of str): List of pyblish targets.
             gui (bool): Show publish UI.
 
         Raises:
             RuntimeError: When there is no path to process.
-        """
+            RuntimeError: When executed with list of JSON paths.
 
+        """
         from ayon_core.lib import Logger
         from ayon_core.lib.applications import (
             get_app_environments_for_context,
@@ -66,12 +67,13 @@ class Commands:
             install_ayon_plugins,
             get_global_context,
         )
-        from ayon_core.tools.utils.host_tools import show_publish
-        from ayon_core.tools.utils.lib import qt_app_context
 
         # Register target and host
         import pyblish.api
         import pyblish.util
+
+        if not isinstance(path, str):
+            raise RuntimeError("Path to JSON must be a string.")
 
         # Fix older jobs
         for src_key, dst_key in (
@@ -95,18 +97,15 @@ class Commands:
 
         publish_paths = manager.collect_plugin_paths()["publish"]
 
-        for path in publish_paths:
-            pyblish.api.register_plugin_path(path)
-
-        if not any(paths):
-            raise RuntimeError("No publish paths specified")
+        for plugin_path in publish_paths:
+            pyblish.api.register_plugin_path(plugin_path)
 
         app_full_name = os.getenv("AYON_APP_NAME")
         if app_full_name:
             context = get_global_context()
             env = get_app_environments_for_context(
                 context["project_name"],
-                context["asset_name"],
+                context["folder_path"],
                 context["task_name"],
                 app_full_name,
                 launch_type=LaunchTypes.farm_publish,
@@ -122,7 +121,7 @@ class Commands:
         else:
             pyblish.api.register_target("farm")
 
-        os.environ["AYON_PUBLISH_DATA"] = os.pathsep.join(paths)
+        os.environ["AYON_PUBLISH_DATA"] = path
         os.environ["HEADLESS_PUBLISH"] = 'true'  # to use in app lib
 
         log.info("Running publish ...")
@@ -133,6 +132,8 @@ class Commands:
             print(plugin)
 
         if gui:
+            from ayon_core.tools.utils.host_tools import show_publish
+            from ayon_core.tools.utils.lib import qt_app_context
             with qt_app_context():
                 show_publish()
         else:
@@ -181,7 +182,7 @@ class Commands:
             json.dump(env, file_stream, indent=4)
 
     @staticmethod
-    def contextselection(output_path, project_name, asset_name, strict):
+    def contextselection(output_path, project_name, folder_path, strict):
         from ayon_core.tools.context_dialog import main
 
-        main(output_path, project_name, asset_name, strict)
+        main(output_path, project_name, folder_path, strict)

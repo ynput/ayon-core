@@ -4,19 +4,21 @@ from ayon_core.pipeline import LoaderPlugin
 from .launch_logic import stub
 
 
-def get_unique_layer_name(layers, asset_name, subset_name):
-    """
-        Gets all layer names and if 'asset_name_subset_name' is present, it
-        increases suffix by 1 (eg. creates unique layer name - for Loader)
+def get_unique_layer_name(layers, container_name, product_name):
+    """Prepare unique layer name.
+
+    Gets all layer names and if '<container_name>_<product_name>' is present,
+    it adds suffix '1', or increases the suffix by 1.
+
     Args:
         layers (list) of dict with layers info (name, id etc.)
-        asset_name (string):
-        subset_name (string):
+        container_name (str):
+        product_name (str):
 
     Returns:
-        (string): name_00X (without version)
+        str: name_00X (without version)
     """
-    name = "{}_{}".format(asset_name, subset_name)
+    name = "{}_{}".format(container_name, product_name)
     names = {}
     for layer in layers:
         layer_name = re.sub(r'_\d{3}$', '', layer.name)

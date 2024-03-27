@@ -93,8 +93,8 @@ class ExtractCameraMayaScene(publish.Extractor,
     The cameras gets baked to world space by default. Only when the instance's
     `bakeToWorldSpace` is set to False it will include its full hierarchy.
 
-    'camera' family expects only single camera, if multiple cameras are needed,
-    'matchmove' is better choice.
+    'camera' product type expects only single camera, if multiple cameras are
+    needed, 'matchmove' is better choice.
 
     Note:
         The extracted Maya ascii file gets "massaged" removing the uuid values

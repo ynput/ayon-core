@@ -12,15 +12,7 @@ from abc import ABCMeta, abstractmethod
 import six
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.client import get_asset_name_identifier
-from ayon_core.settings import (
-    get_system_settings,
-    get_project_settings,
-)
-from ayon_core.settings.constants import (
-    METADATA_KEYS,
-    M_DYNAMIC_KEY_LABEL
-)
+from ayon_core.settings import get_project_settings, get_studio_settings
 from .log import Logger
 from .profiles_filtering import filter_profiles
 from .local_settings import get_ayon_username
@@ -212,7 +204,7 @@ class ApplicationGroup:
     Application group wraps different versions(variants) of application.
     e.g. "maya" is group and "maya_2020" is variant.
 
-    Group hold `host_name` which is implementation name used in pype. Also
+    Group hold `host_name` which is implementation name used in AYON. Also
     holds `enabled` if whole app group is enabled or `icon` for application
     icon path in resources.
 
@@ -409,7 +401,7 @@ class ApplicationManager:
         if self._studio_settings is not None:
             settings = copy.deepcopy(self._studio_settings)
         else:
-            settings = get_system_settings(
+            settings = get_studio_settings(
                 clear_metadata=False, exclude_locals=False
             )
 
@@ -493,7 +485,7 @@ class ApplicationManager:
         """Launch procedure.
 
         For host application it's expected to contain "project_name",
-        "asset_name" and "task_name".
+        "folder_path" and "task_name".
 
         Args:
             app_name (str): Name of application that should be launched.
@@ -1388,7 +1380,7 @@ class EnvironmentPrepData(dict):
         data (dict): Data must contain required keys.
     """
     required_keys = (
-        "project_doc", "asset_doc", "task_name", "app", "anatomy"
+        "project_entity", "folder_entity", "task_entity", "app", "anatomy"
     )
 
     def __init__(self, data):
@@ -1402,15 +1394,16 @@ class EnvironmentPrepData(dict):
         if data.get("env") is None:
             data["env"] = os.environ.copy()
 
-        if "system_settings" not in data:
-            data["system_settings"] = get_system_settings()
+        project_name = data["project_entity"]["name"]
+        if "project_settings" not in data:
+            data["project_settings"] = get_project_settings(project_name)
 
         super(EnvironmentPrepData, self).__init__(data)
 
 
 def get_app_environments_for_context(
     project_name,
-    asset_name,
+    folder_path,
     task_name,
     app_name,
     env_group=None,
@@ -1421,7 +1414,7 @@ def get_app_environments_for_context(
     """Prepare environment variables by context.
     Args:
         project_name (str): Name of project.
-        asset_name (str): Name of asset.
+        folder_path (str): Folder path.
         task_name (str): Name of task.
         app_name (str): Name of application that is launched and can be found
             by ApplicationManager.
@@ -1443,7 +1436,7 @@ def get_app_environments_for_context(
     context = app_manager.create_launch_context(
         app_name,
         project_name=project_name,
-        asset_name=asset_name,
+        folder_path=folder_path,
         task_name=task_name,
         env_group=env_group,
         launch_type=launch_type,
@@ -1528,8 +1521,8 @@ def prepare_app_environments(
     # Use environments from local settings
     filtered_local_envs = {}
     # NOTE Overrides for environment variables are not implemented in AYON.
-    # system_settings = data["system_settings"]
-    # whitelist_envs = system_settings["general"].get("local_env_white_list")
+    # project_settings = data["project_settings"]
+    # whitelist_envs = project_settings["general"].get("local_env_white_list")
     # if whitelist_envs:
     #     local_settings = get_local_settings()
     #     local_envs = local_settings.get("environments") or {}
@@ -1552,13 +1545,13 @@ def prepare_app_environments(
         app.environment
     ]
 
-    asset_doc = data.get("asset_doc")
+    folder_entity = data.get("folder_entity")
     # Add tools environments
     groups_by_name = {}
     tool_by_group_name = collections.defaultdict(dict)
-    if asset_doc:
+    if folder_entity:
         # Make sure each tool group can be added only once
-        for key in asset_doc["data"].get("tools_env") or []:
+        for key in folder_entity["attrib"].get("tools") or []:
             tool = app.manager.tools.get(key)
             if not tool or not tool.is_valid_for_app(app):
                 continue
@@ -1680,10 +1673,10 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
     # Context environments
     log = data["log"]
 
-    project_doc = data["project_doc"]
-    asset_doc = data["asset_doc"]
-    task_name = data["task_name"]
-    if not project_doc:
+    project_entity = data["project_entity"]
+    folder_entity = data["folder_entity"]
+    task_entity = data["task_entity"]
+    if not project_entity:
         log.info(
             "Skipping context environments preparation."
             " Launch context does not contain required data."
@@ -1691,23 +1684,21 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
         return
 
     # Load project specific environments
-    project_name = project_doc["name"]
+    project_name = project_entity["name"]
     project_settings = get_project_settings(project_name)
-    system_settings = get_system_settings()
     data["project_settings"] = project_settings
-    data["system_settings"] = system_settings
 
     app = data["app"]
     context_env = {
-        "AYON_PROJECT_NAME": project_doc["name"],
+        "AYON_PROJECT_NAME": project_entity["name"],
         "AYON_APP_NAME": app.full_name
     }
-    if asset_doc:
-        asset_name = get_asset_name_identifier(asset_doc)
-        context_env["AYON_FOLDER_PATH"] = asset_name
+    if folder_entity:
+        folder_path = folder_entity["path"]
+        context_env["AYON_FOLDER_PATH"] = folder_path
 
-        if task_name:
-            context_env["AYON_TASK_NAME"] = task_name
+        if task_entity:
+            context_env["AYON_TASK_NAME"] = task_entity["name"]
 
     log.debug(
         "Context environments set:\n{}".format(
@@ -1727,15 +1718,19 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
 
     data["env"]["AYON_HOST_NAME"] = app.host_name
 
-    if not asset_doc or not task_name:
+    if not folder_entity or not task_entity:
         # QUESTION replace with log.info and skip workfile discovery?
         # - technically it should be possible to launch host without context
         raise ApplicationLaunchFailed(
-            "Host launch require asset and task context."
+            "Host launch require folder and task context."
         )
 
     workdir_data = get_template_data(
-        project_doc, asset_doc, task_name, app.host_name, system_settings
+        project_entity,
+        folder_entity,
+        task_entity,
+        app.host_name,
+        project_settings
     )
     data["workdir_data"] = workdir_data
 
@@ -1794,6 +1789,10 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     from ayon_core.addon import AddonsManager
     from ayon_core.pipeline import HOST_WORKFILE_EXTENSIONS
+    from ayon_core.pipeline.workfile import (
+        should_use_last_workfile_on_launch,
+        should_open_workfiles_tool_on_launch,
+    )
 
     if not addons_manager:
         addons_manager = AddonsManager()
@@ -1816,7 +1815,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     start_last_workfile = data.get("start_last_workfile")
     if start_last_workfile is None:
-        start_last_workfile = should_start_last_workfile(
+        start_last_workfile = should_use_last_workfile_on_launch(
             project_name, app.host_name, task_name, task_type
         )
     else:
@@ -1824,7 +1823,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     data["start_last_workfile"] = start_last_workfile
 
-    workfile_startup = should_workfile_tool_start(
+    workfile_startup = should_open_workfiles_tool_on_launch(
         project_name, app.host_name, task_name, task_type
     )
     data["workfile_startup"] = workfile_startup
@@ -1861,13 +1860,15 @@ def _prepare_last_workfile(data, workdir, addons_manager):
             project_settings = data["project_settings"]
             task_type = workdir_data["task"]["type"]
             template_key = get_workfile_template_key(
+                project_name,
                 task_type,
                 app.host_name,
-                project_name,
                 project_settings=project_settings
             )
             # Find last workfile
-            file_template = str(anatomy.templates[template_key]["file"])
+            file_template = anatomy.get_template_item(
+                "work", template_key, "file"
+            ).template
 
             workdir_data.update({
                 "version": 1,
@@ -1890,142 +1891,3 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     data["env"]["AYON_LAST_WORKFILE"] = last_workfile_path
     data["last_workfile_path"] = last_workfile_path
-
-
-def should_start_last_workfile(
-    project_name, host_name, task_name, task_type, default_output=False
-):
-    """Define if host should start last version workfile if possible.
-
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_OPEN_LAST_WORKFILE`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
-
-    Args:
-        project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
-
-    Returns:
-        bool: True if host should start workfile.
-
-    """
-
-    project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["last_workfile_on_startup"]
-    )
-
-    if not profiles:
-        return default_output
-
-    filter_data = {
-        "tasks": task_name,
-        "task_types": task_type,
-        "hosts": host_name
-    }
-    matching_item = filter_profiles(profiles, filter_data)
-
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
-
-    if output is None:
-        return default_output
-    return output
-
-
-def should_workfile_tool_start(
-    project_name, host_name, task_name, task_type, default_output=False
-):
-    """Define if host should start workfile tool at host launch.
-
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_WORKFILE_TOOL_ON_START`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
-
-    Args:
-        project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
-
-    Returns:
-        bool: True if host should start workfile.
-
-    """
-
-    project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["core"]
-        ["tools"]
-        ["Workfiles"]
-        ["open_workfile_tool_on_startup"]
-    )
-
-    if not profiles:
-        return default_output
-
-    filter_data = {
-        "tasks": task_name,
-        "task_types": task_type,
-        "hosts": host_name
-    }
-    matching_item = filter_profiles(profiles, filter_data)
-
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
-
-    if output is None:
-        return default_output
-    return output
-
-
-def get_non_python_host_kwargs(kwargs, allow_console=True):
-    """Explicit setting of kwargs for Popen for AE/PS/Harmony.
-
-    Expected behavior
-    - ayon_console opens window with logs
-    - ayon has stdout/stderr available for capturing
-
-    Args:
-        kwargs (dict) or None
-        allow_console (bool): use False for inner Popen opening app itself or
-           it will open additional console (at least for Harmony)
-    """
-
-    if kwargs is None:
-        kwargs = {}
-
-    if platform.system().lower() != "windows":
-        return kwargs
-
-    executable_path = os.environ.get("AYON_EXECUTABLE")
-
-    executable_filename = ""
-    if executable_path:
-        executable_filename = os.path.basename(executable_path)
-
-    is_gui_executable = "ayon_console" not in executable_filename
-    if is_gui_executable:
-        kwargs.update({
-            "creationflags": subprocess.CREATE_NO_WINDOW,
-            "stdout": subprocess.DEVNULL,
-            "stderr": subprocess.DEVNULL
-        })
-    elif allow_console:
-        kwargs.update({
-            "creationflags": subprocess.CREATE_NEW_CONSOLE
-        })
-    return kwargs

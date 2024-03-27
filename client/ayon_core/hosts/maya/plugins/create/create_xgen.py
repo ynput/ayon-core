@@ -6,5 +6,5 @@ class CreateXgen(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.xgen"
     label = "Xgen"
-    family = "xgen"
+    product_type = "xgen"
     icon = "pagelines"

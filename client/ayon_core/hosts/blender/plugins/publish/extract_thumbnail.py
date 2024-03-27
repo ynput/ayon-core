@@ -32,9 +32,9 @@ class ExtractThumbnail(publish.Extractor):
             return
 
         stagingdir = self.staging_dir(instance)
-        asset_name = instance.data["assetEntity"]["name"]
-        subset = instance.data["subset"]
-        filename = f"{asset_name}_{subset}"
+        folder_name = instance.data["folderEntity"]["name"]
+        product_name = instance.data["productName"]
+        filename = f"{folder_name}_{product_name}"
 
         path = os.path.join(stagingdir, filename)
 
@@ -42,11 +42,11 @@ class ExtractThumbnail(publish.Extractor):
 
         camera = instance.data.get("review_camera", "AUTO")
         start = instance.data.get("frameStart", bpy.context.scene.frame_start)
-        family = instance.data.get("family")
+        product_type = instance.data["productType"]
         isolate = instance.data("isolate", None)
 
         presets = json.loads(self.presets)
-        preset = presets.get(family, {})
+        preset = presets.get(product_type, {})
 
         preset.update({
             "camera": camera,

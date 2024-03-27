@@ -6,7 +6,7 @@ class CreateShotClip(opfapi.Creator):
     """Publishable clip"""
 
     label = "Create Publishable Clip"
-    family = "clip"
+    product_type = "clip"
     icon = "film"
     defaults = ["Main"]
 
@@ -17,7 +17,7 @@ class CreateShotClip(opfapi.Creator):
         presets = deepcopy(self.presets)
         gui_inputs = self.get_gui_inputs()
 
-        # get key pares from presets and match it on ui inputs
+        # get key pairs from presets and match it on ui inputs
         for k, v in gui_inputs.items():
             if v["type"] in ("dict", "section"):
                 # nested dictionary (only one level allowed
@@ -32,7 +32,7 @@ class CreateShotClip(opfapi.Creator):
 
         # open widget for plugins inputs
         results_back = self.create_widget(
-            "Pype publish attributes creator",
+            "AYON publish attributes creator",
             "Define sequential rename and fill hierarchy data.",
             gui_inputs
         )
@@ -62,7 +62,7 @@ class CreateShotClip(opfapi.Creator):
             "log": self.log,
             "ui_inputs": results_back,
             "avalon": self.data,
-            "family": self.data["family"]
+            "product_type": self.data["productType"]
         }
 
         for i, segment in enumerate(sorted_selected_segments):
@@ -203,19 +203,19 @@ class CreateShotClip(opfapi.Creator):
                 "target": "ui",
                 "order": 3,
                 "value": {
-                    "subsetName": {
+                    "productName": {
                         "value": ["[ track name ]", "main", "bg", "fg", "bg",
                                 "animatic"],
                         "type": "QComboBox",
-                        "label": "Subset Name",
+                        "label": "Product Name",
                         "target": "ui",
-                        "toolTip": "chose subset name pattern, if [ track name ] is selected, name of track layer will be used",  # noqa
+                        "toolTip": "chose product name pattern, if [ track name ] is selected, name of track layer will be used",  # noqa
                         "order": 0},
-                    "subsetFamily": {
+                    "productType": {
                         "value": ["plate", "take"],
                         "type": "QComboBox",
-                        "label": "Subset Family",
-                        "target": "ui", "toolTip": "What use of this subset is for",  # noqa
+                        "label": "Product Type",
+                        "target": "ui", "toolTip": "What use of this product is for",  # noqa
                         "order": 1},
                     "reviewTrack": {
                         "value": ["< none >"] + gui_tracks,
@@ -229,14 +229,14 @@ class CreateShotClip(opfapi.Creator):
                         "type": "QCheckBox",
                         "label": "Include audio",
                         "target": "tag",
-                        "toolTip": "Process subsets with corresponding audio",  # noqa
+                        "toolTip": "Process products with corresponding audio",  # noqa
                         "order": 3},
                     "sourceResolution": {
                         "value": False,
                         "type": "QCheckBox",
                         "label": "Source resolution",
                         "target": "tag",
-                        "toolTip": "Is resloution taken from timeline or source?",  # noqa
+                        "toolTip": "Is resolution taken from timeline or source?",  # noqa
                         "order": 4},
                 }
             },

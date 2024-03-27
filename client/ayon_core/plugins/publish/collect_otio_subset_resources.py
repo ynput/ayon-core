@@ -16,7 +16,7 @@ from ayon_core.pipeline.publish import (
 
 
 class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
-    """Get Resources for a subset version"""
+    """Get Resources for a product version"""
 
     label = "Collect OTIO Subset Resources"
     order = pyblish.api.CollectorOrder + 0.491
@@ -32,7 +32,7 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
             make_sequence_collection
         )
 
-        if "audio" in instance.data["family"]:
+        if "audio" in instance.data["productType"]:
             return
 
         if not instance.data.get("representations"):
@@ -43,8 +43,10 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
 
         template_name = self.get_template_name(instance)
         anatomy = instance.context.data["anatomy"]
-        publish_template_category = anatomy.templates[template_name]
-        template = os.path.normpath(publish_template_category["path"])
+        publish_path_template = anatomy.get_template_item(
+            "publish", template_name, "path"
+        ).template
+        template = os.path.normpath(publish_path_template)
         self.log.debug(
             ">> template: {}".format(template))
 
@@ -250,14 +252,14 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
 
         # Task can be optional in anatomy data
         host_name = context.data["hostName"]
-        family = instance.data["family"]
+        product_type = instance.data["productType"]
         anatomy_data = instance.data["anatomyData"]
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
             project_name,
             host_name,
-            family,
+            product_type,
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],

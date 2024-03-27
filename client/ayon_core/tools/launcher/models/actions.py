@@ -6,6 +6,7 @@ from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherAction,
 )
+from ayon_core.pipeline.workfile import should_use_last_workfile_on_launch
 
 
 # class Action:
@@ -120,12 +121,12 @@ class ApplicationAction(LauncherAction):
         )
 
         project_name = session["AYON_PROJECT_NAME"]
-        asset_name = session["AYON_FOLDER_PATH"]
+        folder_path = session["AYON_FOLDER_PATH"]
         task_name = session["AYON_TASK_NAME"]
         try:
             self.application.launch(
                 project_name=project_name,
-                asset_name=asset_name,
+                folder_path=folder_path,
                 task_name=task_name,
                 **self.data
             )
@@ -293,6 +294,34 @@ class ActionsModel:
         self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
+    def _should_start_last_workfile(
+        self,
+        project_name,
+        task_id,
+        identifier,
+        host_name,
+        not_open_workfile_actions
+    ):
+        if identifier in not_open_workfile_actions:
+            return not not_open_workfile_actions[identifier]
+
+        task_name = None
+        task_type = None
+        if task_id is not None:
+            task_entity = self._controller.get_task_entity(
+                project_name, task_id
+            )
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
+        output = should_use_last_workfile_on_launch(
+            project_name,
+            host_name,
+            task_name,
+            task_type
+        )
+        return output
+
     def get_action_items(self, project_name, folder_id, task_id):
         """Get actions for project.
 
@@ -304,7 +333,6 @@ class ActionsModel:
         Returns:
             list[ActionItem]: List of actions.
         """
-
         not_open_workfile_actions = self._get_no_last_workfile_for_context(
             project_name, folder_id, task_id)
         session = self._prepare_session(project_name, folder_id, task_id)
@@ -318,8 +346,15 @@ class ActionsModel:
             # Handling of 'force_not_open_workfile' for applications
             if action_item.is_application:
                 action_item = action_item.copy()
+                start_last_workfile = self._should_start_last_workfile(
+                    project_name,
+                    task_id,
+                    identifier,
+                    action.application.host_name,
+                    not_open_workfile_actions
+                )
                 action_item.force_not_open_workfile = (
-                    not_open_workfile_actions.get(identifier, False)
+                    not start_last_workfile
                 )
 
             output.append(action_item)
@@ -359,11 +394,15 @@ class ActionsModel:
                 per_action = self._get_no_last_workfile_for_context(
                     project_name, folder_id, task_id
                 )
-                force_not_open_workfile = per_action.get(identifier, False)
-                if force_not_open_workfile:
-                    action.data["start_last_workfile"] = False
-                else:
-                    action.data.pop("start_last_workfile", None)
+                start_last_workfile = self._should_start_last_workfile(
+                    project_name,
+                    task_id,
+                    identifier,
+                    action.application.host_name,
+                    per_action
+                )
+                action.data["start_last_workfile"] = start_last_workfile
+
             action.process(session)
         except Exception as exc:
             self.log.warning("Action trigger failed.", exc_info=True)
@@ -461,9 +500,11 @@ class ActionsModel:
             if is_application:
                 action.project_entities[project_name] = project_entity
                 action.project_settings[project_name] = project_settings
+
             label = action.label or identifier
             variant_label = getattr(action, "label_variant", None)
             icon = get_action_icon(action)
+
             item = ActionItem(
                 identifier,
                 label,

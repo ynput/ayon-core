@@ -55,9 +55,9 @@ class ExtractPlayblast(publish.Extractor, publish.OptionalPyblishPluginMixin):
 
         # get output path
         stagingdir = self.staging_dir(instance)
-        asset_name = instance.data["assetEntity"]["name"]
-        subset = instance.data["subset"]
-        filename = f"{asset_name}_{subset}"
+        folder_name = instance.data["folderEntity"]["name"]
+        product_name = instance.data["productName"]
+        filename = f"{folder_name}_{product_name}"
 
         path = os.path.join(stagingdir, filename)
 

@@ -1,48 +1,32 @@
 import os
 import re
 import copy
-import socket
 import itertools
-import datetime
 import sys
 import traceback
 import uuid
 
-from ayon_core.client import (
-    get_project,
-    get_assets,
-    get_asset_by_id,
-    get_subset_by_id,
-    get_subset_by_name,
-    get_version_by_id,
-    get_last_version_by_subset_id,
-    get_version_by_name,
-    get_representations,
-)
-from ayon_core.client.operations import (
+import ayon_api
+from ayon_api.utils import create_entity_id
+from ayon_api.operations import (
     OperationsSession,
-    new_asset_document,
-    new_subset_document,
-    new_version_doc,
-    new_representation_doc,
-    prepare_version_update_data,
-    prepare_representation_update_data,
-)
-from ayon_core.addon import AddonsManager
-from ayon_core.lib import (
-    StringTemplate,
-    get_ayon_username,
-    get_formatted_current_time,
-    source_hash,
+    new_folder_entity,
+    new_product_entity,
+    new_version_entity,
+    new_representation_entity,
 )
 
+from ayon_core.lib import (
+    StringTemplate,
+    source_hash,
+)
 from ayon_core.lib.file_transaction import FileTransaction
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.publish import get_publish_template_name
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 
 UNKNOWN = object()
 
@@ -235,20 +219,20 @@ class ProjectPushRepreItem:
         but filenames are not template based.
 
     Args:
-        repre_doc (Dict[str, Ant]): Representation document.
+        repre_entity (Dict[str, Ant]): Representation entity.
         roots (Dict[str, str]): Project roots (based on project anatomy).
     """
 
-    def __init__(self, repre_doc, roots):
-        self._repre_doc = repre_doc
+    def __init__(self, repre_entity, roots):
+        self._repre_entity = repre_entity
         self._roots = roots
         self._src_files = None
         self._resource_files = None
         self._frame = UNKNOWN
 
     @property
-    def repre_doc(self):
-        return self._repre_doc
+    def repre_entity(self):
+        return self._repre_entity
 
     @property
     def src_files(self):
@@ -327,7 +311,7 @@ class ProjectPushRepreItem:
         if self._src_files is not None:
             return self._src_files, self._resource_files
 
-        repre_context = self._repre_doc["context"]
+        repre_context = self._repre_entity["context"]
         if "frame" in repre_context or "udim" in repre_context:
             src_files, resource_files = self._get_source_files_with_frames()
         else:
@@ -344,7 +328,7 @@ class ProjectPushRepreItem:
         udim_placeholder = "__udim__"
         src_files = []
         resource_files = []
-        template = self._repre_doc["data"]["template"]
+        template = self._repre_entity["attrib"]["template"]
         # Remove padding from 'udim' and 'frame' formatting keys
         # - "{frame:0>4}" -> "{frame}"
         for key in ("udim", "frame"):
@@ -352,7 +336,7 @@ class ProjectPushRepreItem:
             replacement = "{{{}}}".format(key)
             template = re.sub(sub_part, replacement, template)
 
-        repre_context = self._repre_doc["context"]
+        repre_context = self._repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         if "frame" in fill_repre_context:
             fill_repre_context["frame"] = frame_placeholder
@@ -373,7 +357,7 @@ class ProjectPushRepreItem:
             .replace(udim_placeholder, "(?P<udim>[0-9]+)")
         )
         src_basename_regex = re.compile("^{}$".format(src_basename))
-        for file_info in self._repre_doc["files"]:
+        for file_info in self._repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots)
@@ -405,8 +389,8 @@ class ProjectPushRepreItem:
     def _get_source_files(self):
         src_files = []
         resource_files = []
-        template = self._repre_doc["data"]["template"]
-        repre_context = self._repre_doc["context"]
+        template = self._repre_entity["attrib"]["template"]
+        repre_context = self._repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         fill_roots = fill_repre_context["root"]
         for root_name in tuple(fill_roots.keys()):
@@ -415,7 +399,7 @@ class ProjectPushRepreItem:
                                                     fill_repre_context)
         repre_path = self._clean_path(repre_path)
         src_dirpath = os.path.dirname(repre_path)
-        for file_info in self._repre_doc["files"]:
+        for file_info in self._repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots))
@@ -448,21 +432,20 @@ class ProjectPushItemProcess:
         self._model = model
         self._item = item
 
-        self._src_asset_doc = None
-        self._src_subset_doc = None
-        self._src_version_doc = None
+        self._src_folder_entity = None
+        self._src_product_entity = None
+        self._src_version_entity = None
         self._src_repre_items = None
 
-        self._project_doc = None
+        self._project_entity = None
         self._anatomy = None
-        self._asset_doc = None
-        self._created_asset_doc = None
+        self._folder_entity = None
         self._task_info = None
-        self._subset_doc = None
-        self._version_doc = None
+        self._product_entity = None
+        self._version_entity = None
 
-        self._family = None
-        self._subset_name = None
+        self._product_type = None
+        self._product_name = None
 
         self._project_settings = None
         self._template_name = None
@@ -492,12 +475,12 @@ class ProjectPushItemProcess:
             self._log_info("Source entities were found")
             self._fill_destination_project()
             self._log_info("Destination project was found")
-            self._fill_or_create_destination_asset()
-            self._log_info("Destination asset was determined")
-            self._determine_family()
+            self._fill_or_create_destination_folder()
+            self._log_info("Destination folder was determined")
+            self._determine_product_type()
             self._determine_publish_template_name()
-            self._determine_subset_name()
-            self._make_sure_subset_exists()
+            self._determine_product_name()
+            self._make_sure_product_exists()
             self._make_sure_version_exists()
             self._log_info("Prerequirements were prepared")
             self._integrate_representations()
@@ -562,8 +545,8 @@ class ProjectPushItemProcess:
         src_project_name = self._item.src_project_name
         src_version_id = self._item.src_version_id
 
-        project_doc = get_project(src_project_name)
-        if not project_doc:
+        project_entity = ayon_api.get_project(src_project_name)
+        if not project_entity:
             self._status.set_failed(
                 f"Source project \"{src_project_name}\" was not found"
             )
@@ -576,41 +559,47 @@ class ProjectPushItemProcess:
 
         self._log_debug(f"Project '{src_project_name}' found")
 
-        version_doc = get_version_by_id(src_project_name, src_version_id)
-        if not version_doc:
+        version_entity = ayon_api.get_version_by_id(
+            src_project_name, src_version_id
+        )
+        if not version_entity:
             self._status.set_failed((
                 f"Source version with id \"{src_version_id}\""
                 f" was not found in project \"{src_project_name}\""
             ))
             raise PushToProjectError(self._status.fail_reason)
 
-        subset_id = version_doc["parent"]
-        subset_doc = get_subset_by_id(src_project_name, subset_id)
-        if not subset_doc:
+        product_id = version_entity["productId"]
+        product_entity = ayon_api.get_product_by_id(
+            src_project_name, product_id
+        )
+        if not product_entity:
             self._status.set_failed((
-                f"Could find subset with id \"{subset_id}\""
+                f"Could find product with id \"{product_id}\""
                 f" in project \"{src_project_name}\""
             ))
             raise PushToProjectError(self._status.fail_reason)
 
-        asset_id = subset_doc["parent"]
-        asset_doc = get_asset_by_id(src_project_name, asset_id)
-        if not asset_doc:
+        folder_id = product_entity["folderId"]
+        folder_entity = ayon_api.get_folder_by_id(
+            src_project_name, folder_id, own_attributes=True
+        )
+        if not folder_entity:
             self._status.set_failed((
-                f"Could find asset with id \"{asset_id}\""
+                f"Could find folder with id \"{folder_id}\""
                 f" in project \"{src_project_name}\""
             ))
             raise PushToProjectError(self._status.fail_reason)
 
         anatomy = Anatomy(src_project_name)
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             src_project_name,
-            version_ids=[src_version_id]
+            version_ids={src_version_id}
         )
         repre_items = [
-            ProjectPushRepreItem(repre_doc, anatomy.roots)
-            for repre_doc in repre_docs
+            ProjectPushRepreItem(repre_entity, anatomy.roots)
+            for repre_entity in repre_entities
         ]
         self._log_debug((
             f"Found {len(repre_items)} representations on"
@@ -623,17 +612,17 @@ class ProjectPushItemProcess:
             )
             raise PushToProjectError(self._status.fail_reason)
 
-        self._src_asset_doc = asset_doc
-        self._src_subset_doc = subset_doc
-        self._src_version_doc = version_doc
+        self._src_folder_entity = folder_entity
+        self._src_product_entity = product_entity
+        self._src_version_entity = version_entity
         self._src_repre_items = repre_items
 
     def _fill_destination_project(self):
         # --- Destination entities ---
         dst_project_name = self._item.dst_project_name
         # Validate project existence
-        dst_project_doc = get_project(dst_project_name)
-        if not dst_project_doc:
+        dst_project_entity = ayon_api.get_project(dst_project_name)
+        if not dst_project_entity:
             self._status.set_failed(
                 f"Destination project '{dst_project_name}' was not found"
             )
@@ -642,53 +631,46 @@ class ProjectPushItemProcess:
         self._log_debug(
             f"Destination project '{dst_project_name}' found"
         )
-        self._project_doc = dst_project_doc
-        self._anatomy = Anatomy(dst_project_name)
+        self._project_entity = dst_project_entity
+        self._anatomy = Anatomy(
+            dst_project_name,
+            project_entity=dst_project_entity
+        )
         self._project_settings = get_project_settings(
             self._item.dst_project_name
         )
 
-    def _create_asset(
+    def _create_folder(
         self,
-        src_asset_doc,
-        project_doc,
-        parent_asset_doc,
-        asset_name
+        src_folder_entity,
+        project_entity,
+        parent_folder_entity,
+        folder_name
     ):
         parent_id = None
-        parents = []
-        tools = []
-        if parent_asset_doc:
-            parent_id = parent_asset_doc["_id"]
-            parents = list(parent_asset_doc["data"]["parents"])
-            parents.append(parent_asset_doc["name"])
-            _tools = parent_asset_doc["data"].get("tools_env")
-            if _tools:
-                tools = list(_tools)
+        if parent_folder_entity:
+            parent_id = parent_folder_entity["id"]
 
-        asset_name_low = asset_name.lower()
-        other_asset_docs = get_assets(
-            project_doc["name"], fields=["_id", "name", "data.visualParent"]
+        folder_name_low = folder_name.lower()
+        other_folder_entities = ayon_api.get_folders(
+            project_entity["name"],
+            parent_ids=[parent_id],
+            fields={"id", "name"}
         )
-        for other_asset_doc in other_asset_docs:
-            other_name = other_asset_doc["name"]
-            other_parent_id = other_asset_doc["data"].get("visualParent")
-            if other_name.lower() != asset_name_low:
+        for other_folder_entity in other_folder_entities:
+            other_name = other_folder_entity["name"]
+            if other_name.lower() != folder_name_low:
                 continue
 
-            if other_parent_id != parent_id:
-                self._status.set_failed((
-                    f"Asset with name \"{other_name}\" already"
-                    " exists in different hierarchy."
-                ))
-                raise PushToProjectError(self._status.fail_reason)
-
             self._log_debug((
-                f"Found already existing asset with name \"{other_name}\""
-                f" which match requested name \"{asset_name}\""
+                f"Found already existing folder with name \"{other_name}\""
+                f" which match requested name \"{folder_name}\""
             ))
-            return get_asset_by_id(project_doc["name"], other_asset_doc["_id"])
+            return ayon_api.get_folder_by_id(
+                project_entity["name"], other_folder_entity["id"]
+            )
 
+        # TODO should we hard pass attribute values?
         data_keys = (
             "clipIn",
             "clipOut",
@@ -701,119 +683,130 @@ class ProjectPushItemProcess:
             "fps",
             "pixelAspect",
         )
-        asset_data = {
-            "visualParent": parent_id,
-            "parents": parents,
-            "tasks": {},
-            "tools_env": tools
-        }
-        src_asset_data = src_asset_doc["data"]
-        for key in data_keys:
-            if key in src_asset_data:
-                asset_data[key] = src_asset_data[key]
+        new_folder_attrib = {}
+        src_attrib = src_folder_entity["attrib"]
+        for attr_name, attr_value in src_attrib.items():
+            if attr_name in data_keys:
+                new_folder_attrib[attr_name] = attr_value
 
-        asset_doc = new_asset_document(
-            asset_name,
-            project_doc["_id"],
-            parent_id,
-            parents,
-            data=asset_data
+        new_folder_name = ayon_api.slugify_string(folder_name)
+        folder_label = None
+        if new_folder_name != folder_name:
+            folder_label = folder_name
+
+        # TODO find out how to define folder type
+        folder_entity = new_folder_entity(
+            folder_name,
+            "Folder",
+            parent_id=parent_id,
+            attribs=new_folder_attrib
         )
+        if folder_label:
+            folder_entity["label"] = folder_label
+
         self._operations.create_entity(
-            project_doc["name"],
-            asset_doc["type"],
-            asset_doc
+            project_entity["name"],
+            "folder",
+            folder_entity
         )
         self._log_info(
-            f"Creating new asset with name \"{asset_name}\""
+            f"Creating new folder with name \"{folder_name}\""
         )
-        self._created_asset_doc = asset_doc
-        return asset_doc
+        # Calculate path for usage in rest of logic
+        parent_path = ""
+        if parent_folder_entity:
+            parent_path = parent_folder_entity["path"]
+        folder_entity["path"] = "/".join([parent_path, folder_name])
+        return folder_entity
 
-    def _fill_or_create_destination_asset(self):
+    def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
         dst_folder_id = self._item.dst_folder_id
         dst_task_name = self._item.dst_task_name
+        dst_task_name_low = dst_task_name.lower()
         new_folder_name = self._item.new_folder_name
         if not dst_folder_id and not new_folder_name:
             self._status.set_failed(
-                "Push item does not have defined destination asset"
+                "Push item does not have defined destination folder"
             )
             raise PushToProjectError(self._status.fail_reason)
 
-        # Get asset document
-        parent_asset_doc = None
+        # Get folder entity
+        parent_folder_entity = None
         if dst_folder_id:
-            parent_asset_doc = get_asset_by_id(
+            parent_folder_entity = ayon_api.get_folder_by_id(
                 self._item.dst_project_name, self._item.dst_folder_id
             )
-            if not parent_asset_doc:
+            if not parent_folder_entity:
                 self._status.set_failed(
-                    f"Could find asset with id \"{dst_folder_id}\""
+                    f"Could find folder with id \"{dst_folder_id}\""
                     f" in project \"{dst_project_name}\""
                 )
                 raise PushToProjectError(self._status.fail_reason)
 
         if not new_folder_name:
-            asset_doc = parent_asset_doc
+            folder_entity = parent_folder_entity
         else:
-            asset_doc = self._create_asset(
-                self._src_asset_doc,
-                self._project_doc,
-                parent_asset_doc,
+            folder_entity = self._create_folder(
+                self._src_folder_entity,
+                self._project_entity,
+                parent_folder_entity,
                 new_folder_name
             )
-        self._asset_doc = asset_doc
+        self._folder_entity = folder_entity
         if not dst_task_name:
             self._task_info = {}
             return
 
-        asset_path_parts = list(asset_doc["data"]["parents"])
-        asset_path_parts.append(asset_doc["name"])
-        asset_path = "/".join(asset_path_parts)
-        asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
-        task_info = asset_tasks.get(dst_task_name)
+        folder_path = folder_entity["path"]
+        folder_tasks = {
+            task_entity["name"].lower(): task_entity
+            for task_entity in ayon_api.get_tasks(
+                dst_project_name, folder_ids=[folder_entity["id"]]
+            )
+        }
+        task_info = folder_tasks.get(dst_task_name_low)
         if not task_info:
             self._status.set_failed(
                 f"Could find task with name \"{dst_task_name}\""
-                f" on asset \"{asset_path}\""
+                f" on folder \"{folder_path}\""
                 f" in project \"{dst_project_name}\""
             )
             raise PushToProjectError(self._status.fail_reason)
 
-        # Create copy of task info to avoid changing data in asset document
+        # Create copy of task info to avoid changing data in task entity
         task_info = copy.deepcopy(task_info)
         task_info["name"] = dst_task_name
         # Fill rest of task information based on task type
-        task_type = task_info["type"]
-        task_type_info = self._project_doc["config"]["tasks"].get(
-            task_type, {})
+        task_type_name = task_info["type"]
+        task_types_by_name = {
+            task_type["name"]: task_type
+            for task_type in self._project_entity["taskTypes"]
+        }
+        task_type_info = task_types_by_name.get(task_type_name, {})
         task_info.update(task_type_info)
         self._task_info = task_info
 
-    def _determine_family(self):
-        subset_doc = self._src_subset_doc
-        family = subset_doc["data"].get("family")
-        families = subset_doc["data"].get("families")
-        if not family and families:
-            family = families[0]
-
-        if not family:
+    def _determine_product_type(self):
+        product_entity = self._src_product_entity
+        product_type = product_entity["productType"]
+        if not product_type:
             self._status.set_failed(
-                "Couldn't figure out family from source subset"
+                "Couldn't figure out product type from source product"
             )
             raise PushToProjectError(self._status.fail_reason)
 
         self._log_debug(
-            f"Publishing family is '{family}' (Based on source subset)"
+            f"Publishing product type is '{product_type}'"
+            f" (Based on source product)"
         )
-        self._family = family
+        self._product_type = product_type
 
     def _determine_publish_template_name(self):
         template_name = get_publish_template_name(
             self._item.dst_project_name,
             self.host_name,
-            self._family,
+            self._product_type,
             self._task_info.get("name"),
             self._task_info.get("type"),
             project_settings=self._project_settings
@@ -823,109 +816,125 @@ class ProjectPushItemProcess:
         )
         self._template_name = template_name
 
-    def _determine_subset_name(self):
-        family = self._family
-        asset_doc = self._asset_doc
+    def _determine_product_name(self):
+        product_type = self._product_type
         task_info = self._task_info
-        subset_name = get_subset_name(
-            family,
+        task_name = task_type = None
+        if task_info:
+            task_name = task_info["name"]
+            task_type = task_info["type"]
+
+        product_name = get_product_name(
+            self._item.dst_project_name,
+            task_name,
+            task_type,
+            self.host_name,
+            product_type,
             self._item.variant,
-            task_info.get("name"),
-            asset_doc,
-            project_name=self._item.dst_project_name,
-            host_name=self.host_name,
             project_settings=self._project_settings
         )
         self._log_info(
-            f"Push will be integrating to subset with name '{subset_name}'"
+            f"Push will be integrating to product with name '{product_name}'"
         )
-        self._subset_name = subset_name
+        self._product_name = product_name
 
-    def _make_sure_subset_exists(self):
+    def _make_sure_product_exists(self):
         project_name = self._item.dst_project_name
-        asset_id = self._asset_doc["_id"]
-        subset_name = self._subset_name
-        family = self._family
-        subset_doc = get_subset_by_name(project_name, subset_name, asset_id)
-        if subset_doc:
-            self._subset_doc = subset_doc
-            return subset_doc
-
-        data = {
-            "families": [family]
-        }
-        subset_doc = new_subset_document(
-            subset_name, family, asset_id, data
+        folder_id = self._folder_entity["id"]
+        product_name = self._product_name
+        product_type = self._product_type
+        product_entity = ayon_api.get_product_by_name(
+            project_name, product_name, folder_id
         )
-        self._operations.create_entity(project_name, "subset", subset_doc)
-        self._subset_doc = subset_doc
+        if product_entity:
+            self._product_entity = product_entity
+            return product_entity
+
+        product_entity = new_product_entity(
+            product_name,
+            product_type,
+            folder_id,
+        )
+        self._operations.create_entity(
+            project_name, "product", product_entity
+        )
+        self._product_entity = product_entity
 
     def _make_sure_version_exists(self):
         """Make sure version document exits in database."""
 
         project_name = self._item.dst_project_name
         version = self._item.dst_version
-        src_version_doc = self._src_version_doc
-        subset_doc = self._subset_doc
-        subset_id = subset_doc["_id"]
-        src_data = src_version_doc["data"]
-        families = subset_doc["data"].get("families")
-        if not families:
-            families = [subset_doc["data"]["family"]]
+        src_version_entity = self._src_version_entity
+        product_entity = self._product_entity
+        product_id = product_entity["id"]
+        product_type = product_entity["productType"]
+        src_attrib = src_version_entity["attrib"]
 
-        version_data = {
-            "families": list(families),
-            "fps": src_data.get("fps"),
-            "source": src_data.get("source"),
-            "machine": socket.gethostname(),
-            "comment": self._item.comment or "",
-            "author": get_ayon_username(),
-            "time": get_formatted_current_time(),
-        }
+        dst_attrib = {}
+        for key in {
+            "productType",
+            "productTypes",
+            "families",
+            "fps",
+            "pixelAspect",
+            "clipIn",
+            "clipOut",
+            "frameStart",
+            "frameEnd",
+            "handleStart",
+            "handleEnd",
+            "resolutionWidth",
+            "resolutionHeight",
+            "colorSpace",
+            "source",
+            "comment",
+            "description",
+            "intent",
+        }:
+            if key in src_attrib:
+                dst_attrib[key] = src_attrib[key]
+
         if version is None:
-            last_version_doc = get_last_version_by_subset_id(
-                project_name, subset_id
+            last_version_entity = ayon_api.get_last_version_by_product_id(
+                project_name, product_id
             )
-            if last_version_doc:
-                version = int(last_version_doc["name"]) + 1
+            if last_version_entity:
+                version = int(last_version_entity["version"]) + 1
             else:
                 version = get_versioning_start(
                     project_name,
                     self.host_name,
                     task_name=self._task_info["name"],
                     task_type=self._task_info["type"],
-                    family=families[0],
-                    subset=subset_doc["name"]
+                    product_type=product_type,
+                    product_name=product_entity["name"]
                 )
 
-        existing_version_doc = get_version_by_name(
-            project_name, version, subset_id
+        existing_version_entity = ayon_api.get_version_by_name(
+            project_name, version, product_id
         )
         # Update existing version
-        if existing_version_doc:
-            version_doc = new_version_doc(
-                version, subset_id, version_data, existing_version_doc["_id"]
+        if existing_version_entity:
+            self._operations.update_entity(
+                project_name,
+                "version",
+                existing_version_entity["id"],
+                {"attrib": dst_attrib}
             )
-            update_data = prepare_version_update_data(
-                existing_version_doc, version_doc
-            )
-            if update_data:
-                self._operations.update_entity(
-                    project_name,
-                    "version",
-                    existing_version_doc["_id"],
-                    update_data
-                )
-            self._version_doc = version_doc
-
+            existing_version_entity["attrib"].update(dst_attrib)
+            self._version_entity = existing_version_entity
             return
 
-        version_doc = new_version_doc(
-            version, subset_id, version_data
+        version_entity = new_version_entity(
+            version,
+            product_id,
+            attribs=dst_attrib,
         )
-        self._operations.create_entity(project_name, "version", version_doc)
-
-        self._version_doc = version_doc
+        self._operations.create_entity(
+            project_name, "version", version_entity
+        )
+        self._version_entity = version_entity
 
     def _integrate_representations(self):
         try:
@@ -936,36 +945,37 @@ class ProjectPushItemProcess:
             raise
 
     def _real_integrate_representations(self):
-        version_doc = self._version_doc
-        version_id = version_doc["_id"]
-        existing_repres = get_representations(
+        version_entity = self._version_entity
+        version_id = version_entity["id"]
+        existing_repres = ayon_api.get_representations(
             self._item.dst_project_name,
-            version_ids=[version_id]
+            version_ids={version_id}
         )
         existing_repres_by_low_name = {
-            repre_doc["name"].lower(): repre_doc
-            for repre_doc in existing_repres
+            repre_entity["name"].lower(): repre_entity
+            for repre_entity in existing_repres
         }
         template_name = self._template_name
         anatomy = self._anatomy
         formatting_data = get_template_data(
-            self._project_doc,
-            self._asset_doc,
+            self._project_entity,
+            self._folder_entity,
             self._task_info.get("name"),
             self.host_name
         )
         formatting_data.update({
-            "subset": self._subset_name,
-            "family": self._family,
-            "version": version_doc["name"]
+            "subset": self._product_name,
+            "family": self._product_type,
+            "product": {
+                "name": self._product_name,
+                "type": self._product_type,
+            },
+            "version": version_entity["version"]
         })
 
-        path_template = anatomy.templates[template_name]["path"].replace(
-            "\\", "/"
-        )
-        file_template = StringTemplate(
-            anatomy.templates[template_name]["file"]
-        )
+        publish_template = anatomy.get_template_item("publish", template_name)
+        path_template = publish_template["path"].template.replace("\\", "/")
+        file_template = publish_template["file"]
         self._log_info("Preparing files to transfer")
         processed_repre_items = self._prepare_file_transactions(
             anatomy, template_name, formatting_data, file_template
@@ -987,8 +997,8 @@ class ProjectPushItemProcess:
     ):
         processed_repre_items = []
         for repre_item in self._src_repre_items:
-            repre_doc = repre_item.repre_doc
-            repre_name = repre_doc["name"]
+            repre_entity = repre_item.repre_entity
+            repre_name = repre_entity["name"]
             repre_format_data = copy.deepcopy(formatting_data)
             repre_format_data["representation"] = repre_name
             for src_file in repre_item.src_files:
@@ -997,11 +1007,13 @@ class ProjectPushItemProcess:
                 break
 
             # Re-use 'output' from source representation
-            repre_output_name = repre_doc["context"].get("output")
+            repre_output_name = repre_entity["context"].get("output")
             if repre_output_name is not None:
                 repre_format_data["output"] = repre_output_name
 
-            template_obj = anatomy.templates_obj[template_name]["folder"]
+            template_obj = anatomy.get_template_item(
+                "publish", template_name, "directory"
+            )
             folder_path = template_obj.format_strict(formatting_data)
             repre_context = folder_path.used_values
             folder_path_rootless = folder_path.rootless
@@ -1054,34 +1066,24 @@ class ProjectPushItemProcess:
         path_template,
         existing_repres_by_low_name
     ):
-        addons_manager = AddonsManager()
-        sync_server_module = addons_manager.get("sync_server")
-        if sync_server_module is None or not sync_server_module.enabled:
-            sites = [{
-                "name": "studio",
-                "created_dt": datetime.datetime.now()
-            }]
-        else:
-            sites = sync_server_module.compute_resource_sync_sites(
-                project_name=self._item.dst_project_name
-            )
-
         added_repre_names = set()
         for item in processed_repre_items:
             (repre_item, repre_filepaths, repre_context, published_path) = item
-            repre_name = repre_item.repre_doc["name"]
+            repre_name = repre_item.repre_entity["name"]
             added_repre_names.add(repre_name.lower())
-            new_repre_data = {
+            new_repre_attributes = {
                 "path": published_path,
                 "template": path_template
             }
             new_repre_files = []
             for (path, rootless_path) in repre_filepaths:
                 new_repre_files.append({
+                    "id": create_entity_id(),
+                    "name": os.path.basename(rootless_path),
                     "path": rootless_path,
                     "size": os.path.getsize(path),
                     "hash": source_hash(path),
-                    "sites": sites
+                    "hash_type": "op3",
                 })
 
             existing_repre = existing_repres_by_low_name.get(
@@ -1089,41 +1091,51 @@ class ProjectPushItemProcess:
             )
             entity_id = None
             if existing_repre:
-                entity_id = existing_repre["_id"]
-            new_repre_doc = new_representation_doc(
+                entity_id = existing_repre["id"]
+            repre_entity = new_representation_entity(
                 repre_name,
                 version_id,
-                repre_context,
-                data=new_repre_data,
+                new_repre_files,
+                data={"context": repre_context},
+                attribs=new_repre_attributes,
                 entity_id=entity_id
             )
-            new_repre_doc["files"] = new_repre_files
             if not existing_repre:
                 self._operations.create_entity(
                     self._item.dst_project_name,
-                    new_repre_doc["type"],
-                    new_repre_doc
+                    "representation",
+                    repre_entity
                 )
             else:
-                update_data = prepare_representation_update_data(
-                    existing_repre, new_repre_doc
-                )
-                if update_data:
+                changes = {}
+                for key, value in repre_entity.items():
+                    if key == "attrib":
+                        continue
+                    if value != existing_repre.get(key):
+                        changes[key] = value
+                attrib_changes = {}
+                for key, value in repre_entity["attrib"].items():
+                    if value != existing_repre["attrib"].get(key):
+                        attrib_changes[key] = value
+                if attrib_changes:
+                    changes["attrib"] = attrib_changes
+
+                if changes:
                     self._operations.update_entity(
                         self._item.dst_project_name,
-                        new_repre_doc["type"],
-                        new_repre_doc["_id"],
-                        update_data
+                        "representation",
+                        entity_id,
+                        changes
                     )
 
         existing_repre_names = set(existing_repres_by_low_name.keys())
         for repre_name in (existing_repre_names - added_repre_names):
-            repre_doc = existing_repres_by_low_name[repre_name]
+            repre_entity = existing_repres_by_low_name[repre_name]
             self._operations.update_entity(
                 self._item.dst_project_name,
-                repre_doc["type"],
-                repre_doc["_id"],
-                {"type": "archived_representation"}
+                "representation",
+                repre_entity["id"],
+                {"active": False}
             )
 
 

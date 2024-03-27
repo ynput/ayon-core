@@ -15,6 +15,7 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_inventory_action_path,
     AVALON_CONTAINER_ID,
+    AYON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
 from ayon_core.hosts.houdini import HOUDINI_HOST_DIR
@@ -67,7 +68,7 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         self._has_been_setup = True
 
-        # Set asset settings for the empty scene directly after launch of
+        # Set folder settings for the empty scene directly after launch of
         # Houdini so it initializes into the correct scene FPS,
         # Frame Range, etc.
         # TODO: make sure this doesn't trigger when
@@ -165,7 +166,7 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         if not op_ctx:
             op_ctx = self.create_context_node()
 
-        lib.imprint(op_ctx, data)
+        lib.imprint(op_ctx, data, update=True)
 
     def get_context_data(self):
         op_ctx = hou.node(CONTEXT_CONTAINER)
@@ -234,7 +235,7 @@ def containerise(name,
         "name": name,
         "namespace": namespace,
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     lib.imprint(container, data)
@@ -271,8 +272,11 @@ def parse_container(container):
 
 def ls():
     containers = []
-    for identifier in (AVALON_CONTAINER_ID,
-                       "pyblish.mindbender.container"):
+    for identifier in (
+        AYON_CONTAINER_ID,
+        AVALON_CONTAINER_ID,
+        "pyblish.mindbender.container"
+    ):
         containers += lib.lsattr("id", identifier)
 
     for container in sorted(containers,
@@ -293,10 +297,6 @@ def on_save():
 
     # update houdini vars
     lib.update_houdini_vars_context_dialog()
-
-    nodes = lib.get_id_required_nodes()
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
 
 
 def _show_outdated_content_popup():
@@ -334,7 +334,7 @@ def on_open():
     lib.update_houdini_vars_context_dialog()
 
     # Validate FPS after update_task_from_path to
-    # ensure it is using correct FPS for the asset
+    # ensure it is using correct FPS for the folder
     lib.validate_fps()
 
     if any_outdated_containers():
@@ -384,7 +384,7 @@ def on_new():
 def _set_context_settings():
     """Apply the project settings from the project definition
 
-    Settings can be overwritten by an asset if the asset.data contains
+    Settings can be overwritten by a folder if the folder.attrib contains
     any information regarding those settings.
 
     Examples of settings:
