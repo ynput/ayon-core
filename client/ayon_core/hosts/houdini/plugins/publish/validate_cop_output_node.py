@@ -26,7 +26,7 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                ("Output node(s) `{}` are incorrect. "
+                ("Output node '{}' is incorrect. "
                  "See plug-in log for details.").format(invalid),
                 title=self.label
             )
@@ -36,18 +36,9 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
 
         import hou
 
-        try:
-            output_node = instance.data["output_node"]
-        except KeyError:
-            six.reraise(
-                PublishValidationError,
-                PublishValidationError(
-                    "Can't determine COP output node.",
-                    title=cls.__name__),
-                sys.exc_info()[2]
-            )
+        output_node = instance.data.get("output_node")
 
-        if output_node is None:
+        if not output_node:
             node = hou.node(instance.data.get("instance_node"))
             cls.log.error(
                 "COP Output node in '%s' does not exist. "
