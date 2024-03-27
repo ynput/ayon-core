@@ -101,7 +101,7 @@ def apply_transition(otio_track, otio_item, track):
     if transition_type == 'dissolve':
         transition_func = getattr(
             hiero.core.Transition,
-            'create{kind}DissolveTransition'.format(kind=kind)
+            "create{kind}DissolveTransition".format(kind=kind)
         )
 
         try:
@@ -109,7 +109,7 @@ def apply_transition(otio_track, otio_item, track):
                 item_in,
                 item_out,
                 otio_item.in_offset.value,
-                otio_item.out_offset.value
+                otio_item.out_offset.value,
             )
 
         # Catch error raised if transition is bigger than TrackItem source
@@ -134,7 +134,7 @@ def apply_transition(otio_track, otio_item, track):
 
         transition = transition_func(
             item_out,
-            otio_item.out_offset.value
+            otio_item.out_offset.value,
         )
 
     elif transition_type == 'fade_out':
@@ -183,9 +183,7 @@ def prep_url(url_in):
 def create_offline_mediasource(otio_clip, path=None):
     global _otio_old
 
-    hiero_rate = hiero.core.TimeBase(
-        otio_clip.source_range.start_time.rate
-    )
+    hiero_rate = hiero.core.TimeBase(otio_clip.source_range.start_time.rate)
 
     try:
         legal_media_refs = (
@@ -212,7 +210,7 @@ def create_offline_mediasource(otio_clip, path=None):
         source_range.start_time.value,
         source_range.duration.value,
         hiero_rate,
-        source_range.start_time.value
+        source_range.start_time.value,
     )
 
     return media
@@ -385,7 +383,8 @@ def create_trackitem(playhead, track, otio_clip, clip):
             # Only reverse effect can be applied here
             if abs(time_scalar) == 1.:
                 trackitem.setPlaybackSpeed(
-                    trackitem.playbackSpeed() * time_scalar)
+                    trackitem.playbackSpeed() * time_scalar
+                )
 
         elif isinstance(effect, otio.schema.FreezeFrame):
             # For freeze frame, playback speed must be set after range
@@ -397,28 +396,21 @@ def create_trackitem(playhead, track, otio_clip, clip):
         source_in = source_range.end_time_inclusive().value
 
         timeline_in = playhead + source_out
-        timeline_out = (
-            timeline_in +
-            source_range.duration.value
-        ) - 1
+        timeline_out = (timeline_in + source_range.duration.value) - 1
     else:
         # Normal playback speed
         source_in = source_range.start_time.value
         source_out = source_range.end_time_inclusive().value
 
         timeline_in = playhead
-        timeline_out = (
-            timeline_in +
-            source_range.duration.value
-        ) - 1
+        timeline_out = (timeline_in + source_range.duration.value) - 1
 
     # Set source and timeline in/out points
     trackitem.setTimes(
         timeline_in,
         timeline_out,
         source_in,
-        source_out
-
+        source_out,
     )
 
     # Apply playback speed for freeze frames
@@ -435,7 +427,8 @@ def create_trackitem(playhead, track, otio_clip, clip):
 
 
 def build_sequence(
-        otio_timeline, project=None, sequence=None, track_kind=None):
+    otio_timeline, project=None, sequence=None, track_kind=None
+):
     if project is None:
         if sequence:
             project = sequence.project()
@@ -509,10 +502,7 @@ def build_sequence(
 
                 # Create TrackItem
                 trackitem = create_trackitem(
-                    playhead,
-                    track,
-                    otio_clip,
-                    clip
+                    playhead, track, otio_clip, clip
                 )
 
                 # Add markers
