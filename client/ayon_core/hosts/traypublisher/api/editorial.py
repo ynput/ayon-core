@@ -186,7 +186,7 @@ class ShotMetadataSolver:
             # in case first parent is project then start parents from start
             if (
                 _index == 0
-                and parent_token_type == "Project"
+                and parent_token_type.lower() == "project"
             ):
                 project_parent = parents[0]
                 parents = [project_parent]
