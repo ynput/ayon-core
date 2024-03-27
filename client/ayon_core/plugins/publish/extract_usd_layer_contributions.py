@@ -20,9 +20,6 @@ from ayon_core.lib.usdlib import (
     add_ordered_sublayer,
     set_layer_defaults
 )
-import ayon_core.pipeline.ayon_uri
-import importlib
-importlib.reload(ayon_core.pipeline.ayon_uri)
 from ayon_core.pipeline.ayon_uri import (
     construct_ayon_uri,
     parse_ayon_uri,
