@@ -31,10 +31,7 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
         from ayon_core.hosts.maya.api.pipeline import containerise
         from ayon_core.hosts.maya.api.lib import unique_namespace
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vdbcache"
+        product_type = context["product"]["productType"]
 
         # Check if the plugin for redshift is available on the pc
         try:
@@ -115,7 +112,7 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
     def remove(self, container):
         from maya import cmds
 
-        # Get all members of the avalon container, ensure they are unlocked
+        # Get all members of the AYON container, ensure they are unlocked
         # and delete everything
         members = cmds.sets(container['objectName'], query=True)
         cmds.lockNode(members, lock=False)
