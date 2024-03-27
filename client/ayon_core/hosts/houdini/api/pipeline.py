@@ -262,7 +262,29 @@ def parse_container(container):
         dict: The container schema data for this container node.
 
     """
-    data = lib.read(container)
+    # Read only relevant parms
+    # TODO: Clean up this hack replacing `lib.read(container)`
+    import six
+    import json
+    from .lib import JSON_PREFIX
+
+    data = {}
+    for name in ["name", "namespace", "loader", "representation", "id"]:
+        parm = container.parm(name)
+        if not parm:
+            return {}
+
+        value = parm.eval()
+
+        # test if value is json encoded dict
+        if isinstance(value, six.string_types) and \
+                value.startswith(JSON_PREFIX):
+            try:
+                value = json.loads(value[len(JSON_PREFIX):])
+            except json.JSONDecodeError:
+                # not a json
+                pass
+        data[name] = value
 
     # Backwards compatibility pre-schemas for containers
     data["schema"] = data.get("schema", "openpype:container-1.0")
