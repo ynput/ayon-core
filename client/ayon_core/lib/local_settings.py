@@ -524,7 +524,7 @@ def get_ayon_appdirs(*args):
 def get_local_site_id():
     """Get local site identifier.
 
-    Identifier is created if does not exists yet.
+    Identifier is created if does not exist yet.
     """
     # used for background syncing
     site_id = os.environ.get("AYON_SITE_ID")
