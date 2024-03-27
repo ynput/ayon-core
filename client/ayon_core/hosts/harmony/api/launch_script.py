@@ -1,4 +1,4 @@
-"""Script wraps launch mechanism of non python host implementations.
+"""Script wraps launch mechanism of Harmony implementations.
 
 Arguments passed to the script are passed to launch function in host
 implementation. In all cases requires host app executable and may contain
@@ -7,6 +7,8 @@ workfile or others.
 
 import os
 import sys
+
+from ayon_core.hosts.harmony.api.lib import main as host_main
 
 # Get current file to locate start point of sys.argv
 CURRENT_FILE = os.path.abspath(__file__)
@@ -79,26 +81,9 @@ def main(argv):
     if after_script_idx is not None:
         launch_args = sys_args[after_script_idx:]
 
-    host_name = os.environ["AYON_HOST_NAME"].lower()
-    if host_name == "photoshop":
-        # TODO refactor launch logic according to AE
-        from ayon_core.hosts.photoshop.api.lib import main
-    elif host_name == "aftereffects":
-        from ayon_core.hosts.aftereffects.api.launch_logic import main
-    elif host_name == "harmony":
-        from ayon_core.hosts.harmony.api.lib import main
-    else:
-        title = "Unknown host name"
-        message = (
-            "BUG: Environment variable AYON_HOST_NAME contains unknown"
-            " host name \"{}\""
-        ).format(host_name)
-        show_error_messagebox(title, message)
-        return
-
     if launch_args:
         # Launch host implementation
-        main(*launch_args)
+        host_main(*launch_args)
     else:
         # Show message box
         on_invalid_args(after_script_idx is None)
