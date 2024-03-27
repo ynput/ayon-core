@@ -48,6 +48,7 @@ class AYONMenu(QtWidgets.QWidget):
             QtCore.Qt.Window
             | QtCore.Qt.CustomizeWindowHint
             | QtCore.Qt.WindowTitleHint
+            | QtCore.Qt.WindowMinimizeButtonHint
             | QtCore.Qt.WindowCloseButtonHint
             | QtCore.Qt.WindowStaysOnTopHint
         )
