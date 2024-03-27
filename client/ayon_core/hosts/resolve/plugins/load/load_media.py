@@ -1,13 +1,15 @@
 import json
 import copy
+import contextlib
 from collections import defaultdict
-from typing import Union
+from typing import Union, Optional
 
 from ayon_core.client import (
     get_version_by_id,
     get_last_version_by_subset_id,
 )
 from ayon_core.lib import StringTemplate
+from ayon_core.pipeline.colorspace import get_remapped_colorspace_to_native
 from ayon_core.pipeline import (
     LoaderPlugin,
     get_representation_context,
@@ -22,6 +24,57 @@ from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS
 )
 from ayon_core.lib import BoolDef
+
+
+@contextlib.contextmanager
+def project_color_science_mode(project=None, mode="davinciYRGBColorManagedv2"):
+    """Set project color science mode during context.
+
+    This is especially useful as context for setting the colorspace for media
+    pool items, because when Resolve is not set to `davinciYRGBColorManagedv2`
+    it fails to set its "Input Color Space" clip property even though it is
+    accessible and settable via the Resolve User Interface.
+
+    Args
+        project (Project): The active Resolve Project.
+        mode (Optional[str]): The color science mode to apply during the
+            context. Defaults to 'davinciYRGBColorManagedv2'
+
+    See Also:
+        https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=197441
+    """
+
+    if project is None:
+        project = lib.get_current_project()
+
+    original_mode = project.GetSetting("colorScienceMode")
+    if original_mode != mode:
+        project.SetSetting("colorScienceMode", mode)
+    try:
+        yield
+    finally:
+        if project.GetSetting("colorScienceMode") != original_mode:
+            project.SetSetting("colorScienceMode", original_mode)
+
+
+def set_colorspace(media_pool_item,
+                   colorspace,
+                   mode="davinciYRGBColorManagedv2"):
+    """Set MediaPoolItem colorspace.
+    This implements a workaround that you cannot set the input colorspace
+    unless the Resolve project's color science mode is set to
+    `davinciYRGBColorManagedv2`.
+    Args:
+        media_pool_item (MediaPoolItem): The media pool item.
+        colorspace (str): The colorspace to apply.
+        mode (Optional[str]): The Resolve project color science mode to be in
+            while setting the colorspace.
+            Defaults to 'davinciYRGBColorManagedv2'
+    Returns:
+        bool: Whether applying the colorspace succeeded.
+    """
+    with project_color_science_mode(mode=mode):
+        return media_pool_item.SetClipProperty("Input Color Space", colorspace)
 
 
 def find_clip_usage(media_pool_item, project=None):
@@ -116,6 +169,13 @@ class LoadMedia(LoaderPlugin):
 
     metadata = []
 
+    # cached on apply settings
+    _host_imageio_settings = None
+
+    @classmethod
+    def apply_settings(cls, project_settings, system_settings):
+        cls._host_imageio_settings = project_settings["resolve"]["imageio"]
+
     def load(self, context, name, namespace, options):
 
         # For loading multiselection, we store timeline before first load
@@ -163,8 +223,8 @@ class LoadMedia(LoaderPlugin):
             assert len(items) == 1, "Must import only one media item"
             item = items[0]
 
-            self._set_metadata(media_pool_item=item,
-                               context=context)
+            self._set_metadata(item, context)
+            self._set_colorspace_from_representation(item, representation)
 
             data = self._get_container_data(representation)
 
@@ -201,6 +261,10 @@ class LoadMedia(LoaderPlugin):
         # metadata gets removed
         data = json.loads(item.GetMetadata(lib.pype_tag_name))
 
+        # Get metadata to preserve after the clip replacement
+        # TODO: Maybe preserve more, like LUT, Alpha Mode, Input Sizing Preset
+        colorspace_before = item.GetClipProperty("Input Color Space")
+
         # Update path
         path = get_representation_path(representation)
         success = item.ReplaceClip(path)
@@ -215,7 +279,20 @@ class LoadMedia(LoaderPlugin):
         item.SetMetadata(lib.pype_tag_name, json.dumps(data))
 
         context = get_representation_context(representation)
-        self._set_metadata(media_pool_item=item, context=context)
+        self._set_metadata(item, context)
+        self._set_colorspace_from_representation(item, representation)
+
+        # If no specific colorspace is set then we want to preserve the
+        # colorspace a user might have set before the clip replacement
+        if (
+                item.GetClipProperty("Input Color Space") == "Project"
+                and colorspace_before != "Project"
+        ):
+            result = set_colorspace(item, colorspace_before)
+            if not result:
+                self.log.warning(
+                    f"Failed to re-apply colorspace: {colorspace_before}."
+                )
 
         # Update the clip color
         color = self.get_item_color(representation)
@@ -348,3 +425,49 @@ class LoadMedia(LoaderPlugin):
             "StartIndex": frame_start_handle,
             "EndIndex": frame_end_handle
         }
+
+    def _get_colorspace(self, representation: dict) -> Optional[str]:
+        """Return Resolve native colorspace from OCIO colorspace data.
+
+        Returns:
+            Optional[str]: The Resolve native colorspace name, if any mapped.
+        """
+
+        data = representation.get("data", {}).get("colorspaceData", {})
+        if not data:
+            return
+
+        ocio_colorspace = data["colorspace"]
+        if not ocio_colorspace:
+            return
+
+        resolve_colorspace = get_remapped_colorspace_to_native(
+            ocio_colorspace_name=ocio_colorspace,
+            host_name="resolve",
+            imageio_host_settings=self._host_imageio_settings
+        )
+        if resolve_colorspace:
+            return resolve_colorspace
+        else:
+            self.log.warning(
+                f"No mapping from OCIO colorspace '{ocio_colorspace}' "
+                "found to a Resolve colorspace. "
+                "Ignoring colorspace."
+            )
+
+    def _set_colorspace_from_representation(
+            self, media_pool_item, representation: dict):
+        """Set the colorspace for the media pool item.
+
+        Args:
+            media_pool_item (MediaPoolItem): The media pool item.
+            representation (dict): The representation data.
+        """
+        # Set the Resolve Input Color Space for the media.
+        colorspace = self._get_colorspace(representation)
+        if colorspace:
+            result = set_colorspace(media_pool_item, colorspace)
+            if not result:
+                self.log.warning(
+                    f"Failed to apply colorspace: {colorspace}."
+                )
