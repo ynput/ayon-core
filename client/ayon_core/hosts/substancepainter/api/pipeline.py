@@ -12,11 +12,10 @@ import substance_painter.project
 import pyblish.api
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-from ayon_core.settings import get_project_settings
+from ayon_core.settings import get_current_project_settings
 
 from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline import (
-    get_current_project_name,
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
@@ -74,7 +73,7 @@ class SubstanceHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         log.info("Installing menu ... ")
         self._install_menu()
 
-        project_settings = get_project_settings(get_current_project_name())
+        project_settings = get_current_project_settings()
         self._install_shelves(project_settings)
 
         self._has_been_setup = True
