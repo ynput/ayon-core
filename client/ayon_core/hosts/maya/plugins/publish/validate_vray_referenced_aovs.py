@@ -6,8 +6,10 @@ from maya import cmds
 
 from ayon_core.pipeline.publish import (
     RepairContextAction,
-    OptionalPyblishPluginMixin
+    OptionalPyblishPluginMixin,
+    PublishValidationError
 )
+
 
 class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin,
                                  OptionalPyblishPluginMixin):
@@ -60,7 +62,7 @@ class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin,
                 self.log.error((
                     "'Use referenced' not enabled in Vray Render Settings."
                 ))
-                raise AssertionError("Invalid render settings")
+                raise PublishValidationError("Invalid render settings")
 
     @classmethod
     def repair(cls, context):

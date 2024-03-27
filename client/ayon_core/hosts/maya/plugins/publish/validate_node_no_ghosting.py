@@ -3,10 +3,14 @@ from maya import cmds
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline.publish import (
+    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
+    PublishValidationError
+)
 
 
-class ValidateNodeNoGhosting(pyblish.api.InstancePlugin.
+class ValidateNodeNoGhosting(pyblish.api.InstancePlugin,
                              OptionalPyblishPluginMixin):
     """Ensure nodes do not have ghosting enabled.
 
@@ -53,5 +57,5 @@ class ValidateNodeNoGhosting(pyblish.api.InstancePlugin.
         invalid = self.get_invalid(instance)
 
         if invalid:
-            raise ValueError("Nodes with ghosting enabled found: "
-                             "{0}".format(invalid))
+            raise PublishValidationError(
+                "Nodes with ghosting enabled found: {0}".format(invalid))
