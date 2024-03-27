@@ -121,7 +121,7 @@ def apply_transition(otio_track, otio_item, track):
         elif transition_type == "fade_out":
             transition_func = getattr(
                 hiero.core.Transition,
-                'create{kind}FadeOutTransition'.format(kind=kind)
+                "create{kind}FadeOutTransition".format(kind=kind)
             )
             transition = transition_func(item_in, otio_item.in_offset.value)
 
