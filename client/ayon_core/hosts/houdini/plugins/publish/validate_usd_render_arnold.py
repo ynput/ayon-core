@@ -3,9 +3,9 @@ import inspect
 
 import pyblish.api
 
-from openpype.pipeline.publish import PublishValidationError, RepairAction
-from openpype.hosts.houdini.api.action import SelectROPAction
-from openpype.hosts.houdini.api.usd import get_usd_render_rop_rendersettings
+from ayon_core.pipeline.publish import PublishValidationError, RepairAction
+from ayon_core.hosts.houdini.api.action import SelectROPAction
+from ayon_core.hosts.houdini.api.usd import get_usd_render_rop_rendersettings
 
 import hou
 import pxr

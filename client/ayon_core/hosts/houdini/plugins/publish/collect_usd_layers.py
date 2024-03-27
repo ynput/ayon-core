@@ -4,9 +4,8 @@ import re
 
 import pyblish.api
 
-from openpype.pipeline.create import get_subset_name
-from openpype.client import get_asset_by_name
-import openpype.hosts.houdini.api.usd as usdlib
+from ayon_core.pipeline.create import get_product_name
+import ayon_core.hosts.houdini.api.usd as usdlib
 
 import hou
 
@@ -114,16 +113,15 @@ class CollectUsdLayers(pyblish.api.InstancePlugin):
             layer_inst.data["usd_layer_save_path"] = save_path
 
             project_name = context.data["projectName"]
-            asset_doc = get_asset_by_name(project_name,
-                                          asset_name=instance.data["asset"])
             variant_base = instance.data["variant"]
-            subset = get_subset_name(
-                family="usd",
-                variant=variant_base + "_" + variant,
-                task_name=context.data["anatomyData"]["task"]["name"],
-                asset_doc=asset_doc,
+            subset = get_product_name(
                 project_name=project_name,
+                # TODO: This should use task from `instance`
+                task_name=context.data["anatomyData"]["task"]["name"],
+                task_type=context.data["anatomyData"]["task"]["type"],
                 host_name=context.data["hostName"],
+                product_type="usd",
+                variant=variant_base + "_" + variant,
                 project_settings=context.data["project_settings"]
             )
 

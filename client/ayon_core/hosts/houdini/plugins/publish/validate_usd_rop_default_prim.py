@@ -3,8 +3,8 @@ import inspect
 
 import pyblish.api
 
-from openpype.hosts.houdini.api.action import SelectROPAction
-from openpype.pipeline import PublishValidationError
+from ayon_core.hosts.houdini.api.action import SelectROPAction
+from ayon_core.pipeline import PublishValidationError
 
 import hou
 from pxr import Sdf

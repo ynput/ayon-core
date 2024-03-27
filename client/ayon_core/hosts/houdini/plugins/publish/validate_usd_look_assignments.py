@@ -3,11 +3,11 @@ import inspect
 
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.hosts.houdini.api.action import SelectROPAction
+from ayon_core.hosts.houdini.api.action import SelectROPAction
 
 import hou
 from pxr import Usd, UsdShade, UsdGeom

@@ -3,12 +3,12 @@ import inspect
 
 import pyblish.api
 
-from openpype.pipeline.publish import (
+from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from openpype.hosts.houdini.api.action import SelectROPAction
-from openpype.hosts.houdini.api.usd import get_schema_type_names
+from ayon_core.hosts.houdini.api.action import SelectROPAction
+from ayon_core.hosts.houdini.api.usd import get_schema_type_names
 
 import hou
 from pxr import Sdf, UsdShade
