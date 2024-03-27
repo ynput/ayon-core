@@ -396,7 +396,7 @@ class FtrackEntityOperator:
 
         entity = session.query(query).first()
 
-        # if entity doesnt exist then create one
+        # if entity doesn't exist then create one
         if not entity:
             entity = self.create_ftrack_entity(
                 session,
