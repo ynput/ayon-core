@@ -315,14 +315,13 @@ class ExtractMayaSceneRawModel(BaseSettingsModel):
 
 
 class ExtractCameraAlembicModel(BaseSettingsModel):
-    """
-    List of attributes that will be added to the baked alembic camera. Needs to be written in python list syntax.
-    """
     enabled: bool = SettingsField(title="ExtractCameraAlembic")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     bake_attributes: str = SettingsField(
-        "[]", title="Base Attributes", widget="textarea"
+        "[]", title="Bake Attributes", widget="textarea",
+        description="List of attributes that will be included in the alembic "
+                    "camera export. Needs to be written as a JSON list.",
     )
 
     @validator("bake_attributes")

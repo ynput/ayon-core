@@ -599,7 +599,7 @@ class CreateRenderPass(TVPaintCreator):
         if filtered_layers:
             self.log.info((
                 "Changing group of "
-                f"{','.join([l['name'] for l in filtered_layers])}"
+                f"{','.join([layer['name'] for layer in filtered_layers])}"
                 f" to {group_id}"
             ))
             george_lines = [

@@ -36,18 +36,18 @@ class ValidateSubsetName(pyblish.api.InstancePlugin):
             )
 
         if not isinstance(product_name, six.string_types):
-            raise TypeError((
+            raise PublishValidationError((
                 "Instance product name must be string, got: {0} ({1})"
             ).format(product_name, type(product_name)))
 
         # Ensure is not empty product
         if not product_name:
-            raise ValueError(
+            raise PublishValidationError(
                 "Instance product name is empty: {0}".format(product_name)
             )
 
         # Validate product characters
         if not validate_name(product_name):
-            raise ValueError((
+            raise PublishValidationError((
                 "Instance product name contains invalid characters: {0}"
             ).format(product_name))
