@@ -23,7 +23,7 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
     ]
 
     def process(self, context):
-
+        # list of parents for current context, converted from folderPath
         folder_and_parents = self.get_parents(context)
         self.log.debug("__ folder_and_parents: {}".format(folder_and_parents))
 
@@ -35,6 +35,7 @@ class ValidateEditorialAssetName(pyblish.api.ContextPlugin):
 
         existing_folder_paths = {
             folder_entity["path"]: (
+                # list of parents for current folder
                 folder_entity["path"].lstrip("/").split("/")[:-1]
             )
             for folder_entity in folder_entities
