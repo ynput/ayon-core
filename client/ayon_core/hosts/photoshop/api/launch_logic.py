@@ -11,7 +11,7 @@ from wsrpc_aiohttp import (
 import ayon_api
 from qtpy import QtCore
 
-from ayon_core.lib import Logger, StringTemplate
+from ayon_core.lib import Logger
 from ayon_core.pipeline import (
     registered_host,
     Anatomy,
@@ -392,15 +392,13 @@ class PhotoshopRoute(WebSocketRoute):
         )
         data["root"] = anatomy.roots
 
-        file_template = anatomy.templates[template_key]["file"]
+        work_template = anatomy.get_template_item("work", template_key)
 
         # Define saving file extension
         extensions = host.get_workfile_extensions()
 
-        folder_template = anatomy.templates[template_key]["folder"]
-        work_root = StringTemplate.format_strict_template(
-            folder_template, data
-        )
+        work_root = work_template["directory"].format_strict(data)
+        file_template = work_template["file"].template
         last_workfile_path = get_last_workfile(
             work_root, file_template, data, extensions, True
         )

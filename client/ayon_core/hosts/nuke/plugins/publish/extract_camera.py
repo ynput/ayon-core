@@ -1,6 +1,5 @@
 import os
 import math
-from pprint import pformat
 
 import nuke
 
