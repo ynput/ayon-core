@@ -16,7 +16,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateMeshNonManifold(pyblish.api.Validator,
+class ValidateMeshNonManifold(pyblish.api.InstancePlugin,
                               OptionalPyblishPluginMixin):
     """Ensure that meshes don't have non-manifold edges or vertices
 

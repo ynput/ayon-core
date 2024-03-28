@@ -9,7 +9,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateUniqueNames(pyblish.api.Validator,
+class ValidateUniqueNames(pyblish.api.InstancePlugin,
                           OptionalPyblishPluginMixin):
     """transform names should be unique
 
