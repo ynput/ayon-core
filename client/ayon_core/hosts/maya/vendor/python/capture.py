@@ -12,11 +12,7 @@ import logging
 from maya import cmds
 from maya import mel
 
-try:
-    from PySide2 import QtGui, QtWidgets
-except ImportError:
-    from PySide import QtGui
-    QtWidgets = QtGui
+from qtpy import QtGui, QtWidgets
 
 version_info = (2, 3, 0)
 
