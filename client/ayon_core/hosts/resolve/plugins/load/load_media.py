@@ -1,0 +1,473 @@
+import json
+import copy
+import contextlib
+from collections import defaultdict
+from typing import Union, Optional
+
+from ayon_core.client import (
+    get_version_by_id,
+    get_last_version_by_subset_id,
+)
+from ayon_core.lib import StringTemplate
+from ayon_core.pipeline.colorspace import get_remapped_colorspace_to_native
+from ayon_core.pipeline import (
+    LoaderPlugin,
+    get_representation_context,
+    get_representation_path,
+    registered_host
+)
+from ayon_core.pipeline.context_tools import get_current_project_name
+from ayon_core.hosts.resolve.api import lib
+from ayon_core.hosts.resolve.api.pipeline import AVALON_CONTAINER_ID
+from ayon_core.lib.transcoding import (
+    VIDEO_EXTENSIONS,
+    IMAGE_EXTENSIONS
+)
+from ayon_core.lib import BoolDef
+
+
+@contextlib.contextmanager
+def project_color_science_mode(project=None, mode="davinciYRGBColorManagedv2"):
+    """Set project color science mode during context.
+
+    This is especially useful as context for setting the colorspace for media
+    pool items, because when Resolve is not set to `davinciYRGBColorManagedv2`
+    it fails to set its "Input Color Space" clip property even though it is
+    accessible and settable via the Resolve User Interface.
+
+    Args
+        project (Project): The active Resolve Project.
+        mode (Optional[str]): The color science mode to apply during the
+            context. Defaults to 'davinciYRGBColorManagedv2'
+
+    See Also:
+        https://forum.blackmagicdesign.com/viewtopic.php?f=21&t=197441
+    """
+
+    if project is None:
+        project = lib.get_current_project()
+
+    original_mode = project.GetSetting("colorScienceMode")
+    if original_mode != mode:
+        project.SetSetting("colorScienceMode", mode)
+    try:
+        yield
+    finally:
+        if project.GetSetting("colorScienceMode") != original_mode:
+            project.SetSetting("colorScienceMode", original_mode)
+
+
+def set_colorspace(media_pool_item,
+                   colorspace,
+                   mode="davinciYRGBColorManagedv2"):
+    """Set MediaPoolItem colorspace.
+    This implements a workaround that you cannot set the input colorspace
+    unless the Resolve project's color science mode is set to
+    `davinciYRGBColorManagedv2`.
+    Args:
+        media_pool_item (MediaPoolItem): The media pool item.
+        colorspace (str): The colorspace to apply.
+        mode (Optional[str]): The Resolve project color science mode to be in
+            while setting the colorspace.
+            Defaults to 'davinciYRGBColorManagedv2'
+    Returns:
+        bool: Whether applying the colorspace succeeded.
+    """
+    with project_color_science_mode(mode=mode):
+        return media_pool_item.SetClipProperty("Input Color Space", colorspace)
+
+
+def find_clip_usage(media_pool_item, project=None):
+    """Return all Timeline Items in the project using the Media Pool Item.
+
+    Each entry in the list is a tuple of Timeline and TimelineItem so that
+    it's easy to know which Timeline the TimelineItem belongs to.
+
+    Arguments:
+        media_pool_item (MediaPoolItem): The Media Pool Item to search for.
+        project (Project): The resolve project the media pool item resides in.
+
+    Returns:
+        List[Tuple[Timeline, TimelineItem]]: A 2-tuple of a timeline with
+            the timeline item.
+
+    """
+    usage = int(media_pool_item.GetClipProperty("Usage"))
+    if not usage:
+        return []
+
+    if project is None:
+        project = lib.get_current_project()
+
+    matching_items = []
+    unique_id = media_pool_item.GetUniqueId()
+    for timeline_idx in range(project.GetTimelineCount()):
+        timeline = project.GetTimelineByIndex(timeline_idx + 1)
+
+        # Consider audio and video tracks
+        for track_type in ["video", "audio"]:
+            for track_idx in range(timeline.GetTrackCount(track_type)):
+                timeline_items = timeline.GetItemListInTrack(track_type,
+                                                             track_idx + 1)
+                for timeline_item in timeline_items:
+                    timeline_item_mpi = timeline_item.GetMediaPoolItem()
+                    if not timeline_item_mpi:
+                        continue
+
+                    if timeline_item_mpi.GetUniqueId() == unique_id:
+                        matching_items.append((timeline, timeline_item))
+                        usage -= 1
+                        if usage <= 0:
+                            # If there should be no usage left after this found
+                            # entry we return early
+                            return matching_items
+
+    return matching_items
+
+
+class LoadMedia(LoaderPlugin):
+    """Load a subset as media pool item."""
+
+    families = ["render2d", "source", "plate", "render", "review"]
+
+    representations = ["*"]
+    extensions = set(
+        ext.lstrip(".") for ext in IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
+    )
+
+    label = "Load media"
+    order = -20
+    icon = "code-fork"
+    color = "orange"
+
+    options = [
+        BoolDef(
+            "load_to_timeline",
+            label="Load to timeline",
+            default=True,
+            tooltip="Whether on load to automatically add it to the current "
+                    "timeline"
+        ),
+        BoolDef(
+            "load_once",
+            label="Re-use existing",
+            default=True,
+            tooltip="When enabled - if this particular version is already"
+                    "loaded it will not be loaded again but will be re-used."
+        )
+    ]
+
+    # for loader multiselection
+    timeline = None
+
+    # presets
+    clip_color_last = "Olive"
+    clip_color_old = "Orange"
+
+    media_pool_bin_path = (
+        "Loader/{representation[context][hierarchy]}/{asset[name]}")
+
+    metadata = []
+
+    # cached on apply settings
+    _host_imageio_settings = None
+
+    @classmethod
+    def apply_settings(cls, project_settings, system_settings):
+        cls._host_imageio_settings = project_settings["resolve"]["imageio"]
+
+    def load(self, context, name, namespace, options):
+
+        # For loading multiselection, we store timeline before first load
+        # because the current timeline can change with the imported media.
+        if self.timeline is None:
+            self.timeline = lib.get_current_timeline()
+
+        representation = context["representation"]
+
+        project = lib.get_current_project()
+        media_pool = project.GetMediaPool()
+
+        # Allow to use an existing media pool item and re-use it
+        item = None
+        if options.get("load_once", True):
+            host = registered_host()
+            repre_id = str(context["representation"]["_id"])
+            for container in host.ls():
+                if container["representation"] != repre_id:
+                    continue
+
+                if container["loader"] != self.__class__.__name__:
+                    continue
+
+                print(f"Re-using existing container: {container}")
+                item = container["_item"]
+
+        if item is None:
+            # Create or set the bin folder, we add it in there
+            # If bin path is not set we just add into the current active bin
+            if self.media_pool_bin_path:
+                media_pool_bin_path = StringTemplate(
+                    self.media_pool_bin_path).format_strict(context)
+                folder = lib.create_bin(
+                    name=media_pool_bin_path,
+                    root=media_pool.GetRootFolder(),
+                    set_as_current=False
+                )
+                media_pool.SetCurrentFolder(folder)
+
+            # Import media
+            path = self._get_filepath(representation)
+            items = media_pool.ImportMedia([path])
+
+            assert len(items) == 1, "Must import only one media item"
+            item = items[0]
+
+            self._set_metadata(item, context)
+            self._set_colorspace_from_representation(item, representation)
+
+            data = self._get_container_data(representation)
+
+            # Add containerise data only needed on first load
+            data.update({
+                "schema": "openpype:container-2.0",
+                "id": AVALON_CONTAINER_ID,
+                "loader": str(self.__class__.__name__),
+            })
+
+            item.SetMetadata(lib.pype_tag_name, json.dumps(data))
+
+        # Always update clip color - even if re-using existing clip
+        color = self.get_item_color(representation)
+        item.SetClipColor(color)
+
+        if options.get("load_to_timeline", True):
+            timeline = options.get("timeline", self.timeline)
+            if timeline:
+                # Add media to active timeline
+                lib.create_timeline_item(
+                    media_pool_item=item,
+                    timeline=timeline
+                )
+
+    def switch(self, container, representation):
+        self.update(container, representation)
+
+    def update(self, container, representation):
+        # Update MediaPoolItem filepath and metadata
+        item = container["_item"]
+
+        # Get the existing metadata before we update because the
+        # metadata gets removed
+        data = json.loads(item.GetMetadata(lib.pype_tag_name))
+
+        # Get metadata to preserve after the clip replacement
+        # TODO: Maybe preserve more, like LUT, Alpha Mode, Input Sizing Preset
+        colorspace_before = item.GetClipProperty("Input Color Space")
+
+        # Update path
+        path = get_representation_path(representation)
+        success = item.ReplaceClip(path)
+        if not success:
+            raise RuntimeError(
+                f"Failed to replace media pool item clip to filepath: {path}"
+            )
+
+        # Update the metadata
+        update_data = self._get_container_data(representation)
+        data.update(update_data)
+        item.SetMetadata(lib.pype_tag_name, json.dumps(data))
+
+        context = get_representation_context(representation)
+        self._set_metadata(item, context)
+        self._set_colorspace_from_representation(item, representation)
+
+        # If no specific colorspace is set then we want to preserve the
+        # colorspace a user might have set before the clip replacement
+        if (
+                item.GetClipProperty("Input Color Space") == "Project"
+                and colorspace_before != "Project"
+        ):
+            result = set_colorspace(item, colorspace_before)
+            if not result:
+                self.log.warning(
+                    f"Failed to re-apply colorspace: {colorspace_before}."
+                )
+
+        # Update the clip color
+        color = self.get_item_color(representation)
+        item.SetClipColor(color)
+
+    def remove(self, container):
+        # Remove MediaPoolItem entry
+        project = lib.get_current_project()
+        media_pool = project.GetMediaPool()
+        item = container["_item"]
+
+        # Delete any usages of the media pool item so there's no trail
+        # left in existing timelines. Currently only the media pool item
+        # gets removed which fits the Resolve workflow but is confusing
+        # artists
+        usage = find_clip_usage(media_pool_item=item, project=project)
+        if usage:
+            # Group all timeline items per timeline, so we can delete the clips
+            # in the timeline at once. The Resolve objects are not hashable, so
+            # we need to store them in the dict by id
+            usage_by_timeline = defaultdict(list)
+            timeline_by_id = {}
+            for timeline, timeline_item in usage:
+                timeline_id = timeline.GetUniqueId()
+                timeline_by_id[timeline_id] = timeline
+                usage_by_timeline[timeline.GetUniqueId()].append(timeline_item)
+
+            for timeline_id, timeline_items in usage_by_timeline.items():
+                timeline = timeline_by_id[timeline_id]
+                timeline.DeleteClips(timeline_items)
+
+        # Delete the media pool item
+        media_pool.DeleteClips([item])
+
+    def _get_container_data(self, representation):
+        """Return metadata related to the representation and version."""
+
+        # load clip to timeline and get main variables
+        project_name = get_current_project_name()
+        version = get_version_by_id(project_name, representation["parent"])
+        version_data = version.get("data", {})
+        version_name = version.get("name", None)
+        colorspace = version_data.get("colorspace", None)
+
+        # add additional metadata from the version to imprint Avalon knob
+        add_keys = [
+            "frameStart", "frameEnd", "source", "author",
+            "fps", "handleStart", "handleEnd"
+        ]
+        data = {
+            key: version_data.get(key, str(None)) for key in add_keys
+        }
+
+        # add variables related to version context
+        data.update({
+            "representation": str(representation["_id"]),
+            "version": version_name,
+            "colorspace": colorspace,
+        })
+
+        return data
+
+    @classmethod
+    def get_item_color(cls, representation) -> str:
+        """Return item color name.
+
+        Coloring depends on whether representation is the latest version.
+        """
+        # Compare version with last version
+        project_name = get_current_project_name()
+        version = get_version_by_id(
+            project_name,
+            representation["parent"],
+            fields=["name", "parent"]
+        )
+        last_version = get_last_version_by_subset_id(
+            project_name,
+            version["parent"],
+            fields=["name"]
+        ) or {}
+
+        # set clip colour
+        if version.get("name") == last_version.get("name"):
+            return cls.clip_color_last
+        else:
+            return cls.clip_color_old
+
+    def _set_metadata(self, media_pool_item, context: dict):
+        """Set Media Pool Item Clip Properties"""
+
+        # Set more clip metadata based on the loaded clip's context
+        for meta_item in self.metadata:
+            clip_property = meta_item["name"]
+            value = meta_item["value"]
+            value_formatted = StringTemplate(value).format_strict(context)
+            media_pool_item.SetClipProperty(
+                clip_property, value_formatted)
+
+    def _get_filepath(self, representation: dict) -> Union[str, dict]:
+
+        is_sequence = bool(representation["context"].get("frame"))
+        if not is_sequence:
+            return get_representation_path(representation)
+
+        context = get_representation_context(representation)
+        version = context["version"]
+
+        # Get the start and end frame of the image sequence, incl. handles
+        frame_start = version["data"].get("frameStart", 0)
+        frame_end = version["data"].get("frameEnd", 0)
+        handle_start = version["data"].get("handleStart", 0)
+        handle_end = version["data"].get("handleEnd", 0)
+        frame_start_handle = frame_start - handle_start
+        frame_end_handle = frame_end + handle_end
+        padding = len(representation["context"].get("frame"))
+
+        # We format the frame number to the required token. To do so
+        # we in-place change the representation context data to format the path
+        # with that replaced data
+        representation = copy.deepcopy(representation)
+        representation["context"]["frame"] = f"%0{padding}d"
+        path = get_representation_path(representation)
+
+        # See Resolve API, to import for example clip "file_[001-100].dpx":
+        # ImportMedia([{"FilePath":"file_%03d.dpx",
+        #               "StartIndex":1,
+        #               "EndIndex":100}])
+        return {
+            "FilePath": path,
+            "StartIndex": frame_start_handle,
+            "EndIndex": frame_end_handle
+        }
+
+    def _get_colorspace(self, representation: dict) -> Optional[str]:
+        """Return Resolve native colorspace from OCIO colorspace data.
+
+        Returns:
+            Optional[str]: The Resolve native colorspace name, if any mapped.
+        """
+
+        data = representation.get("data", {}).get("colorspaceData", {})
+        if not data:
+            return
+
+        ocio_colorspace = data["colorspace"]
+        if not ocio_colorspace:
+            return
+
+        resolve_colorspace = get_remapped_colorspace_to_native(
+            ocio_colorspace_name=ocio_colorspace,
+            host_name="resolve",
+            imageio_host_settings=self._host_imageio_settings
+        )
+        if resolve_colorspace:
+            return resolve_colorspace
+        else:
+            self.log.warning(
+                f"No mapping from OCIO colorspace '{ocio_colorspace}' "
+                "found to a Resolve colorspace. "
+                "Ignoring colorspace."
+            )
+
+    def _set_colorspace_from_representation(
+            self, media_pool_item, representation: dict):
+        """Set the colorspace for the media pool item.
+
+        Args:
+            media_pool_item (MediaPoolItem): The media pool item.
+            representation (dict): The representation data.
+        """
+        # Set the Resolve Input Color Space for the media.
+        colorspace = self._get_colorspace(representation)
+        if colorspace:
+            result = set_colorspace(media_pool_item, colorspace)
+            if not result:
+                self.log.warning(
+                    f"Failed to apply colorspace: {colorspace}."
+                )
