@@ -2,7 +2,7 @@ import os
 import re
 
 from ayon_core.pipeline import load
-from openpype.hosts.houdini.api import pipeline
+from ayon_core.hosts.houdini.api import pipeline
 
 import hou
 
@@ -103,8 +103,8 @@ class FilePathLoader(load.LoaderPlugin):
                                     parm)
         node.setParmTemplateGroup(parm_template_group)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
 
