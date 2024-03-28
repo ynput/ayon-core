@@ -5,6 +5,7 @@ import hou
 
 
 class LOPLoadAssetLoader(load.LoaderPlugin):
+    """Load reference/payload into Solaris using AYON `lop_import` LOP"""
 
     product_types = {"*"}
     label = "Load Asset (LOPs)"
@@ -28,9 +29,8 @@ class LOPLoadAssetLoader(load.LoaderPlugin):
         node.moveToGoodPosition()
 
         # Set representation id
-        representation_id = str(context["representation"]["id"])
         parm = node.parm("representation")
-        parm.set(representation_id)
+        parm.set(context["representation"]["id"])
         parm.pressButton()  # trigger callbacks
 
         nodes = [node]
@@ -39,9 +39,9 @@ class LOPLoadAssetLoader(load.LoaderPlugin):
     def update(self, container, context):
         node = container["node"]
 
-        representation_id = str(context["representation"]["id"])
+        # Set representation id
         parm = node.parm("representation")
-        parm.set(representation_id)
+        parm.set(context["representation"]["id"])
         parm.pressButton()  # trigger callbacks
 
     def remove(self, container):
