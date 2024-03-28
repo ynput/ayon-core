@@ -1258,7 +1258,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if reformat_in_baking:
             self.log.debug((
                 "Using resolution from input. It is already "
-                "reformated from upstream process"
+                "reformatted from upstream process"
             ))
             pixel_aspect = 1
             output_width = input_width
