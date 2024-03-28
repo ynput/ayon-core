@@ -64,9 +64,9 @@ class LauncherActionSelection:
         )
         if key in {"AYON_PROJECT_NAME", "AVALON_PROJECT"}:
             return self.project_name
-        if key == {"AYON_FOLDER_PATH", "AVALON_ASSET"}:
+        if key in {"AYON_FOLDER_PATH", "AVALON_ASSET"}:
             return self.folder_path
-        if key == {"AYON_TASK_NAME", "AVALON_TASK"}:
+        if key in {"AYON_TASK_NAME", "AVALON_TASK"}:
             return self.task_name
         raise KeyError(f"Key: {key} not found")
 
