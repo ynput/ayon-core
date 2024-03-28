@@ -16,7 +16,7 @@ class LOPLoadAssetLoader(load.LoaderPlugin):
     def load(self, context, name=None, namespace=None, data=None):
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create node
@@ -28,7 +28,7 @@ class LOPLoadAssetLoader(load.LoaderPlugin):
         node.moveToGoodPosition()
 
         # Set representation id
-        representation_id = str(context["representation"]["_id"])
+        representation_id = str(context["representation"]["id"])
         parm = node.parm("representation")
         parm.set(representation_id)
         parm.pressButton()  # trigger callbacks
@@ -36,10 +36,10 @@ class LOPLoadAssetLoader(load.LoaderPlugin):
         nodes = [node]
         self[:] = nodes
 
-    def update(self, container, representation):
+    def update(self, container, context):
         node = container["node"]
 
-        representation_id = str(representation["_id"])
+        representation_id = str(context["representation"]["id"])
         parm = node.parm("representation")
         parm.set(representation_id)
         parm.pressButton()  # trigger callbacks
@@ -48,5 +48,5 @@ class LOPLoadAssetLoader(load.LoaderPlugin):
         node = container["node"]
         node.destroy()
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
