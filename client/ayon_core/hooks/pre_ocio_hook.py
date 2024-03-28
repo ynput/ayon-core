@@ -1,4 +1,4 @@
-from ayon_core.lib.applications import PreLaunchHook
+from ayon_applications import PreLaunchHook
 
 from ayon_core.pipeline.colorspace import get_imageio_config
 from ayon_core.pipeline.template_data import get_template_data_with_names

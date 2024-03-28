@@ -96,6 +96,10 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
     environments will be extracted.
 
     Context options are "project", "asset", "task", "app"
+
+    Deprecated:
+        This function is deprecated and will be removed in future. Please use
+        'addon applications extractenvironments ...' instead.
     """
     Commands.extractenvironments(
         output_json_path, project, asset, task, app, envgroup

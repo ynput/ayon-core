@@ -120,22 +120,6 @@ from .transcoding import (
     get_rescaled_command_arguments,
 )
 
-from .applications import (
-    ApplicationLaunchFailed,
-    ApplictionExecutableNotFound,
-    ApplicationNotFound,
-    ApplicationManager,
-
-    PreLaunchHook,
-    PostLaunchHook,
-
-    EnvironmentPrepData,
-    prepare_app_environments,
-    prepare_context_environments,
-    get_app_environments_for_context,
-    apply_project_environments_value
-)
-
 from .plugin_tools import (
     prepare_template_data,
     source_hash,
@@ -230,18 +214,6 @@ __all__ = [
     "convert_ffprobe_fps_value",
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
-
-    "ApplicationLaunchFailed",
-    "ApplictionExecutableNotFound",
-    "ApplicationNotFound",
-    "ApplicationManager",
-    "PreLaunchHook",
-    "PostLaunchHook",
-    "EnvironmentPrepData",
-    "prepare_app_environments",
-    "prepare_context_environments",
-    "get_app_environments_for_context",
-    "apply_project_environments_value",
 
     "compile_list_of_regexes",
 
