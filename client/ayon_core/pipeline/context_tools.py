@@ -97,8 +97,8 @@ def install_host(host):
     """Install `host` into the running Python session.
 
     Args:
-        host (module): A Python module containing the Avalon
-            avalon host-interface.
+        host (HostBase): A host interface object.
+
     """
     global _is_installed
 
@@ -154,6 +154,13 @@ def install_host(host):
 
 
 def install_ayon_plugins(project_name=None, host_name=None):
+    """Install AYON core plugins and make sure the core is initialized.
+
+    Args:
+        project_name (Optional[str]): Name of project to install plugins for.
+        host_name (Optional[str]): Name of host to install plugins for.
+
+    """
     # Make sure global AYON connection has set site id and version
     # - this is necessary if 'install_host' is not called
     initialize_ayon_connection()
@@ -223,6 +230,12 @@ def install_ayon_plugins(project_name=None, host_name=None):
 
 
 def install_openpype_plugins(project_name=None, host_name=None):
+    """Install AYON core plugins and make sure the core is initialized.
+
+    Deprecated:
+        Use `install_ayon_plugins` instead.
+
+    """
     install_ayon_plugins(project_name, host_name)
 
 
@@ -306,7 +319,8 @@ def get_global_context():
     Use 'get_current_context' to make sure you'll get current host integration
     context info.
 
-    Example:
+    Example::
+
         {
             "project_name": "Commercial",
             "folder_path": "Bunny",
@@ -477,10 +491,10 @@ def get_current_context_template_data(settings=None):
 def get_current_context_custom_workfile_template(project_settings=None):
     """Filter and fill workfile template profiles by current context.
 
-    This function can be used only inside host where context is set.
+    This function can be used only inside host where current context is set.
 
     Args:
-        project_settings(Optional[Dict[str, Any]]): Project settings.
+        project_settings (Optional[dict[str, Any]]): Project settings
 
     Returns:
         str: Path to template or None if none of profiles match current
