@@ -3,6 +3,7 @@ from maya import cmds
 import pyblish.api
 
 from ayon_core.hosts.maya.api import lib
+from ayon_core.hosts.maya.api.yeti import get_yeti_user_variables
 
 
 SETTINGS = {
@@ -34,7 +35,7 @@ class CollectYetiCache(pyblish.api.InstancePlugin):
     - "increaseRenderBounds"
     - "imageSearchPath"
 
-    Other information is the name of the transform and it's Colorbleed ID
+    Other information is the name of the transform and its `cbId`
     """
 
     order = pyblish.api.CollectorOrder + 0.45
@@ -54,12 +55,28 @@ class CollectYetiCache(pyblish.api.InstancePlugin):
             # Get specific node attributes
             attr_data = {}
             for attr in SETTINGS:
+                # Ignore non-existing attributes with a warning, e.g. cbId
+                # if they have not been generated yet
+                if not cmds.attributeQuery(attr, node=shape, exists=True):
+                    self.log.warning(
+                        "Attribute '{}' not found on Yeti node: {}".format(
+                            attr, shape
+                        )
+                    )
+                    continue
+
                 current = cmds.getAttr("%s.%s" % (shape, attr))
                 # change None to empty string as Maya doesn't support
                 # NoneType in attributes
                 if current is None:
                     current = ""
                 attr_data[attr] = current
+
+            # Get user variable attributes
+            user_variable_attrs = {
+                attr: lib.get_attribute("{}.{}".format(shape, attr))
+                for attr in get_yeti_user_variables(shape)
+            }
 
             # Get transform data
             parent = cmds.listRelatives(shape, parent=True)[0]
@@ -70,6 +87,7 @@ class CollectYetiCache(pyblish.api.InstancePlugin):
                 "name": shape,
                 "cbId": lib.get_id(shape),
                 "attrs": attr_data,
+                "user_variables": user_variable_attrs
             }
 
             settings["nodes"].append(shape_data)
