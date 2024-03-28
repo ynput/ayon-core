@@ -60,15 +60,22 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             instance.data["ifdFile"] = beauty_export_product
             instance.data["exportFiles"] = list(export_products)
 
-        # Default beauty AOV
+        full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
+        if full_exr_mode:
+            # Ignore beauty suffix if full mode is enabled
+            # As this is what the rop does. 
+            beauty_suffix = ""
+
+        # Default beauty/main layer AOV
         beauty_product = self.get_render_product_name(
             prefix=default_prefix, suffix=beauty_suffix
         )
         render_products = [beauty_product]
         files_by_aov = {
-            "_": self.generate_expected_files(instance,
-                                              beauty_product)}
-
+            beauty_suffix: self.generate_expected_files(instance,
+                                                        beauty_product)
+        }
+        
         aovs_rop = rop.parm("RS_aovGetFromNode").evalAsNode()
         if aovs_rop:
             rop = aovs_rop
@@ -89,11 +96,14 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             if not aov_prefix:
                 aov_prefix = default_prefix
 
-            aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
-            render_products.append(aov_product)
+            if rop.parm(f"RS_aovID_{i}").evalAsString() == "CRYPTOMATTE" or \
+                  not full_exr_mode:
+                
+                aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
+                render_products.append(aov_product)
 
-            files_by_aov[aov_suffix] = self.generate_expected_files(instance,
-                                                                    aov_product)    # noqa
+                files_by_aov[aov_suffix] = self.generate_expected_files(instance,
+                                                                        aov_product)    # noqa
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)
@@ -121,7 +131,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
         # When AOV is explicitly defined in prefix we just swap it out
         # directly with the AOV suffix to embed it.
-        # Note: ${AOV} seems to be evaluated in the parameter as %AOV%
+        # Note: '$AOV' seems to be evaluated in the parameter as '%AOV%'
         has_aov_in_prefix = "%AOV%" in prefix
         if has_aov_in_prefix:
             # It seems that when some special separator characters are present
