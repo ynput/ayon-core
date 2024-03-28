@@ -32,6 +32,35 @@ from ayon_core.pipeline.publish import (
 from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 
 
+def frame_to_timecode(frame: int, fps: float) -> str:
+    """Convert a frame number and FPS to editorial timecode (HH:MM:SS:FF).
+
+    Unlike `ayon_core.pipeline.editorial.frames_to_timecode` this does not
+    rely on the `opentimelineio` package, so it can be used across hosts that
+    do not have it available.
+
+    Args:
+        frame (int): The frame number to be converted.
+        fps (float): The frames per second of the video.
+
+    Returns:
+        str: The timecode in HH:MM:SS:FF format.
+    """
+    # Calculate total seconds
+    total_seconds = frame / fps
+
+    # Extract hours, minutes, and seconds
+    hours = int(total_seconds // 3600)
+    minutes = int((total_seconds % 3600) // 60)
+    seconds = int(total_seconds % 60)
+
+    # Adjust for non-integer FPS by rounding the remaining frames appropriately
+    remaining_frames = round((total_seconds - int(total_seconds)) * fps)
+
+    # Format and return the timecode
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}:{remaining_frames:02d}"
+
+
 class ExtractReview(pyblish.api.InstancePlugin):
     """Extracting Review mov file for Ftrack
 
@@ -390,7 +419,16 @@ class ExtractReview(pyblish.api.InstancePlugin):
             # add outputName to anatomy format fill_data
             fill_data.update({
                 "output": output_name,
-                "ext": output_ext
+                "ext": output_ext,
+
+                # By adding `timecode` as data we can use it
+                # in the ffmpeg arguments for `--timecode` so that editorial
+                # like Resolve or Premiere can detect the start frame for e.g.
+                # review output files
+                "timecode": frame_to_timecode(
+                    frame=temp_data["frame_start_handle"],
+                    fps=float(instance.data["fps"])
+                )
             })
 
             try:  # temporary until oiiotool is supported cross platform
