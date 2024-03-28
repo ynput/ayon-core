@@ -281,47 +281,6 @@ def deregister_host():
     _registered_host["_"] = None
 
 
-def debug_host():
-    """A debug host, useful to debugging features that depend on a host"""
-
-    host = types.ModuleType("debugHost")
-
-    def ls():
-        containers = [
-            {
-                "representation": "ee-ft-a-uuid1",
-                "schema": "openpype:container-1.0",
-                "name": "Bruce01",
-                "objectName": "Bruce01_node",
-                "namespace": "_bruce01_",
-                "version": 3,
-            },
-            {
-                "representation": "aa-bc-s-uuid2",
-                "schema": "openpype:container-1.0",
-                "name": "Bruce02",
-                "objectName": "Bruce01_node",
-                "namespace": "_bruce02_",
-                "version": 2,
-            }
-        ]
-
-        for container in containers:
-            yield container
-
-    host.__dict__.update({
-        "ls": ls,
-        "open_file": lambda fname: None,
-        "save_file": lambda fname: None,
-        "current_file": lambda: os.path.expanduser("~/temp.txt"),
-        "has_unsaved_changes": lambda: False,
-        "work_root": lambda: os.path.expanduser("~/temp"),
-        "file_extensions": lambda: ["txt"],
-    })
-
-    return host
-
-
 def get_current_host_name():
     """Current host name.
 
