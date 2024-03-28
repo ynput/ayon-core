@@ -248,8 +248,12 @@ def get_track_items(
     # collect all available active sequence track items
     if not return_list:
         sequence = get_current_sequence(name=sequence_name)
-        # get all available tracks from sequence
-        tracks = list(sequence.audioTracks()) + list(sequence.videoTracks())
+        tracks = []
+        if sequence is not None:
+            # get all available tracks from sequence
+            tracks.extend(sequence.audioTracks())
+            tracks.extend(sequence.videoTracks())
+
         # loop all tracks
         for track in tracks:
             if check_locked and track.isLocked():
