@@ -36,10 +36,11 @@ class ValidateCurrentRenderLayerIsRenderable(pyblish.api.ContextPlugin,
         if not context_plugin_should_run(self, context):
             return
 
-        layer = cmds.editRenderLayerGlobals(query=True, currentRenderLayer=True)
         cameras = cmds.ls(type="camera", long=True)
         renderable = any(c for c in cameras if cmds.getAttr(c + ".renderable"))
         if not renderable:
+            layer = cmds.editRenderLayerGlobals(query=True,
+                                                currentRenderLayer=True)
             raise PublishValidationError(
                 "Current render layer '{}' has no renderable camera".format(
                     layer
