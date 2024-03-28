@@ -90,19 +90,13 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                     if "entity_type" in parent:
                         parent["folder_type"] = parent.pop("entity_type")
 
-            asset, asset_name = self._get_folder_data(tag_data)
+            folder_path, folder_name = self._get_folder_data(tag_data)
 
             product_name = tag_data.get("productName")
             if product_name is None:
                 product_name = tag_data["subset"]
 
             families = [str(f) for f in tag_data["families"]]
-
-            # form label
-            label = "{} -".format(asset)
-            if asset_name != clip_name:
-                label += " ({})".format(clip_name)
-            label += " {}".format(product_name)
 
             # TODO: remove backward compatibility
             product_name = tag_data.get("productName")
@@ -113,7 +107,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             # backward compatibility: product_name should not be missing
             if not product_name:
                 self.log.error(
-                    "Product name is not defined for: {}".format(asset))
+                    "Product name is not defined for: {}".format(folder_path))
 
             # TODO: remove backward compatibility
             product_type = tag_data.get("productType")
@@ -124,15 +118,21 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             # backward compatibility: product_type should not be missing
             if not product_type:
                 self.log.error(
-                    "Product type is not defined for: {}".format(asset))
+                    "Product type is not defined for: {}".format(folder_path))
+
+            # form label
+            label = "{} -".format(folder_path)
+            if folder_name != clip_name:
+                label += " ({})".format(clip_name)
+            label += " {}".format(product_name)
 
             data.update({
-                "name": "{}_{}".format(asset, product_name),
+                "name": "{}_{}".format(folder_path, product_name),
                 "label": label,
-                "folderPath": asset,
-                "asset_name": asset_name,
                 "productName": product_name,
                 "productType": product_type,
+                "folderPath": folder_path,
+                "asset_name": folder_name,
                 "item": track_item,
                 "families": families,
                 "publish": tag_data["publish"],
@@ -222,19 +222,19 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["folderPath"]
-        asset_name = data["asset_name"]
+        folder_path = data["folderPath"]
+        folder_name = data["asset_name"]
 
         product_type = "shot"
 
         # form label
-        label = "{} -".format(asset)
-        if asset_name != clip_name:
+        label = "{} -".format(folder_path)
+        if folder_name != clip_name:
             label += " ({}) ".format(clip_name)
         label += " {}".format(product_name)
 
         data.update({
-            "name": "{}_{}".format(asset, product_name),
+            "name": "{}_{}".format(folder_path, product_name),
             "label": label,
             "productName": product_name,
             "productType": product_type,
@@ -281,19 +281,19 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not self.test_any_audio(item):
             return
 
-        asset = data["folderPath"]
+        folder_path = data["folderPath"]
         asset_name = data["asset_name"]
 
         product_type = "audio"
 
         # form label
-        label = "{} -".format(asset)
+        label = "{} -".format(folder_path)
         if asset_name != clip_name:
             label += " ({}) ".format(clip_name)
         label += " {}".format(product_name)
 
         data.update({
-            "name": "{}_{}".format(asset, product_name),
+            "name": "{}_{}".format(folder_path, subset),
             "label": label,
             "productName": product_name,
             "productType": product_type,
