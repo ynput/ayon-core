@@ -163,7 +163,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
 
             shot_name = f"{shot['name']}%s" % (
                 f" ({shot['label']})" if shot["label"] else "")
-            cmds.shot(sequenceStartTime=shot["attrib"]["clipIn"],
+            shot_node = cmds.shot(sequenceStartTime=shot["attrib"]["clipIn"],
                       sequenceEndTime=shot["attrib"]["clipOut"],
                       shotName=shot_name)
 
@@ -175,6 +175,9 @@ class CreateMultishotLayout(plugin.MayaCreator):
             }
             if layout_task_name:
                 instance_data["task"] = layout_task_name
+
+            instance_data["shot_node"] = shot_node
+            instance_data["shift_back_to_frame_start"] = True
 
             layout_creator.create(
                 product_name=layout_creator.get_product_name(
