@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateYetiRigInputShapesInInstance(pyblish.api.Validator,
+class ValidateYetiRigInputShapesInInstance(pyblish.api.InstancePlugin,
                                            OptionalPyblishPluginMixin):
     """Validate if all input nodes are part of the instance's hierarchy"""
 

@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateTransformZero(pyblish.api.Validator,
+class ValidateTransformZero(pyblish.api.InstancePlugin,
                             OptionalPyblishPluginMixin):
     """Transforms can't have any values
 
