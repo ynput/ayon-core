@@ -102,6 +102,12 @@ class LauncherActionSelection:
         return False
 
     def get(self, key, default=None):
+        """
+
+        Deprecated:
+            Added for backwards compatibility with older actions.
+
+        """
         warnings.warn(
             (
                 "Using deprecated access to selection data. Please use"
@@ -116,6 +122,12 @@ class LauncherActionSelection:
             return default
 
     def items(self):
+        """
+
+        Deprecated:
+            Added for backwards compatibility with older actions.
+
+        """
         for key, value in (
             ("AYON_PROJECT_NAME", self.project_name),
             ("AYON_FOLDER_PATH", self.folder_path),
@@ -125,10 +137,22 @@ class LauncherActionSelection:
                 yield (key, value)
 
     def keys(self):
+        """
+
+        Deprecated:
+            Added for backwards compatibility with older actions.
+
+        """
         for key, _ in self.items():
             yield key
 
     def values(self):
+        """
+
+        Deprecated:
+            Added for backwards compatibility with older actions.
+
+        """
         for _, value in self.items():
             yield value
 
