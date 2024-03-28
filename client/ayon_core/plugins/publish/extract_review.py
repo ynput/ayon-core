@@ -1228,16 +1228,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
         reformat_in_baking = bool("reformated" in new_repre["tags"])
         self.log.debug("reformat_in_baking: `{}`".format(reformat_in_baking))
 
-        # Get instance data
-        pixel_aspect = temp_data["pixel_aspect"]
-
-        if reformat_in_baking:
-            self.log.debug((
-                "Using resolution from input. It is already "
-                "reformated from upstream process"
-            ))
-            pixel_aspect = 1
-
         # NOTE Skipped using instance's resolution
         full_input_path_single_file = temp_data["full_input_path_single_file"]
         try:
@@ -1268,7 +1258,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if reformat_in_baking:
             self.log.debug((
                 "Using resolution from input. It is already "
-                "reformated from upstream process"
+                "reformatted from upstream process"
             ))
             pixel_aspect = 1
             output_width = input_width
@@ -1374,7 +1364,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # Make sure output width and height is not an odd number
         # When this can happen:
         # - if output definition has set width and height with odd number
-        # - `instance.data` contain width and height with odd numbeer
+        # - `instance.data` contain width and height with odd number
         if output_width % 2 != 0:
             self.log.warning((
                 "Converting output width from odd to even number. {} -> {}"
@@ -1820,8 +1810,8 @@ class OverscanCrop:
         """
         # crop=width:height:x:y - explicit start x, y position
         # crop=width:height     - x, y are related to center by width/height
-        # pad=width:heigth:x:y  - explicit start x, y position
-        # pad=width:heigth      - x, y are set to 0 by default
+        # pad=width:height:x:y  - explicit start x, y position
+        # pad=width:height      - x, y are set to 0 by default
 
         width = self.width()
         height = self.height()
