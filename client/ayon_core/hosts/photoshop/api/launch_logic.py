@@ -11,7 +11,7 @@ from wsrpc_aiohttp import (
 import ayon_api
 from qtpy import QtCore
 
-from ayon_core.lib import Logger, StringTemplate
+from ayon_core.lib import Logger
 from ayon_core.pipeline import (
     registered_host,
     Anatomy,

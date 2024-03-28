@@ -1,5 +1,3 @@
-import ayon_api
-
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import filter_profiles, prepare_template_data
 
