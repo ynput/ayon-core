@@ -2,7 +2,6 @@
 """Submitting render job to RoyalRender."""
 import os
 import json
-import platform
 import re
 import tempfile
 import uuid

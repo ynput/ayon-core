@@ -4,8 +4,10 @@ import pyblish.api
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
-    OptionalPyblishPluginMixin
+    OptionalPyblishPluginMixin,
+    PublishValidationError
 )
+
 
 class ValidateUniqueNames(pyblish.api.Validator,
                           OptionalPyblishPluginMixin):
@@ -40,5 +42,5 @@ class ValidateUniqueNames(pyblish.api.Validator,
             return
         invalid = self.get_invalid(instance)
         if invalid:
-            raise ValueError("Nodes found with none unique names. "
-                             "values: {0}".format(invalid))
+            raise PublishValidationError(
+                "Nodes found with non-unique names:\n{0}".format(invalid))
