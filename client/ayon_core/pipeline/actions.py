@@ -214,10 +214,22 @@ class LauncherActionSelection:
 
     @property
     def is_folder_selected(self):
+        """Return whether a folder is selected.
+
+        Returns:
+            bool: Whether a folder is selected.
+
+        """
         return self._folder_id is not None
 
     @property
     def is_task_selected(self):
+        """Return whether a task is selected.
+
+        Returns:
+            bool: Whether a task is selected.
+
+        """
         return self._task_id is not None
 
     project_name = property(get_project_name)
