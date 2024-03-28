@@ -194,6 +194,16 @@ class ExtractBurnin(publish.Extractor):
             ).format(host_name, product_type, task_name, profile))
             return
 
+        burnins_per_repres = self._get_burnins_per_representations(
+            instance, burnin_defs
+        )
+        if not burnins_per_repres:
+            self.log.debug(
+                "Skipped instance. No representations found matching a burnin"
+                "definition in: %s", burnin_defs
+            )
+            return
+
         burnin_options = self._get_burnin_options()
 
         # Prepare basic data for processing
@@ -204,9 +214,6 @@ class ExtractBurnin(publish.Extractor):
 
         # Args that will execute the script
         executable_args = ["run", scriptpath]
-        burnins_per_repres = self._get_burnins_per_representations(
-            instance, burnin_defs
-        )
         for repre, repre_burnin_defs in burnins_per_repres:
             # Create copy of `_burnin_data` and `_temp_data` for repre.
             burnin_data = copy.deepcopy(_burnin_data)
