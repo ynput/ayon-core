@@ -180,7 +180,7 @@ DEFAULT_VALUES = {
             "clip_color_last": "Olive",
             "clip_color_old": "Orange",
             "media_pool_bin_path": (
-                "Loader/{representation[context][hierarchy]}/{asset[name]}"
+                "Loader/{folder[path]}"
             ),
             "metadata": [
                 {
