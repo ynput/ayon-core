@@ -53,22 +53,12 @@ class LauncherActionSelection:
         self._task_entity = task_entity
 
     def __getitem__(self, key):
-        if key in {"project_name", "AYON_PROJECT_NAME", "AVALON_PROJECT"}:
+        if key in {"AYON_PROJECT_NAME", "AVALON_PROJECT"}:
             return self.project_name
-        if key == {"folder_path", "AYON_FOLDER_PATH", "AVALON_ASSET"}:
+        if key == {"AYON_FOLDER_PATH", "AVALON_ASSET"}:
             return self.folder_path
-        if key == {"task_name", "AYON_TASK_NAME", "AVALON_TASK"}:
+        if key == {"AYON_TASK_NAME", "AVALON_TASK"}:
             return self.task_name
-        if key == "folder_id":
-            return self.folder_id
-        if key == "task_id":
-            return self.task_id
-        if key == "project_entity":
-            return self.project_entity
-        if key == "folder_entity":
-            return self.folder_entity
-        if key == "task_entity":
-            return self.task_entity
         raise KeyError(f"Key: {key} not found")
 
     def __contains__(self, key):
@@ -76,22 +66,15 @@ class LauncherActionSelection:
         if key in {
             "AYON_PROJECT_NAME",
             "AVALON_PROJECT",
-            "project_entity",
         }:
             return self._project_name is not None
         if key in {
             "AYON_FOLDER_PATH",
-            "folder_id",
-            "folder_path",
-            "folder_entity",
             "AVALON_ASSET",
         }:
             return self._folder_id is not None
         if key in {
             "AYON_TASK_NAME",
-            "task_id",
-            "task_name",
-            "task_entity",
             "AVALON_TASK",
         }:
             return self._task_id is not None
