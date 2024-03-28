@@ -111,7 +111,7 @@ class LoadMediaModel(BaseSettingsModel):
         title="Clip color for old version"
     )
     media_pool_bin_path: str = SettingsField(
-        "Loader/{representation[context][hierarchy]}/{asset[name]}",
+        "Loader/{folder[path]}",
         title="Media Pool bin path template"
     )
     metadata: list[MetadataMappingModel] = SettingsField(
@@ -180,21 +180,21 @@ DEFAULT_VALUES = {
             "metadata": [
                 {
                     "name": "Comments",
-                    "value": "{version[data][comment]}"
+                    "value": "{version[attrib][comment]}"
                 },
                 {
                     "name": "Shot",
-                    "value": "{asset[name]}"
+                    "value": "{folder[path]}"
                 },
                 {
                     "name": "Take",
-                    "value": "{subset[name]} v{version[name]:0>3}"
+                    "value": "{product[name]} {version[name]}"
                 },
                 {
                     "name": "Clip Name",
                     "value": (
-                        "{asset[name]} {subset[name]} "
-                        "v{version[name]:0>3} ({representation[name]})"
+                        "{folder[path]} {product[name]} "
+                        "{version[name]} ({representation[name]})"
                     )
                 }
             ]
