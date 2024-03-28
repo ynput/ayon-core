@@ -1,7 +1,3 @@
-import os
-import json
-import time
-
 from qtpy import QtWidgets, QtCore
 
 from .widgets import (
