@@ -465,7 +465,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             current_data = hierarchy_context.get(project_name, {})
             for key in folder_path.split("/"):
                 if key:
-                    current_data = current_data.get("childs", {}).get(key, {})
+                    current_data = (
+                        current_data
+                        .get("children", {})
+                        .get(key, {})
+                    )
             tasks_info = current_data.get("tasks", {})
 
         task_info = tasks_info.get(task_name, {})
@@ -529,5 +533,5 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 return item[folder_name].get("tasks") or {}
 
             for subitem in item.values():
-                hierarchy_queue.extend(subitem.get("childs") or [])
+                hierarchy_queue.extend(subitem.get("children") or [])
         return {}

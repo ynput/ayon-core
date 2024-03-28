@@ -7,7 +7,6 @@ from Deadline.Plugins import PluginType, DeadlinePlugin
 from Deadline.Scripting import (
     StringUtils,
     FileUtils,
-    DirectoryUtils,
     RepositoryUtils
 )
 

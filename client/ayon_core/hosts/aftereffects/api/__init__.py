@@ -31,6 +31,7 @@ __all__ = [
     "get_stub",
 
     # pipeline
+    "AfterEffectsHost",
     "ls",
     "containerise",
 
