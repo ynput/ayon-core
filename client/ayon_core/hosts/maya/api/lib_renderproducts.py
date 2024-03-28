@@ -1133,9 +1133,24 @@ class RenderProductsRedshift(ARenderProducts):
             aovs = list(set(aovs) - set(ref_aovs))
 
         products = []
+        global_aov_enabled = bool(
+            self._get_attr("redshiftOptions.aovGlobalEnableMode")
+        )
+        colorspace = lib.get_color_management_output_transform()
+        if not global_aov_enabled:
+            # only beauty output
+            for camera in cameras:
+                products.insert(0,
+                                RenderProduct(productName="",
+                                              ext=ext,
+                                              multipart=self.multipart,
+                                              camera=camera,
+                                              colorspace=colorspace))
+            return products
+
         light_groups_enabled = False
         has_beauty_aov = False
-        colorspace = lib.get_color_management_output_transform()
+
         for aov in aovs:
             enabled = self._get_attr(aov, "enabled")
             if not enabled:
