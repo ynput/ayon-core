@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 import ayon_api
 
@@ -53,6 +54,14 @@ class LauncherActionSelection:
         self._task_entity = task_entity
 
     def __getitem__(self, key):
+        warnings.warn(
+            (
+                "Using deprecated access to selection data. Please use"
+                " attributes and methods"
+                " defined by 'LauncherActionSelection'."
+            ),
+            category=DeprecationWarning
+        )
         if key in {"AYON_PROJECT_NAME", "AVALON_PROJECT"}:
             return self.project_name
         if key == {"AYON_FOLDER_PATH", "AVALON_ASSET"}:
@@ -62,6 +71,14 @@ class LauncherActionSelection:
         raise KeyError(f"Key: {key} not found")
 
     def __contains__(self, key):
+        warnings.warn(
+            (
+                "Using deprecated access to selection data. Please use"
+                " attributes and methods"
+                " defined by 'LauncherActionSelection'."
+            ),
+            category=DeprecationWarning
+        )
         # Fake missing keys check for backwards compatibility
         if key in {
             "AYON_PROJECT_NAME",
@@ -81,6 +98,14 @@ class LauncherActionSelection:
         return False
 
     def get(self, key, default=None):
+        warnings.warn(
+            (
+                "Using deprecated access to selection data. Please use"
+                " attributes and methods"
+                " defined by 'LauncherActionSelection'."
+            ),
+            category=DeprecationWarning
+        )
         try:
             return self[key]
         except KeyError:
