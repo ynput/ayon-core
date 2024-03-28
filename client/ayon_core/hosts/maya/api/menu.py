@@ -26,6 +26,16 @@ from .workfile_template_builder import (
 )
 from ayon_core.tools.workfile_template_build import open_template_ui
 from .workfile_template_builder import MayaTemplateBuilder
+from .testing import (
+    run_tests_on_repository_workfile,
+    test_create_on_repository_workfile,
+    test_publish_on_repository_workfile,
+    test_load_on_repository_workfile,
+    run_tests,
+    test_create,
+    test_publish,
+    test_load
+)
 
 log = logging.getLogger(__name__)
 
@@ -200,6 +210,54 @@ def install(project_settings):
             "Update Placeholder",
             parent=builder_menu,
             command=update_placeholder
+        )
+
+        testing_menu = cmds.menuItem(
+            "Testing",
+            subMenu=True,
+            tearOff=True,
+            parent=MENU_NAME
+        )
+        cmds.menuItem(
+            "Run Tests On Repository Workfile",
+            parent=testing_menu,
+            command=lambda *args: run_tests_on_repository_workfile()
+        )
+        cmds.menuItem(
+            "Test Create On Repository Workfile",
+            parent=testing_menu,
+            command=lambda *args: test_create_on_repository_workfile()
+        )
+        cmds.menuItem(
+            "Test Publish On Repository Workfile",
+            parent=testing_menu,
+            command=lambda *args: test_publish_on_repository_workfile()
+        )
+        cmds.menuItem(
+            "Test Load On Repository Workfile",
+            parent=testing_menu,
+            command=lambda *args: test_load_on_repository_workfile()
+        )
+        cmds.menuItem(divider=True)
+        cmds.menuItem(
+            "Run Tests On Current Workfile",
+            parent=testing_menu,
+            command=lambda *args: run_tests()
+        )
+        cmds.menuItem(
+            "Test Create On Current Workfile",
+            parent=testing_menu,
+            command=lambda *args: test_create()
+        )
+        cmds.menuItem(
+            "Test Publish On Current Workfile",
+            parent=testing_menu,
+            command=lambda *args: test_publish()
+        )
+        cmds.menuItem(
+            "Test Load On Current Workfile",
+            parent=testing_menu,
+            command=lambda *args: test_load()
         )
 
         cmds.setParent(MENU_NAME, menu=True)

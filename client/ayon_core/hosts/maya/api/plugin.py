@@ -420,7 +420,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         # By RenderLayerCreator.create we make it so that the renderlayer
         # instances directly appear even though it just collects scene
         # renderlayers. This doesn't actually 'create' any scene contents.
-        self.collect_instances()
+        return self.collect_instances()
 
     def create_singleton_node(self):
         if self._get_singleton_node():
@@ -444,6 +444,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         host_name = self.create_context.host_name
         rs = renderSetup.instance()
         layers = rs.getRenderLayers()
+        instances = []
         for layer in layers:
             layer_instance_node = self.find_layer_instance_node(layer)
             if layer_instance_node:
@@ -484,6 +485,9 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
 
             instance.transient_data["layer"] = layer
             self._add_instance_to_context(instance)
+            instances.append(instance)
+
+        return instances
 
     def find_layer_instance_node(self, layer):
         connected_sets = cmds.listConnections(

@@ -154,7 +154,7 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
             loader_args = json.loads(loader_args.replace('\'', '\"'))
             values = [v for v in loader_args.values()]
             for value in values:
-                placeholder_name_parts.insert(pos, value)
+                placeholder_name_parts.insert(pos, str(value))
                 pos += 1
 
         placeholder_name = "_".join(placeholder_name_parts)
@@ -263,6 +263,11 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
         # Hide placeholder and add them to placeholder set
         node = placeholder.scene_identifier
 
+        # If we just populate the placeholders from current scene, the
+        # placeholder set will not be created so account for that.
+        if not cmds.objExists(PLACEHOLDER_SET):
+            cmds.sets(name=PLACEHOLDER_SET, empty=True)
+
         cmds.sets(node, addElement=PLACEHOLDER_SET)
         cmds.hide(node)
         cmds.setAttr(node + ".hiddenInOutliner", True)
@@ -325,12 +330,16 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
             placeholder.scene_identifier, parent=True, fullPath=True
         )
         for node in set(nodes_to_parent):
+            if cmds.lockNode(node, lock=True, query=True):
+                continue
+
             cmds.reorder(node, front=True)
             cmds.reorder(node, relative=placeholder.data["index"])
             cmds.xform(node, matrix=placeholder_form, ws=True)
             if scene_parent:
                 cmds.parent(node, scene_parent)
-            else:
+            # When parented to world, the parent returns None.
+            elif cmds.listRelatives(node, parent=True) is not None:
                 cmds.parent(node, world=True)
 
         holding_sets = cmds.listSets(object=placeholder.scene_identifier)
