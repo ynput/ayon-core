@@ -80,6 +80,7 @@ class RenderInstance(object):
     anatomyData = attr.ib(default=None)
     outputDir = attr.ib(default=None)
     context = attr.ib(default=None)
+    deadline = attr.ib(default=None)
 
     @frameStart.validator
     def check_frame_start(self, _, value):
