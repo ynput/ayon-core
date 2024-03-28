@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateShapeRenderStats(pyblish.api.Validator,
+class ValidateShapeRenderStats(pyblish.api.InstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure all render stats are set to the default values."""
 
