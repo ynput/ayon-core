@@ -1,5 +1,6 @@
-from maya import cmds
+import inspect
 
+from maya import cmds
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
@@ -57,7 +58,7 @@ class ValidateTransformZero(pyblish.api.Validator,
             if ('_LOC' in transform) or ('_loc' in transform):
                 continue
             mat = cmds.xform(transform, q=1, matrix=True, objectSpace=True)
-            if not all(abs(x-y) < cls._tolerance
+            if not all(abs(x - y) < cls._tolerance
                        for x, y in zip(cls._identity, mat)):
                 invalid.append(transform)
 
@@ -69,14 +70,24 @@ class ValidateTransformZero(pyblish.api.Validator,
             return
         invalid = self.get_invalid(instance)
         if invalid:
-
             names = "<br>".join(
                 " - {}".format(node) for node in invalid
             )
 
             raise PublishValidationError(
                 title="Transform Zero",
+                description=self.get_description(),
                 message="The model publish allows no transformations. You must"
                         " <b>freeze transformations</b> to continue.<br><br>"
-                        "Nodes found with transform values: "
+                        "Nodes found with transform values:<br>"
                         "{0}".format(names))
+
+    @staticmethod
+    def get_description():
+        return inspect.cleandoc("""### Transform can't have any values
+
+        The model publish allows no transformations. 
+
+        You must **freeze transformations** to continue.
+
+        """)
