@@ -116,7 +116,7 @@ class ApplicationAction(LauncherAction):
     def process(self, session, **kwargs):
         """Process the full Application action"""
 
-        from ayon_core.lib import (
+        from ayon_applications import (
             ApplicationExecutableNotFound,
             ApplicationLaunchFailed,
         )
