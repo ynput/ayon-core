@@ -1,5 +1,5 @@
-from .addon import ApplicationsAddon
 from .constants import (
+    APPLICATIONS_ADDON_ROOT,
     DEFAULT_ENV_SUBGROUP,
     PLATFORM_NAMES,
 )
@@ -27,11 +27,10 @@ from .manager import (
     ApplicationManager,
     ApplicationLaunchContext,
 )
+from .addon import ApplicationsAddon
 
 
 __all__ = (
-    "ApplicationsAddon",
-
     "DEFAULT_ENV_SUBGROUP",
     "PLATFORM_NAMES",
 
@@ -54,4 +53,6 @@ __all__ = (
 
     "ApplicationManager",
     "ApplicationLaunchContext",
+
+    "ApplicationsAddon",
 )
