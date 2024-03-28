@@ -1,15 +1,5 @@
 # -*- coding: utf-8 -*-
 """Package helping with colorizing and formatting terminal output."""
-# ::
-#   //.  ...   ..      ///.     //.
-#  ///\\\ \\\   \\    ///\\\   ///
-# ///  \\  \\\   \\  ///  \\  /// //
-# \\\  //   \\\  //  \\\  //  \\\//  ./
-#  \\\//     \\\//    \\\//    \\\' //
-#   \\\         \\\    \\\      \\\//
-#    '''         '''    '''      '''
-#   ..---===[[ PyP3 Setup ]]===---...
-#
 import re
 import time
 import threading
