@@ -294,6 +294,85 @@ class DetailsWidget(QtWidgets.QWidget):
         self._output_widget.setPlainText(text)
 
 
+class PluginInfoWidget(QtWidgets.QWidget):
+    def __init__(self, parent):
+        super(PluginInfoWidget, self).__init__(parent)
+
+        info_widget = QtWidgets.QWidget(self)
+
+        plugin_doc_widget = QtWidgets.QTextEdit(info_widget)
+        plugin_doc_widget.setReadOnly(True)
+        # plugin_doc_widget.setMaximumHeight(300)
+
+        plugin_path_widget = QtWidgets.QLineEdit(info_widget)
+        plugin_path_widget.setReadOnly(True)
+
+        plugin_type_widget = QtWidgets.QLineEdit(info_widget)
+        plugin_type_widget.setReadOnly(True)
+        plugin_families_widget = QtWidgets.QLineEdit(info_widget)
+        plugin_families_widget.setReadOnly(True)
+
+        row = 0
+
+        info_layout = QtWidgets.QGridLayout(info_widget)
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.addWidget(plugin_doc_widget, row, 0, 1, 2)
+        row += 1
+
+        label = QtWidgets.QLabel("File Path")
+        label.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        info_layout.addWidget(label, row, 0)
+        info_layout.addWidget(plugin_path_widget, row, 1)
+        row += 1
+
+        label = QtWidgets.QLabel("Plugin type")
+        label.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        info_layout.addWidget(label, row, 0)
+        info_layout.addWidget(plugin_type_widget, row, 1)
+        row += 1
+
+        label = QtWidgets.QLabel("File Families")
+        label.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        info_layout.addWidget(label, row, 0)
+        info_layout.addWidget(plugin_families_widget, row, 1)
+        row += 1
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.addWidget(info_widget, 0)
+        # main_layout.addStretch(1)
+
+        self._plugin_doc_widget = plugin_doc_widget
+        self._plugin_path_widget = plugin_path_widget
+        self._plugin_type_widget = plugin_type_widget
+        self._plugin_families_widget = plugin_families_widget
+
+        self._report_item = None
+        self._instance_filter = set()
+        self._plugin_filter = set()
+
+    def set_plugin_filter(self, plugin_ids):
+        if not plugin_ids:
+            self._plugin_doc_widget.setText("")
+            self._plugin_path_widget.setText("")
+            self._plugin_type_widget.setText("")
+            self._plugin_families_widget.setText("")
+            return
+        plugin_id = list(plugin_ids)[0]
+        self._plugin_filter = plugin_id
+        plugin_item = self._report_item.plugins_items_by_id[plugin_id]
+        self._plugin_doc_widget.setText(plugin_item.doc or "")
+        self._plugin_path_widget.setText(plugin_item.filepath or "")
+        families_str = ", ".join(plugin_item.families or [])
+        self._plugin_type_widget.setText(plugin_item.plugin_type or "")
+        self._plugin_families_widget.setText(families_str)
+
+    def set_report(self, report):
+        self._report_item = report
+        self._plugin_filter = set()
+        self._instance_filter = set()
+
+
 class DeselectableTreeView(QtWidgets.QTreeView):
     """A tree view that deselects on clicking on an empty area in the view"""
 
@@ -421,9 +500,11 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
 
         logs_text_widget = DetailsWidget(details_tab_widget)
         plugin_load_report_widget = PluginLoadReportWidget(details_tab_widget)
+        plugin_info_widget = PluginInfoWidget(details_tab_widget)
 
         details_tab_widget.addTab(logs_text_widget, "Logs")
         details_tab_widget.addTab(plugin_load_report_widget, "Crashed plugins")
+        details_tab_widget.addTab(plugin_info_widget, "Plugin Info")
 
         middle_widget = QtWidgets.QWidget(self)
         middle_layout = QtWidgets.QGridLayout(middle_widget)
@@ -462,6 +543,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._report_item = None
         self._logs_text_widget = logs_text_widget
         self._plugin_load_report_widget = plugin_load_report_widget
+        self._plugin_info_widget = plugin_info_widget
 
         self._removed_instances_check = removed_instances_check
         self._instances_view = instances_view
@@ -511,6 +593,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._plugins_model.set_report(report)
         self._logs_text_widget.set_report(report)
         self._plugin_load_report_widget.set_report(report)
+        self._plugin_info_widget.set_report(report)
 
         self._ignore_selection_changes = False
 
@@ -538,6 +621,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
                 plugin_ids.add(index.data(ITEM_ID_ROLE))
 
         self._logs_text_widget.set_plugin_filter(plugin_ids)
+        self._plugin_info_widget.set_plugin_filter(plugin_ids)
 
     def _on_skipped_plugin_check(self):
         self._plugins_proxy.set_ignore_skipped(
