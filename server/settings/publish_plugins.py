@@ -9,7 +9,7 @@ from ayon_server.settings import (
     task_types_enum,
 )
 
-from ayon_server.types import ColorRGB_uint8, ColorRGBA_uint8
+from ayon_server.types import ColorRGBA_uint8
 
 
 class ValidateBaseModel(BaseSettingsModel):
@@ -221,7 +221,12 @@ class OIIOToolArgumentsModel(BaseSettingsModel):
 
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     _layout = "expanded"
-    name: str = SettingsField("", title="Name")
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Output name (no space)",
+        regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
+    )
     extension: str = SettingsField("", title="Extension")
     transcoding_type: str = SettingsField(
         "colorspace",
