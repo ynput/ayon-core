@@ -32,10 +32,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
 
     def load(self, context, name=None, namespace=None, options=None):
         """Plugin entry point."""
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "redshiftproxy"
+        product_type = context["product"]["productType"]
 
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
