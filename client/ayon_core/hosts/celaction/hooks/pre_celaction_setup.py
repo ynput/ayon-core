@@ -16,9 +16,9 @@ class CelactionPrelaunchHook(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        asset_doc = self.data["asset_doc"]
-        width = asset_doc["data"]["resolutionWidth"]
-        height = asset_doc["data"]["resolutionHeight"]
+        folder_attributes = self.data["folder_entity"]["attrib"]
+        width = folder_attributes["resolutionWidth"]
+        height = folder_attributes["resolutionHeight"]
 
         # Add workfile path to launch arguments
         workfile_path = self.workfile_path()
@@ -118,7 +118,7 @@ class CelactionPrelaunchHook(PreLaunchHook):
     def workfile_path(self):
         workfile_path = self.data["last_workfile_path"]
 
-        # copy workfile from template if doesnt exist any on path
+        # copy workfile from template if doesn't exist any on path
         if not os.path.exists(workfile_path):
             # TODO add ability to set different template workfile path via
             # settings

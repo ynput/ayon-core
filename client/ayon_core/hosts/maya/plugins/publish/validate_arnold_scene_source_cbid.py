@@ -1,11 +1,15 @@
 import pyblish.api
 from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder, PublishValidationError, RepairAction
+    ValidateContentsOrder,
+    PublishValidationError,
+    RepairAction,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
+class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin,
+                                    OptionalPyblishPluginMixin):
     """Validate Arnold Scene Source Cbid.
 
     It is required for the proxy and content nodes to share the same cbid.
@@ -16,6 +20,14 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
     families = ["ass"]
     label = "Validate Arnold Scene Source CBID"
     actions = [RepairAction]
+    optional = False
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Disable plug-in if cbId workflow is disabled
+        if not project_settings["maya"].get("use_cbid_workflow", True):
+            cls.enabled = False
+            return
 
     @staticmethod
     def _get_nodes_by_name(nodes):
@@ -55,6 +67,8 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
         return invalid_couples
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         # Proxy validation.
         if not instance.data.get("proxy", []):
             return

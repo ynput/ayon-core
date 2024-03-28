@@ -133,12 +133,12 @@ class GenericCreateSaver(Creator):
         formatting_data = deepcopy(data)
 
         # get frame padding from anatomy templates
-        frame_padding = self.project_anatomy.templates["frame_padding"]
+        frame_padding = self.project_anatomy.templates_obj.frame_padding
 
         # get output format
         ext = data["creator_attributes"]["image_format"]
 
-        # Subset change detected
+        # Product change detected
         product_type = formatting_data["productType"]
         f_product_name = formatting_data["productName"]
 

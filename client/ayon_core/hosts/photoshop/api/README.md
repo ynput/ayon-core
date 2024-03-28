@@ -226,14 +226,14 @@ class ImageLoader(load.LoaderPlugin):
 
     def update(self, container, context):
         layer = container.pop("layer")
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         with photoshop.maintained_selection():
             stub.replace_smart_object(
-                layer, get_representation_path(repre_doc)
+                layer, get_representation_path(repre_entity)
             )
 
         stub.imprint(
-            layer, {"representation": str(repre_doc["_id"])}
+            layer, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):

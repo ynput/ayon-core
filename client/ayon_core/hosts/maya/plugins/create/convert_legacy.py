@@ -1,14 +1,14 @@
-from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
+import ayon_api
+
+from ayon_core.pipeline.create.creator_plugins import ProductConvertorPlugin
 from ayon_core.hosts.maya.api import plugin
 from ayon_core.hosts.maya.api.lib import read
-
-from ayon_core.client import get_asset_by_name
 
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup
 
 
-class MayaLegacyConvertor(SubsetConvertorPlugin,
+class MayaLegacyConvertor(ProductConvertorPlugin,
                           plugin.MayaCreatorBase):
     """Find and convert any legacy products in the scene.
 
@@ -19,7 +19,7 @@ class MayaLegacyConvertor(SubsetConvertorPlugin,
 
     Its limitation is that you can have multiple creators creating product
     of the same type and there is no way to handle it. This code should
-    nevertheless cover all creators that came with OpenPype.
+    nevertheless cover all creators that came with AYON.
 
     """
     identifier = "io.openpype.creators.maya.legacy"
@@ -83,7 +83,7 @@ class MayaLegacyConvertor(SubsetConvertorPlugin,
                 ).format(product_type))
                 continue
 
-            creator_id = product_type_to_id[family]
+            creator_id = product_type_to_id[product_type]
             creator = self.create_context.creators[creator_id]
             data["creator_identifier"] = creator_id
 
@@ -142,12 +142,21 @@ class MayaLegacyConvertor(SubsetConvertorPlugin,
             # recreate product name as without it would be
             # `renderingMain` vs correct `renderMain`
             project_name = self.create_context.get_current_project_name()
-            asset_doc = get_asset_by_name(project_name,
-                                          original_data["asset"])
+            folder_entities = list(ayon_api.get_folders(
+                project_name, folder_names=[original_data["asset"]]
+            ))
+            if not folder_entities:
+                cmds.delete(instance_node)
+                continue
+            folder_entity = folder_entities[0]
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], data["task"]
+            )
+
             product_name = creator.get_product_name(
                 project_name,
-                asset_doc,
-                data["task"],
+                folder_entity,
+                task_entity,
                 original_data["variant"],
             )
             original_data["productName"] = product_name
