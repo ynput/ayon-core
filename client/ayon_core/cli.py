@@ -81,13 +81,13 @@ main_cli.set_alias("addon", "module")
 @main_cli.command()
 @click.argument("output_json_path")
 @click.option("--project", help="Project name", default=None)
-@click.option("--asset", help="Asset name", default=None)
+@click.option("--folder", help="Folder path", default=None)
 @click.option("--task", help="Task name", default=None)
 @click.option("--app", help="Application name", default=None)
 @click.option(
     "--envgroup", help="Environment group (e.g. \"farm\")", default=None
 )
-def extractenvironments(output_json_path, project, asset, task, app, envgroup):
+def extractenvironments(output_json_path, project, folder, task, app, envgroup):
     """Extract environment variables for entered context to a json file.
 
     Entered output filepath will be created if does not exists.
@@ -95,10 +95,10 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
     All context options must be passed otherwise only AYON's global
     environments will be extracted.
 
-    Context options are "project", "asset", "task", "app"
+    Context options are "project", "folder", "task", "app"
     """
     Commands.extractenvironments(
-        output_json_path, project, asset, task, app, envgroup
+        output_json_path, project, folder, task, app, envgroup
     )
 
 
@@ -127,7 +127,7 @@ def publish_report_viewer():
 @main_cli.command()
 @click.argument("output_path")
 @click.option("--project", help="Define project context")
-@click.option("--asset", help="Define asset in project (project must be set)")
+@click.option("--folder", help="Define folder in project (project must be set)")
 @click.option(
     "--strict",
     is_flag=True,
@@ -136,18 +136,18 @@ def publish_report_viewer():
 def contextselection(
     output_path,
     project,
-    asset,
+    folder,
     strict
 ):
     """Show Qt dialog to select context.
 
-    Context is project name, asset name and task name. The result is stored
+    Context is project name, folder path and task name. The result is stored
     into json file which path is passed in first argument.
     """
     Commands.contextselection(
         output_path,
         project,
-        asset,
+        folder,
         strict
     )
 
