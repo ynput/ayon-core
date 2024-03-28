@@ -3,8 +3,10 @@ import pyblish.api
 from maya import cmds
 from ayon_core.pipeline.publish import (
     context_plugin_should_run,
+    PublishValidationError,
     OptionalPyblishPluginMixin
 )
+
 
 class ValidateCurrentRenderLayerIsRenderable(pyblish.api.ContextPlugin,
                                              OptionalPyblishPluginMixin):
@@ -35,5 +37,9 @@ class ValidateCurrentRenderLayerIsRenderable(pyblish.api.ContextPlugin,
         layer = cmds.editRenderLayerGlobals(query=True, currentRenderLayer=True)
         cameras = cmds.ls(type="camera", long=True)
         renderable = any(c for c in cameras if cmds.getAttr(c + ".renderable"))
-        assert renderable, ("Current render layer '%s' has no renderable "
-                            "camera" % layer)
+        if not renderable:
+            raise PublishValidationError(
+                "Current render layer '{}' has no renderable camera".format(
+                    layer
+                )
+            )
