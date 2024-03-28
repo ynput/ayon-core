@@ -116,7 +116,11 @@ class LoadMediaModel(BaseSettingsModel):
     )
     metadata: list[MetadataMappingModel] = SettingsField(
         default_factory=list,
-        title="Metadata mapping"
+        title="Metadata mapping",
+        description=(
+            "Set these media pool item metadata values on load and update. The"
+            " keys must match the exact Resolve metadata names like"
+            " 'Clip Name' or 'Shot'"
     )
 
     @validator("metadata")
