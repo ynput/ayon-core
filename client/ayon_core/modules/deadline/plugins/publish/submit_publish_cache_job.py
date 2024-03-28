@@ -144,9 +144,6 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
 
         instance_settings = self.get_attr_values_from_data(instance.data)
         initial_status = instance_settings.get("publishJobState", "Active")
-        # TODO: Remove this backwards compatibility of `suspend_publish`
-        if instance.data.get("suspend_publish"):
-            initial_status = "Suspended"
 
         args = [
             "--headless",
