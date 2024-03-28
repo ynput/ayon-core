@@ -1022,6 +1022,16 @@ def script_name():
     return nuke.root().knob("name").value()
 
 
+def add_button_render_farm(node):
+    name = "renderFarm"
+    label = "Render Farm"
+    value = "from ayon_core.hosts.nuke.api.utils import submit_headless_farm;"
+    value += "submit_headless_farm(nuke.thisNode())"
+    knob = nuke.PyScript_Knob(name, label, value)
+    knob.clearFlag(nuke.STARTLINE)
+    node.addKnob(knob)
+
+
 def add_button_write_to_read(node):
     name = "createReadNode"
     label = "Read From Rendered"
@@ -1144,6 +1154,19 @@ def create_write_node(
     Return:
         node (obj): group node with avalon data as Knobs
     '''
+    # Ensure name does not contain any invalid characters.
+    special_characters = set("!@#$%^&*()=[]{}|\\;',.<>/?~+-")
+    found_special_characters = []
+
+    # Check each character in the node name
+    for char in name:
+        if char in special_characters:
+            found_special_characters.append(char)
+
+    msg = f"Special characters found in name \"{name}\": "
+    msg += f"{' '.join(found_special_characters)}"
+    assert not found_special_characters, msg
+
     prenodes = prenodes or []
 
     # filtering variables
@@ -1267,6 +1290,9 @@ def create_write_node(
                     link.setLabel("Render Local")
                 link.setFlag(0x1000)
                 GN.addKnob(link)
+
+    # Adding render farm submission button.
+    add_button_render_farm(GN)
 
     # adding write to read button
     add_button_write_to_read(GN)

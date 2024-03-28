@@ -1,10 +1,17 @@
 import os
 import re
+import traceback
+from datetime import datetime
+import shutil
 
 import nuke
 
-from ayon_core import resources
+from pyblish import util
 from qtpy import QtWidgets
+
+from ayon_core import resources
+from ayon_core.pipeline import registered_host
+from ayon_core.tools.utils import show_message_dialog
 
 
 def set_context_favorites(favorites=None):
@@ -142,3 +149,160 @@ def is_headless():
         bool: headless
     """
     return QtWidgets.QApplication.instance() is None
+
+
+def create_error_report(context):
+    error_message = ""
+    success = True
+    for result in context.data["results"]:
+        if result["success"]:
+            continue
+
+        success = False
+
+        err = result["error"]
+        formatted_traceback = "".join(
+            traceback.format_exception(
+                type(err),
+                err,
+                err.__traceback__
+            )
+        )
+        fname = result["plugin"].__module__
+        if 'File "<string>", line' in formatted_traceback:
+            _, lineno, func, msg = err.traceback
+            fname = os.path.abspath(fname)
+            formatted_traceback = formatted_traceback.replace(
+                'File "<string>", line',
+                'File "{0}", line'.format(fname)
+            )
+
+        err = result["error"]
+        error_message += "\n"
+        error_message += formatted_traceback
+
+    return success, error_message
+
+
+def submit_headless_farm(node):
+    # Ensure code is executed in root context.
+    if nuke.root() == nuke.thisNode():
+        _submit_headless_farm(node)
+    else:
+        # If not in root context, move to the root context and then execute the
+        # code.
+        with nuke.root():
+            _submit_headless_farm(node)
+
+
+def _submit_headless_farm(node):
+    context = util.collect()
+
+    success, error_report = create_error_report(context)
+
+    if not success:
+        show_message_dialog(
+            "Collection Errors", error_report, level="critical"
+        )
+        return
+
+    # Find instance for node and workfile.
+    instance = None
+    instance_workfile = None
+    indexes_to_remove = []
+    for count, Instance in enumerate(context):
+        if Instance.data["family"] == "workfile":
+            instance_workfile = Instance
+            continue
+
+        instance_node = Instance.data["transientData"]["node"]
+        if node.name() == instance_node.name():
+            instance = Instance
+        else:
+            indexes_to_remove.append(count)
+
+    if instance is None:
+        show_message_dialog(
+            "Collection Error",
+            "Could not find the instance from the node.",
+            level="critical"
+        )
+        return
+
+    # Enable for farm publishing.
+    instance.data["farm"] = True
+    instance.data["transfer"] = False
+
+    # Clear the families as we only want the main family, ei. no review etc.
+    instance.data["families"] = []
+
+    # Use the workfile instead of published.
+    publish_attributes = instance.data["publish_attributes"]
+    publish_attributes["NukeSubmitDeadline"]["use_published_workfile"] = False
+
+    # Disable version validation.
+    instance.data.pop("latestVersion")
+    instance_workfile.data.pop("latestVersion")
+
+    # Remove all other instances.
+    indexes_to_remove.sort(reverse=True)
+    for i in indexes_to_remove:
+        if 0 <= i < len(context):
+            del context[i]
+
+    # Validate
+    util.validate(context)
+
+    success, error_report = create_error_report(context)
+
+    if not success:
+        show_message_dialog(
+            "Validation Errors", error_report, level="critical"
+        )
+        return
+
+    # Extraction.
+    util.extract(context)
+
+    success, error_report = create_error_report(context)
+
+    if not success:
+        show_message_dialog(
+            "Extraction Errors", error_report, level="critical"
+        )
+        return
+
+    # Save the workfile.
+    host = registered_host()
+    host.save_file(host.current_file())
+
+    # Copy the workfile to a timestamped copy.
+    current_datetime = datetime.now()
+    formatted_timestamp = current_datetime.strftime("%Y%m%d%H%M%S")
+    base, ext = os.path.splitext(host.current_file())
+
+    directory = os.path.join(os.path.dirname(base), "farm_submissions")
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    filename = "{}_{}{}".format(
+        os.path.basename(base), formatted_timestamp, ext
+    )
+    path = os.path.join(directory, filename).replace("\\", "/")
+    context.data["currentFile"] = path
+    shutil.copy(host.current_file(), path)
+
+    # Continue to submission.
+    util.integrate(context)
+
+    success, error_report = create_error_report(context)
+
+    if not success:
+        show_message_dialog(
+            "Extraction Errors", error_report, level="critical"
+        )
+        return
+
+    show_message_dialog(
+        "Submission Successful", "Submission to the farm was successful."
+    )
