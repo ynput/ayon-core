@@ -70,6 +70,10 @@ class LauncherActionSelection:
             return self.task_name
         raise KeyError(f"Key: {key} not found")
 
+    def __iter__(self):
+        for key in self.keys():
+            yield key
+
     def __contains__(self, key):
         warnings.warn(
             (
@@ -110,6 +114,23 @@ class LauncherActionSelection:
             return self[key]
         except KeyError:
             return default
+
+    def items(self):
+        for key, value in (
+            ("AYON_PROJECT_NAME", self.project_name),
+            ("AYON_FOLDER_PATH", self.folder_path),
+            ("AYON_TASK_NAME", self.task_name),
+        ):
+            if value is not None:
+                yield (key, value)
+
+    def keys(self):
+        for key, _ in self.items():
+            yield key
+
+    def values(self):
+        for _, value in self.items():
+            yield value
 
     def get_project_name(self):
         """Selected project name.
