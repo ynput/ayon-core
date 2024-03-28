@@ -53,7 +53,7 @@ class CollectFusionRender(
             if product_type not in ["render", "image"]:
                 continue
 
-            task_name = context.data["task"]
+            task_name = inst.data["task"]
             tool = inst.data["transientData"]["tool"]
 
             instance_families = inst.data.get("families", [])
@@ -118,6 +118,13 @@ class CollectFusionRender(
             # instance since it is not needed anymore
             instances.append(instance)
             instances_to_remove.append(inst)
+
+            # TODO: Avoid this transfer instance id hack
+            # pass on the `id` of the original instance so any artist
+            # facing logs transfer as if they were made on the new instance
+            # instead, see `AbstractCollectRender.process()`
+            instance.id = inst.id
+            instance.instance_id = inst.data.get("instance_id")
 
         for instance in instances_to_remove:
             context.remove(instance)
