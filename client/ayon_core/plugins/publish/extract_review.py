@@ -1228,16 +1228,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
         reformat_in_baking = bool("reformated" in new_repre["tags"])
         self.log.debug("reformat_in_baking: `{}`".format(reformat_in_baking))
 
-        # Get instance data
-        pixel_aspect = temp_data["pixel_aspect"]
-
-        if reformat_in_baking:
-            self.log.debug((
-                "Using resolution from input. It is already "
-                "reformated from upstream process"
-            ))
-            pixel_aspect = 1
-
         # NOTE Skipped using instance's resolution
         full_input_path_single_file = temp_data["full_input_path_single_file"]
         try:
