@@ -2,7 +2,7 @@ import json
 from ayon_core.lib import ApplicationManager
 from ayon_core.pipeline import load, get_current_context
 
-from ayon_openrv.api import RvCommunicator
+from ayon_openrv.api import RVConnector
 
 
 class PlayInRV(load.LoaderPlugin):
@@ -21,22 +21,17 @@ class PlayInRV(load.LoaderPlugin):
     order = -10
     icon = "play-circle"
     color = "orange"
-    rvcon = RvCommunicator("ayon")
 
     def load(self, context, name, namespace, data):
-        self.log.warning(f"{self.rvcon.connected = }")
         app_manager = ApplicationManager()
 
         representation = context.get("representation")
         if not representation:
             raise Exception(f"Missing representation data: {representation = }")
 
-        try:
-            self.rvcon.connect("localhost".encode("utf-8"), 45128)
-        except Exception as err:
-            pass
+        rvcon = RVConnector(port=45129)
 
-        if not self.rvcon.connected:
+        if not rvcon.is_connected:
             project = representation["data"]["context"].get("project")
             folder = representation["data"]["context"].get("folder")
             task = representation["data"]["context"].get("task")
@@ -53,25 +48,11 @@ class PlayInRV(load.LoaderPlugin):
             openrv_app = app_manager.find_latest_available_variant_for_group("openrv")
             openrv_app.launch(**ctx)
 
-            while not self.rvcon.connected:
-                self.log.warning("Trying to connect to RV")
-                try:
-                    self.rvcon.connect("localhost".encode("utf-8"), 45128)
-                except Exception as err:
-                    pass
-                if self.rvcon.connected:
-                    break
-
         _data = [{
             "objectName": representation["context"]["representation"],
             "representation": representation["_id"],
         }]
         payload = json.dumps(_data)
         self.log.warning(f"{payload = }")
-        try:
-            self.log.warning(f"{self.rvcon.connected = }")
-            self.rvcon.sendEventAndReturn("ayon_load_container", payload)
-        except Exception as err:
-            raise Exception(f"Failed to send event to RV: {err}")
-        finally:
-            self.rvcon.disconnect()
+        with rvcon: # this also retries the connection
+            rvcon.send_event("ayon_load_container", payload, shall_return=False)
