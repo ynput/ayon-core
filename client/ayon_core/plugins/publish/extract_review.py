@@ -1374,7 +1374,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # Make sure output width and height is not an odd number
         # When this can happen:
         # - if output definition has set width and height with odd number
-        # - `instance.data` contain width and height with odd numbeer
+        # - `instance.data` contain width and height with odd number
         if output_width % 2 != 0:
             self.log.warning((
                 "Converting output width from odd to even number. {} -> {}"
@@ -1820,8 +1820,8 @@ class OverscanCrop:
         """
         # crop=width:height:x:y - explicit start x, y position
         # crop=width:height     - x, y are related to center by width/height
-        # pad=width:heigth:x:y  - explicit start x, y position
-        # pad=width:heigth      - x, y are set to 0 by default
+        # pad=width:height:x:y  - explicit start x, y position
+        # pad=width:height      - x, y are set to 0 by default
 
         width = self.width()
         height = self.height()
