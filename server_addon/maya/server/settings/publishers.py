@@ -299,6 +299,16 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
+    bake_attributes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attributes",
+        description="List of attributes that will be included in the alembic "
+                    "export.",
+    )
+    bake_attribute_prefixes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attribute Prefixes",
+        description="List of attribute prefixes for attributes that will be "
+                    "included in the alembic export.",
+    )
 
 
 class ExtractObjModel(BaseSettingsModel):
@@ -315,14 +325,13 @@ class ExtractMayaSceneRawModel(BaseSettingsModel):
 
 
 class ExtractCameraAlembicModel(BaseSettingsModel):
-    """
-    List of attributes that will be added to the baked alembic camera. Needs to be written in python list syntax.
-    """
     enabled: bool = SettingsField(title="ExtractCameraAlembic")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     bake_attributes: str = SettingsField(
-        "[]", title="Base Attributes", widget="textarea"
+        "[]", title="Bake Attributes", widget="textarea",
+        description="List of attributes that will be included in the alembic "
+                    "camera export. Needs to be written as a JSON list.",
     )
 
     @validator("bake_attributes")
@@ -1185,7 +1194,9 @@ DEFAULT_PUBLISH_SETTINGS = {
             "pointcache",
             "model",
             "vrayproxy.alembic"
-        ]
+        ],
+        "bake_attributes": [],
+        "bake_attribute_prefixes": []
     },
     "ExtractObj": {
         "enabled": False,
