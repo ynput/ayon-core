@@ -345,6 +345,8 @@ def _load_ayon_core_addons_dir(
 
     imported_modules = []
 
+    # Make sure that addons which already have client code are not loaded
+    #   from core again, with older code
     filtered_paths = []
     for name in os.listdir(addons_dir):
         if name in ignore_addon_names:
