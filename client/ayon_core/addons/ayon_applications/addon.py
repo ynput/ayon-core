@@ -1,13 +1,14 @@
 import os
 import json
 
-from ayon_core.addon import AYONAddon, click_wrap
+from ayon_core.addon import AYONAddon, IPluginPaths, click_wrap
 
+from .constants import APPLICATIONS_ADDON_ROOT
 from .defs import LaunchTypes
 from .manager import ApplicationManager
 
 
-class ApplicationsAddon(AYONAddon):
+class ApplicationsAddon(AYONAddon, IPluginPaths):
     name = "applications"
 
     def get_app_environments_for_context(
@@ -97,6 +98,13 @@ class ApplicationsAddon(AYONAddon):
 
         """
         return ApplicationManager(settings)
+
+    def get_plugin_paths(self):
+        return {
+            "publish": [
+                os.path.join(APPLICATIONS_ADDON_ROOT, "plugins", "publish")
+            ]
+        }
 
     # --- CLI ---
     def cli(self, addon_click_group):
