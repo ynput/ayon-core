@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
+import inspect
+
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
+from ayon_core.hosts.houdini.api.action import SelectROPAction
 
 
 class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
@@ -13,19 +16,24 @@ class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
 
     """
 
-    order = pyblish.api.ValidatorOrder
-    families = ["usd"]
+    # Validate early so that this error reports higher than others to the user
+    # so that if another invalidation is due to the output node being invalid
+    # the user will likely first focus on this first issue
+    order = pyblish.api.ValidatorOrder - 0.4
+    families = ["usdrop"]
     hosts = ["houdini"]
     label = "Validate Output Node (USD)"
+    actions = [SelectROPAction]
 
     def process(self, instance):
 
         invalid = self.get_invalid(instance)
         if invalid:
+            path = invalid[0]
             raise PublishValidationError(
-                ("Output node(s) `{}` are incorrect. "
-                 "See plug-in log for details.").format(invalid),
-                title=self.label
+                "Output node '{}' has no valid LOP path set.".format(path),
+                title=self.label,
+                description=self.get_description()
             )
 
     @classmethod
@@ -33,12 +41,12 @@ class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
 
         import hou
 
-        output_node = instance.data["output_node"]
+        output_node = instance.data.get("output_node")
 
         if output_node is None:
             node = hou.node(instance.data.get("instance_node"))
             cls.log.error(
-                "USD node '%s' LOP path does not exist. "
+                "USD node '%s' configured LOP path does not exist. "
                 "Ensure a valid LOP path is set." % node.path()
             )
 
@@ -53,3 +61,13 @@ class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
                 % (output_node.path(), output_node.type().category().name())
             )
             return [output_node.path()]
+
+    def get_description(self):
+        return inspect.cleandoc(
+            """### USD ROP has invalid LOP path
+
+            The USD ROP node has no or an invalid LOP path set to be exported.
+            Make sure to correctly configure what you want to export for the
+            publish.
+            """
+        )

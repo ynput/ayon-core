@@ -1,20 +1,22 @@
 import os
+from typing import List, AnyStr
 
 import pyblish.api
 
 from ayon_core.pipeline import publish
+from ayon_core.pipeline.ayon_uri import get_instance_expected_output_path
 from ayon_core.hosts.houdini.api.lib import render_rop
+from ayon_core.hosts.houdini.api.usd import remap_paths
 
 import hou
+
 
 class ExtractUSD(publish.Extractor):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract USD"
     hosts = ["houdini"]
-    families = ["usd",
-                "usdModel",
-                "usdSetDress"]
+    families = ["usdrop"]
 
     def process(self, instance):
 
@@ -28,7 +30,17 @@ class ExtractUSD(publish.Extractor):
 
         self.log.info("Writing USD '%s' to '%s'" % (file_name, staging_dir))
 
-        render_rop(ropnode)
+        mapping = self.get_source_to_publish_paths(instance.context)
+
+        # Allow instance-specific path remapping overrides, e.g. changing
+        # paths on used resources/textures for looks
+        instance_mapping = instance.data.get("assetRemap", {})
+        if instance_mapping:
+            self.log.info(instance_mapping)
+        mapping.update(instance_mapping)
+
+        with remap_paths(ropnode, mapping):
+            render_rop(ropnode)
 
         assert os.path.exists(output), "Output does not exist: %s" % output
 
@@ -42,3 +54,51 @@ class ExtractUSD(publish.Extractor):
             "stagingDir": staging_dir,
         }
         instance.data["representations"].append(representation)
+
+    def get_source_to_publish_paths(self, context):
+        """Define a mapping of all current instances in context from source
+        file to publish file so this can be used on the USD save to remap
+        asset layer paths on publish via AyonRemapPaths output processor"""
+
+        mapping = {}
+        for instance in context:
+            if not instance.data.get("active", True):
+                continue
+
+            if not instance.data.get("publish", True):
+                continue
+
+            for repre in instance.data.get("representations", []):
+                name = repre.get("name")
+                ext = repre.get("ext")
+
+                # TODO: The remapping might need to get more involved if the
+                #   asset paths that are set use e.g. $F
+                # TODO: If the representation has multiple files we might need
+                #   to define the path remapping per file of the sequence
+                path = get_instance_expected_output_path(
+                    instance, representation_name=name, ext=ext
+                )
+                for source_path in get_source_paths(instance, repre):
+                    source_path = os.path.normpath(source_path)
+                    mapping[source_path] = path
+
+        return mapping
+
+
+def get_source_paths(
+        instance: pyblish.api.Instance,
+        repre: dict
+) -> List[AnyStr]:
+    """Return the full source filepaths for an instance's representations"""
+
+    staging = repre.get("stagingDir", instance.data.get("stagingDir"))
+    files = repre.get("files", [])
+    if isinstance(files, list):
+        return [os.path.join(staging, fname) for fname in files]
+    elif isinstance(files, str):
+        # Single file
+        return [os.path.join(staging, files)]
+
+    raise TypeError(f"Unsupported type for representation files: {files} "
+                    "(supports list or str)")
