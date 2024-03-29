@@ -2162,8 +2162,8 @@ def get_related_sets(node):
     sets = [s for s in sets if s not in deformer_sets]
 
     # Ignore when the set has a specific suffix
-    ignore_suffices = ["out_SET", "controls_SET", "_INST", "_CON"]
-    sets = [s for s in sets if not any(s.endswith(x) for x in ignore_suffices)]
+    ignore_suffices = ("out_SET", "controls_SET", "_INST", "_CON")
+    sets = [s for s in sets if not s.endswith(ignore_suffices)]
 
     # Default nodes to ignore
     defaults = {"defaultLightSet", "defaultObjectSet"}
