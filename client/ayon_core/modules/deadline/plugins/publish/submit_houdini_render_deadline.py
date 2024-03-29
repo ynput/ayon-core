@@ -71,7 +71,6 @@ class HoudiniSubmitDeadline(
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
     families = ["usdrender",
-                "vray_rop",
                 "render.farm.hou"]
     targets = ["local"]
     use_published = True
@@ -274,7 +273,7 @@ class HoudiniSubmitDeadline(
                     SceneFile=instance.data["ifdFile"],
                     Version=hou_major_minor,
                 )
-            elif product_type == "vray_rop":
+            elif node_type == "vray_renderer":
                 plugin_info = VrayRenderPluginInfo(
                     InputFilename=instance.data["ifdFile"],
                 )

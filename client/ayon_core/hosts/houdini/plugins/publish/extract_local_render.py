@@ -13,7 +13,8 @@ class ExtractLocalRender(publish.Extractor):
     families = ["mantra_rop",
                 "karma_rop",
                 "redshift_rop",
-                "arnold_rop"]
+                "arnold_rop",
+                "vray_rop"]
     targets = ["local", "remote"]
 
     def process(self, instance):

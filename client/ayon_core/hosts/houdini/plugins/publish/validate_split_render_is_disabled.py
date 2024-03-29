@@ -16,7 +16,8 @@ class ValidateSplitExportIsDisabled(pyblish.api.InstancePlugin):
     hosts = ["houdini"]
     families = ["mantra_rop",
                 "redshift_rop",
-                "arnold_rop"]
+                "arnold_rop",
+                "vray_rop"]
     label = "Validate Split Export Is Disabled"
     actions = [DisableSplitExportAction]
 
