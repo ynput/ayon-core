@@ -11,7 +11,7 @@ except ImportError:
 class PlayInRV(load.LoaderPlugin):
     """Open Image Sequence with system default"""
 
-    families = ["*"]
+    product_types = ["*"]
     representations = ["*"]
     extensions = {
         "cin", "dpx", "avi", "dv", "gif", "flv", "mkv", "mov", "mpg", "mpeg",
