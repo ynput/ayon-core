@@ -127,8 +127,6 @@ class RenderSetupLoader(load.LoaderPlugin):
 
     def remove(self, container):
         """Remove RenderSetup settings instance."""
-        from maya import cmds
-
         container_name = container["objectName"]
 
         self.log.info("Removing '%s' from Maya.." % container["name"])
