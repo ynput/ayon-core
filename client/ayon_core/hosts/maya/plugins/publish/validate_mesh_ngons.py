@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateMeshNgons(pyblish.api.Validator,
+class ValidateMeshNgons(pyblish.api.InstancePlugin,
                         OptionalPyblishPluginMixin):
     """Ensure that meshes don't have ngons
 
