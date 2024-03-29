@@ -303,8 +303,11 @@ def _install_menu():
         menu.addSeparator()
 
     if nuke_addon_settings["general"]["openrv"]:
-        menu.addCommand("RV/Open RV", lambda: open_rv())
-        menu.addCommand("RV/Play In RV", lambda: view_read_in_rv())
+        #! disabling these actions as long as we don't have a way to run it detached
+        open_rv_action = menu.addCommand("RV/Open RV", lambda: open_rv())
+        open_rv_action.setEnabled(False)
+        open_in_rv_action = menu.addCommand("RV/Play In RV", lambda: view_read_in_rv())
+        open_in_rv_action.setEnabled(False)
         menu.addSeparator()
 
     menu.addCommand(
