@@ -64,6 +64,5 @@ class PlayInRV(load.LoaderPlugin):
             "representation": representation["id"],
         }]
         payload = json.dumps(_data)
-        self.log.warning(f"{payload = }")
         with rvcon: # this also retries the connection
             rvcon.send_event("ayon_load_container", payload, shall_return=False)
