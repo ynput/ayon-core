@@ -73,9 +73,9 @@ class HoudiniSubmitDeadline(
     families = ["usdrender",
                 "redshift_rop",
                 "arnold_rop",
-                "mantra_rop",
                 "karma_rop",
-                "vray_rop"]
+                "vray_rop",
+                "render.farm.hou"]
     targets = ["local"]
     use_published = True
 
@@ -86,7 +86,7 @@ class HoudiniSubmitDeadline(
     priority = 50
     chunk_size = 1
     group = ""
-    
+
     @classmethod
     def get_attribute_defs(cls):
         return [
@@ -194,7 +194,7 @@ class HoudiniSubmitDeadline(
 
         job_info.Pool = instance.data.get("primaryPool")
         job_info.SecondaryPool = instance.data.get("secondaryPool")
-        
+
         if split_render_job and is_export_job:
             job_info.Priority = attribute_values.get(
                 "export_priority", self.export_priority
@@ -265,11 +265,14 @@ class HoudiniSubmitDeadline(
         # Output driver to render
         if job_type == "render":
             product_type = instance.data.get("productType")
+            rop_node = hou.node(instance.data.get("instance_node"))
+            node_type = rop_node.type().name()
+
             if product_type == "arnold_rop":
                 plugin_info = ArnoldRenderDeadlinePluginInfo(
                     InputFile=instance.data["ifdFile"]
                 )
-            elif product_type == "mantra_rop":
+            elif node_type == "ifd":
                 plugin_info = MantraRenderDeadlinePluginInfo(
                     SceneFile=instance.data["ifdFile"],
                     Version=hou_major_minor,
