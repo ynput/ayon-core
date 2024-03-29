@@ -1981,14 +1981,10 @@ def assign_look(nodes, product_name="lookDefault"):
         product_entity["id"]
         for product_entity in product_entities_by_folder_id.values()
     }
-    last_version_entities = ayon_api.get_last_versions(
+    last_version_entities_by_product_id = ayon_api.get_last_versions(
         project_name,
         product_ids
     )
-    last_version_entities_by_product_id = {
-        last_version_entity["productId"]: last_version_entity
-        for last_version_entity in last_version_entities
-    }
 
     for folder_id, asset_nodes in grouped.items():
         product_entity = product_entities_by_folder_id.get(folder_id)
