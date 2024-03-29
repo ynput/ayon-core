@@ -36,11 +36,14 @@ class PlayInRV(load.LoaderPlugin):
         if not folder:
             raise Exception(f"Missing folder data: {folder = }")
 
+        project = context.get("project")
+        if not folder:
+            raise Exception(f"Missing project data: {project = }")
+
         rvcon = RVConnector(port=45129)
 
         if not rvcon.is_connected:
             # get launch context variables
-            project = representation["data"]["context"].get("project")
             task = representation["data"]["context"].get("task")
             folder_path = folder.get("path")
             if not all([project, folder_path, task]):
