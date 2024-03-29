@@ -1,6 +1,6 @@
 import json
 from ayon_core.lib import ApplicationManager
-from ayon_core.pipeline import load, get_current_context
+from ayon_core.pipeline import load
 
 try:
     from ayon_openrv.api import RVConnector
