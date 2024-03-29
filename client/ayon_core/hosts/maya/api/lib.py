@@ -2125,22 +2125,6 @@ def get_related_sets(node):
 
     """
 
-    # Ignore specific suffices
-    ignore_suffices = ["out_SET", "controls_SET", "_INST", "_CON"]
-
-    # Default nodes to ignore
-    defaults = {"defaultLightSet", "defaultObjectSet"}
-
-    # Ids to ignore
-    ignored = {
-        AVALON_INSTANCE_ID,
-        AVALON_CONTAINER_ID,
-        AYON_INSTANCE_ID,
-        AYON_CONTAINER_ID,
-    }
-
-    view_sets = get_isolate_view_sets()
-
     sets = cmds.listSets(object=node, extendToShape=False)
     if not sets:
         return []
@@ -2151,6 +2135,14 @@ def get_related_sets(node):
     # returned by `cmds.listSets(allSets=True)`
     sets = cmds.ls(sets)
 
+    # Ids to ignore
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
+
     # Ignore `avalon.container`
     sets = [
         s for s in sets
@@ -2159,6 +2151,8 @@ def get_related_sets(node):
            or cmds.getAttr(f"{s}.id") not in ignored
         )
     ]
+    if not sets:
+        return sets
 
     # Exclude deformer sets (`type=2` for `maya.cmds.listSets`)
     deformer_sets = cmds.listSets(object=node,
@@ -2168,12 +2162,20 @@ def get_related_sets(node):
     sets = [s for s in sets if s not in deformer_sets]
 
     # Ignore when the set has a specific suffix
+    ignore_suffices = ["out_SET", "controls_SET", "_INST", "_CON"]
     sets = [s for s in sets if not any(s.endswith(x) for x in ignore_suffices)]
+
+    # Default nodes to ignore
+    defaults = {"defaultLightSet", "defaultObjectSet"}
+    sets = [s for s in sets if s not in defaults]
+
+    if not sets:
+        return sets
 
     # Ignore viewport filter view sets (from isolate select and
     # viewports)
+    view_sets = get_isolate_view_sets()
     sets = [s for s in sets if s not in view_sets]
-    sets = [s for s in sets if s not in defaults]
 
     return sets
 
