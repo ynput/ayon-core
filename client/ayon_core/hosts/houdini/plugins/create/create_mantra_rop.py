@@ -12,7 +12,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
     icon = "magic"
 
     # Default to split export and render jobs
-    export_job = True
+    split_render = True
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
@@ -48,7 +48,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
             "vm_picture": filepath,
         }
 
-        if pre_create_data.get("export_job"):
+        if pre_create_data.get("split_render"):
             ifd_filepath = \
                 "{export_dir}{product_name}/{product_name}.$F4.ifd".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/ifd/"),
@@ -101,9 +101,9 @@ class CreateMantraROP(plugin.HoudiniCreator):
             BoolDef("farm",
                     label="Submitting to Farm",
                     default=True),
-            BoolDef("export_job",
+            BoolDef("split_render",
                     label="Split export and render jobs",
-                    default=self.export_job),
+                    default=self.split_render),
             UISeparatorDef(key="2"),
             UILabelDef(label="Local Render Options:"),
             BoolDef("skip_render",

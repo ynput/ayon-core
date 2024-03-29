@@ -61,6 +61,6 @@ class ValidateSplitExportIsDisabled(pyblish.api.InstancePlugin):
         created_instance = create_context.get_instance_by_id(
             instance.data["instance_id"])
         creator_attributes = created_instance["creator_attributes"]
-        # Disable export_job
+        # Disable split_render
         creator_attributes["split_render"] = False
         create_context.save_changes()
