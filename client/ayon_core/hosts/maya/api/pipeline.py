@@ -363,6 +363,35 @@ def parse_container(container):
     return data
 
 
+def parse_usd_prim_container(prim, proxy):
+    """Parse instance container from UsdPrim if it is marked as one
+
+    Args:
+        prim (pxr.Usd.Prim): USD Primitive
+        proxy (str): The maya usd stage proxy shape node the primitive
+            belongs to.
+
+    Returns:
+        dict: The container schema data for this container node.
+
+    """
+    data = prim.GetCustomDataByKey("ayon")
+    if not data or not data.get("id") == AYON_CONTAINER_ID:
+        return
+
+    # Store transient data
+    data["prim"] = prim
+    data["proxy"] = proxy
+
+    # Store the maya UFE path as objectName
+    prim_path = str(prim.GetPath())
+    data["objectName"] = "{},{}".format(proxy, prim_path)
+    data["namespace"] = prim_path
+    data["name"] = proxy
+
+    return data
+
+
 def _ls():
     """Yields AYON container node names.
 
@@ -403,6 +432,24 @@ def _ls():
         value = plug.asString()
         if value in ids:
             yield fn_dep.name()
+
+    for container in ls_maya_usd_proxy_prims():
+        yield container
+
+
+def ls_maya_usd_proxy_prims():
+    # TODO: This might be nicer once the Loader API gets a refactor where
+    #  the loaders themselves can return the containers from the scene
+    if cmds.pluginInfo("mayaUsdPlugin", query=True, loaded=True):
+        usd_proxies = cmds.ls(type="mayaUsdProxyShape", long=True)
+        if usd_proxies:
+            import mayaUsd.ufe
+            for proxy in usd_proxies:
+                stage = mayaUsd.ufe.getStage('|world' + proxy)
+                for prim in stage.TraverseAll():
+                    container = parse_usd_prim_container(prim, proxy=proxy)
+                    if container:
+                        yield container
 
 
 def ls():
