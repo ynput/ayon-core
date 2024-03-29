@@ -5,6 +5,7 @@ from ayon_core.lib import Logger, AYONSettingsRegistry
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherAction,
+    LauncherActionSelection,
 )
 from ayon_core.pipeline.workfile import should_use_last_workfile_on_launch
 
@@ -69,11 +70,6 @@ class ApplicationAction(LauncherAction):
     project_entities = {}
 
     _log = None
-    required_session_keys = (
-        "AYON_PROJECT_NAME",
-        "AYON_FOLDER_PATH",
-        "AYON_TASK_NAME"
-    )
 
     @property
     def log(self):
@@ -81,18 +77,16 @@ class ApplicationAction(LauncherAction):
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
-    def is_compatible(self, session):
-        for key in self.required_session_keys:
-            if not session.get(key):
-                return False
+    def is_compatible(self, selection):
+        if not selection.is_task_selected:
+            return False
 
-        project_name = session["AYON_PROJECT_NAME"]
-        project_entity = self.project_entities[project_name]
+        project_entity = self.project_entities[selection.project_name]
         apps = project_entity["attrib"].get("applications")
         if not apps or self.application.full_name not in apps:
             return False
 
-        project_settings = self.project_settings[project_name]
+        project_settings = self.project_settings[selection.project_name]
         only_available = project_settings["applications"]["only_available"]
         if only_available and not self.application.find_executable():
             return False
@@ -112,7 +106,7 @@ class ApplicationAction(LauncherAction):
             dialog.setDetailedText(details)
         dialog.exec_()
 
-    def process(self, session, **kwargs):
+    def process(self, selection, **kwargs):
         """Process the full Application action"""
 
         from ayon_core.lib import (
@@ -120,14 +114,11 @@ class ApplicationAction(LauncherAction):
             ApplicationLaunchFailed,
         )
 
-        project_name = session["AYON_PROJECT_NAME"]
-        folder_path = session["AYON_FOLDER_PATH"]
-        task_name = session["AYON_TASK_NAME"]
         try:
             self.application.launch(
-                project_name=project_name,
-                folder_path=folder_path,
-                task_name=task_name,
+                project_name=selection.project_name,
+                folder_path=selection.folder_path,
+                task_name=selection.task_name,
                 **self.data
             )
 
@@ -335,11 +326,11 @@ class ActionsModel:
         """
         not_open_workfile_actions = self._get_no_last_workfile_for_context(
             project_name, folder_id, task_id)
-        session = self._prepare_session(project_name, folder_id, task_id)
+        selection = self._prepare_selection(project_name, folder_id, task_id)
         output = []
         action_items = self._get_action_items(project_name)
         for identifier, action in self._get_action_objects().items():
-            if not action.is_compatible(session):
+            if not action.is_compatible(selection):
                 continue
 
             action_item = action_items[identifier]
@@ -374,7 +365,7 @@ class ActionsModel:
         )
 
     def trigger_action(self, project_name, folder_id, task_id, identifier):
-        session = self._prepare_session(project_name, folder_id, task_id)
+        selection = self._prepare_selection(project_name, folder_id, task_id)
         failed = False
         error_message = None
         action_label = identifier
@@ -403,7 +394,7 @@ class ActionsModel:
                 )
                 action.data["start_last_workfile"] = start_last_workfile
 
-            action.process(session)
+            action.process(selection)
         except Exception as exc:
             self.log.warning("Action trigger failed.", exc_info=True)
             failed = True
@@ -440,29 +431,8 @@ class ActionsModel:
             .get(task_id, {})
         )
 
-    def _prepare_session(self, project_name, folder_id, task_id):
-        folder_path = None
-        if folder_id:
-            folder = self._controller.get_folder_entity(
-                project_name, folder_id)
-            if folder:
-                folder_path = folder["path"]
-
-        task_name = None
-        if task_id:
-            task = self._controller.get_task_entity(project_name, task_id)
-            if task:
-                task_name = task["name"]
-
-        return {
-            "AYON_PROJECT_NAME": project_name,
-            "AYON_FOLDER_PATH": folder_path,
-            "AYON_TASK_NAME": task_name,
-            # Deprecated - kept for backwards compatibility
-            "AVALON_PROJECT": project_name,
-            "AVALON_ASSET": folder_path,
-            "AVALON_TASK": task_name,
-        }
+    def _prepare_selection(self, project_name, folder_id, task_id):
+        return LauncherActionSelection(project_name, folder_id, task_id)
 
     def _get_discovered_action_classes(self):
         if self._discovered_actions is None:
