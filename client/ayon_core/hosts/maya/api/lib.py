@@ -1876,18 +1876,9 @@ def list_looks(project_name, folder_id):
         list[dict[str, Any]]: List of look products.
 
     """
-    # # get all products with look leading in
-    # the name associated with the asset
-    # TODO this should probably look for product type 'look' instead of
-    #   checking product name that can not start with product type
-    product_entities = ayon_api.get_products(
-        project_name, folder_ids=[folder_id]
-    )
-    return [
-        product_entity
-        for product_entity in product_entities
-        if product_entity["name"].startswith("look")
-    ]
+    return list(ayon_api.get_products(
+        project_name, folder_ids=[folder_id], product_types={"look"}
+    ))
 
 
 def assign_look_by_version(nodes, version_id):
