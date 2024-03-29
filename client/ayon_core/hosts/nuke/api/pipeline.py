@@ -25,6 +25,10 @@ from ayon_core.pipeline import (
     get_current_task_name,
     registered_host,
 )
+from ayon_core.pipeline.plugin_discover import register_plugin_path
+from ayon_core.pipeline.workfile.workfile_template_builder import (
+    PlaceholderPlugin
+)
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
 from ayon_core.hosts.nuke import NUKE_ROOT_DIR
@@ -76,6 +80,7 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
+TEMPLATE_PLUGINS_PATH = os.path.join(PLUGINS_DIR, "template_loaders")
 
 # registering pyblish gui regarding settings in presets
 if os.getenv("PYBLISH_GUI", None):
@@ -105,18 +110,11 @@ class NukeHost(
     def get_workfile_extensions(self):
         return file_extensions()
 
-    def get_workfile_build_placeholder_plugins(self):
-        return [
-            NukePlaceholderLoadPlugin,
-            NukePlaceholderCreatePlugin
-        ]
-
     def get_containers(self):
         return ls()
 
     def install(self):
-        ''' Installing all requarements for Nuke host
-        '''
+        """Installing all requirements for Nuke host"""
 
         pyblish.api.register_host("nuke")
 
@@ -125,6 +123,9 @@ class NukeHost(
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
+
+        # TODO: Expose this via a dedicated `register_template_plugin_path`
+        register_plugin_path(PlaceholderPlugin, TEMPLATE_PLUGINS_PATH)
 
         # Register AYON event for workfiles loading.
         register_event_callback("workio.open_file", check_inventory_versions)
@@ -177,7 +178,6 @@ def add_nuke_callbacks():
 
     # set apply all workfile settings on script load and save
     nuke.addOnScriptLoad(WorkfileSettings().set_context_settings)
-
 
     if nuke_settings["dirmap"]["enabled"]:
         log.info("Added Nuke's dir-mapping callback ...")

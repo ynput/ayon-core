@@ -12,9 +12,9 @@ from ayon_core.pipeline import (
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
 )
-from ayon_core.hosts.aftereffects.api.workfile_template_builder import (
-    AEPlaceholderLoadPlugin,
-    AEPlaceholderCreatePlugin
+from ayon_core.pipeline.plugin_discover import register_plugin_path
+from ayon_core.pipeline.workfile.workfile_template_builder import (
+    PlaceholderPlugin
 )
 from ayon_core.pipeline.load import any_outdated_containers
 import ayon_core.hosts.aftereffects
@@ -40,6 +40,7 @@ PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
+TEMPLATE_PLUGINS_PATH = os.path.join(PLUGINS_DIR, "template_loaders")
 
 
 class AfterEffectsHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
@@ -76,6 +77,8 @@ class AfterEffectsHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
+        # TODO: Expose this via a dedicated `register_template_plugin_path`
+        register_plugin_path(PlaceholderPlugin, TEMPLATE_PLUGINS_PATH)
 
         register_event_callback("application.launched", application_launch)
 
@@ -117,12 +120,6 @@ class AfterEffectsHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         item = data
         item["id"] = "publish_context"
         self.stub.imprint(item["id"], item)
-
-    def get_workfile_build_placeholder_plugins(self):
-        return [
-            AEPlaceholderLoadPlugin,
-            AEPlaceholderCreatePlugin
-        ]
 
     # created instances section
     def list_instances(self):
