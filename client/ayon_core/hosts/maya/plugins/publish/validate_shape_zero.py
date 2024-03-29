@@ -12,7 +12,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateShapeZero(pyblish.api.Validator,
+class ValidateShapeZero(pyblish.api.InstancePlugin,
                         OptionalPyblishPluginMixin):
     """Shape components may not have any "tweak" values
 

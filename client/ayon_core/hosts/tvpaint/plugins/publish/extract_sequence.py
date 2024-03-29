@@ -25,8 +25,9 @@ from ayon_core.hosts.tvpaint.lib import (
 )
 
 
-class ExtractSequence(pyblish.api.Extractor):
+class ExtractSequence(pyblish.api.InstancePlugin):
     label = "Extract Sequence"
+    order = pyblish.api.ExtractorOrder
     hosts = ["tvpaint"]
     families = ["review", "render"]
 
