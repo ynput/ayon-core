@@ -1,18 +1,13 @@
-import json
 import qargparse
-from qtpy import QtCore, QtWidgets, QtGui
 
-
-from ayon_core.lib import ApplicationManager
-from ayon_core.pipeline import load, get_current_context
-
-# from ayon_openrv.api import RvCommunicator
+from ayon_core.pipeline import load
 
 
 class CompareWithRV(load.LoaderPlugin):
-    """Open Image Sequence with system default"""
+    """Compare Containers in RV."""
+    enabled=False
 
-    families = ["render", "review", "plate"]
+    product_types = ["render", "review", "plate"]
     representations = ["*"]
     extensions = ["*"]
 
@@ -20,7 +15,6 @@ class CompareWithRV(load.LoaderPlugin):
     order = -10
     icon = "play-circle"
     color = "orange"
-    # rvcon = RvCommunicator("ayon")
 
     options = [
         qargparse.Choice(
@@ -39,4 +33,4 @@ class CompareWithRV(load.LoaderPlugin):
     ]
 
     def load(self, context, name, namespace, data):
-        self.log.warning(f"{self.rvcon.connected = }")
+        raise NotImplementedError("Sorry not done yet :/")
