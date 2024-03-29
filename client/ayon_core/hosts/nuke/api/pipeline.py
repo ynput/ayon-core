@@ -72,7 +72,7 @@ from .workio import (
 )
 from .constants import ASSIST
 
-from ayon_openrv.api import RvCommunicator
+from ayon_openrv.api import RVConnector
 
 log = Logger.get_logger(__name__)
 
@@ -259,17 +259,14 @@ def view_read_in_rv():
     # representation_id = read_node["avalon:representation"].value()
 
     # connect to RV
-    rvcon = RvCommunicator("AYON-NUKE-RV-CONNECTOR")
-    rvcon.connect("localhost".encode("utf-8"), 45128)
-    if not rvcon.connected:
-        raise ValueError("RV not running")
+    rvcon = RVConnector(port=45129)
+    if not rvcon.is_connected:
+        open_rv()
 
     # send event to RV
     payload = json.dumps(data) 
-    rvcon.sendEvent("ayon_load_container", payload)
-    
-    # and disconnect so we don't get errors in RV
-    rvcon.disconnect()
+    with rvcon:
+        rvcon.send_event("ayon_load_container", payload)
 
 
 def open_rv():
@@ -284,6 +281,7 @@ def open_rv():
 
 def _install_menu():
     """Install AYON menu into Nuke's main menu bar."""
+    nuke_addon_settings = get_current_project_settings()["nuke"]
 
     # uninstall original AYON menu
     main_window = get_main_window()
