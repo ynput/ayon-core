@@ -396,8 +396,11 @@ def load_container(
     """
     from ayon_core.pipeline import get_current_project_name
 
+    #? somehow get_current_project_name() returns None. not sure why tho
+    current_project = get_current_project_name() or kwargs.get("project_name")
+
     context = get_representation_context(
-        get_current_project_name(), representation
+        current_project, representation
     )
     return load_with_repre_context(
         Loader,
