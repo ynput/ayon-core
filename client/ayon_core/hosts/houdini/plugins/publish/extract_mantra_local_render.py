@@ -5,12 +5,13 @@ from ayon_core.hosts.houdini.api.lib import render_rop
 import hou
 
 
-class ExtractMantraLocalRender(publish.Extractor):
+class ExtractLocalRender(publish.Extractor):
 
     order = pyblish.api.ExtractorOrder
-    label = "Extract Mantra Local Render"
+    label = "Extract Local Render"
     hosts = ["houdini"]
-    families = ["mantra_rop"]
+    families = ["mantra_rop",
+                "karma_rop"]
     targets = ["local", "remote"]
 
     def process(self, instance):

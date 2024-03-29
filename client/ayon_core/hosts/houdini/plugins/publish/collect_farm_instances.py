@@ -5,7 +5,8 @@ class CollectFarmInstances(pyblish.api.InstancePlugin):
     """Collect instances for farm render."""
 
     order = pyblish.api.CollectorOrder
-    families = ["mantra_rop"]
+    families = ["mantra_rop",
+                "karma_rop"]
 
     hosts = ["houdini"]
     targets = ["local", "remote"]
