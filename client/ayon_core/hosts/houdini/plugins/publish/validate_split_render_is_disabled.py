@@ -14,7 +14,8 @@ class ValidateSplitExportIsDisabled(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     hosts = ["houdini"]
-    families = ["mantra_rop"]
+    families = ["mantra_rop",
+                "redshift_rop"]
     label = "Validate Split Export Is Disabled"
     actions = [DisableSplitExportAction]
 
@@ -44,7 +45,7 @@ class ValidateSplitExportIsDisabled(pyblish.api.InstancePlugin):
             return
 
 
-        split_enabled = creator_attribute["export_job"]
+        split_enabled = creator_attribute["split_render"]
         if split_enabled:
             invalid.append(rop_node)
             cls.log.error(
@@ -61,5 +62,5 @@ class ValidateSplitExportIsDisabled(pyblish.api.InstancePlugin):
             instance.data["instance_id"])
         creator_attributes = created_instance["creator_attributes"]
         # Disable export_job
-        creator_attributes["export_job"] = False
+        creator_attributes["split_render"] = False
         create_context.save_changes()

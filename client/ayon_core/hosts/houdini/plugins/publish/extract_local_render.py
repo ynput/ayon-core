@@ -11,7 +11,8 @@ class ExtractLocalRender(publish.Extractor):
     label = "Extract Local Render"
     hosts = ["houdini"]
     families = ["mantra_rop",
-                "karma_rop"]
+                "karma_rop",
+                "redshift_rop"]
     targets = ["local", "remote"]
 
     def process(self, instance):
