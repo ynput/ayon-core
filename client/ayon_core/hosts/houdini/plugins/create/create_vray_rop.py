@@ -3,7 +3,7 @@
 import hou
 
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance, CreatorError
+from ayon_core.pipeline import CreatorError
 from ayon_core.lib import EnumDef, BoolDef
 
 
@@ -17,7 +17,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
     ext = "exr"
 
     # Default to split export and render jobs
-    export_job = True
+    split_render = True
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -55,7 +55,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
             "SettingsEXR_bits_per_channel": "16"   # half precision
         }
 
-        if pre_create_data.get("export_job"):
+        if pre_create_data.get("split_render"):
             scene_filepath = \
                 "{export_dir}{product_name}/{product_name}.$F4.vrscene".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/vrscene/"),
@@ -154,9 +154,9 @@ class CreateVrayROP(plugin.HoudiniCreator):
             BoolDef("farm",
                     label="Submitting to Farm",
                     default=True),
-            BoolDef("export_job",
+            BoolDef("split_render",
                     label="Split export and render jobs",
-                    default=self.export_job),
+                    default=self.split_render),
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
