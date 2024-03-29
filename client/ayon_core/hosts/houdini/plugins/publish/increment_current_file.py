@@ -23,6 +23,7 @@ class IncrementCurrentFile(pyblish.api.ContextPlugin):
                 "karma_rop",
                 "usdrender",
                 "render.farm.hou",
+                "render.local.hou",
                 "publish.hou"]
     optional = True
 
