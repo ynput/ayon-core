@@ -3267,27 +3267,25 @@ def update_content_on_context_change():
         }:
             continue
 
+        print(f"Matching instance with current context: {s}")
         # Update context folder and task
         if cmds.attributeQuery("folderPath", node=s, exists=True):
             print(f"  - setting folderPath to: [ {new_folder_path} ]")
-            cmds.setAttr("{}.folderPath".format(s), new_folder_path,
-                         type="string")
+            cmds.setAttr(f"{s}.folderPath", new_folder_path, type="string")
 
         # TODO: Technically changing the task *can* change the publish subset
         #  name and thus should actually go through the CreateContext logic
         #  to redefine the subset name if it needs to.
         if cmds.attributeQuery("task", node=s, exists=True):
-            print("  - setting task to: [ {} ]".format(new_task))
-            cmds.setAttr("{}.task".format(s), new_task, type="string")
+            print(f"  - setting task to: [ {new_task} ]")
+            cmds.setAttr(f"{s}.task", new_task, type="string")
 
         # Match frame range of instance with folder
         if cmds.attributeQuery("frameStart", node=s, exists=True):
-            cmds.setAttr("{}.frameStart".format(s),
-                         folder_attributes["frameStart"])
+            cmds.setAttr(f"{s}.frameStart", folder_attributes["frameStart"])
 
         if cmds.attributeQuery("frameEnd", node=s, exists=True):
-            cmds.setAttr("{}.frameEnd".format(s),
-                         folder_attributes["frameEnd"])
+            cmds.setAttr(f"{s}.frameEnd", folder_attributes["frameEnd"])
 
 
 def show_message(title, msg):
