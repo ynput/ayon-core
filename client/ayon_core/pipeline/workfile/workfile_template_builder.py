@@ -1540,7 +1540,7 @@ class PlaceholderLoadMixin(object):
         product_name_regex = None
         if product_name_regex_value:
             product_name_regex = re.compile(product_name_regex_value)
-        product_type = placeholder.data["family"]
+        product_type = placeholder.data["product_type"]
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
