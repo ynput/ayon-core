@@ -1,11 +1,11 @@
-from openpype.lib import (
+from ayon_core.lib import (
     BoolDef
 )
-from openpype.pipeline import (
+from ayon_core.pipeline import (
     load,
     registered_host
 )
-from openpype.hosts.maya.api.workfile_template_builder import (
+from ayon_core.hosts.maya.api.workfile_template_builder import (
     MayaTemplateBuilder
 )
 
@@ -13,7 +13,7 @@ from openpype.hosts.maya.api.workfile_template_builder import (
 class LoadAsTemplate(load.LoaderPlugin):
     """Load workfile as a template """
 
-    families = ["workfile"]
+    product_types = {"workfile"}
     label = "Load as template"
     representations = ["ma", "mb"]
     icon = "wrench"
