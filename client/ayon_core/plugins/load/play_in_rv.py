@@ -26,32 +26,20 @@ class PlayInRV(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-        app_manager = ApplicationManager()
-
-        representation = context.get("representation")
-        if not representation:
-            raise Exception(f"Missing representation data: {representation = }")
-        
-        folder = context.get("folder")
-        if not folder:
-            raise Exception(f"Missing folder data: {folder = }")
-
-        project = context.get("project")
-        if not folder:
-            raise Exception(f"Missing project data: {project = }")
-
         rvcon = RVConnector(port=45129)
 
         if not rvcon.is_connected:
+            app_manager = ApplicationManager()
+
             # get launch context variables
-            task = representation["data"]["context"].get("task")
-            folder_path = folder.get("path")
-            if not all([project, folder_path, task]):
-                raise Exception(f"Missing context data: {project = }, {folder_path = }, {task = }")
+            task = context["representation"]["data"]["context"].get("task")
+            folder_path = context["folder"].get("path")
+            if not all([folder_path, task]):
+                raise Exception(f"Missing context data: {folder_path = }, {task = }")
 
             # launch RV with context
             ctx = {
-                "project_name": project["name"],
+                "project_name": context["project"]["name"],
                 "folder_path": folder_path,
                 "task_name": task["name"] or "generic",
             }
@@ -59,9 +47,9 @@ class PlayInRV(load.LoaderPlugin):
             openrv_app.launch(**ctx)
 
         _data = [{
-            "project_name": project["name"],
-            "objectName": representation["context"]["representation"],
-            "representation": representation["id"],
+            "project_name": context["project"]["name"],
+            "objectName": context["representation"]["context"]["representation"],
+            "representation": context["representation"]["id"],
         }]
         payload = json.dumps(_data)
         with rvcon: # this also retries the connection
