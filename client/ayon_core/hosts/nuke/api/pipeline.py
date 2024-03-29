@@ -1,7 +1,6 @@
 import nuke
 
 import os
-import json
 import importlib
 from collections import OrderedDict, defaultdict
 
@@ -15,7 +14,6 @@ from ayon_core.host import (
 )
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import register_event_callback, Logger
-from ayon_core.lib.applications import ApplicationManager
 from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
@@ -25,7 +23,6 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     get_current_folder_path,
     get_current_task_name,
-    get_current_context,
     registered_host,
 )
 from ayon_core.pipeline.workfile import BuildWorkfile
@@ -33,11 +30,13 @@ from ayon_core.tools.utils import host_tools
 from ayon_core.hosts.nuke import NUKE_ROOT_DIR
 from ayon_core.tools.workfile_template_build import open_template_ui
 
+from .command import viewer_update_and_undo_stop
 from .lib import (
     Context,
     ROOT_DATA_KNOB,
     INSTANCE_DATA_KNOB,
     get_main_window,
+    add_publish_knob,
     WorkfileSettings,
     # TODO: remove this once workfile builder will be removed
     process_workfile_builder,
@@ -71,8 +70,6 @@ from .workio import (
     current_file
 )
 from .constants import ASSIST
-
-from ayon_openrv.api import RVConnector
 
 log = Logger.get_logger(__name__)
 
@@ -131,7 +128,7 @@ class NukeHost(
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
 
-        # Register AYON event for workfiles loading.
+        # Register Avalon event for workfiles loading.
         register_event_callback("workio.open_file", check_inventory_versions)
         register_event_callback("taskChanged", change_context_label)
 
@@ -232,59 +229,10 @@ def get_context_label():
     )
 
 
-def view_read_in_rv():
-    # get selected node
-    read_nodes = nuke.selectedNodes()
-    if not read_nodes:
-        raise ValueError("No node selected")
-    
-    data = []
-    for rn in read_nodes:
-        # check if node is ReadNode
-        if rn.Class() != "Read":
-            continue
-
-        # get data from avalon knob
-        rn_data = parse_container(rn)
-
-        if rn_data:
-            # strip out node since it is not serializable
-            del rn_data["node"]
-        else:
-            # get data from avalon knob
-            rn_data = {"file": rn["file"].value()}
-
-        data.append(rn_data)
-
-    # representation_id = read_node["avalon:representation"].value()
-
-    # connect to RV
-    rvcon = RVConnector(port=45129)
-    if not rvcon.is_connected:
-        open_rv()
-
-    # send event to RV
-    payload = json.dumps(data) 
-    with rvcon:
-        rvcon.send_event("ayon_load_container", payload)
-
-
-def open_rv():
-    #! this blocks the nuke thread now
-    #? is there an AYON way to run it detached
-    # get application object
-    app_manager = ApplicationManager()
-    openrv_app = app_manager.find_latest_available_variant_for_group("openrv")
-    
-    # launch application
-    openrv_app.launch(**get_current_context())
-
-
 def _install_menu():
-    """Install AYON menu into Nuke's main menu bar."""
-    nuke_addon_settings = get_current_project_settings()["nuke"]
+    """Install Avalon menu into Nuke's main menu bar."""
 
-    # uninstall original AYON menu
+    # uninstall original avalon menu
     main_window = get_main_window()
     menubar = nuke.menu("Nuke")
     menu = menubar.addMenu(MENU_LABEL)
@@ -300,14 +248,6 @@ def _install_menu():
         context_action.setText(label)
 
         # add separator after context label
-        menu.addSeparator()
-
-    if nuke_addon_settings["general"]["openrv"]:
-        #! disabling these actions as long as we don't have a way to run it detached
-        open_rv_action = menu.addCommand("RV/Open RV", lambda: open_rv())
-        open_rv_action.setEnabled(False)
-        open_in_rv_action = menu.addCommand("RV/Play In RV", lambda: view_read_in_rv())
-        open_in_rv_action.setEnabled(False)
         menu.addSeparator()
 
     menu.addCommand(
@@ -492,7 +432,7 @@ def containerise(node,
             ("name", name),
             ("namespace", namespace),
             ("loader", str(loader)),
-            ("representation", context["representation"]["id"]),
+            ("representation", context["representation"]["_id"]),
         ],
 
         **data or dict()
