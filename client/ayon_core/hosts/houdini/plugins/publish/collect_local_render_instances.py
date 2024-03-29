@@ -13,7 +13,8 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
     families = ["mantra_rop",
                 "karma_rop",
                 "redshift_rop",
-                "arnold_rop"]
+                "arnold_rop",
+                "vray_rop"]
 
     hosts = ["houdini"]
     targets = ["local", "remote"]

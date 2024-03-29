@@ -4,7 +4,7 @@ import hou
 
 from ayon_core.hosts.houdini.api import plugin
 from ayon_core.pipeline import CreatorError
-from ayon_core.lib import EnumDef, BoolDef
+from ayon_core.lib import EnumDef, BoolDef, UISeparatorDef, UILabelDef
 
 
 class CreateVrayROP(plugin.HoudiniCreator):
@@ -25,8 +25,6 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance_data.update({"node_type": "vray_renderer"})
         # Add chunk size attribute
         instance_data["chunkSize"] = 10
-        # Submit for job publishing
-        instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateVrayROP, self).create(
             product_name,
@@ -143,20 +141,13 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
         return super(CreateVrayROP, self).remove_instances(instances)
 
-    def get_pre_create_attr_defs(self):
-        attrs = super(CreateVrayROP, self).get_pre_create_attr_defs()
+    def get_instance_attr_defs(self):
         image_format_enum = [
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
 
-        return attrs + [
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
-            BoolDef("split_render",
-                    label="Split export and render jobs",
-                    default=self.split_render),
+        return [
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
@@ -170,5 +161,24 @@ class CreateVrayROP(plugin.HoudiniCreator):
                     label="Render Element",
                     tooltip="Create Render Element Node "
                             "if enabled",
-                    default=False)
+                    default=False),
+            UISeparatorDef(key="1"),
+            UILabelDef(label="Farm Render Options:"),
+            BoolDef("farm",
+                    label="Submitting to Farm",
+                    default=True),
+            BoolDef("split_render",
+                    label="Split export and render jobs",
+                    default=self.split_render),
+            UISeparatorDef(key="2"),
+            UILabelDef(label="Local Render Options:"),
+            BoolDef("skip_render",
+                    label="Skip Render",
+                    tooltip="Enable this option to skip render which publish existing frames.",
+                    default=False),
         ]
+
+    def get_pre_create_attr_defs(self):
+        attrs = super(CreateVrayROP, self).get_pre_create_attr_defs()
+
+        return attrs + self.get_instance_attr_defs()
