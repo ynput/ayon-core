@@ -7,7 +7,8 @@ class CollectFarmInstances(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder
     families = ["mantra_rop",
                 "karma_rop",
-                "redshift_rop"]
+                "redshift_rop",
+                "arnold_rop"]
 
     hosts = ["houdini"]
     targets = ["local", "remote"]
