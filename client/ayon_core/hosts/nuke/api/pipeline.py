@@ -270,12 +270,13 @@ def view_read_in_rv():
 
 
 def open_rv():
+    #! this blocks the nuke thread now
+    #? is there an AYON way to run it detached
     # get application object
     app_manager = ApplicationManager()
     openrv_app = app_manager.find_latest_available_variant_for_group("openrv")
     
     # launch application
-    # TODO: gotta inject "-network" flag to launch, currently this is set globally
     openrv_app.launch(**get_current_context())
 
 
