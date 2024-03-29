@@ -78,7 +78,6 @@ class CollectMayaRender(pyblish.api.InstancePlugin):
         layer = instance.data["transientData"]["layer"]
         objset = instance.data.get("instance_node")
         filepath = context.data["currentFile"].replace("\\", "/")
-        workspace = context.data["workspaceDir"]
 
         # check if layer is renderable
         if not layer.isRenderable():

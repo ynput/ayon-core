@@ -30,13 +30,11 @@ from ayon_core.tools.utils import host_tools
 from ayon_core.hosts.nuke import NUKE_ROOT_DIR
 from ayon_core.tools.workfile_template_build import open_template_ui
 
-from .command import viewer_update_and_undo_stop
 from .lib import (
     Context,
     ROOT_DATA_KNOB,
     INSTANCE_DATA_KNOB,
     get_main_window,
-    add_publish_knob,
     WorkfileSettings,
     # TODO: remove this once workfile builder will be removed
     process_workfile_builder,

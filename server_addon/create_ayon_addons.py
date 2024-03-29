@@ -1,7 +1,6 @@
 import os
 import sys
 import re
-import json
 import shutil
 import argparse
 import zipfile
@@ -220,7 +219,6 @@ def main(
     addons=None,
 ):
     current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-    root_dir = current_dir.parent
     create_zip = not skip_zip
 
     if output_dir:
