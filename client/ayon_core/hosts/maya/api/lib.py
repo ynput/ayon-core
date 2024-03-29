@@ -3249,29 +3249,37 @@ def update_content_on_context_change():
     folder_entity = get_current_project_folder()
     folder_attributes = folder_entity["attrib"]
     new_folder_path = folder_entity["path"]
+    new_task = get_current_task_name()
     for s in scene_sets:
-        try:
-            if cmds.getAttr("{}.id".format(s)) in {
-                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
-            }:
-                attr = cmds.listAttr(s)
-                print(s)
-                if "folderPath" in attr:
-                    print(
-                        "  - setting folder to: [ {} ]".format(new_folder_path)
-                    )
-                    cmds.setAttr(
-                        "{}.folderPath".format(s),
-                        new_folder_path, type="string"
-                    )
-                if "frameStart" in attr:
-                    cmds.setAttr("{}.frameStart".format(s),
-                                 folder_attributes["frameStart"])
-                if "frameEnd" in attr:
-                    cmds.setAttr("{}.frameEnd".format(s),
-                                 folder_attributes["frameEnd"],)
-        except ValueError:
-            pass
+        # Only consider instances
+        if not cmds.attributeQuery("id", node=s, exists=True):
+            continue
+        if cmds.getAttr(f"{s}.id") not in {
+            AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+        }:
+            continue
+
+        # Update context folder and task
+        if cmds.attributeQuery("folderPath", node=s, exists=True):
+            print(f"  - setting folderPath to: [ {new_folder_path} ]")
+            cmds.setAttr("{}.folderPath".format(s), new_folder_path,
+                         type="string")
+
+        # TODO: Technically changing the task *can* change the publish subset
+        #  name and thus should actually go through the CreateContext logic
+        #  to redefine the subset name if it needs to.
+        if cmds.attributeQuery("task", node=s, exists=True):
+            print("  - setting task to: [ {} ]".format(new_task))
+            cmds.setAttr("{}.task".format(s), new_task, type="string")
+
+        # Match frame range of instance with folder
+        if cmds.attributeQuery("frameStart", node=s, exists=True):
+            cmds.setAttr("{}.frameStart".format(s),
+                         folder_attributes["frameStart"])
+
+        if cmds.attributeQuery("frameEnd", node=s, exists=True):
+            cmds.setAttr("{}.frameEnd".format(s),
+                         folder_attributes["frameEnd"])
 
 
 def show_message(title, msg):
