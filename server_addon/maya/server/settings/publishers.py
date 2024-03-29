@@ -373,6 +373,8 @@ class ExtractLookModel(BaseSettingsModel):
 
 class ExtractGPUCacheModel(BaseSettingsModel):
     enabled: bool = True
+    optional: bool = True
+    active: bool = True
     families: list[str] = SettingsField(default_factory=list, title="Families")
     step: float = SettingsField(1.0, ge=1.0, title="Step")
     stepSave: int = SettingsField(1, ge=1, title="Step Save")
@@ -1341,6 +1343,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractGPUCache": {
         "enabled": False,
+        "optional": False,
+        "active": True,
         "families": [
             "model",
             "animation",
