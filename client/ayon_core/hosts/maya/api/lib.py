@@ -1897,12 +1897,15 @@ def assign_look_by_version(nodes, version_id):
     project_name = get_current_project_name()
 
     # Get representations of shader file and relationships
-    look_representation = ayon_api.get_representation_by_name(
-        project_name, "ma", version_id
+    representations = ayon_api.get_representations(
+        project_name=project_name,
+        representation_names={"ma", "json"},
+        version_ids=[version_id]
     )
-    json_representation = ayon_api.get_representation_by_name(
-        project_name, "json", version_id
-    )
+    look_representation = next(
+        repre for repre in representations if repre["name"] == "ma")
+    json_representation = next(
+        repre for repre in representations if repre["name"] == "json")
 
     # See if representation is already loaded, if so reuse it.
     host = registered_host()
