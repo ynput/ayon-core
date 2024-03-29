@@ -31,9 +31,9 @@ class OCIOEnvHook(PreLaunchHook):
         # using "project_entity" fails with this error:
         # File "<REDACT>\ayon-core\client\ayon_core\pipeline\template_data.py", line 21, in get_general_template_data
         # core_settings = settings[ "core" ]
-        if not self.data.get("project_settings"):
-            self.log.error("Missing project settings data")
-            return
+        # if not self.data.get("project_settings"):
+        #     self.log.error("Missing project settings data")
+        #     return
 
         template_data = get_template_data_with_names(
             project_name=self.data["project_name"],
