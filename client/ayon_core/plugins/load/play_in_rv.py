@@ -31,23 +31,27 @@ class PlayInRV(load.LoaderPlugin):
         representation = context.get("representation")
         if not representation:
             raise Exception(f"Missing representation data: {representation = }")
+        
+        folder = context.get("folder")
+        if not folder:
+            raise Exception(f"Missing folder data: {folder = }")
 
         rvcon = RVConnector(port=45129)
 
         if not rvcon.is_connected:
+            # get launch context variables
             project = representation["data"]["context"].get("project")
-            folder = representation["data"]["context"].get("folder")
             task = representation["data"]["context"].get("task")
-            if not all([project, folder, task]):
-                raise Exception(f"Missing context data: {project = }, {folder = }, {task = }")
+            folder_path = folder.get("path")
+            if not all([project, folder_path, task]):
+                raise Exception(f"Missing context data: {project = }, {folder_path = }, {task = }")
 
+            # launch RV with context
             ctx = {
                 "project_name": project["name"],
-                "folder_path": folder["name"],
+                "folder_path": folder_path,
                 "task_name": task["name"] or "generic",
             }
-            self.log.warning(f"{ctx = }")
-
             openrv_app = app_manager.find_latest_available_variant_for_group("openrv")
             openrv_app.launch(**ctx)
 
