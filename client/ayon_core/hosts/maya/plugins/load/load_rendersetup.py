@@ -111,10 +111,10 @@ class RenderSetupLoader(load.LoaderPlugin):
 
         if data.get("load_managed", True):
             self.log.info(">>> containerising [ {} ]".format(name))
-            asset = context['asset']['name']
+            folder_name = context["folder"]["name"]
             namespace = namespace or lib.unique_namespace(
-                asset + "_",
-                prefix="_" if asset[0].isdigit() else "",
+                folder_name + "_",
+                prefix="_" if folder_name[0].isdigit() else "",
                 suffix="_",
             )
 
