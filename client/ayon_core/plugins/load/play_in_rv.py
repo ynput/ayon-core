@@ -52,6 +52,7 @@ class PlayInRV(load.LoaderPlugin):
             openrv_app.launch(**ctx)
 
         _data = [{
+            "project_name": project["name"],
             "objectName": representation["context"]["representation"],
             "representation": representation["id"],
         }]
