@@ -43,11 +43,15 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
     @classmethod
     def get_invalid(cls, instance):
 
-        invalid = []
+        nodes = instance[:]
+        if not nodes:
+            return
 
         # Get all id required nodes
-        id_required_nodes = lib.get_id_required_nodes(referenced_nodes=True,
-                                                      nodes=instance[:])
+        id_required_nodes = lib.get_id_required_nodes(referenced_nodes=False,
+                                                      nodes=nodes)
+        if not id_required_nodes:
+            return
 
         # check ids against database ids
         project_name = instance.context.data["projectName"]
@@ -58,6 +62,7 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
         }
 
         # Get all asset IDs
+        invalid = []
         for node in id_required_nodes:
             cb_id = lib.get_id(node)
 
