@@ -312,7 +312,14 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
             # Define version
             version_number = None
-            if self.follow_workfile_version:
+
+            # Allow an instance to force enable or disable the version
+            # following of the current context
+            use_context_version = self.follow_workfile_version
+            if "followWorkfileVersion" in instance.data:
+                use_context_version = instance.data["followWorkfileVersion"]
+
+            if use_context_version:
                 version_number = context.data("version")
 
             # Even if 'follow_workfile_version' is enabled, it may not be set
