@@ -3246,8 +3246,12 @@ def fix_incompatible_containers():
 
 
 def update_content_on_context_change():
-    """
-    This will update scene content to match new folder on context change
+    """Update publish instances to match current context.
+
+    This will update publish instances in the current workfile to match the
+    current folder and task. It will also update any `frameStart` and
+    `frameEnd` attributes to match the current folder entity's attributes.
+
     """
     scene_sets = cmds.listSets(allSets=True)
     folder_entity = get_current_project_folder()
