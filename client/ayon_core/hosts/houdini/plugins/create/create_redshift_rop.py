@@ -4,7 +4,7 @@ import hou  # noqa
 
 from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import EnumDef, BoolDef
+from ayon_core.lib import EnumDef, BoolDef, UISeparatorDef, UILabelDef
 
 
 class CreateRedshiftROP(plugin.HoudiniCreator):
@@ -26,8 +26,6 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         instance_data.update({"node_type": "Redshift_ROP"})
         # Add chunk size attribute
         instance_data["chunkSize"] = 10
-        # Submit for job publishing
-        instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateRedshiftROP, self).create(
             product_name,
@@ -118,8 +116,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
         return super(CreateRedshiftROP, self).remove_instances(instances)
 
-    def get_pre_create_attr_defs(self):
-        attrs = super(CreateRedshiftROP, self).get_pre_create_attr_defs()
+    def get_instance_attr_defs(self):
         image_format_enum = [
             "exr", "tif", "jpg", "png",
         ]
@@ -128,14 +125,8 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             "Full Multi-Layered EXR File"
         ]
 
-
-        return attrs + [
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
-            BoolDef("split_render",
-                    label="Split export and render jobs",
-                    default=self.split_render),
+        return [
+            UILabelDef(label="RedShift Render Settings:"),
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
@@ -143,5 +134,24 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             EnumDef("multi_layered_mode",
                     multi_layered_mode,
                     default=self.multi_layered_mode,
-                    label="Multi-Layered EXR")
+                    label="Multi-Layered EXR"),
+            UISeparatorDef(key="1"),
+            UILabelDef(label="Farm Render Options:"),
+            BoolDef("farm",
+                    label="Submitting to Farm",
+                    default=True),
+            BoolDef("split_render",
+                    label="Split export and render jobs",
+                    default=self.split_render),
+            UISeparatorDef(key="2"),
+            UILabelDef(label="Local Render Options:"),
+            BoolDef("skip_render",
+                    label="Skip Render",
+                    tooltip="Enable this option to skip render which publish existing frames.",
+                    default=False),
         ]
+
+    def get_pre_create_attr_defs(self):
+        attrs = super(CreateRedshiftROP, self).get_pre_create_attr_defs()
+
+        return attrs + self.get_instance_attr_defs()

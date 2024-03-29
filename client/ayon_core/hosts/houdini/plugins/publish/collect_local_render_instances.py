@@ -11,7 +11,8 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
     # this plugin runs after Collect Render Products
     order = pyblish.api.CollectorOrder + 0.12
     families = ["mantra_rop",
-                "karma_rop"]
+                "karma_rop",
+                "redshift_rop"]
 
     hosts = ["houdini"]
     targets = ["local", "remote"]

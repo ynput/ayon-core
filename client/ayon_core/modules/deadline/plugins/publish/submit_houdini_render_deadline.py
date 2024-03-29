@@ -71,7 +71,6 @@ class HoudiniSubmitDeadline(
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
     families = ["usdrender",
-                "redshift_rop",
                 "arnold_rop",
                 "vray_rop",
                 "render.farm.hou"]
@@ -280,7 +279,7 @@ class HoudiniSubmitDeadline(
                 plugin_info = VrayRenderPluginInfo(
                     InputFilename=instance.data["ifdFile"],
                 )
-            elif product_type == "redshift_rop":
+            elif node_type == "Redshift_ROP":
                 plugin_info = RedshiftRenderPluginInfo(
                     SceneFile=instance.data["ifdFile"]
                 )
