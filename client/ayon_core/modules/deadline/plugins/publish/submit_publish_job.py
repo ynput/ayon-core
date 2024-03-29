@@ -93,7 +93,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                 "renderlayer", "imagesequence",
                 "vrayscene", "maxrender",
                 "arnold_rop", "render.farm.hou",
-                "karma_rop", "vray_rop",
+                "vray_rop",
                 "redshift_rop"]
 
     aov_filter = [

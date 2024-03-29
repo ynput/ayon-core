@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin to create Karma ROP."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import BoolDef, EnumDef, NumberDef
+from ayon_core.lib import BoolDef, EnumDef, NumberDef, UISeparatorDef, UILabelDef
 
 
 class CreateKarmaROP(plugin.HoudiniCreator):
@@ -18,8 +18,6 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         instance_data.update({"node_type": "karma"})
         # Add chunk size attribute
         instance_data["chunkSize"] = 10
-        # Submit for job publishing
-        instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateKarmaROP, self).create(
             product_name,
@@ -86,15 +84,13 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
-    def get_pre_create_attr_defs(self):
-        attrs = super(CreateKarmaROP, self).get_pre_create_attr_defs()
-
+    def get_instance_attr_defs(self):
         image_format_enum = [
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
 
-        return attrs + [
+        return [
             BoolDef("farm",
                     label="Submitting to Farm",
                     default=True),
@@ -112,5 +108,17 @@ class CreateKarmaROP(plugin.HoudiniCreator):
                       decimals=0),
             BoolDef("cam_res",
                     label="Camera Resolution",
-                    default=False)
+                    default=False),
+            UISeparatorDef(key="2"),
+            UILabelDef(label="Local Render Options:"),
+            BoolDef("skip_render",
+                    label="Skip Render",
+                    tooltip="Enable this option to skip render which publish existing frames.",
+                    default=False),
         ]
+
+
+    def get_pre_create_attr_defs(self):
+        attrs = super(CreateKarmaROP, self).get_pre_create_attr_defs()
+
+        return attrs + self.get_instance_attr_defs()

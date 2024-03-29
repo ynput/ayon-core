@@ -20,7 +20,6 @@ class IncrementCurrentFile(pyblish.api.ContextPlugin):
     families = ["workfile",
                 "redshift_rop",
                 "arnold_rop",
-                "karma_rop",
                 "usdrender",
                 "render.farm.hou",
                 "render.local.hou",

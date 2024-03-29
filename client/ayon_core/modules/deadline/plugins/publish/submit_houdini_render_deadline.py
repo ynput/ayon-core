@@ -73,7 +73,6 @@ class HoudiniSubmitDeadline(
     families = ["usdrender",
                 "redshift_rop",
                 "arnold_rop",
-                "karma_rop",
                 "vray_rop",
                 "render.farm.hou"]
     targets = ["local"]
