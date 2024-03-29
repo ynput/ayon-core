@@ -71,7 +71,6 @@ class HoudiniSubmitDeadline(
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
     families = ["usdrender",
-                "arnold_rop",
                 "vray_rop",
                 "render.farm.hou"]
     targets = ["local"]
@@ -266,7 +265,7 @@ class HoudiniSubmitDeadline(
             rop_node = hou.node(instance.data.get("instance_node"))
             node_type = rop_node.type().name()
 
-            if product_type == "arnold_rop":
+            if node_type == "arnold":
                 plugin_info = ArnoldRenderDeadlinePluginInfo(
                     InputFile=instance.data["ifdFile"]
                 )
