@@ -3253,7 +3253,7 @@ def update_content_on_context_change():
     `frameEnd` attributes to match the current folder entity's attributes.
 
     """
-    scene_sets = cmds.listSets(allSets=True)
+    scene_sets = cmds.ls(cmds.listSets(allSets=True))
     folder_entity = get_current_project_folder()
     folder_attributes = folder_entity["attrib"]
     new_folder_path = folder_entity["path"]
