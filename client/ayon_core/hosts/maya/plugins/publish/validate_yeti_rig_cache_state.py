@@ -1,3 +1,5 @@
+import inspect
+
 import pyblish.api
 import maya.cmds as cmds
 import ayon_core.hosts.maya.api.action
@@ -6,7 +8,6 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-
 
 
 class ValidateYetiRigCacheState(pyblish.api.InstancePlugin,
@@ -32,7 +33,10 @@ class ValidateYetiRigCacheState(pyblish.api.InstancePlugin,
             return
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError("Nodes have incorrect I/O settings")
+            raise PublishValidationError(
+                "Nodes have incorrect I/O settings",
+                description=inspect.getdoc(self)
+            )
 
     @classmethod
     def get_invalid(cls, instance):

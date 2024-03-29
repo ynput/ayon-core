@@ -25,10 +25,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         from ayon_core.hosts.maya.api.pipeline import containerise
         from ayon_core.hosts.maya.api.lib import unique_namespace
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vdbcache"
+        product_type = context["product"]["productType"]
 
         # Check if the plugin for arnold is available on the pc
         try:
@@ -64,7 +61,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         path = self.filepath_from_context(context)
         self._set_path(grid_node,
                        path=path,
-                       representation=context["representation"])
+                       repre_entity=context["representation"])
 
         # Lock the shape node so the user can't delete the transform/shape
         # as if it was referenced
@@ -94,7 +91,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         assert len(grid_nodes) == 1, "This is a bug"
 
         # Update the VRayVolumeGrid
-        self._set_path(grid_nodes[0], path=path, representation=repre_entity)
+        self._set_path(grid_nodes[0], path=path, repre_entity=repre_entity)
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
