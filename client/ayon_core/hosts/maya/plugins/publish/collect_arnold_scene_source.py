@@ -46,7 +46,7 @@ class CollectArnoldSceneSource(pyblish.api.InstancePlugin):
         self.log.debug("data: {}".format(instance.data))
 
     def get_hierarchy(self, nodes):
-        """Return nodes with all their children:
+        """Return nodes with all their children.
 
         Arguments:
             nodes (List[str]): List of nodes to collect children hierarchy for
