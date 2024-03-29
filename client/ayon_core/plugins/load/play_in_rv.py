@@ -53,7 +53,7 @@ class PlayInRV(load.LoaderPlugin):
 
         _data = [{
             "objectName": representation["context"]["representation"],
-            "representation": representation["_id"],
+            "representation": representation["id"],
         }]
         payload = json.dumps(_data)
         self.log.warning(f"{payload = }")
