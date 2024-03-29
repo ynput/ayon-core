@@ -1942,7 +1942,7 @@ def assign_look_by_version(nodes, version_id):
     apply_shaders(relationships, shader_nodes, nodes)
 
 
-def assign_look(nodes, product_name="lookDefault"):
+def assign_look(nodes, product_name="lookMain"):
     """Assigns a look to a node.
 
     Optimizes the nodes by grouping by folder id and finding
