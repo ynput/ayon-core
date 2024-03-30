@@ -389,7 +389,13 @@ def imprint(node, data, tab=None):
 
     """
     for knob in create_knobs(data, tab):
-        node.addKnob(knob)
+        # If knob name exists we set the value. Technically there could be
+        # multiple knobs with the same name, but the intent is not to have
+        # duplicated knobs so we do not account for that.
+        if knob.name() in node.knobs().keys():
+            node[knob.name()].setValue(knob.value())
+        else:
+            node.addKnob(knob)
 
 
 @deprecated
