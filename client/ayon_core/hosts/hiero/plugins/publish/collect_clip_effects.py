@@ -73,13 +73,9 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
 
         product_name_split.insert(0, "effect")
 
-        # Need to convert to dict for AYON settings. This isinstance check can
-        # be removed in the future when OpenPype is no longer.
-        effect_categories = self.effect_categories
-        if isinstance(self.effect_categories, list):
-            effect_categories = {
-                x["name"]: x["effect_classes"] for x in self.effect_categories
-            }
+        effect_categories = {
+            x["name"]: x["effect_classes"] for x in self.effect_categories
+        }
 
         category_by_effect = {"": ""}
         for key, values in effect_categories.items():
