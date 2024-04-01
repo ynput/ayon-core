@@ -1,5 +1,3 @@
 [virtualenvs]
 in-project = true
-
-[repositories.pype]
-url = "https://distribute.openpype.io/wheels/"
+create = true

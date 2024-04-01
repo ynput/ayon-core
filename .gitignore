@@ -32,21 +32,13 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-
-# CX_Freeze
+# Package dirs
 ###########
-/build
-/dist/
 /server_addon/packages/*
+/package/*
 
-/vendor/bin/*
-/vendor/python/*
 /.venv
 /venv/
-
-# Documentation
-###############
-/docs/build
 
 # Editor backup files #
 #######################
@@ -74,9 +66,6 @@ package-lock.json
 package.json
 yarn.lock
 
-openpype/premiere/ppro/js/debug.log
-
-
 # IDEA
 ######
 .idea/
@@ -85,37 +74,13 @@ openpype/premiere/ppro/js/debug.log
 .vscode/
 .env
 dump.sql
-test_localsystem.txt
-
-# website
-##########
-website/translated_docs
-website/build/
-website/node_modules
-website/i18n/*
-
-website/debug.log
-
-website/.docusaurus
 
 # Poetry
 ########
-
 .poetry/
 .python-version
 .editorconfig
 .pre-commit-config.yaml
 mypy.ini
 
-tools/run_eventserver.*
-
-#  Developer tools
-tools/dev_*
-
 .github_changelog_generator
-
-
-# Addons
-########
-/openpype/addons/*
-!/openpype/addons/README.md

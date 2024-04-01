@@ -62,9 +62,9 @@ class CollectColorCodedInstancesPlugin(BaseSettingsModel):
         enum_resolver=lambda: create_flatten_image_enum,
     )
 
-    flatten_product_type_template: str = SettingsField(
+    flatten_product_name_template: str = SettingsField(
         "",
-        title="Subset template for flatten image"
+        title="Product name template for flatten image"
     )
 
     color_code_mapping: list[ColorCodeMappings] = SettingsField(
@@ -178,7 +178,7 @@ class PhotoshopPublishPlugins(BaseSettingsModel):
 DEFAULT_PUBLISH_SETTINGS = {
     "CollectColorCodedInstances": {
         "create_flatten_image": "no",
-        "flatten_product_type_template": "",
+        "flatten_product_name_template": "",
         "color_code_mapping": []
     },
     "CollectReview": {
