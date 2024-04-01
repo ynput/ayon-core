@@ -35,6 +35,76 @@ def angular_unit_enum():
     ]
 
 
+def extract_alembic_flags_enum():
+    """Get flags for alembic extraction enumerator."""
+    return [
+        {"label": "autoSubd", "value": "autoSubd"},
+        {
+            "label": "dontSkipUnwrittenFrames",
+            "value": "dontSkipUnwrittenFrames"
+        },
+        {"label": "eulerFilter", "value": "eulerFilter"},
+        {"label": "noNormals", "value": "noNormals"},
+        {"label": "preRoll", "value": "preRoll"},
+        {"label": "renderableOnly", "value": "renderableOnly"},
+        {"label": "stripNamespaces", "value": "stripNamespaces"},
+        {"label": "uvWrite", "value": "uvWrite"},
+        {"label": "uvsOnly", "value": "uvsOnly"},
+        {"label": "verbose", "value": "verbose"},
+        {"label": "wholeFrameGeo", "value": "wholeFrameGeo"},
+        {"label": "worldSpace", "value": "worldSpace"},
+        {"label": "writeColorSets", "value": "writeColorSets"},
+        {"label": "writeFaceSets", "value": "writeFaceSets"},
+        {"label": "writeNormals", "value": "writeNormals"},
+        {"label": "writeUVSets", "value": "writeUVSets"},
+        {"label": "writeVisibility", "value": "writeVisibility"}
+    ]
+
+
+def extract_alembic_data_format_enum():
+    return [
+        {"label": "ogawa", "value": "ogawa"},
+        {"label": "HDF", "value": "HDF"}
+    ]
+
+
+def extract_alembic_overrides_enum():
+    return [
+        {"value": "attr", "label": "Custom Attributes"},
+        {"value": "attrPrefix", "label": "Custom Attributes Prefix"},
+        {"value": "autoSubd", "label": "autoSubd"},
+        {"value": "dataFormat", "label": "dataFormat"},
+        {
+            "value": "dontSkipUnwrittenFrames",
+            "label": "dontSkipUnwrittenFrames"
+        },
+        {"value": "eulerFilter", "label": "eulerFilter"},
+        {"value": "melPerFrameCallback", "label": "melPerFrameCallback"},
+        {"value": "melPostJobCallback", "label": "melPostJobCallback"},
+        {"value": "noNormals", "label": "noNormals"},
+        {"value": "preRoll", "label": "preRoll"},
+        {"value": "preRollStartFrame", "label": "Pre Roll Start Frame"},
+        {"value": "pythonPerFrameCallback", "label": "pythonPerFrameCallback"},
+        {"value": "pythonPostJobCallback", "label": "pythonPostJobCallback"},
+        {"value": "renderableOnly", "label": "renderableOnly"},
+        {"value": "stripNamespaces", "label": "stripNamespaces"},
+        {"value": "userAttr", "label": "userAttr"},
+        {"value": "userAttrPrefix", "label": "userAttrPrefix"},
+        {"value": "uvWrite", "label": "uvWrite"},
+        {"value": "uvsOnly", "label": "uvsOnly"},
+        {"value": "verbose", "label": "verbose"},
+        {"value": "visibleOnly", "label": "Visible Only"},
+        {"value": "wholeFrameGeo", "label": "wholeFrameGeo"},
+        {"value": "worldSpace", "label": "worldSpace"},
+        {"value": "writeColorSets", "label": "writeColorSets"},
+        {"value": "writeCreases", "label": "writeCreases"},
+        {"value": "writeFaceSets", "label": "writeFaceSets"},
+        {"value": "writeNormals", "label": "writeNormals"},
+        {"value": "writeUVSets", "label": "writeUVSets"},
+        {"value": "writeVisibility", "label": "writeVisibility"}
+    ]
+
+
 class BasicValidateModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -308,6 +378,25 @@ class ExtractAlembicModel(BaseSettingsModel):
         default_factory=list, title="Bake Attribute Prefixes",
         description="List of attribute prefixes for attributes that will be "
                     "included in the alembic export.",
+    )
+    flags: list[str] = SettingsField(
+        enum_resolver=extract_alembic_flags_enum, title="Export Flags"
+    )
+    attr: str = SettingsField(title="Custom Attributes")
+    attrPrefix: str = SettingsField(title="Custom Attributes Prefix")
+    dataFormat: str = SettingsField(
+        enum_resolver=extract_alembic_data_format_enum, title="Data Format"
+    )
+    melPerFrameCallback: str = SettingsField(title="melPerFrameCallback")
+    melPostFrameCallback: str = SettingsField(title="melPostFrameCallback")
+    preRollStartFrame: int = SettingsField(title="Pre Roll Start Frame")
+    pythonPerFrameCallback: str = SettingsField(title="pythonPerFrameCallback")
+    pythonPostJobCallback: str = SettingsField(title="pythonPostJobCallback")
+    userAttr: str = SettingsField(title="userAttr")
+    userAttrPrefix: str = SettingsField(title="userAttrPrefix")
+    visibleOnly: bool = SettingsField(title="Visible Only")
+    overrides: list[str] = SettingsField(
+        enum_resolver=extract_alembic_overrides_enum, title="Exposed Overrides"
     )
 
 
@@ -665,10 +754,6 @@ class PublishersModel(BaseSettingsModel):
         title="Extract Proxy Alembic",
         section="Model Extractors",
     )
-    ExtractAlembic: ExtractAlembicModel = SettingsField(
-        default_factory=ExtractAlembicModel,
-        title="Extract Alembic",
-    )
     ExtractObj: ExtractObjModel = SettingsField(
         default_factory=ExtractObjModel,
         title="Extract OBJ"
@@ -798,6 +883,10 @@ class PublishersModel(BaseSettingsModel):
     ExtractGPUCache: ExtractGPUCacheModel = SettingsField(
         default_factory=ExtractGPUCacheModel,
         title="Extract GPU Cache",
+    )
+    ExtractAlembic: ExtractAlembicModel = SettingsField(
+        default_factory=ExtractAlembicModel,
+        title="Extract Alembic",
     )
 
 
@@ -1188,16 +1277,6 @@ DEFAULT_PUBLISH_SETTINGS = {
             "proxyAbc"
         ]
     },
-    "ExtractAlembic": {
-        "enabled": True,
-        "families": [
-            "pointcache",
-            "model",
-            "vrayproxy.alembic"
-        ],
-        "bake_attributes": [],
-        "bake_attribute_prefixes": []
-    },
     "ExtractObj": {
         "enabled": False,
         "optional": True,
@@ -1353,5 +1432,41 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optimizeAnimationsForMotionBlur": True,
         "writeMaterials": True,
         "useBaseTessellation": True
+    },
+    "ExtractAlembic": {
+        "enabled": True,
+        "families": [
+            "pointcache",
+            "model",
+            "vrayproxy.alembic"
+        ],
+        "bake_attributes": [],
+        "bake_attribute_prefixes": [],
+        "flags": [
+            "stripNamespaces",
+            "writeNormals",
+            "worldSpace"
+        ],
+        "attr": "",
+        "attrPrefix": "",
+        "dataFormat": "ogawa",
+        "melPerFrameCallback": "",
+        "melPostFrameCallback": "",
+        "preRollStartFrame": 0,
+        "pythonPerFrameCallback": "",
+        "pythonPostJobCallback": "",
+        "userAttr": "",
+        "userAttrPrefix": "",
+        "visibleOnly": False,
+        "overrides": [
+            "attr",
+            "attrPrefix",
+            "worldSpace",
+            "writeColorSets",
+            "writeNormals",
+            "writeFaceSets",
+            "renderableOnly",
+            "visibleOnly"
+        ]
     }
 }
