@@ -15,16 +15,18 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
 from ayon_core.hosts.maya.api import lib, lib_rendersettings
+from ayon_core.settings import get_project_settings
+from ayon_core.tools.workfile_template_build import open_template_ui
+from ayon_core.pipeline import get_current_project_name
+
 from .lib import get_main_window, IS_HEADLESS
 from ..tools import show_look_assigner
-
 from .workfile_template_builder import (
     create_placeholder,
     update_placeholder,
     build_workfile_template,
     update_workfile_template
 )
-from ayon_core.tools.workfile_template_build import open_template_ui
 from .workfile_template_builder import MayaTemplateBuilder
 from .testing import (
     run_tests_on_repository_workfile,
@@ -64,6 +66,10 @@ def install(project_settings):
         return
 
     def add_menu():
+        project_settings = get_project_settings(
+            get_current_project_name()
+        )
+
         pyblish_icon = host_tools.get_pyblish_icon()
         parent_widget = get_main_window()
         cmds.menu(
@@ -211,6 +217,10 @@ def install(project_settings):
             parent=builder_menu,
             command=update_placeholder
         )
+
+        if not project_settings["maya"].get("workfile_testing", False):
+            cmds.setParent(MENU_NAME, menu=True)
+            return
 
         testing_menu = cmds.menuItem(
             "Testing",

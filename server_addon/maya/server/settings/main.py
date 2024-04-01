@@ -74,6 +74,7 @@ class MayaSettings(BaseSettingsModel):
     templated_workfile_build: TemplatedProfilesModel = SettingsField(
         default_factory=TemplatedProfilesModel,
         title="Templated Workfile Build Settings")
+    workfile_testing: bool = SettingsField(False, title="Workfile Testing")
 
     @validator("ext_mapping")
     def validate_unique_outputs(cls, value):
@@ -119,5 +120,6 @@ DEFAULT_MAYA_SETTING = {
     "publish": DEFAULT_PUBLISH_SETTINGS,
     "load": DEFAULT_LOADERS_SETTING,
     "workfile_build": DEFAULT_WORKFILE_SETTING,
-    "templated_workfile_build": DEFAULT_TEMPLATED_WORKFILE_SETTINGS
+    "templated_workfile_build": DEFAULT_TEMPLATED_WORKFILE_SETTINGS,
+    "workfile_testing": False
 }
