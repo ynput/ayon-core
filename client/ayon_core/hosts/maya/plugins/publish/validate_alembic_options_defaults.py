@@ -1,7 +1,7 @@
 import pyblish.api
 
-from openpype.pipeline import OptionalPyblishPluginMixin
-from openpype.pipeline.publish import RepairAction, PublishValidationError
+from ayon_core.pipeline import OptionalPyblishPluginMixin
+from ayon_core.pipeline.publish import RepairAction, PublishValidationError
 
 
 class ValidateAlembicOptionsDefaults(

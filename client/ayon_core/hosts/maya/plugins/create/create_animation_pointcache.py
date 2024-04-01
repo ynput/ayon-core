@@ -1,12 +1,12 @@
 from maya import cmds
 
-from openpype.hosts.maya.api import lib, plugin
+from ayon_core.hosts.maya.api import lib, plugin
 
-from openpype.lib import (
+from ayon_core.lib import (
     BoolDef,
     NumberDef,
 )
-from openpype.pipeline import CreatedInstance
+from ayon_core.pipeline import CreatedInstance
 
 
 def _get_animation_attr_defs(cls):
@@ -91,11 +91,12 @@ class CreateAnimation(plugin.MayaHiddenCreator):
     include_user_defined_attributes = False
 
     def collect_instances(self):
+        key = "maya_cached_instance_data"
         try:
-            cached_subsets = self.collection_shared_data["maya_cached_subsets"]
+            cached_subsets = self.collection_shared_data[key]
         except KeyError:
-            self.cache_subsets(self.collection_shared_data)
-            cached_subsets = self.collection_shared_data["maya_cached_subsets"]
+            self.cache_instance_data(self.collection_shared_data)
+            cached_subsets = self.collection_shared_data[key]
 
         for node in cached_subsets.get(self.identifier, []):
             node_data = self.read_instance_node(node)
@@ -125,11 +126,12 @@ class CreatePointCache(plugin.MayaCreator):
     include_user_defined_attributes = False
 
     def collect_instances(self):
+        key = "maya_cached_instance_data"
         try:
-            cached_subsets = self.collection_shared_data["maya_cached_subsets"]
+            cached_subsets = self.collection_shared_data[key]
         except KeyError:
-            self.cache_subsets(self.collection_shared_data)
-            cached_subsets = self.collection_shared_data["maya_cached_subsets"]
+            self.cache_instance_data(self.collection_shared_data)
+            cached_subsets = self.collection_shared_data[key]
 
         for node in cached_subsets.get(self.identifier, []):
             node_data = self.read_instance_node(node)
