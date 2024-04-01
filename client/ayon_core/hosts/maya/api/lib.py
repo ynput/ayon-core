@@ -2525,7 +2525,7 @@ def get_fps_for_current_context():
 
 
 def get_frame_range(include_animation_range=False):
-    """Get the current folder frame range and handles.
+    """Get the current task frame range and handles.
 
     Args:
         include_animation_range (bool, optional): Whether to include
@@ -2533,25 +2533,31 @@ def get_frame_range(include_animation_range=False):
             range of the timeline. It is excluded by default.
 
     Returns:
-        dict: Folder's expected frame range values.
+        dict: Task's expected frame range values.
 
     """
 
     # Set frame start/end
     project_name = get_current_project_name()
     folder_path = get_current_folder_path()
-    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-    folder_attributes = folder_entity["attrib"]
+    task_name = get_current_task_name()
 
-    frame_start = folder_attributes.get("frameStart")
-    frame_end = folder_attributes.get("frameEnd")
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+
+    task_attributes = task_entity["attrib"]
+
+    frame_start = task_attributes.get("frameStart")
+    frame_end = task_attributes.get("frameEnd")
 
     if frame_start is None or frame_end is None:
         cmds.warning("No edit information found for '{}'".format(folder_path))
         return
 
-    handle_start = folder_attributes.get("handleStart") or 0
-    handle_end = folder_attributes.get("handleEnd") or 0
+    handle_start = task_attributes.get("handleStart") or 0
+    handle_end = task_attributes.get("handleEnd") or 0
 
     frame_range = {
         "frameStart": frame_start,
@@ -2565,11 +2571,8 @@ def get_frame_range(include_animation_range=False):
         # Some usages of this function use the full dictionary to define
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
-        task_name = get_current_task_name()
+
         settings = get_project_settings(project_name)
-        task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
-        )
         task_type = None
         if task_entity:
             task_type = task_entity["taskType"]
