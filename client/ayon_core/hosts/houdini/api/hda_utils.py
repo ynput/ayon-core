@@ -139,7 +139,7 @@ def set_representation(node, repre_id):
                        get_current_project_name()
         try:
             repre_entity = get_representation_by_id(project_name, repre_id)
-        except Exception:
+        except ayon_api.exceptions.GraphQlQueryFailed:
             # Ignore invalid representation ids silently
             repre_entity = None
 
