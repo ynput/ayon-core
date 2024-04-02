@@ -749,6 +749,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Alembic Visible Node",
     )
+    ValidateAlembicOptionsDefaults: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Alembic Options Defaults"
+    )
     ExtractProxyAlembic: ExtractProxyAlembicModel = SettingsField(
         default_factory=ExtractProxyAlembicModel,
         title="Extract Proxy Alembic",
@@ -1396,6 +1400,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": False,
         "validate_shapes": True
+    },
+    "ValidateAlembicOptionsDefaults": {
+        "enabled": True,
+        "optional": True,
+        "active": True
     },
     "ExtractPlayblast": DEFAULT_PLAYBLAST_SETTING,
     "ExtractMayaSceneRaw": {
