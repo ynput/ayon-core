@@ -1,4 +1,4 @@
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 from ayon_core.hosts.maya.lib import create_workspace_mel
 
 

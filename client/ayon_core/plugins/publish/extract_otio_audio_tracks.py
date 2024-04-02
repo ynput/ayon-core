@@ -80,7 +80,7 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
             # create duration
             duration = (timeline_out_h - timeline_in_h) + 1
 
-            # ffmpeg generate new file only if doesnt exists already
+            # ffmpeg generate new file only if doesn't exists already
             if not recycling_file:
                 # convert to seconds
                 start_sec = float(timeline_in_h / fps)

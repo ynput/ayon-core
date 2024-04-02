@@ -120,22 +120,6 @@ from .transcoding import (
     get_rescaled_command_arguments,
 )
 
-from .applications import (
-    ApplicationLaunchFailed,
-    ApplictionExecutableNotFound,
-    ApplicationNotFound,
-    ApplicationManager,
-
-    PreLaunchHook,
-    PostLaunchHook,
-
-    EnvironmentPrepData,
-    prepare_app_environments,
-    prepare_context_environments,
-    get_app_environments_for_context,
-    apply_project_environments_value
-)
-
 from .plugin_tools import (
     prepare_template_data,
     source_hash,
@@ -152,6 +136,7 @@ from .path_tools import (
 
 from .ayon_info import (
     is_running_from_build,
+    is_using_ayon_console,
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
@@ -230,18 +215,6 @@ __all__ = [
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
 
-    "ApplicationLaunchFailed",
-    "ApplictionExecutableNotFound",
-    "ApplicationNotFound",
-    "ApplicationManager",
-    "PreLaunchHook",
-    "PostLaunchHook",
-    "EnvironmentPrepData",
-    "prepare_app_environments",
-    "prepare_context_environments",
-    "get_app_environments_for_context",
-    "apply_project_environments_value",
-
     "compile_list_of_regexes",
 
     "filter_profiles",
@@ -269,6 +242,7 @@ __all__ = [
     "Logger",
 
     "is_running_from_build",
+    "is_using_ayon_console",
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
