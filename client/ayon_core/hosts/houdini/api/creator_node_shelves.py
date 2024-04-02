@@ -91,7 +91,7 @@ def create_interactive(creator_identifier, **kwargs):
     pane = stateutils.activePane(kwargs)
     if isinstance(pane, hou.NetworkEditor):
         pwd = pane.pwd()
-        project_name = context.get_current_project_name(),
+        project_name = context.get_current_project_name()
         folder_path = context.get_current_folder_path()
         task_name = context.get_current_task_name()
         folder_entity = ayon_api.get_folder_by_path(

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Pipeline tools for OpenPype Houdini integration."""
 import os
-import sys
 import logging
 
 import hou  # noqa
@@ -39,6 +38,9 @@ LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
+# Track whether the workfile tool is about to save
+_about_to_save = False
+
 
 class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     name = "houdini"
@@ -61,10 +63,12 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         log.info("Installing callbacks ... ")
         # register_event_callback("init", on_init)
         self._register_callbacks()
+        register_event_callback("workfile.save.before", before_workfile_save)
         register_event_callback("before.save", before_save)
         register_event_callback("save", on_save)
         register_event_callback("open", on_open)
         register_event_callback("new", on_new)
+        register_event_callback("taskChanged", on_task_changed)
 
         self._has_been_setup = True
 
@@ -166,7 +170,7 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         if not op_ctx:
             op_ctx = self.create_context_node()
 
-        lib.imprint(op_ctx, data)
+        lib.imprint(op_ctx, data, update=True)
 
     def get_context_data(self):
         op_ctx = hou.node(CONTEXT_CONTAINER)
@@ -287,6 +291,11 @@ def ls():
         yield parse_container(container)
 
 
+def before_workfile_save(event):
+    global _about_to_save
+    _about_to_save = True
+
+
 def before_save():
     return lib.validate_fps()
 
@@ -298,9 +307,16 @@ def on_save():
     # update houdini vars
     lib.update_houdini_vars_context_dialog()
 
-    nodes = lib.get_id_required_nodes()
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
+    # We are now starting the actual save directly
+    global _about_to_save
+    _about_to_save = False
+
+
+def on_task_changed():
+    global _about_to_save
+    if not IS_HEADLESS and _about_to_save:
+        # Let's prompt the user to update the context settings or not
+        lib.prompt_reset_context()
 
 
 def _show_outdated_content_popup():
