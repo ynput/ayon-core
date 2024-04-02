@@ -27,22 +27,24 @@ class ExtractActiveViewThumbnail(publish.Extractor):
             return
 
         thumbnail = instance.data.get("thumbnailPath")
-        if not thumbnail:
-            view_thumbnail = self.get_view_thumbnail(instance)
-            if not view_thumbnail:
-                return
+        if thumbnail:
+            # A thumbnail was already set for this instance
+            return
 
-            self.log.debug("Setting instance thumbnail path to: {}".format(
-                view_thumbnail
-            ))
-            instance.data["thumbnailPath"] = view_thumbnail
+        view_thumbnail = self.get_view_thumbnail(instance)
+        if not view_thumbnail:
+            return
+        self.log.debug("Setting instance thumbnail path to: {}"
+                       .format(view_thumbnail)
+        )
+        instance.data["thumbnailPath"] = view_thumbnail
 
     def get_view_thumbnail(self, instance):
 
         sceneview = lib.get_scene_viewer()
         if sceneview is None:
-            self.log.warning("Skipping Extract Active View Thumbnail"
-                             " because no scene view was detected.")
+            self.log.debug("Skipping Extract Active View Thumbnail"
+                           " because no scene view was detected.")
             return
 
         with tempfile.NamedTemporaryFile("w", suffix=".jpg", delete=False) as tmp:
