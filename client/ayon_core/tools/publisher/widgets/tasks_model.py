@@ -1,6 +1,7 @@
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui
 
-from ayon_core.tools.utils.lib import get_default_task_icon
+from ayon_core.style import get_default_entity_icon_color
+from ayon_core.tools.utils import get_qt_icon
 
 TASK_NAME_ROLE = QtCore.Qt.UserRole + 1
 TASK_TYPE_ROLE = QtCore.Qt.UserRole + 2
@@ -121,6 +122,11 @@ class TasksModel(QtGui.QStandardItemModel):
                 item = self._items_by_name.pop(task_name)
                 root_item.removeRow(item.row())
 
+        icon = get_qt_icon({
+            "type": "awesome-font",
+            "name": "fa.male",
+            "color": get_default_entity_icon_color(),
+        })
         new_items = []
         for task_name in new_task_names:
             if task_name in self._items_by_name:
@@ -129,7 +135,7 @@ class TasksModel(QtGui.QStandardItemModel):
             item = QtGui.QStandardItem(task_name)
             item.setData(task_name, TASK_NAME_ROLE)
             if task_name:
-                item.setData(get_default_task_icon(), QtCore.Qt.DecorationRole)
+                item.setData(icon, QtCore.Qt.DecorationRole)
             self._items_by_name[task_name] = item
             new_items.append(item)
 

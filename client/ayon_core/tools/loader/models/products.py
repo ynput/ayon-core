@@ -6,7 +6,7 @@ import ayon_api
 from ayon_api.operations import OperationsSession
 
 from ayon_core.style import get_default_entity_icon_color
-from ayon_core.tools.ayon_utils.models import NestedCacheItem
+from ayon_core.tools.common_models import NestedCacheItem
 from ayon_core.tools.loader.abstract import (
     ProductTypeItem,
     ProductItem,

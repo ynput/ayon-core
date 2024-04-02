@@ -8,9 +8,10 @@ from wsrpc_aiohttp import (
     WebSocketAsync
 )
 
+import ayon_api
 from qtpy import QtCore
 
-from ayon_core.lib import Logger, StringTemplate
+from ayon_core.lib import Logger
 from ayon_core.pipeline import (
     registered_host,
     Anatomy,
@@ -23,7 +24,6 @@ from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.adobe_webserver.app import WebServerTool
 from ayon_core.pipeline.context_tools import change_current_context
-from ayon_core.client import get_asset_by_name
 
 from .ws_stub import PhotoshopServerStub
 
@@ -318,25 +318,28 @@ class PhotoshopRoute(WebSocketRoute):
 
     # This method calls function on the client side
     # client functions
-    async def set_context(self, project, asset, task):
+    async def set_context(self, project, folder, task):
         """
-            Sets 'project' and 'asset' to envs, eg. setting context.
+            Sets 'project' and 'folder' to envs, eg. setting context.
 
         Opens last workile from that context if exists.
 
         Args:
             project (str)
-            asset (str)
+            folder (str)
             task (str
         """
         log.info("Setting context change")
-        log.info(f"project {project} asset {asset} task {task}")
+        log.info(f"project {project} folder {folder} task {task}")
 
-        asset_doc = get_asset_by_name(project, asset)
-        change_current_context(asset_doc, task)
+        folder_entity = ayon_api.get_folder_by_path(project, folder)
+        task_entity = ayon_api.get_task_by_name(
+            project, folder_entity["id"], task
+        )
+        change_current_context(folder_entity, task_entity)
 
         last_workfile_path = self._get_last_workfile_path(project,
-                                                          asset,
+                                                          folder,
                                                           task)
         if last_workfile_path and os.path.exists(last_workfile_path):
             ProcessLauncher.execute_in_main_thread(
@@ -372,32 +375,30 @@ class PhotoshopRoute(WebSocketRoute):
         # Required return statement.
         return "nothing"
 
-    def _get_last_workfile_path(self, project_name, asset_name, task_name):
+    def _get_last_workfile_path(self, project_name, folder_path, task_name):
         """Returns last workfile path if exists"""
         host = registered_host()
         host_name = "photoshop"
         template_key = get_workfile_template_key_from_context(
-            asset_name,
+            project_name,
+            folder_path,
             task_name,
             host_name,
-            project_name=project_name
         )
         anatomy = Anatomy(project_name)
 
         data = get_template_data_with_names(
-            project_name, asset_name, task_name, host_name
+            project_name, folder_path, task_name, host_name
         )
         data["root"] = anatomy.roots
 
-        file_template = anatomy.templates[template_key]["file"]
+        work_template = anatomy.get_template_item("work", template_key)
 
         # Define saving file extension
         extensions = host.get_workfile_extensions()
 
-        folder_template = anatomy.templates[template_key]["folder"]
-        work_root = StringTemplate.format_strict_template(
-            folder_template, data
-        )
+        work_root = work_template["directory"].format_strict(data)
+        file_template = work_template["file"].template
         last_workfile_path = get_last_workfile(
             work_root, file_template, data, extensions, True
         )

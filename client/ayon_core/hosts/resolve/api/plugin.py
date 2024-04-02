@@ -325,7 +325,7 @@ class ClipLoader:
             "or call your supervisor")
 
         # inject asset data to representation dict
-        self._get_asset_data()
+        self._get_folder_attributes()
 
         # add active components to class
         if self.new_timeline:
@@ -355,40 +355,41 @@ class ClipLoader:
             }
         """
         # create name
-        representation = self.context["representation"]
-        representation_context = representation["context"]
-        asset = str(representation_context["asset"])
-        product_name = str(representation_context["subset"])
-        representation_name = str(representation_context["representation"])
+        folder_entity = self.context["folder"]
+        product_name = self.context["product"]["name"]
+        repre_entity = self.context["representation"]
+
+        folder_name = folder_entity["name"]
+        folder_path = folder_entity["path"]
+        representation_name = repre_entity["name"]
+
         self.data["clip_name"] = "_".join([
-            asset,
+            folder_name,
             product_name,
             representation_name
         ])
-        self.data["versionData"] = self.context["version"]["data"]
+        self.data["versionAttributes"] = self.context["version"]["attrib"]
 
         self.data["timeline_basename"] = "timeline_{}_{}".format(
             product_name, representation_name)
 
         # solve project bin structure path
-        hierarchy = str("/".join((
-            "Loader",
-            representation_context["hierarchy"].replace("\\", "/"),
-            asset
-        )))
+        hierarchy = "Loader{}".format(folder_path)
 
         self.data["binPath"] = hierarchy
 
         return True
 
-    def _get_asset_data(self):
+    def _get_folder_attributes(self):
         """ Get all available asset data
 
         joint `data` key with asset.data dict into the representation
 
         """
 
-        self.data["assetData"] = copy.deepcopy(self.context["asset"]["data"])
+        self.data["folderAttributes"] = copy.deepcopy(
+            self.context["folder"]["attrib"]
+        )
 
     def load(self, files):
         """Load clip into timeline
@@ -410,17 +411,20 @@ class ClipLoader:
         source_out = int(_clip_property("End"))
         source_duration = int(_clip_property("Frames"))
 
+        # Trim clip start if slate is present
+        if "slate" in self.data["versionAttributes"]["families"]:
+            source_in += 1
+            source_duration = source_out - source_in + 1
+
         if not self.with_handles:
             # Load file without the handles of the source media
             # We remove the handles from the source in and source out
             # so that the handles are excluded in the timeline
-            handle_start = 0
-            handle_end = 0
 
             # get version data frame data from db
-            version_data = self.data["versionData"]
-            frame_start = version_data.get("frameStart")
-            frame_end = version_data.get("frameEnd")
+            version_attributes = self.data["versionAttributes"]
+            frame_start = version_attributes.get("frameStart")
+            frame_end = version_attributes.get("frameEnd")
 
             # The version data usually stored the frame range + handles of the
             # media however certain representations may be shorter because they
@@ -432,10 +436,10 @@ class ClipLoader:
             # from source and out
             if frame_start is not None and frame_end is not None:
                 # Version has frame range data, so we can compare media length
-                handle_start = version_data.get("handleStart", 0)
-                handle_end = version_data.get("handleEnd", 0)
+                handle_start = version_attributes.get("handleStart", 0)
+                handle_end = version_attributes.get("handleEnd", 0)
                 frame_start_handle = frame_start - handle_start
-                frame_end_handle = frame_start + handle_end
+                frame_end_handle = frame_end + handle_end
                 database_frame_duration = int(
                     frame_end_handle - frame_start_handle + 1
                 )
@@ -451,7 +455,7 @@ class ClipLoader:
         else:
             # set timeline start frame + original clip in frame
             timeline_in = int(
-                timeline_start + self.data["assetData"]["clipIn"])
+                timeline_start + self.data["folderAttributes"]["clipIn"])
 
         # make track item from source in bin as item
         timeline_item = lib.create_timeline_item(
@@ -477,14 +481,16 @@ class ClipLoader:
         )
         _clip_property = media_pool_item.GetClipProperty
 
-        source_in = int(_clip_property("Start"))
-        source_out = int(_clip_property("End"))
+        # Read trimming from timeline item
+        timeline_item_in = timeline_item.GetLeftOffset()
+        timeline_item_len = timeline_item.GetDuration()
+        timeline_item_out = timeline_item_in + timeline_item_len
 
         lib.swap_clips(
             timeline_item,
             media_pool_item,
-            source_in,
-            source_out
+            timeline_item_in,
+            timeline_item_out
         )
 
         print("Loading clips: `{}`".format(self.data["clip_name"]))
@@ -869,14 +875,14 @@ class PublishClip:
     def _convert_to_entity(self, key):
         """ Converting input key to key with type. """
         # convert to entity type
-        entity_type = self.types.get(key)
+        folder_type = self.types.get(key)
 
-        assert entity_type, "Missing entity type for `{}`".format(
+        assert folder_type, "Missing folder type for `{}`".format(
             key
         )
 
         return {
-            "entity_type": entity_type,
+            "folder_type": folder_type,
             "entity_name": self.hierarchy_data[key]["value"].format(
                 **self.timeline_item_default_data
             )

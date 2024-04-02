@@ -5,8 +5,6 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     SeparatorWidget,
     set_style_property,
-)
-from ayon_core.tools.ayon_utils.widgets import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
@@ -158,7 +156,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         main_thread_timer.timeout.connect(self._on_main_thread_timer)
         show_timer.timeout.connect(self._on_show_timer)
         user_input_changed_timer.timeout.connect(self._on_user_input_timer)
-        folder_name_input.textChanged.connect(self._on_new_asset_change)
+        folder_name_input.textChanged.connect(self._on_new_folder_change)
         variant_input.textChanged.connect(self._on_variant_change)
         comment_input.textChanged.connect(self._on_comment_change)
 
@@ -169,7 +167,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         controller.register_event_callback(
             "new_folder_name.changed",
-            self._on_controller_new_asset_change
+            self._on_controller_new_folder_change
         )
         controller.register_event_callback(
             "variant.changed", self._on_controller_variant_change
@@ -291,7 +289,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         self.refresh()
 
-    def _on_new_asset_change(self, text):
+    def _on_new_folder_change(self, text):
         self._new_folder_name_input_text = text
         self._user_input_changed_timer.start()
 
@@ -319,7 +317,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             self._comment_input_text = None
             self._controller.set_user_value_comment(comment)
 
-    def _on_controller_new_asset_change(self, event):
+    def _on_controller_new_folder_change(self, event):
         folder_name = event["new_folder_name"]
         if (
             self._new_folder_name_input_text is None

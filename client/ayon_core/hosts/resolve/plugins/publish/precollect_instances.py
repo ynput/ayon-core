@@ -63,7 +63,12 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 if k not in ("id", "applieswhole", "label")
             })
 
-            asset = tag_data["folder_path"]
+            folder_path = tag_data["folder_path"]
+            # Backward compatibility fix of 'entity_type' > 'folder_type'
+            if "parents" in data:
+                for parent in data["parents"]:
+                    if "entity_type" in parent:
+                        parent["folder_type"] = parent.pop("entity_type")
 
             # TODO: remove backward compatibility
             product_name = tag_data.get("productName")
@@ -74,7 +79,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             # backward compatibility: product_name should not be missing
             if not product_name:
                 self.log.error(
-                    "Product name is not defined for: {}".format(asset))
+                    "Product name is not defined for: {}".format(folder_path))
 
             # TODO: remove backward compatibility
             product_type = tag_data.get("productType")
@@ -85,12 +90,12 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             # backward compatibility: product_type should not be missing
             if not product_type:
                 self.log.error(
-                    "Product type is not defined for: {}".format(asset))
+                    "Product type is not defined for: {}".format(folder_path))
 
             data.update({
-                "name": "{}_{}".format(asset, product_name),
-                "label": "{} {}".format(asset, product_name),
-                "folderPath": asset,
+                "name": "{}_{}".format(folder_path, product_name),
+                "label": "{} {}".format(folder_path, product_name),
+                "folderPath": folder_path,
                 "item": timeline_item,
                 "publish": get_publish_attribute(timeline_item),
                 "fps": context.data["fps"],
@@ -151,16 +156,16 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["folderPath"]
+        folder_path = data["folderPath"]
         product_name = "shotMain"
 
         # insert family into families
         product_type = "shot"
 
         data.update({
-            "name": "{}_{}".format(asset, product_name),
-            "label": "{} {}".format(asset, product_name),
-            "folderPath": asset,
+            "name": "{}_{}".format(folder_path, product_name),
+            "label": "{} {}".format(folder_path, product_name),
+            "folderPath": folder_path,
             "productName": product_name,
             "productType": product_type,
             "family": product_type,
