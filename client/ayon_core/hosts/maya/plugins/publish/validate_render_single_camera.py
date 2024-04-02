@@ -1,4 +1,5 @@
 import re
+import inspect
 
 import pyblish.api
 from maya import cmds
@@ -36,7 +37,10 @@ class ValidateRenderSingleCamera(pyblish.api.InstancePlugin,
             return
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError("Invalid cameras for render.")
+            raise PublishValidationError(
+                "Invalid render cameras.",
+                description=self.get_description()
+            )
 
     @classmethod
     def get_invalid(cls, instance):
@@ -51,17 +55,30 @@ class ValidateRenderSingleCamera(pyblish.api.InstancePlugin,
             RenderSettings.get_image_prefix_attr(renderer)
         )
 
-
+        renderlayer = instance.data["renderlayer"]
         if len(cameras) > 1:
             if re.search(cls.R_CAMERA_TOKEN, file_prefix):
                 # if there is <Camera> token in prefix and we have more then
                 # 1 camera, all is ok.
                 return
-            cls.log.error("Multiple renderable cameras found for %s: %s " %
-                          (instance.data["setMembers"], cameras))
-            return [instance.data["setMembers"]] + cameras
+            cls.log.error(
+                "Multiple renderable cameras found for %s: %s ",
+                renderlayer, ", ".join(cameras))
+            return [renderlayer] + cameras
 
         elif len(cameras) < 1:
-            cls.log.error("No renderable cameras found for %s " %
-                          instance.data["setMembers"])
-            return [instance.data["setMembers"]]
+            cls.log.error("No renderable cameras found for %s ", renderlayer)
+            return [renderlayer]
+
+    def get_description(self):
+        return inspect.cleandoc(
+            """### Render Cameras Invalid
+
+            Your render cameras are misconfigured. You may have no render
+            camera set or have multiple cameras with a render filename
+            prefix that does not include the `<Camera>` token.
+            
+            See the logs for more details about the cameras.
+            
+            """
+        )
