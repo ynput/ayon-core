@@ -12,7 +12,7 @@ from ayon_core.pipeline.publish import (
 import ayon_core.hosts.blender.api.action
 
 
-class ValidateMeshNoNegativeScale(pyblish.api.Validator,
+class ValidateMeshNoNegativeScale(pyblish.api.InstancePlugin,
                                   OptionalPyblishPluginMixin):
     """Ensure that meshes don't have a negative scale."""
 
