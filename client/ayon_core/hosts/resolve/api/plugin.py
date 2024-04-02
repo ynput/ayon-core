@@ -875,14 +875,14 @@ class PublishClip:
     def _convert_to_entity(self, key):
         """ Converting input key to key with type. """
         # convert to entity type
-        entity_type = self.types.get(key)
+        folder_type = self.types.get(key)
 
-        assert entity_type, "Missing entity type for `{}`".format(
+        assert folder_type, "Missing folder type for `{}`".format(
             key
         )
 
         return {
-            "entity_type": entity_type,
+            "folder_type": folder_type,
             "entity_name": self.hierarchy_data[key]["value"].format(
                 **self.timeline_item_default_data
             )

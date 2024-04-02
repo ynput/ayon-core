@@ -2,10 +2,10 @@ import nuke
 import pyblish.api
 
 
-class ExtractScriptSave(pyblish.api.Extractor):
+class ExtractScriptSave(pyblish.api.InstancePlugin):
     """Save current Nuke workfile script"""
     label = 'Script Save'
-    order = pyblish.api.Extractor.order - 0.1
+    order = pyblish.api.ExtractorOrder - 0.1
     hosts = ['nuke']
 
     def process(self, instance):

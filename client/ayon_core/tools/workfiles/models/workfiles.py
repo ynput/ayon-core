@@ -25,7 +25,14 @@ from ayon_core.tools.workfiles.abstract import (
 
 
 class CommentMatcher(object):
-    """Use anatomy and work file data to parse comments from filenames"""
+    """Use anatomy and work file data to parse comments from filenames.
+
+    Args:
+        extensions (set[str]): Set of extensions.
+        file_template (AnatomyStringTemplate): File template.
+        data (dict[str, Any]): Data to fill the template with.
+
+    """
     def __init__(self, extensions, file_template, data):
         self.fname_regex = None
 
@@ -199,8 +206,24 @@ class WorkareaModel:
     def _get_last_workfile_version(
         self, workdir, file_template, fill_data, extensions
     ):
+        """
+
+        Todos:
+            Validate if logic of this function is correct. It does return
+                last version + 1 which might be wrong.
+
+        Args:
+            workdir (str): Workdir path.
+            file_template (str): File template.
+            fill_data (dict[str, Any]): Fill data.
+            extensions (set[str]): Extensions.
+
+        Returns:
+            int: Next workfile version.
+
+        """
         version = get_last_workfile_with_version(
-            workdir, str(file_template), fill_data, extensions
+            workdir, file_template, fill_data, extensions
         )[1]
 
         if version is None:
@@ -225,8 +248,21 @@ class WorkareaModel:
         root,
         current_filename,
     ):
+        """Get comments from root directory.
+
+        Args:
+            file_template (AnatomyStringTemplate): File template.
+            extensions (set[str]): Extensions.
+            fill_data (dict[str, Any]): Fill data.
+            root (str): Root directory.
+            current_filename (str): Current filename.
+
+        Returns:
+            Tuple[list[str], Union[str, None]]: Comment hints and current
+                comment.
+
+        """
         current_comment = None
-        comment_hints = set()
         filenames = []
         if root and os.path.exists(root):
             for filename in os.listdir(root):
@@ -239,10 +275,11 @@ class WorkareaModel:
                     filenames.append(filename)
 
         if not filenames:
-            return comment_hints, current_comment
+            return [], current_comment
 
         matcher = CommentMatcher(extensions, file_template, fill_data)
 
+        comment_hints = set()
         for filename in filenames:
             comment = matcher.parse_comment(filename)
             if comment:
@@ -253,23 +290,24 @@ class WorkareaModel:
         return list(comment_hints), current_comment
 
     def _get_workdir(self, anatomy, template_key, fill_data):
-        template_info = anatomy.templates_obj[template_key]
-        directory_template = template_info["folder"]
+        directory_template = anatomy.get_template_item(
+            "work", template_key, "directory"
+        )
         return directory_template.format_strict(fill_data).normalized()
 
     def get_workarea_save_as_data(self, folder_id, task_id):
-        folder = None
-        task = None
+        folder_entity = None
+        task_entity = None
         if folder_id:
-            folder = self._controller.get_folder_entity(
+            folder_entity = self._controller.get_folder_entity(
                 self.project_name, folder_id
             )
-        if task_id:
-            task = self._controller.get_task_entity(
-                self.project_name, task_id
-            )
+            if folder_entity and task_id:
+                task_entity = self._controller.get_task_entity(
+                    self.project_name, task_id
+                )
 
-        if not folder or not task:
+        if not folder_entity or not task_entity:
             return {
                 "template_key": None,
                 "template_has_version": None,
@@ -299,8 +337,13 @@ class WorkareaModel:
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        template_info = anatomy.templates_obj[template_key]
-        file_template = template_info["file"]
+        file_template = anatomy.get_template_item(
+            "work", template_key, "file"
+        )
+        file_template_str = file_template.template
+
+        template_has_version = "{version" in file_template_str
+        template_has_comment = "{comment" in file_template_str
 
         comment_hints, comment = self._get_comments_from_root(
             file_template,
@@ -310,10 +353,8 @@ class WorkareaModel:
             current_filename,
         )
         last_version = self._get_last_workfile_version(
-            workdir, file_template, fill_data, extensions)
-        str_file_template = str(file_template)
-        template_has_version = "{version" in str_file_template
-        template_has_comment = "{comment" in str_file_template
+            workdir, file_template_str, fill_data, extensions
+        )
 
         return {
             "template_key": template_key,
@@ -336,18 +377,34 @@ class WorkareaModel:
         version,
         comment,
     ):
+        """Fill workarea filepath based on context.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            extension (str): File extension.
+            use_last_version (bool): Use last version.
+            version (int): Version number.
+            comment (str): Comment.
+
+        Returns:
+            WorkareaFilepathResult: Workarea filepath result.
+
+        """
         anatomy = self._controller.project_anatomy
         fill_data = self._prepare_fill_data(folder_id, task_id)
+
         template_key = self._get_template_key(fill_data)
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        template_info = anatomy.templates_obj[template_key]
-        file_template = template_info["file"]
+        file_template = anatomy.get_template_item(
+            "work", template_key, "file"
+        )
 
         if use_last_version:
             version = self._get_last_workfile_version(
-                workdir, file_template, fill_data, self._extensions
+                workdir, file_template.template, fill_data, self._extensions
             )
         fill_data["version"] = version
         fill_data["ext"] = extension.lstrip(".")

@@ -2,7 +2,6 @@ import os
 import logging
 
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import schema
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -116,7 +115,7 @@ class LoaderPlugin(list):
     def is_compatible_loader(cls, context):
         """Return whether a loader is compatible with a context.
 
-        On override make sure it is overriden as class or static method.
+        On override make sure it is overridden as class or static method.
 
         This checks the product type and the representation for the given
         loader plugin.
