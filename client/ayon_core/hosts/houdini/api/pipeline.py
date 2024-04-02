@@ -39,7 +39,7 @@ CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 # Track whether the workfile tool is about to save
-ABOUT_TO_SAVE = False
+_about_to_save = False
 
 
 class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
@@ -292,8 +292,8 @@ def ls():
 
 
 def before_workfile_save(event):
-    global ABOUT_TO_SAVE
-    ABOUT_TO_SAVE = True
+    global _about_to_save
+    _about_to_save = True
 
 
 def before_save():
@@ -307,18 +307,14 @@ def on_save():
     # update houdini vars
     lib.update_houdini_vars_context_dialog()
 
-    nodes = lib.get_id_required_nodes()
-    for node, new_id in lib.generate_ids(nodes):
-        lib.set_id(node, new_id, overwrite=False)
-
     # We are now starting the actual save directly
-    global ABOUT_TO_SAVE
-    ABOUT_TO_SAVE = False
+    global _about_to_save
+    _about_to_save = False
 
 
 def on_task_changed():
-    global ABOUT_TO_SAVE
-    if not IS_HEADLESS and ABOUT_TO_SAVE:
+    global _about_to_save
+    if not IS_HEADLESS and _about_to_save:
         # Let's prompt the user to update the context settings or not
         lib.prompt_reset_context()
 
