@@ -405,6 +405,12 @@ class ExtractObjModel(BaseSettingsModel):
     optional: bool = SettingsField(title="Optional")
 
 
+class ExtractModelModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
 class ExtractMayaSceneRawModel(BaseSettingsModel):
     """Add loaded instances to those published families:"""
     enabled: bool = SettingsField(title="ExtractMayaSceneRaw")
@@ -461,7 +467,9 @@ class ExtractLookModel(BaseSettingsModel):
 
 
 class ExtractGPUCacheModel(BaseSettingsModel):
-    enabled: bool = True
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     families: list[str] = SettingsField(default_factory=list, title="Families")
     step: float = SettingsField(1.0, ge=1.0, title="Step")
     stepSave: int = SettingsField(1, ge=1, title="Step Save")
@@ -888,9 +896,13 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractGPUCacheModel,
         title="Extract GPU Cache",
     )
+    ExtractModel: ExtractModelModel = SettingsField(
+        default_factory=ExtractModelModel,
+        title="Extract Model (Maya Scene)"
+    )
     ExtractAlembic: ExtractAlembicModel = SettingsField(
         default_factory=ExtractAlembicModel,
-        title="Extract Alembic",
+        title="Extract Alembic"
     )
 
 
@@ -1429,6 +1441,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractGPUCache": {
         "enabled": False,
+        "optional": False,
+        "active": True,
         "families": [
             "model",
             "animation",
@@ -1441,6 +1455,11 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optimizeAnimationsForMotionBlur": True,
         "writeMaterials": True,
         "useBaseTessellation": True
+    },
+    "ExtractModel": {
+        "enabled": True,
+        "optional": True,
+        "active": True
     },
     "ExtractAlembic": {
         "enabled": True,

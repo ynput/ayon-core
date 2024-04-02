@@ -1673,18 +1673,9 @@ def list_looks(project_name, folder_id):
         list[dict[str, Any]]: List of look products.
 
     """
-    # # get all products with look leading in
-    # the name associated with the asset
-    # TODO this should probably look for product type 'look' instead of
-    #   checking product name that can not start with product type
-    product_entities = ayon_api.get_products(
-        project_name, folder_ids=[folder_id]
-    )
-    return [
-        product_entity
-        for product_entity in product_entities
-        if product_entity["name"].startswith("look")
-    ]
+    return list(ayon_api.get_products(
+        project_name, folder_ids=[folder_id], product_types={"look"}
+    ))
 
 
 def assign_look_by_version(nodes, version_id):
@@ -1703,12 +1694,15 @@ def assign_look_by_version(nodes, version_id):
     project_name = get_current_project_name()
 
     # Get representations of shader file and relationships
-    look_representation = ayon_api.get_representation_by_name(
-        project_name, "ma", version_id
-    )
-    json_representation = ayon_api.get_representation_by_name(
-        project_name, "json", version_id
-    )
+    representations = list(ayon_api.get_representations(
+        project_name=project_name,
+        representation_names={"ma", "json"},
+        version_ids=[version_id]
+    ))
+    look_representation = next(
+        repre for repre in representations if repre["name"] == "ma")
+    json_representation = next(
+        repre for repre in representations if repre["name"] == "json")
 
     # See if representation is already loaded, if so reuse it.
     host = registered_host()
@@ -1745,7 +1739,7 @@ def assign_look_by_version(nodes, version_id):
     apply_shaders(relationships, shader_nodes, nodes)
 
 
-def assign_look(nodes, product_name="lookDefault"):
+def assign_look(nodes, product_name="lookMain"):
     """Assigns a look to a node.
 
     Optimizes the nodes by grouping by folder id and finding
@@ -1778,14 +1772,10 @@ def assign_look(nodes, product_name="lookDefault"):
         product_entity["id"]
         for product_entity in product_entities_by_folder_id.values()
     }
-    last_version_entities = ayon_api.get_last_versions(
+    last_version_entities_by_product_id = ayon_api.get_last_versions(
         project_name,
         product_ids
     )
-    last_version_entities_by_product_id = {
-        last_version_entity["productId"]: last_version_entity
-        for last_version_entity in last_version_entities
-    }
 
     for folder_id, asset_nodes in grouped.items():
         product_entity = product_entities_by_folder_id.get(folder_id)
