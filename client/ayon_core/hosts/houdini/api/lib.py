@@ -243,7 +243,10 @@ def render_rop(ropnode):
     try:
         ropnode.render(verbose=verbose,
                        # Allow Deadline to capture completion percentage
-                       output_progress=verbose)
+                       output_progress=verbose,
+                       # Render only this node
+                       # (do not render any of its dependencies)
+                       ignore_inputs=True)
     except hou.Error as exc:
         # The hou.Error is not inherited from a Python Exception class,
         # so we explicitly capture the houdini error, otherwise pyblish
