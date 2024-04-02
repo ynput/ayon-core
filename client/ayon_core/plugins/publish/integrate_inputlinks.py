@@ -55,14 +55,13 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             if not instance.data.get("publish", True):
                 continue
 
-            version_doc = instance.data.get("versionEntity")
-            if not version_doc:
+            if not instance.data.get("versionEntity"):
                 self.log.debug(
                     "Instance {} doesn't have version.".format(instance))
                 continue
 
-            family = instance.data.get("family")
-            if family == "workfile":
+            product_type = instance.data["productType"]
+            if product_type == "workfile":
                 workfile_instance = instance
             else:
                 other_instances.append(instance)
@@ -88,14 +87,14 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             self.log.warn("No workfile in this publish session.")
             return
 
-        workfile_version_id = workfile_instance.data["versionEntity"]["_id"]
+        workfile_version_id = workfile_instance.data["versionEntity"]["id"]
         # link workfile to all publishing versions
         for instance in other_instances:
             self.add_link(
                 new_links_by_type,
                 "generative",
                 workfile_version_id,
-                instance.data["versionEntity"]["_id"],
+                instance.data["versionEntity"]["id"],
             )
 
         loaded_versions = workfile_instance.context.get("loadedVersions")
@@ -107,7 +106,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             self.add_link(
                 new_links_by_type,
                 "reference",
-                version["version"],
+                version["version_id"],
                 workfile_version_id,
             )
 
@@ -123,7 +122,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                     new_links_by_type,
                     "generative",
                     input_version,
-                    version_entity["_id"],
+                    version_entity["id"],
                 )
 
     def _get_existing_links(self, project_name, link_type, entity_ids):

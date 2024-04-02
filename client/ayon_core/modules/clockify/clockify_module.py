@@ -2,22 +2,26 @@ import os
 import threading
 import time
 
-from ayon_core.modules import OpenPypeModule, ITrayModule, IPluginPaths
-from ayon_core.client import get_asset_by_name
+from ayon_core.modules import AYONAddon, ITrayModule, IPluginPaths
 
 from .constants import CLOCKIFY_FTRACK_USER_PATH, CLOCKIFY_FTRACK_SERVER_PATH
 
 
-class ClockifyModule(OpenPypeModule, ITrayModule, IPluginPaths):
+class ClockifyModule(AYONAddon, ITrayModule, IPluginPaths):
     name = "clockify"
 
-    def initialize(self, modules_settings):
-        clockify_settings = modules_settings[self.name]
-        self.enabled = clockify_settings["enabled"]
-        self.workspace_name = clockify_settings["workspace_name"]
+    def initialize(self, studio_settings):
+        enabled = self.name in studio_settings
+        workspace_name = None
+        if enabled:
+            clockify_settings = studio_settings[self.name]
+            workspace_name = clockify_settings["workspace_name"]
 
-        if self.enabled and not self.workspace_name:
-            raise Exception("Clockify Workspace is not set in settings.")
+        if enabled and workspace_name:
+            self.log.warning("Clockify Workspace is not set in settings.")
+            enabled = False
+        self.enabled = enabled
+        self.workspace_name = workspace_name
 
         self.timer_manager = None
         self.MessageWidgetClass = None
@@ -250,33 +254,27 @@ class ClockifyModule(OpenPypeModule, ITrayModule, IPluginPaths):
         if not self.clockify_api.get_api_key():
             return
 
+        project_name = input_data.get("project_name")
+        folder_path = input_data.get("folder_path")
         task_name = input_data.get("task_name")
+        task_type = input_data.get("task_type")
+        if not all((project_name, folder_path, task_name, task_type)):
+            return
 
         # Concatenate hierarchy and task to get description
-        description_items = list(input_data.get("hierarchy", []))
-        description_items.append(task_name)
-        description = "/".join(description_items)
+        description = "/".join([folder_path.lstrip("/"), task_name])
 
         # Check project existence
-        project_name = input_data.get("project_name")
         project_id = self._verify_project_exists(project_name)
         if not project_id:
             return
 
         # Setup timer tags
-        tag_ids = []
-        tag_name = input_data.get("task_type")
-        if not tag_name:
-            # no task_type found in the input data
-            # if the timer is restarted by idle time (bug?)
-            asset_name = input_data["hierarchy"][-1]
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            task_info = asset_doc["data"]["tasks"][task_name]
-            tag_name = task_info.get("type", "")
-            if not tag_name:
-                self.log.info("No tag information found for the timer")
+        if not task_type:
+            self.log.info("No tag information found for the timer")
 
-        task_tag_id = self.clockify_api.get_tag_id(tag_name)
+        tag_ids = []
+        task_tag_id = self.clockify_api.get_tag_id(task_type)
         if task_tag_id is not None:
             tag_ids.append(task_tag_id)
 

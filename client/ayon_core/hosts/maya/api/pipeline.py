@@ -33,6 +33,7 @@ from ayon_core.pipeline import (
     deregister_loader_plugin_path,
     deregister_inventory_action_path,
     deregister_creator_plugin_path,
+    AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
@@ -65,6 +66,9 @@ CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
+
+# Track whether the workfile tool is about to save
+ABOUT_TO_SAVE = False
 
 
 class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
@@ -246,7 +250,7 @@ def _set_project():
         None
 
     """
-    workdir = os.getenv("AVALON_WORKDIR")
+    workdir = os.getenv("AYON_WORKDIR")
 
     try:
         os.makedirs(workdir)
@@ -360,13 +364,13 @@ def parse_container(container):
 
 
 def _ls():
-    """Yields Avalon container node names.
+    """Yields AYON container node names.
 
     Used by `ls()` to retrieve the nodes and then query the full container's
     data.
 
     Yields:
-        str: Avalon container node name (objectSet)
+        str: AYON container node name (objectSet)
 
     """
 
@@ -376,12 +380,14 @@ def _ls():
             yield iterator.thisNode()
             iterator.next()
 
-    ids = {AVALON_CONTAINER_ID,
-           # Backwards compatibility
-           "pyblish.mindbender.container"}
+    ids = {
+        AYON_CONTAINER_ID,
+        # Backwards compatibility
+        AVALON_CONTAINER_ID
+    }
 
     # Iterate over all 'set' nodes in the scene to detect whether
-    # they have the avalon container ".id" attribute.
+    # they have the ayon container ".id" attribute.
     fn_dep = om.MFnDependencyNode()
     iterator = om.MItDependencyNodes(om.MFn.kSet)
     for mobject in _maya_iterate(iterator):
@@ -446,7 +452,7 @@ def containerise(name,
         ("name", name),
         ("namespace", namespace),
         ("loader", loader),
-        ("representation", context["representation"]["_id"]),
+        ("representation", context["representation"]["id"]),
     ]
 
     for key, value in data:
@@ -578,6 +584,10 @@ def on_save():
     for node, new_id in lib.generate_ids(nodes):
         lib.set_id(node, new_id, overwrite=False)
 
+    # We are now starting the actual save directly
+    global ABOUT_TO_SAVE
+    ABOUT_TO_SAVE = False
+
 
 def on_open():
     """On scene open let's assume the containers have changed."""
@@ -585,7 +595,7 @@ def on_open():
     from ayon_core.tools.utils import SimplePopup
 
     # Validate FPS after update_task_from_path to
-    # ensure it is using correct FPS for the asset
+    # ensure it is using correct FPS for the folder
     lib.validate_fps()
     lib.fix_incompatible_containers()
 
@@ -628,7 +638,7 @@ def on_task_changed():
     # Run
     menu.update_menu_task_label()
 
-    workdir = os.getenv("AVALON_WORKDIR")
+    workdir = os.getenv("AYON_WORKDIR")
     if os.path.exists(workdir):
         log.info("Updating Maya workspace for task change to %s", workdir)
         _set_project()
@@ -647,6 +657,11 @@ def on_task_changed():
         lib.set_context_settings()
         lib.update_content_on_context_change()
 
+    global ABOUT_TO_SAVE
+    if not lib.IS_HEADLESS and ABOUT_TO_SAVE:
+        # Let's prompt the user to update the context settings or not
+        lib.prompt_reset_context()
+
 
 def before_workfile_open():
     if handle_workfile_locks():
@@ -661,6 +676,9 @@ def before_workfile_save(event):
     if workdir_path:
         create_workspace_mel(workdir_path, project_name)
 
+    global ABOUT_TO_SAVE
+    ABOUT_TO_SAVE = True
+
 
 def workfile_save_before_xgen(event):
     """Manage Xgen external files when switching context.
@@ -670,14 +688,14 @@ def workfile_save_before_xgen(event):
     switching context.
 
     Args:
-        event (Event) - openpype/lib/events.py
+        event (Event) - ayon_core/lib/events.py
     """
     if not cmds.pluginInfo("xgenToolkit", query=True, loaded=True):
         return
 
     import xgenm
 
-    current_work_dir = os.getenv("AVALON_WORKDIR").replace("\\", "/")
+    current_work_dir = os.getenv("AYON_WORKDIR").replace("\\", "/")
     expected_work_dir = event.data["workdir_path"].replace("\\", "/")
     if current_work_dir == expected_work_dir:
         return

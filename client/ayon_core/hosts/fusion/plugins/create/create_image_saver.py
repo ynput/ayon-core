@@ -1,7 +1,6 @@
 from ayon_core.lib import NumberDef
 
 from ayon_core.hosts.fusion.api.plugin import GenericCreateSaver
-from ayon_core.hosts.fusion.api import get_current_comp
 
 
 class CreateImageSaver(GenericCreateSaver):
@@ -17,7 +16,7 @@ class CreateImageSaver(GenericCreateSaver):
     identifier = "io.openpype.creators.fusion.imagesaver"
     label = "Image (saver)"
     name = "image"
-    family = "image"
+    product_type = "image"
     description = "Fusion Saver to generate image"
 
     default_frame = 0

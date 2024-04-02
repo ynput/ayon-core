@@ -8,7 +8,8 @@ import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     RepairAction,
-    OptionalPyblishPluginMixin
+    OptionalPyblishPluginMixin,
+    PublishValidationError
 )
 
 
@@ -84,8 +85,8 @@ class ValidateShapeDefaultNames(pyblish.api.InstancePlugin,
 
         invalid = self.get_invalid(instance)
         if invalid:
-            raise ValueError("Incorrectly named shapes "
-                             "found: {0}".format(invalid))
+            raise PublishValidationError(
+                "Incorrectly named shapes found: {0}".format(invalid))
 
     @classmethod
     def repair(cls, instance):

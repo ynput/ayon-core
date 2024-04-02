@@ -7,7 +7,6 @@ from maya import cmds
 import pyblish.api
 from ayon_core.hosts.maya.api.lib import extract_alembic
 from ayon_core.pipeline import publish
-from ayon_core.lib import StringTemplate
 
 
 class ExtractWorkfileXgen(publish.Extractor):
@@ -45,7 +44,7 @@ class ExtractWorkfileXgen(publish.Extractor):
 
             is_renderlayer = (
                 "renderlayer" in i.data.get("families", []) or
-                i.data["family"] == "renderlayer"
+                i.data["productType"] == "renderlayer"
             )
             return is_renderlayer
 
@@ -128,9 +127,11 @@ class ExtractWorkfileXgen(publish.Extractor):
             alembic_files.append(alembic_file)
 
         template_data = copy.deepcopy(instance.data["anatomyData"])
-        published_maya_path = StringTemplate(
-            instance.context.data["anatomy"].templates["publish"]["file"]
-        ).format(template_data)
+        anatomy = instance.context.data["anatomy"]
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "file"
+        )
+        published_maya_path = publish_template.format(template_data)
         published_basename, _ = os.path.splitext(published_maya_path)
 
         for source in alembic_files:

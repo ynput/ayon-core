@@ -2,12 +2,14 @@ import pyblish.api
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     PublishValidationError,
-    ValidateContentsOrder
+    ValidateContentsOrder,
+    OptionalPyblishPluginMixin
 )
 from maya import cmds
 
 
-class ValidateAnimatedReferenceRig(pyblish.api.InstancePlugin):
+class ValidateAnimatedReferenceRig(pyblish.api.InstancePlugin,
+                                   OptionalPyblishPluginMixin):
     """Validate all nodes in skeletonAnim_SET are referenced"""
 
     order = ValidateContentsOrder
@@ -16,8 +18,11 @@ class ValidateAnimatedReferenceRig(pyblish.api.InstancePlugin):
     label = "Animated Reference Rig"
     accepted_controllers = ["transform", "locator"]
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = False
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         animated_sets = instance.data.get("animated_skeleton", [])
         if not animated_sets:
             self.log.debug(

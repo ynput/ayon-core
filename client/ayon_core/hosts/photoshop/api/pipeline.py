@@ -9,6 +9,8 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     AVALON_CONTAINER_ID,
+    AYON_INSTANCE_ID,
+    AVALON_INSTANCE_ID,
 )
 
 from ayon_core.host import (
@@ -19,14 +21,14 @@ from ayon_core.host import (
 )
 
 from ayon_core.pipeline.load import any_outdated_containers
-from ayon_core.hosts.photoshop import PHOTOSHOP_HOST_DIR
+from ayon_core.hosts.photoshop import PHOTOSHOP_ADDON_ROOT
 from ayon_core.tools.utils import get_ayon_qt_app
 
 from . import lib
 
 log = Logger.get_logger(__name__)
 
-PLUGINS_DIR = os.path.join(PHOTOSHOP_HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(PHOTOSHOP_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
@@ -62,7 +64,7 @@ class PhotoshopHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         return None
 
     def work_root(self, session):
-        return os.path.normpath(session["AVALON_WORKDIR"]).replace("\\", "/")
+        return os.path.normpath(session["AYON_WORKDIR"]).replace("\\", "/")
 
     def open_workfile(self, filepath):
         lib.stub().open(filepath)
@@ -121,7 +123,9 @@ class PhotoshopHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         layers_meta = stub.get_layers_metadata()
         if layers_meta:
             for instance in layers_meta:
-                if instance.get("id") == "pyblish.avalon.instance":
+                if instance.get("id") in {
+                    AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+                }:
                     instances.append(instance)
 
         return instances
@@ -256,7 +260,7 @@ def containerise(
         "name": name,
         "namespace": namespace,
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
         "members": [str(layer.id)]
     }
     stub = lib.stub()

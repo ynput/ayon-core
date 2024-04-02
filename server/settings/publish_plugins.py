@@ -221,7 +221,12 @@ class OIIOToolArgumentsModel(BaseSettingsModel):
 
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     _layout = "expanded"
-    name: str = SettingsField("", title="Name")
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Output name (no space)",
+        regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
+    )
     extension: str = SettingsField("", title="Extension")
     transcoding_type: str = SettingsField(
         "colorspace",
@@ -395,6 +400,14 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
             " same as output aspect ratio."
         )
     )
+    # overscan_color: ColorRGB_uint8 = SettingsField(
+    #     (0, 0, 0),
+    #     title="Overscan color",
+    #     description=(
+    #         "Overscan color is used when input aspect ratio is not"
+    #         " same as output aspect ratio."
+    #     )
+    # )
     width: int = SettingsField(
         0,
         ge=0,
@@ -416,7 +429,7 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         title="Scale pixel aspect",
         description=(
             "Rescale input when it's pixel aspect ratio is not 1."
-            " Usefull for anamorph reviews."
+            " Useful for anamorphic reviews."
         )
     )
     bg_color: ColorRGBA_uint8 = SettingsField(
@@ -901,7 +914,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "single_frame_filter": "single_frame"
                         },
                         "overscan_crop": "",
-                        "overscan_color": [0, 0, 0, 1.0],
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
                         "width": 1920,
                         "height": 1080,
                         "scale_pixel_aspect": True,
@@ -946,7 +960,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "single_frame_filter": "multi_frame"
                         },
                         "overscan_crop": "",
-                        "overscan_color": [0, 0, 0, 1.0],
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
                         "width": 0,
                         "height": 0,
                         "scale_pixel_aspect": True,

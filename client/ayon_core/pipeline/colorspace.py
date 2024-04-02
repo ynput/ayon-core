@@ -23,7 +23,7 @@ log = Logger.get_logger(__name__)
 
 
 class CachedData:
-    remapping = None
+    remapping = {}
     has_compatible_ocio_package = None
     config_version_data = {}
     ocio_config_colorspaces = {}
@@ -254,7 +254,7 @@ def get_imageio_file_rules_colorspace_from_filepath(
 
     # match file rule from path
     colorspace_name = None
-    for file_rule in file_rules.values():
+    for file_rule in file_rules:
         pattern = file_rule["pattern"]
         extension = file_rule["ext"]
         ext_match = re.match(
@@ -281,7 +281,7 @@ def get_config_file_rules_colorspace_from_filepath(config_path, filepath):
         filepath (str): path leading to a file
 
     Returns:
-        Any[str, None]: matching colorspace name
+        Union[str, None]: matching colorspace name
     """
     if not compatibility_check():
         # python environment is not compatible with PyOpenColorIO
@@ -774,8 +774,8 @@ def get_imageio_config(
 
     if not anatomy_data:
         from ayon_core.pipeline.context_tools import (
-            get_template_data_from_session)
-        anatomy_data = get_template_data_from_session()
+            get_current_context_template_data)
+        anatomy_data = get_current_context_template_data()
 
     formatting_data = deepcopy(anatomy_data)
 
@@ -918,27 +918,12 @@ def get_imageio_file_rules(project_name, host_name, project_settings=None):
                                            Defaults to None.
 
     Returns:
-        dict: file rules data
+        list[dict[str, Any]]: file rules data
     """
     project_settings = project_settings or get_project_settings(project_name)
 
     imageio_global, imageio_host = _get_imageio_settings(
         project_settings, host_name)
-
-    # get file rules from global and host_name
-    frules_global = imageio_global["file_rules"]
-    activate_global_rules = (
-        frules_global.get("activate_global_file_rules", False)
-        # TODO: remove this in future - backward compatibility
-        or frules_global.get("enabled")
-    )
-    global_rules = frules_global["rules"]
-
-    if not activate_global_rules:
-        log.info(
-            "Colorspace global file rules are disabled."
-        )
-        global_rules = {}
 
     # host is optional, some might not have any settings
     frules_host = imageio_host.get("file_rules", {})
@@ -949,8 +934,24 @@ def get_imageio_file_rules(project_name, host_name, project_settings=None):
         # TODO: remove this in future - backward compatibility
         activate_host_rules = frules_host.get("enabled", False)
 
-    # return host rules if activated or global rules
-    return frules_host["rules"] if activate_host_rules else global_rules
+    if activate_host_rules:
+        return frules_host["rules"]
+
+    # get file rules from global and host_name
+    frules_global = imageio_global["file_rules"]
+    activate_global_rules = (
+        frules_global.get("activate_global_file_rules", False)
+        # TODO: remove this in future - backward compatibility
+        or frules_global.get("enabled")
+    )
+
+    if not activate_global_rules:
+        log.info(
+            "Colorspace global file rules are disabled."
+        )
+        return []
+
+    return frules_global["rules"]
 
 
 def get_remapped_colorspace_to_native(
@@ -1017,7 +1018,7 @@ def _get_imageio_settings(project_settings, host_name):
         tuple[dict, dict]: image io settings for global and host
     """
     # get image io from global and host_name
-    imageio_global = project_settings["global"]["imageio"]
+    imageio_global = project_settings["core"]["imageio"]
     # host is optional, some might not have any settings
     imageio_host = project_settings.get(host_name, {}).get("imageio", {})
 

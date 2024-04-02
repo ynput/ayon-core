@@ -7,11 +7,11 @@ import pyblish.api
 from ayon_core.lib import (
     TextDef,
     NumberDef,
+    is_in_tests,
 )
 from ayon_core.pipeline import (
     AYONPyblishPluginMixin
 )
-from ayon_core.tests.lib import is_in_tests
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 
@@ -45,9 +45,11 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
     targets = ["local"]
 
     priority = 50
+    chunk_size = 999999
+    group = None
     jobInfo = {}
     pluginInfo = {}
-    group = None
+
 
     def get_job_info(self):
         job_info = DeadlineJobInfo(Plugin="Houdini")
@@ -88,7 +90,7 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
 
         attr_values = self.get_attr_values_from_data(instance.data)
 
-        job_info.ChunkSize = instance.data["chunkSize"]
+        job_info.ChunkSize = instance.data.get("chunk_size", self.chunk_size)
         job_info.Comment = context.data.get("comment")
         job_info.Priority = attr_values.get("priority", self.priority)
         job_info.Group = attr_values.get("group", self.group)
@@ -98,11 +100,11 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
-            "AVALON_PROJECT",
-            "AVALON_ASSET",
-            "AVALON_TASK",
-            "AVALON_WORKDIR",
-            "AVALON_APP_NAME",
+            "AYON_PROJECT_NAME",
+            "AYON_FOLDER_PATH",
+            "AYON_TASK_NAME",
+            "AYON_WORKDIR",
+            "AYON_APP_NAME",
             "AYON_LOG_NO_COLORS",
         ]
 

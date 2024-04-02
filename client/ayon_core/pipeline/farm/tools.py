@@ -5,8 +5,9 @@ def get_published_workfile_instance(context):
     """Find workfile instance in context"""
     for i in context:
         is_workfile = (
-            "workfile" in i.data.get("families", []) or
-            i.data["family"] == "workfile"
+            i.data["productType"] == "workfile"
+            or "workfile" in i.data.get("families", [])
+
         )
         if not is_workfile:
             continue
@@ -53,7 +54,7 @@ def from_published_scene(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data['anatomy']
-    template_obj = anatomy.templates_obj["publish"]["path"]
+    template_obj = anatomy.get_template_item("publish", "default", "path")
     template_filled = template_obj.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 

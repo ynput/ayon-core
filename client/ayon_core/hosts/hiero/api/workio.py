@@ -70,4 +70,4 @@ def current_file():
 
 
 def work_root(session):
-    return os.path.normpath(session["AVALON_WORKDIR"]).replace("\\", "/")
+    return os.path.normpath(session["AYON_WORKDIR"]).replace("\\", "/")

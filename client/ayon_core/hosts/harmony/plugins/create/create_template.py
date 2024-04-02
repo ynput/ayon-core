@@ -6,7 +6,7 @@ class CreateTemplate(plugin.Creator):
 
     name = "templateDefault"
     label = "Template"
-    family = "harmony.template"
+    product_type = "harmony.template"
 
     def __init__(self, *args, **kwargs):
         super(CreateTemplate, self).__init__(*args, **kwargs)

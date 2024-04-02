@@ -1,14 +1,13 @@
 import maya.cmds as cmds
 
-from ayon_core.settings import get_current_project_settings
-import ayon_core.hosts.maya.api.plugin
+from ayon_core.hosts.maya.api import plugin
 from ayon_core.hosts.maya.api import lib
 
 
-class YetiRigLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
+class YetiRigLoader(plugin.ReferenceLoader):
     """This loader will load Yeti rig."""
 
-    families = ["yetiRig"]
+    product_types = {"yetiRig"}
     representations = ["ma"]
 
     label = "Load Yeti Rig"
@@ -41,14 +40,12 @@ class YetiRigLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
                 groupName=group_name
             )
 
-        settings = get_current_project_settings()
-        colors = settings["maya"]["load"]["colors"]
-        c = colors.get("yetiRig")
-        if c is not None:
+        color = plugin.get_load_color_for_product_type("yetiRig")
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr(group_name + ".useOutlinerColor", 1)
             cmds.setAttr(
-                group_name + ".outlinerColor",
-                (float(c[0]) / 255), (float(c[1]) / 255), (float(c[2]) / 255)
+                group_name + ".outlinerColor", red, green, blue
             )
         self[:] = nodes
 

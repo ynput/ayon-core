@@ -7,7 +7,6 @@ import asyncio
 import functools
 import traceback
 
-
 from wsrpc_aiohttp import (
     WebSocketRoute,
     WebSocketAsync
@@ -15,8 +14,7 @@ from wsrpc_aiohttp import (
 
 from qtpy import QtCore
 
-from ayon_core.lib import Logger
-from ayon_core.tests.lib import is_in_tests
+from ayon_core.lib import Logger, is_in_tests
 from ayon_core.pipeline import install_host
 from ayon_core.addon import AddonsManager
 from ayon_core.tools.utils import host_tools, get_ayon_qt_app
@@ -287,22 +285,23 @@ class AfterEffectsRoute(WebSocketRoute):
 
     # This method calls function on the client side
     # client functions
-    async def set_context(self, project, asset, task):
+    async def set_context(self, project, folder, task):
         """
-            Sets 'project' and 'asset' to envs, eg. setting context
+            Sets 'project', 'folder' and 'task' to envs, eg. setting context
 
             Args:
                 project (str)
-                asset (str)
+                folder (str)
+                task (str)
         """
         log.info("Setting context change")
-        log.info("project {} asset {} ".format(project, asset))
+        log.info("project {} folder {} ".format(project, folder))
         if project:
-            os.environ["AVALON_PROJECT"] = project
-        if asset:
-            os.environ["AVALON_ASSET"] = asset
+            os.environ["AYON_PROJECT_NAME"] = project
+        if folder:
+            os.environ["AYON_FOLDER_PATH"] = folder
         if task:
-            os.environ["AVALON_TASK"] = task
+            os.environ["AYON_TASK_NAME"] = task
 
     async def read(self):
         log.debug("aftereffects.read client calls server server calls "

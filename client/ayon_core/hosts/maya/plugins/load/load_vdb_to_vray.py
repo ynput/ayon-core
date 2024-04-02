@@ -5,6 +5,7 @@ from ayon_core.pipeline import (
     load,
     get_representation_path
 )
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 from maya import cmds
 
@@ -76,7 +77,7 @@ def _fix_duplicate_vvg_callbacks():
 class LoadVDBtoVRay(load.LoaderPlugin):
     """Load OpenVDB in a V-Ray Volume Grid"""
 
-    families = ["vdbcache"]
+    product_types = {"vdbcache"}
     representations = ["vdb"]
 
     label = "Load VDB to VRay"
@@ -93,10 +94,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
             "Path does not exist: %s" % path
         )
 
-        try:
-            family = context["representation"]["context"]["family"]
-        except ValueError:
-            family = "vdbcache"
+        product_type = context["product"]["productType"]
 
         # Ensure V-ray is loaded with the vrayvolumegrid
         if not cmds.pluginInfo("vrayformaya", query=True, loaded=True):
@@ -115,11 +113,10 @@ class LoadVDBtoVRay(load.LoaderPlugin):
                              "See Preferences > Display > Viewport 2.0 to "
                              "set the render engine to '%s'" % compatible)
 
-        asset = context['asset']
-        asset_name = asset["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset_name + "_",
-            prefix="_" if asset_name[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -129,15 +126,11 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        colors = settings['maya']['load']['colors']
-
-        c = colors.get(family)
-        if c is not None:
+        color = get_load_color_for_product_type(product_type, settings)
+        if color is not None:
+            red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
-            cmds.setAttr(root + ".outlinerColor",
-                         float(c[0]) / 255,
-                         float(c[1]) / 255,
-                         float(c[2]) / 255)
+            cmds.setAttr(root + ".outlinerColor", red, green, blue)
 
         # Create VRayVolumeGrid
         grid_node = cmds.createNode("VRayVolumeGrid",
@@ -257,9 +250,10 @@ class LoadVDBtoVRay(load.LoaderPlugin):
                              restored_mapping,
                              type="string")
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_entity = context["representation"]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_entity)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
@@ -272,15 +266,15 @@ class LoadVDBtoVRay(load.LoaderPlugin):
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     repre_entity["id"],
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
 
-        # Get all members of the avalon container, ensure they are unlocked
+        # Get all members of the AYON container, ensure they are unlocked
         # and delete everything
         members = cmds.sets(container['objectName'], query=True)
         cmds.lockNode(members, lock=False)

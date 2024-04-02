@@ -7,7 +7,7 @@ from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 
 from ayon_core.pipeline import CreatorError, get_current_project_name
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_project_folder
 from ayon_core.hosts.maya.api.lib import reset_frame_range
 
 
@@ -46,7 +46,7 @@ class RenderSettings(object):
             project_settings = get_project_settings(
                 get_current_project_name()
             )
-        render_settings = project_settings["maya"]["RenderSettings"]
+        render_settings = project_settings["maya"]["render_settings"]
         image_prefixes = {
             "vray": render_settings["vray_renderer"]["image_prefix"],
             "arnold": render_settings["arnold_renderer"]["image_prefix"],
@@ -77,17 +77,18 @@ class RenderSettings(object):
             renderer = cmds.getAttr(
                 'defaultRenderGlobals.currentRenderer').lower()
 
-        asset_doc = get_current_project_asset()
+        folder_entity = get_current_project_folder()
+        folder_attributes = folder_entity["attrib"]
         # project_settings/maya/create/CreateRender/aov_separator
         try:
             aov_separator = self._aov_chars[(
                 self._project_settings["maya"]
-                                      ["RenderSettings"]
+                                      ["render_settings"]
                                       ["aov_separator"]
             )]
         except KeyError:
             aov_separator = "_"
-        reset_frame = self._project_settings["maya"]["RenderSettings"]["reset_current_frame"] # noqa
+        reset_frame = self._project_settings["maya"]["render_settings"]["reset_current_frame"] # noqa
 
         if reset_frame:
             start_frame = cmds.getAttr("defaultRenderGlobals.startFrame")
@@ -101,8 +102,8 @@ class RenderSettings(object):
         else:
             print("{0} isn't a supported renderer to autoset settings.".format(renderer)) # noqa
         # TODO: handle not having res values in the doc
-        width = asset_doc["data"].get("resolutionWidth")
-        height = asset_doc["data"].get("resolutionHeight")
+        width = folder_attributes.get("resolutionWidth")
+        height = folder_attributes.get("resolutionHeight")
 
         if renderer == "arnold":
             # set renderer settings for Arnold from project settings
@@ -131,7 +132,7 @@ class RenderSettings(object):
         import maya.mel as mel  # noqa: F401
 
         createOptions()
-        render_settings = self._project_settings["maya"]["RenderSettings"]
+        render_settings = self._project_settings["maya"]["render_settings"]
         arnold_render_presets = render_settings["arnold_renderer"] # noqa
         # Force resetting settings and AOV list to avoid having to deal with
         # AOV checking logic, for now.
@@ -180,7 +181,7 @@ class RenderSettings(object):
         from maya import cmds  # noqa: F401
         import maya.mel as mel  # noqa: F401
 
-        render_settings = self._project_settings["maya"]["RenderSettings"]
+        render_settings = self._project_settings["maya"]["render_settings"]
         redshift_render_presets = render_settings["redshift_renderer"]
 
         remove_aovs = render_settings["remove_aovs"]
@@ -239,7 +240,7 @@ class RenderSettings(object):
         rman_render_presets = (
             self._project_settings
             ["maya"]
-            ["RenderSettings"]
+            ["render_settings"]
             ["renderman_renderer"]
         )
         display_filters = rman_render_presets["display_filters"]
@@ -304,7 +305,7 @@ class RenderSettings(object):
 
         settings = cmds.ls(type="VRaySettingsNode")
         node = settings[0] if settings else cmds.createNode("VRaySettingsNode")
-        render_settings = self._project_settings["maya"]["RenderSettings"]
+        render_settings = self._project_settings["maya"]["render_settings"]
         vray_render_presets = render_settings["vray_renderer"]
         # vrayRenderElement
         remove_aovs = render_settings["remove_aovs"]
@@ -390,7 +391,8 @@ class RenderSettings(object):
         import maya.mel as mel  # noqa: F401
 
         for item in additional_attribs:
-            attribute, value = item
+            attribute = item["attribute"]
+            value = item["value"]
             attribute = str(attribute)  # ensure str conversion from settings
             attribute_type = cmds.getAttr(attribute, type=True)
             if attribute_type in {"long", "bool"}:
