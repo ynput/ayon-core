@@ -869,7 +869,11 @@ def _get_screen_size():
     if _in_standalone():
         return [0, 0]
 
-    rect = QtWidgets.QDesktopWidget().screenGeometry(-1)
+    try:
+        rect = QtWidgets.QDesktopWidget().screenGeometry(-1)
+    except AttributeError:
+        # in Qt6 it is a different call
+        rect = QtWidgets.QApplication.primaryScreen().availableGeometry()
     return [rect.width(), rect.height()]
 
 
