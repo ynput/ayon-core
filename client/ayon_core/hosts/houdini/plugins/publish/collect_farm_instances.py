@@ -16,12 +16,40 @@ class CollectFarmInstances(pyblish.api.InstancePlugin):
     label = "Collect farm instances"
 
     def process(self, instance):
+        import hou
+
         creator_attribute = instance.data["creator_attributes"]
-        farm_enabled = creator_attribute["farm"]
-        instance.data["farm"] = farm_enabled
-        if not farm_enabled:
+        product_type = instance.data["productType"]
+        rop_node = hou.node(instance.data.get("instance_node"))
+
+        # Align split parameter value on rop node to the render target.
+        if creator_attribute.get("render_target") == "farm_split":
+            if product_type == "arnold_rop":
+                rop_node.setParms({"ar_ass_export_enable": 1})
+            elif product_type == "mantra_rop":
+                rop_node.setParms({"soho_outputmode": 1})
+            elif product_type == "redshift_rop":
+                rop_node.setParms({"RS_archive_enable": 1})
+            elif product_type == "vray_rop":
+                rop_node.setParms({"render_export_mode": "2"})
+        else:
+            if product_type == "arnold_rop":
+                rop_node.setParms({"ar_ass_export_enable": 0})
+            elif product_type == "mantra_rop":
+                rop_node.setParms({"soho_outputmode": 0})
+            elif product_type == "redshift_rop":
+                rop_node.setParms({"RS_archive_enable": 0})
+            elif product_type == "vray_rop":
+                rop_node.setParms({"render_export_mode": "1"})
+
+        # Collect Render Target
+        if creator_attribute.get("render_target") not in {
+            "farm_split", "farm"
+        }:
+            instance.data["farm"] = False
             self.log.debug("Render on farm is disabled. "
                            "Skipping farm collecting.")
             return
 
+        instance.data["farm"] = True
         instance.data["families"].append("render.farm.hou")

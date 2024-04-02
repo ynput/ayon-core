@@ -4,7 +4,7 @@ import hou
 
 from ayon_core.hosts.houdini.api import plugin
 from ayon_core.pipeline import CreatorError
-from ayon_core.lib import EnumDef, BoolDef, UISeparatorDef, UILabelDef
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class CreateVrayROP(plugin.HoudiniCreator):
@@ -16,8 +16,8 @@ class CreateVrayROP(plugin.HoudiniCreator):
     icon = "magic"
     ext = "exr"
 
-    # Default to split export and render jobs
-    split_render = True
+    # Default render target
+    render_target = "farm_split"
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -53,7 +53,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
             "SettingsEXR_bits_per_channel": "16"   # half precision
         }
 
-        if pre_create_data.get("split_render"):
+        if pre_create_data.get("render_target") == "farm_split":
             scene_filepath = \
                 "{export_dir}{product_name}/{product_name}.$F4.vrscene".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/vrscene/"),
@@ -146,8 +146,18 @@ class CreateVrayROP(plugin.HoudiniCreator):
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+            "farm_split": "Farm Rendering - Split export & render jobs",
+        }
 
         return [
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target),
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
@@ -161,20 +171,6 @@ class CreateVrayROP(plugin.HoudiniCreator):
                     label="Render Element",
                     tooltip="Create Render Element Node "
                             "if enabled",
-                    default=False),
-            UISeparatorDef(key="1"),
-            UILabelDef(label="Farm Render Options:"),
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
-            BoolDef("split_render",
-                    label="Split export and render jobs",
-                    default=self.split_render),
-            UISeparatorDef(key="2"),
-            UILabelDef(label="Local Render Options:"),
-            BoolDef("skip_render",
-                    label="Skip Render",
-                    tooltip="Enable this option to skip render which publish existing frames.",
                     default=False),
         ]
 

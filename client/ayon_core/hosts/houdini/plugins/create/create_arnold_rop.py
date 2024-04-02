@@ -1,5 +1,5 @@
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import EnumDef, BoolDef, UISeparatorDef, UILabelDef
+from ayon_core.lib import EnumDef
 
 
 class CreateArnoldRop(plugin.HoudiniCreator):
@@ -13,8 +13,8 @@ class CreateArnoldRop(plugin.HoudiniCreator):
     # Default extension
     ext = "exr"
 
-    # Default to split export and render jobs
-    split_render = True
+    # Default render target
+    render_target = "farm_split"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou
@@ -49,7 +49,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
             "ar_exr_half_precision": 1           # half precision
         }
 
-        if pre_create_data.get("split_render"):
+        if pre_create_data.get("render_target") == "farm_split":
             ass_filepath = \
                 "{export_dir}{product_name}/{product_name}.$F4.ass".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/ass/"),
@@ -69,24 +69,22 @@ class CreateArnoldRop(plugin.HoudiniCreator):
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+            "farm_split": "Farm Rendering - Split export & render jobs",
+        }
 
         return [
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
-            BoolDef("split_render",
-                    label="Split export and render jobs",
-                    default=self.split_render),
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target),
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
                     label="Image Format Options"),
-            UISeparatorDef(key="2"),
-            UILabelDef(label="Local Render Options:"),
-            BoolDef("skip_render",
-                    label="Skip Render",
-                    tooltip="Enable this option to skip render which publish existing frames.",
-                    default=False),
         ]
 
     def get_pre_create_attr_defs(self):

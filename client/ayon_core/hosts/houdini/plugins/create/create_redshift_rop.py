@@ -4,7 +4,7 @@ import hou  # noqa
 
 from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import EnumDef, BoolDef, UISeparatorDef, UILabelDef
+from ayon_core.lib import EnumDef
 
 
 class CreateRedshiftROP(plugin.HoudiniCreator):
@@ -17,8 +17,8 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
     ext = "exr"
     multi_layered_mode = "No Multi-Layered EXR File"
 
-    # Default to split export and render jobs
-    split_render = True
+    # Default render target
+    render_target = "farm_split"
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -97,7 +97,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         rs_filepath = f"{export_dir}{product_name}/{product_name}.$F4.rs"
         parms["RS_archive_file"] = rs_filepath
 
-        if pre_create_data.get("split_render", self.split_render):
+        if pre_create_data.get("render_target") == "farm_split":
             parms["RS_archive_enable"] = 1
 
         instance_node.setParms(parms)
@@ -124,9 +124,18 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             "No Multi-Layered EXR File",
             "Full Multi-Layered EXR File"
         ]
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+            "farm_split": "Farm Rendering - Split export & render jobs",
+        }
 
         return [
-            UILabelDef(label="RedShift Render Settings:"),
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target),
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
@@ -135,20 +144,6 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                     multi_layered_mode,
                     default=self.multi_layered_mode,
                     label="Multi-Layered EXR"),
-            UISeparatorDef(key="1"),
-            UILabelDef(label="Farm Render Options:"),
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
-            BoolDef("split_render",
-                    label="Split export and render jobs",
-                    default=self.split_render),
-            UISeparatorDef(key="2"),
-            UILabelDef(label="Local Render Options:"),
-            BoolDef("skip_render",
-                    label="Skip Render",
-                    tooltip="Enable this option to skip render which publish existing frames.",
-                    default=False),
         ]
 
     def get_pre_create_attr_defs(self):

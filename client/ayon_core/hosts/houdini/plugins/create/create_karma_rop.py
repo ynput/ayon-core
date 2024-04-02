@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin to create Karma ROP."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import BoolDef, EnumDef, NumberDef, UISeparatorDef, UILabelDef
+from ayon_core.lib import BoolDef, EnumDef, NumberDef
 
 
 class CreateKarmaROP(plugin.HoudiniCreator):
@@ -10,6 +10,9 @@ class CreateKarmaROP(plugin.HoudiniCreator):
     label = "Karma ROP"
     product_type = "karma_rop"
     icon = "magic"
+
+    # Default render target
+    render_target = "farm"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
@@ -89,11 +92,17 @@ class CreateKarmaROP(plugin.HoudiniCreator):
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+        }
 
         return [
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target),
             EnumDef("image_format",
                     image_format_enum,
                     default="exr",
@@ -108,12 +117,6 @@ class CreateKarmaROP(plugin.HoudiniCreator):
                       decimals=0),
             BoolDef("cam_res",
                     label="Camera Resolution",
-                    default=False),
-            UISeparatorDef(key="2"),
-            UILabelDef(label="Local Render Options:"),
-            BoolDef("skip_render",
-                    label="Skip Render",
-                    tooltip="Enable this option to skip render which publish existing frames.",
                     default=False),
         ]
 
