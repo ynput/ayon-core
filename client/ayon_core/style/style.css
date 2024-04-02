@@ -1067,6 +1067,38 @@ PixmapButton:disabled {
     font-size: 13pt;
 }
 
+#PublisherVerticalScrollArea QScrollBar {
+    background: transparent;
+    margin: 0;
+    border: none;
+}
+
+#PublisherVerticalScrollArea QScrollBar:horizontal {
+    height: 10px;
+    margin: 0;
+}
+
+#PublisherVerticalScrollArea QScrollBar:vertical {
+    width: 10px;
+    margin: 0;
+}
+
+#PublisherVerticalScrollArea QScrollBar::handle {
+    background: {color:bg-scroll-handle};
+    border-radius: 4px;
+    margin: 1px;
+}
+
+#PublisherVerticalScrollArea QScrollBar::handle:horizontal {
+    min-width: 20px;
+    min-height: 8px;
+}
+
+#PublisherVerticalScrollArea QScrollBar::handle:vertical {
+    min-height: 20px;
+    min-width: 8px;
+}
+
 ValidationArtistMessage QLabel {
     font-size: 20pt;
     font-weight: bold;

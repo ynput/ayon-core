@@ -5,8 +5,8 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     BaseClickableFrame,
     set_style_property,
+    FoldersWidget,
 )
-from ayon_core.tools.ayon_utils.widgets import FoldersWidget
 
 NOT_SET = object()
 

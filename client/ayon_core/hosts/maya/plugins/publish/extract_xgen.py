@@ -9,7 +9,6 @@ from ayon_core.pipeline import publish
 from ayon_core.hosts.maya.api.lib import (
     maintained_selection, attribute_values, write_xgen_file, delete_after
 )
-from ayon_core.lib import StringTemplate
 
 
 class ExtractXgen(publish.Extractor):
@@ -39,8 +38,9 @@ class ExtractXgen(publish.Extractor):
         # Get published xgen file name.
         template_data = copy.deepcopy(instance.data["anatomyData"])
         template_data.update({"ext": "xgen"})
-        templates = instance.context.data["anatomy"].templates["publish"]
-        xgen_filename = StringTemplate(templates["file"]).format(template_data)
+        anatomy = instance.context.data["anatomy"]
+        file_template = anatomy.get_template_item("publish", "default", "file")
+        xgen_filename = file_template.format(template_data)
 
         xgen_path = os.path.join(
             self.staging_dir(instance), xgen_filename

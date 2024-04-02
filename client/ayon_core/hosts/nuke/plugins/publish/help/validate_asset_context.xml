@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
     <error id="main">
-        <title>Shot/Asset name</title>
+        <title>Folder path</title>
         <description>
-## Publishing to a different asset context
+## Publishing to a different folder context
 
-There are publish instances present which are publishing into a different asset than your current context.
+There are publish instances present which are publishing into a different folder than your current context.
 
-Usually this is not what you want but there can be cases where you might want to publish into another asset/shot or task.
+Usually this is not what you want but there can be cases where you might want to publish into another folder/shot or task.
 
 If that's the case you can disable the validation on the instance to ignore it.
 

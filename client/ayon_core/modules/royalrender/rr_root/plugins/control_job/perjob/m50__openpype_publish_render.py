@@ -109,7 +109,7 @@ class OpenPypeContextSelector:
 
         if not self.context or \
                 not self.context.get("project") or \
-                not self.context.get("asset") or \
+                not self.context.get("folder") or \
                 not self.context.get("task"):
             self._show_rr_warning("Context selection failed.")
             return False
@@ -137,7 +137,7 @@ class OpenPypeContextSelector:
     def run_publish(self):
         """Run publish process."""
         env = {"AYON_PROJECT_NAME": str(self.context.get("project")),
-               "AYON_FOLDER_PATH": str(self.context.get("asset")),
+               "AYON_FOLDER_PATH": str(self.context.get("folder")),
                "AYON_TASK_NAME": str(self.context.get("task")),
                # "AYON_APP_NAME": str(self.context.get("app_name"))
                }
@@ -184,7 +184,7 @@ selector = OpenPypeContextSelector()
 # try to set context from environment
 for key, env_keys in (
     ("project", ["AYON_PROJECT_NAME", "AVALON_PROJECT"]),
-    ("asset", ["AYON_FOLDER_PATH", "AVALON_ASSET"]),
+    ("folder", ["AYON_FOLDER_PATH", "AVALON_ASSET"]),
     ("task", ["AYON_TASK_NAME", "AVALON_TASK"]),
     # ("app_name", ["AYON_APP_NAME", "AVALON_APP_NAME"])
 ):

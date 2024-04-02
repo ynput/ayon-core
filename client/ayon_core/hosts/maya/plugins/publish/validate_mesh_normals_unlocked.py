@@ -18,7 +18,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateMeshNormalsUnlocked(pyblish.api.Validator,
+class ValidateMeshNormalsUnlocked(pyblish.api.InstancePlugin,
                                   OptionalPyblishPluginMixin):
     """Validate all meshes in the instance have unlocked normals
 

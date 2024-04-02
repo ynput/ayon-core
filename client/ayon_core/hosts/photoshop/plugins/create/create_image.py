@@ -247,8 +247,8 @@ class ImageCreator(Creator):
     def get_dynamic_data(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name,
         instance

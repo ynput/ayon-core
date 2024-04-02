@@ -1,6 +1,5 @@
 import pyblish.api
 
-from ayon_core.client import get_asset_name_identifier
 import ayon_core.hosts.flame.api as opfapi
 from ayon_core.hosts.flame.otio import flame_export
 from ayon_core.pipeline.create import get_product_name
@@ -18,23 +17,25 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
         variant = "otioTimeline"
 
         # main
-        asset_doc = context.data["assetEntity"]
-        task_name = context.data["task"]
+        folder_entity = context.data["folderEntity"]
         project = opfapi.get_current_project()
         sequence = opfapi.get_current_sequence(opfapi.CTX.selection)
 
         # create product name
+        task_entity = context.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         product_name = get_product_name(
             context.data["projectName"],
-            asset_doc,
             task_name,
+            task_type,
             context.data["hostName"],
             product_type,
             variant,
             project_settings=context.data["project_settings"]
         )
-
-        folder_path = get_asset_name_identifier(asset_doc)
 
         # adding otio timeline to context
         with opfapi.maintained_segment_selection(sequence) as selected_seg:
@@ -42,7 +43,7 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
 
             instance_data = {
                 "name": product_name,
-                "folderPath": folder_path,
+                "folderPath": folder_entity["path"],
                 "productName": product_name,
                 "productType": product_type,
                 "family": product_type,

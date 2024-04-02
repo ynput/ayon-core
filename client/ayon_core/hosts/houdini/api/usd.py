@@ -3,12 +3,16 @@
 import contextlib
 import logging
 
+import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import get_current_project_name
-from ayon_core.tools.utils.assets_widget import SingleSelectAssetsWidget
+from ayon_core.tools.utils import (
+    PlaceholderLineEdit,
+    RefreshButton,
+    SimpleFoldersWidget,
+)
 
 from pxr import Sdf
 
@@ -16,77 +20,110 @@ from pxr import Sdf
 log = logging.getLogger(__name__)
 
 
-class SelectAssetDialog(QtWidgets.QWidget):
-    """Frameless assets dialog to select asset with double click.
+class SelectFolderDialog(QtWidgets.QWidget):
+    """Frameless folders dialog to select folder with double click.
 
     Args:
-        parm: Parameter where selected asset name is set.
+        parm: Parameter where selected folder path is set.
     """
 
     def __init__(self, parm):
-        self.setWindowTitle("Pick Asset")
+        self.setWindowTitle("Pick Folder")
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.Popup)
 
-        assets_widget = SingleSelectAssetsWidget(self)
-        assets_widget.set_project_name(get_current_project_name(), False)
+        header_widget = QtWidgets.QWidget(self)
+
+        filter_input = PlaceholderLineEdit(header_widget)
+        filter_input.setPlaceholderText("Filter folders..")
+
+        refresh_btn = RefreshButton(self)
+
+        header_layout = QtWidgets.QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.addWidget(filter_input)
+        header_layout.addWidget(refresh_btn)
+
+        for widget in (
+            refresh_btn,
+            filter_input,
+        ):
+            size_policy = widget.sizePolicy()
+            size_policy.setVerticalPolicy(
+                QtWidgets.QSizePolicy.MinimumExpanding)
+            widget.setSizePolicy(size_policy)
+
+        folders_widget = SimpleFoldersWidget(self)
+        folders_widget.set_project_name(get_current_project_name())
 
         layout = QtWidgets.QHBoxLayout(self)
-        layout.addWidget(assets_widget)
+        layout.addWidget(header_widget, 0)
+        layout.addWidget(folders_widget, 1)
 
-        assets_widget.double_clicked.connect(self._set_parameter)
-        self._assets_widget = assets_widget
+        folders_widget.double_clicked.connect(self._set_parameter)
+        filter_input.textChanged.connect(self._on_filter_change)
+        refresh_btn.clicked.connect(self._on_refresh_clicked)
+
+        self._folders_widget = folders_widget
         self._parm = parm
 
+    def _on_refresh_clicked(self):
+        self._folders_widget.refresh()
+
+    def _on_filter_change(self, text):
+        self._folders_widget.set_name_filter(text)
+
     def _set_parameter(self):
-        name = self._assets_widget.get_selected_asset_name()
-        self._parm.set(name)
+        folder_path = self._folders_widget.get_selected_folder_path()
+        self._parm.set(folder_path)
         self.close()
 
     def _on_show(self):
         pos = QtGui.QCursor.pos()
-        # Select the current asset if there is any
+        # Select the current folder if there is any
         select_id = None
-        name = self._parm.eval()
-        if name:
+        folder_path = self._parm.eval()
+        if folder_path:
             project_name = get_current_project_name()
-            db_asset = get_asset_by_name(project_name, name, fields=["_id"])
-            if db_asset:
-                select_id = db_asset["_id"]
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path, fields={"id"}
+            )
+            if folder_entity:
+                select_id = folder_entity["id"]
 
         # Set stylesheet
         self.setStyleSheet(style.load_stylesheet())
-        # Refresh assets (is threaded)
-        self._assets_widget.refresh()
-        # Select asset - must be done after refresh
+        # Refresh folders (is threaded)
+        self._folders_widget.refresh()
+        # Select folder - must be done after refresh
         if select_id is not None:
-            self._assets_widget.select_asset(select_id)
+            self._folders_widget.set_selected_folder(select_id)
 
         # Show cursor (top right of window) near cursor
         self.resize(250, 400)
         self.move(self.mapFromGlobal(pos) - QtCore.QPoint(self.width(), 0))
 
     def showEvent(self, event):
-        super(SelectAssetDialog, self).showEvent(event)
+        super(SelectFolderDialog, self).showEvent(event)
         self._on_show()
 
 
-def pick_asset(node):
-    """Show a user interface to select an Asset in the project
+def pick_folder(node):
+    """Show a user interface to select an Folder in the project
 
-    When double clicking an asset it will set the Asset value in the
-    'asset' parameter.
+    When double clicking an folder it will set the Folder value in the
+    'folderPath' parameter.
 
     """
 
-    parm = node.parm("asset_name")
+    parm = node.parm("folderPath")
     if not parm:
-        log.error("Node has no 'asset' parameter: %s", node)
+        log.error("Node has no 'folderPath' parameter: %s", node)
         return
 
     # Construct a frameless popup so it automatically
     # closes when clicked outside of it.
     global tool
-    tool = SelectAssetDialog(parm)
+    tool = SelectFolderDialog(parm)
     tool.show()
 
 

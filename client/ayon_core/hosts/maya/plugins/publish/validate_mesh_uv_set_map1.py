@@ -5,7 +5,8 @@ import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
-    OptionalPyblishPluginMixin
+    OptionalPyblishPluginMixin,
+    PublishValidationError
 )
 
 
@@ -55,8 +56,8 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
 
         invalid = self.get_invalid(instance)
         if invalid:
-            raise ValueError("Meshes found without 'map1' "
-                             "UV set: {0}".format(invalid))
+            raise PublishValidationError(
+                "Meshes found without 'map1' UV set: {0}".format(invalid))
 
     @classmethod
     def repair(cls, instance):

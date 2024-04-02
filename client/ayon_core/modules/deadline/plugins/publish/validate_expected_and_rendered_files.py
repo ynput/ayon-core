@@ -149,7 +149,7 @@ class ValidateExpectedFiles(pyblish.api.InstancePlugin):
         """
         # no frames in file name at all, eg 'renderCompositingMain.withLut.mov'
         if not frame_placeholder:
-            return set([file_name_template])
+            return {file_name_template}
 
         real_expected_rendered = set()
         src_padding_exp = "%0{}d".format(len(frame_placeholder))

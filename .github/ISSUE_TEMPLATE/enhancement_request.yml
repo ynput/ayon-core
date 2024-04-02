@@ -1,6 +1,6 @@
 name: Enhancement Request
 description: Create a report to help us enhance a particular feature
-title: ""
+title: "Your issue title here"
 labels:
   - "type: enhancement"
 body:

@@ -4,12 +4,12 @@ import json
 import logging
 from typing import List
 from contextlib import contextmanager
-import semver
 import time
 
+import semver
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import get_asset_by_name, get_assets
 from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
@@ -98,7 +98,7 @@ class UnrealHost(HostBase, ILoadHost, IPublishHost):
 
 
 def install():
-    """Install Unreal configuration for OpenPype."""
+    """Install Unreal configuration for AYON."""
     print("-=" * 40)
     logo = '''.
 .
@@ -262,7 +262,7 @@ def containerise(name, namespace, nodes, context, loader=None, suffix="_CON"):
         "name": new_name,
         "namespace": namespace,
         "loader": str(loader),
-        "representation": context["representation"]["_id"],
+        "representation": context["representation"]["id"],
     }
     # 3 - imprint data
     imprint(f"{path}/{container_name}", data)
@@ -601,34 +601,36 @@ def generate_sequence(h, h_dir):
     )
 
     project_name = get_current_project_name()
-    asset_data = get_asset_by_name(
+    # TODO Fix this does not return folder path
+    folder_path = h_dir.split('/')[-1],
+    folder_entity = ayon_api.get_folder_by_path(
         project_name,
-        h_dir.split('/')[-1],
-        fields=["_id", "data.fps"]
+        folder_path,
+        fields={"id", "attrib.fps"}
     )
 
     start_frames = []
     end_frames = []
 
-    elements = list(get_assets(
+    elements = list(ayon_api.get_folders(
         project_name,
-        parent_ids=[asset_data["_id"]],
-        fields=["_id", "data.clipIn", "data.clipOut"]
+        parent_ids=[folder_entity["id"]],
+        fields={"id", "attrib.clipIn", "attrib.clipOut"}
     ))
     for e in elements:
-        start_frames.append(e.get('data').get('clipIn'))
-        end_frames.append(e.get('data').get('clipOut'))
+        start_frames.append(e["attrib"].get("clipIn"))
+        end_frames.append(e["attrib"].get("clipOut"))
 
-        elements.extend(get_assets(
+        elements.extend(ayon_api.get_folders(
             project_name,
-            parent_ids=[e["_id"]],
-            fields=["_id", "data.clipIn", "data.clipOut"]
+            parent_ids=[e["id"]],
+            fields={"id", "attrib.clipIn", "attrib.clipOut"}
         ))
 
     min_frame = min(start_frames)
     max_frame = max(end_frames)
 
-    fps = asset_data.get('data').get("fps")
+    fps = folder_entity["attrib"].get("fps")
 
     sequence.set_display_rate(
         unreal.FrameRate(fps, 1.0))
