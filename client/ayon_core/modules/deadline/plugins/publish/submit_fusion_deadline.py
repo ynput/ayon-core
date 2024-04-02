@@ -226,6 +226,7 @@ class FusionSubmitDeadline(
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "AYON_BUNDLE_NAME",
+            "AYON_DEFAULT_SETTINGS_VARIANT",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
