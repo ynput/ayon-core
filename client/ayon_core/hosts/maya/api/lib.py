@@ -2542,7 +2542,10 @@ def get_frame_range(include_animation_range=False):
     folder_path = get_current_folder_path()
     task_name = get_current_task_name()
 
-    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name,
+        folder_path,
+        fields={"id"})
     task_entity = ayon_api.get_task_by_name(
             project_name, folder_entity["id"], task_name
         )
@@ -2573,9 +2576,8 @@ def get_frame_range(include_animation_range=False):
         # keys. That is why these are excluded by default.
 
         settings = get_project_settings(project_name)
-        task_type = None
-        if task_entity:
-            task_type = task_entity["taskType"]
+
+        task_type = task_entity["taskType"]
 
         include_handles_settings = settings["maya"]["include_handles"]
 
