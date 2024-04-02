@@ -126,7 +126,7 @@ class GenericCreateSaver(Creator):
         if (
             original_product_name != product_name
             or tool.GetData("openpype.task") != data["task"]
-            or tool.GetData("openpype.asset") != data["asset"]
+            or tool.GetData("openpype.folderPath") != data["folderPath"]
             or original_format != data["creator_attributes"]["image_format"]
         ):
             self._configure_saver_tool(data, tool, product_name)
