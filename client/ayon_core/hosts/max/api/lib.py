@@ -247,16 +247,16 @@ def get_frame_range(task_entity=None) -> Union[Dict[str, Any], None]:
     if task_entity is None:
         task_entity = get_current_task_entity()
     task_attributes = task_entity["attrib"]
-    frame_start = task_attributes.get("frameStart")
-    frame_end = task_attributes.get("frameEnd")
+    frame_start = task_attributes["frameStart"]
+    frame_end = task_attributes["frameEnd"]
 
     if frame_start is None or frame_end is None:
         return {}
 
     frame_start = int(frame_start)
     frame_end = int(frame_end)
-    handle_start = int(task_attributes.get("handleStart", 0))
-    handle_end = int(task_attributes.get("handleEnd", 0))
+    handle_start = int(task_attributes["handleStart"])
+    handle_end = int(task_attributes["handleEnd"])
     frame_start_handle = frame_start - handle_start
     frame_end_handle = frame_end + handle_end
 
