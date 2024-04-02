@@ -235,10 +235,10 @@ def reset_scene_resolution():
 
 
 def get_frame_range(task_entity=None) -> Union[Dict[str, Any], None]:
-    """Get the current folder frame range and handles.
+    """Get the current task frame range and handles
 
     Args:
-        folder_entiy (dict): Folder eneity.
+        task_entity (dict): Task Entity.
 
     Returns:
         dict: with frame start, frame end, handle start, handle end.
