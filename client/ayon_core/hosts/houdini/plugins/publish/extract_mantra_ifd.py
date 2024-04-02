@@ -29,6 +29,18 @@ class ExtractMantraIFD(publish.Extractor):
         render_rop(ropnode)
 
         files = instance.data["frames"]
+        # Check if all frames exists.
+        # Frames can be nonexistent if user cancels the render.
+        missing_frames = [
+            frame
+            for frame in instance.data["frames"]
+            if not os.path.exists(
+                os.path.normpath(os.path.join(staging_dir, frame)))
+        ]
+        if missing_frames:
+            raise RuntimeError("Failed to complete Mantra ifd extraction. "
+                               "Missing output files: {}".format(
+                                   missing_frames))
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
