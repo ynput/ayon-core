@@ -1003,6 +1003,9 @@ def get_scene_viewer():
     Return an instance of a visible viewport.
 
     There may be many, some could be closed, any visible are current
+
+    Returns:
+        Optional[hou.SceneViewer]: A scene viewer, if any.
     """
     panes = hou.ui.paneTabs()
     panes = [x for x in panes if x.type() == hou.paneTabType.SceneViewer]
@@ -1045,7 +1048,9 @@ def sceneview_snapshot(
     Args:
         sceneview (hou.SceneViewer): The scene view pane from which you want
                                      to take a snapshot.
-        filepath (str): thumbnail filepath.
+        filepath (str): thumbnail filepath. it expects `$F4` token
+                        when frame_end is bigger than frame_star other wise
+                        each frame will override its predecessor.
         frame_start (int): the frame at which snapshot starts
         frame_end (int): the frame at which snapshot ends
     """
