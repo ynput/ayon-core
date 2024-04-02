@@ -3,7 +3,7 @@ import shutil
 import winreg
 import subprocess
 from ayon_core.lib import get_ayon_launcher_args
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 from ayon_core.hosts.celaction import CELACTION_ROOT_DIR
 
 

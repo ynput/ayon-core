@@ -3,7 +3,7 @@ import subprocess
 import platform
 import uuid
 
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 
 
 class InstallPySideToFusion(PreLaunchHook):
