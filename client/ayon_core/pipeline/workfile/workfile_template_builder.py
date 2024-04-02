@@ -1726,7 +1726,7 @@ class PlaceholderCreateMixin(object):
                 items=creator_items,
                 tooltip=(
                     "Creator"
-                    "\nDefines what OpenPype creator will be used to"
+                    "\nDefines what AYON creator will be used to"
                     " create publishable instance."
                     "\nUseable creator depends on current host's creator list."
                     "\nField is case sensitive."
@@ -1865,7 +1865,7 @@ class PlaceholderCreateMixin(object):
         self.log.debug("Clean up of placeholder is not implemented.")
 
     def _before_instance_create(self, placeholder):
-        """Can be overriden. Is called before instance is created."""
+        """Can be overridden. Is called before instance is created."""
 
         pass
 

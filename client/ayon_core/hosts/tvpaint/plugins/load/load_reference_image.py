@@ -1,10 +1,7 @@
 import collections
 
 from ayon_core.lib.attribute_definitions import BoolDef
-from ayon_core.pipeline import (
-    get_representation_context,
-    registered_host,
-)
+from ayon_core.pipeline import registered_host
 from ayon_core.hosts.tvpaint.api import plugin
 from ayon_core.hosts.tvpaint.api.lib import (
     get_layers_data,
@@ -218,10 +215,7 @@ class LoadImage(plugin.Loader):
         removed.
         """
 
-        repre_entity = context["representation"]
         # Create new containers first
-        context = get_representation_context(repre_entity["id"])
-
         # Get layer ids from previous container
         old_layer_names = self.get_members_from_container(container)
 

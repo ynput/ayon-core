@@ -11,19 +11,17 @@ class ClockifyStart(LauncherAction):
     order = 500
     clockify_api = ClockifyAPI()
 
-    def is_compatible(self, session):
+    def is_compatible(self, selection):
         """Return whether the action is compatible with the session"""
-        if "AYON_TASK_NAME" in session:
-            return True
-        return False
+        return selection.is_task_selected
 
-    def process(self, session, **kwargs):
+    def process(self, selection, **kwargs):
         self.clockify_api.set_api()
         user_id = self.clockify_api.user_id
         workspace_id = self.clockify_api.workspace_id
-        project_name = session["AYON_PROJECT_NAME"]
-        folder_path = session["AYON_FOLDER_PATH"]
-        task_name = session["AYON_TASK_NAME"]
+        project_name = selection.project_name
+        folder_path = selection.folder_path
+        task_name = selection.task_name
         description = "/".join([folder_path.lstrip("/"), task_name])
 
         # fetch folder entity

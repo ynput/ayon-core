@@ -81,13 +81,13 @@ main_cli.set_alias("addon", "module")
 @main_cli.command()
 @click.argument("output_json_path")
 @click.option("--project", help="Project name", default=None)
-@click.option("--folder", help="Folder path", default=None)
+@click.option("--asset", help="Folder path", default=None)
 @click.option("--task", help="Task name", default=None)
 @click.option("--app", help="Application name", default=None)
 @click.option(
     "--envgroup", help="Environment group (e.g. \"farm\")", default=None
 )
-def extractenvironments(output_json_path, project, folder, task, app, envgroup):
+def extractenvironments(output_json_path, project, asset, task, app, envgroup):
     """Extract environment variables for entered context to a json file.
 
     Entered output filepath will be created if does not exists.
@@ -95,10 +95,14 @@ def extractenvironments(output_json_path, project, folder, task, app, envgroup):
     All context options must be passed otherwise only AYON's global
     environments will be extracted.
 
-    Context options are "project", "folder", "task", "app"
+    Context options are "project", "asset", "task", "app"
+
+    Deprecated:
+        This function is deprecated and will be removed in future. Please use
+        'addon applications extractenvironments ...' instead.
     """
     Commands.extractenvironments(
-        output_json_path, project, folder, task, app, envgroup
+        output_json_path, project, asset, task, app, envgroup
     )
 
 
