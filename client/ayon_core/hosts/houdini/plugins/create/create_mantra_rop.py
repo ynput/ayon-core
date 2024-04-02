@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin to create Mantra ROP."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import EnumDef, BoolDef, UISeparatorDef, UILabelDef
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class CreateMantraROP(plugin.HoudiniCreator):
@@ -11,8 +11,8 @@ class CreateMantraROP(plugin.HoudiniCreator):
     product_type = "mantra_rop"
     icon = "magic"
 
-    # Default to split export and render jobs
-    split_render = True
+    # Default render target
+    render_target = "farm_split"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
@@ -21,10 +21,6 @@ class CreateMantraROP(plugin.HoudiniCreator):
         instance_data.update({"node_type": "ifd"})
         # Add chunk size attribute
         instance_data["chunkSize"] = 10
-        # Submit for job publishing
-        creator_attributes = instance_data.setdefault(
-            "creator_attributes", dict())
-        creator_attributes["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateMantraROP, self).create(
             product_name,
@@ -48,7 +44,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
             "vm_picture": filepath,
         }
 
-        if pre_create_data.get("split_render"):
+        if pre_create_data.get("render_target") == "farm_split":
             ifd_filepath = \
                 "{export_dir}{product_name}/{product_name}.$F4.ifd".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/ifd/"),
@@ -84,9 +80,18 @@ class CreateMantraROP(plugin.HoudiniCreator):
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+            "farm_split": "Farm Rendering - Split export & render jobs",
+        }
 
         return [
-            UILabelDef(label="Mantra Render Settings:"),
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target),
             EnumDef("image_format",
                     image_format_enum,
                     default="exr",
@@ -95,20 +100,6 @@ class CreateMantraROP(plugin.HoudiniCreator):
                     label="Override Camera Resolution",
                     tooltip="Override the current camera "
                             "resolution, recommended for IPR.",
-                    default=False),
-            UISeparatorDef(key="1"),
-            UILabelDef(label="Farm Render Options:"),
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
-            BoolDef("split_render",
-                    label="Split export and render jobs",
-                    default=self.split_render),
-            UISeparatorDef(key="2"),
-            UILabelDef(label="Local Render Options:"),
-            BoolDef("skip_render",
-                    label="Skip Render",
-                    tooltip="Enable this option to skip render which publish existing frames.",
                     default=False),
         ]
 

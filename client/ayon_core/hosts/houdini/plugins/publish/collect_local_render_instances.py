@@ -21,10 +21,8 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
     label = "Collect local render instances"
 
     def process(self, instance):
-        creator_attribute = instance.data["creator_attributes"]
-        farm_enabled = creator_attribute["farm"]
-        instance.data["farm"] = farm_enabled
-        if farm_enabled:
+
+        if instance.data["farm"]:
             self.log.debug("Render on farm is enabled. "
                            "Skipping local render collecting.")
             return
@@ -45,7 +43,13 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
             #     AOV=aov_name,
             #     productName=instance.data["productName"]
             # )
-            product_name = "render{Task}{productName}_{AOV}".format(
+            name_template = "render{Task}{productName}_{AOV}"
+            if not aov_name:
+                # This is done to remove the trailing `_`
+                # if aov name is an empty string.
+                name_template = "render{Task}{productName}"
+
+            product_name = name_template.format(
                 Task=self._capitalize(instance.data["task"]),
                 productName=self._capitalize(instance.data["productName"]),
                 AOV=aov_name

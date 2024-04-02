@@ -23,11 +23,28 @@ class ExtractLocalRender(publish.Extractor):
             return
 
         creator_attribute = instance.data["creator_attributes"]
-        skip_render = creator_attribute["skip_render"]
 
-        if skip_render:
+        if creator_attribute.get("render_target") == "local_no_render":
             self.log.debug("Skip render is enabled, skipping rendering.")
             return
 
+        # Make sure split parameter is turned off.
+        # Otherwise, render nodes will generate intermediate
+        #  render files instead of render.
+        product_type = instance.data["productType"]
+        rop_node = hou.node(instance.data.get("instance_node"))
+
+        if product_type == "arnold_rop":
+            rop_node.setParms({"ar_ass_export_enable": 0})
+        elif product_type == "mantra_rop":
+            rop_node.setParms({"soho_outputmode": 0})
+        elif product_type == "redshift_rop":
+            rop_node.setParms({"RS_archive_enable": 0})
+        elif product_type == "vray_rop":
+            rop_node.setParms({"render_export_mode": "1"})
+
         ropnode = hou.node(instance.data.get("instance_node"))
         render_rop(ropnode)
+
+        # TODO: Check for missing frames.
+        # self.log.debug(instance.data["expectedFiles"])
