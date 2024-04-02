@@ -18,7 +18,7 @@ This is how it looks on my testing project timeline
 ![image](https://user-images.githubusercontent.com/40640033/102637638-96ec6600-4156-11eb-9656-6e8e3ce4baf8.png)
 Notice I had renamed tracks to `main` (holding metadata markers) and `review` used for generating review data with ffmpeg confersion to jpg sequence.
 
-1.  you need to start OpenPype menu from Resolve/EditTab/Menu/Workspace/Scripts/Comp/**__OpenPype_Menu__**
+1.  you need to start AYON menu from Resolve/EditTab/Menu/Workspace/Scripts/Comp/**__OpenPype_Menu__**
 2.  then select any clips in `main` track and change their color to `Chocolate`
 3.  in OpenPype Menu select `Create`
 4.  in Creator select `Create Publishable Clip [New]` (temporary name)
