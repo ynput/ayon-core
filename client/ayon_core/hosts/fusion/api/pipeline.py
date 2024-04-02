@@ -43,7 +43,7 @@ CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 # Track whether the workfile tool is about to save
-ABOUT_TO_SAVE = False
+_about_to_save = False
 
 
 class FusionLogHandler(logging.Handler):
@@ -176,15 +176,15 @@ def on_save(event):
     validate_comp_prefs(comp)
 
     # We are now starting the actual save directly
-    global ABOUT_TO_SAVE
-    ABOUT_TO_SAVE = False
+    global _about_to_save
+    _about_to_save = False
 
 
 def on_task_changed():
-    global ABOUT_TO_SAVE
-    print(f"Task changed: {ABOUT_TO_SAVE}")
+    global _about_to_save
+    print(f"Task changed: {_about_to_save}")
     # TODO: Only do this if not headless
-    if ABOUT_TO_SAVE:
+    if _about_to_save:
         # Let's prompt the user to update the context settings or not
         prompt_reset_context()
 
@@ -228,7 +228,7 @@ def before_workfile_save(event):
     # have been shut down, and restarted - which will restart it to the
     # environment Fusion started with; not necessarily where the artist
     # is currently working.
-    # The `ABOUT_TO_SAVE` var is used to detect context changes when
+    # The `_about_to_save` var is used to detect context changes when
     # saving into another asset. If we keep it False it will be ignored
     # as context change. As such, before we change tasks we will only
     # consider it the current filepath is within the currently known
@@ -239,8 +239,8 @@ def before_workfile_save(event):
     filepath = comp.GetAttrs()["COMPS_FileName"]
     workdir = os.environ.get("AYON_WORKDIR")
     if Path(workdir) in Path(filepath).parents:
-        global ABOUT_TO_SAVE
-        ABOUT_TO_SAVE = True
+        global _about_to_save
+        _about_to_save = True
 
 
 def ls():
