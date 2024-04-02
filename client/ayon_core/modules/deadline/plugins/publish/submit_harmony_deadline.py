@@ -273,6 +273,7 @@ class HarmonySubmitDeadline(
             "FTRACK_API_KEY",
             "FTRACK_API_USER",
             "FTRACK_SERVER",
+            "AYON_BUNDLE_NAME",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",

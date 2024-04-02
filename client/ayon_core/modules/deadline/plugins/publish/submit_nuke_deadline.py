@@ -376,6 +376,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         keys = [
             "PYTHONPATH",
             "PATH",
+            "AYON_BUNDLE_NAME",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
@@ -388,7 +389,6 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
             "TOOL_ENV",
             "FOUNDRY_LICENSE",
             "OPENPYPE_SG_USER",
-            "AYON_BUNDLE_NAME",
         ]
 
         # add allowed keys from preset if any
