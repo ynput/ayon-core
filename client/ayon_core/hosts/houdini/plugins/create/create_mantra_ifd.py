@@ -34,7 +34,7 @@ class CreateMantraIFD(plugin.HoudiniCreator):
             # Mantra ROP settings
             "soho_diskfile": filepath,
             "soho_outputmode": 1,
-            # Enable `Save Geometery Inline`
+            # Enable `Save Geometry Inline`
             # As it's hard to update the geo reference
             # inside the IFD file after publishing the IFDs.
             "vm_inlinestorage": 1
