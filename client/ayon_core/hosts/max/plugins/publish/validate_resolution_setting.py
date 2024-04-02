@@ -42,11 +42,11 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
                                          "on asset or shot.")
 
     def get_folder_resolution(self, instance):
-        folder_entity = instance.data["folderEntity"]
-        if folder_entity:
-            folder_attributes = folder_entity["attrib"]
-            width = folder_attributes["resolutionWidth"]
-            height = folder_attributes["resolutionHeight"]
+        task_entity = instance.data.get("taskEntity")
+        if task_entity:
+            task_attributes = task_entity["attrib"]
+            width = task_attributes["resolutionWidth"]
+            height = task_attributes["resolutionHeight"]
             return int(width), int(height)
 
         # Defaults if not found in folder entity
