@@ -37,7 +37,8 @@ Todos:
 import collections
 from typing import Any, Optional, Union
 
-from ayon_core.client import get_asset_by_name, get_asset_name_identifier
+import ayon_api
+
 from ayon_core.lib import (
     prepare_template_data,
     AbstractAttrDef,
@@ -149,10 +150,21 @@ class CreateRenderlayer(TVPaintCreator):
         self.mark_for_review = plugin_settings["mark_for_review"]
 
     def get_dynamic_data(
-        self, project_name, asset_doc, task_name, variant, host_name, instance
+        self,
+        project_name,
+        folder_entity,
+        task_entity,
+        variant,
+        host_name,
+        instance
     ):
         dynamic_data = super().get_dynamic_data(
-            project_name, asset_doc, task_name, variant, host_name, instance
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance
         )
         dynamic_data["renderpass"] = self.default_pass_name
         dynamic_data["renderlayer"] = variant
@@ -208,7 +220,7 @@ class CreateRenderlayer(TVPaintCreator):
         creator_attributes["group_id"] = group_id
         creator_attributes["mark_for_review"] = mark_for_review
 
-        self.log.info(f"Subset name is {product_name}")
+        self.log.info(f"Product name is {product_name}")
         new_instance = CreatedInstance(
             self.product_type,
             product_name,
@@ -425,10 +437,21 @@ class CreateRenderPass(TVPaintCreator):
             self._add_instance_to_context(instance)
 
     def get_dynamic_data(
-        self, project_name, asset_doc, task_name, variant, host_name, instance
+        self,
+        project_name,
+        folder_entity,
+        task_entity,
+        variant,
+        host_name,
+        instance
     ):
         dynamic_data = super().get_dynamic_data(
-            project_name, asset_doc, task_name, variant, host_name, instance
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance
         )
         dynamic_data["renderpass"] = variant
         dynamic_data["renderlayer"] = "{renderlayer}"
@@ -576,7 +599,7 @@ class CreateRenderPass(TVPaintCreator):
         if filtered_layers:
             self.log.info((
                 "Changing group of "
-                f"{','.join([l['name'] for l in filtered_layers])}"
+                f"{','.join([layer['name'] for layer in filtered_layers])}"
                 f" to {group_id}"
             ))
             george_lines = [
@@ -737,7 +760,9 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
         grg_lines: list[str] = []
         for group_id, group_name in new_group_name_by_id.items():
             group: dict[str, Any] = groups_by_id[group_id]
-            grg_line: str = "tv_layercolor \"setcolor\" {} {} {} {} {}".format(
+            grg_line: str = (
+                "tv_layercolor \"setcolor\" {} {} {} {} {} \"{}\""
+            ).format(
                 group["clip_id"],
                 group_id,
                 group["red"],
@@ -754,8 +779,8 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
     def _prepare_render_layer(
         self,
         project_name: str,
-        asset_doc: dict[str, Any],
-        task_name: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
         group_id: int,
         groups: list[dict[str, Any]],
         mark_for_review: bool,
@@ -772,6 +797,7 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
         if not match_group:
             return None
 
+        task_name = task_entity["name"]
         variant: str = match_group["name"]
         creator: CreateRenderlayer = (
             self.create_context.creators[CreateRenderlayer.identifier]
@@ -779,20 +805,19 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
 
         product_name: str = creator.get_product_name(
             project_name,
-            asset_doc,
-            task_name,
+            folder_entity,
+            task_entity,
             variant,
             host_name=self.create_context.host_name,
         )
-        asset_name = get_asset_name_identifier(asset_doc)
         if existing_instance is not None:
-            existing_instance["folderPath"] = asset_name
+            existing_instance["folderPath"] = folder_entity["path"]
             existing_instance["task"] = task_name
             existing_instance["productName"] = product_name
             return existing_instance
 
         instance_data: dict[str, str] = {
-            "folderPath": asset_name,
+            "folderPath": folder_entity["path"],
             "task": task_name,
             "productType": creator.product_type,
             "variant": variant,
@@ -806,13 +831,14 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
     def _prepare_render_passes(
         self,
         project_name: str,
-        asset_doc: dict[str, Any],
-        task_name: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
         render_layer_instance: CreatedInstance,
         layers: list[dict[str, Any]],
         mark_for_review: bool,
         existing_render_passes: list[CreatedInstance]
     ):
+        task_name = task_entity["name"]
         creator: CreateRenderPass = (
             self.create_context.creators[CreateRenderPass.identifier]
         )
@@ -820,8 +846,6 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
         for render_pass in existing_render_passes:
             for layer_name in render_pass["layer_names"]:
                 render_pass_by_layer_name[layer_name] = render_pass
-
-        asset_name = get_asset_name_identifier(asset_doc)
 
         for layer in layers:
             layer_name = layer["name"]
@@ -833,21 +857,21 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
 
             product_name = creator.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 variant,
                 host_name=self.create_context.host_name,
                 instance=render_pass
             )
 
             if render_pass is not None:
-                render_pass["folderPath"] = asset_name
+                render_pass["folderPath"] = folder_entity["path"]
                 render_pass["task"] = task_name
                 render_pass["productName"] = product_name
                 continue
 
             instance_data: dict[str, str] = {
-                "folderPath": asset_name,
+                "folderPath": folder_entity["path"],
                 "task": task_name,
                 "productType": creator.product_type,
                 "variant": variant
@@ -886,10 +910,13 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
 
     def create(self, product_name, instance_data, pre_create_data):
         project_name: str = self.create_context.get_current_project_name()
-        asset_name: str = instance_data["folderPath"]
+        folder_path: str = instance_data["folderPath"]
         task_name: str = instance_data["task"]
-        asset_doc: dict[str, Any] = get_asset_by_name(
-            project_name, asset_name)
+        folder_entity: dict[str, Any] = ayon_api.get_folder_by_path(
+            project_name, folder_path)
+        task_entity: dict[str, Any] = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
 
         render_layers_by_group_id: dict[int, CreatedInstance] = {}
         render_passes_by_render_layer_id: dict[int, list[CreatedInstance]] = (
@@ -951,8 +978,8 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
             instance: Union[CreatedInstance, None] = (
                 self._prepare_render_layer(
                     project_name,
-                    asset_doc,
-                    task_name,
+                    folder_entity,
+                    task_entity,
                     group_id,
                     scene_groups,
                     mark_layers_for_review,
@@ -972,8 +999,8 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
 
             self._prepare_render_passes(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 render_layer_instance,
                 layers,
                 mark_passes_for_review,
@@ -1047,16 +1074,16 @@ class TVPaintSceneRenderCreator(TVPaintAutoCreator):
     def get_dynamic_data(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name,
         instance
     ):
         dynamic_data = super().get_dynamic_data(
             project_name,
-            asset_doc,
-            task_name,
+            folder_entity,
+            task_entity,
             variant,
             host_name,
             instance
@@ -1069,19 +1096,22 @@ class TVPaintSceneRenderCreator(TVPaintAutoCreator):
         create_context = self.create_context
         host_name = create_context.host_name
         project_name = create_context.get_current_project_name()
-        asset_name = create_context.get_current_asset_name()
+        folder_path = create_context.get_current_folder_path()
         task_name = create_context.get_current_task_name()
 
-        asset_doc = get_asset_by_name(project_name, asset_name)
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
         product_name = self.get_product_name(
             project_name,
-            asset_doc,
-            task_name,
+            folder_entity,
+            task_entity,
             self.default_variant,
             host_name,
         )
         data = {
-            "folderPath": asset_name,
+            "folderPath": folder_path,
             "task": task_name,
             "variant": self.default_variant,
             "creator_attributes": {
@@ -1118,24 +1148,29 @@ class TVPaintSceneRenderCreator(TVPaintAutoCreator):
         create_context = self.create_context
         host_name = create_context.host_name
         project_name = create_context.get_current_project_name()
-        asset_name = create_context.get_current_asset_name()
+        folder_path = create_context.get_current_folder_path()
         task_name = create_context.get_current_task_name()
 
         existing_name = existing_instance.get("folderPath")
         if (
-            existing_name != asset_name
+            existing_name != folder_path
             or existing_instance["task"] != task_name
         ):
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 existing_instance["variant"],
                 host_name,
                 existing_instance
             )
-            existing_instance["folderPath"] = asset_name
+            existing_instance["folderPath"] = folder_path
             existing_instance["task"] = task_name
             existing_instance["productName"] = product_name
 

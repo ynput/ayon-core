@@ -8,13 +8,13 @@ log = Logger.get_logger(__name__)
 
 
 def main(env):
-    from ayon_core.hosts.resolve.api import ResolveHost, launch_pype_menu
+    from ayon_core.hosts.resolve.api import ResolveHost, launch_ayon_menu
 
     # activate resolve from openpype
     host = ResolveHost()
     install_host(host)
 
-    launch_pype_menu()
+    launch_ayon_menu()
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ from .pipeline import (
 from .lib import (
     maintained_selection,
     get_extension_manifest_path,
-    get_asset_settings,
+    get_folder_settings,
     set_settings
 )
 
@@ -31,13 +31,14 @@ __all__ = [
     "get_stub",
 
     # pipeline
+    "AfterEffectsHost",
     "ls",
     "containerise",
 
     # lib
     "maintained_selection",
     "get_extension_manifest_path",
-    "get_asset_settings",
+    "get_folder_settings",
     "set_settings",
 
     # plugin

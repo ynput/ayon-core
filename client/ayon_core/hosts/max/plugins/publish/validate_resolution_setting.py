@@ -24,7 +24,7 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
     def process(self, instance):
         if not self.is_active(instance.data):
             return
-        width, height = self.get_db_resolution(instance)
+        width, height = self.get_folder_resolution(instance)
         current_width = rt.renderWidth
         current_height = rt.renderHeight
         if current_width != width and current_height != height:
@@ -41,16 +41,15 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
                                          "not matching resolution set "
                                          "on asset or shot.")
 
-    def get_db_resolution(self, instance):
-        asset_doc = instance.data["assetEntity"]
-        project_doc = instance.context.data["projectEntity"]
-        for data in [asset_doc["data"], project_doc["data"]]:
-            if "resolutionWidth" in data and "resolutionHeight" in data:
-                width = data["resolutionWidth"]
-                height = data["resolutionHeight"]
-                return int(width), int(height)
+    def get_folder_resolution(self, instance):
+        folder_entity = instance.data["folderEntity"]
+        if folder_entity:
+            folder_attributes = folder_entity["attrib"]
+            width = folder_attributes["resolutionWidth"]
+            height = folder_attributes["resolutionHeight"]
+            return int(width), int(height)
 
-        # Defaults if not found in asset document or project document
+        # Defaults if not found in folder entity
         return 1920, 1080
 
     @classmethod

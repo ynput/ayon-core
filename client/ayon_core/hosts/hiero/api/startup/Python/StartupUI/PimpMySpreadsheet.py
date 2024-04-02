@@ -641,7 +641,7 @@ def _setStatus(self, status):
     global gStatusTags
 
     # Get a valid Tag object from the Global list of statuses
-    if not status in gStatusTags.keys():
+    if status not in gStatusTags.keys():
         print("Status requested was not a valid Status string.")
         return
 

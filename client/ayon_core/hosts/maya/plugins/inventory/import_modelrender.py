@@ -1,13 +1,11 @@
 import re
 import json
 
-from ayon_core.client import (
-    get_representation_by_id,
-    get_representations
-)
+import ayon_api
+
+from ayon_core.pipeline.load import get_representation_contexts_by_ids
 from ayon_core.pipeline import (
     InventoryAction,
-    get_representation_context,
     get_current_project_name,
 )
 from ayon_core.hosts.maya.api.lib import (
@@ -35,7 +33,69 @@ class ImportModelRender(InventoryAction):
     def process(self, containers):
         from maya import cmds  # noqa: F401
 
+        # --- Query entities that will be used ---
         project_name = get_current_project_name()
+        # Collect representation ids from all containers
+        repre_ids = {
+            container["representation"]
+            for container in containers
+        }
+        # Create mapping of representation id to version id
+        # - used in containers loop
+        version_id_by_repre_id = {
+            repre_entity["id"]: repre_entity["versionId"]
+            for repre_entity in ayon_api.get_representations(
+                project_name,
+                representation_ids=repre_ids,
+                fields={"id", "versionId"}
+            )
+        }
+
+        # Find all representations of the versions
+        version_ids = set(version_id_by_repre_id.values())
+        repre_entities = ayon_api.get_representations(
+            project_name,
+            version_ids=version_ids,
+            fields={"id", "name", "versionId"}
+        )
+        repre_entities_by_version_id = {
+            version_id: []
+            for version_id in version_ids
+        }
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            repre_entities_by_version_id[version_id].append(repre_entity)
+
+        look_repres_by_version_id = {}
+        look_repre_ids = set()
+        for version_id, repre_entities in (
+            repre_entities_by_version_id.items()
+        ):
+            json_repre = None
+            look_repres = []
+            scene_type_regex = re.compile(self.scene_type_regex)
+            for repre_entity in repre_entities:
+                repre_name = repre_entity["name"]
+                if repre_name == self.look_data_type:
+                    json_repre = repre_entity
+
+                elif scene_type_regex.fullmatch(repre_name):
+                    look_repres.append(repre_entity)
+
+            look_repre = look_repres[0] if look_repres else None
+            if look_repre:
+                look_repre_ids.add(look_repre["id"])
+            if json_repre:
+                look_repre_ids.add(json_repre["id"])
+
+            look_repres_by_version_id[version_id] = (json_repre, look_repre)
+
+        contexts_by_repre_id = get_representation_contexts_by_ids(
+            project_name, look_repre_ids
+        )
+
+        # --- Real process logic ---
+        # Loop over containers and assign the looks
         for container in containers:
             con_name = container["objectName"]
             nodes = []
@@ -45,22 +105,34 @@ class ImportModelRender(InventoryAction):
                 else:
                     nodes.append(n)
 
-            repr_doc = get_representation_by_id(
-                project_name, container["representation"], fields=["parent"]
-            )
-            version_id = repr_doc["parent"]
+            repre_id = container["representation"]
+            version_id = version_id_by_repre_id.get(repre_id)
+            if version_id is None:
+                print("Representation '{}' was not found".format(repre_id))
+                continue
+
+            json_repre, look_repre = look_repres_by_version_id[version_id]
 
             print("Importing render sets for model %r" % con_name)
-            self.assign_model_render_by_version(nodes, version_id)
+            self._assign_model_render(
+                nodes, json_repre, look_repre, contexts_by_repre_id
+            )
 
-    def assign_model_render_by_version(self, nodes, version_id):
+    def _assign_model_render(
+        self, nodes, json_repre, look_repre, contexts_by_repre_id
+    ):
         """Assign nodes a specific published model render data version by id.
 
         This assumes the nodes correspond with the asset.
 
         Args:
-            nodes(list): nodes to assign render data to
-            version_id (bson.ObjectId): database id of the version of model
+            nodes (list): nodes to assign render data to
+            json_repre (dict[str, Any]): Representation entity of the json
+                file.
+            look_repre (dict[str, Any]): First representation entity of the
+                look files.
+            contexts_by_repre_id (dict[str, Any]): Mapping of representation
+                id to its context.
 
         Returns:
             None
@@ -68,33 +140,17 @@ class ImportModelRender(InventoryAction):
 
         from maya import cmds  # noqa: F401
 
-        project_name = get_current_project_name()
-        repre_docs = get_representations(
-            project_name, version_ids=[version_id], fields=["_id", "name"]
-        )
-        # Get representations of shader file and relationships
-        json_repre = None
-        look_repres = []
-        scene_type_regex = re.compile(self.scene_type_regex)
-        for repre_doc in repre_docs:
-            repre_name = repre_doc["name"]
-            if repre_name == self.look_data_type:
-                json_repre = repre_doc
-                continue
-
-            if scene_type_regex.fullmatch(repre_name):
-                look_repres.append(repre_doc)
-
-        look_repre = look_repres[0] if look_repres else None
         # QUESTION shouldn't be json representation validated too?
         if not look_repre:
             print("No model render sets for this model version..")
             return
 
-        context = get_representation_context(look_repre["_id"])
+        # TODO use 'get_representation_path_with_anatomy' instead
+        #   of 'filepath_from_context'
+        context = contexts_by_repre_id.get(look_repre["id"])
         maya_file = self.filepath_from_context(context)
 
-        context = get_representation_context(json_repre["_id"])
+        context = contexts_by_repre_id.get(json_repre["id"])
         json_file = self.filepath_from_context(context)
 
         # Import the look file

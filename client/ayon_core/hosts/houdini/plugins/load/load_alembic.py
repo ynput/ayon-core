@@ -9,9 +9,10 @@ from ayon_core.hosts.houdini.api import pipeline
 class AbcLoader(load.LoaderPlugin):
     """Load Alembic"""
 
-    families = ["model", "animation", "pointcache", "gpuCache"]
+    product_types = {"model", "animation", "pointcache", "gpuCache"}
     label = "Load Alembic"
-    representations = ["abc"]
+    representations = ["*"]
+    extensions = {"abc"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -28,7 +29,7 @@ class AbcLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create a new geo node
@@ -58,7 +59,7 @@ class AbcLoader(load.LoaderPlugin):
 
         normal_node.setInput(0, unpack)
 
-        null = container.createNode("null", node_name="OUT".format(name))
+        null = container.createNode("null", node_name="OUT")
         null.setInput(0, normal_node)
 
         # Ensure display flag is on the Alembic input node and not on the OUT
@@ -81,8 +82,8 @@ class AbcLoader(load.LoaderPlugin):
             suffix="",
         )
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_entity = context["representation"]
         node = container["node"]
         try:
             alembic_node = next(
@@ -93,18 +94,18 @@ class AbcLoader(load.LoaderPlugin):
             return
 
         # Update the file path
-        file_path = get_representation_path(representation)
+        file_path = get_representation_path(repre_entity)
         file_path = file_path.replace("\\", "/")
 
         alembic_node.setParms({"fileName": file_path})
 
         # Update attribute
-        node.setParms({"representation": str(representation["_id"])})
+        node.setParms({"representation": repre_entity["id"]})
 
     def remove(self, container):
 
         node = container["node"]
         node.destroy()
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)

@@ -29,7 +29,8 @@ class AssetModel(models.TreeModel):
         self.beginResetModel()
 
         # Add the items sorted by label
-        sorter = lambda x: x["label"]
+        def sorter(x):
+            return x["label"]
 
         for item in sorted(items, key=sorter):
 
@@ -104,12 +105,12 @@ class LookModel(models.TreeModel):
         # Collect the assets per look name (from the items of the AssetModel)
         look_products = defaultdict(list)
         for asset_item in items:
-            asset = asset_item["asset"]
+            folder_entity = asset_item["folder_entity"]
             for look in asset_item["looks"]:
-                look_products[look["name"]].append(asset)
+                look_products[look["name"]].append(folder_entity)
 
         for product_name in sorted(look_products.keys()):
-            assets = look_products[product_name]
+            folder_entities = look_products[product_name]
 
             # Define nice label without "look" prefix for readability
             label = (
@@ -123,10 +124,10 @@ class LookModel(models.TreeModel):
             item_node["product"] = product_name
 
             # Amount of matching assets for this look
-            item_node["match"] = len(assets)
+            item_node["match"] = len(folder_entities)
 
             # Store the assets that have this product available
-            item_node["assets"] = assets
+            item_node["folder_entities"] = folder_entities
 
             self.add_child(item_node)
 

@@ -10,7 +10,7 @@ from maya import cmds
 host = MayaHost()
 install_host(host)
 
-print("Starting OpenPype usersetup...")
+print("Starting AYON usersetup...")
 
 project_name = get_current_project_name()
 settings = get_project_settings(project_name)
@@ -47,4 +47,4 @@ if bool(int(os.environ.get(key, "0"))):
     )
 
 
-print("Finished OpenPype usersetup.")
+print("Finished AYON usersetup.")

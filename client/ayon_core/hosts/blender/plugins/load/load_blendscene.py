@@ -18,7 +18,7 @@ from ayon_core.hosts.blender.api.pipeline import (
 class BlendSceneLoader(plugin.AssetLoader):
     """Load assets from a .blend file."""
 
-    families = ["blendScene"]
+    product_types = {"blendScene"}
     representations = ["blend"]
 
     label = "Append Blend"
@@ -82,11 +82,11 @@ class BlendSceneLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        folder_name = context["asset"]["name"]
-        product_name = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         try:
-            product_type = context["subset"]["data"]["family"]
+            product_type = context["product"]["productType"]
         except ValueError:
             product_type = "model"
 
@@ -114,11 +114,11 @@ class BlendSceneLoader(plugin.AssetLoader):
             "name": name,
             "namespace": namespace or '',
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
             "libpath": libpath,
             "asset_name": asset_name,
-            "parent": str(context["representation"]["parent"]),
-            "productType": context["subset"]["data"]["family"],
+            "parent": context["representation"]["versionId"],
+            "productType": context["product"]["productType"],
             "objectName": group_name,
             "members": members,
         }
@@ -133,13 +133,14 @@ class BlendSceneLoader(plugin.AssetLoader):
         self[:] = objects
         return objects
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """
         Update the loaded asset.
         """
+        repre_entity = context["representation"]
         group_name = container["objectName"]
         asset_group = bpy.data.collections.get(group_name)
-        libpath = Path(get_representation_path(representation)).as_posix()
+        libpath = Path(get_representation_path(repre_entity)).as_posix()
 
         assert asset_group, (
             f"The asset is not loaded: {container['objectName']}"
@@ -201,8 +202,8 @@ class BlendSceneLoader(plugin.AssetLoader):
 
         new_data = {
             "libpath": libpath,
-            "representation": str(representation["_id"]),
-            "parent": str(representation["parent"]),
+            "representation": repre_entity["id"],
+            "parent": repre_entity["versionId"],
             "members": members,
         }
 

@@ -330,19 +330,25 @@ def get_timeline_item(media_pool_item: object,
     Returns:
         object: resolve.TimelineItem
     """
-    _clip_property = media_pool_item.GetClipProperty
-    clip_name = _clip_property("File Name")
+    clip_name = media_pool_item.GetClipProperty("File Name")
     output_timeline_item = None
     timeline = timeline or get_current_timeline()
 
     with maintain_current_timeline(timeline):
         # search the timeline for the added clip
 
-        for _ti_data in get_current_timeline_items():
-            _ti_clip = _ti_data["clip"]["item"]
-            _ti_clip_property = _ti_clip.GetMediaPoolItem().GetClipProperty
-            if clip_name in _ti_clip_property("File Name"):
-                output_timeline_item = _ti_clip
+        for ti_data in get_current_timeline_items():
+            ti_clip_item = ti_data["clip"]["item"]
+            ti_media_pool_item = ti_clip_item.GetMediaPoolItem()
+
+            # Skip items that do not have a media pool item, like for example
+            # an "Adjustment Clip" or a "Fusion Composition" from the effects
+            # toolbox
+            if not ti_media_pool_item:
+                continue
+
+            if clip_name in ti_media_pool_item.GetClipProperty("File Name"):
+                output_timeline_item = ti_clip_item
 
     return output_timeline_item
 
@@ -713,6 +719,11 @@ def swap_clips(from_clip, to_clip, to_in_frame, to_out_frame):
         bool: True if successfully replaced
 
     """
+    # copy ACES input transform from timeline clip to new media item
+    mediapool_item_from_timeline = from_clip.GetMediaPoolItem()
+    _idt = mediapool_item_from_timeline.GetClipProperty('IDT')
+    to_clip.SetClipProperty('IDT', _idt)
+
     _clip_prop = to_clip.GetClipProperty
     to_clip_name = _clip_prop("File Name")
     # add clip item as take to timeline
@@ -914,7 +925,7 @@ def get_reformated_path(path, padded=False, first=False):
         path (str): path url or simple file name
 
     Returns:
-        type: string with reformated path
+        type: string with reformatted path
 
     Example:
         get_reformated_path("plate.[0001-1008].exr") > plate.%04d.exr
