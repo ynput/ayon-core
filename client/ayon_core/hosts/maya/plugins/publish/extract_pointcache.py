@@ -26,6 +26,10 @@ class ExtractAlembic(publish.Extractor):
     families = ["pointcache", "model", "vrayproxy.alembic"]
     targets = ["local", "remote"]
 
+    # From settings
+    bake_attributes = []
+    bake_attribute_prefixes = []
+
     def process(self, instance):
         if instance.data.get("farm"):
             self.log.debug("Should be processed on farm, skipping.")
@@ -40,10 +44,12 @@ class ExtractAlembic(publish.Extractor):
         attrs = instance.data.get("attr", "").split(";")
         attrs = [value for value in attrs if value.strip()]
         attrs += instance.data.get("userDefinedAttributes", [])
+        attrs += self.bake_attributes
         attrs += ["cbId"]
 
         attr_prefixes = instance.data.get("attrPrefix", "").split(";")
         attr_prefixes = [value for value in attr_prefixes if value.strip()]
+        attr_prefixes += self.bake_attribute_prefixes
 
         self.log.debug("Extracting pointcache..")
         dirname = self.staging_dir(instance)
