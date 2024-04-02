@@ -2640,16 +2640,25 @@ def reset_scene_resolution():
     Returns:
         None
     """
-    project_name = get_current_project_name()
-    project_entity = ayon_api.get_project(project_name)
-    project_attribs = project_entity["attrib"]
 
+    # Set frame start/end
+    project_name = get_current_project_name()
+    folder_path = get_current_folder_path()
+    task_name = get_current_task_name()
+
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path, fields={"id"})
+    task_entity = ayon_api.get_task_by_name(
+        project_name, folder_entity["id"], task_name
+        )
+    task_attributes = task_entity["attrib"]
     # Set resolution
-    width = project_attribs.get("resolutionWidth", 1920)
-    height = project_attribs.get("resolutionHeight", 1080)
-    pixelAspect = project_attribs.get("pixelAspect", 1)
+    width = task_attributes.get("resolutionWidth", 1920)
+    height = task_attributes.get("resolutionHeight", 1080)
+    pixelAspect = task_attributes.get("pixelAspect", 1)
 
     set_scene_resolution(width, height, pixelAspect)
+
 
 
 def set_context_settings(
