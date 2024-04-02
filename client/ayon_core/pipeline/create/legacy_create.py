@@ -9,7 +9,6 @@ import os
 import logging
 import collections
 
-from ayon_core.client import get_asset_by_id
 from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 
 from .product_name import get_product_name
@@ -45,7 +44,7 @@ class LegacyCreator(object):
 
     @classmethod
     def apply_settings(cls, project_settings):
-        """Apply OpenPype settings to a plugin class."""
+        """Apply AYON settings to a plugin class."""
 
         host_name = os.environ.get("AYON_HOST_NAME")
         plugin_type = "create"
@@ -89,7 +88,7 @@ class LegacyCreator(object):
 
     @classmethod
     def get_dynamic_data(
-        cls, project_name, asset_id, task_name, variant, host_name
+        cls, project_name, folder_entity, task_entity, variant, host_name
     ):
         """Return dynamic data for current Creator plugin.
 
@@ -124,7 +123,7 @@ class LegacyCreator(object):
 
     @classmethod
     def get_product_name(
-        cls, project_name, asset_id, task_name, variant, host_name=None
+        cls, project_name, folder_entity, task_entity, variant, host_name=None
     ):
         """Return product name created with entered arguments.
 
@@ -137,8 +136,8 @@ class LegacyCreator(object):
 
         Args:
             project_name (str): Context's project name.
-            asset_id (str): Folder id.
-            task_name (str): Context's task name.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
             variant (str): What is entered by user in creator tool.
             host_name (str): Name of host.
 
@@ -148,17 +147,16 @@ class LegacyCreator(object):
         """
 
         dynamic_data = cls.get_dynamic_data(
-            project_name, asset_id, task_name, variant, host_name
+            project_name, folder_entity, task_entity, variant, host_name
         )
-
-        asset_doc = get_asset_by_id(
-            project_name, asset_id, fields=["data.tasks"]
-        )
-
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         return get_product_name(
             project_name,
-            asset_doc,
             task_name,
+            task_type,
             host_name,
             cls.product_type,
             variant,
@@ -166,7 +164,9 @@ class LegacyCreator(object):
         )
 
 
-def legacy_create(Creator, name, asset, options=None, data=None):
+def legacy_create(
+    Creator, product_name, folder_path, options=None, data=None
+):
     """Create a new instance
 
     Associate nodes with a product name and type. These nodes are later
@@ -178,11 +178,11 @@ def legacy_create(Creator, name, asset, options=None, data=None):
     and finally asset browsers to help identify the origin of the asset.
 
     Arguments:
-        Creator (Creator): Class of creator
-        name (str): Name of product
-        asset (str): Name of asset
-        options (dict, optional): Additional options from GUI
-        data (dict, optional): Additional data from GUI
+        Creator (Creator): Class of creator.
+        product_name (str): Name of product.
+        folder_path (str): Folder path.
+        options (dict, optional): Additional options from GUI.
+        data (dict, optional): Additional data from GUI.
 
     Raises:
         NameError on `productName` already exists
@@ -196,7 +196,7 @@ def legacy_create(Creator, name, asset, options=None, data=None):
     from ayon_core.pipeline import registered_host
 
     host = registered_host()
-    plugin = Creator(name, asset, options, data)
+    plugin = Creator(product_name, folder_path, options, data)
 
     if plugin.maintain_selection is True:
         with host.maintained_selection():

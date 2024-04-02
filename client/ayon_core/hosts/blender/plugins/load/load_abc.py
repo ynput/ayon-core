@@ -26,7 +26,7 @@ class CacheModelLoader(plugin.AssetLoader):
     Note:
         At least for now it only supports Alembic files.
     """
-    families = ["model", "pointcache", "animation"]
+    product_types = {"model", "pointcache", "animation"}
     representations = ["abc"]
 
     label = "Load Alembic"
@@ -134,8 +134,8 @@ class CacheModelLoader(plugin.AssetLoader):
         """
 
         libpath = self.filepath_from_context(context)
-        folder_name = context["asset"]["name"]
-        product_name = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         asset_name = plugin.prepare_scene_name(folder_name, product_name)
         unique_number = plugin.get_unique_number(folder_name, product_name)
@@ -161,17 +161,17 @@ class CacheModelLoader(plugin.AssetLoader):
 
         self._link_objects(objects, asset_group, containers, asset_group)
 
-        product_type = context["subset"]["data"]["family"]
+        product_type = context["product"]["productType"]
         asset_group[AVALON_PROPERTY] = {
             "schema": "openpype:container-2.0",
             "id": AVALON_CONTAINER_ID,
             "name": name,
             "namespace": namespace or '',
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
             "libpath": libpath,
             "asset_name": asset_name,
-            "parent": str(context["representation"]["parent"]),
+            "parent": context["representation"]["versionId"],
             "productType": product_type,
             "objectName": group_name
         }
@@ -179,7 +179,7 @@ class CacheModelLoader(plugin.AssetLoader):
         self[:] = objects
         return objects
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """Update the loaded asset.
 
         This will remove all objects of the current collection, load the new
@@ -191,15 +191,16 @@ class CacheModelLoader(plugin.AssetLoader):
         Warning:
             No nested collections are supported at the moment!
         """
+        repre_entity = context["representation"]
         object_name = container["objectName"]
         asset_group = bpy.data.objects.get(object_name)
-        libpath = Path(get_representation_path(representation))
+        libpath = Path(get_representation_path(repre_entity))
         extension = libpath.suffix.lower()
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(representation, indent=2),
+            pformat(repre_entity, indent=2),
         )
 
         assert asset_group, (
@@ -244,7 +245,7 @@ class CacheModelLoader(plugin.AssetLoader):
         asset_group.matrix_basis = mat
 
         metadata["libpath"] = str(libpath)
-        metadata["representation"] = str(representation["_id"])
+        metadata["representation"] = repre_entity["id"]
 
     def exec_remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.

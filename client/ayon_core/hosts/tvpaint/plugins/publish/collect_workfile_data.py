@@ -92,11 +92,11 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
                 os.environ[env_key] = workfile_context[key]
             self.log.info("Context changed to: {}".format(workfile_context))
 
-            asset_name = workfile_context["folder_path"]
+            folder_path = workfile_context["folder_path"]
             task_name = workfile_context["task_name"]
 
         else:
-            asset_name = current_context["folder_path"]
+            folder_path = current_context["folder_path"]
             task_name = current_context["task_name"]
             # Handle older workfiles or workfiles without metadata
             self.log.warning((
@@ -104,12 +104,12 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
                 " Using current Session context."
             ))
 
-        # Store context asset name
-        context.data["folderPath"] = asset_name
+        # Store context folder path
+        context.data["folderPath"] = folder_path
         context.data["task"] = task_name
         self.log.info(
-            "Context is set to Asset: \"{}\" and Task: \"{}\"".format(
-                asset_name, task_name
+            "Context is set to Folder: \"{}\" and Task: \"{}\"".format(
+                folder_path, task_name
             )
         )
 

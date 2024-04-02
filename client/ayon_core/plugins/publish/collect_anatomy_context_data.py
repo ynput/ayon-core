@@ -3,7 +3,8 @@
 Requires:
     context -> anatomy
     context -> projectEntity
-    context -> assetEntity
+    context -> folderEntity
+    context -> taskEntity
     context -> task
     context -> username
     context -> datetimeData
@@ -49,15 +50,15 @@ class CollectAnatomyContextData(pyblish.api.ContextPlugin):
         host_name = context.data["hostName"]
         project_settings = context.data["project_settings"]
         project_entity = context.data["projectEntity"]
-        asset_entity = context.data.get("assetEntity")
-        task_name = None
-        if asset_entity:
-            task_name = context.data["task"]
+        folder_entity = context.data.get("folderEntity")
+        task_entity = None
+        if folder_entity:
+            task_entity = context.data["taskEntity"]
 
         anatomy_data = get_template_data(
             project_entity,
-            asset_entity,
-            task_name,
+            folder_entity,
+            task_entity,
             host_name,
             project_settings
         )
