@@ -299,11 +299,27 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
+    bake_attributes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attributes",
+        description="List of attributes that will be included in the alembic "
+                    "export.",
+    )
+    bake_attribute_prefixes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attribute Prefixes",
+        description="List of attribute prefixes for attributes that will be "
+                    "included in the alembic export.",
+    )
 
 
 class ExtractObjModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
+
+
+class ExtractModelModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
 
 
 class ExtractMayaSceneRawModel(BaseSettingsModel):
@@ -362,7 +378,9 @@ class ExtractLookModel(BaseSettingsModel):
 
 
 class ExtractGPUCacheModel(BaseSettingsModel):
-    enabled: bool = True
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     families: list[str] = SettingsField(default_factory=list, title="Families")
     step: float = SettingsField(1.0, ge=1.0, title="Step")
     stepSave: int = SettingsField(1, ge=1, title="Step Save")
@@ -789,6 +807,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractGPUCacheModel,
         title="Extract GPU Cache",
     )
+    ExtractModel: ExtractModelModel = SettingsField(
+        default_factory=ExtractModelModel,
+        title="Extract Model (Maya Scene)"
+    )
 
 
 DEFAULT_SUFFIX_NAMING = {
@@ -1184,7 +1206,9 @@ DEFAULT_PUBLISH_SETTINGS = {
             "pointcache",
             "model",
             "vrayproxy.alembic"
-        ]
+        ],
+        "bake_attributes": [],
+        "bake_attribute_prefixes": []
     },
     "ExtractObj": {
         "enabled": False,
@@ -1329,6 +1353,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractGPUCache": {
         "enabled": False,
+        "optional": False,
+        "active": True,
         "families": [
             "model",
             "animation",
@@ -1341,5 +1367,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optimizeAnimationsForMotionBlur": True,
         "writeMaterials": True,
         "useBaseTessellation": True
+    },
+    "ExtractModel": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
     }
 }
