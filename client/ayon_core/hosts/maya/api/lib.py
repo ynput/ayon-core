@@ -2155,20 +2155,20 @@ def get_related_sets(node):
         return sets
 
     # Exclude deformer sets (`type=2` for `maya.cmds.listSets`)
-    deformer_sets = cmds.listSets(object=node,
-                                  extendToShape=False,
-                                  type=2) or []
-    deformer_sets = set(deformer_sets)  # optimize lookup
-    sets = [s for s in sets if s not in deformer_sets]
+    exclude_sets = cmds.listSets(object=node,
+                                 extendToShape=False,
+                                 type=2) or []
+    exclude_sets = set(exclude_sets)  # optimize lookup
+
+    # Default nodes to ignore
+    exclude_sets.update({"defaultLightSet", "defaultObjectSet"})
+
+    # Filter out the sets to exclude
+    sets = [s for s in sets if s not in exclude_sets]
 
     # Ignore when the set has a specific suffix
     ignore_suffices = ("out_SET", "controls_SET", "_INST", "_CON")
     sets = [s for s in sets if not s.endswith(ignore_suffices)]
-
-    # Default nodes to ignore
-    defaults = {"defaultLightSet", "defaultObjectSet"}
-    sets = [s for s in sets if s not in defaults]
-
     if not sets:
         return sets
 
