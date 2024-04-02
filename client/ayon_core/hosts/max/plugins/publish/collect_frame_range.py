@@ -14,7 +14,7 @@ class CollectFrameRange(pyblish.api.InstancePlugin):
                 "review", "redshiftproxy"]
 
     def process(self, instance):
-        if instance.data["family"] == "maxrender":
+        if instance.data["productType"] == "maxrender":
             instance.data["frameStartHandle"] = int(rt.rendStart)
             instance.data["frameEndHandle"] = int(rt.rendEnd)
         else:

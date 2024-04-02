@@ -1,10 +1,11 @@
-from ayon_core.client import get_asset_by_name
+import ayon_api
+
 from ayon_core.pipeline import CreatedInstance
 from ayon_core.hosts.tvpaint.api.plugin import TVPaintAutoCreator
 
 
 class TVPaintReviewCreator(TVPaintAutoCreator):
-    family = "review"
+    product_type = "review"
     identifier = "scene.review"
     label = "Review"
     icon = "ei.video"
@@ -30,25 +31,29 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
         create_context = self.create_context
         host_name = create_context.host_name
         project_name = create_context.get_current_project_name()
-        asset_name = create_context.get_current_asset_name()
+        folder_path = create_context.get_current_folder_path()
         task_name = create_context.get_current_task_name()
 
-        if existing_instance is None:
-            existing_asset_name = None
-        else:
-            existing_asset_name = existing_instance["folderPath"]
+        existing_folder_path = None
+        if existing_instance is not None:
+            existing_folder_path = existing_instance["folderPath"]
 
         if existing_instance is None:
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                self.default_variant,
-                task_name,
-                asset_doc,
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
+            product_name = self.get_product_name(
                 project_name,
+                folder_entity,
+                task_entity,
+                self.default_variant,
                 host_name
             )
             data = {
-                "folderPath": asset_name,
+                "folderPath": folder_path,
                 "task": task_name,
                 "variant": self.default_variant,
             }
@@ -57,7 +62,7 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
                 data["active"] = False
 
             new_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             instances_data = self.host.list_instances()
             instances_data.append(new_instance.data_to_store())
@@ -65,18 +70,23 @@ class TVPaintReviewCreator(TVPaintAutoCreator):
             self._add_instance_to_context(new_instance)
 
         elif (
-            existing_asset_name != asset_name
+            existing_folder_path != folder_path
             or existing_instance["task"] != task_name
         ):
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                existing_instance["variant"],
-                task_name,
-                asset_doc,
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
+            product_name = self.get_product_name(
                 project_name,
+                folder_entity,
+                task_entity,
+                existing_instance["variant"],
                 host_name,
                 existing_instance
             )
-            existing_instance["folderPath"] = asset_name
+            existing_instance["folderPath"] = folder_path
             existing_instance["task"] = task_name
-            existing_instance["subset"] = subset_name
+            existing_instance["productName"] = product_name

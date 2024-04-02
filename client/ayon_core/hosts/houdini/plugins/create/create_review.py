@@ -12,10 +12,10 @@ class CreateReview(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.review"
     label = "Review"
-    family = "review"
+    product_type = "review"
     icon = "video-camera"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "opengl"})
@@ -23,7 +23,7 @@ class CreateReview(plugin.HoudiniCreator):
         instance_data["keepImages"] = pre_create_data.get("keepImages")
 
         instance = super(CreateReview, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -31,9 +31,10 @@ class CreateReview(plugin.HoudiniCreator):
 
         frame_range = hou.playbar.frameRange()
 
-        filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
+        filepath = "{root}/{product_name}/{product_name}.$F4.{ext}".format(
             root=hou.text.expandString("$HIP/pyblish"),
-            subset="`chs(\"subset\")`",  # keep dynamic link to subset
+            # keep dynamic link to product name
+            product_name="`chs(\"AYON_productName\")`",
             ext=pre_create_data.get("image_format") or "png"
         )
 
@@ -89,7 +90,7 @@ class CreateReview(plugin.HoudiniCreator):
         if os.getenv("OCIO"):
             self.set_colorcorrect_to_default_view_space(instance_node)
 
-        to_lock = ["id", "family"]
+        to_lock = ["id", "productType"]
 
         self.lock_parameters(instance_node, to_lock)
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Plugin for validating naming conventions."""
+import json
 from maya import cmds
 
 import pyblish.api
@@ -35,29 +36,37 @@ class ValidateTransformNamingSuffix(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ['maya']
-    families = ['model']
+    hosts = ["maya"]
+    families = ["model"]
     optional = True
-    label = 'Suffix Naming Conventions'
+    label = "Suffix Naming Conventions"
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
-    SUFFIX_NAMING_TABLE = {"mesh": ["_GEO", "_GES", "_GEP", "_OSD"],
-                           "nurbsCurve": ["_CRV"],
-                           "nurbsSurface": ["_NRB"],
-                           "locator": ["_LOC"],
-                           "group": ["_GRP"]}
+    SUFFIX_NAMING_TABLE = json.dumps({
+        "mesh": ["_GEO", "_GES", "_GEP", "_OSD"],
+        "nurbsCurve": ["_CRV"],
+        "nurbsSurface": ["_NRB"],
+        "locator": ["_LOC"],
+        "group": ["_GRP"]
+    })
 
     ALLOW_IF_NOT_IN_SUFFIX_TABLE = True
 
     @classmethod
     def get_table_for_invalid(cls):
-        ss = []
-        for k, v in cls.SUFFIX_NAMING_TABLE.items():
-            ss.append(" - <b>{}</b>: {}".format(k, ", ".join(v)))
+        suffix_naming_table = json.loads(cls.SUFFIX_NAMING_TABLE)
+        ss = [
+            " - <b>{}</b>: {}".format(k, ", ".join(v))
+            for k, v in suffix_naming_table.items()
+        ]
         return "<br>".join(ss)
 
     @staticmethod
-    def is_valid_name(node_name, shape_type,
-                      SUFFIX_NAMING_TABLE, ALLOW_IF_NOT_IN_SUFFIX_TABLE):
+    def is_valid_name(
+        node_name,
+        shape_type,
+        suffix_naming_table,
+        allow_if_not_in_suffix_table
+    ):
         """Return whether node's name is correct.
 
         The correctness for a transform's suffix is dependent on what
@@ -70,18 +79,18 @@ class ValidateTransformNamingSuffix(pyblish.api.InstancePlugin,
         Args:
             node_name (str): Node name.
             shape_type (str): Type of node.
-            SUFFIX_NAMING_TABLE (dict): Mapping dict for suffixes.
-            ALLOW_IF_NOT_IN_SUFFIX_TABLE (dict): Filter dict.
+            suffix_naming_table (dict): Mapping dict for suffixes.
+            allow_if_not_in_suffix_table (bool): Default output.
 
         """
-        if shape_type not in SUFFIX_NAMING_TABLE:
-            return ALLOW_IF_NOT_IN_SUFFIX_TABLE
-        else:
-            suffices = SUFFIX_NAMING_TABLE[shape_type]
-            for suffix in suffices:
-                if node_name.endswith(suffix):
-                    return True
-            return False
+        if shape_type not in suffix_naming_table:
+            return allow_if_not_in_suffix_table
+
+        suffices = suffix_naming_table[shape_type]
+        for suffix in suffices:
+            if node_name.endswith(suffix):
+                return True
+        return False
 
     @classmethod
     def get_invalid(cls, instance):
@@ -91,9 +100,10 @@ class ValidateTransformNamingSuffix(pyblish.api.InstancePlugin,
             instance (:class:`pyblish.api.Instance`): published instance.
 
         """
-        transforms = cmds.ls(instance, type='transform', long=True)
+        transforms = cmds.ls(instance, type="transform", long=True)
 
         invalid = []
+        suffix_naming_table = json.loads(cls.SUFFIX_NAMING_TABLE)
         for transform in transforms:
             shapes = cmds.listRelatives(transform,
                                         shapes=True,
@@ -101,9 +111,12 @@ class ValidateTransformNamingSuffix(pyblish.api.InstancePlugin,
                                         noIntermediate=True)
 
             shape_type = cmds.nodeType(shapes[0]) if shapes else "group"
-            if not cls.is_valid_name(transform, shape_type,
-                                     cls.SUFFIX_NAMING_TABLE,
-                                     cls.ALLOW_IF_NOT_IN_SUFFIX_TABLE):
+            if not cls.is_valid_name(
+                transform,
+                shape_type,
+                suffix_naming_table,
+                cls.ALLOW_IF_NOT_IN_SUFFIX_TABLE
+            ):
                 invalid.append(transform)
 
         return invalid

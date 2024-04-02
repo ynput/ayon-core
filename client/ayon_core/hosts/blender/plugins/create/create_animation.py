@@ -8,15 +8,15 @@ class CreateAnimation(plugin.BaseCreator):
 
     identifier = "io.openpype.creators.blender.animation"
     label = "Animation"
-    family = "animation"
+    product_type = "animation"
     icon = "male"
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
         # Run parent create method
         collection = super().create(
-            subset_name, instance_data, pre_create_data
+            product_name, instance_data, pre_create_data
         )
 
         if pre_create_data.get("use_selection"):

@@ -3,7 +3,7 @@ Requires:
     None
 
 Provides:
-    instance     -> family ("review")
+    instance     -> families ("review")
 """
 import pyblish.api
 

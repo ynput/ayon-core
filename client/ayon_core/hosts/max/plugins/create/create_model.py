@@ -7,5 +7,5 @@ class CreateModel(plugin.MaxCreator):
     """Creator plugin for Model."""
     identifier = "io.openpype.creators.max.model"
     label = "Model"
-    family = "model"
+    product_type = "model"
     icon = "gear"

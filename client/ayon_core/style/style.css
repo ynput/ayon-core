@@ -845,7 +845,7 @@ OverlayMessageWidget QWidget {
     padding: 1px 5px;
 }
 
-#CreatorFamilyLabel {
+#CreatorProductTypeLabel {
     font-size: 10pt;
     font-weight: bold;
 }
@@ -875,7 +875,7 @@ OverlayMessageWidget QWidget {
     border-radius: 0px;
 }
 
-#SubsetView::item, #RepresentationView:item {
+#ProductView::item, #RepresentationView:item {
     padding: 5px 1px;
     border: 0px;
 }
@@ -1025,7 +1025,7 @@ PixmapButton:disabled {
     background: {color:bg-view-selection};
 }
 
-#ListViewSubsetName[state="invalid"] {
+#ListViewProductName[state="invalid"] {
     color: {color:publisher:error};
 }
 
@@ -1065,6 +1065,38 @@ PixmapButton:disabled {
 
 #PublishContextLabel {
     font-size: 13pt;
+}
+
+#PublisherVerticalScrollArea QScrollBar {
+    background: transparent;
+    margin: 0;
+    border: none;
+}
+
+#PublisherVerticalScrollArea QScrollBar:horizontal {
+    height: 10px;
+    margin: 0;
+}
+
+#PublisherVerticalScrollArea QScrollBar:vertical {
+    width: 10px;
+    margin: 0;
+}
+
+#PublisherVerticalScrollArea QScrollBar::handle {
+    background: {color:bg-scroll-handle};
+    border-radius: 4px;
+    margin: 1px;
+}
+
+#PublisherVerticalScrollArea QScrollBar::handle:horizontal {
+    min-width: 20px;
+    min-height: 8px;
+}
+
+#PublisherVerticalScrollArea QScrollBar::handle:vertical {
+    min-height: 20px;
+    min-width: 8px;
 }
 
 ValidationArtistMessage QLabel {
@@ -1138,17 +1170,17 @@ ValidationArtistMessage QLabel {
     font-size: 13pt;
 }
 
-#AssetNameInputWidget {
+#FolderPathInputWidget {
     background: {color:bg-inputs};
     border: 1px solid {color:border};
     border-radius: 0.2em;
 }
 
-#AssetNameInputWidget QWidget {
+#FolderPathInputWidget QWidget {
     background: transparent;
 }
 
-#AssetNameInputButton {
+#FolderPathInputButton {
     border-bottom-left-radius: 0px;
     border-top-left-radius: 0px;
     padding: 0px;
@@ -1159,23 +1191,23 @@ ValidationArtistMessage QLabel {
     border-bottom: none;
 }
 
-#AssetNameInput {
+#FolderPathInput {
     border-bottom-right-radius: 0px;
     border-top-right-radius: 0px;
     border: none;
 }
 
-#AssetNameInputWidget:hover {
+#FolderPathInputWidget:hover {
     border-color: {color:border-hover};
 }
-#AssetNameInputWidget:focus{
+#FolderPathInputWidget:focus{
     border-color: {color:border-focus};
 }
-#AssetNameInputWidget:disabled {
+#FolderPathInputWidget:disabled {
     background: {color:bg-inputs-disabled};
 }
 
-#TasksCombobox[state="invalid"], #AssetNameInputWidget[state="invalid"], #AssetNameInputButton[state="invalid"] {
+#TasksCombobox[state="invalid"], #FolderPathInputWidget[state="invalid"], #FolderPathInputButton[state="invalid"] {
     border-color: {color:publisher:error};
 }
 
@@ -1192,7 +1224,7 @@ ValidationArtistMessage QLabel {
 #PublishCommentInput {
     padding: 0.2em;
 }
-#FamilyIconLabel {
+#ProductTypeIconLabel {
     font-size: 14pt;
 }
 #ArrowBtn, #ArrowBtn:disabled, #ArrowBtn:hover {

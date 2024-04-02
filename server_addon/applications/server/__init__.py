@@ -92,8 +92,9 @@ class ApplicationsAddon(BaseServerAddon):
     settings_model = ApplicationsAddonSettings
 
     async def get_default_settings(self):
-        applications_path = os.path.join(self.addon_dir, "applications.json")
-        tools_path = os.path.join(self.addon_dir, "tools.json")
+        server_dir = os.path.join(self.addon_dir, "server")
+        applications_path = os.path.join(server_dir, "applications.json")
+        tools_path = os.path.join(server_dir, "tools.json")
         default_values = copy.deepcopy(DEFAULT_VALUES)
         with open(applications_path, "r") as stream:
             default_values.update(json.load(stream))

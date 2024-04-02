@@ -36,7 +36,7 @@ class ExtractImage(pyblish.api.ContextPlugin):
         with photoshop.maintained_selection():
             with photoshop.maintained_visibility(layers=all_layers):
                 for instance in context:
-                    if instance.data["family"] not in self.families:
+                    if instance.data["productType"] not in self.families:
                         continue
 
                     staging_dir = self.staging_dir(instance)

@@ -12,7 +12,7 @@ class CreateBackdrop(NukeCreator):
 
     identifier = "create_backdrop"
     label = "Nukenodes (backdrop)"
-    family = "nukenodes"
+    product_type = "nukenodes"
     icon = "file-archive-o"
     maintain_selection = True
 
@@ -38,12 +38,12 @@ class CreateBackdrop(NukeCreator):
 
             return created_node
 
-    def create(self, subset_name, instance_data, pre_create_data):
-        # make sure subset name is unique
-        self.check_existing_subset(subset_name)
+    def create(self, product_name, instance_data, pre_create_data):
+        # make sure product name is unique
+        self.check_existing_product(product_name)
 
         instance = super(CreateBackdrop, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data
         )

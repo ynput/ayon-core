@@ -16,10 +16,12 @@ class CollectClipTagTasks(api.InstancePlugin):
         tasks = {}
         for tag in tags:
             t_metadata = dict(tag.metadata())
-            t_family = t_metadata.get("tag.family", "")
+            t_product_type = t_metadata.get("tag.productType")
+            if t_product_type is None:
+                t_product_type = t_metadata.get("tag.family", "")
 
-            # gets only task family tags and collect labels
-            if "task" in t_family:
+            # gets only task product type tags and collect labels
+            if "task" in t_product_type:
                 t_task_name = t_metadata.get("tag.label", "")
                 t_task_type = t_metadata.get("tag.type", "")
                 tasks[t_task_name] = {"type": t_task_type}

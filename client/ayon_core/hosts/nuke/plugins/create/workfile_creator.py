@@ -1,5 +1,6 @@
+import ayon_api
+
 import ayon_core.hosts.nuke.api as api
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     AutoCreator,
     CreatedInstance,
@@ -13,7 +14,7 @@ import nuke
 
 class WorkfileCreator(AutoCreator):
     identifier = "workfile"
-    family = "workfile"
+    product_type = "workfile"
 
     default_variant = "Main"
 
@@ -27,27 +28,39 @@ class WorkfileCreator(AutoCreator):
         )
 
         project_name = self.create_context.get_current_project_name()
-        asset_name = self.create_context.get_current_asset_name()
+        folder_path = self.create_context.get_current_folder_path()
         task_name = self.create_context.get_current_task_name()
         host_name = self.create_context.host_name
 
-        asset_doc = get_asset_by_name(project_name, asset_name)
-        subset_name = self.get_subset_name(
-            self.default_variant, task_name, asset_doc,
-            project_name, host_name
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path
+        )
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+        product_name = self.get_product_name(
+            project_name,
+            folder_entity,
+            task_entity,
+            self.default_variant,
+            host_name,
         )
         instance_data.update({
-            "asset": asset_name,
+            "folderPath": folder_path,
             "task": task_name,
             "variant": self.default_variant
         })
         instance_data.update(self.get_dynamic_data(
-            self.default_variant, task_name, asset_doc,
-            project_name, host_name, instance_data
+            project_name,
+            folder_entity,
+            task_entity,
+            self.default_variant,
+            host_name,
+            instance_data
         ))
 
         instance = CreatedInstance(
-            self.family, subset_name, instance_data, self
+            self.product_type, product_name, instance_data, self
         )
         instance.transient_data["node"] = root_node
         self._add_instance_to_context(instance)

@@ -7,7 +7,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     LoadPlaceholderItem,
     CreatePlaceholderItem,
     PlaceholderLoadMixin,
-    PlaceholderCreateMixin
+    PlaceholderCreateMixin,
 )
 from ayon_core.tools.workfile_template_build import (
     WorkfileBuildPlaceholderDialog,
@@ -167,7 +167,7 @@ class NukePlaceholderLoadPlugin(NukePlaceholderPlugin, PlaceholderLoadMixin):
         placeholder.data["nodes_init"] = nuke.allNodes()
 
     def _before_repre_load(self, placeholder, representation):
-        placeholder.data["last_repre_id"] = str(representation["_id"])
+        placeholder.data["last_repre_id"] = representation["id"]
 
     def collect_placeholders(self):
         output = []

@@ -1,6 +1,6 @@
 import re
 
-from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
 
 
 class UserPublishValuesModel:
@@ -12,7 +12,7 @@ class UserPublishValuesModel:
     """
 
     folder_name_regex = re.compile("^[a-zA-Z0-9_.]+$")
-    variant_regex = re.compile("^[{}]+$".format(SUBSET_NAME_ALLOWED_SYMBOLS))
+    variant_regex = re.compile("^[{}]+$".format(PRODUCT_NAME_ALLOWED_SYMBOLS))
 
     def __init__(self, controller):
         self._controller = controller

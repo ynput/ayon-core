@@ -1029,7 +1029,7 @@ class PublisherWindow(QtWidgets.QDialog):
         under_mouse = False
         my_pos = self.mapFromGlobal(global_pos)
         if self.rect().contains(my_pos):
-            widget_geo = self._overview_widget.get_subset_views_geo()
+            widget_geo = self._overview_widget.get_product_views_geo()
             widget_x = widget_geo.left() + (widget_geo.width() * 0.5)
             under_mouse = widget_x < global_pos.x()
         self._create_overlay_button.set_under_mouse(under_mouse)

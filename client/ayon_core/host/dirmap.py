@@ -92,8 +92,8 @@ class HostDirmap(object):
 
         self.on_enable_dirmap()
 
-        for k, sp in enumerate(mapping["source-path"]):
-            dst = mapping["destination-path"][k]
+        for k, sp in enumerate(mapping["source_path"]):
+            dst = mapping["destination_path"][k]
             try:
                 # add trailing slash if missing
                 sp = os.path.join(sp, '')
@@ -116,7 +116,7 @@ class HostDirmap(object):
                 continue
 
     def get_mappings(self):
-        """Get translation from source-path to destination-path.
+        """Get translation from source_path to destination_path.
 
             It checks if Site Sync is enabled and user chose to use local
             site, in that case configuration in Local Settings takes precedence
@@ -138,8 +138,8 @@ class HostDirmap(object):
 
         if (
             not mapping
-            or not mapping.get("destination-path")
-            or not mapping.get("source-path")
+            or not mapping.get("destination_path")
+            or not mapping.get("source_path")
         ):
             return {}
         self.log.info("Processing directory mapping ...")
@@ -154,7 +154,7 @@ class HostDirmap(object):
             in Local Settings.
 
             Returns:
-                dict : { "source-path": [XXX], "destination-path": [YYYY]}
+                dict : { "source_path": [XXX], "destination_path": [YYYY]}
         """
         project_name = self.project_name
 
@@ -181,6 +181,10 @@ class HostDirmap(object):
                 exclude_locals=False,
                 cached=False)
 
+            # TODO implement
+            # Dirmap is dependent on 'get_site_local_overrides' which
+            #   is not implemented in AYON. The mapping should be received
+            #   from sitesync addon.
             active_overrides = get_site_local_overrides(
                 project_name, active_site)
             remote_overrides = get_site_local_overrides(
@@ -210,13 +214,13 @@ class HostDirmap(object):
                     continue
 
                 if os.path.isdir(active_site_dir):
-                    if "destination-path" not in mapping:
-                        mapping["destination-path"] = []
-                    mapping["destination-path"].append(active_site_dir)
+                    if "destination_path" not in mapping:
+                        mapping["destination_path"] = []
+                    mapping["destination_path"].append(active_site_dir)
 
-                    if "source-path" not in mapping:
-                        mapping["source-path"] = []
-                    mapping["source-path"].append(remote_site_dir)
+                    if "source_path" not in mapping:
+                        mapping["source_path"] = []
+                    mapping["source_path"].append(remote_site_dir)
 
             self.log.debug("local sync mapping:: {}".format(mapping))
         return mapping

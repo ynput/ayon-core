@@ -15,7 +15,7 @@ class CreatePointCache(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.pointcache"
     label = "Pointcache"
-    family = "pointcache"
+    product_type = "pointcache"
     icon = "gears"
     write_color_sets = False
     write_face_sets = False
@@ -76,10 +76,10 @@ class CreatePointCache(plugin.MayaCreator):
 
         return defs
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance = super(CreatePointCache, self).create(
-            subset_name, instance_data, pre_create_data
+            product_name, instance_data, pre_create_data
         )
         instance_node = instance.get("instance_node")
 

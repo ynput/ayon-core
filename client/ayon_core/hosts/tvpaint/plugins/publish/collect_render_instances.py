@@ -28,10 +28,10 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
                 self._collect_data_for_review(instance)
             return
 
-        subset_name = instance.data["subset"]
-        instance.data["name"] = subset_name
+        product_name = instance.data["productName"]
+        instance.data["name"] = product_name
         instance.data["label"] = "{} [{}-{}]".format(
-            subset_name,
+            product_name,
             context.data["sceneMarkIn"] + 1,
             context.data["sceneMarkOut"] + 1
         )
@@ -84,8 +84,8 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
         if render_layer_data is None:
             return
         render_layer_name = render_layer_data["variant"]
-        subset_name = instance.data["subset"]
-        instance.data["subset"] = subset_name.format(
+        product_name = instance.data["productName"]
+        instance.data["productName"] = product_name.format(
             **prepare_template_data({"renderlayer": render_layer_name})
         )
 
@@ -103,8 +103,8 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
         render_pass_name = (
             instance.data["creator_attributes"]["render_pass_name"]
         )
-        subset_name = instance.data["subset"]
-        instance.data["subset"] = subset_name.format(
+        product_name = instance.data["productName"]
+        instance.data["productName"] = product_name.format(
             **prepare_template_data({"renderpass": render_pass_name})
         )
 

@@ -211,6 +211,32 @@ class HarmonySubmitDeadlineModel(BaseSettingsModel):
     department: str = SettingsField(title="Department")
 
 
+class HoudiniSubmitDeadlineModel(BaseSettingsModel):
+    """Houdini deadline render submitter settings."""
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    
+    priority: int = SettingsField(title="Priority")
+    chunk_size: int = SettingsField(title="Chunk Size")
+    group: str = SettingsField(title="Group")
+
+    export_priority: int = SettingsField(title="Export Priority")
+    export_chunk_size: int = SettingsField(title="Export Chunk Size")
+    export_group: str = SettingsField(title="Export Group")
+
+
+class HoudiniCacheSubmitDeadlineModel(BaseSettingsModel):
+    """Houdini deadline cache submitter settings."""
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    
+    priority: int = SettingsField(title="Priority")
+    chunk_size: int = SettingsField(title="Chunk Size")
+    group: str = SettingsField(title="Group")
+
+
 class AfterEffectsSubmitDeadlineModel(BaseSettingsModel):
     """After Effects deadline submitter settings."""
 
@@ -287,6 +313,13 @@ class ProcessSubmittedJobOnFarmModel(BaseSettingsModel):
         default_factory=list,
         title="Skip integration of representation with ext"
     )
+    families_transfer: list[str] = SettingsField(
+        default_factory=list,
+        title=(
+            "List of family names to transfer\n"
+            "to generated instances (AOVs for example)."
+        )
+    )
     aov_filter: list[AOVFilterSubmodel] = SettingsField(
         default_factory=list,
         title="Reviewable products filter",
@@ -325,6 +358,12 @@ class PublishPluginsModel(BaseSettingsModel):
     HarmonySubmitDeadline: HarmonySubmitDeadlineModel = SettingsField(
         default_factory=HarmonySubmitDeadlineModel,
         title="Harmony Submit to deadline")
+    HoudiniCacheSubmitDeadline: HoudiniCacheSubmitDeadlineModel = SettingsField(
+        default_factory=HoudiniCacheSubmitDeadlineModel,
+        title="Houdini Submit cache to deadline")
+    HoudiniSubmitDeadline: HoudiniSubmitDeadlineModel = SettingsField(
+        default_factory=HoudiniSubmitDeadlineModel,
+        title="Houdini Submit render to deadline")
     MaxSubmitDeadline: MaxSubmitDeadlineModel = SettingsField(
         default_factory=MaxSubmitDeadlineModel,
         title="Max Submit to deadline")
@@ -409,6 +448,25 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "group": "",
         "department": ""
     },
+    "HoudiniCacheSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "priority": 50,
+        "chunk_size": 999999,
+        "group": ""
+    },
+    "HoudiniSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "priority": 50,
+        "chunk_size": 1,
+        "group": "",
+        "export_priority": 50,
+        "export_chunk_size": 10,
+        "export_group": ""
+    },
     "MaxSubmitDeadline": {
         "enabled": True,
         "optional": False,
@@ -470,6 +528,7 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "deadline_priority": 50,
         "publishing_script": "",
         "skip_integration_repre_list": [],
+        "families_transfer": ["render3d", "render2d", "ftrack", "slate"],
         "aov_filter": [
             {
                 "name": "maya",

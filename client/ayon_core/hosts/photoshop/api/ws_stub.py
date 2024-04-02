@@ -117,16 +117,16 @@ class PhotoshopServerStub:
         Stores metadata in format:
         [{
             "active":true,
-            "subset":"imageBG",
-            "family":"image",
-            "id":"pyblish.avalon.instance",
-            "asset":"Town",
+            "productName":"imageBG",
+            "productType":"image",
+            "id":"ayon.create.instance",
+            "folderPath":"Town",
             "uuid": "8"
         }] - for created instances
         OR
         [{
             "schema": "openpype:container-2.0",
-            "id": "pyblish.avalon.instance",
+            "id": "ayon.create.instance",
             "name": "imageMG",
             "namespace": "Jungle_imageMG_001",
             "loader": "ImageLoader",
@@ -419,9 +419,9 @@ class PhotoshopServerStub:
         Returns:
             (list)
             example:
-                {"8":{"active":true,"subset":"imageBG",
-                      "family":"image","id":"pyblish.avalon.instance",
-                      "asset":"Town"}}
+                {"8":{"active":true,"productName":"imageBG",
+                      "productType":"image","id":"ayon.create.instance",
+                      "folderPath":"/Town"}}
                 8 is layer(group) id - used for deletion, update etc.
         """
         res = self.websocketserver.call(self.client.call('Photoshop.read'))

@@ -38,7 +38,7 @@ class NukeRenderLocal(publish.Extractor,
 
         self.log.debug("instance collected: {}".format(instance.data))
 
-        node_subset_name = instance.data.get("name", None)
+        node_product_name = instance.data.get("name", None)
 
         first_frame = instance.data.get("frameStartHandle", None)
         last_frame = instance.data.get("frameEndHandle", None)
@@ -80,7 +80,7 @@ class NukeRenderLocal(publish.Extractor,
 
             # Render frames
             nuke.execute(
-                str(node_subset_name),
+                str(node_product_name),
                 int(render_first_frame),
                 int(render_last_frame)
             )
@@ -125,21 +125,28 @@ class NukeRenderLocal(publish.Extractor,
         ))
 
         families = instance.data["families"]
+        anatomy_data = instance.data["anatomyData"]
         # redefinition of families
         if "render.local" in families:
-            instance.data['family'] = 'render'
-            families.remove('render.local')
+            instance.data["family"] = "render"
+            instance.data["productType"] = "render"
+            families.remove("render.local")
             families.insert(0, "render2d")
-            instance.data["anatomyData"]["family"] = "render"
+            anatomy_data["family"] = "render"
+            anatomy_data["product"]["type"] = "render"
         elif "prerender.local" in families:
-            instance.data['family'] = 'prerender'
-            families.remove('prerender.local')
+            instance.data["family"] = "prerender"
+            instance.data["productType"] = "prerender"
+            families.remove("prerender.local")
             families.insert(0, "prerender")
-            instance.data["anatomyData"]["family"] = "prerender"
+            anatomy_data["family"] = "prerender"
+            anatomy_data["product"]["type"] = "prerender"
         elif "image.local" in families:
-            instance.data['family'] = 'image'
-            families.remove('image.local')
-            instance.data["anatomyData"]["family"] = "image"
+            instance.data["family"] = "image"
+            instance.data["productType"] = "image"
+            families.remove("image.local")
+            anatomy_data["family"] = "image"
+            anatomy_data["product"]["type"] = "image"
         instance.data["families"] = families
 
         collections, remainder = clique.assemble(filenames)
@@ -160,7 +167,7 @@ class NukeRenderLocal(publish.Extractor,
         These are base of files which will be extended/fixed for specific
         frames.
         Renames published file to expected file name based on frame, eg.
-        test_project_test_asset_subset_v005.1001.exr > new_render.1001.exr
+        test_project_test_asset_product_v005.1001.exr > new_render.1001.exr
         """
         last_published = instance.data["last_version_published_files"]
         last_published_and_frames = collect_frames(last_published)

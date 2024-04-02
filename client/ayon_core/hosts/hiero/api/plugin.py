@@ -45,7 +45,7 @@ class CreatorWidget(QtWidgets.QDialog):
             | QtCore.Qt.WindowCloseButtonHint
             | QtCore.Qt.WindowStaysOnTopHint
         )
-        self.setWindowTitle(name or "Pype Creator Input")
+        self.setWindowTitle(name or "AYON Creator Input")
         self.resize(500, 700)
 
         # Where inputs and labels are set
@@ -363,7 +363,7 @@ class SequenceLoader(LoaderPlugin):
     ):
         pass
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update an existing `container`
         """
         pass
@@ -409,8 +409,9 @@ class ClipLoader:
             "Cannot Load selected data, look into database "
             "or call your supervisor")
 
-        # inject asset data to representation dict
-        self._get_asset_data()
+        # inject folder data to representation dict
+        folder_entity = self.context["folder"]
+        self.data["folderAttributes"] = folder_entity["attrib"]
         log.info("__init__ self.data: `{}`".format(pformat(self.data)))
         log.info("__init__ options: `{}`".format(pformat(options)))
 
@@ -424,7 +425,7 @@ class ClipLoader:
                 self.active_sequence = lib.get_current_sequence(new=True)
                 self.active_sequence.setFramerate(
                     hiero.core.TimeBase.fromString(
-                        str(self.data["assetData"]["fps"])))
+                        str(self.data["folderAttributes"]["fps"])))
         else:
             self.active_sequence = lib.get_current_sequence()
 
@@ -439,7 +440,7 @@ class ClipLoader:
         """ Gets context and convert it to self.data
         data structure:
             {
-                "name": "assetName_subsetName_representationName"
+                "name": "assetName_productName_representationName"
                 "path": "path/to/file/created/by/get_repr..",
                 "binPath": "projectBinPath",
             }
@@ -447,16 +448,16 @@ class ClipLoader:
         # create name
         repr = self.context["representation"]
         repr_cntx = repr["context"]
-        asset = str(repr_cntx["asset"])
-        subset = str(repr_cntx["subset"])
-        representation = str(repr_cntx["representation"])
+        folder_path = self.context["folder"]["path"]
+        product_name = self.context["product"]["name"]
+        representation = repr["name"]
         self.data["clip_name"] = self.clip_name_template.format(**repr_cntx)
-        self.data["track_name"] = "_".join([subset, representation])
-        self.data["versionData"] = self.context["version"]["data"]
+        self.data["track_name"] = "_".join([product_name, representation])
+        self.data["versionAttributes"] = self.context["version"]["attrib"]
         # gets file path
         file = get_representation_path_from_context(self.context)
         if not file:
-            repr_id = repr["_id"]
+            repr_id = repr["id"]
             log.warning(
                 "Representation id `{}` is failing to load".format(repr_id))
             return None
@@ -467,11 +468,7 @@ class ClipLoader:
             self._fix_path_hashes()
 
         # solve project bin structure path
-        hierarchy = str("/".join((
-            "Loader",
-            repr_cntx["hierarchy"].replace("\\", "/"),
-            asset
-        )))
+        hierarchy = "Loader{}".format(folder_path)
 
         self.data["binPath"] = hierarchy
 
@@ -486,16 +483,6 @@ class ClipLoader:
             padding = len(frame)
             file = file.replace(frame, "#" * padding)
         self.data["path"] = file
-
-    def _get_asset_data(self):
-        """ Get all available asset data
-
-        joint `data` key with asset.data dict into the representation
-
-        """
-
-        asset_doc = self.context["asset"]
-        self.data["assetData"] = asset_doc["data"]
 
     def _make_track_item(self, source_bin_item, audio=False):
         """ Create track item with """
@@ -530,12 +517,13 @@ class ClipLoader:
         self.media_duration = int(self.media.duration())
 
         # get handles
-        self.handle_start = self.data["versionData"].get("handleStart")
-        self.handle_end = self.data["versionData"].get("handleEnd")
+        version_attributes = self.data["versionAttributes"]
+        self.handle_start = version_attributes.get("handleStart")
+        self.handle_end = version_attributes.get("handleEnd")
         if self.handle_start is None:
-            self.handle_start = self.data["assetData"]["handleStart"]
+            self.handle_start = self.data["folderAttributes"]["handleStart"]
         if self.handle_end is None:
-            self.handle_end = self.data["assetData"]["handleEnd"]
+            self.handle_end = self.data["folderAttributes"]["handleEnd"]
 
         self.handle_start = int(self.handle_start)
         self.handle_end = int(self.handle_end)
@@ -552,11 +540,11 @@ class ClipLoader:
                 last_timeline_out = int(last_track_item.timelineOut()) + 1
             self.timeline_in = last_timeline_out
             self.timeline_out = last_timeline_out + int(
-                self.data["assetData"]["clipOut"]
-                - self.data["assetData"]["clipIn"])
+                self.data["folderAttributes"]["clipOut"]
+                - self.data["folderAttributes"]["clipIn"])
         else:
-            self.timeline_in = int(self.data["assetData"]["clipIn"])
-            self.timeline_out = int(self.data["assetData"]["clipOut"])
+            self.timeline_in = int(self.data["folderAttributes"]["clipIn"])
+            self.timeline_out = int(self.data["folderAttributes"]["clipOut"])
 
         log.debug("__ self.timeline_in: {}".format(self.timeline_in))
         log.debug("__ self.timeline_out: {}".format(self.timeline_out))
@@ -659,9 +647,9 @@ class PublishClip:
     rename_default = False
     hierarchy_default = "{_folder_}/{_sequence_}/{_track_}"
     clip_name_default = "shot_{_trackIndex_:0>3}_{_clipIndex_:0>4}"
-    subset_name_default = "<track_name>"
+    base_product_name_default = "<track_name>"
     review_track_default = "< none >"
-    subset_family_default = "plate"
+    product_type_default = "plate"
     count_from_default = 10
     count_steps_default = 10
     vertical_sync_default = False
@@ -785,10 +773,10 @@ class PublishClip:
             "countFrom", {}).get("value") or self.count_from_default
         self.count_steps = self.ui_inputs.get(
             "countSteps", {}).get("value") or self.count_steps_default
-        self.subset_name = self.ui_inputs.get(
-            "subsetName", {}).get("value") or self.subset_name_default
-        self.subset_family = self.ui_inputs.get(
-            "subsetFamily", {}).get("value") or self.subset_family_default
+        self.base_product_name = self.ui_inputs.get(
+            "productName", {}).get("value") or self.base_product_name_default
+        self.product_type = self.ui_inputs.get(
+            "productType", {}).get("value") or self.product_type_default
         self.vertical_sync = self.ui_inputs.get(
             "vSyncOn", {}).get("value") or self.vertical_sync_default
         self.driving_layer = self.ui_inputs.get(
@@ -798,12 +786,14 @@ class PublishClip:
         self.audio = self.ui_inputs.get(
             "audio", {}).get("value") or False
 
-        # build subset name from layer name
-        if self.subset_name == "<track_name>":
-            self.subset_name = self.track_name
+        # build product name from layer name
+        if self.base_product_name == "<track_name>":
+            self.base_product_name = self.track_name
 
-        # create subset for publishing
-        self.subset = self.subset_family + self.subset_name.capitalize()
+        # create product for publishing
+        self.product_name = (
+            self.product_type + self.base_product_name.capitalize()
+        )
 
     def _replace_hash_to_expression(self, name, text):
         """ Replace hash with number in correct padding. """
@@ -885,14 +875,14 @@ class PublishClip:
             for (_in, _out), hero_data in self.vertical_clip_match.items():
                 hero_data.update({"heroTrack": False})
                 if _in == self.clip_in and _out == self.clip_out:
-                    data_subset = hero_data["subset"]
+                    data_product_name = hero_data["productName"]
                     # add track index in case duplicity of names in hero data
-                    if self.subset in data_subset:
-                        hero_data["subset"] = self.subset + str(
+                    if self.product_name in data_product_name:
+                        hero_data["productName"] = self.product_name + str(
                             self.track_index)
-                    # in case track name and subset name is the same then add
-                    if self.subset_name == self.track_name:
-                        hero_data["subset"] = self.subset
+                    # in case track name and product name is the same then add
+                    if self.base_product_name == self.track_name:
+                        hero_data["productName"] = self.product_name
                     # assign data to return hierarchy data to tag
                     tag_hierarchy_data = hero_data
 
@@ -913,18 +903,18 @@ class PublishClip:
             "hierarchy": hierarchy_filled,
             "parents": self.parents,
             "hierarchyData": hierarchy_formatting_data,
-            "subset": self.subset,
-            "family": self.subset_family,
-            "families": [self.data["family"]]
+            "productName": self.product_name,
+            "productType": self.product_type,
+            "families": [self.product_type, self.data["productType"]]
         }
 
-    def _convert_to_entity(self, type, template):
+    def _convert_to_entity(self, src_type, template):
         """ Converting input key to key with type. """
         # convert to entity type
-        entity_type = self.types.get(type, None)
+        folder_type = self.types.get(src_type, None)
 
-        assert entity_type, "Missing entity type for `{}`".format(
-            type
+        assert folder_type, "Missing folder type for `{}`".format(
+            src_type
         )
 
         # first collect formatting data to use for formatting template
@@ -935,7 +925,7 @@ class PublishClip:
             formatting_data[_k] = value
 
         return {
-            "entity_type": entity_type,
+            "folder_type": folder_type,
             "entity_name": template.format(
                 **formatting_data
             )

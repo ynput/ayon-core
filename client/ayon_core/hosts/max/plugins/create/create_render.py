@@ -10,10 +10,10 @@ class CreateRender(plugin.MaxCreator):
     """Creator plugin for Renders."""
     identifier = "io.openpype.creators.max.render"
     label = "Render"
-    family = "maxrender"
+    product_type = "maxrender"
     icon = "gear"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         from pymxs import runtime as rt
         file = rt.maxFileName
         filename, _ = os.path.splitext(file)
@@ -24,7 +24,7 @@ class CreateRender(plugin.MaxCreator):
             rt.batchRenderMgr.DeleteView(num_of_renderlayer)
 
         instance = super(CreateRender, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 

@@ -15,14 +15,14 @@ class CollectOutputFrameRange(pyblish.api.InstancePlugin):
     families = ["review", "render"]
 
     def process(self, instance):
-        asset_doc = instance.data.get("assetEntity")
-        if not asset_doc:
+        folder_entity = instance.data.get("folderEntity")
+        if not folder_entity:
             return
 
         context = instance.context
 
-        frame_start = asset_doc["data"]["frameStart"]
-        fps = asset_doc["data"]["fps"]
+        frame_start = folder_entity["attrib"]["frameStart"]
+        fps = folder_entity["attrib"]["fps"]
         frame_end = frame_start + (
             context.data["sceneMarkOut"] - context.data["sceneMarkIn"]
         )
@@ -31,6 +31,6 @@ class CollectOutputFrameRange(pyblish.api.InstancePlugin):
         instance.data["frameEnd"] = frame_end
         self.log.info(
             "Set frames {}-{} on instance {} ".format(
-                frame_start, frame_end, instance.data["subset"]
+                frame_start, frame_end, instance.data["productName"]
             )
         )

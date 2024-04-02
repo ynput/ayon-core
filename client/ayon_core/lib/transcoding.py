@@ -1385,23 +1385,26 @@ def _get_image_dimensions(application, input_path, log):
 
 def convert_color_values(application, color_value):
     """Get color mapping for ffmpeg and oiiotool.
+
     Args:
         application (str): Application for which command should be created.
-        color_value (list[int]): List of 8bit int values for RGBA.
+        color_value (tuple[int, int, int, float]): List of 8bit int values
+            for RGBA.
+
     Returns:
         str: ffmpeg returns hex string, oiiotool is string with floats.
+
     """
     red, green, blue, alpha = color_value
 
     if application == "ffmpeg":
         return "{0:0>2X}{1:0>2X}{2:0>2X}@{3}".format(
-            red, green, blue, (alpha / 255.0)
+            red, green, blue, alpha
         )
     elif application == "oiiotool":
         red = float(red / 255)
         green = float(green / 255)
         blue = float(blue / 255)
-        alpha = float(alpha / 255)
 
         return "{0:.3f},{1:.3f},{2:.3f},{3:.3f}".format(
             red, green, blue, alpha)

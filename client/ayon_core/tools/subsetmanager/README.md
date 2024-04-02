@@ -14,6 +14,6 @@ Host is expected to implemented:
 - `list_instances` - returning list of dictionaries (instances), must contain
     unique uuid field
     example: 
-    ```[{"uuid":"15","active":true,"subset":"imageBG","family":"image","id":"pyblish.avalon.instance","asset":"Town"}]```
+    ```[{"uuid":"15","active":true,"subset":"imageBG","family":"image","id":"ayon.create.instance","asset":"Town"}]```
 - `remove_instance(instance)` - removes instance from file's metadata
     instance is a dictionary, with uuid field 

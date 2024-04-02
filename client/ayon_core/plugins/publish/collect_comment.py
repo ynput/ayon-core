@@ -42,8 +42,8 @@ class CollectInstanceCommentDef(
         pass
 
     @classmethod
-    def apply_settings(cls, project_setting, _):
-        plugin_settings = project_setting["global"]["publish"].get(
+    def apply_settings(cls, project_setting):
+        plugin_settings = project_setting["core"]["publish"].get(
             "collect_comment_per_instance"
         )
         if not plugin_settings:

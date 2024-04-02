@@ -9,7 +9,7 @@ class CreateRender(plugin.Creator):
 
     name = "renderDefault"
     label = "Render"
-    family = "render"
+    product_type = "render"
     node_type = "WRITE"
 
     def __init__(self, *args, **kwargs):

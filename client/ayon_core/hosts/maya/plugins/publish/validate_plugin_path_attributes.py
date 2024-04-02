@@ -8,11 +8,13 @@ from ayon_core.hosts.maya.api.lib import pairwise
 from ayon_core.hosts.maya.api.action import SelectInvalidAction
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidatePluginPathAttributes(pyblish.api.InstancePlugin):
+class ValidatePluginPathAttributes(pyblish.api.InstancePlugin,
+                                   OptionalPyblishPluginMixin):
     """
     Validate plug-in path attributes point to existing file paths.
     """
@@ -22,6 +24,7 @@ class ValidatePluginPathAttributes(pyblish.api.InstancePlugin):
     families = ["workfile"]
     label = "Plug-in Path Attributes"
     actions = [SelectInvalidAction]
+    optional = False
 
     # Attributes are defined in project settings
     attribute = []
@@ -30,14 +33,18 @@ class ValidatePluginPathAttributes(pyblish.api.InstancePlugin):
     def get_invalid(cls, instance):
         invalid = list()
 
-        file_attrs = cls.attribute
+        file_attrs = {
+            item["name"]: item["value"]
+            for item in cls.attribute
+        }
         if not file_attrs:
             return invalid
 
         # Consider only valid node types to avoid "Unknown object type" warning
         all_node_types = set(cmds.allNodeTypes())
         node_types = [
-            key for key in file_attrs.keys()
+            key
+            for key in file_attrs.keys()
             if key in all_node_types
         ]
 
@@ -56,6 +63,8 @@ class ValidatePluginPathAttributes(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         """Process all directories Set as Filenames in Non-Maya Nodes"""
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(

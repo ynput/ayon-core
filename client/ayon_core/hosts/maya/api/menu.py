@@ -8,8 +8,9 @@ import maya.utils
 import maya.cmds as cmds
 
 from ayon_core.pipeline import (
-    get_current_asset_name,
-    get_current_task_name
+    get_current_folder_path,
+    get_current_task_name,
+    registered_host
 )
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
@@ -21,8 +22,10 @@ from .workfile_template_builder import (
     create_placeholder,
     update_placeholder,
     build_workfile_template,
-    update_workfile_template,
+    update_workfile_template
 )
+from ayon_core.tools.workfile_template_build import open_template_ui
+from .workfile_template_builder import MayaTemplateBuilder
 
 log = logging.getLogger(__name__)
 
@@ -40,14 +43,14 @@ def _get_menu(menu_name=None):
 
 def get_context_label():
     return "{}, {}".format(
-        get_current_asset_name(),
+        get_current_folder_path(),
         get_current_task_name()
     )
 
 
 def install(project_settings):
     if cmds.about(batch=True):
-        log.info("Skipping openpype.menu initialization in batch mode..")
+        log.info("Skipping AYON menu initialization in batch mode..")
         return
 
     def add_menu():
@@ -168,16 +171,6 @@ def install(project_settings):
             parent=MENU_NAME
         )
         cmds.menuItem(
-            "Create Placeholder",
-            parent=builder_menu,
-            command=create_placeholder
-        )
-        cmds.menuItem(
-            "Update Placeholder",
-            parent=builder_menu,
-            command=update_placeholder
-        )
-        cmds.menuItem(
             "Build Workfile from template",
             parent=builder_menu,
             command=build_workfile_template
@@ -186,6 +179,27 @@ def install(project_settings):
             "Update Workfile from template",
             parent=builder_menu,
             command=update_workfile_template
+        )
+        cmds.menuItem(
+            divider=True,
+            parent=builder_menu
+        )
+        cmds.menuItem(
+            "Open Template",
+            parent=builder_menu,
+            command=lambda *args: open_template_ui(
+                MayaTemplateBuilder(registered_host()), get_main_window()
+            ),
+        )
+        cmds.menuItem(
+            "Create Placeholder",
+            parent=builder_menu,
+            command=create_placeholder
+        )
+        cmds.menuItem(
+            "Update Placeholder",
+            parent=builder_menu,
+            command=update_placeholder
         )
 
         cmds.setParent(MENU_NAME, menu=True)
@@ -247,7 +261,7 @@ def popup():
 
 
 def update_menu_task_label():
-    """Update the task label in Avalon menu to current session"""
+    """Update the task label in AYON menu to current session"""
 
     if IS_HEADLESS:
         return

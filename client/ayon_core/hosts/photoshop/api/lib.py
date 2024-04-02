@@ -3,12 +3,11 @@ import sys
 import contextlib
 import traceback
 
-from ayon_core.lib import env_value_to_bool, Logger
+from ayon_core.lib import env_value_to_bool, Logger, is_in_tests
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import install_host
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.utils import get_ayon_qt_app
-from ayon_core.tests.lib import is_in_tests
 
 from .launch_logic import ProcessLauncher, stub
 

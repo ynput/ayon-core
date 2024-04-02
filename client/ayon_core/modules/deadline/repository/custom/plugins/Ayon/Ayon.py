@@ -7,7 +7,6 @@ from Deadline.Plugins import PluginType, DeadlinePlugin
 from Deadline.Scripting import (
     StringUtils,
     FileUtils,
-    DirectoryUtils,
     RepositoryUtils
 )
 
@@ -15,6 +14,7 @@ import re
 import os
 import platform
 
+__version__ = "1.0.0"
 
 ######################################################################
 # This is the function that Deadline calls to get an instance of the
@@ -52,6 +52,9 @@ class AyonDeadlinePlugin(DeadlinePlugin):
         del self.RenderArgumentCallback
 
     def InitializeProcess(self):
+        self.LogInfo(
+            "Initializing process with AYON plugin {}".format(__version__)
+        )
         self.PluginType = PluginType.Simple
         self.StdoutHandling = True
 

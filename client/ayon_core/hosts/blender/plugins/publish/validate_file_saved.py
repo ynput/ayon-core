@@ -26,6 +26,7 @@ class ValidateFileSaved(pyblish.api.ContextPlugin,
     hosts = ["blender"]
     label = "Validate File Saved"
     optional = False
+    # TODO rename to 'exclude_product_types'
     exclude_families = []
     actions = [SaveWorkfileAction]
 
@@ -36,13 +37,14 @@ class ValidateFileSaved(pyblish.api.ContextPlugin,
         if not context.data["currentFile"]:
             # File has not been saved at all and has no filename
             raise PublishValidationError(
-                "Current file is empty. Save the file before continuing."
+                "Current workfile has not been saved yet.\n"
+                "Save the workfile before continuing."
             )
 
         # Do not validate workfile has unsaved changes if only instances
         # present of families that should be excluded
-        families = {
-            instance.data["family"] for instance in context
+        product_types = {
+            instance.data["productType"] for instance in context
             # Consider only enabled instances
             if instance.data.get("publish", True)
             and instance.data.get("active", True)
@@ -52,7 +54,7 @@ class ValidateFileSaved(pyblish.api.ContextPlugin,
             return any(family in exclude_family
                        for exclude_family in self.exclude_families)
 
-        if all(is_excluded(family) for family in families):
+        if all(is_excluded(product_type) for product_type in product_types):
             self.log.debug("Only excluded families found, skipping workfile "
                            "unsaved changes validation..")
             return

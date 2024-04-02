@@ -12,7 +12,9 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import (
     Creator,
-    CreatedInstance
+    CreatedInstance,
+    AVALON_INSTANCE_ID,
+    AYON_INSTANCE_ID,
 )
 
 
@@ -31,14 +33,16 @@ class GenericCreateSaver(Creator):
 
     # TODO: This should be renamed together with Nuke so it is aligned
     temp_rendering_path_template = (
-        "{workdir}/renders/fusion/{subset}/{subset}.{frame}.{ext}")
+        "{workdir}/renders/fusion/{product[name]}/"
+        "{product[name]}.{frame}.{ext}"
+    )
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         self.pass_pre_attributes_to_instance(instance_data, pre_create_data)
 
         instance = CreatedInstance(
-            family=self.family,
-            subset_name=subset_name,
+            product_type=self.product_type,
+            product_name=product_name,
             data=instance_data,
             creator=self,
         )
@@ -109,53 +113,76 @@ class GenericCreateSaver(Creator):
             tool.SetData(f"openpype.{key}", value)
 
     def _update_tool_with_data(self, tool, data):
-        """Update tool node name and output path based on subset data"""
-        if "subset" not in data:
+        """Update tool node name and output path based on product data"""
+        if "productName" not in data:
             return
 
-        original_subset = tool.GetData("openpype.subset")
+        original_product_name = tool.GetData("openpype.productName")
         original_format = tool.GetData(
             "openpype.creator_attributes.image_format"
         )
 
-        subset = data["subset"]
+        product_name = data["productName"]
         if (
-            original_subset != subset
+            original_product_name != product_name
             or original_format != data["creator_attributes"]["image_format"]
         ):
-            self._configure_saver_tool(data, tool, subset)
+            self._configure_saver_tool(data, tool, product_name)
 
-    def _configure_saver_tool(self, data, tool, subset):
+    def _configure_saver_tool(self, data, tool, product_name):
         formatting_data = deepcopy(data)
 
         # get frame padding from anatomy templates
-        frame_padding = self.project_anatomy.templates["frame_padding"]
+        frame_padding = self.project_anatomy.templates_obj.frame_padding
 
         # get output format
         ext = data["creator_attributes"]["image_format"]
 
-        # Subset change detected
-        workdir = os.path.normpath(os.getenv("AVALON_WORKDIR"))
+        # Product change detected
+        product_type = formatting_data["productType"]
+        f_product_name = formatting_data["productName"]
+
+        folder_path = formatting_data["folderPath"]
+        folder_name = folder_path.rsplit("/", 1)[-1]
+
+        workdir = os.path.normpath(os.getenv("AYON_WORKDIR"))
         formatting_data.update({
             "workdir": workdir,
             "frame": "0" * frame_padding,
             "ext": ext,
             "product": {
-                "name": formatting_data["subset"],
-                "type": formatting_data["family"],
+                "name": f_product_name,
+                "type": product_type,
             },
+            # TODO add more variants for 'folder' and 'task'
+            "folder": {
+                "name": folder_name,
+            },
+            "task": {
+                "name": data["task"],
+            },
+            # Backwards compatibility
+            "asset": folder_name,
+            "subset": f_product_name,
+            "family": product_type,
         })
 
         # build file path to render
-        filepath = self.temp_rendering_path_template.format(**formatting_data)
+        # TODO make sure the keys are available in 'formatting_data'
+        temp_rendering_path_template = (
+            self.temp_rendering_path_template
+            .replace("{task}", "{task[name]}")
+        )
+
+        filepath = temp_rendering_path_template.format(**formatting_data)
 
         comp = get_current_comp()
         tool["Clip"] = comp.ReverseMapPath(os.path.normpath(filepath))
 
         # Rename tool
-        if tool.Name != subset:
-            print(f"Renaming {tool.Name} -> {subset}")
-            tool.SetAttrs({"TOOLS_Name": subset})
+        if tool.Name != product_name:
+            print(f"Renaming {tool.Name} -> {product_name}")
+            tool.SetAttrs({"TOOLS_Name": product_name})
 
     def get_managed_tool_data(self, tool):
         """Return data of the tool if it matches creator identifier"""
@@ -163,13 +190,13 @@ class GenericCreateSaver(Creator):
         if not isinstance(data, dict):
             return
 
-        required = {
-            "id": "pyblish.avalon.instance",
-            "creator_identifier": self.identifier,
-        }
-        for key, value in required.items():
-            if key not in data or data[key] != value:
-                return
+        if (
+            data.get("creator_identifier") != self.identifier
+            or data.get("id") not in {
+                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
+            }
+        ):
+            return
 
         # Get active state from the actual tool state
         attrs = tool.GetAttrs()

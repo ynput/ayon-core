@@ -9,7 +9,7 @@ class CreateReview(plugin.MaxCreator):
 
     identifier = "io.openpype.creators.max.review"
     label = "Review"
-    family = "review"
+    product_type = "review"
     icon = "video-camera"
 
     review_width = 1920
@@ -38,7 +38,7 @@ class CreateReview(plugin.MaxCreator):
             "anti_aliasing", self.anti_aliasing)
         self.vp_texture = settings.get("vp_texture", self.vp_texture)
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         # Transfer settings from pre create to instance
         creator_attributes = instance_data.setdefault(
             "creator_attributes", dict())
@@ -55,7 +55,7 @@ class CreateReview(plugin.MaxCreator):
                 creator_attributes[key] = pre_create_data[key]
 
         super(CreateReview, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 

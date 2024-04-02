@@ -106,7 +106,7 @@ class ProductsWidget(QtWidgets.QWidget):
 
         products_view = DeselectableTreeView(self)
         # TODO - define custom object name in style
-        products_view.setObjectName("SubsetView")
+        products_view.setObjectName("ProductView")
         products_view.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )

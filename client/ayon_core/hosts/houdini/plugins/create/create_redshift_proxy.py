@@ -9,10 +9,10 @@ class CreateRedshiftProxy(plugin.HoudiniCreator):
     """Redshift Proxy"""
     identifier = "io.openpype.creators.houdini.redshiftproxy"
     label = "Redshift Proxy"
-    family = "redshiftproxy"
+    product_type = "redshiftproxy"
     icon = "magic"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         # Remove the active, we are checking the bypass flag of the nodes
         instance_data.pop("active", None)
@@ -30,14 +30,14 @@ class CreateRedshiftProxy(plugin.HoudiniCreator):
         creator_attributes["farm"] = pre_create_data["farm"]
 
         instance = super(CreateRedshiftProxy, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
         parms = {
-            "RS_archive_file": '$HIP/pyblish/{}.$F4.rs'.format(subset_name),
+            "RS_archive_file": '$HIP/pyblish/{}.$F4.rs'.format(product_name),
         }
 
         if self.selected_nodes:
@@ -46,7 +46,7 @@ class CreateRedshiftProxy(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock some Avalon attributes
-        to_lock = ["family", "id", "prim_to_detail_pattern"]
+        to_lock = ["productType", "id", "prim_to_detail_pattern"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_network_categories(self):

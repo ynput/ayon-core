@@ -37,8 +37,8 @@ class PreIntegrateThumbnails(pyblish.api.InstancePlugin):
         if not thumbnail_repres:
             return
 
-        family = instance.data["family"]
-        subset_name = instance.data["subset"]
+        product_type = instance.data["productType"]
+        product_name = instance.data["productName"]
         host_name = instance.context.data["hostName"]
 
         anatomy_data = instance.data["anatomyData"]
@@ -50,8 +50,8 @@ class PreIntegrateThumbnails(pyblish.api.InstancePlugin):
                 "hosts": host_name,
                 "task_names": task.get("name"),
                 "task_types": task.get("type"),
-                "families": family,
-                "subsets": subset_name,
+                "product_types": product_type,
+                "product_names": product_name,
             },
             logger=self.log
         )

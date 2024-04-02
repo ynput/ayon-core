@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Validator for Attributes."""
+import json
+
 from pyblish.api import ContextPlugin, ValidatorOrder
 from pymxs import runtime as rt
 
@@ -61,9 +63,13 @@ class ValidateAttributes(OptionalPyblishPluginMixin,
 
     @classmethod
     def get_invalid(cls, context):
-        attributes = (
-            context.data["project_settings"]["max"]["publish"]
-                        ["ValidateAttributes"]["attributes"]
+        attributes = json.loads(
+            context.data
+            ["project_settings"]
+            ["max"]
+            ["publish"]
+            ["ValidateAttributes"]
+            ["attributes"]
         )
         if not attributes:
             return
@@ -112,9 +118,13 @@ class ValidateAttributes(OptionalPyblishPluginMixin,
 
     @classmethod
     def repair(cls, context):
-        attributes = (
-            context.data["project_settings"]["max"]["publish"]
-                        ["ValidateAttributes"]["attributes"]
+        attributes = json.loads(
+            context.data
+            ["project_settings"]
+            ["max"]
+            ["publish"]
+            ["ValidateAttributes"]
+            ["attributes"]
         )
         invalid_attributes = cls.get_invalid(context)
         for attrs in invalid_attributes:

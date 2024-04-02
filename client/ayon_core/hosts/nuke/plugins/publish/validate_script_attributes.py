@@ -29,7 +29,7 @@ class ValidateScriptAttributes(
 
         script_data = deepcopy(instance.context.data["scriptData"])
 
-        asset = instance.data["assetEntity"]
+        src_folder_attributes = instance.data["folderEntity"]["attrib"]
 
         # These attributes will be checked
         attributes = [
@@ -42,32 +42,32 @@ class ValidateScriptAttributes(
             "handleEnd"
         ]
 
-        # get only defined attributes from asset data
-        asset_attributes = {
-            attr: asset["data"][attr]
+        # get only defined attributes from folder data
+        folder_attributes = {
+            attr: src_folder_attributes[attr]
             for attr in attributes
-            if attr in asset["data"]
+            if attr in src_folder_attributes
         }
         # fix frame values to include handles
-        asset_attributes["fps"] = float("{0:.4f}".format(
-            asset_attributes["fps"]))
+        folder_attributes["fps"] = float("{0:.4f}".format(
+            folder_attributes["fps"]))
         script_data["fps"] = float("{0:.4f}".format(
             script_data["fps"]))
 
-        # Compare asset's values Nukescript X Database
+        # Compare folder's values Nukescript X Database
         not_matching = []
         for attr in attributes:
             self.log.debug(
-                "Asset vs Script attribute \"{}\": {}, {}".format(
+                "Folder vs Script attribute \"{}\": {}, {}".format(
                     attr,
-                    asset_attributes[attr],
+                    folder_attributes[attr],
                     script_data[attr]
                 )
             )
-            if asset_attributes[attr] != script_data[attr]:
+            if folder_attributes[attr] != script_data[attr]:
                 not_matching.append({
                     "name": attr,
-                    "expected": asset_attributes[attr],
+                    "expected": folder_attributes[attr],
                     "actual": script_data[attr]
                 })
 

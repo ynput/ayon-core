@@ -35,7 +35,7 @@ def current_file():
 
 
 def work_root(session):
-    work_dir = session["AVALON_WORKDIR"]
+    work_dir = session["AYON_WORKDIR"]
     scene_dir = None
 
     # Query scene file rule from workspace.mel if it exists in WORKDIR

@@ -104,7 +104,7 @@ def _list_path_items(folder_structure):
 def get_project_basic_paths(project_name):
     project_settings = get_project_settings(project_name)
     folder_structure = (
-        project_settings["global"]["project_folder_structure"]
+        project_settings["core"]["project_folder_structure"]
     )
     if not folder_structure:
         return []

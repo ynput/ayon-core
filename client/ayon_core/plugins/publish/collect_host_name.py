@@ -24,13 +24,13 @@ class CollectHostName(pyblish.api.ContextPlugin):
         if host_name and app_name and app_label:
             return
 
-        # Use AVALON_APP to get host name if available
+        # Use AYON_HOST_NAME to get host name if available
         if not host_name:
-            host_name = os.environ.get("AVALON_APP")
+            host_name = os.environ.get("AYON_HOST_NAME")
 
-        # Use AVALON_APP_NAME to get full app name
+        # Use AYON_APP_NAME to get full app name
         if not app_name:
-            app_name = os.environ.get("AVALON_APP_NAME")
+            app_name = os.environ.get("AYON_APP_NAME")
 
         # Fill missing values based on app full name
         if (not host_name or not app_label) and app_name:

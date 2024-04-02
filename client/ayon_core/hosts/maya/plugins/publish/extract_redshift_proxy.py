@@ -28,7 +28,7 @@ class ExtractRedshiftProxy(publish.Extractor):
 
         if not anim_on:
             # Remove animation information because it is not required for
-            # non-animated subsets
+            # non-animated products
             keys = ["frameStart",
                     "frameEnd",
                     "handleStart",

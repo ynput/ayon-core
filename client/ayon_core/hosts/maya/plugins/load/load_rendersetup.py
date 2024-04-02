@@ -24,7 +24,7 @@ import maya.app.renderSetup.model.renderSetup as renderSetup
 class RenderSetupLoader(load.LoaderPlugin):
     """Load json preset for RenderSetup overwriting current one."""
 
-    families = ["rendersetup"]
+    product_types = {"rendersetup"}
     representations = ["json"]
     defaults = ['Main']
 
@@ -37,10 +37,10 @@ class RenderSetupLoader(load.LoaderPlugin):
 
         # from ayon_core.hosts.maya.api.lib import namespaced
 
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or lib.unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
         path = self.filepath_from_context(context)
@@ -84,14 +84,15 @@ class RenderSetupLoader(load.LoaderPlugin):
             # Already implicitly deleted by Maya upon removing reference
             pass
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update RenderSetup setting by overwriting existing settings."""
         lib.show_message(
             "Render setup update",
             "Render setup setting will be overwritten by new version. All "
             "setting specified by user not included in loaded version "
             "will be lost.")
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         with open(path, "r") as file:
             try:
                 renderSetup.instance().decode(
@@ -103,10 +104,10 @@ class RenderSetupLoader(load.LoaderPlugin):
         # Update metadata
         node = container["objectName"]
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     repre_entity["id"],
                      type="string")
         self.log.info("... updated")
 
-    def switch(self, container, representation):
+    def switch(self, container, context):
         """Switch representations."""
-        self.update(container, representation)
+        self.update(container, context)

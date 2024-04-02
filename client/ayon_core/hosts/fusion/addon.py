@@ -22,7 +22,7 @@ def get_fusion_version(app_name):
     The function is triggered by the prelaunch hooks to get the fusion version.
 
     `app_name` is obtained by prelaunch hooks from the
-    `launch_context.env.get("AVALON_APP_NAME")`.
+    `launch_context.env.get("AYON_APP_NAME")`.
 
     To get a correct Fusion version, a version number should be present
     in the `applications/fusion/variants` key

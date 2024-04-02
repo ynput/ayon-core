@@ -15,7 +15,18 @@ python_version_dir = os.path.join(
 sys.path.insert(0, python_version_dir)
 site.addsitedir(python_version_dir)
 
-
+from .local_settings import (
+    IniSettingRegistry,
+    JSONSettingRegistry,
+    AYONSecureRegistry,
+    AYONSettingsRegistry,
+    OpenPypeSecureRegistry,
+    OpenPypeSettingsRegistry,
+    get_local_site_id,
+    get_ayon_username,
+    get_openpype_username,
+)
+from .ayon_connection import initialize_ayon_connection
 from .events import (
     emit_event,
     register_event_callback
@@ -70,11 +81,8 @@ from .log import (
 )
 
 from .path_templates import (
-    merge_dict,
-    TemplateMissingKey,
     TemplateUnsolved,
     StringTemplate,
-    TemplatesDict,
     FormatObject,
 )
 
@@ -112,18 +120,6 @@ from .transcoding import (
     get_rescaled_command_arguments,
 )
 
-from .local_settings import (
-    IniSettingRegistry,
-    JSONSettingRegistry,
-    AYONSecureRegistry,
-    AYONSettingsRegistry,
-    OpenPypeSecureRegistry,
-    OpenPypeSettingsRegistry,
-    get_local_site_id,
-    get_ayon_username,
-    get_openpype_username,
-)
-
 from .applications import (
     ApplicationLaunchFailed,
     ApplictionExecutableNotFound,
@@ -156,19 +152,27 @@ from .path_tools import (
 
 from .ayon_info import (
     is_running_from_build,
+    is_using_ayon_console,
     is_staging_enabled,
     is_dev_mode_enabled,
-)
-
-
-from .connections import (
-    requests_get,
-    requests_post
+    is_in_tests,
 )
 
 terminal = Terminal
 
 __all__ = [
+    "IniSettingRegistry",
+    "JSONSettingRegistry",
+    "AYONSecureRegistry",
+    "AYONSettingsRegistry",
+    "OpenPypeSecureRegistry",
+    "OpenPypeSettingsRegistry",
+    "get_local_site_id",
+    "get_ayon_username",
+    "get_openpype_username",
+
+    "initialize_ayon_connection",
+
     "emit_event",
     "register_event_callback",
 
@@ -227,14 +231,6 @@ __all__ = [
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
 
-    "IniSettingRegistry",
-    "JSONSettingRegistry",
-    "OpenPypeSecureRegistry",
-    "OpenPypeSettingsRegistry",
-    "get_local_site_id",
-    "get_ayon_username",
-    "get_openpype_username",
-
     "ApplicationLaunchFailed",
     "ApplictionExecutableNotFound",
     "ApplicationNotFound",
@@ -261,24 +257,21 @@ __all__ = [
     "get_version_from_path",
     "get_last_version_from_path",
 
-    "merge_dict",
-    "TemplateMissingKey",
     "TemplateUnsolved",
     "StringTemplate",
-    "TemplatesDict",
     "FormatObject",
 
     "terminal",
 
     "get_datetime_data",
+    "get_timestamp",
     "get_formatted_current_time",
 
     "Logger",
 
     "is_running_from_build",
+    "is_using_ayon_console",
     "is_staging_enabled",
     "is_dev_mode_enabled",
-
-    "requests_get",
-    "requests_post"
+    "is_in_tests",
 ]

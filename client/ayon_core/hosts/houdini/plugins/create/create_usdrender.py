@@ -8,10 +8,10 @@ class CreateUSDRender(plugin.HoudiniCreator):
     """USD Render ROP in /stage"""
     identifier = "io.openpype.creators.houdini.usdrender"
     label = "USD Render (experimental)"
-    family = "usdrender"
+    product_type = "usdrender"
     icon = "magic"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
 
         instance_data["parent"] = hou.node("/stage")
@@ -21,7 +21,7 @@ class CreateUSDRender(plugin.HoudiniCreator):
         instance_data.update({"node_type": "usdrender"})
 
         instance = super(CreateUSDRender, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
@@ -37,5 +37,5 @@ class CreateUSDRender(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock some Avalon attributes
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)

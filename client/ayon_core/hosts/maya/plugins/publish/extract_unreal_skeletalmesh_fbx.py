@@ -61,7 +61,7 @@ class ExtractUnrealSkeletalMeshFbx(publish.Extractor):
         # we rely on hierarchy under one root.
         original_parent = to_extract[0].split("|")[1]
 
-        parent_node = instance.data.get("asset")
+        parent_node = instance.data.get("folderPath")
         # this needs to be done for AYON
         # WARNING: since AYON supports duplicity of asset names,
         #          this needs to be refactored throughout the pipeline.
@@ -74,7 +74,7 @@ class ExtractUnrealSkeletalMeshFbx(publish.Extractor):
             renamed_to_extract.append("|".join(node_path))
 
         with renamed(original_parent, parent_node):
-            self.log.debug("Extracting: {}".format(renamed_to_extract, path))
+            self.log.debug("Extracting: {}".format(renamed_to_extract))
             fbx_exporter.export(renamed_to_extract, path)
 
         if "representations" not in instance.data:

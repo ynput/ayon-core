@@ -11,10 +11,10 @@ class CreatePointCache(plugin.HoudiniCreator):
     """Alembic ROP to pointcache"""
     identifier = "io.openpype.creators.houdini.pointcache"
     label = "PointCache (Abc)"
-    family = "pointcache"
+    product_type = "pointcache"
     icon = "gears"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
         instance_data.update({"node_type": "alembic"})
         creator_attributes = instance_data.setdefault(
@@ -22,7 +22,7 @@ class CreatePointCache(plugin.HoudiniCreator):
         creator_attributes["farm"] = pre_create_data["farm"]
 
         instance = super(CreatePointCache, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -35,7 +35,7 @@ class CreatePointCache(plugin.HoudiniCreator):
             "format": 2,
             "facesets": 0,
             "filename": hou.text.expandString(
-                "$HIP/pyblish/{}.abc".format(subset_name))
+                "$HIP/pyblish/{}.abc".format(product_name))
         }
 
         if self.selected_nodes:

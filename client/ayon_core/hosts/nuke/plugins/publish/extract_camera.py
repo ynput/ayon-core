@@ -1,6 +1,5 @@
 import os
 import math
-from pprint import pformat
 
 import nuke
 
@@ -38,7 +37,7 @@ class ExtractCamera(publish.Extractor):
 
         rm_nodes = []
         self.log.debug("Creating additional nodes for 3D Camera Extractor")
-        subset = instance.data["subset"]
+        product_name = instance.data["productName"]
         staging_dir = self.staging_dir(instance)
 
         # get extension form preset
@@ -50,7 +49,7 @@ class ExtractCamera(publish.Extractor):
                 "Talk to your supervisor or pipeline admin")
 
         # create file name and path
-        filename = subset + ".{}".format(extension)
+        filename = product_name + ".{}".format(extension)
         file_path = os.path.join(staging_dir, filename).replace("\\", "/")
 
         with maintained_selection():

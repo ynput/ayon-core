@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Creator plugin for creating alembic camera subsets."""
+"""Creator plugin for creating alembic camera products."""
 from ayon_core.hosts.houdini.api import plugin
 from ayon_core.pipeline import CreatedInstance, CreatorError
 
@@ -11,24 +11,24 @@ class CreateAlembicCamera(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.camera"
     label = "Camera (Abc)"
-    family = "camera"
+    product_type = "camera"
     icon = "camera"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "alembic"})
 
         instance = super(CreateAlembicCamera, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)  # type: CreatedInstance
 
         instance_node = hou.node(instance.get("instance_node"))
         parms = {
             "filename": hou.text.expandString(
-                "$HIP/pyblish/{}.abc".format(subset_name)),
+                "$HIP/pyblish/{}.abc".format(product_name)),
             "use_sop_path": False,
         }
 

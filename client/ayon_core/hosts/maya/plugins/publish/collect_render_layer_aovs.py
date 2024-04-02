@@ -62,12 +62,12 @@ class CollectRenderLayerAOVS(pyblish.api.InstancePlugin):
                 continue
 
             pass_name = self.get_pass_name(renderer, element)
-            render_pass = "%s.%s" % (instance.data["subset"], pass_name)
+            render_pass = "%s.%s" % (instance.data["productName"], pass_name)
 
             result.append(render_pass)
 
         self.log.debug("Found {} render elements / AOVs for "
-                       "'{}'".format(len(result), instance.data["subset"]))
+                       "'{}'".format(len(result), instance.data["productName"]))
 
         instance.data["renderPasses"] = result
 

@@ -45,19 +45,19 @@ class TimersManagerModuleRestApi:
         data = await request.json()
         try:
             project_name = data["project_name"]
-            asset_name = data["asset_name"]
+            folder_path = data["folder_path"]
             task_name = data["task_name"]
         except KeyError:
             msg = (
                 "Payload must contain fields 'project_name,"
-                " 'asset_name' and 'task_name'"
+                " 'folder_path' and 'task_name'"
             )
             self.log.error(msg)
             return Response(status=400, message=msg)
 
         self.module.stop_timers()
         try:
-            self.module.start_timer(project_name, asset_name, task_name)
+            self.module.start_timer(project_name, folder_path, task_name)
         except Exception as exc:
             return Response(status=404, message=str(exc))
 
@@ -70,16 +70,16 @@ class TimersManagerModuleRestApi:
     async def get_task_time(self, request):
         data = await request.json()
         try:
-            project_name = data['project_name']
-            asset_name = data['asset_name']
-            task_name = data['task_name']
+            project_name = data["project_name"]
+            folder_path = data["folder_path"]
+            task_name = data["task_name"]
         except KeyError:
             message = (
-                "Payload must contain fields 'project_name, 'asset_name',"
+                "Payload must contain fields 'project_name, 'folder_path',"
                 " 'task_name'"
             )
             self.log.warning(message)
             return Response(text=message, status=404)
 
-        time = self.module.get_task_time(project_name, asset_name, task_name)
+        time = self.module.get_task_time(project_name, folder_path, task_name)
         return Response(text=json.dumps(time))

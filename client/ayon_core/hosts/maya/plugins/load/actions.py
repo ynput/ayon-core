@@ -13,10 +13,12 @@ import ayon_core.hosts.maya.api.plugin
 class SetFrameRangeLoader(load.LoaderPlugin):
     """Set frame range excluding pre- and post-handles"""
 
-    families = ["animation",
-                "camera",
-                "proxyAbc",
-                "pointcache"]
+    product_types = {
+        "animation",
+        "camera",
+        "proxyAbc",
+        "pointcache",
+    }
     representations = ["abc"]
 
     label = "Set frame range"
@@ -28,11 +30,9 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 
         import maya.cmds as cmds
 
-        version = context['version']
-        version_data = version.get("data", {})
-
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        version_attributes = context["version"]["attrib"]
+        start = version_attributes.get("frameStart")
+        end = version_attributes.get("frameEnd")
 
         if start is None or end is None:
             print("Skipping setting frame range because start or "
@@ -48,10 +48,12 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     """Set frame range including pre- and post-handles"""
 
-    families = ["animation",
-                "camera",
-                "proxyAbc",
-                "pointcache"]
+    product_types = {
+        "animation",
+        "camera",
+        "proxyAbc",
+        "pointcache",
+    }
     representations = ["abc"]
 
     label = "Set frame range (with handles)"
@@ -63,11 +65,10 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
 
         import maya.cmds as cmds
 
-        version = context['version']
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        start = version_attributes.get("frameStart")
+        end = version_attributes.get("frameEnd")
 
         if start is None or end is None:
             print("Skipping setting frame range because start or "
@@ -75,8 +76,8 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
             return
 
         # Include handles
-        start -= version_data.get("handleStart", 0)
-        end += version_data.get("handleEnd", 0)
+        start -= version_attributes.get("handleStart", 0)
+        end += version_attributes.get("handleEnd", 0)
 
         cmds.playbackOptions(minTime=start,
                              maxTime=end,
@@ -94,7 +95,7 @@ class ImportMayaLoader(ayon_core.hosts.maya.api.plugin.Loader):
 
     """
     representations = ["ma", "mb", "obj"]
-    families = [
+    product_types = {
         "model",
         "pointcache",
         "proxyAbc",
@@ -107,8 +108,8 @@ class ImportMayaLoader(ayon_core.hosts.maya.api.plugin.Loader):
         "rig",
         "camerarig",
         "staticMesh",
-        "workfile"
-    ]
+        "workfile",
+    }
 
     label = "Import"
     order = 10

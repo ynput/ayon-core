@@ -1,14 +1,14 @@
 import collections
 
 from ayon_core.pipeline.create.creator_plugins import (
-    SubsetConvertorPlugin,
+    ProductConvertorPlugin,
     cache_and_get_instances,
 )
 from ayon_core.hosts.tvpaint.api.plugin import SHARED_DATA_KEY
 from ayon_core.hosts.tvpaint.api.lib import get_groups_data
 
 
-class TVPaintLegacyConverted(SubsetConvertorPlugin):
+class TVPaintLegacyConverted(ProductConvertorPlugin):
     """Conversion of legacy instances in scene to new creators.
 
     This convertor handles only instances created by core creators.
@@ -101,7 +101,7 @@ class TVPaintLegacyConverted(SubsetConvertorPlugin):
             render_layer["creator_attributes"] = {
                 "group_id": group_id
             }
-            render_layer["family"] = "render"
+            render_layer["productType"] = "render"
             group = groups_by_id[group_id]
             # Use group name for variant
             group["variant"] = group["name"]
@@ -128,7 +128,7 @@ class TVPaintLegacyConverted(SubsetConvertorPlugin):
 
             render_pass["creator_identifier"] = "render.pass"
             render_pass["instance_id"] = render_pass.pop("uuid")
-            render_pass["family"] = "render"
+            render_pass["productType"] = "render"
 
             render_pass["creator_attributes"] = {
                 "render_layer_instance_id": render_layer["instance_id"]

@@ -22,7 +22,8 @@ class ExtractReview(publish.Extractor):
         'review' family could be used in other steps as a reference, as it
         contains flattened image by default. (Eg. artist could load this
         review as a single item and see full image. In most cases 'image'
-        family is separated by layers to better usage in animation or comp.)
+        product type is separated by layers to better usage in animation
+        or comp.)
     """
 
     label = "Extract Review"
@@ -55,18 +56,21 @@ class ExtractReview(publish.Extractor):
             "tags": self.jpg_options['tags'],
         }
 
-        if instance.data["family"] != "review":
-            self.log.debug("Existing extracted file from image family used.")
+        if instance.data["productType"] != "review":
+            self.log.debug(
+                "Existing extracted file from image product type used."
+            )
             # enable creation of review, without this jpg review would clash
-            # with jpg of the image family
+            # with jpg of the image product type
             output_name = repre_name
             repre_name = "{}_{}".format(repre_name, output_name)
             repre_skeleton.update({"name": repre_name,
                                    "outputName": output_name})
 
             img_file = self.output_seq_filename % 0
-            self._prepare_file_for_image_family(img_file, instance,
-                                                staging_dir)
+            self._prepare_file_for_image_product_type(
+                img_file, instance, staging_dir
+            )
             repre_skeleton.update({
                 "files": img_file,
             })
@@ -120,8 +124,10 @@ class ExtractReview(publish.Extractor):
 
         self.log.info(f"Extracted {instance} to {staging_dir}")
 
-    def _prepare_file_for_image_family(self, img_file, instance, staging_dir):
-        """Converts existing file for image family to .jpg
+    def _prepare_file_for_image_product_type(
+        self, img_file, instance, staging_dir
+    ):
+        """Converts existing file for image product type to .jpg
 
         Image instance could have its own separate review (instance per layer
         for example). This uses extracted file instead of extracting again.
@@ -261,12 +267,15 @@ class ExtractReview(publish.Extractor):
         """
         layers = []
         # creating review for existing 'image' instance
-        if instance.data["family"] == "image" and instance.data.get("layer"):
+        if (
+            instance.data["productType"] == "image"
+            and instance.data.get("layer")
+        ):
             layers.append(instance.data["layer"])
             return layers
 
         for image_instance in instance.context:
-            if image_instance.data["family"] != "image":
+            if image_instance.data["productType"] != "image":
                 continue
             if not image_instance.data.get("layer"):
                 # dummy instance for flatten image

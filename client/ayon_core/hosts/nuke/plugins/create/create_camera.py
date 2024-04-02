@@ -14,7 +14,7 @@ class CreateCamera(NukeCreator):
 
     identifier = "create_camera"
     label = "Camera (3d)"
-    family = "camera"
+    product_type = "camera"
     icon = "camera"
 
     # plugin attributes
@@ -44,12 +44,12 @@ class CreateCamera(NukeCreator):
 
             return created_node
 
-    def create(self, subset_name, instance_data, pre_create_data):
-        # make sure subset name is unique
-        self.check_existing_subset(subset_name)
+    def create(self, product_name, instance_data, pre_create_data):
+        # make sure product name is unique
+        self.check_existing_product(product_name)
 
         instance = super(CreateCamera, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data
         )

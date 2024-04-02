@@ -6,7 +6,7 @@ import ayon_api
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     NestedCacheItem,
@@ -320,10 +320,10 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             context = get_current_context()
         folder_id = None
         project_name = context.get("project_name")
-        asset_name = context.get("asset_name")
-        if project_name and asset_name:
+        folder_path = context.get("folder_path")
+        if project_name and folder_path:
             folder = ayon_api.get_folder_by_path(
-                project_name, asset_name, fields=["id"]
+                project_name, folder_path, fields=["id"]
             )
             if folder:
                 folder_id = folder["id"]

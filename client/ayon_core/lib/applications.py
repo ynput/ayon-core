@@ -12,16 +12,7 @@ from abc import ABCMeta, abstractmethod
 import six
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.client import get_asset_name_identifier
-from ayon_core.settings import (
-    get_system_settings,
-    get_project_settings,
-    get_local_settings
-)
-from ayon_core.settings.constants import (
-    METADATA_KEYS,
-    M_DYNAMIC_KEY_LABEL
-)
+from ayon_core.settings import get_project_settings, get_studio_settings
 from .log import Logger
 from .profiles_filtering import filter_profiles
 from .local_settings import get_ayon_username
@@ -213,7 +204,7 @@ class ApplicationGroup:
     Application group wraps different versions(variants) of application.
     e.g. "maya" is group and "maya_2020" is variant.
 
-    Group hold `host_name` which is implementation name used in pype. Also
+    Group hold `host_name` which is implementation name used in AYON. Also
     holds `enabled` if whole app group is enabled or `icon` for application
     icon path in resources.
 
@@ -230,29 +221,25 @@ class ApplicationGroup:
         self.manager = manager
         self._data = data
 
-        self.enabled = data.get("enabled", True)
-        self.label = data.get("label") or None
-        self.icon = data.get("icon") or None
-        self._environment = data.get("environment") or {}
+        self.enabled = data["enabled"]
+        self.label = data["label"] or None
+        self.icon = data["icon"] or None
+        env = {}
+        try:
+            env = json.loads(data["environment"])
+        except Exception:
+            pass
+        self._environment = env
 
-        host_name = data.get("host_name", None)
+        host_name = data["host_name"] or None
         self.is_host = host_name is not None
         self.host_name = host_name
 
-        variants = data.get("variants") or {}
-        key_label_mapping = variants.pop(M_DYNAMIC_KEY_LABEL, {})
-        for variant_name, variant_data in variants.items():
-            if variant_name in METADATA_KEYS:
-                continue
-
-            if "variant_label" not in variant_data:
-                variant_label = key_label_mapping.get(variant_name)
-                if variant_label:
-                    variant_data["variant_label"] = variant_label
-
-            variants[variant_name] = Application(
-                variant_name, variant_data, self
-            )
+        settings_variants = data["variants"]
+        variants = {}
+        for variant_data in settings_variants:
+            app_variant = Application(variant_data, self)
+            variants[app_variant.name] = app_variant
 
         self.variants = variants
 
@@ -274,62 +261,56 @@ class Application:
     Object by itself does nothing special.
 
     Args:
-        name (str): Specific version (or variant) of application.
-            e.g. "maya2020", "nuke11.3", etc.
         data (dict): Data for the version containing information about
             executables, variant label or if is enabled.
             Only required key is `executables`.
         group (ApplicationGroup): App group object that created the application
             and under which application belongs.
+
     """
-
-    def __init__(self, name, data, group):
-        self.name = name
-        self.group = group
+    def __init__(self, data, group):
         self._data = data
-
+        name = data["name"]
+        label = data["label"] or name
         enabled = False
         if group.enabled:
             enabled = data.get("enabled", True)
-        self.enabled = enabled
-        self.use_python_2 = data.get("use_python_2", False)
-
-        self.label = data.get("variant_label") or name
-        self.full_name = "/".join((group.name, name))
 
         if group.label:
-            full_label = " ".join((group.label, self.label))
+            full_label = " ".join((group.label, label))
         else:
-            full_label = self.label
-        self.full_label = full_label
-        self._environment = data.get("environment") or {}
+            full_label = label
+        env = {}
+        try:
+            env = json.loads(data["environment"])
+        except Exception:
+            pass
 
-        arguments = data.get("arguments")
+        arguments = data["arguments"]
         if isinstance(arguments, dict):
             arguments = arguments.get(platform.system().lower())
 
         if not arguments:
             arguments = []
+
+        _executables = data["executables"].get(platform.system().lower(), [])
+        executables = [
+            ApplicationExecutable(executable)
+            for executable in _executables
+        ]
+
+        self.group = group
+
+        self.name = name
+        self.label = label
+        self.enabled = enabled
+        self.use_python_2 = data.get("use_python_2", False)
+
+        self.full_name = "/".join((group.name, name))
+        self.full_label = full_label
         self.arguments = arguments
-
-        if "executables" not in data:
-            self.executables = [
-                UndefinedApplicationExecutable()
-            ]
-            return
-
-        _executables = data["executables"]
-        if isinstance(_executables, dict):
-            _executables = _executables.get(platform.system().lower())
-
-        if not _executables:
-            _executables = []
-
-        executables = []
-        for executable in _executables:
-            executables.append(ApplicationExecutable(executable))
-
         self.executables = executables
+        self._environment = env
 
     def __repr__(self):
         return "<{}> - {}".format(self.__class__.__name__, self.full_name)
@@ -384,12 +365,12 @@ class ApplicationManager:
     """Load applications and tools and store them by their full name.
 
     Args:
-        system_settings (dict): Preloaded system settings. When passed manager
+        studio_settings (dict): Preloaded studio settings. When passed manager
             will always use these values. Gives ability to create manager
             using different settings.
     """
 
-    def __init__(self, system_settings=None):
+    def __init__(self, studio_settings=None):
         self.log = Logger.get_logger(self.__class__.__name__)
 
         self.app_groups = {}
@@ -397,16 +378,16 @@ class ApplicationManager:
         self.tool_groups = {}
         self.tools = {}
 
-        self._system_settings = system_settings
+        self._studio_settings = studio_settings
 
         self.refresh()
 
-    def set_system_settings(self, system_settings):
+    def set_studio_settings(self, studio_settings):
         """Ability to change init system settings.
 
         This will trigger refresh of manager.
         """
-        self._system_settings = system_settings
+        self._studio_settings = studio_settings
 
         self.refresh()
 
@@ -417,72 +398,37 @@ class ApplicationManager:
         self.tool_groups.clear()
         self.tools.clear()
 
-        if self._system_settings is not None:
-            settings = copy.deepcopy(self._system_settings)
+        if self._studio_settings is not None:
+            settings = copy.deepcopy(self._studio_settings)
         else:
-            settings = get_system_settings(
+            settings = get_studio_settings(
                 clear_metadata=False, exclude_locals=False
             )
 
-        all_app_defs = {}
+        applications_addon_settings = settings["applications"]
+
         # Prepare known applications
-        app_defs = settings["applications"]
-        additional_apps = {}
+        app_defs = applications_addon_settings["applications"]
+        additional_apps = app_defs.pop("additional_apps")
+        for additional_app in additional_apps:
+            app_name = additional_app.pop("name")
+            if app_name in app_defs:
+                self.log.warning((
+                    "Additional application '{}' is already"
+                    " in built-in applications."
+                ).format(app_name))
+            app_defs[app_name] = additional_app
+
         for group_name, variant_defs in app_defs.items():
-            if group_name in METADATA_KEYS:
-                continue
-
-            if group_name == "additional_apps":
-                additional_apps = variant_defs
-            else:
-                all_app_defs[group_name] = variant_defs
-
-        # Prepare additional applications
-        # - First find dynamic keys that can be used as labels of group
-        dynamic_keys = {}
-        for group_name, variant_defs in additional_apps.items():
-            if group_name == M_DYNAMIC_KEY_LABEL:
-                dynamic_keys = variant_defs
-                break
-
-        # Add additional apps to known applications
-        for group_name, variant_defs in additional_apps.items():
-            if group_name in METADATA_KEYS:
-                continue
-
-            # Determine group label
-            label = variant_defs.get("label")
-            if not label:
-                # Look for label set in dynamic labels
-                label = dynamic_keys.get(group_name)
-                if not label:
-                    label = group_name
-                variant_defs["label"] = label
-
-            all_app_defs[group_name] = variant_defs
-
-        for group_name, variant_defs in all_app_defs.items():
-            if group_name in METADATA_KEYS:
-                continue
-
             group = ApplicationGroup(group_name, variant_defs, self)
             self.app_groups[group_name] = group
             for app in group:
                 self.applications[app.full_name] = app
 
-        tools_definitions = settings["tools"]["tool_groups"]
-        tool_label_mapping = tools_definitions.pop(M_DYNAMIC_KEY_LABEL, {})
-        for tool_group_name, tool_group_data in tools_definitions.items():
-            if not tool_group_name or tool_group_name in METADATA_KEYS:
-                continue
-
-            tool_group_label = (
-                tool_label_mapping.get(tool_group_name) or tool_group_name
-            )
-            group = EnvironmentToolGroup(
-                tool_group_name, tool_group_label, tool_group_data, self
-            )
-            self.tool_groups[tool_group_name] = group
+        tools_definitions = applications_addon_settings["tool_groups"]
+        for tool_group_data in tools_definitions:
+            group = EnvironmentToolGroup(tool_group_data, self)
+            self.tool_groups[group.name] = group
             for tool in group:
                 self.tools[tool.full_name] = tool
 
@@ -539,7 +485,7 @@ class ApplicationManager:
         """Launch procedure.
 
         For host application it's expected to contain "project_name",
-        "asset_name" and "task_name".
+        "folder_path" and "task_name".
 
         Args:
             app_name (str): Name of application that should be launched.
@@ -571,30 +517,31 @@ class EnvironmentToolGroup:
         are same.
 
     Args:
-        name (str): Name of the tool group.
-        data (dict): Group's information with it's variants.
+        data (dict): Group information with variants.
         manager (ApplicationManager): Manager that creates the group.
     """
 
-    def __init__(self, name, label, data, manager):
+    def __init__(self, data, manager):
+        name = data["name"]
+        label = data["label"]
+
         self.name = name
         self.label = label
         self._data = data
         self.manager = manager
-        self._environment = data["environment"]
 
-        variants = data.get("variants") or {}
-        label_by_key = variants.pop(M_DYNAMIC_KEY_LABEL, {})
+        environment = {}
+        try:
+            environment = json.loads(data["environment"])
+        except Exception:
+            pass
+        self._environment = environment
+
+        variants = data.get("variants") or []
         variants_by_name = {}
-        for variant_name, variant_data in variants.items():
-            if variant_name in METADATA_KEYS:
-                continue
-
-            variant_label = label_by_key.get(variant_name) or variant_name
-            tool = EnvironmentTool(
-                variant_name, variant_label, variant_data, self
-            )
-            variants_by_name[variant_name] = tool
+        for variant_data in variants:
+            tool = EnvironmentTool(variant_data, self)
+            variants_by_name[tool.name] = tool
         self.variants = variants_by_name
 
     def __repr__(self):
@@ -615,23 +562,25 @@ class EnvironmentTool:
     Structure of tool information.
 
     Args:
-        name (str): Name of the tool.
         variant_data (dict): Variant data with environments and
             host and app variant filters.
-        group (str): Name of group which wraps tool.
+        group (EnvironmentToolGroup): Name of group which wraps tool.
     """
 
-    def __init__(self, name, label, variant_data, group):
+    def __init__(self, variant_data, group):
         # Backwards compatibility 3.9.1 - 3.9.2
         # - 'variant_data' contained only environments but contain also host
         #   and application variant filters
-        host_names = variant_data.get("host_names", [])
-        app_variants = variant_data.get("app_variants", [])
+        name = variant_data["name"]
+        label = variant_data["label"]
+        host_names = variant_data["host_names"]
+        app_variants = variant_data["app_variants"]
 
-        if "environment" in variant_data:
-            environment = variant_data["environment"]
-        else:
-            environment = variant_data
+        environment = {}
+        try:
+            environment = json.loads(variant_data["environment"])
+        except Exception:
+            pass
 
         self.host_names = host_names
         self.app_variants = app_variants
@@ -1431,7 +1380,7 @@ class EnvironmentPrepData(dict):
         data (dict): Data must contain required keys.
     """
     required_keys = (
-        "project_doc", "asset_doc", "task_name", "app", "anatomy"
+        "project_entity", "folder_entity", "task_entity", "app", "anatomy"
     )
 
     def __init__(self, data):
@@ -1445,15 +1394,16 @@ class EnvironmentPrepData(dict):
         if data.get("env") is None:
             data["env"] = os.environ.copy()
 
-        if "system_settings" not in data:
-            data["system_settings"] = get_system_settings()
+        project_name = data["project_entity"]["name"]
+        if "project_settings" not in data:
+            data["project_settings"] = get_project_settings(project_name)
 
         super(EnvironmentPrepData, self).__init__(data)
 
 
 def get_app_environments_for_context(
     project_name,
-    asset_name,
+    folder_path,
     task_name,
     app_name,
     env_group=None,
@@ -1464,7 +1414,7 @@ def get_app_environments_for_context(
     """Prepare environment variables by context.
     Args:
         project_name (str): Name of project.
-        asset_name (str): Name of asset.
+        folder_path (str): Folder path.
         task_name (str): Name of task.
         app_name (str): Name of application that is launched and can be found
             by ApplicationManager.
@@ -1486,7 +1436,7 @@ def get_app_environments_for_context(
     context = app_manager.create_launch_context(
         app_name,
         project_name=project_name,
-        asset_name=asset_name,
+        folder_path=folder_path,
         task_name=task_name,
         env_group=env_group,
         launch_type=launch_type,
@@ -1570,16 +1520,17 @@ def prepare_app_environments(
 
     # Use environments from local settings
     filtered_local_envs = {}
-    system_settings = data["system_settings"]
-    whitelist_envs = system_settings["general"].get("local_env_white_list")
-    if whitelist_envs:
-        local_settings = get_local_settings()
-        local_envs = local_settings.get("environments") or {}
-        filtered_local_envs = {
-            key: value
-            for key, value in local_envs.items()
-            if key in whitelist_envs
-        }
+    # NOTE Overrides for environment variables are not implemented in AYON.
+    # project_settings = data["project_settings"]
+    # whitelist_envs = project_settings["general"].get("local_env_white_list")
+    # if whitelist_envs:
+    #     local_settings = get_local_settings()
+    #     local_envs = local_settings.get("environments") or {}
+    #     filtered_local_envs = {
+    #         key: value
+    #         for key, value in local_envs.items()
+    #         if key in whitelist_envs
+    #     }
 
     # Apply local environment variables for already existing values
     for key, value in filtered_local_envs.items():
@@ -1594,13 +1545,13 @@ def prepare_app_environments(
         app.environment
     ]
 
-    asset_doc = data.get("asset_doc")
+    folder_entity = data.get("folder_entity")
     # Add tools environments
     groups_by_name = {}
     tool_by_group_name = collections.defaultdict(dict)
-    if asset_doc:
+    if folder_entity:
         # Make sure each tool group can be added only once
-        for key in asset_doc["data"].get("tools_env") or []:
+        for key in folder_entity["attrib"].get("tools") or []:
             tool = app.manager.tools.get(key)
             if not tool or not tool.is_valid_for_app(app):
                 continue
@@ -1698,8 +1649,9 @@ def apply_project_environments_value(
     if project_settings is None:
         project_settings = get_project_settings(project_name)
 
-    env_value = project_settings["global"]["project_environments"]
+    env_value = project_settings["core"]["project_environments"]
     if env_value:
+        env_value = json.loads(env_value)
         parsed_value = parse_environments(env_value, env_group)
         env.update(acre.compute(
             _merge_env(parsed_value, env),
@@ -1721,10 +1673,10 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
     # Context environments
     log = data["log"]
 
-    project_doc = data["project_doc"]
-    asset_doc = data["asset_doc"]
-    task_name = data["task_name"]
-    if not project_doc:
+    project_entity = data["project_entity"]
+    folder_entity = data["folder_entity"]
+    task_entity = data["task_entity"]
+    if not project_entity:
         log.info(
             "Skipping context environments preparation."
             " Launch context does not contain required data."
@@ -1732,23 +1684,21 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
         return
 
     # Load project specific environments
-    project_name = project_doc["name"]
+    project_name = project_entity["name"]
     project_settings = get_project_settings(project_name)
-    system_settings = get_system_settings()
     data["project_settings"] = project_settings
-    data["system_settings"] = system_settings
 
     app = data["app"]
     context_env = {
-        "AVALON_PROJECT": project_doc["name"],
-        "AVALON_APP_NAME": app.full_name
+        "AYON_PROJECT_NAME": project_entity["name"],
+        "AYON_APP_NAME": app.full_name
     }
-    if asset_doc:
-        asset_name = get_asset_name_identifier(asset_doc)
-        context_env["AVALON_ASSET"] = asset_name
+    if folder_entity:
+        folder_path = folder_entity["path"]
+        context_env["AYON_FOLDER_PATH"] = folder_path
 
-        if task_name:
-            context_env["AVALON_TASK"] = task_name
+        if task_entity:
+            context_env["AYON_TASK_NAME"] = task_entity["name"]
 
     log.debug(
         "Context environments set:\n{}".format(
@@ -1766,17 +1716,21 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
     if not app.is_host:
         return
 
-    data["env"]["AVALON_APP"] = app.host_name
+    data["env"]["AYON_HOST_NAME"] = app.host_name
 
-    if not asset_doc or not task_name:
+    if not folder_entity or not task_entity:
         # QUESTION replace with log.info and skip workfile discovery?
         # - technically it should be possible to launch host without context
         raise ApplicationLaunchFailed(
-            "Host launch require asset and task context."
+            "Host launch require folder and task context."
         )
 
     workdir_data = get_template_data(
-        project_doc, asset_doc, task_name, app.host_name, system_settings
+        project_entity,
+        folder_entity,
+        task_entity,
+        app.host_name,
+        project_settings
     )
     data["workdir_data"] = workdir_data
 
@@ -1812,7 +1766,7 @@ def prepare_context_environments(data, env_group=None, addons_manager=None):
                 "Couldn't create workdir because: {}".format(str(exc))
             )
 
-    data["env"]["AVALON_WORKDIR"] = workdir
+    data["env"]["AYON_WORKDIR"] = workdir
 
     _prepare_last_workfile(data, workdir, addons_manager)
 
@@ -1835,6 +1789,10 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     from ayon_core.addon import AddonsManager
     from ayon_core.pipeline import HOST_WORKFILE_EXTENSIONS
+    from ayon_core.pipeline.workfile import (
+        should_use_last_workfile_on_launch,
+        should_open_workfiles_tool_on_launch,
+    )
 
     if not addons_manager:
         addons_manager = AddonsManager()
@@ -1857,7 +1815,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     start_last_workfile = data.get("start_last_workfile")
     if start_last_workfile is None:
-        start_last_workfile = should_start_last_workfile(
+        start_last_workfile = should_use_last_workfile_on_launch(
             project_name, app.host_name, task_name, task_type
         )
     else:
@@ -1865,7 +1823,7 @@ def _prepare_last_workfile(data, workdir, addons_manager):
 
     data["start_last_workfile"] = start_last_workfile
 
-    workfile_startup = should_workfile_tool_start(
+    workfile_startup = should_open_workfiles_tool_on_launch(
         project_name, app.host_name, task_name, task_type
     )
     data["workfile_startup"] = workfile_startup
@@ -1902,13 +1860,15 @@ def _prepare_last_workfile(data, workdir, addons_manager):
             project_settings = data["project_settings"]
             task_type = workdir_data["task"]["type"]
             template_key = get_workfile_template_key(
+                project_name,
                 task_type,
                 app.host_name,
-                project_name,
                 project_settings=project_settings
             )
             # Find last workfile
-            file_template = str(anatomy.templates[template_key]["file"])
+            file_template = anatomy.get_template_item(
+                "work", template_key, "file"
+            ).template
 
             workdir_data.update({
                 "version": 1,
@@ -1929,144 +1889,5 @@ def _prepare_last_workfile(data, workdir, addons_manager):
         "Setting last workfile path: {}".format(last_workfile_path)
     )
 
-    data["env"]["AVALON_LAST_WORKFILE"] = last_workfile_path
+    data["env"]["AYON_LAST_WORKFILE"] = last_workfile_path
     data["last_workfile_path"] = last_workfile_path
-
-
-def should_start_last_workfile(
-    project_name, host_name, task_name, task_type, default_output=False
-):
-    """Define if host should start last version workfile if possible.
-
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_OPEN_LAST_WORKFILE`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
-
-    Args:
-        project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
-
-    Returns:
-        bool: True if host should start workfile.
-
-    """
-
-    project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["global"]
-        ["tools"]
-        ["Workfiles"]
-        ["last_workfile_on_startup"]
-    )
-
-    if not profiles:
-        return default_output
-
-    filter_data = {
-        "tasks": task_name,
-        "task_types": task_type,
-        "hosts": host_name
-    }
-    matching_item = filter_profiles(profiles, filter_data)
-
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
-
-    if output is None:
-        return default_output
-    return output
-
-
-def should_workfile_tool_start(
-    project_name, host_name, task_name, task_type, default_output=False
-):
-    """Define if host should start workfile tool at host launch.
-
-    Default output is `False`. Can be overridden with environment variable
-    `AYON_WORKFILE_TOOL_ON_START`, valid values without case sensitivity are
-    `"0", "1", "true", "false", "yes", "no"`.
-
-    Args:
-        project_name (str): Name of project.
-        host_name (str): Name of host which is launched. In avalon's
-            application context it's value stored in app definition under
-            key `"application_dir"`. Is not case sensitive.
-        task_name (str): Name of task which is used for launching the host.
-            Task name is not case sensitive.
-
-    Returns:
-        bool: True if host should start workfile.
-
-    """
-
-    project_settings = get_project_settings(project_name)
-    profiles = (
-        project_settings
-        ["global"]
-        ["tools"]
-        ["Workfiles"]
-        ["open_workfile_tool_on_startup"]
-    )
-
-    if not profiles:
-        return default_output
-
-    filter_data = {
-        "tasks": task_name,
-        "task_types": task_type,
-        "hosts": host_name
-    }
-    matching_item = filter_profiles(profiles, filter_data)
-
-    output = None
-    if matching_item:
-        output = matching_item.get("enabled")
-
-    if output is None:
-        return default_output
-    return output
-
-
-def get_non_python_host_kwargs(kwargs, allow_console=True):
-    """Explicit setting of kwargs for Popen for AE/PS/Harmony.
-
-    Expected behavior
-    - ayon_console opens window with logs
-    - ayon has stdout/stderr available for capturing
-
-    Args:
-        kwargs (dict) or None
-        allow_console (bool): use False for inner Popen opening app itself or
-           it will open additional console (at least for Harmony)
-    """
-
-    if kwargs is None:
-        kwargs = {}
-
-    if platform.system().lower() != "windows":
-        return kwargs
-
-    executable_path = os.environ.get("AYON_EXECUTABLE")
-
-    executable_filename = ""
-    if executable_path:
-        executable_filename = os.path.basename(executable_path)
-
-    is_gui_executable = "ayon_console" not in executable_filename
-    if is_gui_executable:
-        kwargs.update({
-            "creationflags": subprocess.CREATE_NO_WINDOW,
-            "stdout": subprocess.DEVNULL,
-            "stderr": subprocess.DEVNULL
-        })
-    elif allow_console:
-        kwargs.update({
-            "creationflags": subprocess.CREATE_NEW_CONSOLE
-        })
-    return kwargs

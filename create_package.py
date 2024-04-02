@@ -279,7 +279,8 @@ def create_server_package(
 def main(
     output_dir: Optional[str]=None,
     skip_zip: bool=False,
-    keep_sources: bool=False
+    keep_sources: bool=False,
+    clear_output_dir: bool=False
 ):
     log = logging.getLogger("create_package")
     log.info("Start creating package")
@@ -292,7 +293,8 @@ def main(
     new_created_version_dir = os.path.join(
         output_dir, ADDON_NAME, ADDON_VERSION
     )
-    if os.path.isdir(new_created_version_dir):
+
+    if os.path.isdir(new_created_version_dir) and clear_output_dir:
         log.info(f"Purging {new_created_version_dir}")
         shutil.rmtree(output_dir)
 
@@ -340,6 +342,15 @@ if __name__ == "__main__":
         )
     )
     parser.add_argument(
+        "-c", "--clear-output-dir",
+        dest="clear_output_dir",
+        action="store_true",
+        help=(
+            "Clear output directory before package creation."
+        )
+    )
+
+    parser.add_argument(
         "-o", "--output",
         dest="output_dir",
         default=None,
@@ -350,4 +361,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args(sys.argv[1:])
-    main(args.output_dir, args.skip_zip, args.keep_sources)
+    main(
+        args.output_dir,
+        args.skip_zip,
+        args.keep_sources,
+        args.clear_output_dir
+    )

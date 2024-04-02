@@ -45,7 +45,7 @@ class SubsetManagerWindow(QtWidgets.QDialog):
 
         # Filter input
         filter_input = PlaceholderLineEdit(header_widget)
-        filter_input.setPlaceholderText("Filter subsets..")
+        filter_input.setPlaceholderText("Filter products..")
 
         # Refresh button
         icon = qtawesome.icon("fa.refresh", color="white")

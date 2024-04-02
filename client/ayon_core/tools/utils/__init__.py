@@ -37,10 +37,7 @@ from .lib import (
     get_qt_app,
     get_ayon_qt_app,
     get_openpype_qt_app,
-    get_asset_icon,
-    get_asset_icon_by_name,
-    get_asset_icon_name_from_doc,
-    get_asset_icon_color_from_doc,
+    get_qt_icon,
 )
 
 from .models import (
@@ -58,6 +55,28 @@ from .dialogs import (
     ScrollMessageBox,
     SimplePopup,
     PopupUpdateKeys,
+)
+from .projects_widget import (
+    ProjectsCombobox,
+    ProjectsQtModel,
+    ProjectSortFilterProxy,
+    PROJECT_NAME_ROLE,
+    PROJECT_IS_CURRENT_ROLE,
+    PROJECT_IS_ACTIVE_ROLE,
+    PROJECT_IS_LIBRARY_ROLE,
+)
+
+from .folders_widget import (
+    FoldersWidget,
+    FoldersQtModel,
+    FOLDERS_MODEL_SENDER_NAME,
+    SimpleFoldersWidget,
+)
+
+from .tasks_widget import (
+    TasksWidget,
+    TasksQtModel,
+    TASKS_MODEL_SENDER_NAME,
 )
 
 
@@ -100,10 +119,7 @@ __all__ = (
     "get_qt_app",
     "get_ayon_qt_app",
     "get_openpype_qt_app",
-    "get_asset_icon",
-    "get_asset_icon_by_name",
-    "get_asset_icon_name_from_doc",
-    "get_asset_icon_color_from_doc",
+    "get_qt_icon",
 
     "RecursiveSortFilterProxyModel",
 
@@ -121,4 +137,21 @@ __all__ = (
     "ScrollMessageBox",
     "SimplePopup",
     "PopupUpdateKeys",
+
+    "ProjectsCombobox",
+    "ProjectsQtModel",
+    "ProjectSortFilterProxy",
+    "PROJECT_NAME_ROLE",
+    "PROJECT_IS_CURRENT_ROLE",
+    "PROJECT_IS_ACTIVE_ROLE",
+    "PROJECT_IS_LIBRARY_ROLE",
+
+    "FoldersWidget",
+    "FoldersQtModel",
+    "FOLDERS_MODEL_SENDER_NAME",
+    "SimpleFoldersWidget",
+
+    "TasksWidget",
+    "TasksQtModel",
+    "TASKS_MODEL_SENDER_NAME",
 )

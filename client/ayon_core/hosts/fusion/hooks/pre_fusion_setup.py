@@ -13,7 +13,7 @@ from ayon_core.hosts.fusion import (
 
 class FusionPrelaunch(PreLaunchHook):
     """
-    Prepares OpenPype Fusion environment.
+    Prepares AYON Fusion environment.
     Requires correct Python home variable to be defined in the environment
     settings for Fusion to point at a valid Python 3 build for Fusion.
     Python3 versions that are supported by Fusion:
@@ -28,7 +28,7 @@ class FusionPrelaunch(PreLaunchHook):
     def execute(self):
         # making sure python 3 is installed at provided path
         # Py 3.3-3.10 for Fusion 18+ or Py 3.6 for Fu 16-17
-        app_data = self.launch_context.env.get("AVALON_APP_NAME")
+        app_data = self.launch_context.env.get("AYON_APP_NAME")
         app_version = get_fusion_version(app_data)
         if not app_version:
             raise ApplicationLaunchFailed(

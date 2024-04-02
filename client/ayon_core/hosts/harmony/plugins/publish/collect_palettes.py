@@ -31,16 +31,18 @@ class CollectPalettes(pyblish.api.ContextPlugin):
             if (not any([re.search(pattern, task_name)
                          for pattern in self.allowed_tasks])):
                 return
-        asset_name = context.data["asset"]
+        folder_path = context.data["folderPath"]
 
+        product_type = "harmony.palette"
         for name, id in palettes.items():
             instance = context.create_instance(name)
             instance.data.update({
                 "id": id,
-                "family": "harmony.palette",
-                'families': [],
-                "asset": asset_name,
-                "subset": "{}{}".format("palette", name)
+                "productType": product_type,
+                "family": product_type,
+                "families": [product_type],
+                "folderPath": folder_path,
+                "productName": "{}{}".format("palette", name)
             })
             self.log.info(
                 "Created instance:\n" + json.dumps(

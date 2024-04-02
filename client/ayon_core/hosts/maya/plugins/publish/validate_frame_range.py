@@ -39,7 +39,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
                 "yeticache"]
     optional = True
     actions = [RepairAction]
-    exclude_families = []
+    exclude_product_types = []
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -73,12 +73,14 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
 
         # compare with data on instance
         errors = []
-        if [ef for ef in self.exclude_families
-                if instance.data["family"] in ef]:
+        # QUESTION shouldn't this be just:
+        #   'if instance.data["productType"] in self.exclude_product_types:'
+        if [ef for ef in self.exclude_product_types
+                if instance.data["productType"] in ef]:
             return
         if (inst_start != frame_start_handle):
             errors.append("Instance start frame [ {} ] doesn't "
-                          "match the one set on asset [ {} ]: "
+                          "match the one set on folder [ {} ]: "
                           "{}/{}/{}/{} (handle/start/end/handle)".format(
                               inst_start,
                               frame_start_handle,
@@ -87,7 +89,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
 
         if (inst_end != frame_end_handle):
             errors.append("Instance end frame [ {} ] doesn't "
-                          "match the one set on asset [ {} ]: "
+                          "match the one set on folder [ {} ]: "
                           "{}/{}/{}/{} (handle/start/end/handle)".format(
                               inst_end,
                               frame_end_handle,
@@ -103,7 +105,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
         for label, values in checks.items():
             if values[0] != values[1]:
                 errors.append(
-                    "{} on instance ({}) does not match with the asset "
+                    "{} on instance ({}) does not match with the folder "
                     "({}).".format(label.title(), values[1], values[0])
                 )
 
@@ -117,7 +119,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
     @classmethod
     def repair(cls, instance):
         """
-        Repair instance container to match asset data.
+        Repair instance container to match folder data.
         """
 
         if "renderlayer" in instance.data.get("families"):

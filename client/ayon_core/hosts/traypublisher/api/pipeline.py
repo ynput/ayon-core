@@ -22,7 +22,7 @@ class TrayPublisherHost(HostBase, IPublishHost):
     name = "traypublisher"
 
     def install(self):
-        os.environ["AVALON_APP"] = self.name
+        os.environ["AYON_HOST_NAME"] = self.name
 
         pyblish.api.register_host("traypublisher")
         pyblish.api.register_plugin_path(PUBLISH_PATH)
@@ -40,7 +40,7 @@ class TrayPublisherHost(HostBase, IPublishHost):
     def set_project_name(self, project_name):
         # TODO Deregister project specific plugins and register new project
         #   plugins
-        os.environ["AVALON_PROJECT"] = project_name
+        os.environ["AYON_PROJECT_NAME"] = project_name
         HostContext.set_project_name(project_name)
 
 
