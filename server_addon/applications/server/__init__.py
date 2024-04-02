@@ -118,15 +118,113 @@ class ApplicationsAddon(BaseServerAddon):
             )
 
     async def setup(self):
-        need_restart = await self.create_applications_attribute()
+        need_restart = await self.create_required_attributes()
         if need_restart:
             self.request_server_restart()
+        await self.update_enums()
+
+    def _get_applications_def(self):
+        return {
+            "name": "applications",
+            "type": "list_of_strings",
+            "title": "Applications",
+            "scope": ["project"],
+            "enum":[],
+        }
+
+    def _get_tools_def(self):
+        return {
+            "name": "tools",
+            "type": "list_of_strings",
+            "title": "Tools",
+            "scope": ["project", "folder", "task"],
+            "enum":[],
+        }
 
     async def create_applications_attribute(self) -> bool:
         """Make sure there are required attributes which ftrack addon needs.
 
         Returns:
             bool: 'True' if an attribute was created or updated.
+        """
+
+        need_restart = await self.create_required_attributes()
+        await self.update_enums()
+        return need_restart
+
+    async def create_required_attributes(self) -> bool:
+        """Make sure there are required 'applications' and 'tools' attributes.
+        This only checks for the existence of the attributes, it does not populate
+        them with any data. When an attribute is added, server needs to be restarted,
+        while adding enum data to the attribute does not require a restart.
+        Returns:
+            bool: 'True' if an attribute was created or updated.
+        """
+
+        # keep track of the last attribute position (for adding new attributes)
+        apps_present = False
+        tools_present = False
+        apps_attribute_data = self._get_applications_def()
+        apps_attrib_name = apps_attribute_data["name"]
+
+        tools_attribute_data = self._get_tools_def()
+        tools_attrib_name = tools_attribute_data["name"]
+
+        last_index = -1
+        async for row in Postgres.iterate(
+            "SELECT name, position FROM attributes ORDER BY position"
+        ):
+            # check if the required attributes are present
+            # (in that case, we don't need to add them)
+            # also keep track of the last attribute position
+            if row["name"] == apps_attrib_name:
+                apps_present = True
+            elif row["name"] == tools_attrib_name:
+                tools_present = True
+            last_index = row["position"]
+
+        attributes_to_create = {}
+        if not apps_present:
+            attributes_to_create[apps_attrib_name] = {
+                "scope": apps_attribute_data["scope"],
+                "data": {
+                    "title": apps_attribute_data["title"],
+                    "type": apps_attribute_data["type"],
+                    "enum": [],
+                }
+            }
+
+        if not tools_present:
+            attributes_to_create[tools_attrib_name] = {
+                "scope": tools_attribute_data["scope"],
+                "data": {
+                    "title": tools_attribute_data["title"],
+                    "type": tools_attribute_data["type"],
+                    "enum": [],
+                },
+            }
+
+        # when any of the required attributes are not present, add them
+        # and return 'True' to indicate that server needs to be restarted
+        needs_restart = False
+        for name, payload in attributes_to_create.items():
+            await Postgres.execute(
+                "INSERT INTO attributes (name, position, scope, data) VALUES ($1, $2, $3, $4)",
+                name,
+                last_index + 1,
+                payload["scope"],
+                payload["data"],
+            )
+            last_index += 1
+            needs_restart = True
+
+        return needs_restart
+
+    async def update_enums(self):
+        """Updates applications and tools enums based on the addon settings.
+        This method is called when the addon is started (after we are sure that the
+        'applications' and 'tools' attributes exist) and when the addon settings are
+        updated (using on_settings_updated method).
         """
 
         instance = AddonLibrary.getinstance()
@@ -148,33 +246,32 @@ class ApplicationsAddon(BaseServerAddon):
                 merge_groups(all_applications, app_groups)
                 merge_groups(all_tools, studio_settings["tool_groups"])
 
-        query = "SELECT name, position, scope, data from public.attributes"
-
         apps_attrib_name = "applications"
         tools_attrib_name = "tools"
 
         apps_enum = get_enum_items_from_groups(all_applications)
         tools_enum = get_enum_items_from_groups(all_tools)
+
         apps_attribute_data = {
             "type": "list_of_strings",
             "title": "Applications",
-            "enum": apps_enum
+            "enum": apps_enum,
         }
         tools_attribute_data = {
             "type": "list_of_strings",
             "title": "Tools",
-            "enum": tools_enum
+            "enum": tools_enum,
         }
+
         apps_scope = ["project"]
         tools_scope = ["project", "folder", "task"]
 
-        apps_match_position = None
         apps_matches = False
-        tools_match_position = None
         tools_matches = False
-        position = 1
-        async for row in Postgres.iterate(query):
-            position += 1
+
+        async for row in Postgres.iterate(
+            "SELECT name, position, scope, data from public.attributes"
+        ):
             if row["name"] == apps_attrib_name:
                 # Check if scope is matching ftrack addon requirements
                 if (
@@ -182,7 +279,6 @@ class ApplicationsAddon(BaseServerAddon):
                     and row["data"].get("enum") == apps_enum
                 ):
                     apps_matches = True
-                apps_match_position = row["position"]
 
             elif row["name"] == tools_attrib_name:
                 if (
@@ -190,45 +286,38 @@ class ApplicationsAddon(BaseServerAddon):
                     and row["data"].get("enum") == tools_enum
                 ):
                     tools_matches = True
-                tools_match_position = row["position"]
 
         if apps_matches and tools_matches:
-            return False
+            return
 
-        postgre_query = "\n".join((
-            "INSERT INTO public.attributes",
-            "    (name, position, scope, data)",
-            "VALUES",
-            "    ($1, $2, $3, $4)",
-            "ON CONFLICT (name)",
-            "DO UPDATE SET",
-            "    scope = $3,",
-            "    data = $4",
-        ))
         if not apps_matches:
-            # Reuse position from found attribute
-            if apps_match_position is None:
-                apps_match_position = position
-                position += 1
-
             await Postgres.execute(
-                postgre_query,
-                apps_attrib_name,
-                apps_match_position,
+                """
+                UPDATE attributes SET
+                    scope = $1,
+                    data = $2
+                WHERE 
+                    name = $3
+                """,
                 apps_scope,
                 apps_attribute_data,
+                apps_attrib_name,
             )
 
         if not tools_matches:
-            if tools_match_position is None:
-                tools_match_position = position
-                position += 1
-
             await Postgres.execute(
-                postgre_query,
-                tools_attrib_name,
-                tools_match_position,
+                """
+                UPDATE attributes SET
+                    scope = $1,
+                    data = $2
+                WHERE 
+                    name = $3
+                """,
                 tools_scope,
                 tools_attribute_data,
+                tools_attrib_name,
             )
-        return True
+
+    async def on_settings_changed(self, *args, **kwargs):
+        _ = args, kwargs
+        await self.update_enums()
