@@ -65,7 +65,7 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
                 folder_path, product_type),
             "name": "{}_{}".format(folder_name, product_type),
             "folderPath": folder_path,
-            # TODO use 'get_subset_name'
+            # TODO use 'get_product_name'
             "productName": "{}{}Main".format(
                 folder_name, product_type.capitalize()
             ),
