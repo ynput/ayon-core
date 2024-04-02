@@ -247,14 +247,8 @@ def get_frame_range(task_entity=None) -> Union[Dict[str, Any], None]:
     if task_entity is None:
         task_entity = get_current_task_entity()
     task_attributes = task_entity["attrib"]
-    frame_start = task_attributes["frameStart"]
-    frame_end = task_attributes["frameEnd"]
-
-    if frame_start is None or frame_end is None:
-        return {}
-
-    frame_start = int(frame_start)
-    frame_end = int(frame_end)
+    frame_start = int(task_attributes["frameStart"])
+    frame_end = int(task_attributes["frameEnd"])
     handle_start = int(task_attributes["handleStart"])
     handle_end = int(task_attributes["handleEnd"])
     frame_start_handle = frame_start - handle_start
@@ -284,7 +278,7 @@ def reset_frame_range(fps: bool = True):
     if fps:
         task_entity = get_current_task_entity()
         task_attributes = task_entity["attrib"]
-        fps_number = float(task_attributes.get("fps"))
+        fps_number = float(task_attributes["fps"])
         rt.frameRate = fps_number
     frame_range = get_frame_range()
 
