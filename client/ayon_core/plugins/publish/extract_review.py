@@ -619,7 +619,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # Prepare input and output filepaths
         self.input_output_paths(new_repre, output_def, temp_data)
 
-        # Set output frames len to 1 when ouput is single image
+        # Set output frames len to 1 when output is single image
         if (
             temp_data["output_ext_is_image"]
             and not temp_data["output_is_sequence"]
@@ -955,7 +955,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         self.log.debug("New representation ext: `{}`".format(output_ext))
 
-        # Output is image file sequence witht frames
+        # Output is image file sequence with frames
         output_ext_is_image = bool(output_ext in self.image_exts)
         output_is_sequence = bool(
             output_ext_is_image
@@ -967,7 +967,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             frame_end = temp_data["output_frame_end"]
 
             filename_base = "{}_{}".format(filename, filename_suffix)
-            # Temporary tempalte for frame filling. Example output:
+            # Temporary template for frame filling. Example output:
             # "basename.%04d.exr" when `frame_end` == 1001
             repr_file = "{}.%{:0>2}d.{}".format(
                 filename_base, len(str(frame_end)), output_ext
@@ -997,7 +997,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             self.log.debug("Creating dir: {}".format(dst_staging_dir))
             os.makedirs(dst_staging_dir)
 
-        # Store stagingDir to representaion
+        # Store stagingDir to representation
         new_repre["stagingDir"] = dst_staging_dir
 
         # Store paths to temp data
@@ -1545,7 +1545,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             custom_tags (list): Custom Tags of processed representation.
 
         Returns:
-            list: Containg all output definitions matching entered tags.
+            list: Containing all output definitions matching entered tags.
         """
 
         filtered_outputs = []
@@ -1859,7 +1859,7 @@ class OverscanCrop:
         # Replace "px" (and spaces before) with single space
         string_value = re.sub(r"([ ]+)?px", " ", string_value)
         string_value = re.sub(r"([ ]+)%", "%", string_value)
-        # Make sure +/- sign at the beggining of string is next to number
+        # Make sure +/- sign at the beginning of string is next to number
         string_value = re.sub(r"^([\+\-])[ ]+", "\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
         #   which belongs
