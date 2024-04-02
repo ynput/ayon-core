@@ -16,7 +16,6 @@ import re
 import collections
 import copy
 from abc import ABCMeta, abstractmethod
-from typing import TypedDict
 
 import six
 from ayon_api import (
@@ -51,14 +50,6 @@ from ayon_core.pipeline.create import (
 )
 
 _NOT_SET = object()
-
-
-class TemplatePresetDict(TypedDict):
-    """Dictionary with `path`, `keep_placeholder` and `create_first_version`
-    settings from the template preset for current context."""
-    path: str
-    keep_placeholder: bool
-    create_first_version: bool
 
 
 class TemplateNotFound(Exception):
@@ -782,14 +773,14 @@ class AbstractTemplateBuilder(object):
         - 'project_settings/{host name}/templated_workfile_build/profiles'
 
         Returns:
-            TemplatePresetDict: Dictionary with `path`, `keep_placeholder` and
+            dict: Dictionary with `path`, `keep_placeholder` and
                 `create_first_version` settings from the template preset
                 for current context.
 
         Raises:
             TemplateProfileNotFound: When profiles are not filled.
             TemplateLoadFailed: Profile was found but path is not set.
-            TemplateNotFound: Path was set but file does not exists.
+            TemplateNotFound: Path was set but file does not exist.
         """
 
         host_name = self.host_name
