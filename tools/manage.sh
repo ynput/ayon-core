@@ -175,6 +175,27 @@ run_codespell () {
   "$POETRY_HOME/bin/poetry" run codespell
 }
 
+workdir_cleanup () {
+  echo -e "${BIGreen}>>>${RST} Cleaning up temporary directory ..."
+  rm -rf "$TempTraitDir"
+}
+
+sync_traits () {
+  echo -e "${BIGreen}>>>${RST} Generating traits ..."
+  TempTraitDir=$(mktemp -d)
+  trap workdir_cleanup EXIT
+  echo -e "${BIGreen}>>>${RST} Temporary directory: ${BIWhite}$TempTraitDir${RST}"
+  DirectoryPath="$repo_root/client/ayon_core/pipeline/traits"
+
+  echo -e "${BIGreen}>>>${RST} Cleaning generated traits ..."
+  rm -f "$DirectoryPath/generated/*" || { echo -e "${BIRed}!!!${RST} Failed to clean generated traits"; return 1 }
+  for f in "$DirectoryPath"/.yml; do
+      echo -e "${BICyan}  -${RST} generating from [ ${BIWhite}$f${RST} ]"
+      "$POETRY_HOME/bin/poetry" run openassetio-traitgen -o $TempTraitDir -g python -v "$f" || { echo -e "${BIRed}!!!${RST} Failed to generate traits"; return 1 }
+  done
+
+}
+
 main () {
   detect_python || return 1
 

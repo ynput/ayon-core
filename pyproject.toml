@@ -98,7 +98,7 @@ line-ending = "auto"
 [tool.codespell]
 # Ignore words that are not in the dictionary.
 ignore-words-list = "ayon,ynput"
-skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
+skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*,poetry.lock"
 count = true
 quiet-level = 3
 
