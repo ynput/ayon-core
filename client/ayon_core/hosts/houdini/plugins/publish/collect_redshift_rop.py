@@ -60,11 +60,27 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             instance.data["ifdFile"] = beauty_export_product
             instance.data["exportFiles"] = list(export_products)
 
-        full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
-        if full_exr_mode:
-            # Ignore beauty suffix if full mode is enabled
-            # As this is what the rop does. 
-            beauty_suffix = ""
+        # Set MultiLayer Mode.
+        creator_attribute = instance.data["creator_attributes"]
+        ext = creator_attribute.get("image_format")
+        multi_layered_mode = creator_attribute.get("multi_layered_mode")
+        full_exr_mode = False
+        if ext == "exr":
+            if multi_layered_mode == "No Multi-Layered EXR File":
+                rop.setParms({
+                    "RS_outputMultilayerMode": "1",
+                    "RS_aovMultipart": False
+                })
+                full_exr_mode = True
+                # Ignore beauty suffix if full mode is enabled
+                # As this is what the rop does.
+                beauty_suffix = ""
+
+            elif multi_layered_mode == "Full Multi-Layered EXR File":
+                rop.setParms({
+                    "RS_outputMultilayerMode": "2",
+                    "RS_aovMultipart": True
+                })
 
         # Default beauty/main layer AOV
         beauty_product = self.get_render_product_name(
@@ -75,7 +91,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             beauty_suffix: self.generate_expected_files(instance,
                                                         beauty_product)
         }
-        
+
         aovs_rop = rop.parm("RS_aovGetFromNode").evalAsNode()
         if aovs_rop:
             rop = aovs_rop
@@ -98,7 +114,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
             if rop.parm(f"RS_aovID_{i}").evalAsString() == "CRYPTOMATTE" or \
                   not full_exr_mode:
-                
+
                 aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
                 render_products.append(aov_product)
 
