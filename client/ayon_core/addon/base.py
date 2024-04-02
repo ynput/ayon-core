@@ -16,6 +16,7 @@ import six
 import appdirs
 import ayon_api
 
+from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import Logger, is_dev_mode_enabled
 from ayon_core.settings import get_studio_settings
 
@@ -335,14 +336,70 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
     return addons_to_skip_in_core
 
 
+def _load_ayon_core_addons_dir(
+    ignore_addon_names, openpype_modules, modules_key, log
+):
+    addons_dir = os.path.join(AYON_CORE_ROOT, "addons")
+    if not os.path.exists(addons_dir):
+        return
+
+    imported_modules = []
+
+    # Make sure that addons which already have client code are not loaded
+    #   from core again, with older code
+    filtered_paths = []
+    for name in os.listdir(addons_dir):
+        if name in ignore_addon_names:
+            continue
+        path = os.path.join(addons_dir, name)
+        if os.path.isdir(path):
+            filtered_paths.append(path)
+
+    for path in filtered_paths:
+        while path in sys.path:
+            sys.path.remove(path)
+        sys.path.insert(0, path)
+
+        for name in os.listdir(path):
+            fullpath = os.path.join(path, name)
+            if os.path.isfile(fullpath):
+                basename, ext = os.path.splitext(name)
+                if ext != ".py":
+                    continue
+            else:
+                basename = name
+            try:
+                module = __import__(basename, fromlist=("",))
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if (
+                        inspect.isclass(attr)
+                        and issubclass(attr, AYONAddon)
+                    ):
+                        new_import_str = "{}.{}".format(modules_key, basename)
+                        sys.modules[new_import_str] = module
+                        setattr(openpype_modules, basename, module)
+                        imported_modules.append(module)
+                        break
+
+            except Exception:
+                log.error(
+                    "Failed to import addon '{}'.".format(fullpath),
+                    exc_info=True
+                )
+    return imported_modules
+
+
 def _load_addons_in_core(
     ignore_addon_names, openpype_modules, modules_key, log
 ):
+    _load_ayon_core_addons_dir(
+        ignore_addon_names, openpype_modules, modules_key, log
+    )
     # Add current directory at first place
     #   - has small differences in import logic
-    current_dir = os.path.abspath(os.path.dirname(__file__))
-    hosts_dir = os.path.join(os.path.dirname(current_dir), "hosts")
-    modules_dir = os.path.join(os.path.dirname(current_dir), "modules")
+    hosts_dir = os.path.join(AYON_CORE_ROOT, "hosts")
+    modules_dir = os.path.join(AYON_CORE_ROOT, "modules")
 
     ignored_host_names = set(IGNORED_HOSTS_IN_AYON)
     ignored_module_dir_filenames = (
