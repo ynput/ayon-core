@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Close PS after publish. For Webpublishing only."""
-import os
-
 import pyblish.api
 
 from ayon_core.hosts.photoshop import api as photoshop

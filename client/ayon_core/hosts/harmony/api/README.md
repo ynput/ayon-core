@@ -204,7 +204,7 @@ class CreateComposite(harmony.Creator):
 
     name = "compositeDefault"
     label = "Composite"
-    family = "mindbender.template"
+    product_type = "template"
 
     def __init__(self, *args, **kwargs):
         super(CreateComposite, self).__init__(*args, **kwargs)
@@ -212,6 +212,7 @@ class CreateComposite(harmony.Creator):
 
 The creator plugin can be configured to use other node types. For example here is a write node creator:
 ```python
+from uuid import uuid4
 import ayon_core.hosts.harmony.api as harmony
 
 
@@ -220,7 +221,7 @@ class CreateRender(harmony.Creator):
 
     name = "writeDefault"
     label = "Write"
-    family = "mindbender.imagesequence"
+    product_type = "render"
     node_type = "WRITE"
 
     def __init__(self, *args, **kwargs):
@@ -242,6 +243,7 @@ class CreateRender(harmony.Creator):
 #### Collector Plugin
 ```python
 import pyblish.api
+from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 import ayon_core.hosts.harmony.api as harmony
 
 
@@ -252,7 +254,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
     a composite node and marked with a unique identifier;
 
     Identifier:
-        id (str): "pyblish.avalon.instance"
+        id (str): "ayon.create.instance"
     """
 
     label = "Instances"
@@ -272,7 +274,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
                 continue
 
             # Skip containers.
-            if "container" in data["id"]:
+            if data["id"] not in {AYON_INSTANCE_ID, AVALON_INSTANCE_ID}:
                 continue
 
             instance = context.create_instance(node.split("/")[-1])
@@ -287,6 +289,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
 #### Extractor Plugin
 ```python
 import os
+from uuid import uuid4
 
 import pyblish.api
 import ayon_core.hosts.harmony.api as harmony
@@ -301,7 +304,7 @@ class ExtractImage(pyblish.api.InstancePlugin):
     label = "Extract Image Sequence"
     order = pyblish.api.ExtractorOrder
     hosts = ["harmony"]
-    families = ["mindbender.imagesequence"]
+    families = ["render"]
 
     def process(self, instance):
         project_path = harmony.send(
@@ -418,6 +421,7 @@ class ExtractImage(pyblish.api.InstancePlugin):
 #### Loader Plugin
 ```python
 import os
+from uuid import uuid4
 
 import ayon_core.hosts.harmony.api as harmony
 
@@ -578,8 +582,16 @@ class ImageSequenceLoader(load.LoaderPlugin):
     """Load images
     Stores the imported asset in a container named after the asset.
     """
-    families = ["mindbender.imagesequence"]
+    product_types = {
+        "shot",
+        "render",
+        "image",
+        "plate",
+        "reference",
+        "review",
+    }
     representations = ["*"]
+    extensions = {"jpeg", "png", "jpg"}
 
     def load(self, context, name=None, namespace=None, data=None):
         files = []
@@ -593,7 +605,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         read_node = harmony.send(
             {
                 "function": copy_files + import_files,
-                "args": ["Top", files, context["version"]["data"]["subset"], 1]
+                "args": ["Top", files, context["product"]["name"], 1]
             }
         )["result"]
 
@@ -607,11 +619,12 @@ class ImageSequenceLoader(load.LoaderPlugin):
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         node = container.pop("node")
 
+        repre_entity = context["representation"]
         project_name = get_current_project_name()
-        version = get_version_by_id(project_name, representation["parent"])
+        version = get_version_by_id(project_name, repre_entity["versionId"])
         files = []
         for f in version["data"]["files"]:
             files.append(
@@ -628,7 +641,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )
 
         harmony.imprint(
-            node, {"representation": str(representation["_id"])}
+            node, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):
@@ -644,8 +657,8 @@ class ImageSequenceLoader(load.LoaderPlugin):
             {"function": func, "args": [node]}
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 ```
 
 ## Resources

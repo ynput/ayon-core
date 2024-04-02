@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ayon_api
 import pyblish.api
 
 from ayon_core.pipeline.publish import (
@@ -6,12 +7,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin,
 )
-from ayon_core.client import get_subset_by_name
 
 
 class ValidateOnlineFile(OptionalPyblishPluginMixin,
                          pyblish.api.InstancePlugin):
-    """Validate that subset doesn't exist yet."""
+    """Validate that product doesn't exist yet."""
     label = "Validate Existing Online Files"
     hosts = ["traypublisher"]
     families = ["online"]
@@ -23,12 +23,12 @@ class ValidateOnlineFile(OptionalPyblishPluginMixin,
         if not self.is_active(instance.data):
             return
         project_name = instance.context.data["projectName"]
-        asset_id = instance.data["assetEntity"]["_id"]
-        subset = get_subset_by_name(
-            project_name, instance.data["subset"], asset_id)
+        folder_id = instance.data["folderEntity"]["id"]
+        product_entity = ayon_api.get_product_by_name(
+            project_name, instance.data["productName"], folder_id)
 
-        if subset:
+        if product_entity:
             raise PublishValidationError(
-                "Subset to be published already exists.",
+                "Product to be published already exists.",
                 title=self.label
             )

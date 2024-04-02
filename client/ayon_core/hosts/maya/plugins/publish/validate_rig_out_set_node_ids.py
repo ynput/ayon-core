@@ -7,11 +7,15 @@ from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError
+    PublishXmlValidationError,
+    OptionalPyblishPluginMixin,
+    get_plugin_settings,
+    apply_plugin_settings_automatically
 )
 
 
-class ValidateRigOutSetNodeIds(pyblish.api.InstancePlugin):
+class ValidateRigOutSetNodeIds(pyblish.api.InstancePlugin,
+                               OptionalPyblishPluginMixin):
     """Validate if deformed shapes have related IDs to the original shapes.
 
     When a deformer is applied in the scene on a referenced mesh that already
@@ -30,16 +34,44 @@ class ValidateRigOutSetNodeIds(pyblish.api.InstancePlugin):
         RepairAction
     ]
     allow_history_only = False
+    optional = False
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Preserve automatic settings applying logic
+        settings = get_plugin_settings(plugin=cls,
+                                       project_settings=project_settings,
+                                       log=cls.log,
+                                       category="maya")
+        apply_plugin_settings_automatically(cls, settings, logger=cls.log)
+
+        # Disable plug-in if cbId workflow is disabled
+        if not project_settings["maya"].get("use_cbid_workflow", True):
+            cls.enabled = False
+            return
 
     def process(self, instance):
         """Process all meshes"""
-
+        if not self.is_active(instance.data):
+            return
         # Ensure all nodes have a cbId and a related ID to the original shapes
         # if a deformer has been created on the shape
         invalid = self.get_invalid(instance)
         if invalid:
-            raise PublishValidationError(
-                "Nodes found with mismatching IDs: {0}".format(invalid)
+
+            # Use the short names
+            invalid = cmds.ls(invalid)
+            invalid.sort()
+
+            # Construct a human-readable list
+            invalid = "\n".join("- {}".format(node) for node in invalid)
+
+            raise PublishXmlValidationError(
+                plugin=ValidateRigOutSetNodeIds,
+                message=(
+                    "Rig nodes have different IDs than their input "
+                    "history: \n{0}".format(invalid)
+                )
             )
 
     @classmethod
@@ -114,6 +146,7 @@ class ValidateSkeletonRigOutSetNodeIds(ValidateRigOutSetNodeIds):
     families = ["rig.fbx"]
     hosts = ['maya']
     label = 'Skeleton Rig Out Set Node Ids'
+    optional = False
 
     @classmethod
     def get_node(cls, instance):

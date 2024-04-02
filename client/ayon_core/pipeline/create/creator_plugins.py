@@ -6,8 +6,8 @@ from abc import ABCMeta, abstractmethod
 
 import six
 
-from ayon_core.settings import get_system_settings, get_project_settings
-from ayon_core.lib import Logger, is_func_signature_supported
+from ayon_core.settings import get_project_settings
+from ayon_core.lib import Logger
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -17,7 +17,7 @@ from ayon_core.pipeline.plugin_discover import (
 )
 
 from .constants import DEFAULT_VARIANT_VALUE
-from .subset_name import get_subset_name
+from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
 
@@ -33,7 +33,7 @@ class CreatorError(Exception):
 
 
 @six.add_metaclass(ABCMeta)
-class SubsetConvertorPlugin(object):
+class ProductConvertorPlugin(object):
     """Helper for conversion of instances created using legacy creators.
 
     Conversion from legacy creators would mean to loose legacy instances,
@@ -179,7 +179,7 @@ class BaseCreator:
     # Creator is enabled (Probably does not have reason of existence?)
     enabled = True
 
-    # Creator (and family) icon
+    # Creator (and product type) icon
     # - may not be used if `get_icon` is reimplemented
     icon = None
 
@@ -201,7 +201,7 @@ class BaseCreator:
     settings_name = None
 
     def __init__(
-        self, project_settings, system_settings, create_context, headless=False
+        self, project_settings, create_context, headless=False
     ):
         # Reference to CreateContext
         self.create_context = create_context
@@ -211,34 +211,7 @@ class BaseCreator:
         # - we may use UI inside processing this attribute should be checked
         self.headless = headless
 
-        expect_system_settings = False
-        if is_func_signature_supported(
-            self.apply_settings, project_settings
-        ):
-            self.apply_settings(project_settings)
-        else:
-            expect_system_settings = True
-            # Backwards compatibility for system settings
-            self.apply_settings(project_settings, system_settings)
-
-        init_use_base = any(
-            self.__class__.__init__ is cls.__init__
-            for cls in {
-                BaseCreator,
-                Creator,
-                HiddenCreator,
-                AutoCreator,
-            }
-        )
-        if not init_use_base or expect_system_settings:
-            self.log.warning((
-                "WARNING: Source - Create plugin {}."
-                " System settings argument will not be passed to"
-                " '__init__' and 'apply_settings' methods in future versions"
-                " of OpenPype. Planned version to drop the support"
-                " is 3.16.6 or 3.17.0. Please contact Ynput core team if you"
-                " need to keep system settings."
-            ).format(self.__class__.__name__))
+        self.apply_settings(project_settings)
 
     @staticmethod
     def _get_settings_values(project_settings, category_name, plugin_name):
@@ -329,14 +302,14 @@ class BaseCreator:
     def identifier(self):
         """Identifier of creator (must be unique).
 
-        Default implementation returns plugin's family.
+        Default implementation returns plugin's product type.
         """
 
-        return self.family
+        return self.product_type
 
     @property
     @abstractmethod
-    def family(self):
+    def product_type(self):
         """Family that plugin represents."""
 
         pass
@@ -370,11 +343,11 @@ class BaseCreator:
 
         Default implementation use attributes in this order:
             - 'group_label' -> 'label' -> 'identifier'
-                Keep in mind that 'identifier' use 'family' by default.
+                Keep in mind that 'identifier' use 'product_type' by default.
 
         Returns:
             str: Group label that can be used for grouping of instances in UI.
-                Group label can be overriden by instance itself.
+                Group label can be overridden by instance itself.
         """
 
         if self._cached_group_label is None:
@@ -489,7 +462,7 @@ class BaseCreator:
         pass
 
     def get_icon(self):
-        """Icon of creator (family).
+        """Icon of creator (product type).
 
         Can return path to image file or awesome icon name.
         """
@@ -497,9 +470,15 @@ class BaseCreator:
         return self.icon
 
     def get_dynamic_data(
-        self, variant, task_name, asset_doc, project_name, host_name, instance
+        self,
+        project_name,
+        folder_entity,
+        task_entity,
+        variant,
+        host_name,
+        instance
     ):
-        """Dynamic data for subset name filling.
+        """Dynamic data for product name filling.
 
         These may be get dynamically created based on current context of
         workfile.
@@ -507,52 +486,56 @@ class BaseCreator:
 
         return {}
 
-    def get_subset_name(
+    def get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        folder_entity,
+        task_entity,
+        variant,
         host_name=None,
         instance=None
     ):
-        """Return subset name for passed context.
+        """Return product name for passed context.
 
-        CHANGES:
-        Argument `asset_id` was replaced with `asset_doc`. It is easier to
-        query asset before. In some cases would this method be called multiple
-        times and it would be too slow to query asset document on each
-        callback.
-
-        NOTE:
-        Asset document is not used yet but is required if would like to use
-        task type in subset templates.
-
-        Method is also called on subset name update. In that case origin
+        Method is also called on product name update. In that case origin
         instance is passed in.
 
         Args:
-            variant(str): Subset name variant. In most of cases user input.
-            task_name(str): For which task subset is created.
-            asset_doc(dict): Asset document for which subset is created.
-            project_name(str): Project name.
-            host_name(str): Which host creates subset.
-            instance(CreatedInstance|None): Object of 'CreatedInstance' for
-                which is subset name updated. Passed only on subset name
+            project_name (str): Project name.
+            folder_entity (dict): Folder entity.
+            task_entity (dict): Task entity.
+            variant (str): Product name variant. In most of cases user input.
+            host_name (Optional[str]): Which host creates product. Defaults
+                to host name on create context.
+            instance (Optional[CreatedInstance]): Object of 'CreatedInstance'
+                for which is product name updated. Passed only on product name
                 update.
         """
 
+        if host_name is None:
+            host_name = self.create_context.host_name
+
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
         dynamic_data = self.get_dynamic_data(
-            variant, task_name, asset_doc, project_name, host_name, instance
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance
         )
 
-        return get_subset_name(
-            self.family,
-            variant,
-            task_name,
-            asset_doc,
+        return get_product_name(
             project_name,
+            task_name,
+            task_type,
             host_name,
+            self.product_type,
+            variant,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings
         )
@@ -599,8 +582,8 @@ class BaseCreator:
         """Prepare next versions for instances.
 
         This is helper method to receive next possible versions for instances.
-        It is using context information on instance to receive them, 'asset'
-        and 'subset'.
+        It is using context information on instance to receive them,
+        'folderPath' and 'product'.
 
         Output will contain version by each instance id.
 
@@ -620,22 +603,23 @@ class BaseCreator:
 class Creator(BaseCreator):
     """Creator that has more information for artist to show in UI.
 
-    Creation requires prepared subset name and instance data.
+    Creation requires prepared product name and instance data.
     """
 
     # GUI Purposes
-    # - default_variants may not be used if `get_default_variants` is overriden
+    # - default_variants may not be used if `get_default_variants`
+    #   is overridden
     default_variants = []
 
     # Default variant used in 'get_default_variant'
     _default_variant = None
 
-    # Short description of family
-    # - may not be used if `get_description` is overriden
+    # Short description of product type
+    # - may not be used if `get_description` is overridden
     description = None
 
-    # Detailed description of family for artists
-    # - may not be used if `get_detail_description` is overriden
+    # Detailed description of product type for artists
+    # - may not be used if `get_detail_description` is overridden
     detailed_description = None
 
     # It does make sense to change context on creation
@@ -681,39 +665,39 @@ class Creator(BaseCreator):
         return self.order
 
     @abstractmethod
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         """Create new instance and store it.
 
         Ideally should be stored to workfile using host implementation.
 
         Args:
-            subset_name(str): Subset name of created instance.
+            product_name(str): Product name of created instance.
             instance_data(dict): Base data for instance.
             pre_create_data(dict): Data based on pre creation attributes.
                 Those may affect how creator works.
         """
 
         # instance = CreatedInstance(
-        #     self.family, subset_name, instance_data
+        #     self.product_type, product_name, instance_data
         # )
         pass
 
     def get_description(self):
-        """Short description of family and plugin.
+        """Short description of product type and plugin.
 
         Returns:
-            str: Short description of family.
+            str: Short description of product type.
         """
 
         return self.description
 
     def get_detail_description(self):
-        """Description of family and plugin.
+        """Description of product type and plugin.
 
         Can be detailed with markdown or html tags.
 
         Returns:
-            str: Detailed description of family for artist.
+            str: Detailed description of product type for artist.
         """
 
         return self.detailed_description
@@ -828,7 +812,7 @@ def discover_creator_plugins(*args, **kwargs):
 
 
 def discover_convertor_plugins(*args, **kwargs):
-    return discover(SubsetConvertorPlugin, *args, **kwargs)
+    return discover(ProductConvertorPlugin, *args, **kwargs)
 
 
 def discover_legacy_creator_plugins():
@@ -838,11 +822,10 @@ def discover_legacy_creator_plugins():
 
     plugins = discover(LegacyCreator)
     project_name = get_current_project_name()
-    system_settings = get_system_settings()
     project_settings = get_project_settings(project_name)
     for plugin in plugins:
         try:
-            plugin.apply_settings(project_settings, system_settings)
+            plugin.apply_settings(project_settings)
         except Exception:
             log.warning(
                 "Failed to apply settings to creator {}".format(
@@ -888,8 +871,8 @@ def register_creator_plugin(plugin):
     elif issubclass(plugin, LegacyCreator):
         register_plugin(LegacyCreator, plugin)
 
-    elif issubclass(plugin, SubsetConvertorPlugin):
-        register_plugin(SubsetConvertorPlugin, plugin)
+    elif issubclass(plugin, ProductConvertorPlugin):
+        register_plugin(ProductConvertorPlugin, plugin)
 
 
 def deregister_creator_plugin(plugin):
@@ -899,20 +882,20 @@ def deregister_creator_plugin(plugin):
     elif issubclass(plugin, LegacyCreator):
         deregister_plugin(LegacyCreator, plugin)
 
-    elif issubclass(plugin, SubsetConvertorPlugin):
-        deregister_plugin(SubsetConvertorPlugin, plugin)
+    elif issubclass(plugin, ProductConvertorPlugin):
+        deregister_plugin(ProductConvertorPlugin, plugin)
 
 
 def register_creator_plugin_path(path):
     register_plugin_path(BaseCreator, path)
     register_plugin_path(LegacyCreator, path)
-    register_plugin_path(SubsetConvertorPlugin, path)
+    register_plugin_path(ProductConvertorPlugin, path)
 
 
 def deregister_creator_plugin_path(path):
     deregister_plugin_path(BaseCreator, path)
     deregister_plugin_path(LegacyCreator, path)
-    deregister_plugin_path(SubsetConvertorPlugin, path)
+    deregister_plugin_path(ProductConvertorPlugin, path)
 
 
 def cache_and_get_instances(creator, shared_key, list_instances_func):

@@ -103,38 +103,38 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
     def _get_outputs_for_instance(self, instance):
         host_name = instance.context.data["hostName"]
-        family = self.main_family_from_instance(instance)
+        product_type = instance.data["productType"]
 
         self.log.debug("Host: \"{}\"".format(host_name))
-        self.log.debug("Family: \"{}\"".format(family))
+        self.log.debug("Product type: \"{}\"".format(product_type))
 
         profile = filter_profiles(
             self.profiles,
             {
                 "hosts": host_name,
-                "product_types": family,
+                "product_types": product_type,
             },
             logger=self.log)
         if not profile:
             self.log.info((
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Family: \"{}\""
-            ).format(host_name, family))
+                " Host: \"{}\" | Product type: \"{}\""
+            ).format(host_name, product_type))
             return
 
         self.log.debug("Matching profile: \"{}\"".format(json.dumps(profile)))
 
-        subset_name = instance.data.get("subset")
+        product_name = instance.data.get("productName")
         instance_families = self.families_from_instance(instance)
         filtered_outputs = self.filter_output_defs(
-            profile, subset_name, instance_families
+            profile, product_name, instance_families
         )
         if not filtered_outputs:
             self.log.info((
                 "Skipped instance. All output definitions from selected"
                 " profile do not match instance families \"{}\" or"
-                " subset name \"{}\"."
-            ).format(str(instance_families), subset_name))
+                " product name \"{}\"."
+            ).format(str(instance_families), product_name))
 
         # Store `filename_suffix` to save arguments
         profile_outputs = []
@@ -619,7 +619,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # Prepare input and output filepaths
         self.input_output_paths(new_repre, output_def, temp_data)
 
-        # Set output frames len to 1 when ouput is single image
+        # Set output frames len to 1 when output is single image
         if (
             temp_data["output_ext_is_image"]
             and not temp_data["output_is_sequence"]
@@ -955,7 +955,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         self.log.debug("New representation ext: `{}`".format(output_ext))
 
-        # Output is image file sequence witht frames
+        # Output is image file sequence with frames
         output_ext_is_image = bool(output_ext in self.image_exts)
         output_is_sequence = bool(
             output_ext_is_image
@@ -967,7 +967,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             frame_end = temp_data["output_frame_end"]
 
             filename_base = "{}_{}".format(filename, filename_suffix)
-            # Temporary tempalte for frame filling. Example output:
+            # Temporary template for frame filling. Example output:
             # "basename.%04d.exr" when `frame_end` == 1001
             repr_file = "{}.%{:0>2}d.{}".format(
                 filename_base, len(str(frame_end)), output_ext
@@ -997,7 +997,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             self.log.debug("Creating dir: {}".format(dst_staging_dir))
             os.makedirs(dst_staging_dir)
 
-        # Store stagingDir to representaion
+        # Store stagingDir to representation
         new_repre["stagingDir"] = dst_staging_dir
 
         # Store paths to temp data
@@ -1228,16 +1228,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
         reformat_in_baking = bool("reformated" in new_repre["tags"])
         self.log.debug("reformat_in_baking: `{}`".format(reformat_in_baking))
 
-        # Get instance data
-        pixel_aspect = temp_data["pixel_aspect"]
-
-        if reformat_in_baking:
-            self.log.debug((
-                "Using resolution from input. It is already "
-                "reformated from upstream process"
-            ))
-            pixel_aspect = 1
-
         # NOTE Skipped using instance's resolution
         full_input_path_single_file = temp_data["full_input_path_single_file"]
         try:
@@ -1268,7 +1258,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if reformat_in_baking:
             self.log.debug((
                 "Using resolution from input. It is already "
-                "reformated from upstream process"
+                "reformatted from upstream process"
             ))
             pixel_aspect = 1
             output_width = input_width
@@ -1280,14 +1270,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "FFprobe couldn't read resolution from input file: \"{}\""
             ).format(full_input_path_single_file))
 
-        # NOTE Setting only one of `width` or `heigth` is not allowed
+        # NOTE Setting only one of `width` or `height` is not allowed
         # - settings value can't have None but has value of 0
-        output_width = (
-            output_def.get("output_width") or output_width or None
-        )
-        output_height = (
-            output_def.get("output_height") or output_height or None
-        )
+        output_width = output_def["width"] or output_width or None
+        output_height = output_def["height"] or output_height or None
+
         # Force to use input resolution if output resolution was not defined
         #   in settings. Resolution from instance is not used when
         #   'use_input_res' is set to 'True'.
@@ -1377,7 +1364,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # Make sure output width and height is not an odd number
         # When this can happen:
         # - if output definition has set width and height with odd number
-        # - `instance.data` contain width and height with odd numbeer
+        # - `instance.data` contain width and height with odd number
         if output_width % 2 != 0:
             self.log.warning((
                 "Converting output width from odd to even number. {} -> {}"
@@ -1466,13 +1453,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         return filters
 
-    def main_family_from_instance(self, instance):
-        """Returns main family of entered instance."""
-        family = instance.data.get("family")
-        if not family:
-            family = instance.data["families"][0]
-        return family
-
     def families_from_instance(self, instance):
         """Returns all families of entered instance."""
         families = []
@@ -1500,7 +1480,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         return any(family.lower() in families_filter_lower
                    for family in families)
 
-    def filter_output_defs(self, profile, subset_name, families):
+    def filter_output_defs(self, profile, product_name, families):
         """Return outputs matching input instance families.
 
         Output definitions without families filter are marked as valid.
@@ -1508,7 +1488,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         Args:
             profile (dict): Profile from presets matching current context.
             families (list): All families of current instance.
-            subset_name (str): name of subset
+            product_name (str): Product name.
 
         Returns:
             dict[str, Any]: Containing all output definitions matching entered
@@ -1539,11 +1519,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 # Skip empty strings
                 if name_filter
             ]
-            if subset_name and product_name_filters:
+            if product_name and product_name_filters:
                 match = False
                 for product_name_filter in product_name_filters:
                     compiled = re.compile(product_name_filter)
-                    if compiled.search(subset_name):
+                    if compiled.search(product_name):
                         match = True
                         break
 
@@ -1565,7 +1545,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             custom_tags (list): Custom Tags of processed representation.
 
         Returns:
-            list: Containg all output definitions matching entered tags.
+            list: Containing all output definitions matching entered tags.
         """
 
         filtered_outputs = []
@@ -1830,8 +1810,8 @@ class OverscanCrop:
         """
         # crop=width:height:x:y - explicit start x, y position
         # crop=width:height     - x, y are related to center by width/height
-        # pad=width:heigth:x:y  - explicit start x, y position
-        # pad=width:heigth      - x, y are set to 0 by default
+        # pad=width:height:x:y  - explicit start x, y position
+        # pad=width:height      - x, y are set to 0 by default
 
         width = self.width()
         height = self.height()
@@ -1879,7 +1859,7 @@ class OverscanCrop:
         # Replace "px" (and spaces before) with single space
         string_value = re.sub(r"([ ]+)?px", " ", string_value)
         string_value = re.sub(r"([ ]+)%", "%", string_value)
-        # Make sure +/- sign at the beggining of string is next to number
+        # Make sure +/- sign at the beginning of string is next to number
         string_value = re.sub(r"^([\+\-])[ ]+", "\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
         #   which belongs

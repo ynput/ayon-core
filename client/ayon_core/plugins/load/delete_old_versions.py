@@ -1,16 +1,16 @@
 # TODO This plugin is not converted for AYON
-
+#
 # import collections
 # import os
 # import uuid
 #
 # import clique
+# import ayon_api
 # from pymongo import UpdateOne
 # import qargparse
 # from qtpy import QtWidgets, QtCore
 #
 # from ayon_core import style
-# from ayon_core.client import get_versions, get_representations
 # from ayon_core.addon import AddonsManager
 # from ayon_core.lib import format_file_size
 # from ayon_core.pipeline import load, Anatomy
@@ -20,14 +20,14 @@
 # )
 #
 #
-# class DeleteOldVersions(load.SubsetLoaderPlugin):
+# class DeleteOldVersions(load.ProductLoaderPlugin):
 #     """Deletes specific number of old version"""
 #
 #     is_multiple_contexts_compatible = True
 #     sequence_splitter = "__sequence_splitter__"
 #
 #     representations = ["*"]
-#     families = ["*"]
+#     product_types = {"*"}
 #     tool_names = ["library_loader"]
 #
 #     label = "Delete Old Versions"
@@ -196,19 +196,21 @@
 #         msgBox.exec_()
 #
 #     def get_data(self, context, versions_count):
-#         subset = context["subset"]
-#         asset = context["asset"]
+#         product_entity = context["product"]
+#         folder_entity = context["folder"]
 #         project_name = context["project"]["name"]
 #         anatomy = Anatomy(project_name)
 #
-#         versions = list(get_versions(project_name, subset_ids=[subset["_id"]]))
+#         versions = list(ayon_api.get_versions(
+#             project_name, product_ids=[product_entity["id"]]
+#         ))
 #
 #         versions_by_parent = collections.defaultdict(list)
 #         for ent in versions:
-#             versions_by_parent[ent["parent"]].append(ent)
+#             versions_by_parent[ent["productId"]].append(ent)
 #
 #         def sort_func(ent):
-#             return int(ent["name"])
+#             return int(ent["version"])
 #
 #         all_last_versions = []
 #         for _parent_id, _versions in versions_by_parent.items():
@@ -228,7 +230,7 @@
 #         # Update versions_by_parent without filtered versions
 #         versions_by_parent = collections.defaultdict(list)
 #         for ent in versions:
-#             versions_by_parent[ent["parent"]].append(ent)
+#             versions_by_parent[ent["productId"]].append(ent)
 #
 #         # Filter already deleted versions
 #         versions_to_pop = []
@@ -238,15 +240,17 @@
 #                 versions_to_pop.append(version)
 #
 #         for version in versions_to_pop:
-#             msg = "Asset: \"{}\" | Subset: \"{}\" | Version: \"{}\"".format(
-#                 asset["name"], subset["name"], version["name"]
+#             msg = "Folder: \"{}\" | Product: \"{}\" | Version: \"{}\"".format(
+#                 folder_entity["path"],
+#                 product_entity["name"],
+#                 version["version"]
 #             )
 #             self.log.debug((
 #                 "Skipping version. Already tagged as `deleted`. < {} >"
 #             ).format(msg))
 #             versions.remove(version)
 #
-#         version_ids = [ent["_id"] for ent in versions]
+#         version_ids = [ent["id"] for ent in versions]
 #
 #         self.log.debug(
 #             "Filtered versions to delete ({})".format(len(version_ids))
@@ -254,13 +258,13 @@
 #
 #         if not version_ids:
 #             msg = "Skipping processing. Nothing to delete on {}/{}".format(
-#                 asset["name"], subset["name"]
+#                 folder_entity["path"], product_entity["name"]
 #             )
 #             self.log.info(msg)
 #             print(msg)
 #             return
 #
-#         repres = list(get_representations(
+#         repres = list(ayon_api.get_representations(
 #             project_name, version_ids=version_ids
 #         ))
 #
@@ -271,7 +275,9 @@
 #         dir_paths = {}
 #         file_paths_by_dir = collections.defaultdict(list)
 #         for repre in repres:
-#             file_path, seq_path = self.path_from_representation(repre, anatomy)
+#             file_path, seq_path = self.path_from_representation(
+#                 repre, anatomy
+#             )
 #             if file_path is None:
 #                 self.log.debug((
 #                     "Could not format path for represenation \"{}\""
@@ -310,16 +316,14 @@
 #                 "Folder does not exist. Deleting it's files skipped: {}"
 #             ).format(paths_msg))
 #
-#         data = {
+#         return {
 #             "dir_paths": dir_paths,
 #             "file_paths_by_dir": file_paths_by_dir,
 #             "versions": versions,
-#             "asset": asset,
-#             "subset": subset,
-#             "archive_subset": versions_count == 0
+#             "folder": folder_entity,
+#             "product": product_entity,
+#             "archive_product": versions_count == 0
 #         }
-#
-#         return data
 #
 #     def main(self, project_name, data, remove_publish_folder):
 #         # Size of files.
@@ -344,14 +348,14 @@
 #             if version_tags == orig_version_tags:
 #                 continue
 #
-#             update_query = {"_id": version["_id"]}
+#             update_query = {"id": version["id"]}
 #             update_data = {"$set": {"data.tags": version_tags}}
 #             mongo_changes_bulk.append(UpdateOne(update_query, update_data))
 #
-#         if data["archive_subset"]:
+#         if data["archive_product"]:
 #             mongo_changes_bulk.append(UpdateOne(
 #                 {
-#                     "_id": data["subset"]["_id"],
+#                     "id": data["product"]["id"],
 #                     "type": "subset"
 #                 },
 #                 {"$set": {"type": "archived_subset"}}
@@ -379,15 +383,15 @@
 #                 "not published" which cause that they're invisible.
 #
 #         Args:
-#             data (dict): Data sent to subset loader with full context.
+#             data (dict): Data sent to product loader with full context.
 #         """
 #
-#         # First check for ftrack id on asset document
+#         # First check for ftrack id on folder entity
 #         #   - skip if ther is none
-#         asset_ftrack_id = data["asset"]["data"].get("ftrackId")
-#         if not asset_ftrack_id:
+#         ftrack_id = data["folder"]["attrib"].get("ftrackId")
+#         if not ftrack_id:
 #             self.log.info((
-#                 "Asset does not have filled ftrack id. Skipped delete"
+#                 "Folder does not have filled ftrack id. Skipped delete"
 #                 " of ftrack version."
 #             ))
 #             return
@@ -401,7 +405,7 @@
 #         import ftrack_api
 #
 #         session = ftrack_api.Session()
-#         subset_name = data["subset"]["name"]
+#         product_name = data["product"]["name"]
 #         versions = {
 #             '"{}"'.format(version_doc["name"])
 #             for version_doc in data["versions"]
@@ -413,8 +417,8 @@
 #                 " and asset.name is \"{}\""
 #                 " and version in ({})"
 #             ).format(
-#                 asset_ftrack_id,
-#                 subset_name,
+#                 ftrack_id,
+#                 product_name,
 #                 ",".join(versions)
 #             )
 #         ).all()
