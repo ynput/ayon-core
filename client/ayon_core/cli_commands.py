@@ -2,7 +2,6 @@
 """Implementation of AYON commands."""
 import os
 import sys
-import json
 import warnings
 
 
@@ -58,20 +57,14 @@ class Commands:
 
         """
         from ayon_core.lib import Logger
-        from ayon_core.lib.applications import (
-            get_app_environments_for_context,
-            LaunchTypes,
-        )
+
         from ayon_core.addon import AddonsManager
         from ayon_core.pipeline import (
             install_ayon_plugins,
             get_global_context,
         )
-        from ayon_core.tools.utils.host_tools import show_publish
-        from ayon_core.tools.utils.lib import qt_app_context
 
         # Register target and host
-        import pyblish.api
         import pyblish.util
 
         if not isinstance(path, str):
@@ -102,15 +95,13 @@ class Commands:
         for plugin_path in publish_paths:
             pyblish.api.register_plugin_path(plugin_path)
 
-        app_full_name = os.getenv("AYON_APP_NAME")
-        if app_full_name:
+        applications_addon = manager.get_enabled_addon("applications")
+        if applications_addon is not None:
             context = get_global_context()
-            env = get_app_environments_for_context(
+            env = applications_addon.get_farm_publish_environment_variables(
                 context["project_name"],
                 context["folder_path"],
                 context["task_name"],
-                app_full_name,
-                launch_type=LaunchTypes.farm_publish,
             )
             os.environ.update(env)
 
@@ -134,6 +125,8 @@ class Commands:
             print(plugin)
 
         if gui:
+            from ayon_core.tools.utils.host_tools import show_publish
+            from ayon_core.tools.utils.lib import qt_app_context
             with qt_app_context():
                 show_publish()
         else:
@@ -150,36 +143,36 @@ class Commands:
         log.info("Publish finished.")
 
     @staticmethod
-    def extractenvironments(output_json_path, project, folder, task, app,
-                            env_group):
+    def extractenvironments(
+        output_json_path, project, asset, task, app, env_group
+    ):
         """Produces json file with environment based on project and app.
 
         Called by Deadline plugin to propagate environment into render jobs.
         """
 
-        from ayon_core.lib.applications import (
-            get_app_environments_for_context,
-            LaunchTypes,
+        from ayon_core.addon import AddonsManager
+
+        warnings.warn(
+            (
+                "Command 'extractenvironments' is deprecated and will be"
+                " removed in future. Please use "
+                "'addon applications extractenvironments ...' instead."
+            ),
+            DeprecationWarning
         )
 
-        if all((project, folder, task, app)):
-            env = get_app_environments_for_context(
-                project,
-                folder,
-                task,
-                app,
-                env_group=env_group,
-                launch_type=LaunchTypes.farm_render
+        addons_manager = AddonsManager()
+        applications_addon = addons_manager.get_enabled_addon("applications")
+        if applications_addon is None:
+            raise RuntimeError(
+                "Applications addon is not available or enabled."
             )
-        else:
-            env = os.environ.copy()
 
-        output_dir = os.path.dirname(output_json_path)
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        with open(output_json_path, "w") as file_stream:
-            json.dump(env, file_stream, indent=4)
+        # Please ignore the fact this is using private method
+        applications_addon._cli_extract_environments(
+            output_json_path, project, asset, task, app, env_group
+        )
 
     @staticmethod
     def contextselection(output_path, project_name, folder_path, strict):

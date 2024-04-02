@@ -12,9 +12,8 @@ from Deadline.Scripting import (
     RepositoryUtils,
     FileUtils,
     DirectoryUtils,
-    ProcessUtils,
 )
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 VERSION_REGEX = re.compile(
     r"(?P<major>0|[1-9]\d*)"
     r"\.(?P<minor>0|[1-9]\d*)"
@@ -464,12 +463,6 @@ def inject_ayon_environment(deadlinePlugin):
         export_url = os.path.join(tempfile.gettempdir(), temp_file_name)
         print(">>> Temporary path: {}".format(export_url))
 
-        args = [
-            "--headless",
-            "extractenvironments",
-            export_url
-        ]
-
         add_kwargs = {
             "envgroup": "farm",
         }
@@ -487,18 +480,33 @@ def inject_ayon_environment(deadlinePlugin):
                     break
             add_kwargs[key] = value
 
-        if job.GetJobEnvironmentKeyValue("IS_TEST"):
-            args.append("--automatic-tests")
-
         if not all(add_kwargs.values()):
             raise RuntimeError((
                 "Missing required env vars: AYON_PROJECT_NAME,"
                 " AYON_FOLDER_PATH, AYON_TASK_NAME, AYON_APP_NAME"
             ))
 
-        legacy_args = list(args)
+        # Use applications addon arguments
+        # TODO validate if applications addon should be used
+        args = [
+            "--headless",
+            "addon",
+            "applications",
+            "extractenvironments",
+            export_url
+        ]
+        # Backwards compatibility for older versions
+        legacy_args = [
+            "--headless",
+            "extractenvironments",
+            export_url
+        ]
+        if job.GetJobEnvironmentKeyValue("IS_TEST"):
+            args.append("--automatic-tests")
+
         for key, value in add_kwargs.items():
             args.extend(["--{}".format(key), value])
+            # Legacy arguments expect '--asset' instead of '--folder'
             if key == "folder":
                 key = "asset"
             legacy_args.extend(["--{}".format(key), value])

@@ -1,8 +1,8 @@
-""" OpenPype custom script for setting up write nodes for non-publish """
+""" AYON custom script for setting up write nodes for non-publish """
 import os
 import nuke
 import nukescripts
-from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline import Anatomy, get_current_project_name
 from ayon_core.hosts.nuke.api.lib import (
     set_node_knobs_from_settings,
     get_nuke_imageio_settings
@@ -102,13 +102,9 @@ class WriteNodeKnobSettingPanel(nukescripts.PythonPanel):
             for knob in ext_knob_list:
                 ext = knob["value"]
 
-        anatomy = Anatomy()
+        anatomy = Anatomy(get_current_project_name())
 
-        frame_padding = int(
-            anatomy.templates["render"].get(
-                "frame_padding"
-            )
-        )
+        frame_padding = anatomy.templates_obj.frame_padding
         for write_node in write_selected_nodes:
             # data for mapping the path
             # TODO add more fill data
