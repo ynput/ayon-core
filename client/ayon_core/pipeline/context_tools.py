@@ -384,37 +384,28 @@ def get_current_project_entity(fields=None):
     return ayon_api.get_project(project_name, fields=fields)
 
 
-def get_current_project_folder(folder_path=None, folder_id=None, fields=None):
+def get_current_folder_entity(fields=None):
     """Helper function to get folder entity based on current context.
 
     This function should be called only in process where host is installed.
 
-    Folder is found out based on passed folder path or id (not both). Folder
-    path is not used for filtering if folder id is passed. When both
-    folder path and id are missing then current folder path is used.
+    Folder is found out based on current project name and folder path.
 
     Args:
-        folder_path (Union[str, None]): Folder path used for filter.
-        folder_id (Union[str, None]): Folder id. If entered then
-            is used as only filter.
         fields (Optional[Iterable[str]]): Limit returned data of folder entity
             to specific keys.
 
     Returns:
-        Union[dict[str, Any], None]: Fodler entity or None.
+        Union[dict[str, Any], None]: Folder entity or None.
+
     """
+    context = get_current_context()
+    project_name = context["project_name"]
+    folder_path = context["folder_path"]
 
-    project_name = get_current_project_name()
-    if folder_id:
-        return ayon_api.get_folder_by_id(
-            project_name, folder_id, fields=fields
-        )
-
-    if not folder_path:
-        folder_path = get_current_folder_path()
-        # Skip if is not set even on context
-        if not folder_path:
-            return None
+    # Skip if is not set even on context
+    if not project_name or not folder_path:
+        return None
     return ayon_api.get_folder_by_path(
         project_name, folder_path, fields=fields
     )
