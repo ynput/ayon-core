@@ -359,6 +359,7 @@ class CollectLook(pyblish.api.InstancePlugin):
             "rman__surface",
             "rman__displacement"
         ]
+        materials = []
         if look_sets:
             self.log.debug("Found look sets: {}".format(look_sets))
 
@@ -437,6 +438,8 @@ class CollectLook(pyblish.api.InstancePlugin):
                         not in instance_lookup)
 
         self.log.debug("Collected look for %s" % instance)
+        self.log.info("Collected {} materials with {} "
+                      "textures.".format(len(materials), len(resources)))
 
     def collect_sets(self, instance):
         """Collect all objectSets which are of importance for publishing
