@@ -125,7 +125,7 @@ class WindowCache:
 
     @classmethod
     def _before_show(cls):
-        """Create QApplication if does not exists yet."""
+        """Create QApplication if does not exist yet."""
         if not cls._first_show:
             return
 

@@ -389,7 +389,13 @@ def imprint(node, data, tab=None):
 
     """
     for knob in create_knobs(data, tab):
-        node.addKnob(knob)
+        # If knob name exists we set the value. Technically there could be
+        # multiple knobs with the same name, but the intent is not to have
+        # duplicated knobs so we do not account for that.
+        if knob.name() in node.knobs().keys():
+            node[knob.name()].setValue(knob.value())
+        else:
+            node.addKnob(knob)
 
 
 @deprecated
@@ -814,7 +820,7 @@ def on_script_load():
 
 def check_inventory_versions():
     """
-    Actual version idetifier of Loaded containers
+    Actual version identifier of Loaded containers
 
     Any time this function is run it will check all nodes and filter only
     Loader nodes for its version. It will get all versions from database
@@ -921,7 +927,7 @@ def writes_version_sync():
 
     for each in nuke.allNodes(filter="Write"):
         # check if the node is avalon tracked
-        if _NODE_TAB_NAME not in each.knobs():
+        if NODE_TAB_NAME not in each.knobs():
             continue
 
         avalon_knob_data = read_avalon_data(each)
@@ -2381,7 +2387,7 @@ def launch_workfiles_app():
 
     Context.workfiles_launched = True
 
-    # get all imortant settings
+    # get all important settings
     open_at_start = env_value_to_bool(
         env_key="AYON_WORKFILE_TOOL_ON_START",
         default=None)
