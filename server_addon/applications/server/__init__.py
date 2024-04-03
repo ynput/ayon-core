@@ -163,61 +163,49 @@ class ApplicationsAddon(BaseServerAddon):
         """
 
         # keep track of the last attribute position (for adding new attributes)
-        apps_present = False
-        tools_present = False
         apps_attribute_data = self._get_applications_def()
-        apps_attrib_name = apps_attribute_data["name"]
-
         tools_attribute_data = self._get_tools_def()
+
+        apps_attrib_name = apps_attribute_data["name"]
         tools_attrib_name = tools_attribute_data["name"]
 
-        last_index = -1
-        async for row in Postgres.iterate(
-            "SELECT name, position FROM attributes ORDER BY position"
-        ):
-            # check if the required attributes are present
-            # (in that case, we don't need to add them)
-            # also keep track of the last attribute position
-            if row["name"] == apps_attrib_name:
-                apps_present = True
-            elif row["name"] == tools_attrib_name:
-                tools_present = True
-            last_index = row["position"]
+        async with Postgres.acquire() as conn, conn.transaction():
+            query = "SELECT BOOL_OR(name = 'applications') AS has_applications, BOOL_OR(name = 'tools') AS has_tools FROM attributes;"
+            result = (await conn.fetch(query))[0]
 
-        attributes_to_create = {}
-        if not apps_present:
-            attributes_to_create[apps_attrib_name] = {
-                "scope": apps_attribute_data["scope"],
-                "data": {
-                    "title": apps_attribute_data["title"],
-                    "type": apps_attribute_data["type"],
-                    "enum": [],
+            attributes_to_create = {}
+            if not result["has_applications"]:
+                attributes_to_create[apps_attrib_name] = {
+                    "scope": apps_attribute_data["scope"],
+                    "data": {
+                        "title": apps_attribute_data["title"],
+                        "type": apps_attribute_data["type"],
+                        "enum": [],
+                    }
                 }
-            }
 
-        if not tools_present:
-            attributes_to_create[tools_attrib_name] = {
-                "scope": tools_attribute_data["scope"],
-                "data": {
-                    "title": tools_attribute_data["title"],
-                    "type": tools_attribute_data["type"],
-                    "enum": [],
-                },
-            }
+            if not result["has_tools"]:
+                attributes_to_create[tools_attrib_name] = {
+                    "scope": tools_attribute_data["scope"],
+                    "data": {
+                        "title": tools_attribute_data["title"],
+                        "type": tools_attribute_data["type"],
+                        "enum": [],
+                    },
+                }
 
-        # when any of the required attributes are not present, add them
-        # and return 'True' to indicate that server needs to be restarted
-        needs_restart = False
-        for name, payload in attributes_to_create.items():
-            await Postgres.execute(
-                "INSERT INTO attributes (name, position, scope, data) VALUES ($1, $2, $3, $4)",
-                name,
-                last_index + 1,
-                payload["scope"],
-                payload["data"],
-            )
-            last_index += 1
-            needs_restart = True
+            needs_restart = False
+            # when any of the required attributes are not present, add them
+            # and return 'True' to indicate that server needs to be restarted
+            for name, payload in attributes_to_create.items():
+                insert_query = "INSERT INTO attributes (name, scope, data, position) VALUES ($1, $2, $3, (SELECT COALESCE(MAX(position), 0) + 1 FROM attributes)) ON CONFLICT DO NOTHING"
+                await conn.execute(
+                    insert_query,
+                    name,
+                    payload["scope"],
+                    payload["data"],
+                )
+                needs_restart = True
 
         return needs_restart
 
@@ -320,7 +308,7 @@ class ApplicationsAddon(BaseServerAddon):
             )
 
         # Reset attributes cache on server
-        attribute_library.load()
+        await attribute_library.load()
 
     async def on_settings_changed(self, *args, **kwargs):
         _ = args, kwargs
