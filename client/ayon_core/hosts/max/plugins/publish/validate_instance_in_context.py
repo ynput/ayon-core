@@ -38,7 +38,7 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
             context_label = "{} > {}".format(*context)
             instance_label = "{} > {}".format(folderPath, task)
             message = (
-                "Instance '{}' publishes to different context(folder or task) "
+                "Instance '{}' publishes to different folder or task "
                 "than current context: {}. Current context: {}".format(
                     instance.name, instance_label, context_label
                 )
