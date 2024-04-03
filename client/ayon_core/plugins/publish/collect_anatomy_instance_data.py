@@ -399,6 +399,10 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 "parent": parent_name,
                 "folder": {
                     "name": folder_name,
+                    "path": folder_path,
+                    "type": folder_entity["folderType"],
+                    "parent": parent_name,
+                    "parents": hierarchy,
                 },
             })
             return
@@ -411,13 +415,18 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if hierarchy:
                 parent_name = hierarchy.split("/")[-1]
 
-            folder_name = instance.data["folderPath"].split("/")[-1]
+            folder_path = instance.data["folderPath"]
+            folder_name = folder_path.split("/")[-1]
             anatomy_data.update({
                 "asset": folder_name,
                 "hierarchy": hierarchy,
                 "parent": parent_name,
                 "folder": {
                     "name": folder_name,
+                    "path": folder_path,
+                    "type": "Shot",
+                    "parent": parent_name,
+                    "parents": hierarchy,
                 },
             })
 
