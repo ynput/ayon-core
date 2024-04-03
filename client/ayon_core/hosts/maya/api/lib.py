@@ -2641,9 +2641,9 @@ def reset_scene_resolution():
     # Set resolution
     width = task_attributes.get("resolutionWidth", 1920)
     height = task_attributes.get("resolutionHeight", 1080)
-    pixelAspect = task_attributes.get("pixelAspect", 1)
+    pixel_aspect = task_attributes.get("pixelAspect", 1)
 
-    set_scene_resolution(width, height, pixelAspect)
+    set_scene_resolution(width, height, pixel_aspect)
 
 
 def set_context_settings(
