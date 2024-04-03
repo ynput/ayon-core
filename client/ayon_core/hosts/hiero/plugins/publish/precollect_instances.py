@@ -43,7 +43,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         tracks_effect_items = self.collect_sub_track_items(all_tracks)
         context.data["tracksEffectItems"] = tracks_effect_items
 
-        # process all sellected timeline track items
+        # process all selected timeline track items
         for track_item in selected_timeline_items:
             data = {}
             clip_name = track_item.name()
@@ -62,7 +62,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             }:
                 continue
 
-            # get clips subtracks and anotations
+            # get clips subtracks and annotations
             annotations = self.clip_annotations(source_clip)
             subtracks = self.clip_subtrack(track_item)
             self.log.debug("Annotations: {}".format(annotations))
@@ -84,20 +84,19 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 k: v for k, v in tag_data.items()
                 if k not in ("id", "applieswhole", "label")
             })
+            # Backward compatibility fix of 'entity_type' > 'folder_type'
+            if "parents" in data:
+                for parent in data["parents"]:
+                    if "entity_type" in parent:
+                        parent["folder_type"] = parent.pop("entity_type")
 
-            asset, asset_name = self._get_folder_data(tag_data)
+            folder_path, folder_name = self._get_folder_data(tag_data)
 
             product_name = tag_data.get("productName")
             if product_name is None:
                 product_name = tag_data["subset"]
 
             families = [str(f) for f in tag_data["families"]]
-
-            # form label
-            label = "{} -".format(asset)
-            if asset_name != clip_name:
-                label += " ({})".format(clip_name)
-            label += " {}".format(product_name)
 
             # TODO: remove backward compatibility
             product_name = tag_data.get("productName")
@@ -108,7 +107,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             # backward compatibility: product_name should not be missing
             if not product_name:
                 self.log.error(
-                    "Product name is not defined for: {}".format(asset))
+                    "Product name is not defined for: {}".format(folder_path))
 
             # TODO: remove backward compatibility
             product_type = tag_data.get("productType")
@@ -119,15 +118,21 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             # backward compatibility: product_type should not be missing
             if not product_type:
                 self.log.error(
-                    "Product type is not defined for: {}".format(asset))
+                    "Product type is not defined for: {}".format(folder_path))
+
+            # form label
+            label = "{} -".format(folder_path)
+            if folder_name != clip_name:
+                label += " ({})".format(clip_name)
+            label += " {}".format(product_name)
 
             data.update({
-                "name": "{}_{}".format(asset, product_name),
+                "name": "{}_{}".format(folder_path, product_name),
                 "label": label,
-                "folderPath": asset,
-                "asset_name": asset_name,
                 "productName": product_name,
                 "productType": product_type,
+                "folderPath": folder_path,
+                "asset_name": folder_name,
                 "item": track_item,
                 "families": families,
                 "publish": tag_data["publish"],
@@ -217,19 +222,19 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["folderPath"]
-        asset_name = data["asset_name"]
+        folder_path = data["folderPath"]
+        folder_name = data["asset_name"]
 
         product_type = "shot"
 
         # form label
-        label = "{} -".format(asset)
-        if asset_name != clip_name:
+        label = "{} -".format(folder_path)
+        if folder_name != clip_name:
             label += " ({}) ".format(clip_name)
         label += " {}".format(product_name)
 
         data.update({
-            "name": "{}_{}".format(asset, product_name),
+            "name": "{}_{}".format(folder_path, product_name),
             "label": label,
             "productName": product_name,
             "productType": product_type,
@@ -276,19 +281,19 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         if not self.test_any_audio(item):
             return
 
-        asset = data["folderPath"]
+        folder_path = data["folderPath"]
         asset_name = data["asset_name"]
 
         product_type = "audio"
 
         # form label
-        label = "{} -".format(asset)
+        label = "{} -".format(folder_path)
         if asset_name != clip_name:
             label += " ({}) ".format(clip_name)
         label += " {}".format(product_name)
 
         data.update({
-            "name": "{}_{}".format(asset, product_name),
+            "name": "{}_{}".format(folder_path, subset),
             "label": label,
             "productName": product_name,
             "productType": product_type,
@@ -378,12 +383,10 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         # collect all subtrack items
         sub_track_items = {}
         for track in tracks:
-            items = track.items()
-
-            effet_items = track.subTrackItems()
+            effect_items = track.subTrackItems()
 
             # skip if no clips on track > need track with effect only
-            if not effet_items:
+            if not effect_items:
                 continue
 
             # skip all disabled tracks
@@ -391,7 +394,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 continue
 
             track_index = track.trackIndex()
-            _sub_track_items = phiero.flatten(effet_items)
+            _sub_track_items = phiero.flatten(effect_items)
 
             _sub_track_items = list(_sub_track_items)
             # continue only if any subtrack items are collected
@@ -439,10 +442,10 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         for item in subTrackItems:
             if "TimeWarp" in item.name():
                 continue
-            # avoid all anotation
+            # avoid all annotation
             if isinstance(item, hiero.core.Annotation):
                 continue
-            # # avoid all not anaibled
+            # avoid all disabled
             if not item.isEnabled():
                 continue
             subtracks.append(item)

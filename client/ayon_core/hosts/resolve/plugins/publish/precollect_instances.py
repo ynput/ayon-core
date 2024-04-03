@@ -64,6 +64,11 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             })
 
             folder_path = tag_data["folder_path"]
+            # Backward compatibility fix of 'entity_type' > 'folder_type'
+            if "parents" in data:
+                for parent in data["parents"]:
+                    if "entity_type" in parent:
+                        parent["folder_type"] = parent.pop("entity_type")
 
             # TODO: remove backward compatibility
             product_name = tag_data.get("productName")

@@ -8,7 +8,7 @@ from unreal import EditorAssetLibrary
 from unreal import MovieSceneSkeletalAnimationTrack
 from unreal import MovieSceneSkeletalAnimationSection
 
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -53,7 +53,7 @@ class AnimationFBXLoader(plugin.Loader):
         if not actor:
             return None
 
-        folder_entity = get_current_project_folder(fields=["attrib.fps"])
+        folder_entity = get_current_folder_entity(fields=["attrib.fps"])
 
         task.set_editor_property('filename', path)
         task.set_editor_property('destination_path', asset_dir)
@@ -256,7 +256,7 @@ class AnimationFBXLoader(plugin.Loader):
         repre_entity = context["representation"]
         folder_name = container["asset_name"]
         source_path = get_representation_path(repre_entity)
-        folder_entity = get_current_project_folder(fields=["attrib.fps"])
+        folder_entity = get_current_folder_entity(fields=["attrib.fps"])
         destination_path = container["namespace"]
 
         task = unreal.AssetImportTask()
