@@ -389,7 +389,7 @@ def get_current_folder_entity(fields=None):
 
     This function should be called only in process where host is installed.
 
-    Folder is found out based on current project name and folder path.
+    Folder is based on current context project name and folder path.
 
     Args:
         fields (Optional[Iterable[str]]): Limit returned data of folder entity
@@ -416,7 +416,7 @@ def get_current_task_entity(fields=None):
 
     This function should be called only in process where host is installed.
 
-    Task is found out based on current project name, folder path
+    Task is based on current context project name, folder path
         and task name.
 
     Args:
