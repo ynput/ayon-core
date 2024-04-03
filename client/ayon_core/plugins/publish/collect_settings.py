@@ -15,4 +15,3 @@ class CollectSettings(api.ContextPlugin):
         )
         project_settings = get_project_settings(project_name)
         context.data["project_settings"] = project_settings
-        context.data["projectSettings"] = project_settings
