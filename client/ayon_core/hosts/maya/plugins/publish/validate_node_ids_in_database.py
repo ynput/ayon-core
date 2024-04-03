@@ -50,12 +50,7 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
                                                       nodes=instance[:])
 
         # check ids against database ids
-        project_name = instance.context.data["projectName"]
-        folder_entities = ayon_api.get_folders(project_name, fields={"id"})
-        folder_ids = {
-            folder_entity["id"]
-            for folder_entity in folder_entities
-        }
+        folder_ids = cls.get_project_folder_ids(context=instance.context)
 
         # Get all asset IDs
         for node in id_required_nodes:
@@ -71,3 +66,22 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
                 invalid.append(node)
 
         return invalid
+
+    @classmethod
+    def get_project_folder_ids(cls, context):
+        # We query the database only for the first instance instead of
+        # per instance by storing a cache in the context
+        key = "__cache_project_folders_ids"
+        if key in context.data:
+            return context.data[key]
+
+        # check ids against database
+        project_name = context.data["projectName"]
+        folder_entities = ayon_api.get_folders(project_name, fields={"id"})
+        folder_ids = {
+            folder_entity["id"]
+            for folder_entity in folder_entities
+        }
+
+        context.data[key] = folder_ids
+        return folder_ids
