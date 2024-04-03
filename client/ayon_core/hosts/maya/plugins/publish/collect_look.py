@@ -59,9 +59,8 @@ for node_type in list(FILE_NODES.keys()):
     if node_type not in all_node_types:
         FILE_NODES.pop(node_type)
 
-for node_type in list(RENDER_SET_TYPES):
-    if node_type not in all_node_types:
-        RENDER_SET_TYPES.remove(node_type)
+RENDER_SET_TYPES = [node_type for node_type in RENDER_SET_TYPES
+                    if node_type in all_node_types]
 del all_node_types
 
 # Cache pixar dependency node types so we can perform a type lookup against it
