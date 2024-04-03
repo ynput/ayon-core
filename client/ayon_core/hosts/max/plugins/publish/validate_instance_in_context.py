@@ -46,7 +46,7 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
             raise PublishValidationError(
                 message=message,
                 description=(
-                    "## Publishing to a different context data(folder or task)\n"
+                    "## Publishing to a different context folder or task\n"
                     "There are publish instances present which are publishing "
                     "into a different folder path or task than your current context.\n\n"
                     "Usually this is not what you want but there can be cases "
