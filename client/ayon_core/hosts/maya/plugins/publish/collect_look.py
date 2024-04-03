@@ -667,7 +667,7 @@ class CollectModelRenderSets(CollectLook):
                 if objset in sets:
                     continue
 
-                if "shadingEngine" in cmds.nodeType(objset, inherited=True):
+                if cmds.objectType(objset, isAType="shadingEngine"):
                     continue
 
                 sets[objset] = {"uuid": lib.get_id(objset), "members": list()}
