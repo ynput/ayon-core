@@ -1225,7 +1225,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
         filters = []
 
         # if reformat input video file is already reforamted from upstream
-        reformat_in_baking = bool("reformated" in new_repre["tags"])
+        reformat_in_baking = (
+            "reformatted" in new_repre["tags"]
+            # Backwards compatibility
+            or "reformated" in new_repre["tags"]
+        )
         self.log.debug("reformat_in_baking: `{}`".format(reformat_in_baking))
 
         # NOTE Skipped using instance's resolution
