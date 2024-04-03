@@ -11,7 +11,7 @@ import ayon_api
 from ayon_core.pipeline import get_current_project_name, colorspace
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.context_tools import (
-    get_current_project_folder,
+    get_current_folder_entity,
 )
 from ayon_core.style import load_stylesheet
 from pymxs import runtime as rt
@@ -222,7 +222,7 @@ def reset_scene_resolution():
     contains any information regarding scene resolution.
     """
 
-    folder_entity = get_current_project_folder(
+    folder_entity = get_current_folder_entity(
         fields={"attrib.resolutionWidth", "attrib.resolutionHeight"}
     )
     folder_attributes = folder_entity["attrib"]
@@ -243,7 +243,7 @@ def get_frame_range(folder_entiy=None) -> Union[Dict[str, Any], None]:
     """
     # Set frame start/end
     if folder_entiy is None:
-        folder_entiy = get_current_project_folder()
+        folder_entiy = get_current_folder_entity()
 
     folder_attributes = folder_entiy["attrib"]
     frame_start = folder_attributes.get("frameStart")

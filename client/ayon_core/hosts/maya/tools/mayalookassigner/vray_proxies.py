@@ -51,7 +51,7 @@ def assign_vrayproxy_shaders(vrayproxy, assignments):
             index += 1
 
 
-def vrayproxy_assign_look(vrayproxy, product_name="lookDefault"):
+def vrayproxy_assign_look(vrayproxy, product_name="lookMain"):
     # type: (str, str) -> None
     """Assign look to vray proxy.
 
