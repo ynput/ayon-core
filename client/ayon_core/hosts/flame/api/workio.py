@@ -31,7 +31,3 @@ def open_file(filepath):
 
 def current_file():
     pass
-
-
-def work_root(session):
-    return os.path.normpath(session["AYON_WORKDIR"]).replace("\\", "/")

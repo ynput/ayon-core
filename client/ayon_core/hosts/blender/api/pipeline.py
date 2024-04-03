@@ -40,8 +40,7 @@ from .workio import (
     save_file,
     current_file,
     has_unsaved_changes,
-    file_extensions,
-    work_root,
+    file_extensions
 )
 
 
@@ -119,18 +118,6 @@ class BlenderHost(HostBase, IWorkfileHost, IPublishHost, ILoadHost):
                 modifications.
         """
         return has_unsaved_changes()
-
-    def work_root(self, session) -> str:
-        """Override work_root method from IWorkfileHost.
-        Modify workdir per host.
-
-        Args:
-            session (dict): Session context data.
-
-        Returns:
-            str: Path to new workdir.
-        """
-        return work_root(session)
 
     def get_context_data(self) -> dict:
         """Override abstract method from IPublishHost.

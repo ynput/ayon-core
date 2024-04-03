@@ -42,8 +42,7 @@ from .workio import (
     save_file,
     current_file,
     has_unsaved_changes,
-    file_extensions,
-    work_root
+    file_extensions
 )
 
 __all__ = [
@@ -84,7 +83,6 @@ __all__ = [
     "save_file",
     "current_file",
     "has_unsaved_changes",
-    "file_extensions",
-    "work_root",
+    "file_extensions"
 ]
 

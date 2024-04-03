@@ -3,8 +3,7 @@ from .workio import (
     save_file,
     current_file,
     has_unsaved_changes,
-    file_extensions,
-    work_root
+    file_extensions
 )
 
 from .pipeline import (
@@ -84,8 +83,7 @@ __all__ = [
     "save_file",
     "current_file",
     "has_unsaved_changes",
-    "file_extensions",
-    "work_root",
+    "file_extensions"
 
     # Constants
     "OPENPYPE_TAG_NAME",

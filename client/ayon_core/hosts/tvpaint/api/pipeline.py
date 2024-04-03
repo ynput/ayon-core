@@ -155,9 +155,6 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         george_script = "tv_SaveProject {}".format(filepath.replace("\\", "/"))
         return execute_george(george_script)
 
-    def work_root(self, session):
-        return session["AYON_WORKDIR"]
-
     def get_current_workfile(self):
         return execute_george("tv_GetProjectName")
 

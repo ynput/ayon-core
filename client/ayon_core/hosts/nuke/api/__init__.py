@@ -3,8 +3,7 @@ from .workio import (
     has_unsaved_changes,
     save_file,
     open_file,
-    current_file,
-    work_root,
+    current_file
 )
 from .command import (
     viewer_update_and_undo_stop
@@ -61,7 +60,6 @@ __all__ = (
     "save_file",
     "open_file",
     "current_file",
-    "work_root",
 
     "viewer_update_and_undo_stop",
 

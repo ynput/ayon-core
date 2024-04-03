@@ -63,9 +63,6 @@ class PhotoshopHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         return None
 
-    def work_root(self, session):
-        return os.path.normpath(session["AYON_WORKDIR"]).replace("\\", "/")
-
     def open_workfile(self, filepath):
         lib.stub().open(filepath)
 

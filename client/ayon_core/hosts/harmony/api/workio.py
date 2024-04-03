@@ -71,7 +71,3 @@ def open_file(filepath):
 def current_file():
     """Returning None to make Workfiles app look at first file extension."""
     return None
-
-
-def work_root(session):
-    return os.path.normpath(session["AYON_WORKDIR"]).replace("\\", "/")

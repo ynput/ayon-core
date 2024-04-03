@@ -67,7 +67,3 @@ def current_file():
     if not current_file:
         return None
     return os.path.normpath(current_file)
-
-
-def work_root(session):
-    return os.path.normpath(session["AYON_WORKDIR"]).replace("\\", "/")

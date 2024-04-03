@@ -65,8 +65,7 @@ from .workio import (
     save_file,
     current_file,
     has_unsaved_changes,
-    file_extensions,
-    work_root
+    file_extensions
 )
 from .render_utils import (
     export_clip,
@@ -146,7 +145,6 @@ __all__ = [
     "current_file",
     "has_unsaved_changes",
     "file_extensions",
-    "work_root",
 
     # render utils
     "export_clip",

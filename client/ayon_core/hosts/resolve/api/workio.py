@@ -90,7 +90,3 @@ def current_file():
     # return current file path if it exists
     if os.path.exists(current_file_path):
         return os.path.normpath(current_file_path)
-
-
-def work_root(session):
-    return os.path.normpath(session["AYON_WORKDIR"]).replace("\\", "/")

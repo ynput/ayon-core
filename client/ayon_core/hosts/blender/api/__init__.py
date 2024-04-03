@@ -23,8 +23,7 @@ from .workio import (
     save_file,
     current_file,
     has_unsaved_changes,
-    file_extensions,
-    work_root,
+    file_extensions
 )
 
 from .lib import (
@@ -59,7 +58,6 @@ __all__ = [
     "current_file",
     "has_unsaved_changes",
     "file_extensions",
-    "work_root",
 
     # Utility functions
     "maintained_selection",

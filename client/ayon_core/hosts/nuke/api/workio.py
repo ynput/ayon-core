@@ -64,15 +64,3 @@ def current_file():
         return None
 
     return os.path.normpath(current_file).replace("\\", "/")
-
-
-def work_root(session):
-
-    work_dir = session["AYON_WORKDIR"]
-    scene_dir = session.get("AVALON_SCENEDIR")
-    if scene_dir:
-        path = os.path.join(work_dir, scene_dir)
-    else:
-        path = work_dir
-
-    return os.path.normpath(path).replace("\\", "/")
