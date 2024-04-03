@@ -122,7 +122,7 @@ class ApplicationsAddon(BaseServerAddon):
         need_restart = await self.create_required_attributes()
         if need_restart:
             self.request_server_restart()
-        await self.update_enums()
+        await self._update_enums()
 
     def _get_applications_def(self):
         return {
@@ -150,7 +150,7 @@ class ApplicationsAddon(BaseServerAddon):
         """
 
         need_restart = await self.create_required_attributes()
-        await self.update_enums()
+        await self._update_enums()
         return need_restart
 
     async def create_required_attributes(self) -> bool:
@@ -221,7 +221,7 @@ class ApplicationsAddon(BaseServerAddon):
 
         return needs_restart
 
-    async def update_enums(self):
+    async def _update_enums(self):
         """Updates applications and tools enums based on the addon settings.
         This method is called when the addon is started (after we are sure that the
         'applications' and 'tools' attributes exist) and when the addon settings are
@@ -324,4 +324,4 @@ class ApplicationsAddon(BaseServerAddon):
 
     async def on_settings_changed(self, *args, **kwargs):
         _ = args, kwargs
-        await self.update_enums()
+        await self._update_enums()
