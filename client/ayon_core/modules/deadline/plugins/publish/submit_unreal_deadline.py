@@ -83,6 +83,10 @@ class UnrealSubmitDeadline(
             os.path.dirname(self._instance.data["expectedFiles"][0])
         dln_job_info.JobDelay = "00:00:00"
 
+        pre_load_path = os.path.join(self._instance.data["deadlineRepoRoot"],
+                                     "custom/scripts/Perforce/JobPreLoad.py")
+        dln_job_info.PreJobScript = pre_load_path
+
         keys = [
             "FTRACK_API_KEY",
             "FTRACK_API_USER",
