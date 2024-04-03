@@ -2636,12 +2636,12 @@ def reset_scene_resolution():
         None
     """
 
-    folder_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
+    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
 
     # Set resolution
-    width = folder_attributes.get("resolutionWidth", 1920)
-    height = folder_attributes.get("resolutionHeight", 1080)
-    pixelAspect = folder_attributes.get("pixelAspect", 1)
+    width = task_attributes.get("resolutionWidth", 1920)
+    height = task_attributes.get("resolutionHeight", 1080)
+    pixelAspect = task_attributes.get("pixelAspect", 1)
 
     set_scene_resolution(width, height, pixelAspect)
 
