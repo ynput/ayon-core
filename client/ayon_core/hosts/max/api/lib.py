@@ -16,7 +16,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.context_tools import (
-    get_current_project_folder,
+    get_current_task_entity
 )
 from ayon_core.style import load_stylesheet
 from pymxs import runtime as rt
@@ -226,8 +226,7 @@ def reset_scene_resolution():
     scene resolution can be overwritten by a folder if the folder.attrib
     contains any information regarding scene resolution.
     """
-    task_entity = get_current_task_entity()
-    task_attributes = task_entity["attrib"]
+    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
     width = int(task_attributes["resolutionWidth"])
     height = int(task_attributes["resolutionHeight"])
 
@@ -245,7 +244,7 @@ def get_frame_range(task_entity=None) -> Union[Dict[str, Any], None]:
     """
     # Set frame start/end
     if task_entity is None:
-        task_entity = get_current_task_entity()
+        task_entity = get_current_task_entity(fields={"attrib"})
     task_attributes = task_entity["attrib"]
     frame_start = int(task_attributes["frameStart"])
     frame_end = int(task_attributes["frameEnd"])
@@ -349,26 +348,6 @@ def get_max_version():
     """
     max_info = rt.MaxVersion()
     return max_info[7]
-
-
-def get_current_task_entity():
-    """Function to get current task entity data
-
-    Returns:
-        dict: data of task entity
-    """
-    project_name = get_current_project_name()
-    folder_path = get_current_folder_path()
-    task_name = get_current_task_name()
-    folder_entity = ayon_api.get_folder_by_path(
-        project_name, folder_path, fields={"id"})
-    task_entity = ayon_api.get_task_by_name(
-        project_name,
-        folder_entity["id"],
-        task_name,
-        fields={"attrib"}
-    )
-    return task_entity
 
 
 def is_headless():
