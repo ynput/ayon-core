@@ -37,8 +37,8 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                ("Found folder ids which are not related to "
-                 "current project in instance: `{}`").format(instance.name))
+                "Found folder ids which are not related to "
+                "current project in instance: `{}`".format(instance.name))
 
     @classmethod
     def get_invalid(cls, instance):
