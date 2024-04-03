@@ -26,16 +26,23 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                ayon_core.hosts.maya.api.action.GenerateUUIDsOnInvalidAction]
 
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Disable plug-in if cbId workflow is disabled
+        if not project_settings["maya"].get("use_cbid_workflow", True):
+            cls.enabled = False
+            return
+
     def process(self, instance):
         """Process all meshes"""
 
         # Ensure all nodes have a cbId
         invalid = self.get_invalid(instance)
         if invalid:
-            label = "Nodes found with non-unique asset IDs"
+            label = "Nodes found with non-unique folder ids"
             raise PublishValidationError(
                 message="{}: {}".format(label, invalid),
-                title="Non-unique asset ids on nodes",
+                title="Non-unique folder ids on nodes",
                 description="{}\n- {}".format(label,
                                               "\n- ".join(sorted(invalid)))
             )

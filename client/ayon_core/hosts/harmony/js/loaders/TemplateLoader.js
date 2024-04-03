@@ -30,7 +30,7 @@ var TemplateLoader = function() {};
  * // arguments are in following order:
  * var args = [
  *  templatePath, // Path to tpl file.
- *  assetName,    // Asset name.
+ *  folderName,    // Folder name.
  *  productName,  // Product name.
  *  groupId       // unique ID (uuid4)
  * ];
@@ -38,7 +38,7 @@ var TemplateLoader = function() {};
 TemplateLoader.prototype.loadContainer = function(args) {
     var doc = $.scn;
     var templatePath = args[0];
-    var assetName = args[1];
+    var folderName = args[1];
     var productName = args[2];
     var groupId = args[3];
 
@@ -62,7 +62,7 @@ TemplateLoader.prototype.loadContainer = function(args) {
     var num = 0;
     var containerGroupName = '';
     do {
-        containerGroupName = assetName + '_' + (num++) + '_' + productName;
+        containerGroupName = folderName + '_' + (num++) + '_' + productName;
     } while (currentGroup.getNodeByName(containerGroupName) != null);
 
     // import the template

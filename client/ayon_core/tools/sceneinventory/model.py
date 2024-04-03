@@ -1,29 +1,20 @@
-import collections
 import re
 import logging
 import uuid
-import copy
 
 from collections import defaultdict
 
+import ayon_api
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from ayon_core.client import (
-    get_assets,
-    get_subsets,
-    get_versions,
-    get_last_version_by_subset_id,
-    get_representations,
-)
 from ayon_core.pipeline import (
     get_current_project_name,
-    schema,
     HeroVersionType,
 )
 from ayon_core.style import get_default_entity_icon_color
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.models import TreeModel, Item
-from ayon_core.tools.ayon_utils.widgets import get_qt_icon
 
 
 def walk_hierarchy(node):
@@ -77,13 +68,7 @@ class InventoryModel(TreeModel):
         }
 
     def outdated(self, item):
-        value = item.get("version")
-        if isinstance(value, HeroVersionType):
-            return False
-
-        if item.get("version") == item.get("highest_version"):
-            return False
-        return True
+        return item.get("isOutdated", True)
 
     def data(self, index, role):
         if not index.isValid():
@@ -249,29 +234,29 @@ class InventoryModel(TreeModel):
                 not_found_ids.append(repre_id)
                 continue
 
-            version = versions_by_id.get(representation["parent"])
-            if not version:
+            version_entity = versions_by_id.get(representation["versionId"])
+            if not version_entity:
                 not_found["version"].extend(group_containers)
                 not_found_ids.append(repre_id)
                 continue
 
-            product = products_by_id.get(version["parent"])
-            if not product:
+            product_entity = products_by_id.get(version_entity["productId"])
+            if not product_entity:
                 not_found["product"].extend(group_containers)
                 not_found_ids.append(repre_id)
                 continue
 
-            folder = folders_by_id.get(product["parent"])
-            if not folder:
+            folder_entity = folders_by_id.get(product_entity["folderId"])
+            if not folder_entity:
                 not_found["folder"].extend(group_containers)
                 not_found_ids.append(repre_id)
                 continue
 
             group_dict.update({
                 "representation": representation,
-                "version": version,
-                "subset": product,
-                "asset": folder
+                "version": version_entity,
+                "product": product_entity,
+                "folder": folder_entity
             })
 
         for _repre_id in not_found_ids:
@@ -306,45 +291,60 @@ class InventoryModel(TreeModel):
         )
         sites_info = self._controller.get_sites_information()
 
+        # Query the highest available version so the model can know
+        # whether current version is currently up-to-date.
+        highest_version_by_product_id = ayon_api.get_last_versions(
+            project_name,
+            product_ids={
+                group["version"]["productId"] for group in grouped.values()
+            },
+            fields={"productId", "version"}
+        )
+        # Map value to `version` key
+        highest_version_by_product_id = {
+            product_id: version["version"]
+            for product_id, version in highest_version_by_product_id.items()
+        }
+
         for repre_id, group_dict in sorted(grouped.items()):
             group_containers = group_dict["containers"]
-            representation = group_dict["representation"]
-            version = group_dict["version"]
-            subset = group_dict["subset"]
-            asset = group_dict["asset"]
+            repre_entity = group_dict["representation"]
+            version_entity = group_dict["version"]
+            folder_entity = group_dict["folder"]
+            product_entity = group_dict["product"]
 
-            # Get product type
-            maj_version, _ = schema.get_schema_version(subset["schema"])
-            if maj_version < 3:
-                src_doc = version
-            else:
-                src_doc = subset
-
-            product_type = src_doc["data"].get("family")
-            if not product_type:
-                families = src_doc["data"].get("families")
-                if families:
-                    product_type = families[0]
-
-            # Store the highest available version so the model can know
-            # whether current version is currently up-to-date.
-            highest_version = get_last_version_by_subset_id(
-                project_name, version["parent"]
-            )
+            product_type = product_entity["productType"]
 
             # create the group header
             group_node = Item()
             group_node["Name"] = "{}_{}: ({})".format(
-                asset["name"], subset["name"], representation["name"]
+                folder_entity["name"],
+                product_entity["name"],
+                repre_entity["name"]
             )
             group_node["representation"] = repre_id
-            group_node["version"] = version["name"]
-            group_node["highest_version"] = highest_version["name"]
+
+            # Detect hero version type
+            version = version_entity["version"]
+            if version < 0:
+                version = HeroVersionType(version)
+            group_node["version"] = version
+
+            # Check if the version is outdated.
+            # Hero versions are never considered to be outdated.
+            is_outdated = False
+            if not isinstance(version, HeroVersionType):
+                last_version = highest_version_by_product_id.get(
+                    version_entity["productId"])
+                if last_version is not None:
+                    is_outdated = version_entity["version"] != last_version
+            group_node["isOutdated"] = is_outdated
+
             group_node["productType"] = product_type or ""
             group_node["productTypeIcon"] = product_type_icon
             group_node["count"] = len(group_containers)
             group_node["isGroupNode"] = True
-            group_node["group"] = subset["data"].get("subsetGroup")
+            group_node["group"] = product_entity["attrib"].get("productGroup")
 
             # Site sync specific data
             progress = progress_by_id[repre_id]
@@ -359,7 +359,8 @@ class InventoryModel(TreeModel):
                 item_node.update(container)
 
                 # store the current version on the item
-                item_node["version"] = version["name"]
+                item_node["version"] = version_entity["version"]
+                item_node["version_entity"] = version_entity
 
                 # Remapping namespace to item name.
                 # Noted that the name key is capital "N", by doing this, we
@@ -404,73 +405,50 @@ class InventoryModel(TreeModel):
         if not filtered_repre_ids:
             return output
 
-        repre_docs = get_representations(project_name, repre_ids)
+        repre_entities = ayon_api.get_representations(project_name, repre_ids)
         repres_by_id.update({
-            repre_doc["_id"]: repre_doc
-            for repre_doc in repre_docs
+            repre_entity["id"]: repre_entity
+            for repre_entity in repre_entities
         })
         version_ids = {
-            repre_doc["parent"] for repre_doc in repres_by_id.values()
+            repre_entity["versionId"]
+            for repre_entity in repres_by_id.values()
         }
         if not version_ids:
             return output
 
-        version_docs = get_versions(project_name, version_ids, hero=True)
         versions_by_id.update({
-            version_doc["_id"]: version_doc
-            for version_doc in version_docs
-        })
-        hero_versions_by_subversion_id = collections.defaultdict(list)
-        for version_doc in versions_by_id.values():
-            if version_doc["type"] != "hero_version":
-                continue
-            subversion = version_doc["version_id"]
-            hero_versions_by_subversion_id[subversion].append(version_doc)
-
-        if hero_versions_by_subversion_id:
-            subversion_ids = set(
-                hero_versions_by_subversion_id.keys()
+            version_entity["id"]: version_entity
+            for version_entity in ayon_api.get_versions(
+                project_name, version_ids=version_ids
             )
-            subversion_docs = get_versions(project_name, subversion_ids)
-            for subversion_doc in subversion_docs:
-                subversion_id = subversion_doc["_id"]
-                subversion_ids.discard(subversion_id)
-                h_version_docs = hero_versions_by_subversion_id[subversion_id]
-                for version_doc in h_version_docs:
-                    version_doc["name"] = HeroVersionType(
-                        subversion_doc["name"]
-                    )
-                    version_doc["data"] = copy.deepcopy(
-                        subversion_doc["data"]
-                    )
-
-            for subversion_id in subversion_ids:
-                h_version_docs = hero_versions_by_subversion_id[subversion_id]
-                for version_doc in h_version_docs:
-                    versions_by_id.pop(version_doc["_id"])
+        })
 
         product_ids = {
-            version_doc["parent"]
-            for version_doc in versions_by_id.values()
+            version_entity["productId"]
+            for version_entity in versions_by_id.values()
         }
         if not product_ids:
             return output
-        product_docs = get_subsets(project_name, product_ids)
+
         products_by_id.update({
-            product_doc["_id"]: product_doc
-            for product_doc in product_docs
+            product_entity["id"]: product_entity
+            for product_entity in ayon_api.get_products(
+                project_name, product_ids=product_ids
+            )
         })
         folder_ids = {
-            product_doc["parent"]
-            for product_doc in products_by_id.values()
+            product_entity["folderId"]
+            for product_entity in products_by_id.values()
         }
         if not folder_ids:
             return output
 
-        folder_docs = get_assets(project_name, folder_ids)
         folders_by_id.update({
-            folder_doc["_id"]: folder_doc
-            for folder_doc in folder_docs
+            folder_entity["id"]: folder_entity
+            for folder_entity in ayon_api.get_folders(
+                project_name, folder_ids=folder_ids
+            )
         })
         return output
 
@@ -530,27 +508,11 @@ class FilterProxyModel(QtCore.QSortFilterProxyModel):
     def _is_outdated(self, row, parent):
         """Return whether row is outdated.
 
-        A row is considered outdated if it has "version" and "highest_version"
-        data and in the internal data structure, and they are not of an
-        equal value.
+        A row is considered outdated if `isOutdated` data is true or not set.
 
         """
         def outdated(node):
-            version = node.get("version", None)
-            highest = node.get("highest_version", None)
-
-            # Always allow indices that have no version data at all
-            if version is None and highest is None:
-                return True
-
-            # If either a version or highest is present but not the other
-            # consider the item invalid.
-            if not self._hierarchy_view:
-                # Skip this check if in hierarchy view, or the child item
-                # node will be hidden even it's actually outdated.
-                if version is None or highest is None:
-                    return False
-            return version != highest
+            return node.get("isOutdated", True)
 
         index = self.sourceModel().index(row, self.filterKeyColumn(), parent)
 

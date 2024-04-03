@@ -1,5 +1,5 @@
 import os
-from ayon_core.lib.applications import (
+from ayon_applications import (
     PreLaunchHook,
     LaunchTypes,
     ApplicationLaunchFailed,
@@ -13,7 +13,7 @@ from ayon_core.hosts.fusion import (
 
 class FusionPrelaunch(PreLaunchHook):
     """
-    Prepares OpenPype Fusion environment.
+    Prepares AYON Fusion environment.
     Requires correct Python home variable to be defined in the environment
     settings for Fusion to point at a valid Python 3 build for Fusion.
     Python3 versions that are supported by Fusion:
