@@ -68,8 +68,7 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
 
         # Take only the ids with more than one member
         invalid = list()
-        _iteritems = getattr(ids, "iteritems", ids.items)
-        for _ids, members in _iteritems():
+        for members in ids.values():
             if len(members) > 1:
                 members_text = "\n".join(
                     "- {}".format(member) for member in sorted(members)
