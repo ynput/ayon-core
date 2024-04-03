@@ -1876,18 +1876,9 @@ def list_looks(project_name, folder_id):
         list[dict[str, Any]]: List of look products.
 
     """
-    # # get all products with look leading in
-    # the name associated with the asset
-    # TODO this should probably look for product type 'look' instead of
-    #   checking product name that can not start with product type
-    product_entities = ayon_api.get_products(
-        project_name, folder_ids=[folder_id]
-    )
-    return [
-        product_entity
-        for product_entity in product_entities
-        if product_entity["name"].startswith("look")
-    ]
+    return list(ayon_api.get_products(
+        project_name, folder_ids=[folder_id], product_types={"look"}
+    ))
 
 
 def assign_look_by_version(nodes, version_id):
@@ -1906,12 +1897,15 @@ def assign_look_by_version(nodes, version_id):
     project_name = get_current_project_name()
 
     # Get representations of shader file and relationships
-    look_representation = ayon_api.get_representation_by_name(
-        project_name, "ma", version_id
-    )
-    json_representation = ayon_api.get_representation_by_name(
-        project_name, "json", version_id
-    )
+    representations = list(ayon_api.get_representations(
+        project_name=project_name,
+        representation_names={"ma", "json"},
+        version_ids=[version_id]
+    ))
+    look_representation = next(
+        repre for repre in representations if repre["name"] == "ma")
+    json_representation = next(
+        repre for repre in representations if repre["name"] == "json")
 
     # See if representation is already loaded, if so reuse it.
     host = registered_host()
@@ -1948,7 +1942,7 @@ def assign_look_by_version(nodes, version_id):
     apply_shaders(relationships, shader_nodes, nodes)
 
 
-def assign_look(nodes, product_name="lookDefault"):
+def assign_look(nodes, product_name="lookMain"):
     """Assigns a look to a node.
 
     Optimizes the nodes by grouping by folder id and finding
@@ -1981,14 +1975,10 @@ def assign_look(nodes, product_name="lookDefault"):
         product_entity["id"]
         for product_entity in product_entities_by_folder_id.values()
     }
-    last_version_entities = ayon_api.get_last_versions(
+    last_version_entities_by_product_id = ayon_api.get_last_versions(
         project_name,
         product_ids
     )
-    last_version_entities_by_product_id = {
-        last_version_entity["productId"]: last_version_entity
-        for last_version_entity in last_version_entities
-    }
 
     for folder_id, asset_nodes in grouped.items():
         product_entity = product_entities_by_folder_id.get(folder_id)
@@ -2525,7 +2515,7 @@ def get_fps_for_current_context():
 
 
 def get_frame_range(include_animation_range=False):
-    """Get the current folder frame range and handles.
+    """Get the current task frame range and handles.
 
     Args:
         include_animation_range (bool, optional): Whether to include
@@ -2533,25 +2523,34 @@ def get_frame_range(include_animation_range=False):
             range of the timeline. It is excluded by default.
 
     Returns:
-        dict: Folder's expected frame range values.
+        dict: Task's expected frame range values.
 
     """
 
     # Set frame start/end
     project_name = get_current_project_name()
     folder_path = get_current_folder_path()
-    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-    folder_attributes = folder_entity["attrib"]
+    task_name = get_current_task_name()
 
-    frame_start = folder_attributes.get("frameStart")
-    frame_end = folder_attributes.get("frameEnd")
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name,
+        folder_path,
+        fields={"id"})
+    task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+
+    task_attributes = task_entity["attrib"]
+
+    frame_start = task_attributes.get("frameStart")
+    frame_end = task_attributes.get("frameEnd")
 
     if frame_start is None or frame_end is None:
         cmds.warning("No edit information found for '{}'".format(folder_path))
         return
 
-    handle_start = folder_attributes.get("handleStart") or 0
-    handle_end = folder_attributes.get("handleEnd") or 0
+    handle_start = task_attributes.get("handleStart") or 0
+    handle_end = task_attributes.get("handleEnd") or 0
 
     frame_range = {
         "frameStart": frame_start,
@@ -2565,14 +2564,10 @@ def get_frame_range(include_animation_range=False):
         # Some usages of this function use the full dictionary to define
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
-        task_name = get_current_task_name()
+
         settings = get_project_settings(project_name)
-        task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
-        )
-        task_type = None
-        if task_entity:
-            task_type = task_entity["taskType"]
+
+        task_type = task_entity["taskType"]
 
         include_handles_settings = settings["maya"]["include_handles"]
 
@@ -2651,31 +2646,114 @@ def reset_scene_resolution():
     set_scene_resolution(width, height, pixelAspect)
 
 
-def set_context_settings():
+def set_context_settings(
+        fps=True,
+        resolution=True,
+        frame_range=True,
+        colorspace=True
+):
     """Apply the project settings from the project definition
 
-    Settings can be overwritten by an folder if the folder.attrib contains
+    Settings can be overwritten by an asset if the asset.data contains
     any information regarding those settings.
 
-    Examples of settings:
-        fps
-        resolution
-        renderer
+    Args:
+        fps (bool): Whether to set the scene FPS.
+        resolution (bool): Whether to set the render resolution.
+        frame_range (bool): Whether to reset the time slide frame ranges.
+        colorspace (bool): Whether to reset the colorspace.
 
     Returns:
         None
 
     """
-    # Set project fps
-    set_scene_fps(get_fps_for_current_context())
+    if fps:
+        # Set project fps
+        set_scene_fps(get_fps_for_current_context())
 
-    reset_scene_resolution()
+    if resolution:
+        reset_scene_resolution()
 
     # Set frame range.
-    reset_frame_range()
+    if frame_range:
+        reset_frame_range(fps=False)
 
     # Set colorspace
-    set_colorspace()
+    if colorspace:
+        set_colorspace()
+
+
+def prompt_reset_context():
+    """Prompt the user what context settings to reset.
+    This prompt is used on saving to a different task to allow the scene to
+    get matched to the new context.
+    """
+    # TODO: Cleanup this prototyped mess of imports and odd dialog
+    from ayon_core.tools.attribute_defs.dialog import (
+        AttributeDefinitionsDialog
+    )
+    from ayon_core.style import load_stylesheet
+    from ayon_core.lib import BoolDef, UILabelDef
+
+    definitions = [
+        UILabelDef(
+            label=(
+                "You are saving your workfile into a different folder or task."
+                "\n\n"
+                "Would you like to update some settings to the new context?\n"
+            )
+        ),
+        BoolDef(
+            "fps",
+            label="FPS",
+            tooltip="Reset workfile FPS",
+            default=True
+        ),
+        BoolDef(
+            "frame_range",
+            label="Frame Range",
+            tooltip="Reset workfile start and end frame ranges",
+            default=True
+        ),
+        BoolDef(
+            "resolution",
+            label="Resolution",
+            tooltip="Reset workfile resolution",
+            default=True
+        ),
+        BoolDef(
+            "colorspace",
+            label="Colorspace",
+            tooltip="Reset workfile resolution",
+            default=True
+        ),
+        BoolDef(
+            "instances",
+            label="Publish instances",
+            tooltip="Update all publish instance's folder and task to match "
+                    "the new folder and task",
+            default=True
+        ),
+    ]
+
+    dialog = AttributeDefinitionsDialog(definitions)
+    dialog.setWindowTitle("Saving to different context.")
+    dialog.setStyleSheet(load_stylesheet())
+    if not dialog.exec_():
+        return None
+
+    options = dialog.get_values()
+    with suspended_refresh():
+        set_context_settings(
+            fps=options["fps"],
+            resolution=options["resolution"],
+            frame_range=options["frame_range"],
+            colorspace=options["colorspace"]
+        )
+        if options["instances"]:
+            update_content_on_context_change()
+
+    dialog.deleteLater()
 
 
 # Valid FPS
