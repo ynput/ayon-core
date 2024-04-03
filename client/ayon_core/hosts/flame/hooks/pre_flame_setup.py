@@ -9,7 +9,7 @@ from ayon_core.lib import (
     get_ayon_username,
     run_subprocess,
 )
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 from ayon_core.hosts import flame as opflame
 
 

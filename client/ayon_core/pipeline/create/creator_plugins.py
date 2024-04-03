@@ -347,7 +347,7 @@ class BaseCreator:
 
         Returns:
             str: Group label that can be used for grouping of instances in UI.
-                Group label can be overriden by instance itself.
+                Group label can be overridden by instance itself.
         """
 
         if self._cached_group_label is None:
@@ -607,18 +607,19 @@ class Creator(BaseCreator):
     """
 
     # GUI Purposes
-    # - default_variants may not be used if `get_default_variants` is overriden
+    # - default_variants may not be used if `get_default_variants`
+    #   is overridden
     default_variants = []
 
     # Default variant used in 'get_default_variant'
     _default_variant = None
 
     # Short description of product type
-    # - may not be used if `get_description` is overriden
+    # - may not be used if `get_description` is overridden
     description = None
 
     # Detailed description of product type for artists
-    # - may not be used if `get_detail_description` is overriden
+    # - may not be used if `get_detail_description` is overridden
     detailed_description = None
 
     # It does make sense to change context on creation

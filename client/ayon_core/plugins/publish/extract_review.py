@@ -619,7 +619,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # Prepare input and output filepaths
         self.input_output_paths(new_repre, output_def, temp_data)
 
-        # Set output frames len to 1 when ouput is single image
+        # Set output frames len to 1 when output is single image
         if (
             temp_data["output_ext_is_image"]
             and not temp_data["output_is_sequence"]
@@ -955,7 +955,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         self.log.debug("New representation ext: `{}`".format(output_ext))
 
-        # Output is image file sequence witht frames
+        # Output is image file sequence with frames
         output_ext_is_image = bool(output_ext in self.image_exts)
         output_is_sequence = bool(
             output_ext_is_image
@@ -967,7 +967,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             frame_end = temp_data["output_frame_end"]
 
             filename_base = "{}_{}".format(filename, filename_suffix)
-            # Temporary tempalte for frame filling. Example output:
+            # Temporary template for frame filling. Example output:
             # "basename.%04d.exr" when `frame_end` == 1001
             repr_file = "{}.%{:0>2}d.{}".format(
                 filename_base, len(str(frame_end)), output_ext
@@ -997,7 +997,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             self.log.debug("Creating dir: {}".format(dst_staging_dir))
             os.makedirs(dst_staging_dir)
 
-        # Store stagingDir to representaion
+        # Store stagingDir to representation
         new_repre["stagingDir"] = dst_staging_dir
 
         # Store paths to temp data
@@ -1225,18 +1225,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
         filters = []
 
         # if reformat input video file is already reforamted from upstream
-        reformat_in_baking = bool("reformated" in new_repre["tags"])
+        reformat_in_baking = (
+            "reformatted" in new_repre["tags"]
+            # Backwards compatibility
+            or "reformated" in new_repre["tags"]
+        )
         self.log.debug("reformat_in_baking: `{}`".format(reformat_in_baking))
-
-        # Get instance data
-        pixel_aspect = temp_data["pixel_aspect"]
-
-        if reformat_in_baking:
-            self.log.debug((
-                "Using resolution from input. It is already "
-                "reformated from upstream process"
-            ))
-            pixel_aspect = 1
 
         # NOTE Skipped using instance's resolution
         full_input_path_single_file = temp_data["full_input_path_single_file"]
@@ -1268,7 +1262,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if reformat_in_baking:
             self.log.debug((
                 "Using resolution from input. It is already "
-                "reformated from upstream process"
+                "reformatted from upstream process"
             ))
             pixel_aspect = 1
             output_width = input_width
@@ -1374,7 +1368,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         # Make sure output width and height is not an odd number
         # When this can happen:
         # - if output definition has set width and height with odd number
-        # - `instance.data` contain width and height with odd numbeer
+        # - `instance.data` contain width and height with odd number
         if output_width % 2 != 0:
             self.log.warning((
                 "Converting output width from odd to even number. {} -> {}"
@@ -1555,7 +1549,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             custom_tags (list): Custom Tags of processed representation.
 
         Returns:
-            list: Containg all output definitions matching entered tags.
+            list: Containing all output definitions matching entered tags.
         """
 
         filtered_outputs = []
@@ -1820,8 +1814,8 @@ class OverscanCrop:
         """
         # crop=width:height:x:y - explicit start x, y position
         # crop=width:height     - x, y are related to center by width/height
-        # pad=width:heigth:x:y  - explicit start x, y position
-        # pad=width:heigth      - x, y are set to 0 by default
+        # pad=width:height:x:y  - explicit start x, y position
+        # pad=width:height      - x, y are set to 0 by default
 
         width = self.width()
         height = self.height()
@@ -1869,7 +1863,7 @@ class OverscanCrop:
         # Replace "px" (and spaces before) with single space
         string_value = re.sub(r"([ ]+)?px", " ", string_value)
         string_value = re.sub(r"([ ]+)%", "%", string_value)
-        # Make sure +/- sign at the beggining of string is next to number
+        # Make sure +/- sign at the beginning of string is next to number
         string_value = re.sub(r"^([\+\-])[ ]+", "\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
         #   which belongs

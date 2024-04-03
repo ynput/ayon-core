@@ -26,6 +26,13 @@ class ValidateNodeIdsDeformedShape(pyblish.api.InstancePlugin):
         RepairAction
     ]
 
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Disable plug-in if cbId workflow is disabled
+        if not project_settings["maya"].get("use_cbid_workflow", True):
+            cls.enabled = False
+            return
+
     def process(self, instance):
         """Process all the nodes in the instance"""
 
