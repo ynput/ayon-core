@@ -209,6 +209,3 @@ def get_current_project_settings():
             "Missing context project in environemt variable `AYON_PROJECT_NAME`."
         )
     return get_project_settings(project_name)
-
-
-
