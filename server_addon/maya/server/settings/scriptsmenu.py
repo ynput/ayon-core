@@ -18,29 +18,36 @@ class ScriptsmenuSubmodel(BaseSettingsModel):
     )
 
 
+_definition_mode_type = [
+    {"value": "definition", "label": "Menu Builder"},
+    {"value": "definition_json", "label": "Raw JSON (advanced)"}
+]
+
+
 class ScriptsmenuModel(BaseSettingsModel):
     """Add a custom scripts menu to Maya"""
     _isGroup = True
 
     name: str = SettingsField(title="Menu Name")
-    use_json_definition: bool = SettingsField(
-        title="Use Raw JSON Definition",
-        description="When enabled, the definition field will be ignored. "
-                    "Instead the menu will be build from the raw JSON "
-                    "definition below it."
+
+    definition_type: str = SettingsField(
+        title="Define menu using",
+        description="Choose the way to define the custom scripts menu "
+                    "via settings",
+        enum_resolver=lambda: _definition_mode_type,
+        conditionalEnum=True,
+        default="definition"
     )
     definition: list[ScriptsmenuSubmodel] = SettingsField(
         default_factory=list,
         title="Menu Definition",
         description="Scriptmenu Items Definition"
     )
-
     definition_json: str = SettingsField(
-        "[]", title="Definition JSON", widget="textarea",
+        "[]", title="Menu Definition JSON", widget="textarea",
         description=(
-            "When Use Raw JSON definition is enabled this field will be used "
-            "to put the direct JSON content instead of using the definition "
-            "menu builder UI above. For more details on the JSON format, see "
+            "Define the custom tools menu using a JSON list. "
+            "For more details on the JSON format, see "
             "[here](https://github.com/Colorbleed/scriptsmenu?tab=readme-ov-file#configuration)."  # noqa: E501
         )
     )
@@ -64,7 +71,7 @@ class ScriptsmenuModel(BaseSettingsModel):
 
 DEFAULT_SCRIPTSMENU_SETTINGS = {
     "name": "Custom Tools",
-    "use_json_definition": False,
+    "definition_type": "definition",
     "definition": [
         {
             "type": "action",
@@ -78,5 +85,5 @@ DEFAULT_SCRIPTSMENU_SETTINGS = {
             ]
         }
     ],
-    "definition_raw": ""
+    "definition_json": "[]"
 }
