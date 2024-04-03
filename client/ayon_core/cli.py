@@ -81,7 +81,7 @@ main_cli.set_alias("addon", "module")
 @main_cli.command()
 @click.argument("output_json_path")
 @click.option("--project", help="Project name", default=None)
-@click.option("--asset", help="Asset name", default=None)
+@click.option("--asset", help="Folder path", default=None)
 @click.option("--task", help="Task name", default=None)
 @click.option("--app", help="Application name", default=None)
 @click.option(
@@ -96,6 +96,10 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
     environments will be extracted.
 
     Context options are "project", "asset", "task", "app"
+
+    Deprecated:
+        This function is deprecated and will be removed in future. Please use
+        'addon applications extractenvironments ...' instead.
     """
     Commands.extractenvironments(
         output_json_path, project, asset, task, app, envgroup
@@ -127,7 +131,7 @@ def publish_report_viewer():
 @main_cli.command()
 @click.argument("output_path")
 @click.option("--project", help="Define project context")
-@click.option("--asset", help="Define asset in project (project must be set)")
+@click.option("--folder", help="Define folder in project (project must be set)")
 @click.option(
     "--strict",
     is_flag=True,
@@ -136,18 +140,18 @@ def publish_report_viewer():
 def contextselection(
     output_path,
     project,
-    asset,
+    folder,
     strict
 ):
     """Show Qt dialog to select context.
 
-    Context is project name, asset name and task name. The result is stored
+    Context is project name, folder path and task name. The result is stored
     into json file which path is passed in first argument.
     """
     Commands.contextselection(
         output_path,
         project,
-        asset,
+        folder,
         strict
     )
 
