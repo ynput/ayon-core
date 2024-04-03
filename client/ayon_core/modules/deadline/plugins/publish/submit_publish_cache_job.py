@@ -133,6 +133,9 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
             "AYON_RENDER_JOB": "0",
             "AYON_REMOTE_PUBLISH": "0",
             "AYON_BUNDLE_NAME": os.environ["AYON_BUNDLE_NAME"],
+            "AYON_DEFAULT_SETTINGS_VARIANT": (
+                os.environ["AYON_DEFAULT_SETTINGS_VARIANT"]
+            ),
         }
 
         # add environments from self.environ_keys
