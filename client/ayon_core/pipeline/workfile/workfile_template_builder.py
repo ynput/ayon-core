@@ -498,9 +498,14 @@ class AbstractTemplateBuilder(object):
                                               process if version is created
 
         """
-        if any(value is None for value in [template_path,
-                                           keep_placeholders,
-                                           create_first_version]):
+        if any(
+            value is None
+            for value in [
+                template_path,
+                keep_placeholders,
+                create_first_version,
+            ]
+        ):
             template_preset = self.get_template_preset()
             if template_path is None:
                 template_path = template_preset["path"]
