@@ -201,7 +201,7 @@ def get_current_project_settings():
     Project name should be stored in environment variable `AYON_PROJECT_NAME`.
     This function should be used only in host context where environment
     variable must be set and should not happen that any part of process will
-    change the value of the enviornment variable.
+    change the value of the environment variable.
     """
     project_name = os.environ.get("AYON_PROJECT_NAME")
     if not project_name:
