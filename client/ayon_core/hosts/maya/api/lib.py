@@ -37,7 +37,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib.profiles_filtering import filter_profiles
 
@@ -2636,7 +2636,7 @@ def reset_scene_resolution():
         None
     """
 
-    folder_attributes = get_current_project_folder()["attrib"]
+    folder_attributes = get_current_folder_entity()["attrib"]
 
     # Set resolution
     width = folder_attributes.get("resolutionWidth", 1920)
@@ -3245,7 +3245,7 @@ def update_content_on_context_change():
     This will update scene content to match new folder on context change
     """
     scene_sets = cmds.listSets(allSets=True)
-    folder_entity = get_current_project_folder()
+    folder_entity = get_current_folder_entity()
     folder_attributes = folder_entity["attrib"]
     new_folder_path = folder_entity["path"]
     for s in scene_sets:
