@@ -81,7 +81,7 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
         """
         # We query the database only for the first instance instead of
         # per instance by storing a cache in the context
-        key = "__cache_project_folders_ids"
+        key = "__cache_project_folder_ids"
         if key in context.data:
             return context.data[key]
 
