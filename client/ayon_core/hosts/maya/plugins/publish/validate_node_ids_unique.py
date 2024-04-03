@@ -41,7 +41,7 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
         if invalid:
             label = "Nodes found with non-unique folder ids"
             raise PublishValidationError(
-                message="{}: {}".format(label, invalid),
+                message="{}, see log".format(label),
                 title="Non-unique folder ids on nodes",
                 description="{}\n- {}".format(label,
                                               "\n- ".join(sorted(invalid)))
@@ -70,7 +70,12 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
         _iteritems = getattr(ids, "iteritems", ids.items)
         for _ids, members in _iteritems():
             if len(members) > 1:
-                cls.log.error("ID found on multiple nodes: '%s'" % members)
+                members_text = "\n".join(
+                    "- {}".format(member) for member in sorted(members)
+                )
+                cls.log.error(
+                    "ID found on multiple nodes:\n{}".format(members_text)
+                )
                 invalid.extend(members)
 
         return invalid
