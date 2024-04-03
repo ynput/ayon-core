@@ -34,8 +34,11 @@ class ServerItemSubmodel(BaseSettingsModel):
     _layout = "compact"
     name: str = SettingsField(title="Name")
     value: str = SettingsField(title="Url")
-    require_authentication: bool = SettingsField(title="Require authentication")
-    ssl: bool = SettingsField(title="SSL")
+    require_authentication: bool = SettingsField(
+        False,
+        title="Require authentication")
+    ssl: bool = SettingsField(False,
+                              title="SSL")
 
 
 class DeadlineSettings(BaseSettingsModel):
