@@ -270,10 +270,15 @@ class UnrealPrelaunchHook(PreLaunchHook):
     def _sync_latest_version(self, version_addon, conn_info):
         from version_control.backends.perforce.api.rest_stub import \
             PerforceRestStub
-        PerforceRestStub.login(host=conn_info["host"],
-                               port=conn_info["port"],
-                               username=conn_info["username"],
-                               password=conn_info["password"],
-                               workspace=conn_info["workspace_dir"])
-        PerforceRestStub.sync_latest_version(conn_info["workspace_dir"])
+        try:
+            PerforceRestStub.login(host=conn_info["host"],
+                                   port=conn_info["port"],
+                                   username=conn_info["username"],
+                                   password=conn_info["password"],
+                                   workspace=conn_info["workspace_dir"])
+            PerforceRestStub.sync_latest_version(conn_info["workspace_dir"])
+        except RuntimeError:
+            raise RuntimeError("Perforce should be used, please provide "
+                               "valid credentials in "
+                               "'ayon+settings://version_control'")
         return
