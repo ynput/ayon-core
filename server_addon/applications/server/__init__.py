@@ -3,6 +3,7 @@ import json
 import copy
 
 from ayon_server.addons import BaseServerAddon, AddonLibrary
+from ayon_server.entities.core import attribute_library
 from ayon_server.lib.postgres import Postgres
 
 from .version import __version__
@@ -317,6 +318,9 @@ class ApplicationsAddon(BaseServerAddon):
                 tools_attribute_data,
                 tools_attrib_name,
             )
+
+        # Reset attributes cache on server
+        attribute_library.load()
 
     async def on_settings_changed(self, *args, **kwargs):
         _ = args, kwargs
