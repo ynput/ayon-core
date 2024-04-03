@@ -92,7 +92,7 @@ line-ending = "auto"
 
 [tool.codespell]
 # Ignore words that are not in the dictionary.
-ignore-words-list = "ayon,ynput"
+ignore-words-list = "ayon,ynput,parms,parm,hda"
 skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
 count = true
 quiet-level = 3
