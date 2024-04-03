@@ -2629,8 +2629,8 @@ def reset_frame_range(playback=True, render=True, fps=True):
 def reset_scene_resolution():
     """Apply the scene resolution  from the project definition
 
-    scene resolution can be overwritten by an folder if the folder.attrib
-    contains any information regarding scene resolution .
+    The scene resolution will be retrieved from the current task entity's
+    attributes.
 
     Returns:
         None
