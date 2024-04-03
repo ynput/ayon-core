@@ -411,6 +411,40 @@ def get_current_folder_entity(fields=None):
     )
 
 
+def get_current_task_entity(fields=None):
+    """Helper function to get task entity based on current context.
+
+    This function should be called only in process where host is installed.
+
+    Task is found out based on current project name, folder path
+        and task name.
+
+    Args:
+        fields (Optional[Iterable[str]]): Limit returned data of task entity
+            to specific keys.
+
+    Returns:
+        Union[dict[str, Any], None]: Task entity or None.
+
+    """
+    context = get_current_context()
+    project_name = context["project_name"]
+    folder_path = context["folder_path"]
+    task_name = context["task_name"]
+
+    # Skip if is not set even on context
+    if not project_name or not folder_path or not task_name:
+        return None
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path, fields={"id"}
+    )
+    if not folder_entity:
+        return None
+    return ayon_api.get_task_by_name(
+        project_name, folder_entity["id"], task_name, fields=fields
+    )
+
+
 def is_representation_from_latest(representation):
     """Return whether the representation is from latest version
 
