@@ -45,22 +45,6 @@ class DeadlineModule(AYONAddon, IPluginPaths):
         }
 
     @staticmethod
-    def get_repo_dir(webservice, log=None):
-        """Get repository root folder from Deadline.
-        Args:
-            webservice (str): Server url.
-            log (Logger)
-        Returns:
-            str: Repository root folder.
-        Throws:
-            RuntimeError: If deadline webservice is unreachable.
-
-        """
-
-        url = "{}/api/repository?Directory=root".format(webservice)
-        return DeadlineModule._call_webservice(url, log)
-
-    @staticmethod
     def get_deadline_pools(webservice, log=None):
         """Get pools from Deadline.
         Args:
@@ -72,27 +56,23 @@ class DeadlineModule(AYONAddon, IPluginPaths):
             RuntimeError: If deadline webservice is unreachable.
 
         """
-
-        url = "{}/api/pools?NamesOnly=true".format(webservice)
-        return DeadlineModule._call_webservice(url, log)
-
-    @staticmethod
-    def _call_webservice(url, log=None):
         from .abstract_submit_deadline import requests_get
 
         if not log:
             log = Logger.get_logger(__name__)
+
+        argument = "{}/api/pools?NamesOnly=true".format(webservice)
         try:
-            response = requests_get(url)
+            response = requests_get(argument)
         except requests.exceptions.ConnectionError as exc:
-            msg = 'Cannot connect to DL web service {}'.format(url)
+            msg = 'Cannot connect to DL web service {}'.format(webservice)
             log.error(msg)
             six.reraise(
                 DeadlineWebserviceError,
                 DeadlineWebserviceError('{} - {}'.format(msg, exc)),
                 sys.exc_info()[2])
         if not response.ok:
-            log.warning("No response retrieved")
+            log.warning("No pools retrieved")
             return []
 
         return response.json()
