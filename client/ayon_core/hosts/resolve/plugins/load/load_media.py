@@ -2,21 +2,16 @@ import json
 import copy
 import contextlib
 from collections import defaultdict
-from typing import Union, Optional
+from typing import Union, List, Optional, TypedDict
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
+from ayon_api import version_is_latest
 from ayon_core.lib import StringTemplate
 from ayon_core.pipeline.colorspace import get_remapped_colorspace_to_native
 from ayon_core.pipeline import (
     LoaderPlugin,
-    get_representation_context,
     get_representation_path,
     registered_host
 )
-from ayon_core.pipeline.context_tools import get_current_project_name
 from ayon_core.hosts.resolve.api import lib
 from ayon_core.hosts.resolve.api.pipeline import AVALON_CONTAINER_ID
 from ayon_core.lib.transcoding import (
@@ -24,6 +19,12 @@ from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS
 )
 from ayon_core.lib import BoolDef
+
+
+class MetadataEntry(TypedDict):
+    """Metadata entry is dict with {"name": "key", "value: "value"}"""
+    name: str
+    value: str
 
 
 @contextlib.contextmanager
@@ -126,9 +127,9 @@ def find_clip_usage(media_pool_item, project=None):
 
 
 class LoadMedia(LoaderPlugin):
-    """Load a subset as media pool item."""
+    """Load product as media pool item."""
 
-    families = ["render2d", "source", "plate", "render", "review"]
+    product_types = {"render2d", "source", "plate", "render", "review"}
 
     representations = ["*"]
     extensions = set(
@@ -164,16 +165,16 @@ class LoadMedia(LoaderPlugin):
     clip_color_last = "Olive"
     clip_color_old = "Orange"
 
-    media_pool_bin_path = (
-        "Loader/{representation[context][hierarchy]}/{asset[name]}")
+    media_pool_bin_path = "Loader/{folder[path]}"
 
-    metadata = []
+    metadata: List[MetadataEntry] = []
 
     # cached on apply settings
     _host_imageio_settings = None
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
+        super(LoadMedia, cls).apply_settings(project_settings)
         cls._host_imageio_settings = project_settings["resolve"]["imageio"]
 
     def load(self, context, name, namespace, options):
@@ -192,7 +193,7 @@ class LoadMedia(LoaderPlugin):
         item = None
         if options.get("load_once", True):
             host = registered_host()
-            repre_id = str(context["representation"]["_id"])
+            repre_id = context["representation"]["id"]
             for container in host.ls():
                 if container["representation"] != repre_id:
                     continue
@@ -217,7 +218,7 @@ class LoadMedia(LoaderPlugin):
                 media_pool.SetCurrentFolder(folder)
 
             # Import media
-            path = self._get_filepath(representation)
+            path = self._get_filepath(context)
             items = media_pool.ImportMedia([path])
 
             assert len(items) == 1, "Must import only one media item"
@@ -226,7 +227,7 @@ class LoadMedia(LoaderPlugin):
             self._set_metadata(item, context)
             self._set_colorspace_from_representation(item, representation)
 
-            data = self._get_container_data(representation)
+            data = self._get_container_data(context)
 
             # Add containerise data only needed on first load
             data.update({
@@ -238,7 +239,7 @@ class LoadMedia(LoaderPlugin):
             item.SetMetadata(lib.pype_tag_name, json.dumps(data))
 
         # Always update clip color - even if re-using existing clip
-        color = self.get_item_color(representation)
+        color = self.get_item_color(context)
         item.SetClipColor(color)
 
         if options.get("load_to_timeline", True):
@@ -250,10 +251,10 @@ class LoadMedia(LoaderPlugin):
                     timeline=timeline
                 )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # Update MediaPoolItem filepath and metadata
         item = container["_item"]
 
@@ -266,7 +267,7 @@ class LoadMedia(LoaderPlugin):
         colorspace_before = item.GetClipProperty("Input Color Space")
 
         # Update path
-        path = get_representation_path(representation)
+        path = get_representation_path(context["representation"])
         success = item.ReplaceClip(path)
         if not success:
             raise RuntimeError(
@@ -274,12 +275,11 @@ class LoadMedia(LoaderPlugin):
             )
 
         # Update the metadata
-        update_data = self._get_container_data(representation)
+        update_data = self._get_container_data(context)
         data.update(update_data)
         item.SetMetadata(lib.pype_tag_name, json.dumps(data))
 
-        context = get_representation_context(representation)
-        self._set_metadata(item, context)
+        self._set_metadata(media_pool_item=item, context=context)
         self._set_colorspace_from_representation(item, representation)
 
         # If no specific colorspace is set then we want to preserve the
@@ -295,7 +295,7 @@ class LoadMedia(LoaderPlugin):
                 )
 
         # Update the clip color
-        color = self.get_item_color(representation)
+        color = self.get_item_color(context)
         item.SetClipColor(color)
 
     def remove(self, container):
@@ -327,55 +327,43 @@ class LoadMedia(LoaderPlugin):
         # Delete the media pool item
         media_pool.DeleteClips([item])
 
-    def _get_container_data(self, representation):
+    def _get_container_data(self, context: dict) -> dict:
         """Return metadata related to the representation and version."""
 
-        # load clip to timeline and get main variables
-        project_name = get_current_project_name()
-        version = get_version_by_id(project_name, representation["parent"])
-        version_data = version.get("data", {})
-        version_name = version.get("name", None)
-        colorspace = version_data.get("colorspace", None)
+        # add additional metadata from the version to imprint AYON knob
+        version = context["version"]
+        data = {}
 
-        # add additional metadata from the version to imprint Avalon knob
-        add_keys = [
-            "frameStart", "frameEnd", "source", "author",
-            "fps", "handleStart", "handleEnd"
-        ]
-        data = {
-            key: version_data.get(key, str(None)) for key in add_keys
-        }
+        # version.attrib
+        for key in [
+            "frameStart", "frameEnd",
+            "handleStart", "handleEnd",
+            "source", "fps", "colorSpace"
+        ]:
+            data[key] = version["attrib"][key]
+
+        # version.data
+        for key in ["author"]:
+            data[key] = version["data"][key]
 
         # add variables related to version context
         data.update({
-            "representation": str(representation["_id"]),
-            "version": version_name,
-            "colorspace": colorspace,
+            "representation": context["representation"]["id"],
+            "version": version["name"],
         })
 
         return data
 
     @classmethod
-    def get_item_color(cls, representation) -> str:
+    def get_item_color(cls, context: dict) -> str:
         """Return item color name.
 
         Coloring depends on whether representation is the latest version.
         """
         # Compare version with last version
-        project_name = get_current_project_name()
-        version = get_version_by_id(
-            project_name,
-            representation["parent"],
-            fields=["name", "parent"]
-        )
-        last_version = get_last_version_by_subset_id(
-            project_name,
-            version["parent"],
-            fields=["name"]
-        ) or {}
-
         # set clip colour
-        if version.get("name") == last_version.get("name"):
+        if version_is_latest(project_name=context["project"]["name"],
+                             version_id=context["version"]["id"]):
             return cls.clip_color_last
         else:
             return cls.clip_color_old
@@ -388,16 +376,15 @@ class LoadMedia(LoaderPlugin):
             clip_property = meta_item["name"]
             value = meta_item["value"]
             value_formatted = StringTemplate(value).format_strict(context)
-            media_pool_item.SetClipProperty(
-                clip_property, value_formatted)
+            media_pool_item.SetClipProperty(clip_property, value_formatted)
 
-    def _get_filepath(self, representation: dict) -> Union[str, dict]:
+    def _get_filepath(self, context: dict) -> Union[str, dict]:
 
+        representation = context["representation"]
         is_sequence = bool(representation["context"].get("frame"))
         if not is_sequence:
             return get_representation_path(representation)
 
-        context = get_representation_context(representation)
         version = context["version"]
 
         # Get the start and end frame of the image sequence, incl. handles
