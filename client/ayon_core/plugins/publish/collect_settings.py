@@ -10,6 +10,9 @@ class CollectSettings(api.ContextPlugin):
 
     def process(self, context):
         project_name = context.data["projectName"]
+        self.log.debug(
+            "Collecting settings for project: {}".format(project_name)
+        )
         project_settings = get_project_settings(project_name)
         context.data["project_settings"] = project_settings
         context.data["projectSettings"] = project_settings
