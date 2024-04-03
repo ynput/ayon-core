@@ -70,6 +70,15 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
 
     @classmethod
     def get_project_folder_ids(cls, context):
+        """Return all folder ids in the current project.
+
+        Arguments:
+            context (pyblish.api.Context): The publish context.
+
+        Returns:
+            set[str]: All folder ids in the current project.
+
+        """
         # We query the database only for the first instance instead of
         # per instance by storing a cache in the context
         key = "__cache_project_folders_ids"
