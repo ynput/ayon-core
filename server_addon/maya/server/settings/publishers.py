@@ -38,26 +38,26 @@ def angular_unit_enum():
 def extract_alembic_flags_enum():
     """Get flags for alembic extraction enumerator."""
     return [
-        {"label": "autoSubd", "value": "autoSubd"},
+        {"value": "autoSubd", "label": "Auto Subd"},
         {
-            "label": "dontSkipUnwrittenFrames",
-            "value": "dontSkipUnwrittenFrames"
+            "value": "dontSkipUnwrittenFrames",
+            "label": "Dont Skip Unwritten Frames"
         },
-        {"label": "eulerFilter", "value": "eulerFilter"},
-        {"label": "noNormals", "value": "noNormals"},
-        {"label": "preRoll", "value": "preRoll"},
-        {"label": "renderableOnly", "value": "renderableOnly"},
-        {"label": "stripNamespaces", "value": "stripNamespaces"},
-        {"label": "uvWrite", "value": "uvWrite"},
-        {"label": "uvsOnly", "value": "uvsOnly"},
-        {"label": "verbose", "value": "verbose"},
-        {"label": "wholeFrameGeo", "value": "wholeFrameGeo"},
-        {"label": "worldSpace", "value": "worldSpace"},
-        {"label": "writeColorSets", "value": "writeColorSets"},
-        {"label": "writeFaceSets", "value": "writeFaceSets"},
-        {"label": "writeNormals", "value": "writeNormals"},
-        {"label": "writeUVSets", "value": "writeUVSets"},
-        {"label": "writeVisibility", "value": "writeVisibility"}
+        {"value": "eulerFilter", "label": "Euler Filter"},
+        {"value": "noNormals", "label": "No Normals"},
+        {"value": "preRoll", "label": "Pre Roll"},
+        {"value": "renderableOnly", "label": "Renderable Only"},
+        {"value": "stripNamespaces", "label": "Strip Namespaces"},
+        {"value": "uvWrite", "label": "UV Write"},
+        {"value": "uvsOnly", "label": "UVs Only"},
+        {"value": "verbose", "label": "Verbose"},
+        {"value": "wholeFrameGeo", "label": "Whole Frame Geo"},
+        {"value": "worldSpace", "label": "World Space"},
+        {"value": "writeColorSets", "label": "Write Color Sets"},
+        {"value": "writeFaceSets", "label": "Write Face Sets"},
+        {"value": "writeNormals", "label": "Write Normals"},
+        {"value": "writeUVSets", "label": "Write UV Sets"},
+        {"value": "writeVisibility", "label": "Write Visibility"}
     ]
 
 
@@ -70,38 +70,44 @@ def extract_alembic_data_format_enum():
 
 def extract_alembic_overrides_enum():
     return [
-        {"value": "attr", "label": "Custom Attributes"},
-        {"value": "attrPrefix", "label": "Custom Attributes Prefix"},
-        {"value": "autoSubd", "label": "autoSubd"},
-        {"value": "dataFormat", "label": "dataFormat"},
+        {"label": "Custom Attributes", "value": "attr"},
+        {"label": "Custom Attributes Prefix", "value": "attrPrefix"},
+        {"label": "Auto Subd", "value": "autoSubd"},
+        {"label": "Data Format", "value": "dataFormat"},
         {
-            "value": "dontSkipUnwrittenFrames",
-            "label": "dontSkipUnwrittenFrames"
+            "label": "Dont Skip Unwritten Frames",
+            "value": "dontSkipUnwrittenFrames"
         },
-        {"value": "eulerFilter", "label": "eulerFilter"},
-        {"value": "melPerFrameCallback", "label": "melPerFrameCallback"},
-        {"value": "melPostJobCallback", "label": "melPostJobCallback"},
-        {"value": "noNormals", "label": "noNormals"},
-        {"value": "preRoll", "label": "preRoll"},
-        {"value": "preRollStartFrame", "label": "Pre Roll Start Frame"},
-        {"value": "pythonPerFrameCallback", "label": "pythonPerFrameCallback"},
-        {"value": "pythonPostJobCallback", "label": "pythonPostJobCallback"},
-        {"value": "renderableOnly", "label": "renderableOnly"},
-        {"value": "stripNamespaces", "label": "stripNamespaces"},
-        {"value": "userAttr", "label": "userAttr"},
-        {"value": "userAttrPrefix", "label": "userAttrPrefix"},
-        {"value": "uvWrite", "label": "uvWrite"},
-        {"value": "uvsOnly", "label": "uvsOnly"},
-        {"value": "verbose", "label": "verbose"},
-        {"value": "visibleOnly", "label": "Visible Only"},
-        {"value": "wholeFrameGeo", "label": "wholeFrameGeo"},
-        {"value": "worldSpace", "label": "worldSpace"},
-        {"value": "writeColorSets", "label": "writeColorSets"},
-        {"value": "writeCreases", "label": "writeCreases"},
-        {"value": "writeFaceSets", "label": "writeFaceSets"},
-        {"value": "writeNormals", "label": "writeNormals"},
-        {"value": "writeUVSets", "label": "writeUVSets"},
-        {"value": "writeVisibility", "label": "writeVisibility"}
+        {"label": "Euler Filter", "value": "eulerFilter"},
+        {"label": "Mel Per Frame Callback", "value": "melPerFrameCallback"},
+        {"label": "Mel Post Job Callback", "value": "melPostJobCallback"},
+        {"label": "No Normals", "value": "noNormals"},
+        {"label": "Pre Roll", "value": "preRoll"},
+        {"label": "Pre Roll Start Frame", "value": "preRollStartFrame"},
+        {
+            "label": "Python Per Frame Callback",
+            "value": "pythonPerFrameCallback"
+        },
+        {
+            "label": "Python Post Job Callback",
+            "value": "pythonPostJobCallback"
+        },
+        {"label": "Renderable Only", "value": "renderableOnly"},
+        {"label": "Strip Namespaces", "value": "stripNamespaces"},
+        {"label": "User Attr", "value": "userAttr"},
+        {"label": "User Attr Prefix", "value": "userAttrPrefix"},
+        {"label": "UV Write", "value": "uvWrite"},
+        {"label": "UVs Only", "value": "uvsOnly"},
+        {"label": "Verbose", "value": "verbose"},
+        {"label": "Visible Only", "value": "visibleOnly"},
+        {"label": "Whole FrameGeo", "value": "wholeFrameGeo"},
+        {"label": "World Space", "value": "worldSpace"},
+        {"label": "Write Color Sets", "value": "writeColorSets"},
+        {"label": "Write Creases", "value": "writeCreases"},
+        {"label": "Write Face Sets", "value": "writeFaceSets"},
+        {"label": "Write Normals", "value": "writeNormals"},
+        {"label": "Write UV Sets", "value": "writeUVSets"},
+        {"label": "Write Visibility", "value": "writeVisibility"}
     ]
 
 
@@ -387,13 +393,17 @@ class ExtractAlembicModel(BaseSettingsModel):
     dataFormat: str = SettingsField(
         enum_resolver=extract_alembic_data_format_enum, title="Data Format"
     )
-    melPerFrameCallback: str = SettingsField(title="melPerFrameCallback")
-    melPostFrameCallback: str = SettingsField(title="melPostFrameCallback")
+    melPerFrameCallback: str = SettingsField(title="Mel Per Frame Callback")
+    melPostFrameCallback: str = SettingsField(title="Mel Post Frame Callback")
     preRollStartFrame: int = SettingsField(title="Pre Roll Start Frame")
-    pythonPerFrameCallback: str = SettingsField(title="pythonPerFrameCallback")
-    pythonPostJobCallback: str = SettingsField(title="pythonPostJobCallback")
-    userAttr: str = SettingsField(title="userAttr")
-    userAttrPrefix: str = SettingsField(title="userAttrPrefix")
+    pythonPerFrameCallback: str = SettingsField(
+        title="Python Per Frame Callback"
+    )
+    pythonPostJobCallback: str = SettingsField(
+        title="Python Post Job Callback"
+    )
+    userAttr: str = SettingsField(title="User Attr")
+    userAttrPrefix: str = SettingsField(title="User Attr Prefix")
     visibleOnly: bool = SettingsField(title="Visible Only")
     overrides: list[str] = SettingsField(
         enum_resolver=extract_alembic_overrides_enum, title="Exposed Overrides"

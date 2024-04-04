@@ -17,13 +17,13 @@ class ValidateAlembicOptionsDefaults(
     optional = True
 
     @classmethod
-    def _get_plugin_name(self, publish_attributes):
+    def _get_plugin_name(cls, publish_attributes):
         for key in ["ExtractAnimation", "ExtractAlembic"]:
             if key in publish_attributes.keys():
                 return key
 
     @classmethod
-    def _get_settings(self, context):
+    def _get_settings(cls, context):
         maya_settings = context.data["project_settings"]["maya"]
         settings = maya_settings["publish"]["ExtractAlembic"]
         # Flags are a special case since they are a combination of overrides
@@ -34,14 +34,14 @@ class ValidateAlembicOptionsDefaults(
         return settings
 
     @classmethod
-    def _get_publish_attributes(self, instance):
+    def _get_publish_attributes(cls, instance):
         attributes = instance.data["publish_attributes"][
-            self._get_plugin_name(
+            cls._get_plugin_name(
                 instance.data["publish_attributes"]
             )
         ]
 
-        settings = self._get_settings(instance.context)
+        settings = cls._get_settings(instance.context)
 
         # Flags are a special case since they are a combination of exposed
         # flags and default flags from the settings. So we need to add the
