@@ -1,3 +1,5 @@
+import inspect
+
 from maya import cmds
 
 import pyblish.api
@@ -14,8 +16,7 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
                            OptionalPyblishPluginMixin):
     """Adheres to the content of 'model' product type
 
-    - Must have one top group. (configurable)
-    - Must only contain: transforms, meshes and groups
+    See `get_description` for more details.
 
     """
 
@@ -35,7 +36,8 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
 
         content_instance = instance.data.get("setMembers", None)
         if not content_instance:
-            cls.log.error("Instance has no nodes!")
+            cls.log.error("Model instance has no nodes. "
+                          "It is not allowed to be empty")
             return [instance.data["instance_node"]]
 
         # All children will be included in the extracted export so we also
@@ -53,10 +55,13 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
         invalid = set(nodes) - set(valid)
 
         if invalid:
+            # List as bullet points
+            invalid_bullets = "\n".join(f"- {node}" for node in invalid)
+
             cls.log.error(
-                "These nodes are not allowed: {}.\n"
-                "The valid node types are: {}".format(", ".join(invalid),
-                                                      ", ".join(cls.allowed))
+                "These nodes are not allowed:\n{}\n"
+                "The valid node types are: {}".format(
+                    invalid_bullets, ", ".join(cls.allowed))
             )
             return list(invalid)
 
@@ -113,10 +118,20 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
             raise PublishValidationError(
                 title="Model content is invalid",
                 message="Model content is invalid. See log for more details.",
-                description=(
-                    "## Model content is invalid\n"
-                    "Your model instance does not adhere to the rules of a "
-                    "model.\n\n"
-                    "See log for more details."
-                )
+                description=self.get_description()
             )
+        
+    @classmethod
+    def get_description(cls):
+        return inspect.cleandoc(f"""
+            ### Model content is invalid
+            
+            Your model instance does not adhere to the rules of a 
+            model product type:
+            
+            - Must have at least one visible shape in it, like a mesh.
+            - Must have one root node. When exporting multiple meshes they 
+              must be inside a group.
+            - May only contain the following node types: 
+            {", ".join(cls.allowed)}
+        """)
