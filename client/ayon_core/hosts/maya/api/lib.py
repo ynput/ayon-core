@@ -3129,7 +3129,7 @@ def load_capture_preset(data):
     return options
 
 
-def get_attr_in_layer(attr, layer):
+def get_attr_in_layer(attr, layer, as_string=True):
     """Return attribute value in specified renderlayer.
 
     Same as cmds.getAttr but this gets the attribute's value in a
@@ -3156,7 +3156,8 @@ def get_attr_in_layer(attr, layer):
     try:
         if cmds.mayaHasRenderSetup():
             from . import lib_rendersetup
-            return lib_rendersetup.get_attr_in_layer(attr, layer)
+            return lib_rendersetup.get_attr_in_layer(
+                attr, layer, as_string=as_string)
     except AttributeError:
         pass
 
@@ -3173,7 +3174,7 @@ def get_attr_in_layer(attr, layer):
                                        type="renderLayer") or []
     connections = filter(lambda x: x.endswith(".plug"), connections)
     if not connections:
-        return cmds.getAttr(attr)
+        return cmds.getAttr(attr, asString=as_string)
 
     # Some value types perform a conversion when assigning
     # TODO: See if there's a maya method to allow this conversion
@@ -3215,7 +3216,7 @@ def get_attr_in_layer(attr, layer):
                         value *= conversion
                     return value
 
-    return cmds.getAttr(attr)
+    return cmds.getAttr(attr, asString=as_string)
 
 
 def fix_incompatible_containers():

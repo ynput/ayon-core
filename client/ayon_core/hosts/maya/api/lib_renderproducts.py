@@ -297,7 +297,7 @@ class ARenderProducts:
         """
         return self._get_attr("defaultRenderGlobals", attribute)
 
-    def _get_attr(self, node_attr, attribute=None):
+    def _get_attr(self, node_attr, attribute=None, as_string=True):
         """Return the value of the attribute in the renderlayer
 
         For readability this allows passing in the attribute in two ways.
@@ -317,7 +317,7 @@ class ARenderProducts:
         else:
             plug = "{}.{}".format(node_attr, attribute)
 
-        return lib.get_attr_in_layer(plug, layer=self.layer)
+        return lib.get_attr_in_layer(plug, layer=self.layer, as_string=as_string)
 
     @staticmethod
     def extract_separator(file_prefix):
@@ -1133,11 +1133,9 @@ class RenderProductsRedshift(ARenderProducts):
             aovs = list(set(aovs) - set(ref_aovs))
 
         products = []
-        # global_aov_enabled = bool(
-        #     self._get_attr("redshiftOptions.aovGlobalEnableMode")
-        # )
         global_aov_enabled = bool(
-            cmds.getAttr("redshiftOptions.aovGlobalEnableMode"))
+            self._get_attr("redshiftOptions.aovGlobalEnableMode", as_string=False)
+        )
         colorspace = lib.get_color_management_output_transform()
         if not global_aov_enabled:
             # only beauty output
