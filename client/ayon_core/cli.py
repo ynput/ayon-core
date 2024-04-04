@@ -4,6 +4,7 @@ import os
 import sys
 import code
 import traceback
+from pathlib import Path
 
 import click
 import acre
@@ -178,10 +179,8 @@ def run(script):
         comp_path = os.path.join(os.environ["AYON_ROOT"], "start.py")
     else:
         comp_path = os.getenv("AYON_EXECUTABLE")
-    # Normalize paths for comparison
-    first_arg = os.path.normpath(first_arg).lower()
-    comp_path = os.path.normpath(comp_path).lower()
-    if first_arg == comp_path:
+    # Compare paths and remove first argument if it is the same as AYON
+    if Path(first_arg).resolve() == Path(comp_path).resolve():
         sys.argv.pop(0)
 
     # Remove 'run' command from sys.argv
