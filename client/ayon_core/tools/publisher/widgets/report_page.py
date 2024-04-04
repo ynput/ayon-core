@@ -1459,13 +1459,14 @@ class CrashWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent):
         super(CrashWidget, self).__init__(parent)
 
-        main_label = QtWidgets.QLabel("This is not your fault", self)
+        main_label = QtWidgets.QLabel("Error Occurred!", self)
         main_label.setAlignment(QtCore.Qt.AlignCenter)
         main_label.setObjectName("PublishCrashMainLabel")
 
         report_label = QtWidgets.QLabel(
             (
-                "Please report the error to your pipeline support"
+                "Expand the orange error message below to find more info.\n"
+                "You can report the error to your pipeline support"
                 " using one of the options below."
             ),
             self
