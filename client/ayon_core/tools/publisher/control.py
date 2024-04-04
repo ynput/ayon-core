@@ -1200,7 +1200,7 @@ class AbstractPublisherController(object):
         """Current error label which cause fail of publishing.
 
         Returns:
-            Union[str, None]: Error Label which will be showed to artist or
+            Union[str, None]: Error Label which will be shown to artist or
                 None.
         """
 
