@@ -38,26 +38,26 @@ def angular_unit_enum():
 def extract_alembic_flags_enum():
     """Get flags for alembic extraction enumerator."""
     return [
-        {"value": "autoSubd", "label": "Auto Subd"},
+        {"label": "Auto Subd", "value": "autoSubd"},
         {
-            "value": "dontSkipUnwrittenFrames",
-            "label": "Dont Skip Unwritten Frames"
+            "label": "Dont Skip Unwritten Frames",
+            "value": "dontSkipUnwrittenFrames"
         },
-        {"value": "eulerFilter", "label": "Euler Filter"},
-        {"value": "noNormals", "label": "No Normals"},
-        {"value": "preRoll", "label": "Pre Roll"},
-        {"value": "renderableOnly", "label": "Renderable Only"},
-        {"value": "stripNamespaces", "label": "Strip Namespaces"},
-        {"value": "uvWrite", "label": "UV Write"},
-        {"value": "uvsOnly", "label": "UVs Only"},
-        {"value": "verbose", "label": "Verbose"},
-        {"value": "wholeFrameGeo", "label": "Whole Frame Geo"},
-        {"value": "worldSpace", "label": "World Space"},
-        {"value": "writeColorSets", "label": "Write Color Sets"},
-        {"value": "writeFaceSets", "label": "Write Face Sets"},
-        {"value": "writeNormals", "label": "Write Normals"},
-        {"value": "writeUVSets", "label": "Write UV Sets"},
-        {"value": "writeVisibility", "label": "Write Visibility"}
+        {"label": "Euler Filter", "value": "eulerFilter"},
+        {"label": "No Normals", "value": "noNormals"},
+        {"label": "Pre Roll", "value": "preRoll"},
+        {"label": "Renderable Only", "value": "renderableOnly"},
+        {"label": "Strip Namespaces", "value": "stripNamespaces"},
+        {"label": "UV Write", "value": "uvWrite"},
+        {"label": "UVs Only", "value": "uvsOnly"},
+        {"label": "Verbose", "value": "verbose"},
+        {"label": "Whole Frame Geo", "value": "wholeFrameGeo"},
+        {"label": "World Space", "value": "worldSpace"},
+        {"label": "Write Color Sets", "value": "writeColorSets"},
+        {"label": "Write Face Sets", "value": "writeFaceSets"},
+        {"label": "Write Normals", "value": "writeNormals"},
+        {"label": "Write UV Sets", "value": "writeUVSets"},
+        {"label": "Write Visibility", "value": "writeVisibility"}
     ]
 
 
@@ -386,41 +386,141 @@ class ExtractAlembicModel(BaseSettingsModel):
                     "included in the alembic export.",
     )
     flags: list[str] = SettingsField(
-        enum_resolver=extract_alembic_flags_enum, title="Export Flags"
+        enum_resolver=extract_alembic_flags_enum,
+        title="Export Flags",
+        description=(
+            "Auto Subd - If this flag is present and the mesh has crease "
+            "edges, crease vertices or holes, the mesh (OPolyMesh) would now "
+            "be written out as an OSubD and crease info will be stored in the "
+            "Alembic  file. Otherwise, creases info won't be preserved in "
+            "Alembic file unless a custom Boolean attribute SubDivisionMesh "
+            "has been added to mesh node and its value is true.\n"
+
+            "Dont Skip Unwritten Frames - When evaluating multiple translate "
+            "jobs, this decides whether to evaluate frames between jobs when "
+            "there is a gap in their frame ranges.\n"
+
+            "Euler Filter - Apply Euler filter while sampling rotations.\n"
+
+            "No Normals - Present normal data for Alembic poly meshes will not"
+            " be written.\n"
+
+            "Pre Roll - This frame range will not be sampled.\n"
+
+            "Renderable Only - Only export renderable visible shapes.\n"
+
+            "Strip Namespaces - Namespaces will be stripped off of the node "
+            "before being written to Alembic.\n"
+
+            "UV Write - Uv data for PolyMesh and SubD shapes will be written "
+            "to the Alembic file.\n"
+
+            "UVs Only - If this flag is present, only uv data for PolyMesh and"
+            " SubD shapes will be written to the Alembic file.\n"
+
+            "Verbose - Prints the current frame that is being evaluated.\n"
+
+            "Whole Frame Geo - Data for geometry will only be written out on "
+            "whole frames.\n"
+
+            "World Space - Any root nodes will be stored in world space.\n"
+
+            "Write Color Sets - Write vertex colors with the geometry.\n"
+
+            "Write Face Sets - Write face sets with the geometry.\n"
+
+            "Write Normals - Write normals with the deforming geometry.\n"
+
+            "Write UV Sets - Write all uv sets on MFnMeshes as vector 2 "
+            "indexed geometry parameters with face varying scope.\n"
+
+            "Write Visibility - Visibility state will be stored in the Alembic"
+            " file. Otherwise everything written out is treated as visible."
+        )
     )
-    attr: str = SettingsField(title="Custom Attributes")
-    attrPrefix: str = SettingsField(title="Custom Attributes Prefix")
+    attr: str = SettingsField(
+        title="Custom Attributes",
+        placeholder="attr1;attr2",
+        description=(
+            "Attributes matching by name will be included in the Alembic "
+            "export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    attrPrefix: str = SettingsField(
+        title="Custom Attributes Prefix",
+        placeholder="attr1;attr2",
+        description=(
+            "Attributes starting with these prefixes will be included in the "
+            "Alembic export. Attributes should be separated by semi-colon `;`"
+        )
+    )
     dataFormat: str = SettingsField(
-        enum_resolver=extract_alembic_data_format_enum, title="Data Format"
+        enum_resolver=extract_alembic_data_format_enum,
+        title="Data Format",
+        description="The data format to use to write the file."
     )
-    melPerFrameCallback: str = SettingsField(title="Mel Per Frame Callback")
-    melPostFrameCallback: str = SettingsField(title="Mel Post Frame Callback")
-    preRollStartFrame: int = SettingsField(title="Pre Roll Start Frame")
+    melPerFrameCallback: str = SettingsField(
+        title="Mel Per Frame Callback",
+        description=(
+            "When each frame (and the static frame) is evaluated the string "
+            "specified is evaluated as a Mel command."
+        )
+    )
+    melPostFrameCallback: str = SettingsField(
+        title="Mel Post Frame Callback",
+        description=(
+            "When the translation has finished the string specified is "
+            "evaluated as a Mel command."
+        )
+    )
     pythonPerFrameCallback: str = SettingsField(
-        title="Python Per Frame Callback"
+        title="Python Per Frame Callback",
+        description=(
+            "When each frame (and the static frame) is evaluated the string "
+            "specified is evaluated as a python command."
+        )
     )
     pythonPostJobCallback: str = SettingsField(
-        title="Python Post Job Callback"
+        title="Python Post Job Callback",
+        description=(
+            "When the translation has finished the string specified is "
+            "evaluated as a python command."
+        )
+    )
+    preRollStartFrame: int = SettingsField(
+        title="Pre Roll Start Frame",
+        description=(
+            "The frame to start scene evaluation at.  This is used to set the "
+            "starting frame for time dependent translations and can be used to"
+            " evaluate run-up that isn't actually translated."
+        )
     )
     userAttr: str = SettingsField(
         title="User Attr",
         placeholder="attr1;attr2",
         description=(
-            "Attributes matching by name will be included in the Alembic export. "
-            "Attributes should be separated by semi-colon `;`"
+            "Attributes matching by name will be included in the Alembic "
+            "export. Attributes should be separated by semi-colon `;`"
         )
     )
     userAttrPrefix: str = SettingsField(
         title="User Attr Prefix",
         placeholder="attr1;attr2",
         description=(
-            "Attributes starting with these prefixes will be included in the Alembic export. "
-            "Attributes should be separated by semi-colon `;`"
+            "Attributes starting with these prefixes will be included in the "
+            "Alembic export. Attributes should be separated by semi-colon `;`"
         )
     )
-    visibleOnly: bool = SettingsField(title="Visible Only")
+    visibleOnly: bool = SettingsField(
+        title="Visible Only",
+        description="Only export dag objects visible during frame range."
+    )
     overrides: list[str] = SettingsField(
-        enum_resolver=extract_alembic_overrides_enum, title="Exposed Overrides"
+        enum_resolver=extract_alembic_overrides_enum,
+        title="Exposed Overrides",
+        description=(
+            "Expose the attribute in this list to the user when publishing."
+        )
     )
 
 
