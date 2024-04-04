@@ -91,7 +91,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
 
         default_servers = {
             url_item["name"]: url_item["value"]
-            for url_item in deadline_settings["deadline_server_info"]
+            for url_item in deadline_settings["deadline_servers_info"]
         }
         project_servers = (
             render_instance.context.data
