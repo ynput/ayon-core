@@ -57,7 +57,7 @@ class SiteSyncModel:
         )
 
         manager = AddonsManager()
-        self._site_sync_addon = manager.get("sync_server")
+        self._site_sync_addon = manager.get("sitesync")
 
     def reset(self):
         self._site_icons = None
