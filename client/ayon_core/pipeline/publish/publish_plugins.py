@@ -74,7 +74,9 @@ class KnownPublishError(Exception):
     Message will be shown in UI for artist.
     """
 
-    pass
+    def __init__(self, message, label=None):
+        self.message = message
+        self.label = label
 
 
 class AYONPyblishPluginMixin:
