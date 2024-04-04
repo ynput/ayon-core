@@ -290,10 +290,10 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
         ])
 
         # The Arguments that can be modified by the Publisher
-        overrides = set(getattr(cls, "overrides", set()))
+        overrides = set(cls.overrides)
 
         # What we have set in the Settings as defaults.
-        flags = set(getattr(cls, "flags", set()))
+        flags = set(cls.flags)
 
         enabled_flags = [x for x in flags if x in overrides]
         flags = overrides - set(override_defs.keys())
