@@ -727,7 +727,6 @@ class BaseWorkfileController(
 
         # Trigger after save events
         emit_event("workfile.save.after", event_data, source="workfiles.tool")
-        self.reset()
 
     def _change_current_context(
         self, project_name, folder_id, task_id, template_key=None
