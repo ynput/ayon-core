@@ -16,7 +16,6 @@ class ExtractLocalRender(publish.Extractor):
                 "redshift_rop",
                 "arnold_rop",
                 "vray_rop"]
-    targets = ["local", "remote"]
 
     def process(self, instance):
         if instance.data.get("farm"):
