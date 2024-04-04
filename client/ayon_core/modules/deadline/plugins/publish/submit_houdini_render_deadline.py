@@ -71,7 +71,12 @@ class HoudiniSubmitDeadline(
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
     families = ["usdrender",
-                "render.farm.hou"]
+                "mantra_rop",
+                "karma_rop",
+                "redshift_rop",
+                "arnold_rop",
+                "vray_rop"]
+
     targets = ["local"]
     use_published = True
 
@@ -314,6 +319,11 @@ class HoudiniSubmitDeadline(
         return attr.asdict(plugin_info)
 
     def process(self, instance):
+        if not instance.data["farm"]:
+            self.log.debug("Render on farm is disabled. "
+                           "Skipping deadline submission.")
+            return
+
         super(HoudiniSubmitDeadline, self).process(instance)
 
         # TODO: Avoid the need for this logic here, needed for submit publish
