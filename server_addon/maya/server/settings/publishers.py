@@ -402,8 +402,22 @@ class ExtractAlembicModel(BaseSettingsModel):
     pythonPostJobCallback: str = SettingsField(
         title="Python Post Job Callback"
     )
-    userAttr: str = SettingsField(title="User Attr")
-    userAttrPrefix: str = SettingsField(title="User Attr Prefix")
+    userAttr: str = SettingsField(
+        title="User Attr",
+        placeholder="attr1;attr2",
+        description=(
+            "Attributes matching by name will be included in the Alembic export. "
+            "Attributes should be separated by semi-colon `;`"
+        )
+    )
+    userAttrPrefix: str = SettingsField(
+        title="User Attr Prefix",
+        placeholder="attr1;attr2",
+        description=(
+            "Attributes starting with these prefixes will be included in the Alembic export. "
+            "Attributes should be separated by semi-colon `;`"
+        )
+    )
     visibleOnly: bool = SettingsField(title="Visible Only")
     overrides: list[str] = SettingsField(
         enum_resolver=extract_alembic_overrides_enum, title="Exposed Overrides"
