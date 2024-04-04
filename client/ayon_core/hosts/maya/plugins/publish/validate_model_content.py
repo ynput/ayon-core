@@ -59,7 +59,7 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
             invalid_bullets = "\n".join(f"- {node}" for node in invalid)
 
             cls.log.error(
-                "These nodes are not allowed:\n{}\n"
+                "These nodes are not allowed:\n{}\n\n"
                 "The valid node types are: {}".format(
                     invalid_bullets, ", ".join(cls.allowed))
             )
