@@ -3,7 +3,7 @@ import shutil
 import winreg
 import subprocess
 from ayon_core.lib import get_ayon_launcher_args
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 from ayon_core.hosts.celaction import CELACTION_ROOT_DIR
 
 
@@ -118,7 +118,7 @@ class CelactionPrelaunchHook(PreLaunchHook):
     def workfile_path(self):
         workfile_path = self.data["last_workfile_path"]
 
-        # copy workfile from template if doesnt exist any on path
+        # copy workfile from template if doesn't exist any on path
         if not os.path.exists(workfile_path):
             # TODO add ability to set different template workfile path via
             # settings

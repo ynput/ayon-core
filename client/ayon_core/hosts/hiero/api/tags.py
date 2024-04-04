@@ -89,7 +89,7 @@ def update_tag(tag, data):
     # set all data metadata to tag metadata
     for _k, _v in data_mtd.items():
         value = str(_v)
-        if type(_v) == dict:
+        if isinstance(_v, dict):
             value = json.dumps(_v)
 
         # set the value
