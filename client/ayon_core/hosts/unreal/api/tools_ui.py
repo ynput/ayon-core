@@ -5,6 +5,7 @@ from ayon_core import (
     resources,
     style
 )
+from ayon_core.modules import ModulesManager
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.utils.lib import qt_app_context
 from ayon_core.hosts.unreal.api import rendering
@@ -17,6 +18,10 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(ToolsBtnsWidget, self).__init__(parent)
 
+        enabled_version_control = _get_enabled_version_control_addon()
+        if enabled_version_control:
+            sync_btn = QtWidgets.QPushButton("Sync to...", self)
+
         load_btn = QtWidgets.QPushButton("Load...", self)
         publish_btn = QtWidgets.QPushButton("Publisher...", self)
         manage_btn = QtWidgets.QPushButton("Manage...", self)
@@ -27,12 +32,17 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        if enabled_version_control:
+            layout.addWidget(sync_btn, 0)
         layout.addWidget(load_btn, 0)
         layout.addWidget(publish_btn, 0)
         layout.addWidget(manage_btn, 0)
         layout.addWidget(render_btn, 0)
         layout.addWidget(experimental_tools_btn, 0)
         layout.addStretch(1)
+
+        if enabled_version_control:
+            sync_btn.clicked.connect(self._on_sync)
 
         load_btn.clicked.connect(self._on_load)
         publish_btn.clicked.connect(self._on_publish)
@@ -54,6 +64,9 @@ class ToolsBtnsWidget(QtWidgets.QWidget):
 
     def _on_render(self):
         rendering.start_rendering()
+
+    def _on_sync(self):
+        self.tool_required.emit("changes")
 
     def _on_experimental(self):
         self.tool_required.emit("experimental_tools")
@@ -96,7 +109,10 @@ class ToolsDialog(QtWidgets.QDialog):
             self._first_show = False
 
     def _on_tool_require(self, tool_name):
-        host_tools.show_tool_by_name(tool_name, parent=self)
+        if tool_name == "changes":
+            show_changes(self)
+        else:
+            host_tools.show_tool_by_name(tool_name, parent=self)
 
 
 class ToolsPopup(ToolsDialog):
@@ -160,3 +176,31 @@ def show_tools_popup():
 
 def show_tools_dialog():
     WindowCache.show_dialog()
+
+
+def _get_enabled_version_control_addon():
+    manager = ModulesManager()
+    version_control_addon = manager.get("version_control")
+    if version_control_addon and version_control_addon.enabled:
+        return version_control_addon
+    return None
+
+
+def show_changes(parent=None):
+    """Tool to sync to selected change list"""
+    with qt_app_context():
+        from version_control.backends.perforce.communication_server import \
+            WebServer
+        from version_control.changes_viewer import ChangesWindows
+
+        server = WebServer()
+        server.start()
+
+        changes_tool = ChangesWindows(parent=parent)
+        print(f"changes_tool::{changes_tool}")
+        changes_tool.show()
+        changes_tool.raise_()
+        changes_tool.activateWindow()
+        changes_tool.showNormal()
+
+        changes_tool.refresh()
