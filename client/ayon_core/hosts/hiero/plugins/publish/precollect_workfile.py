@@ -17,8 +17,8 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder - 0.491
 
     def process(self, context):
-        asset = context.data["folderPath"]
-        asset_name = asset.split("/")[-1]
+        folder_path = context.data["folderPath"]
+        folder_name = folder_path.split("/")[-1]
 
         active_timeline = hiero.ui.activeSequence()
         project = active_timeline.project()
@@ -62,12 +62,12 @@ class PrecollectWorkfile(pyblish.api.ContextPlugin):
         product_type = "workfile"
         instance_data = {
             "label": "{} - {}Main".format(
-                asset, product_type),
-            "name": "{}_{}".format(asset_name, product_type),
-            "folderPath": context.data["folderPath"],
+                folder_path, product_type),
+            "name": "{}_{}".format(folder_name, product_type),
+            "folderPath": folder_path,
             # TODO use 'get_product_name'
             "productName": "{}{}Main".format(
-                asset_name, product_type.capitalize()
+                folder_name, product_type.capitalize()
             ),
             "item": project,
             "productType": product_type,
