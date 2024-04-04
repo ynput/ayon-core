@@ -423,7 +423,7 @@ class PublishPluginActionItem:
         action_id (str): Action id.
         plugin_id (str): Plugin id.
         active (bool): Action is active.
-        on_filter (str): Actions have 'on' attribte which define when can be
+        on_filter (str): Actions have 'on' attribute which define when can be
             action triggered (e.g. 'all', 'failed', ...).
         label (str): Action's label.
         icon (Union[str, None]) Action's icon.
@@ -1063,7 +1063,7 @@ class AbstractPublisherController(object):
     ):
         """Trigger creation by creator identifier.
 
-        Should also trigger refresh of instanes.
+        Should also trigger refresh of instances.
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
