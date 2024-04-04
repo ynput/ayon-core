@@ -7,7 +7,7 @@ from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 
 from ayon_core.pipeline import CreatorError, get_current_project_name
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.hosts.maya.api.lib import reset_frame_range
 
 
@@ -77,7 +77,7 @@ class RenderSettings(object):
             renderer = cmds.getAttr(
                 'defaultRenderGlobals.currentRenderer').lower()
 
-        folder_entity = get_current_project_folder()
+        folder_entity = get_current_folder_entity()
         folder_attributes = folder_entity["attrib"]
         # project_settings/maya/create/CreateRender/aov_separator
         try:
