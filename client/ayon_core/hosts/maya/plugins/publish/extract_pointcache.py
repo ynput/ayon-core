@@ -333,7 +333,7 @@ class ExtractAnimation(ExtractAlembic):
         out_sets = [node for node in instance if node.endswith("out_SET")]
         if len(out_sets) != 1:
             raise RuntimeError(
-                "Couldn't find exactly one out_SET: " "{0}".format(out_sets)
+                "Couldn't find exactly one out_SET: {0}".format(out_sets)
             )
         out_set = out_sets[0]
         roots = cmds.sets(out_set, query=True)
