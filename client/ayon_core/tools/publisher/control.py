@@ -1382,7 +1382,7 @@ class BasePublisherController(AbstractPublisherController):
             "publish.is_running.changed" - Attr 'publish_is_running' changed.
             "publish.has_crashed.changed" - Attr 'publish_has_crashed' changed.
             "publish.publish_error.changed" - Attr 'publish_error'
-            publish.publish_error_label.changed  - Attr 'publish_error_label'
+            "publish.publish_error_label.changed"  - Attr 'publish_error_label'
             "publish.has_validation_errors.changed" - Attr
                 'has_validation_errors' changed.
             "publish.max_progress.changed" - Attr 'publish_max_progress'
