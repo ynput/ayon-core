@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
+from typing import TYPE_CHECKING, List, Dict, Any, Optional, Union
 
 from abc import ABCMeta, abstractmethod
 
@@ -22,6 +23,11 @@ from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
 
 
+if TYPE_CHECKING:
+    from .context import CreateContext, CreatedInstance, UpdateData
+    ProjectSettings = Dict[str, Any]  # typing alias
+
+
 class CreatorError(Exception):
     """Should be raised when creator failed because of known issue.
 
@@ -36,9 +42,9 @@ class CreatorError(Exception):
 class ProductConvertorPlugin(object):
     """Helper for conversion of instances created using legacy creators.
 
-    Conversion from legacy creators would mean to loose legacy instances,
+    Conversion from legacy creators would mean to lose legacy instances,
     convert them automatically or write a script which must user run. All of
-    these solutions are workign but will happen without asking or user must
+    these solutions are working but will happen without asking or user must
     know about them. This plugin can be used to show legacy instances in
     Publisher and give user ability to run conversion script.
 
@@ -57,7 +63,7 @@ class ProductConvertorPlugin(object):
     can store any information to it's object for conversion purposes.
 
     Args:
-        create_context
+        create_context (CreateContext) Context which initialized the plugin.
     """
 
     _log = None
@@ -158,7 +164,7 @@ class BaseCreator:
     to `self` if it's not Plugin specific.
 
     Args:
-        project_settings (Dict[str, Any]): Project settings.
+        project_settings (ProjectSettings): Project settings.
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
     """
@@ -192,13 +198,13 @@ class BaseCreator:
     # - used on all hosts when set to 'None' for Backwards compatibility
     #   - was added afterwards
     # QUESTION make this required?
-    host_name = None
+    host_name: Optional[str] = None
 
     # Settings auto-apply helpers
     # Root key in project settings (mandatory for auto-apply to work)
-    settings_category = None
+    settings_category: Optional[str] = None
     # Name of plugin in create settings > class name is used if not set
-    settings_name = None
+    settings_name: Optional[str] = None
 
     def __init__(
         self, project_settings, create_context, headless=False
@@ -207,7 +213,7 @@ class BaseCreator:
         self.create_context = create_context
         self.project_settings = project_settings
 
-        # Creator is running in headless mode (without UI elemets)
+        # Creator is running in headless mode (without UI elements)
         # - we may use UI inside processing this attribute should be checked
         self.headless = headless
 
@@ -218,7 +224,7 @@ class BaseCreator:
         """Helper method to get settings values.
 
         Args:
-            project_settings (dict[str, Any]): Project settings.
+            project_settings (ProjectSettings): Project settings.
             category_name (str): Category of settings.
             plugin_name (str): Name of settings.
 
@@ -269,7 +275,7 @@ class BaseCreator:
             }
 
         Args:
-            project_settings (dict[str, Any]): Project settings.
+            project_settings (ProjectSettings): Project settings.
         """
 
         settings_category = self.settings_category
@@ -441,7 +447,7 @@ class BaseCreator:
         """Store changes of existing instances so they can be recollected.
 
         Args:
-            update_list(List[UpdateData]): Gets list of tuples. Each item
+            update_list (List[UpdateData]): Gets list of tuples. Each item
                 contain changed instance and it's changes.
         """
 
