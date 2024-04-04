@@ -273,7 +273,7 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
     changing style on selection/deselection.
 
     Has toggle button to show/hide instances on which validation error happened
-    if there is a list (Valdation error may happen on context).
+    if there is a list (Validation error may happen on context).
     """
 
     selected = QtCore.Signal(str)
@@ -870,7 +870,7 @@ class PublishInstanceCardWidget(BaseClickableFrame):
 
 
 class PublishInstancesViewWidget(QtWidgets.QWidget):
-    # Sane minimum width of instance cards - size calulated using font metrics
+    # Sane minimum width of instance cards - size calculated using font metrics
     _min_width_measure_string = 24 * "O"
     selection_changed = QtCore.Signal()
 
