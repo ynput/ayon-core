@@ -46,13 +46,14 @@ class DeadlineModule(AYONAddon, IPluginPaths):
 
     @staticmethod
     def get_deadline_pools(webservice, auth=None, log=None):
-        # type: (str) -> list
         """Get pools from Deadline.
         Args:
             webservice (str): Server url.
-            log (Logger)
+             auth (Optional[Tuple[str, str]]): Tuple containing username,
+                password
+            log (Optional[Logger]): Logger to log errors to, if provided.
         Returns:
-            list: Pools.
+            List[str]: Pools.
         Throws:
             RuntimeError: If deadline webservice is unreachable.
 
