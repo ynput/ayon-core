@@ -37,7 +37,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib.profiles_filtering import filter_profiles
 
@@ -1876,18 +1876,9 @@ def list_looks(project_name, folder_id):
         list[dict[str, Any]]: List of look products.
 
     """
-    # # get all products with look leading in
-    # the name associated with the asset
-    # TODO this should probably look for product type 'look' instead of
-    #   checking product name that can not start with product type
-    product_entities = ayon_api.get_products(
-        project_name, folder_ids=[folder_id]
-    )
-    return [
-        product_entity
-        for product_entity in product_entities
-        if product_entity["name"].startswith("look")
-    ]
+    return list(ayon_api.get_products(
+        project_name, folder_ids=[folder_id], product_types={"look"}
+    ))
 
 
 def assign_look_by_version(nodes, version_id):
@@ -1906,12 +1897,15 @@ def assign_look_by_version(nodes, version_id):
     project_name = get_current_project_name()
 
     # Get representations of shader file and relationships
-    look_representation = ayon_api.get_representation_by_name(
-        project_name, "ma", version_id
-    )
-    json_representation = ayon_api.get_representation_by_name(
-        project_name, "json", version_id
-    )
+    representations = list(ayon_api.get_representations(
+        project_name=project_name,
+        representation_names={"ma", "json"},
+        version_ids=[version_id]
+    ))
+    look_representation = next(
+        repre for repre in representations if repre["name"] == "ma")
+    json_representation = next(
+        repre for repre in representations if repre["name"] == "json")
 
     # See if representation is already loaded, if so reuse it.
     host = registered_host()
@@ -1948,7 +1942,7 @@ def assign_look_by_version(nodes, version_id):
     apply_shaders(relationships, shader_nodes, nodes)
 
 
-def assign_look(nodes, product_name="lookDefault"):
+def assign_look(nodes, product_name="lookMain"):
     """Assigns a look to a node.
 
     Optimizes the nodes by grouping by folder id and finding
@@ -1981,14 +1975,10 @@ def assign_look(nodes, product_name="lookDefault"):
         product_entity["id"]
         for product_entity in product_entities_by_folder_id.values()
     }
-    last_version_entities = ayon_api.get_last_versions(
+    last_version_entities_by_product_id = ayon_api.get_last_versions(
         project_name,
         product_ids
     )
-    last_version_entities_by_product_id = {
-        last_version_entity["productId"]: last_version_entity
-        for last_version_entity in last_version_entities
-    }
 
     for folder_id, asset_nodes in grouped.items():
         product_entity = product_entities_by_folder_id.get(folder_id)
@@ -2125,22 +2115,6 @@ def get_related_sets(node):
 
     """
 
-    # Ignore specific suffices
-    ignore_suffices = ["out_SET", "controls_SET", "_INST", "_CON"]
-
-    # Default nodes to ignore
-    defaults = {"defaultLightSet", "defaultObjectSet"}
-
-    # Ids to ignore
-    ignored = {
-        AVALON_INSTANCE_ID,
-        AVALON_CONTAINER_ID,
-        AYON_INSTANCE_ID,
-        AYON_CONTAINER_ID,
-    }
-
-    view_sets = get_isolate_view_sets()
-
     sets = cmds.listSets(object=node, extendToShape=False)
     if not sets:
         return []
@@ -2151,6 +2125,14 @@ def get_related_sets(node):
     # returned by `cmds.listSets(allSets=True)`
     sets = cmds.ls(sets)
 
+    # Ids to ignore
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
+
     # Ignore `avalon.container`
     sets = [
         s for s in sets
@@ -2159,21 +2141,31 @@ def get_related_sets(node):
            or cmds.getAttr(f"{s}.id") not in ignored
         )
     ]
+    if not sets:
+        return sets
 
     # Exclude deformer sets (`type=2` for `maya.cmds.listSets`)
-    deformer_sets = cmds.listSets(object=node,
-                                  extendToShape=False,
-                                  type=2) or []
-    deformer_sets = set(deformer_sets)  # optimize lookup
-    sets = [s for s in sets if s not in deformer_sets]
+    exclude_sets = cmds.listSets(object=node,
+                                 extendToShape=False,
+                                 type=2) or []
+    exclude_sets = set(exclude_sets)  # optimize lookup
+
+    # Default nodes to ignore
+    exclude_sets.update({"defaultLightSet", "defaultObjectSet"})
+
+    # Filter out the sets to exclude
+    sets = [s for s in sets if s not in exclude_sets]
 
     # Ignore when the set has a specific suffix
-    sets = [s for s in sets if not any(s.endswith(x) for x in ignore_suffices)]
+    ignore_suffices = ("out_SET", "controls_SET", "_INST", "_CON")
+    sets = [s for s in sets if not s.endswith(ignore_suffices)]
+    if not sets:
+        return sets
 
     # Ignore viewport filter view sets (from isolate select and
     # viewports)
+    view_sets = get_isolate_view_sets()
     sets = [s for s in sets if s not in view_sets]
-    sets = [s for s in sets if s not in defaults]
 
     return sets
 
@@ -2444,12 +2436,10 @@ def set_scene_fps(fps, update=True):
     cmds.currentUnit(time=unit, updateAnimation=update)
 
     # Set time slider data back to previous state
-    cmds.playbackOptions(edit=True, minTime=start_frame)
-    cmds.playbackOptions(edit=True, maxTime=end_frame)
-
-    # Set animation data
-    cmds.playbackOptions(edit=True, animationStartTime=animation_start)
-    cmds.playbackOptions(edit=True, animationEndTime=animation_end)
+    cmds.playbackOptions(minTime=start_frame,
+                         maxTime=end_frame,
+                         animationStartTime=animation_start,
+                         animationEndTime=animation_end)
 
     cmds.currentTime(current_frame, edit=True, update=True)
 
@@ -2525,7 +2515,7 @@ def get_fps_for_current_context():
 
 
 def get_frame_range(include_animation_range=False):
-    """Get the current folder frame range and handles.
+    """Get the current task frame range and handles.
 
     Args:
         include_animation_range (bool, optional): Whether to include
@@ -2533,25 +2523,34 @@ def get_frame_range(include_animation_range=False):
             range of the timeline. It is excluded by default.
 
     Returns:
-        dict: Folder's expected frame range values.
+        dict: Task's expected frame range values.
 
     """
 
     # Set frame start/end
     project_name = get_current_project_name()
     folder_path = get_current_folder_path()
-    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-    folder_attributes = folder_entity["attrib"]
+    task_name = get_current_task_name()
 
-    frame_start = folder_attributes.get("frameStart")
-    frame_end = folder_attributes.get("frameEnd")
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name,
+        folder_path,
+        fields={"id"})
+    task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+
+    task_attributes = task_entity["attrib"]
+
+    frame_start = task_attributes.get("frameStart")
+    frame_end = task_attributes.get("frameEnd")
 
     if frame_start is None or frame_end is None:
         cmds.warning("No edit information found for '{}'".format(folder_path))
         return
 
-    handle_start = folder_attributes.get("handleStart") or 0
-    handle_end = folder_attributes.get("handleEnd") or 0
+    handle_start = task_attributes.get("handleStart") or 0
+    handle_end = task_attributes.get("handleEnd") or 0
 
     frame_range = {
         "frameStart": frame_start,
@@ -2565,14 +2564,10 @@ def get_frame_range(include_animation_range=False):
         # Some usages of this function use the full dictionary to define
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
-        task_name = get_current_task_name()
+
         settings = get_project_settings(project_name)
-        task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
-        )
-        task_type = None
-        if task_entity:
-            task_type = task_entity["taskType"]
+
+        task_type = task_entity["taskType"]
 
         include_handles_settings = settings["maya"]["include_handles"]
 
@@ -2641,7 +2636,7 @@ def reset_scene_resolution():
         None
     """
 
-    folder_attributes = get_current_project_folder()["attrib"]
+    folder_attributes = get_current_folder_entity()["attrib"]
 
     # Set resolution
     width = folder_attributes.get("resolutionWidth", 1920)
@@ -3250,7 +3245,7 @@ def update_content_on_context_change():
     This will update scene content to match new folder on context change
     """
     scene_sets = cmds.listSets(allSets=True)
-    folder_entity = get_current_project_folder()
+    folder_entity = get_current_folder_entity()
     folder_attributes = folder_entity["attrib"]
     new_folder_path = folder_entity["path"]
     for s in scene_sets:
@@ -4009,17 +4004,26 @@ def len_flattened(components):
     return n
 
 
-def get_all_children(nodes):
+def get_all_children(nodes, ignore_intermediate_objects=False):
     """Return all children of `nodes` including each instanced child.
     Using maya.cmds.listRelatives(allDescendents=True) includes only the first
     instance. As such, this function acts as an optimal replacement with a
     focus on a fast query.
+
+    Args:
+        nodes (iterable): List of nodes to get children for.
+        ignore_intermediate_objects (bool): Ignore any children that
+            are intermediate objects.
+
+    Returns:
+        set: Children of input nodes.
 
     """
 
     sel = OpenMaya.MSelectionList()
     traversed = set()
     iterator = OpenMaya.MItDag(OpenMaya.MItDag.kDepthFirst)
+    fn_dag = OpenMaya.MFnDagNode()
     for node in nodes:
 
         if node in traversed:
@@ -4036,6 +4040,13 @@ def get_all_children(nodes):
         iterator.next()  # noqa: B305
         while not iterator.isDone():
 
+            if ignore_intermediate_objects:
+                fn_dag.setObject(iterator.currentItem())
+                if fn_dag.isIntermediateObject:
+                    iterator.prune()
+                    iterator.next()  # noqa: B305
+                    continue
+
             path = iterator.fullPathName()
 
             if path in traversed:
@@ -4046,7 +4057,7 @@ def get_all_children(nodes):
             traversed.add(path)
             iterator.next()  # noqa: B305
 
-    return list(traversed)
+    return traversed
 
 
 def get_capture_preset(

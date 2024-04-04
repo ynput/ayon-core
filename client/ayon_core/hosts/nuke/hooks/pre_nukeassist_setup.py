@@ -1,4 +1,4 @@
-from ayon_core.lib.applications import PreLaunchHook
+from ayon_applications import PreLaunchHook
 
 
 class PrelaunchNukeAssistHook(PreLaunchHook):
