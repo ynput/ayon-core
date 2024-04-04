@@ -52,4 +52,3 @@ class CollectFarmInstances(pyblish.api.InstancePlugin):
             return
 
         instance.data["farm"] = True
-        instance.data["families"].append("render.farm.hou")

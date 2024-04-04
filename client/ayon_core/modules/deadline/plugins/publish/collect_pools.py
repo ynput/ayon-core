@@ -41,7 +41,11 @@ class CollectDeadlinePools(pyblish.api.InstancePlugin,
                 "renderlayer",
                 "maxrender",
                 "usdrender",
-                "render.farm.hou",
+                "mantra_rop",
+                "karma_rop",
+                "redshift_rop",
+                "arnold_rop",
+                "vray_rop",
                 "publish.hou"]
 
     primary_pool = None

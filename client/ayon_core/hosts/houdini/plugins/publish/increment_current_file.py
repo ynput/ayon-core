@@ -19,7 +19,11 @@ class IncrementCurrentFile(pyblish.api.ContextPlugin):
     hosts = ["houdini"]
     families = ["workfile",
                 "usdrender",
-                "render.farm.hou",
+                "mantra_rop",
+                "karma_rop",
+                "redshift_rop",
+                "arnold_rop",
+                "vray_rop",
                 "render.local.hou",
                 "publish.hou"]
     optional = True
