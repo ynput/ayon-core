@@ -170,8 +170,8 @@ def run(script):
         return
 
     # Remove first argument if it is the same as AYON executable
-    # - Forwards compatibility with future AYON versions.
-    # - Current AYON launcher keep the arguments with first argument but
+    # - Forward compatibility with future AYON versions.
+    # - Current AYON launcher keeps the arguments with first argument but
     #     future versions might remove it.
     first_arg = sys.argv[0]
     if is_running_from_build():
@@ -189,7 +189,7 @@ def run(script):
 
     args_string = " ".join(sys.argv[1:])
     print(f"... running: {script} {args_string}")
-    runpy.run_path(script, run_name="__main__", )
+    runpy.run_path(script, run_name="__main__")
 
 
 @main_cli.command()
