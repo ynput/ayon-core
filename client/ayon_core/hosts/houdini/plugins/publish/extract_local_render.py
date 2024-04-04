@@ -3,6 +3,7 @@ import pyblish.api
 from ayon_core.pipeline import publish
 from ayon_core.hosts.houdini.api.lib import render_rop
 import hou
+import os
 
 
 class ExtractLocalRender(publish.Extractor):
@@ -46,5 +47,17 @@ class ExtractLocalRender(publish.Extractor):
         ropnode = hou.node(instance.data.get("instance_node"))
         render_rop(ropnode)
 
-        # TODO: Check for missing frames.
-        # self.log.debug(instance.data["expectedFiles"])
+        # Check missing frames.
+        # Frames won't exist if user cancels the render.
+        expected_files = next(iter(instance.data["expectedFiles"]), {})
+        expected_files =  sum(expected_files.values(), [])
+        missing_frames = [
+            frame
+            for frame in expected_files
+            if not os.path.exists(frame)
+        ]
+        if missing_frames:
+            # TODO: Use user friendly error reporting.
+            raise RuntimeError("Failed to complete render extraction. "
+                               "Missing output files: {}".format(
+                                   missing_frames))
