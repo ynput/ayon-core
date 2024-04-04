@@ -5,7 +5,8 @@ import pyblish.api
 
 from ayon_core.pipeline.publish import (
     ValidateMeshOrder,
-    OptionalPyblishPluginMixin
+    OptionalPyblishPluginMixin,
+    PublishValidationError
 )
 import ayon_core.hosts.maya.api.action
 
@@ -26,8 +27,8 @@ class ValidateUnrealMeshTriangulated(pyblish.api.InstancePlugin,
         invalid = []
         meshes = cmds.ls(instance, type="mesh", long=True)
         for mesh in meshes:
-            faces = cmds.polyEvaluate(mesh, f=True)
-            tris = cmds.polyEvaluate(mesh, t=True)
+            faces = cmds.polyEvaluate(mesh, face=True)
+            tris = cmds.polyEvaluate(mesh, triangle=True)
             if faces != tris:
                 invalid.append(mesh)
 
@@ -37,5 +38,5 @@ class ValidateUnrealMeshTriangulated(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
         invalid = self.get_invalid(instance)
-        assert len(invalid) == 0, (
-            "Found meshes without triangles")
+        if invalid:
+            raise PublishValidationError("Found meshes without triangles")

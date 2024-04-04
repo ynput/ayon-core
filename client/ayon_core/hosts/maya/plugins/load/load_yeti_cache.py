@@ -56,10 +56,7 @@ class YetiCacheLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "yeticache"
+        product_type = context["product"]["productType"]
 
         # Build namespace
         folder_name = context["folder"]["name"]
