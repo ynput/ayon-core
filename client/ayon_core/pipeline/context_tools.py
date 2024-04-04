@@ -97,8 +97,8 @@ def install_host(host):
     """Install `host` into the running Python session.
 
     Args:
-        host (module): A Python module containing the Avalon
-            avalon host-interface.
+        host (HostBase): A host interface object.
+
     """
     global _is_installed
 
@@ -154,6 +154,13 @@ def install_host(host):
 
 
 def install_ayon_plugins(project_name=None, host_name=None):
+    """Install AYON core plugins and make sure the core is initialized.
+
+    Args:
+        project_name (Optional[str]): Name of project to install plugins for.
+        host_name (Optional[str]): Name of host to install plugins for.
+
+    """
     # Make sure global AYON connection has set site id and version
     # - this is necessary if 'install_host' is not called
     initialize_ayon_connection()
@@ -223,6 +230,12 @@ def install_ayon_plugins(project_name=None, host_name=None):
 
 
 def install_openpype_plugins(project_name=None, host_name=None):
+    """Install AYON core plugins and make sure the core is initialized.
+
+    Deprecated:
+        Use `install_ayon_plugins` instead.
+
+    """
     install_ayon_plugins(project_name, host_name)
 
 
@@ -281,47 +294,6 @@ def deregister_host():
     _registered_host["_"] = None
 
 
-def debug_host():
-    """A debug host, useful to debugging features that depend on a host"""
-
-    host = types.ModuleType("debugHost")
-
-    def ls():
-        containers = [
-            {
-                "representation": "ee-ft-a-uuid1",
-                "schema": "openpype:container-1.0",
-                "name": "Bruce01",
-                "objectName": "Bruce01_node",
-                "namespace": "_bruce01_",
-                "version": 3,
-            },
-            {
-                "representation": "aa-bc-s-uuid2",
-                "schema": "openpype:container-1.0",
-                "name": "Bruce02",
-                "objectName": "Bruce01_node",
-                "namespace": "_bruce02_",
-                "version": 2,
-            }
-        ]
-
-        for container in containers:
-            yield container
-
-    host.__dict__.update({
-        "ls": ls,
-        "open_file": lambda fname: None,
-        "save_file": lambda fname: None,
-        "current_file": lambda: os.path.expanduser("~/temp.txt"),
-        "has_unsaved_changes": lambda: False,
-        "work_root": lambda: os.path.expanduser("~/temp"),
-        "file_extensions": lambda: ["txt"],
-    })
-
-    return host
-
-
 def get_current_host_name():
     """Current host name.
 
@@ -347,7 +319,8 @@ def get_global_context():
     Use 'get_current_context' to make sure you'll get current host integration
     context info.
 
-    Example:
+    Example::
+
         {
             "project_name": "Commercial",
             "folder_path": "Bunny",
@@ -411,39 +384,64 @@ def get_current_project_entity(fields=None):
     return ayon_api.get_project(project_name, fields=fields)
 
 
-def get_current_project_folder(folder_path=None, folder_id=None, fields=None):
+def get_current_folder_entity(fields=None):
     """Helper function to get folder entity based on current context.
 
     This function should be called only in process where host is installed.
 
-    Folder is found out based on passed folder path or id (not both). Folder
-    path is not used for filtering if folder id is passed. When both
-    folder path and id are missing then current folder path is used.
+    Folder is based on current context project name and folder path.
 
     Args:
-        folder_path (Union[str, None]): Folder path used for filter.
-        folder_id (Union[str, None]): Folder id. If entered then
-            is used as only filter.
         fields (Optional[Iterable[str]]): Limit returned data of folder entity
             to specific keys.
 
     Returns:
-        Union[dict[str, Any], None]: Fodler entity or None.
+        Union[dict[str, Any], None]: Folder entity or None.
+
     """
+    context = get_current_context()
+    project_name = context["project_name"]
+    folder_path = context["folder_path"]
 
-    project_name = get_current_project_name()
-    if folder_id:
-        return ayon_api.get_folder_by_id(
-            project_name, folder_id, fields=fields
-        )
-
-    if not folder_path:
-        folder_path = get_current_folder_path()
-        # Skip if is not set even on context
-        if not folder_path:
-            return None
+    # Skip if is not set even on context
+    if not project_name or not folder_path:
+        return None
     return ayon_api.get_folder_by_path(
         project_name, folder_path, fields=fields
+    )
+
+
+def get_current_task_entity(fields=None):
+    """Helper function to get task entity based on current context.
+
+    This function should be called only in process where host is installed.
+
+    Task is based on current context project name, folder path
+        and task name.
+
+    Args:
+        fields (Optional[Iterable[str]]): Limit returned data of task entity
+            to specific keys.
+
+    Returns:
+        Union[dict[str, Any], None]: Task entity or None.
+
+    """
+    context = get_current_context()
+    project_name = context["project_name"]
+    folder_path = context["folder_path"]
+    task_name = context["task_name"]
+
+    # Skip if is not set even on context
+    if not project_name or not folder_path or not task_name:
+        return None
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path, fields={"id"}
+    )
+    if not folder_entity:
+        return None
+    return ayon_api.get_task_by_name(
+        project_name, folder_entity["id"], task_name, fields=fields
     )
 
 
@@ -515,88 +513,13 @@ def get_current_context_template_data(settings=None):
     )
 
 
-def get_workdir_from_session(session=None, template_key=None):
-    """Template data for template fill from session keys.
-
-    Args:
-        session (Union[Dict[str, str], None]): The Session to use. If not
-            provided use the currently active global Session.
-        template_key (str): Prepared template key from which workdir is
-            calculated.
-
-    Returns:
-        str: Workdir path.
-    """
-
-    if session is not None:
-        project_name = session["AYON_PROJECT_NAME"]
-        host_name = session["AYON_HOST_NAME"]
-    else:
-        project_name = get_current_project_name()
-        host_name = get_current_host_name()
-    template_data = get_template_data_from_session(session)
-
-    if not template_key:
-        task_type = template_data["task"]["type"]
-        template_key = get_workfile_template_key(
-            project_name,
-            task_type,
-            host_name,
-        )
-
-    anatomy = Anatomy(project_name)
-    template_obj = anatomy.templates_obj[template_key]["folder"]
-    path = template_obj.format_strict(template_data)
-    if path:
-        path = os.path.normpath(path)
-    return path
-
-
-def get_custom_workfile_template_from_session(
-    session=None, project_settings=None
-):
-    """Filter and fill workfile template profiles by current context.
-
-    This function cab be used only inside host where context is set.
-
-    Args:
-        session (Optional[Dict[str, str]]): Session from which are taken
-            data.
-        project_settings(Optional[Dict[str, Any]]): Project settings.
-
-    Returns:
-        str: Path to template or None if none of profiles match current
-            context. (Existence of formatted path is not validated.)
-    """
-
-    if session is not None:
-        project_name = session["AYON_PROJECT_NAME"]
-        folder_path = session["AYON_FOLDER_PATH"]
-        task_name = session["AYON_TASK_NAME"]
-        host_name = session["AYON_HOST_NAME"]
-    else:
-        context = get_current_context()
-        project_name = context["project_name"]
-        folder_path = context["folder_path"]
-        task_name = context["task_name"]
-        host_name = get_current_host_name()
-
-    return get_custom_workfile_template_by_string_context(
-        project_name,
-        folder_path,
-        task_name,
-        host_name,
-        project_settings=project_settings
-    )
-
-
 def get_current_context_custom_workfile_template(project_settings=None):
     """Filter and fill workfile template profiles by current context.
 
-    This function can be used only inside host where context is set.
+    This function can be used only inside host where current context is set.
 
     Args:
-        project_settings(Optional[Dict[str, Any]]): Project settings.
+        project_settings (Optional[dict[str, Any]]): Project settings
 
     Returns:
         str: Path to template or None if none of profiles match current
