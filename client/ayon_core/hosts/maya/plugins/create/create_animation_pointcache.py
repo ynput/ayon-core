@@ -18,7 +18,12 @@ def _get_animation_attr_defs(cls):
             NumberDef("priority", label="Farm job Priority", default=50),
             BoolDef("refresh", label="Refresh viewport during export"),
             BoolDef(
-                "includeParentHierarchy", label="Include Parent Hierarchy"
+                "includeParentHierarchy",
+                label="Include Parent Hierarchy",
+                tooltip=(
+                    "Whether to include parent hierarchy of nodes in the "
+                    "publish instance."
+                )
             ),
             BoolDef(
                 "includeUserDefinedAttributes",

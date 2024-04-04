@@ -97,7 +97,7 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
             # direct members of the set
             root = roots
 
-        args = {
+        kwargs = {
             "file": path,
             "attr": attrs,
             "attrPrefix": attr_prefixes,
@@ -133,7 +133,7 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
         non_exposed_flags = list(set(self.flags) - set(self.overrides))
         flags = attribute_values["flags"] + non_exposed_flags
         for flag in flags:
-            args[flag] = True
+            kwargs[flag] = True
 
         if instance.data.get("visibleOnly", False):
             # If we only want to include nodes that are visible in the frame
@@ -150,11 +150,10 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
             with maintained_selection():
                 cmds.select(nodes, noExpand=True)
                 self.log.debug(
-                    "Running `extract_alembic` with arguments: {}".format(
-                        args
-                    )
+                    "Running `extract_alembic` with the keyword arguments: "
+                    "{}".format(kwargs)
                 )
-                extract_alembic(**args)
+                extract_alembic(**kwargs)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
@@ -178,17 +177,17 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
             return
 
         path = path.replace(".abc", "_proxy.abc")
-        args["file"] = path
+        kwargs["file"] = path
         if not instance.data.get("includeParentHierarchy", True):
             # Set the root nodes if we don't want to include parents
             # The roots are to be considered the ones that are the actual
             # direct members of the set
-            args["root"] = instance.data["proxyRoots"]
+            kwargs["root"] = instance.data["proxyRoots"]
 
         with suspended_refresh(suspend=suspend):
             with maintained_selection():
                 cmds.select(instance.data["proxy"])
-                extract_alembic(**args)
+                extract_alembic(**kwargs)
 
         representation = {
             "name": "proxy",
@@ -205,81 +204,108 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
     @classmethod
     def get_attribute_defs(cls):
         override_defs = {
-            "attr": {
-                "def": TextDef,
-                "kwargs": {
-                    "label": "Custom Attributes",
-                    "placeholder": "attr1; attr2; ...",
-                }
-            },
-            "attrPrefix": {
-                "def": TextDef,
-                "kwargs": {
-                    "label": "Custom Attributes Prefix",
-                    "placeholder": "prefix1; prefix2; ...",
-                }
-            },
-            "dataFormat": {
-                "def": EnumDef,
-                "kwargs": {
-                    "label": "Data Format",
-                    "items": ["ogawa", "HDF"],
-                }
-            },
-            "melPerFrameCallback": {
-                "def": TextDef,
-                "kwargs": {
-                    "label": "melPerFrameCallback",
-                }
-            },
-            "melPostJobCallback": {
-                "def": TextDef,
-                "kwargs": {
-                    "label": "melPostJobCallback",
-                }
-            },
-            "preRollStartFrame": {
-                "def": NumberDef,
-                "kwargs": {
-                    "label": "Start frame for preroll",
-                    "tooltip": (
-                        "The frame to start scene evaluation at. This is used"
-                        " to set the starting frame for time dependent "
-                        "translations and can be used to evaluate run-up that"
-                        " isn't actually translated."
-                    ),
-                }
-            },
-            "pythonPerFrameCallback": {
-                "def": TextDef,
-                "kwargs": {
-                    "label": "pythonPerFrameCallback",
-                }
-            },
-            "pythonPostJobCallback": {
-                "def": TextDef,
-                "kwargs": {
-                    "label": "pythonPostJobCallback",
-                }
-            },
-            "userAttr": {
-                "def": TextDef,
-                "kwargs": {
-                    "label": "userAttr",
-                }
-            },
-            "userAttrPrefix": {
-                "def": TextDef,
-                "kwargs": {
-                    "label": "userAttrPrefix",
-                }
-            },
-            "visibleOnly": {
-                "def": BoolDef,
-                "kwargs": {
-                    "label": "Visible Only",
-                }
-            }
+            "attr": TextDef(
+                "attr",
+                label="Custom Attributes",
+                placeholder="attr1;attr2",
+                default=cls.attr,
+                tooltip=(
+                    "Attributes matching by name will be included in the "
+                    "Alembic export. Attributes should be separated by "
+                    "semi-colon `;`"
+                )
+            ),
+            "attrPrefix": TextDef(
+                "attrPrefix",
+                label="Custom Attributes Prefix",
+                placeholder="prefix1; prefix2; ...",
+                default=cls.attrPrefix,
+                tooltip=(
+                    "Attributes starting with these prefixes will be included "
+                    "in the Alembic export. Attributes should be separated by "
+                    "semi-colon `;`"
+                )
+            ),
+            "dataFormat": EnumDef(
+                "dataFormat",
+                label="Data Format",
+                items=["ogawa", "HDF"],
+                default=cls.dataFormat,
+                tooltip="The data format to use to write the file."
+            ),
+            "melPerFrameCallback": TextDef(
+                "melPerFrameCallback",
+                label="Mel Per Frame Callback",
+                default=cls.melPerFrameCallback,
+                tooltip=(
+                    "When each frame (and the static frame) is evaluated the "
+                    "string specified is evaluated as a Mel command."
+                )
+            ),
+            "melPostJobCallback": TextDef(
+                "melPostJobCallback",
+                label="Mel Post Job Callback",
+                default=cls.melPostJobCallback,
+                tooltip=(
+                    "When the translation has finished the string specified "
+                    "is evaluated as a Mel command."
+                )
+            ),
+            "preRollStartFrame": NumberDef(
+                "preRollStartFrame",
+                label="Pre Roll Start Frame",
+                tooltip=(
+                    "The frame to start scene evaluation at. This is used"
+                    " to set the starting frame for time dependent "
+                    "translations and can be used to evaluate run-up that"
+                    " isn't actually translated."
+                ),
+                default=cls.preRollStartFrame
+            ),
+            "pythonPerFrameCallback": TextDef(
+                "pythonPerFrameCallback",
+                label="Python Per Frame Callback",
+                default=cls.pythonPerFrameCallback,
+                tooltip=(
+                    "When each frame (and the static frame) is evaluated the "
+                    "string specified is evaluated as a python command."
+                )
+            ),
+            "pythonPostJobCallback": TextDef(
+                "pythonPostJobCallback",
+                label="Python Post Frame Callback",
+                default=cls.pythonPostJobCallback,
+                tooltip=(
+                    "When the translation has finished the string specified "
+                    "is evaluated as a python command."
+                )
+            ),
+            "userAttr": TextDef(
+                "userAttr",
+                label="User Attr",
+                default=cls.userAttr,
+                tooltip=(
+                    "Attributes matching by name will be included in the "
+                    "Alembic export. Attributes should be separated by "
+                    "semi-colon `;`"
+                )
+            ),
+            "userAttrPrefix": TextDef(
+                "userAttrPrefix",
+                label="User Attr Prefix",
+                default=cls.userAttrPrefix,
+                tooltip=(
+                    "Attributes starting with these prefixes will be included "
+                    "in the Alembic export. Attributes should be separated by "
+                    "semi-colon `;`"
+                )
+            ),
+            "visibleOnly": BoolDef(
+                "visibleOnly",
+                label="Visible Only",
+                default=cls.visibleOnly,
+                tooltip="Only export dag objects visible during frame range."
+            )
         }
 
         defs = super(ExtractAlembic, cls).get_attribute_defs()
@@ -297,6 +323,61 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
 
         enabled_flags = [x for x in flags if x in overrides]
         flags = overrides - set(override_defs.keys())
+
+        tooltips = {
+            "autoSubd": (
+                "If this flag is present and the mesh has crease edges, crease"
+                " vertices or holes, the mesh (OPolyMesh) would now be written"
+                " out as an OSubD and crease info will be stored in the "
+                "Alembic  file. Otherwise, creases info won't be preserved in "
+                "Alembic file unless a custom Boolean attribute "
+                "SubDivisionMesh has been added to mesh node and its value is "
+                "true."
+            ),
+            "dontSkipUnwrittenFrames": (
+                "When evaluating multiple translate jobs, this decides whether"
+                " to evaluate frames between jobs when there is a gap in their"
+                " frame ranges."
+            ),
+            "eulerFilter": "Apply Euler filter while sampling rotations.",
+            "noNormals": (
+                "Present normal data for Alembic poly meshes will not be "
+                "written."
+            ),
+            "preRoll": "This frame range will not be sampled.",
+            "renderableOnly": "Only export renderable visible shapes.",
+            "stripNamespaces": (
+                "Namespaces will be stripped off of the node before being "
+                "written to Alembic."
+            ),
+            "uvWrite": (
+                "Uv data for PolyMesh and SubD shapes will be written to the "
+                "Alembic file."
+            ),
+            "uvsOnly": (
+                "If this flag is present, only uv data for PolyMesh and SubD "
+                "shapes will be written to the Alembic file."
+            ),
+            "verbose": "Prints the current frame that is being evaluated.",
+            "wholeFrameGeo": (
+                "Data for geometry will only be written out on whole frames."
+            ),
+            "worldSpace": "Any root nodes will be stored in world space.",
+            "writeColorSets": "Write vertex colors with the geometry.",
+            "writeFaceSets": "Write face sets with the geometry.",
+            "writeNormals": "Write normals with the deforming geometry.",
+            "writeUVSets": (
+                "Write all uv sets on MFnMeshes as vector 2 indexed geometry"
+                " parameters with face varying scope."
+            ),
+            "writeVisibility": (
+                "Visibility state will be stored in the Alembic file. "
+                "Otherwise everything written out is treated as visible."
+            )
+        }
+        tooltip = ""
+        for flag in flags:
+            tooltip += "{} - {}\n".format(flag, tooltips[flag])
         defs.append(
             EnumDef(
                 "flags",
@@ -304,6 +385,7 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
                 default=enabled_flags,
                 multiselection=True,
                 label="Export Flags",
+                tooltip=tooltip,
             )
         )
 
@@ -311,11 +393,7 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
             if key not in overrides:
                 continue
 
-            kwargs = value["kwargs"]
-            kwargs["default"] = getattr(cls, key, None)
-            defs.append(
-                value["def"](key, **value["kwargs"])
-            )
+            defs.append(value)
 
         defs.append(
             UISeparatorDef("sep_alembic_options")
@@ -336,7 +414,7 @@ class ExtractAnimation(ExtractAlembic):
                 "Couldn't find exactly one out_SET: {0}".format(out_sets)
             )
         out_set = out_sets[0]
-        roots = cmds.sets(out_set, query=True)
+        roots = cmds.sets(out_set, query=True) or []
 
         # Include all descendants
         nodes = (
