@@ -150,7 +150,7 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
             with maintained_selection():
                 cmds.select(nodes, noExpand=True)
                 self.log.debug(
-                    "Running `extract_alembic` with the arguments: {}".format(
+                    "Running `extract_alembic` with arguments: {}".format(
                         args
                     )
                 )
