@@ -11,7 +11,7 @@ import acre
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_general_environments
-from ayon_core.lib import initialize_ayon_connection
+from ayon_core.lib import initialize_ayon_connection, is_running_from_build
 
 from .cli_commands import Commands
 
@@ -167,16 +167,29 @@ def run(script):
 
     if not script:
         print("Error: missing path to script file.")
+        return
+
+    # Remove first argument if it is the same as AYON executable
+    # - Forwards compatibility with future AYON versions.
+    # - Current AYON launcher keep the arguments with first argument but
+    #     future versions might remove it.
+    first_arg = sys.argv[0]
+    if is_running_from_build():
+        comp_path = os.path.join(os.environ["AYON_ROOT"], "start.py")
     else:
+        comp_path = os.getenv("AYON_EXECUTABLE")
+    # Normalize paths for comparison
+    first_arg = os.path.normpath(first_arg).lower()
+    comp_path = os.path.normpath(comp_path).lower()
+    if first_arg == comp_path:
+        sys.argv.pop(0)
 
-        args = sys.argv
-        args.remove("run")
-        args.remove(script)
-        sys.argv = args
+    # Remove 'run' command from sys.argv
+    sys.argv.remove("run")
 
-        args_string = " ".join(args[1:])
-        print(f"... running: {script} {args_string}")
-        runpy.run_path(script, run_name="__main__", )
+    args_string = " ".join(sys.argv[1:])
+    print(f"... running: {script} {args_string}")
+    runpy.run_path(script, run_name="__main__", )
 
 
 @main_cli.command()
