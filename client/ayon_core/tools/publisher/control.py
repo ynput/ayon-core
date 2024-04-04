@@ -1194,6 +1194,18 @@ class AbstractPublisherController(object):
 
         pass
 
+    @property
+    @abstractmethod
+    def publish_error_label(self):
+        """Current error label which cause fail of publishing.
+
+        Returns:
+            Union[str, None]: Error Label which will be showed to artist or
+                None.
+        """
+
+        pass
+
     @abstractmethod
     def get_publish_report(self):
         pass
@@ -1317,6 +1329,7 @@ class BasePublisherController(AbstractPublisherController):
 
         # Any other exception that happened during publishing
         self._publish_error_msg = None
+        self._publish_error_label = None
         # Publishing is in progress
         self._publish_is_running = False
         # Publishing is over validation order
@@ -1369,6 +1382,7 @@ class BasePublisherController(AbstractPublisherController):
             "publish.is_running.changed" - Attr 'publish_is_running' changed.
             "publish.has_crashed.changed" - Attr 'publish_has_crashed' changed.
             "publish.publish_error.changed" - Attr 'publish_error'
+            publish.publish_error_label.changed  - Attr 'publish_error_label'
             "publish.has_validation_errors.changed" - Attr
                 'has_validation_errors' changed.
             "publish.max_progress.changed" - Attr 'publish_max_progress'
@@ -1485,6 +1499,14 @@ class BasePublisherController(AbstractPublisherController):
             self._publish_error_msg = value
             self._emit_event("publish.publish_error.changed", {"value": value})
 
+    def _get_publish_error_label(self):
+        return self._publish_error_label
+
+    def _set_publish_error_label(self, value):
+        if self._publish_error_label != value:
+            self._publish_error_label = value
+            self._emit_event("publish.publish_error_label.changed", {"value": value})
+
     host_is_valid = property(
         _get_host_is_valid, _set_host_is_valid
     )
@@ -1515,6 +1537,9 @@ class BasePublisherController(AbstractPublisherController):
     publish_error_msg = property(
         _get_publish_error_msg, _set_publish_error_msg
     )
+    publish_error_label = property(
+        _get_publish_error_label, _set_publish_error_label
+    )
 
     def _reset_attributes(self):
         """Reset most of attributes that can be reset."""
@@ -1527,6 +1552,7 @@ class BasePublisherController(AbstractPublisherController):
         self.publish_has_finished = False
 
         self.publish_error_msg = None
+        self.publish_error_label = None
         self.publish_progress = 0
 
     @property
@@ -2496,14 +2522,18 @@ class PublisherController(BasePublisherController):
                 self._add_validation_error(result)
 
             else:
+                label = "Error happened"
                 if isinstance(exception, KnownPublishError):
-                    msg = str(exception)
+                    msg = exception.message
+                    if exception.label:
+                        label = exception.label
                 else:
                     msg = (
                         "Something went wrong. Send report"
                         " to your supervisor or Ynput team."
                     )
                 self.publish_error_msg = msg
+                self.publish_error_label = label
                 self.publish_has_crashed = True
 
             result["is_validation_error"] = has_validation_error
