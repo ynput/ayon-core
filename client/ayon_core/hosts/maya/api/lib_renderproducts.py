@@ -1133,9 +1133,11 @@ class RenderProductsRedshift(ARenderProducts):
             aovs = list(set(aovs) - set(ref_aovs))
 
         products = []
+        # global_aov_enabled = bool(
+        #     self._get_attr("redshiftOptions.aovGlobalEnableMode")
+        # )
         global_aov_enabled = bool(
-            self._get_attr("redshiftOptions.aovGlobalEnableMode")
-        )
+            cmds.getAttr("redshiftOptions.aovGlobalEnableMode"))
         colorspace = lib.get_color_management_output_transform()
         if not global_aov_enabled:
             # only beauty output
