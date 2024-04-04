@@ -191,7 +191,7 @@ def _process_app_events() -> Optional[float]:
 
 
 class LaunchQtApp(bpy.types.Operator):
-    """A Base class for opertors to launch a Qt app."""
+    """A Base class for operators to launch a Qt app."""
 
     _app: QtWidgets.QApplication
     _window = Union[QtWidgets.QDialog, ModuleType]

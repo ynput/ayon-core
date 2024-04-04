@@ -90,6 +90,9 @@ class IntegrateHeroVersion(
     # *but all other plugins must be sucessfully completed
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         self.log.debug(
             "--- Integration of Hero version for product `{}` begins.".format(
                 instance.data["productName"]

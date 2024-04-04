@@ -9,7 +9,6 @@ from ayon_core.pipeline import publish
 from ayon_core.hosts.maya.api.lib import (
     maintained_selection, attribute_values, write_xgen_file, delete_after
 )
-from ayon_core.lib import StringTemplate
 
 
 class ExtractXgen(publish.Extractor):
