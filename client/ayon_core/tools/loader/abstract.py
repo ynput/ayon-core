@@ -871,7 +871,7 @@ class FrontendLoaderController(_BaseLoaderController):
 
     # Site sync functions
     @abstractmethod
-    def is_site_sync_enabled(self, project_name=None):
+    def is_sitesync_enabled(self, project_name=None):
         """Is site sync enabled.
 
         Site sync addon can be enabled but can be disabled per project.
