@@ -121,7 +121,7 @@ class IntegrateBatchGroupModel(BaseSettingsModel):
     )
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class PublishPluginsModel(BaseSettingsModel):
     CollectTimelineInstances: CollectTimelineInstancesModel = SettingsField(
         default_factory=CollectTimelineInstancesModel,
         title="Collect Timeline Instances"
