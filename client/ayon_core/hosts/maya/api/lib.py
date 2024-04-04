@@ -2434,12 +2434,10 @@ def set_scene_fps(fps, update=True):
     cmds.currentUnit(time=unit, updateAnimation=update)
 
     # Set time slider data back to previous state
-    cmds.playbackOptions(edit=True, minTime=start_frame)
-    cmds.playbackOptions(edit=True, maxTime=end_frame)
-
-    # Set animation data
-    cmds.playbackOptions(edit=True, animationStartTime=animation_start)
-    cmds.playbackOptions(edit=True, animationEndTime=animation_end)
+    cmds.playbackOptions(minTime=start_frame,
+                         maxTime=end_frame,
+                         animationStartTime=animation_start,
+                         animationEndTime=animation_end)
 
     cmds.currentTime(current_frame, edit=True, update=True)
 
