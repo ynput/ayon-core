@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-import sys
+import hou
 import pyblish.api
-import six
 
 from ayon_core.pipeline import PublishValidationError
 
@@ -33,9 +32,6 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
 
     @classmethod
     def get_invalid(cls, instance):
-
-        import hou
-
         output_node = instance.data.get("output_node")
 
         if not output_node:
@@ -62,8 +58,9 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         # the isinstance check above should be stricter than this category
         if output_node.type().category().name() != "Cop2":
             raise PublishValidationError(
-                (
-                    "Output node {} is not of category Cop2."
-                    " This is a bug..."
-                ).format(output_node.path()),
-                title=cls.label)
+                f"Output node {output_node.path()} is not of category Cop2.",
+                description=(
+                    "### Invalid COP output node\n\n"
+                    "The output node path for the instance must be set to a "
+                    "valid COP node path. See the log for more details."
+                ))
