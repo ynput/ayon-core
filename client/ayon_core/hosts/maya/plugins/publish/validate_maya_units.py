@@ -3,15 +3,16 @@ import maya.cmds as cmds
 import pyblish.api
 
 import ayon_core.hosts.maya.api.lib as mayalib
-from ayon_core.pipeline.context_tools import get_current_project_asset
 from ayon_core.pipeline.publish import (
     RepairContextAction,
     ValidateSceneOrder,
-    PublishXmlValidationError
+    PublishXmlValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateMayaUnits(pyblish.api.ContextPlugin):
+class ValidateMayaUnits(pyblish.api.ContextPlugin,
+                        OptionalPyblishPluginMixin):
     """Check if the Maya units are set correct"""
 
     order = ValidateSceneOrder
@@ -35,6 +36,7 @@ class ValidateMayaUnits(pyblish.api.ContextPlugin):
         "Maya scene {setting} must be '{required_value}'. "
         "Current value is '{current_value}'."
     )
+    optional = False
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -52,15 +54,16 @@ class ValidateMayaUnits(pyblish.api.ContextPlugin):
         cls.validate_fps = settings.get("validate_fps", cls.validate_fps)
 
     def process(self, context):
-
+        if not self.is_active(context.data):
+            return
         # Collected units
         linearunits = context.data.get('linearUnits')
         angularunits = context.data.get('angularUnits')
 
         fps = context.data.get('fps')
 
-        asset_doc = context.data["assetEntity"]
-        asset_fps = mayalib.convert_to_maya_fps(asset_doc["data"]["fps"])
+        folder_attributes = context.data["folderEntity"]["attrib"]
+        folder_fps = mayalib.convert_to_maya_fps(folder_attributes["fps"])
 
         self.log.info('Units (linear): {0}'.format(linearunits))
         self.log.info('Units (angular): {0}'.format(angularunits))
@@ -91,10 +94,10 @@ class ValidateMayaUnits(pyblish.api.ContextPlugin):
                 "current_value": angularunits
             })
 
-        if self.validate_fps and fps and fps != asset_fps:
+        if self.validate_fps and fps and fps != folder_fps:
             invalid.append({
                 "setting": "FPS",
-                "required_value": asset_fps,
+                "required_value": folder_fps,
                 "current_value": fps
             })
 
@@ -127,7 +130,5 @@ class ValidateMayaUnits(pyblish.api.ContextPlugin):
         cls.log.debug(current_linear)
 
         cls.log.info("Setting time unit to match project")
-        # TODO replace query with using 'context.data["assetEntity"]'
-        asset_doc = get_current_project_asset()
-        asset_fps = asset_doc["data"]["fps"]
-        mayalib.set_scene_fps(asset_fps)
+        folder_entity = context.data["folderEntity"]
+        mayalib.set_scene_fps(folder_entity["attrib"]["fps"])

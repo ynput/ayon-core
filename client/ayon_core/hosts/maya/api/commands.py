@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""OpenPype script commands to be used directly in Maya."""
+"""AYON script commands to be used directly in Maya."""
 from maya import cmds
 
-from ayon_core.client import get_asset_by_name, get_project
-from ayon_core.pipeline import get_current_project_name, get_current_asset_name
+from ayon_api import get_project, get_folder_by_path
+
+from ayon_core.pipeline import get_current_project_name, get_current_folder_path
 
 
 class ToolWindows:
@@ -38,22 +39,30 @@ class ToolWindows:
         cls._windows[tool] = window
 
 
-def _resolution_from_document(doc):
-    if not doc or "data" not in doc:
-        print("Entered document is not valid. \"{}\"".format(str(doc)))
+def _resolution_from_entity(entity):
+    if not entity:
+        print("Entered entity is not valid. \"{}\"".format(
+            str(entity)
+        ))
         return None
 
-    resolution_width = doc["data"].get("resolutionWidth")
-    resolution_height = doc["data"].get("resolutionHeight")
+    attributes = entity.get("attrib")
+    if attributes is None:
+        attributes = entity.get("data", {})
+
+    resolution_width = attributes.get("resolutionWidth")
+    resolution_height = attributes.get("resolutionHeight")
     # Backwards compatibility
     if resolution_width is None or resolution_height is None:
-        resolution_width = doc["data"].get("resolution_width")
-        resolution_height = doc["data"].get("resolution_height")
+        resolution_width = attributes.get("resolution_width")
+        resolution_height = attributes.get("resolution_height")
 
     # Make sure both width and height are set
     if resolution_width is None or resolution_height is None:
         cmds.warning(
-            "No resolution information found for \"{}\"".format(doc["name"])
+            "No resolution information found for \"{}\"".format(
+                entity["name"]
+            )
         )
         return None
 
@@ -65,20 +74,20 @@ def reset_resolution():
     resolution_width = 1920
     resolution_height = 1080
 
-    # Get resolution from asset
+    # Get resolution from folder
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
-    asset_doc = get_asset_by_name(project_name, asset_name)
-    resolution = _resolution_from_document(asset_doc)
+    folder_path = get_current_folder_path()
+    folder_entity = get_folder_by_path(project_name, folder_path)
+    resolution = _resolution_from_entity(folder_entity)
     # Try get resolution from project
     if resolution is None:
         # TODO go through visualParents
         print((
-            "Asset \"{}\" does not have set resolution."
+            "Folder '{}' does not have set resolution."
             " Trying to get resolution from project"
-        ).format(asset_name))
-        project_doc = get_project(project_name)
-        resolution = _resolution_from_document(project_doc)
+        ).format(folder_path))
+        project_entity = get_project(project_name)
+        resolution = _resolution_from_entity(project_entity)
 
     if resolution is None:
         msg = "Using default resolution {}x{}"

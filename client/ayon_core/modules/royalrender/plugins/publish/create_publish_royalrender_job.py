@@ -198,7 +198,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         priority = self.priority or instance.data.get("priority", 50)
 
-        # rr requires absolut path or all jobs won't show up in rControl
+        # rr requires absolute path or all jobs won't show up in rrControl
         abs_metadata_path = self.anatomy.fill_root(rootless_metadata_path)
 
         # command line set in E01__OpenPype__PublishJob.cfg, here only

@@ -109,11 +109,13 @@ def override_toolbox_ui():
 
     controls.append(
         cmds.iconTextButton(
-            "pype_toolbox_lookmanager",
+            "ayon_toolbox_lookmanager",
             annotation="Look Manager",
             label="Look Manager",
             image=os.path.join(icons, "lookmanager.png"),
-            command=show_look_assigner,
+            command=lambda: show_look_assigner(
+                parent=parent_widget
+            ),
             width=icon_size,
             height=icon_size,
             parent=parent
@@ -122,7 +124,7 @@ def override_toolbox_ui():
 
     controls.append(
         cmds.iconTextButton(
-            "pype_toolbox_workfiles",
+            "ayon_toolbox_workfiles",
             annotation="Work Files",
             label="Work Files",
             image=os.path.join(icons, "workfiles.png"),
@@ -137,7 +139,7 @@ def override_toolbox_ui():
 
     controls.append(
         cmds.iconTextButton(
-            "pype_toolbox_loader",
+            "ayon_toolbox_loader",
             annotation="Loader",
             label="Loader",
             image=os.path.join(icons, "loader.png"),
@@ -152,7 +154,7 @@ def override_toolbox_ui():
 
     controls.append(
         cmds.iconTextButton(
-            "pype_toolbox_manager",
+            "ayon_toolbox_manager",
             annotation="Inventory",
             label="Inventory",
             image=os.path.join(icons, "inventory.png"),

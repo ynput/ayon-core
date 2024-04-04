@@ -50,9 +50,7 @@ class VersionComboBox(QtWidgets.QComboBox):
 
             item = self._items_by_id.get(version_id)
             if item is None:
-                label = format_version(
-                    abs(version_item.version), version_item.is_hero
-                )
+                label = format_version(version_item.version)
                 item = QtGui.QStandardItem(label)
                 item.setData(version_id, QtCore.Qt.UserRole)
                 self._items_by_id[version_id] = item
@@ -85,7 +83,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
     def displayText(self, value, locale):
         if not isinstance(value, numbers.Integral):
             return "N/A"
-        return format_version(abs(value), value < 0)
+        return format_version(value)
 
     def paint(self, painter, option, index):
         fg_color = index.data(QtCore.Qt.ForegroundRole)

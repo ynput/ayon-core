@@ -4,7 +4,7 @@ import qtawesome
 from qtpy import QtGui, QtCore
 
 from ayon_core.style import get_default_entity_icon_color
-from ayon_core.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon
 
 PRODUCTS_MODEL_SENDER_NAME = "qt_products_model"
 
@@ -73,7 +73,7 @@ class ProductsModel(QtGui.QStandardItemModel):
     published_time_col = column_labels.index("Time")
     folders_label_col = column_labels.index("Folder")
     in_scene_col = column_labels.index("In scene")
-    site_sync_avail_col = column_labels.index("Availability")
+    sitesync_avail_col = column_labels.index("Availability")
 
     def __init__(self, controller):
         super(ProductsModel, self).__init__()

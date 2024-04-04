@@ -1,4 +1,4 @@
-from ayon_core.lib.applications import PreLaunchHook
+from ayon_applications import PreLaunchHook
 
 from ayon_core.pipeline.colorspace import get_imageio_config
 from ayon_core.pipeline.template_data import get_template_data_with_names
@@ -28,7 +28,7 @@ class OCIOEnvHook(PreLaunchHook):
 
         template_data = get_template_data_with_names(
             project_name=self.data["project_name"],
-            asset_name=self.data["folder_path"],
+            folder_path=self.data["folder_path"],
             task_name=self.data["task_name"],
             host_name=self.host_name,
             settings=self.data["project_settings"]

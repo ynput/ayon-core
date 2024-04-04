@@ -9,7 +9,7 @@ class IncrementWorkfileVersion(pyblish.api.ContextPlugin):
     order = pyblish.api.IntegratorOrder + 0.9
     label = "Increment Workfile Version"
     hosts = ["max"]
-    families = ["workfile"]
+    families = ["maxrender", "workfile"]
 
     def process(self, context):
         path = context.data["currentFile"]

@@ -64,7 +64,7 @@ def convert_to_padded_path(path, padding):
         padding (int): number of padding
 
     Returns:
-        type: string with reformated path
+        type: string with reformatted path
 
     Example:
         convert_to_padded_path("plate.%d.exr") > plate.%04d.exr

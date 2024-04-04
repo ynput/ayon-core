@@ -1,6 +1,7 @@
-from ayon_core.client import get_project, get_asset_by_name
-from ayon_core.lib.applications import (
-    PreLaunchHook,
+from ayon_api import get_project, get_folder_by_path, get_task_by_name
+
+from ayon_applications import PreLaunchHook
+from ayon_applications.utils import (
     EnvironmentPrepData,
     prepare_app_environments,
     prepare_context_environments
@@ -16,7 +17,7 @@ class GlobalHostDataHook(PreLaunchHook):
         """Prepare global objects to `data` that will be used for sure."""
         self.prepare_global_data()
 
-        if not self.data.get("asset_doc"):
+        if not self.data.get("folder_entity"):
             return
 
         app = self.launch_context.application
@@ -27,8 +28,9 @@ class GlobalHostDataHook(PreLaunchHook):
 
             "app": app,
 
-            "project_doc": self.data["project_doc"],
-            "asset_doc": self.data["asset_doc"],
+            "project_entity": self.data["project_entity"],
+            "folder_entity": self.data["folder_entity"],
+            "task_entity": self.data["task_entity"],
 
             "anatomy": self.data["anatomy"],
 
@@ -59,19 +61,37 @@ class GlobalHostDataHook(PreLaunchHook):
             return
 
         self.log.debug("Project name is set to \"{}\"".format(project_name))
+
+        # Project Entity
+        project_entity = get_project(project_name)
+        self.data["project_entity"] = project_entity
+
         # Anatomy
-        self.data["anatomy"] = Anatomy(project_name)
+        self.data["anatomy"] = Anatomy(
+            project_name, project_entity=project_entity
+        )
 
-        # Project document
-        project_doc = get_project(project_name)
-        self.data["project_doc"] = project_doc
-
-        asset_name = self.data.get("folder_path")
-        if not asset_name:
+        folder_path = self.data.get("folder_path")
+        if not folder_path:
             self.log.warning(
-                "Asset name was not set. Skipping asset document query."
+                "Folder path is not set. Skipping folder query."
             )
             return
 
-        asset_doc = get_asset_by_name(project_name, asset_name)
-        self.data["asset_doc"] = asset_doc
+        folder_entity = get_folder_by_path(project_name, folder_path)
+        self.data["folder_entity"] = folder_entity
+
+        task_name = self.data.get("task_name")
+        if not task_name:
+            self.log.warning(
+                "Task name is not set. Skipping task query."
+            )
+            return
+
+        if not folder_entity:
+            return
+
+        task_entity = get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+        self.data["task_entity"] = task_entity

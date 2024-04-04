@@ -2,13 +2,18 @@
 import os
 import re
 
+import ayon_api
+
 from ayon_core.lib import Logger
-from ayon_core.client import get_assets, get_asset_by_name
 
 
-def get_asset_doc_from_file_name(source_filename, project_name,
-                                 version_regex, all_selected_asset_ids=None):
-    """Try to parse out asset name from file name provided.
+def get_folder_entity_from_filename(
+    project_name,
+    source_filename,
+    version_regex,
+    all_selected_folder_ids=None
+):
+    """Try to parse out folder name from file name provided.
 
     Artists might provide various file name formats.
     Currently handled:
@@ -17,72 +22,101 @@ def get_asset_doc_from_file_name(source_filename, project_name,
         - my_chair_to_upload.mov
     """
     version = None
-    asset_name = os.path.splitext(source_filename)[0]
-    # Always first check if source filename is directly asset (eg. 'chair.mov')
-    matching_asset_doc = get_asset_by_name_case_not_sensitive(
-        project_name, asset_name, all_selected_asset_ids)
+    folder_name = os.path.splitext(source_filename)[0]
+    # Always first check if source filename is directly folder
+    #   (eg. 'chair.mov')
+    matching_folder_entity = get_folder_by_name_case_not_sensitive(
+        project_name, folder_name, all_selected_folder_ids)
 
-    if matching_asset_doc is None:
+    if matching_folder_entity is None:
         # name contains also a version
-        matching_asset_doc, version = (
-            parse_with_version(project_name, asset_name, version_regex,
-                               all_selected_asset_ids))
+        matching_folder_entity, version = (
+            parse_with_version(
+                project_name,
+                folder_name,
+                version_regex,
+                all_selected_folder_ids
+            )
+        )
 
-    if matching_asset_doc is None:
-        matching_asset_doc = parse_containing(project_name, asset_name,
-                                              all_selected_asset_ids)
+    if matching_folder_entity is None:
+        matching_folder_entity = parse_containing(
+            project_name,
+            folder_name,
+            all_selected_folder_ids
+        )
 
-    return matching_asset_doc, version
+    return matching_folder_entity, version
 
 
-def parse_with_version(project_name, asset_name, version_regex,
-                       all_selected_asset_ids=None, log=None):
-    """Try to parse asset name from a file name containing version too
+def parse_with_version(
+    project_name,
+    folder_name,
+    version_regex,
+    all_selected_folder_ids=None,
+    log=None
+):
+    """Try to parse folder name from a file name containing version too
 
     Eg. 'chair_v001.mov' >> 'chair', 1
     """
     if not log:
         log = Logger.get_logger(__name__)
     log.debug(
-        ("Asset doc by \"{}\" was not found, trying version regex.".
-         format(asset_name)))
+        ("Folder entity by \"{}\" was not found, trying version regex.".
+         format(folder_name)))
 
-    matching_asset_doc = version_number = None
+    matching_folder_entity = version_number = None
 
-    regex_result = version_regex.findall(asset_name)
+    regex_result = version_regex.findall(folder_name)
     if regex_result:
-        _asset_name, _version_number = regex_result[0]
-        matching_asset_doc = get_asset_by_name_case_not_sensitive(
-            project_name, _asset_name,
-            all_selected_asset_ids=all_selected_asset_ids)
-        if matching_asset_doc:
+        _folder_name, _version_number = regex_result[0]
+        matching_folder_entity = get_folder_by_name_case_not_sensitive(
+            project_name,
+            _folder_name,
+            all_selected_folder_ids=all_selected_folder_ids
+        )
+        if matching_folder_entity:
             version_number = int(_version_number)
 
-    return matching_asset_doc, version_number
+    return matching_folder_entity, version_number
 
 
-def parse_containing(project_name, asset_name, all_selected_asset_ids=None):
-    """Look if file name contains any existing asset name"""
-    for asset_doc in get_assets(project_name, asset_ids=all_selected_asset_ids,
-                                fields=["name"]):
-        if asset_doc["name"].lower() in asset_name.lower():
-            return get_asset_by_name(project_name, asset_doc["name"])
+def parse_containing(project_name, folder_name, all_selected_folder_ids=None):
+    """Look if file name contains any existing folder name"""
+    for folder_entity in ayon_api.get_folders(
+        project_name,
+        folder_ids=all_selected_folder_ids,
+        fields={"id", "name"}
+    ):
+        if folder_entity["name"].lower() in folder_name.lower():
+            return ayon_api.get_folder_by_id(
+                project_name,
+                folder_entity["id"]
+            )
 
 
-def get_asset_by_name_case_not_sensitive(project_name, asset_name,
-                                         all_selected_asset_ids=None,
-                                         log=None):
+def get_folder_by_name_case_not_sensitive(
+    project_name,
+    folder_name,
+    all_selected_folder_ids=None,
+    log=None
+):
     """Handle more cases in file names"""
     if not log:
         log = Logger.get_logger(__name__)
-    asset_name = re.compile(asset_name, re.IGNORECASE)
+    folder_name = re.compile(folder_name, re.IGNORECASE)
 
-    assets = list(get_assets(project_name, asset_ids=all_selected_asset_ids,
-                             asset_names=[asset_name]))
-    if assets:
-        if len(assets) > 1:
-            log.warning("Too many records found for {}".format(
-                asset_name))
-            return
+    folder_entities = list(ayon_api.get_folders(
+        project_name,
+        folder_ids=all_selected_folder_ids,
+        folder_names=[folder_name]
+    ))
 
-        return assets.pop()
+    if len(folder_entities) > 1:
+        log.warning("Too many records found for {}".format(
+            folder_name))
+        return None
+
+    if folder_entities:
+        return folder_entities.pop()

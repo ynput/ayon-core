@@ -196,6 +196,11 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
     def _get_published_workfile_path(self, context):
         """This method is temporary while the class is not inherited from
         AbstractSubmitDeadline"""
+        anatomy = context.data["anatomy"]
+        # WARNING Hardcoded template name 'default' > may not be used
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "path"
+        )
         for instance in context:
             if (
                 instance.data["productType"] != "workfile"
@@ -216,11 +221,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
             template_data["ext"] = ext
             template_data["comment"] = None
 
-            anatomy = context.data["anatomy"]
-            # WARNING Hardcoded template name 'publish' > may not be used
-            template_obj = anatomy.templates_obj["publish"]["path"]
-
-            template_filled = template_obj.format(template_data)
+            template_filled = publish_template.format(template_data)
             script_path = os.path.normpath(template_filled)
             self.log.info(
                 "Using published scene for render {}".format(
@@ -375,6 +376,8 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         keys = [
             "PYTHONPATH",
             "PATH",
+            "AYON_BUNDLE_NAME",
+            "AYON_DEFAULT_SETTINGS_VARIANT",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
@@ -387,7 +390,6 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
             "TOOL_ENV",
             "FOUNDRY_LICENSE",
             "OPENPYPE_SG_USER",
-            "AYON_BUNDLE_NAME",
         ]
 
         # add allowed keys from preset if any

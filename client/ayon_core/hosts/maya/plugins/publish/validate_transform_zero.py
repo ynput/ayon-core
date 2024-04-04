@@ -1,15 +1,18 @@
-from maya import cmds
+import inspect
 
+from maya import cmds
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateTransformZero(pyblish.api.Validator):
+class ValidateTransformZero(pyblish.api.InstancePlugin,
+                            OptionalPyblishPluginMixin):
     """Transforms can't have any values
 
     To solve this issue, try freezing the transforms. So long
@@ -29,6 +32,7 @@ class ValidateTransformZero(pyblish.api.Validator):
                  0.0, 0.0, 1.0, 0.0,
                  0.0, 0.0, 0.0, 1.0]
     _tolerance = 1e-30
+    optional = True
 
     @classmethod
     def get_invalid(cls, instance):
@@ -54,7 +58,7 @@ class ValidateTransformZero(pyblish.api.Validator):
             if ('_LOC' in transform) or ('_loc' in transform):
                 continue
             mat = cmds.xform(transform, q=1, matrix=True, objectSpace=True)
-            if not all(abs(x-y) < cls._tolerance
+            if not all(abs(x - y) < cls._tolerance
                        for x, y in zip(cls._identity, mat)):
                 invalid.append(transform)
 
@@ -62,17 +66,28 @@ class ValidateTransformZero(pyblish.api.Validator):
 
     def process(self, instance):
         """Process all the nodes in the instance "objectSet"""
-
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
         if invalid:
-
             names = "<br>".join(
                 " - {}".format(node) for node in invalid
             )
 
             raise PublishValidationError(
                 title="Transform Zero",
+                description=self.get_description(),
                 message="The model publish allows no transformations. You must"
                         " <b>freeze transformations</b> to continue.<br><br>"
-                        "Nodes found with transform values: "
+                        "Nodes found with transform values:<br>"
                         "{0}".format(names))
+
+    @staticmethod
+    def get_description():
+        return inspect.cleandoc("""### Transform can't have any values
+
+        The model publish allows no transformations. 
+
+        You must **freeze transformations** to continue.
+
+        """)
