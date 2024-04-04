@@ -25,8 +25,8 @@ class CollectInstanceData(pyblish.api.InstancePlugin):
         frame_range_source = creator_attributes.get("frame_range_source")
         instance.data["frame_range_source"] = frame_range_source
 
-        # get asset frame ranges to all instances
-        # render product type instances `asset_db` render target
+        # get folder frame ranges to all instances
+        # render product type instances `current_folder` render target
         start = context.data["frameStart"]
         end = context.data["frameEnd"]
         handle_start = context.data["handleStart"]
@@ -56,6 +56,14 @@ class CollectInstanceData(pyblish.api.InstancePlugin):
             handle_end = comp_end - render_end
             start_with_handle = comp_start
             end_with_handle = comp_end
+
+        if frame_range_source == "custom_range":
+            start = int(instance.data["custom_frameStart"])
+            end = int(instance.data["custom_frameEnd"])
+            handle_start = int(instance.data["custom_handleStart"])
+            handle_end = int(instance.data["custom_handleEnd"])
+            start_with_handle = start - handle_start
+            end_with_handle = end + handle_end
 
         frame = instance.data["creator_attributes"].get("frame")
         # explicitly publishing only single frame

@@ -1,4 +1,5 @@
-from ayon_core.client import get_projects, get_project
+import ayon_api
+
 from openpype_modules.clockify.clockify_api import ClockifyAPI
 from ayon_core.pipeline import LauncherAction
 
@@ -18,15 +19,18 @@ class ClockifySync(LauncherAction):
     order = 500
     clockify_api = ClockifyAPI()
 
-    def is_compatible(self, session):
+    def is_compatible(self, selection):
         """Check if there's some projects to sync"""
+        if selection.is_project_selected:
+            return True
+
         try:
-            next(get_projects())
+            next(ayon_api.get_projects())
             return True
         except StopIteration:
             return False
 
-    def process(self, session, **kwargs):
+    def process(self, selection, **kwargs):
         self.clockify_api.set_api()
         workspace_id = self.clockify_api.workspace_id
         user_id = self.clockify_api.user_id
@@ -36,18 +40,19 @@ class ClockifySync(LauncherAction):
             raise ClockifyPermissionsCheckFailed(
                 "Current CLockify user is missing permissions for this action!"
             )
-        project_name = session.get("AYON_PROJECT_NAME") or ""
 
-        projects_to_sync = []
-        if project_name.strip():
-            projects_to_sync = [get_project(project_name)]
+        if selection.is_project_selected:
+            projects_to_sync = [selection.project_entity]
         else:
-            projects_to_sync = get_projects()
+            projects_to_sync = ayon_api.get_projects()
 
-        projects_info = {}
-        for project in projects_to_sync:
-            task_types = project["config"]["tasks"].keys()
-            projects_info[project["name"]] = task_types
+        projects_info = {
+            project["name"]: {
+                task_type["name"]
+                for task_type in project["taskTypes"]
+            }
+            for project in projects_to_sync
+        }
 
         clockify_projects = self.clockify_api.get_projects(workspace_id)
         for project_name, task_types in projects_info.items():

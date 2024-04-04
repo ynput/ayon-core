@@ -22,7 +22,7 @@ class ValidateProjectSettings(
         if not self.is_active(context.data):
             return
 
-        expected_data = context.data["assetEntity"]["data"]
+        folder_attributes = context.data["folderEntity"]["attrib"]
         scene_data = {
             "fps": context.data.get("sceneFps"),
             "resolutionWidth": context.data.get("sceneWidth"),
@@ -31,7 +31,7 @@ class ValidateProjectSettings(
         }
         invalid = {}
         for k in scene_data.keys():
-            expected_value = expected_data[k]
+            expected_value = folder_attributes[k]
             if scene_data[k] != expected_value:
                 invalid[k] = {
                     "current": scene_data[k], "expected": expected_value
@@ -46,13 +46,13 @@ class ValidateProjectSettings(
                 json.dumps(invalid, sort_keys=True, indent=4)
             ),
             formatting_data={
-                "expected_fps": expected_data["fps"],
+                "expected_fps": folder_attributes["fps"],
                 "current_fps": scene_data["fps"],
-                "expected_width": expected_data["resolutionWidth"],
-                "expected_height": expected_data["resolutionHeight"],
+                "expected_width": folder_attributes["resolutionWidth"],
+                "expected_height": folder_attributes["resolutionHeight"],
                 "current_width": scene_data["resolutionWidth"],
                 "current_height": scene_data["resolutionHeight"],
-                "expected_pixel_ratio": expected_data["pixelAspect"],
+                "expected_pixel_ratio": folder_attributes["pixelAspect"],
                 "current_pixel_ratio": scene_data["pixelAspect"]
             }
         )

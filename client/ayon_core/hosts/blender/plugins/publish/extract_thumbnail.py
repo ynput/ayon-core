@@ -32,7 +32,7 @@ class ExtractThumbnail(publish.Extractor):
             return
 
         stagingdir = self.staging_dir(instance)
-        folder_name = instance.data["assetEntity"]["name"]
+        folder_name = instance.data["folderEntity"]["name"]
         product_name = instance.data["productName"]
         filename = f"{folder_name}_{product_name}"
 

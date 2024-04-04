@@ -2,9 +2,12 @@
 from __future__ import absolute_import
 
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import get_asset_by_name
-from ayon_core.pipeline.publish import get_errored_instances_from_context
+from ayon_core.pipeline.publish import (
+    get_errored_instances_from_context,
+    get_errored_plugins_from_context
+)
 
 
 class GenerateUUIDsOnInvalidAction(pyblish.api.Action):
@@ -74,21 +77,23 @@ class GenerateUUIDsOnInvalidAction(pyblish.api.Action):
 
         from . import lib
 
-        # Expecting this is called on validators in which case 'assetEntity'
+        # Expecting this is called on validators in which case 'folderEntity'
         #   should be always available, but kept a way to query it by name.
-        asset_doc = instance.data.get("assetEntity")
-        if not asset_doc:
-            asset_name = instance.data["folderPath"]
+        folder_entity = instance.data.get("folderEntity")
+        if not folder_entity:
+            folder_path = instance.data["folderPath"]
             project_name = instance.context.data["projectName"]
             self.log.info((
-                "Asset is not stored on instance."
-                " Querying by name \"{}\" from project \"{}\""
-            ).format(asset_name, project_name))
-            asset_doc = get_asset_by_name(
-                project_name, asset_name, fields=["_id"]
+                "Folder is not stored on instance."
+                " Querying by path \"{}\" from project \"{}\""
+            ).format(folder_path, project_name))
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path, fields={"id"}
             )
 
-        for node, _id in lib.generate_ids(nodes, asset_id=asset_doc["_id"]):
+        for node, _id in lib.generate_ids(
+            nodes, folder_id=folder_entity["id"]
+        ):
             lib.set_id(node, _id, overwrite=True)
 
 
@@ -110,20 +115,25 @@ class SelectInvalidAction(pyblish.api.Action):
         except ImportError:
             raise ImportError("Current host is not Maya")
 
-        errored_instances = get_errored_instances_from_context(context,
-                                                               plugin=plugin)
-
         # Get the invalid nodes for the plug-ins
         self.log.info("Finding invalid nodes..")
         invalid = list()
-        for instance in errored_instances:
-            invalid_nodes = plugin.get_invalid(instance)
-            if invalid_nodes:
-                if isinstance(invalid_nodes, (list, tuple)):
-                    invalid.extend(invalid_nodes)
-                else:
-                    self.log.warning("Plug-in returned to be invalid, "
-                                     "but has no selectable nodes.")
+        if issubclass(plugin, pyblish.api.ContextPlugin):
+            errored_plugins = get_errored_plugins_from_context(context)
+            if plugin in errored_plugins:
+                invalid = plugin.get_invalid(context)
+        else:
+            errored_instances = get_errored_instances_from_context(
+                context, plugin=plugin
+            )
+            for instance in errored_instances:
+                invalid_nodes = plugin.get_invalid(instance)
+                if invalid_nodes:
+                    if isinstance(invalid_nodes, (list, tuple)):
+                        invalid.extend(invalid_nodes)
+                    else:
+                        self.log.warning("Plug-in returned to be invalid, "
+                                         "but has no selectable nodes.")
 
         # Ensure unique (process each node only once)
         invalid = list(set(invalid))
