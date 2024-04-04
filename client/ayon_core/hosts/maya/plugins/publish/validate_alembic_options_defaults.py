@@ -7,7 +7,10 @@ from ayon_core.pipeline.publish import RepairAction, PublishValidationError
 class ValidateAlembicOptionsDefaults(
     pyblish.api.InstancePlugin, OptionalPyblishPluginMixin
 ):
-    """Validate the attributes on the instance are defaults."""
+    """Validate the attributes on the instance are defaults.
+    
+    The defaults are defined in the project settings.
+    """
 
     order = pyblish.api.ValidatorOrder
     families = ["pointcache", "animation"]
