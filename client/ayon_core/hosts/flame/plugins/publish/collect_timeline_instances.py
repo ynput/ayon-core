@@ -37,7 +37,7 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
         self.otio_timeline = context.data["otioTimeline"]
         self.fps = context.data["fps"]
 
-        # process all sellected
+        # process all selected
         for segment in selected_segments:
             # get openpype tag data
             marker_data = opfapi.get_segment_data_marker(segment)
@@ -99,6 +99,12 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
                 marker_data["handleStart"], head)
             marker_data["handleEnd"] = min(
                 marker_data["handleEnd"], tail)
+
+            # Backward compatibility fix of 'entity_type' > 'folder_type'
+            if "parents" in marker_data:
+                for parent in marker_data["parents"]:
+                    if "entity_type" in parent:
+                        parent["folder_type"] = parent.pop("entity_type")
 
             workfile_start = self._set_workfile_start(marker_data)
 

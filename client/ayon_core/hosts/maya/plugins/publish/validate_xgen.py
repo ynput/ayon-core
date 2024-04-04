@@ -34,7 +34,7 @@ class ValidateXgen(pyblish.api.InstancePlugin):
                 " Node type found: {}".format(node_type)
             )
 
-        # Cant have inactive modifiers in collection cause Xgen will try and
+        # Can't have inactive modifiers in collection cause Xgen will try and
         # look for them when loading.
         palette = instance.data["xgmPalette"].replace("|", "")
         inactive_modifiers = {}

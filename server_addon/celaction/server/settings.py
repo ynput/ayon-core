@@ -42,7 +42,7 @@ class WorkfileModel(BaseSettingsModel):
     )
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class PublishPluginsModel(BaseSettingsModel):
     CollectRenderPath: CollectRenderPathModel = SettingsField(
         default_factory=CollectRenderPathModel,
         title="Collect Render Path"
@@ -57,8 +57,8 @@ class CelActionSettings(BaseSettingsModel):
     workfile: WorkfileModel = SettingsField(
         title="Workfile"
     )
-    publish: PublishPuginsModel = SettingsField(
-        default_factory=PublishPuginsModel,
+    publish: PublishPluginsModel = SettingsField(
+        default_factory=PublishPluginsModel,
         title="Publish plugins",
     )
 

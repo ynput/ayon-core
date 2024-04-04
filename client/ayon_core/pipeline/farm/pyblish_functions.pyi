@@ -1,6 +1,6 @@
 import pyblish.api
 from ayon_core.pipeline import Anatomy
-from typing import Tuple, Union, List
+from typing import Tuple, List
 
 
 class TimeData:

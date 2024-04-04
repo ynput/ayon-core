@@ -3,6 +3,7 @@ from maya import cmds
 
 from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
+    KnownPublishError,
     PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
@@ -35,11 +36,14 @@ class ValidateVRayDistributedRendering(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
         if instance.data.get("renderer") != "vray":
-            # If not V-Ray ignore..
+            # If not V-Ray, ignore
             return
 
         vray_settings = cmds.ls("vraySettings", type="VRaySettingsNode")
-        assert vray_settings, "Please ensure a VRay Settings Node is present"
+        if not vray_settings:
+            raise KnownPublishError(
+                "Please ensure a VRay Settings Node is present"
+            )
 
         renderlayer = instance.data['renderlayer']
 
@@ -51,8 +55,8 @@ class ValidateVRayDistributedRendering(pyblish.api.InstancePlugin,
         # during batch mode we invalidate the instance
         if not lib.get_attr_in_layer(self.ignored_attr, layer=renderlayer):
             raise PublishValidationError(
-                ("Renderlayer has distributed rendering enabled "
-                 "but is not set to ignore in batch mode."))
+                "Renderlayer has distributed rendering enabled "
+                "but is not set to ignore in batch mode.")
 
     @classmethod
     def repair(cls, instance):
