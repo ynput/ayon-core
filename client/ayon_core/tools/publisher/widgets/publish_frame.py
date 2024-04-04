@@ -409,7 +409,7 @@ class PublishFrame(QtWidgets.QWidget):
     def _set_error_msg(self):
         """Show error message to artist on publish crash."""
 
-        self._set_main_label("Error happened")
+        self._set_main_label(self._controller.publish_error_label)
 
         self._message_label_top.setText(self._controller.publish_error_msg)
 
