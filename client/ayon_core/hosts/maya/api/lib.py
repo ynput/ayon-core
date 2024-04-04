@@ -37,7 +37,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib.profiles_filtering import filter_profiles
 
@@ -2115,22 +2115,6 @@ def get_related_sets(node):
 
     """
 
-    # Ignore specific suffices
-    ignore_suffices = ["out_SET", "controls_SET", "_INST", "_CON"]
-
-    # Default nodes to ignore
-    defaults = {"defaultLightSet", "defaultObjectSet"}
-
-    # Ids to ignore
-    ignored = {
-        AVALON_INSTANCE_ID,
-        AVALON_CONTAINER_ID,
-        AYON_INSTANCE_ID,
-        AYON_CONTAINER_ID,
-    }
-
-    view_sets = get_isolate_view_sets()
-
     sets = cmds.listSets(object=node, extendToShape=False)
     if not sets:
         return []
@@ -2141,6 +2125,14 @@ def get_related_sets(node):
     # returned by `cmds.listSets(allSets=True)`
     sets = cmds.ls(sets)
 
+    # Ids to ignore
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
+
     # Ignore `avalon.container`
     sets = [
         s for s in sets
@@ -2149,21 +2141,31 @@ def get_related_sets(node):
            or cmds.getAttr(f"{s}.id") not in ignored
         )
     ]
+    if not sets:
+        return sets
 
     # Exclude deformer sets (`type=2` for `maya.cmds.listSets`)
-    deformer_sets = cmds.listSets(object=node,
-                                  extendToShape=False,
-                                  type=2) or []
-    deformer_sets = set(deformer_sets)  # optimize lookup
-    sets = [s for s in sets if s not in deformer_sets]
+    exclude_sets = cmds.listSets(object=node,
+                                 extendToShape=False,
+                                 type=2) or []
+    exclude_sets = set(exclude_sets)  # optimize lookup
+
+    # Default nodes to ignore
+    exclude_sets.update({"defaultLightSet", "defaultObjectSet"})
+
+    # Filter out the sets to exclude
+    sets = [s for s in sets if s not in exclude_sets]
 
     # Ignore when the set has a specific suffix
-    sets = [s for s in sets if not any(s.endswith(x) for x in ignore_suffices)]
+    ignore_suffices = ("out_SET", "controls_SET", "_INST", "_CON")
+    sets = [s for s in sets if not s.endswith(ignore_suffices)]
+    if not sets:
+        return sets
 
     # Ignore viewport filter view sets (from isolate select and
     # viewports)
+    view_sets = get_isolate_view_sets()
     sets = [s for s in sets if s not in view_sets]
-    sets = [s for s in sets if s not in defaults]
 
     return sets
 
@@ -2434,12 +2436,10 @@ def set_scene_fps(fps, update=True):
     cmds.currentUnit(time=unit, updateAnimation=update)
 
     # Set time slider data back to previous state
-    cmds.playbackOptions(edit=True, minTime=start_frame)
-    cmds.playbackOptions(edit=True, maxTime=end_frame)
-
-    # Set animation data
-    cmds.playbackOptions(edit=True, animationStartTime=animation_start)
-    cmds.playbackOptions(edit=True, animationEndTime=animation_end)
+    cmds.playbackOptions(minTime=start_frame,
+                         maxTime=end_frame,
+                         animationStartTime=animation_start,
+                         animationEndTime=animation_end)
 
     cmds.currentTime(current_frame, edit=True, update=True)
 
@@ -2636,7 +2636,7 @@ def reset_scene_resolution():
         None
     """
 
-    folder_attributes = get_current_project_folder()["attrib"]
+    folder_attributes = get_current_folder_entity()["attrib"]
 
     # Set resolution
     width = folder_attributes.get("resolutionWidth", 1920)
@@ -3245,7 +3245,7 @@ def update_content_on_context_change():
     This will update scene content to match new folder on context change
     """
     scene_sets = cmds.listSets(allSets=True)
-    folder_entity = get_current_project_folder()
+    folder_entity = get_current_folder_entity()
     folder_attributes = folder_entity["attrib"]
     new_folder_path = folder_entity["path"]
     for s in scene_sets:
