@@ -89,8 +89,8 @@ class SceneInventoryController:
         return []
 
     # Site Sync methods
-    def is_sync_server_enabled(self):
-        return self._site_sync_model.is_sync_server_enabled()
+    def is_sitesync_enabled(self):
+        return self._site_sync_model.is_sitesync_enabled()
 
     def get_sites_information(self):
         return self._site_sync_model.get_sites_information()
