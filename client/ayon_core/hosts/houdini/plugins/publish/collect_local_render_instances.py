@@ -17,7 +17,6 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 "vray_rop"]
 
     hosts = ["houdini"]
-    targets = ["local", "remote"]
     label = "Collect local render instances"
 
     def process(self, instance):
