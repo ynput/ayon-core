@@ -2,7 +2,7 @@ import os
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import publish, KnownPublishError
 
 import hou
 
@@ -33,9 +33,9 @@ class ExtractMantraIFD(publish.Extractor):
                 os.path.normpath(os.path.join(staging_dir, frame)))
         ]
         if missing_frames:
-            raise RuntimeError("Failed to complete Mantra ifd extraction. "
-                               "Missing output files: {}".format(
-                                   missing_frames))
+            raise KnownPublishError("Failed to complete Mantra ifd extraction. ",
+                                    # "Missing output files: {}".format(missing_frames),
+                                    label="Render was interrupted or canceled.")
 
         if "representations" not in instance.data:
             instance.data["representations"] = []

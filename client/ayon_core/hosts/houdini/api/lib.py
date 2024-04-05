@@ -19,6 +19,7 @@ from ayon_core.pipeline import (
     registered_host,
     get_current_context,
     get_current_host_name,
+    KnownPublishError,
 )
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.template_data import get_template_data
@@ -244,13 +245,14 @@ def render_rop(ropnode):
         ropnode.render(verbose=verbose,
                        # Allow Deadline to capture completion percentage
                        output_progress=verbose)
-    except hou.Error as exc:
+    except hou.Error:
         # The hou.Error is not inherited from a Python Exception class,
         # so we explicitly capture the houdini error, otherwise pyblish
         # will remain hanging.
         import traceback
         traceback.print_exc()
-        raise RuntimeError("Render failed: {0}".format(exc))
+        raise KnownPublishError("'{}' failed to render!".format(ropnode.path()),
+                                label="Render was interrupted or canceled.")
 
 
 def imprint(node, data, update=False):
