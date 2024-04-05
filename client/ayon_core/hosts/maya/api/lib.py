@@ -3147,6 +3147,7 @@ def get_attr_in_layer(attr, layer, as_string=True):
     Args:
         attr (str): attribute name, ex. "node.attribute"
         layer (str): layer name
+        as_string (bool): whether attribute should convert to a string value
 
     Returns:
         The return value from `maya.cmds.getAttr`
@@ -3165,7 +3166,7 @@ def get_attr_in_layer(attr, layer, as_string=True):
     current_layer = cmds.editRenderLayerGlobals(query=True,
                                                 currentRenderLayer=True)
     if layer == current_layer:
-        return cmds.getAttr(attr)
+        return cmds.getAttr(attr, asString=as_string)
 
     connections = cmds.listConnections(attr,
                                        plugs=True,
@@ -3174,7 +3175,7 @@ def get_attr_in_layer(attr, layer, as_string=True):
                                        type="renderLayer") or []
     connections = filter(lambda x: x.endswith(".plug"), connections)
     if not connections:
-        return cmds.getAttr(attr, asString=as_string)
+        return cmds.getAttr(attr)
 
     # Some value types perform a conversion when assigning
     # TODO: See if there's a maya method to allow this conversion
