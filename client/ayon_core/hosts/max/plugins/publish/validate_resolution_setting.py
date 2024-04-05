@@ -15,7 +15,7 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
     """Validate the resolution setting aligned with DB"""
 
     order = pyblish.api.ValidatorOrder - 0.01
-    families = ["maxrender", "review"]
+    families = ["maxrender"]
     hosts = ["max"]
     label = "Validate Resolution Setting"
     optional = True
@@ -25,8 +25,10 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
         width, height = self.get_folder_resolution(instance)
-        current_width = rt.renderWidth
-        current_height = rt.renderHeight
+        current_width, current_height = (
+            self.get_current_resolution(instance)
+        )
+
         if current_width != width and current_height != height:
             raise PublishValidationError("Resolution Setting "
                                          "not matching resolution "
@@ -41,7 +43,11 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
                                          "not matching resolution set "
                                          "on asset or shot.")
 
-    def get_folder_resolution(self, instance):
+    def get_current_resolution(self, instance):
+        return rt.renderWidth, rt.renderHeight
+
+    @classmethod
+    def get_folder_resolution(cls, instance):
         task_entity = instance.data.get("taskEntity")
         if task_entity:
             task_attributes = task_entity["attrib"]
@@ -55,3 +61,23 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
     @classmethod
     def repair(cls, instance):
         reset_scene_resolution()
+
+
+class ValidateReviewResolutionSetting(ValidateResolutionSetting):
+    families = ["review"]
+    label = "Validate Review Animation Resolution Setting"
+    optional = True
+    actions = [RepairAction]
+
+    def get_current_resolution(self, instance):
+        current_width = instance.data["review_width"]
+        current_height = instance.data["review_height"]
+        return current_width, current_height
+
+    @classmethod
+    def repair(cls, instance):
+        context_width, context_height = (
+            cls.get_folder_resolution(instance)
+        )
+        instance.data["review_width"] = context_width
+        instance.data["review_height"] = context_height
