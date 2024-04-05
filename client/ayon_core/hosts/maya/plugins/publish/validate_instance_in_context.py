@@ -4,14 +4,17 @@ from __future__ import absolute_import
 
 import pyblish.api
 import ayon_core.hosts.maya.api.action
+from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
+from ayon_core.pipeline.create import CreateContext
 
 from maya import cmds
+
 
 
 class ValidateInstanceInContext(pyblish.api.InstancePlugin,
@@ -70,16 +73,20 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
         context_folder_path, context_task = cls.get_context(
             instance)
         instance_node = instance.data["instance_node"]
-        cmds.setAttr(
-            "{}.folderPath".format(instance_node),
-            context_folder_path,
-            type="string"
-        )
-        cmds.setAttr(
-            "{}.task".format(instance_node),
-            context_task,
-            type="string"
-        )
+        host = registered_host()
+        create_context = CreateContext(host)
+
+        instance_values = {
+            "folderPath": context_folder_path,
+            "task": context_task
+        }
+
+        for instance in create_context.instances:
+            if instance["productName"] == instance_node:
+                for key, value in instance_values.items():
+                    instance[key] = value
+
+        create_context.save_changes()
 
     @staticmethod
     def get_context(instance):
