@@ -659,16 +659,7 @@ class BaseWorkfileController(
             folder_id != self.get_current_folder_id()
             or task_name != self.get_current_task_name()
         ):
-            folder_entity = ayon_api.get_folder_by_id(
-                event_data["project_name"],
-                event_data["folder_id"],
-            )
-            task_entity = ayon_api.get_task_by_name(
-                event_data["project_name"],
-                event_data["folder_id"],
-                event_data["task_name"]
-            )
-            change_current_context(folder_entity, task_entity)
+            self._change_current_context(project_name, folder_id, task_id)
 
         self._host_open_workfile(filepath)
 
@@ -710,16 +701,8 @@ class BaseWorkfileController(
             folder_id != self.get_current_folder_id()
             or task_name != self.get_current_task_name()
         ):
-            folder_entity = ayon_api.get_folder_by_id(
-                project_name, folder["id"]
-            )
-            task_entity = ayon_api.get_task_by_name(
-                project_name, folder["id"], task_name
-            )
-            change_current_context(
-                folder_entity,
-                task_entity,
-                template_key=template_key
+            self._change_current_context(
+                project_name, folder_id, task_id, template_key
             )
 
         # Save workfile
@@ -744,4 +727,18 @@ class BaseWorkfileController(
 
         # Trigger after save events
         emit_event("workfile.save.after", event_data, source="workfiles.tool")
-        self.reset()
+
+    def _change_current_context(
+        self, project_name, folder_id, task_id, template_key=None
+    ):
+        # Change current context
+        folder_entity = self.get_folder_entity(project_name, folder_id)
+        task_entity = self.get_task_entity(project_name, task_id)
+        change_current_context(
+            folder_entity,
+            task_entity,
+            template_key=template_key
+        )
+        self._current_folder_id = folder_entity["id"]
+        self._current_folder_path = folder_entity["path"]
+        self._current_task_name = task_entity["name"]
