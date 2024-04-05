@@ -1465,8 +1465,7 @@ class CrashWidget(QtWidgets.QWidget):
 
         report_label = QtWidgets.QLabel(
             (
-                "Expand the orange error message below to find more info.\n"
-                "You can report the error to your pipeline support"
+                "Please report the error to your pipeline support"
                 " using one of the options below."
             ),
             self
