@@ -303,12 +303,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         self.log.debug("Submitting Deadline publish job ...")
 
         url = "{}/api/jobs".format(self.deadline_url)
-        kwargs = {}
         auth = instance.data["deadline"]["auth"]
-        if auth:
-            kwargs["auth"] = auth
         response = requests_post(url, json=payload, timeout=10,
-                                 **kwargs)
+                                 auth=auth)
         if not response.ok:
             raise Exception(response.text)
 
