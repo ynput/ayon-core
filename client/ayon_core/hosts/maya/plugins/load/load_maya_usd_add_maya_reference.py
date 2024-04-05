@@ -61,7 +61,8 @@ class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
         assert len(selection) == 1, "Select only one PRIM please"
         ufe_path = selection[0]
         path = self.filepath_from_context(context)
-
+         # Make sure we can load the plugin
+        cmds.loadPlugin("mayaUsdPlugin", quiet=True)
         import mayaUsdAddMayaReference
 
         namespace = "test"
