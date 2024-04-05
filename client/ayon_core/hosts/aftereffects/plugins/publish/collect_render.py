@@ -1,14 +1,11 @@
 import os
-import re
 import tempfile
-import attr
 
+import attr
 import pyblish.api
 
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import RenderInstance
-
 from ayon_core.hosts.aftereffects.api import get_stub
 
 

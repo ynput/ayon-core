@@ -12,17 +12,14 @@ import substance_painter.project
 import pyblish.api
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-from ayon_core.settings import (
-    get_current_project_settings,
-    get_project_settings,
-)
+from ayon_core.settings import get_current_project_settings
 
 from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline import (
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
-    Anatomy
+    Anatomy,
 )
 from ayon_core.lib import (
     StringTemplate,

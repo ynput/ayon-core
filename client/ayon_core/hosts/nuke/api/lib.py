@@ -389,7 +389,13 @@ def imprint(node, data, tab=None):
 
     """
     for knob in create_knobs(data, tab):
-        node.addKnob(knob)
+        # If knob name exists we set the value. Technically there could be
+        # multiple knobs with the same name, but the intent is not to have
+        # duplicated knobs so we do not account for that.
+        if knob.name() in node.knobs().keys():
+            node[knob.name()].setValue(knob.value())
+        else:
+            node.addKnob(knob)
 
 
 @deprecated
@@ -814,7 +820,7 @@ def on_script_load():
 
 def check_inventory_versions():
     """
-    Actual version idetifier of Loaded containers
+    Actual version identifier of Loaded containers
 
     Any time this function is run it will check all nodes and filter only
     Loader nodes for its version. It will get all versions from database
@@ -921,7 +927,7 @@ def writes_version_sync():
 
     for each in nuke.allNodes(filter="Write"):
         # check if the node is avalon tracked
-        if _NODE_TAB_NAME not in each.knobs():
+        if NODE_TAB_NAME not in each.knobs():
             continue
 
         avalon_knob_data = read_avalon_data(each)
@@ -2381,7 +2387,7 @@ def launch_workfiles_app():
 
     Context.workfiles_launched = True
 
-    # get all imortant settings
+    # get all important settings
     open_at_start = env_value_to_bool(
         env_key="AYON_WORKFILE_TOOL_ON_START",
         default=None)
@@ -2621,11 +2627,11 @@ class NukeDirmap(HostDirmap):
 
 
 class DirmapCache:
-    """Caching class to get settings and sync_module easily and only once."""
+    """Caching class to get settings and sitesync easily and only once."""
     _project_name = None
     _project_settings = None
-    _sync_module_discovered = False
-    _sync_module = None
+    _sitesync_addon_discovered = False
+    _sitesync_addon = None
     _mapping = None
 
     @classmethod
@@ -2641,11 +2647,11 @@ class DirmapCache:
         return cls._project_settings
 
     @classmethod
-    def sync_module(cls):
-        if not cls._sync_module_discovered:
-            cls._sync_module_discovered = True
-            cls._sync_module = AddonsManager().get("sync_server")
-        return cls._sync_module
+    def sitesync_addon(cls):
+        if not cls._sitesync_addon_discovered:
+            cls._sitesync_addon_discovered = True
+            cls._sitesync_addon = AddonsManager().get("sitesync")
+        return cls._sitesync_addon
 
     @classmethod
     def mapping(cls):
@@ -2667,7 +2673,7 @@ def dirmap_file_name_filter(file_name):
         "nuke",
         DirmapCache.project_name(),
         DirmapCache.project_settings(),
-        DirmapCache.sync_module(),
+        DirmapCache.sitesync_addon(),
     )
     if not DirmapCache.mapping():
         DirmapCache.set_mapping(dirmap_processor.get_mappings())
