@@ -100,7 +100,7 @@ def extract_alembic_overrides_enum():
         {"label": "UVs Only", "value": "uvsOnly"},
         {"label": "Verbose", "value": "verbose"},
         {"label": "Visible Only", "value": "visibleOnly"},
-        {"label": "Whole FrameGeo", "value": "wholeFrameGeo"},
+        {"label": "Whole Frame Geo", "value": "wholeFrameGeo"},
         {"label": "World Space", "value": "worldSpace"},
         {"label": "Write Color Sets", "value": "writeColorSets"},
         {"label": "Write Creases", "value": "writeCreases"},
