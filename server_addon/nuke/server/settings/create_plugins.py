@@ -12,7 +12,11 @@ def instance_attributes_enum():
     return [
         {"value": "reviewable", "label": "Reviewable"},
         {"value": "farm_rendering", "label": "Farm rendering"},
-        {"value": "use_range_limit", "label": "Use range limit"}
+        {"value": "use_range_limit", "label": "Use range limit"},
+        {
+            "value": "headless_farm_submission",
+            "label": "Headless Farm Submission"
+        }
     ]
 
 
