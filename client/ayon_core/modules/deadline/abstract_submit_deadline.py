@@ -601,11 +601,8 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
 
         """
         url = "{}/api/jobs".format(self._deadline_url)
-        kwargs = {}
-        if auth:
-            kwargs["auth"] = auth
         response = requests_post(url, json=payload,
-                                 **kwargs)
+                                 auth=auth)
         if not response.ok:
             self.log.error("Submission failed!")
             self.log.error(response.status_code)
