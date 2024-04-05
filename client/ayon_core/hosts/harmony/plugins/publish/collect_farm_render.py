@@ -178,7 +178,9 @@ class CollectFarmRender(publish.AbstractCollectRender):
                 outputStartFrame=info[3],
                 leadingZeros=info[2],
                 ignoreFrameHandleCheck=True,
-                # deadline=inst.data.get("deadline")  TODO
+                #todo: inst is not available, must be determined, fix when
+                #reworking to Publisher
+                # deadline=inst.data.get("deadline")
 
             )
             render_instance.context = context
