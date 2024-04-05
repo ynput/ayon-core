@@ -121,7 +121,7 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
                 # Embed the members into the container dictionary
                 container_members = set(get_container_members(container))
                 container["_members"] = container_members
-            instance.context.data["__cache_containers"] = scene_containers
+            instance.context.data[cache_key] = scene_containers
 
         inputs = []
         if scene_containers:
