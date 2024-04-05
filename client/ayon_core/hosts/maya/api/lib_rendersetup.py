@@ -77,7 +77,7 @@ def get_rendersetup_layer(layer):
                  if conn.endswith(".legacyRenderLayer")), None)
 
 
-def get_attr_in_layer(node_attr, layer):
+def get_attr_in_layer(node_attr, layer, as_string=True):
     """Return attribute value in Render Setup layer.
 
     This will only work for attributes which can be
@@ -124,7 +124,7 @@ def get_attr_in_layer(node_attr, layer):
             node = history_overrides[-1] if history_overrides else override
             node_attr_ = node + ".original"
 
-        return get_attribute(node_attr_, asString=True)
+        return get_attribute(node_attr_, asString=as_string)
 
     layer = get_rendersetup_layer(layer)
     rs = renderSetup.instance()
@@ -144,7 +144,7 @@ def get_attr_in_layer(node_attr, layer):
                 # we will let it error out.
                 rs.switchToLayer(current_layer)
 
-        return get_attribute(node_attr, asString=True)
+        return get_attribute(node_attr, asString=as_string)
 
     overrides = get_attr_overrides(node_attr, layer)
     default_layer_value = get_default_layer_value(node_attr)
