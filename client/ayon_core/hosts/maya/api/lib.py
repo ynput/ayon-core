@@ -2115,22 +2115,6 @@ def get_related_sets(node):
 
     """
 
-    # Ignore specific suffices
-    ignore_suffices = ["out_SET", "controls_SET", "_INST", "_CON"]
-
-    # Default nodes to ignore
-    defaults = {"defaultLightSet", "defaultObjectSet"}
-
-    # Ids to ignore
-    ignored = {
-        AVALON_INSTANCE_ID,
-        AVALON_CONTAINER_ID,
-        AYON_INSTANCE_ID,
-        AYON_CONTAINER_ID,
-    }
-
-    view_sets = get_isolate_view_sets()
-
     sets = cmds.listSets(object=node, extendToShape=False)
     if not sets:
         return []
@@ -2141,6 +2125,14 @@ def get_related_sets(node):
     # returned by `cmds.listSets(allSets=True)`
     sets = cmds.ls(sets)
 
+    # Ids to ignore
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
+
     # Ignore `avalon.container`
     sets = [
         s for s in sets
@@ -2149,21 +2141,31 @@ def get_related_sets(node):
            or cmds.getAttr(f"{s}.id") not in ignored
         )
     ]
+    if not sets:
+        return sets
 
     # Exclude deformer sets (`type=2` for `maya.cmds.listSets`)
-    deformer_sets = cmds.listSets(object=node,
-                                  extendToShape=False,
-                                  type=2) or []
-    deformer_sets = set(deformer_sets)  # optimize lookup
-    sets = [s for s in sets if s not in deformer_sets]
+    exclude_sets = cmds.listSets(object=node,
+                                 extendToShape=False,
+                                 type=2) or []
+    exclude_sets = set(exclude_sets)  # optimize lookup
+
+    # Default nodes to ignore
+    exclude_sets.update({"defaultLightSet", "defaultObjectSet"})
+
+    # Filter out the sets to exclude
+    sets = [s for s in sets if s not in exclude_sets]
 
     # Ignore when the set has a specific suffix
-    sets = [s for s in sets if not any(s.endswith(x) for x in ignore_suffices)]
+    ignore_suffices = ("out_SET", "controls_SET", "_INST", "_CON")
+    sets = [s for s in sets if not s.endswith(ignore_suffices)]
+    if not sets:
+        return sets
 
     # Ignore viewport filter view sets (from isolate select and
     # viewports)
+    view_sets = get_isolate_view_sets()
     sets = [s for s in sets if s not in view_sets]
-    sets = [s for s in sets if s not in defaults]
 
     return sets
 
@@ -2434,12 +2436,10 @@ def set_scene_fps(fps, update=True):
     cmds.currentUnit(time=unit, updateAnimation=update)
 
     # Set time slider data back to previous state
-    cmds.playbackOptions(edit=True, minTime=start_frame)
-    cmds.playbackOptions(edit=True, maxTime=end_frame)
-
-    # Set animation data
-    cmds.playbackOptions(edit=True, animationStartTime=animation_start)
-    cmds.playbackOptions(edit=True, animationEndTime=animation_end)
+    cmds.playbackOptions(minTime=start_frame,
+                         maxTime=end_frame,
+                         animationStartTime=animation_start,
+                         animationEndTime=animation_end)
 
     cmds.currentTime(current_frame, edit=True, update=True)
 
@@ -3129,7 +3129,7 @@ def load_capture_preset(data):
     return options
 
 
-def get_attr_in_layer(attr, layer):
+def get_attr_in_layer(attr, layer, as_string=True):
     """Return attribute value in specified renderlayer.
 
     Same as cmds.getAttr but this gets the attribute's value in a
@@ -3147,6 +3147,7 @@ def get_attr_in_layer(attr, layer):
     Args:
         attr (str): attribute name, ex. "node.attribute"
         layer (str): layer name
+        as_string (bool): whether attribute should convert to a string value
 
     Returns:
         The return value from `maya.cmds.getAttr`
@@ -3156,7 +3157,8 @@ def get_attr_in_layer(attr, layer):
     try:
         if cmds.mayaHasRenderSetup():
             from . import lib_rendersetup
-            return lib_rendersetup.get_attr_in_layer(attr, layer)
+            return lib_rendersetup.get_attr_in_layer(
+                attr, layer, as_string=as_string)
     except AttributeError:
         pass
 
@@ -3164,7 +3166,7 @@ def get_attr_in_layer(attr, layer):
     current_layer = cmds.editRenderLayerGlobals(query=True,
                                                 currentRenderLayer=True)
     if layer == current_layer:
-        return cmds.getAttr(attr)
+        return cmds.getAttr(attr, asString=as_string)
 
     connections = cmds.listConnections(attr,
                                        plugs=True,
@@ -3215,7 +3217,7 @@ def get_attr_in_layer(attr, layer):
                         value *= conversion
                     return value
 
-    return cmds.getAttr(attr)
+    return cmds.getAttr(attr, asString=as_string)
 
 
 def fix_incompatible_containers():
@@ -4017,17 +4019,26 @@ def len_flattened(components):
     return n
 
 
-def get_all_children(nodes):
+def get_all_children(nodes, ignore_intermediate_objects=False):
     """Return all children of `nodes` including each instanced child.
     Using maya.cmds.listRelatives(allDescendents=True) includes only the first
     instance. As such, this function acts as an optimal replacement with a
     focus on a fast query.
+
+    Args:
+        nodes (iterable): List of nodes to get children for.
+        ignore_intermediate_objects (bool): Ignore any children that
+            are intermediate objects.
+
+    Returns:
+        set: Children of input nodes.
 
     """
 
     sel = OpenMaya.MSelectionList()
     traversed = set()
     iterator = OpenMaya.MItDag(OpenMaya.MItDag.kDepthFirst)
+    fn_dag = OpenMaya.MFnDagNode()
     for node in nodes:
 
         if node in traversed:
@@ -4044,6 +4055,13 @@ def get_all_children(nodes):
         iterator.next()  # noqa: B305
         while not iterator.isDone():
 
+            if ignore_intermediate_objects:
+                fn_dag.setObject(iterator.currentItem())
+                if fn_dag.isIntermediateObject:
+                    iterator.prune()
+                    iterator.next()  # noqa: B305
+                    continue
+
             path = iterator.fullPathName()
 
             if path in traversed:
@@ -4054,7 +4072,7 @@ def get_all_children(nodes):
             traversed.add(path)
             iterator.next()  # noqa: B305
 
-    return list(traversed)
+    return traversed
 
 
 def get_capture_preset(
