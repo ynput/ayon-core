@@ -209,8 +209,7 @@ def _submit_headless_farm(node):
     # Find instance for node and workfile.
     instance = None
     instance_workfile = None
-    indexes_to_remove = []
-    for count, Instance in enumerate(context):
+    for Instance in context:
         if Instance.data["family"] == "workfile":
             instance_workfile = Instance
             continue
@@ -219,7 +218,7 @@ def _submit_headless_farm(node):
         if node.name() == instance_node.name():
             instance = Instance
         else:
-            indexes_to_remove.append(count)
+            Instance.data["active"] = False
 
     if instance is None:
         show_message_dialog(
@@ -244,12 +243,6 @@ def _submit_headless_farm(node):
     instance.data.pop("latestVersion")
     instance_workfile.data.pop("latestVersion")
 
-    # Remove all other instances.
-    indexes_to_remove.sort(reverse=True)
-    for i in indexes_to_remove:
-        if 0 <= i < len(context):
-            del context[i]
-
     # Validate
     util.validate(context)
 
@@ -272,11 +265,8 @@ def _submit_headless_farm(node):
         )
         return
 
-    # Save the workfile.
-    host = registered_host()
-    host.save_file(host.current_file())
-
     # Copy the workfile to a timestamped copy.
+    host = registered_host()
     current_datetime = datetime.now()
     formatted_timestamp = current_datetime.strftime("%Y%m%d%H%M%S")
     base, ext = os.path.splitext(host.current_file())

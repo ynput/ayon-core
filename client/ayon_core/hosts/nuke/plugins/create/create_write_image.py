@@ -65,12 +65,15 @@ class CreateWriteImage(napi.NukeWriteCreator):
         )
 
     def create_instance_node(self, product_name, instance_data):
+        settings = self.project_settings["nuke"]["create"]["CreateWriteImage"]
+        settings = settings["instance_attributes"]
 
         # add fpath_template
         write_data = {
             "creator": self.__class__.__name__,
             "productName": product_name,
-            "fpath_template": self.temp_rendering_path_template
+            "fpath_template": self.temp_rendering_path_template,
+            "headless_farm_submission": "headless_farm_submission" in settings
         }
         write_data.update(instance_data)
 
