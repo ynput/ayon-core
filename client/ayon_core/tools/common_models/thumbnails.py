@@ -112,7 +112,7 @@ class ThumbnailsCache:
         """
 
         thumbnails_dir = self.get_thumbnails_dir()
-        # Skip if thumbnails dir does not exists yet
+        # Skip if thumbnails dir does not exist yet
         if not os.path.exists(thumbnails_dir):
             return
 
