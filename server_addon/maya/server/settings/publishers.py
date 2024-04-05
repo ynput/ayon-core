@@ -448,7 +448,7 @@ class ExtractAlembicModel(BaseSettingsModel):
     )
     attrPrefix: str = SettingsField(
         title="Custom Attributes Prefix",
-        placeholder="attr1;attr2",
+        placeholder="prefix1;prefix2",
         description=(
             "Attributes starting with these prefixes will be included in the "
             "Alembic export. Attributes should be separated by semi-colon `;`"
