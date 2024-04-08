@@ -67,6 +67,9 @@ INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
 
+# Track whether the workfile tool is about to save
+_about_to_save = False
+
 
 class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     name = "maya"
@@ -361,13 +364,13 @@ def parse_container(container):
 
 
 def _ls():
-    """Yields Avalon container node names.
+    """Yields AYON container node names.
 
     Used by `ls()` to retrieve the nodes and then query the full container's
     data.
 
     Yields:
-        str: Avalon container node name (objectSet)
+        str: AYON container node name (objectSet)
 
     """
 
@@ -384,7 +387,7 @@ def _ls():
     }
 
     # Iterate over all 'set' nodes in the scene to detect whether
-    # they have the avalon container ".id" attribute.
+    # they have the ayon container ".id" attribute.
     fn_dep = om.MFnDependencyNode()
     iterator = om.MItDependencyNodes(om.MFn.kSet)
     for mobject in _maya_iterate(iterator):
@@ -449,7 +452,7 @@ def containerise(name,
         ("name", name),
         ("namespace", namespace),
         ("loader", loader),
-        ("representation", context["representation"]["_id"]),
+        ("representation", context["representation"]["id"]),
     ]
 
     for key, value in data:
@@ -581,6 +584,10 @@ def on_save():
     for node, new_id in lib.generate_ids(nodes):
         lib.set_id(node, new_id, overwrite=False)
 
+    # We are now starting the actual save directly
+    global _about_to_save
+    _about_to_save = False
+
 
 def on_open():
     """On scene open let's assume the containers have changed."""
@@ -588,7 +595,7 @@ def on_open():
     from ayon_core.tools.utils import SimplePopup
 
     # Validate FPS after update_task_from_path to
-    # ensure it is using correct FPS for the asset
+    # ensure it is using correct FPS for the folder
     lib.validate_fps()
     lib.fix_incompatible_containers()
 
@@ -646,9 +653,10 @@ def on_task_changed():
             "Can't set project for new context because path does not exist: {}"
         ).format(workdir))
 
-    with lib.suspended_refresh():
-        lib.set_context_settings()
-        lib.update_content_on_context_change()
+    global _about_to_save
+    if not lib.IS_HEADLESS and _about_to_save:
+        # Let's prompt the user to update the context settings or not
+        lib.prompt_reset_context()
 
 
 def before_workfile_open():
@@ -664,6 +672,9 @@ def before_workfile_save(event):
     if workdir_path:
         create_workspace_mel(workdir_path, project_name)
 
+    global _about_to_save
+    _about_to_save = True
+
 
 def workfile_save_before_xgen(event):
     """Manage Xgen external files when switching context.
@@ -673,7 +684,7 @@ def workfile_save_before_xgen(event):
     switching context.
 
     Args:
-        event (Event) - openpype/lib/events.py
+        event (Event) - ayon_core/lib/events.py
     """
     if not cmds.pluginInfo("xgenToolkit", query=True, loaded=True):
         return

@@ -23,11 +23,11 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
     """Validates the frame ranges.
 
     This is an optional validator checking if the frame range on instance
-    matches the frame range specified for the asset.
+    matches the frame range specified for the folder.
 
     It also validates render frame ranges of render layers.
 
-    Repair action will change everything to match the asset frame range.
+    Repair action will change everything to match the folder frame range.
 
     This can be turned off by the artist to allow custom ranges.
     """
@@ -47,12 +47,28 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
             return
 
         frame_range = get_frame_range(
-            asset_doc=instance.data["assetEntity"])
+            instance.data["folderEntity"])
+
+        inst_frame_start = instance.data.get("frameStartHandle")
+        inst_frame_end = instance.data.get("frameEndHandle")
+        if inst_frame_start is None or inst_frame_end is None:
+            raise KnownPublishError(
+                "Missing frame start and frame end on "
+                "instance to to validate."
+            )
         frame_start_handle = frame_range["frameStartHandle"]
         frame_end_handle = frame_range["frameEndHandle"]
+        errors = []
+        if frame_start_handle != inst_frame_start:
+            errors.append(
+                f"Start frame ({inst_frame_start}) on instance does not match " # noqa
+                f"with the start frame ({frame_start_handle}) set on the folder attributes. ")    # noqa
+        if frame_end_handle != inst_frame_end:
+            errors.append(
+                f"End frame ({inst_frame_end}) on instance does not match "
+                f"with the end frame ({frame_end_handle}) "
+                "from the folder attributes. ")
 
-        errors = self.get_invalid(
-            instance, frame_start_handle, frame_end_handle)
         if errors:
             bullet_point_errors = "\n".join(
                 "- {}".format(err) for err in errors

@@ -11,6 +11,7 @@ from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 from ayon_core.lib import (
     is_in_tests,
     BoolDef,
+    TextDef,
     NumberDef
 )
 
@@ -79,16 +80,21 @@ class HoudiniSubmitDeadline(
     use_published = True
 
     # presets
-    priority = 50
-    chunk_size = 1
     export_priority = 50
     export_chunk_size = 10
-    group = ""
     export_group = ""
-
+    priority = 50
+    chunk_size = 1
+    group = ""
+    
     @classmethod
     def get_attribute_defs(cls):
         return [
+            BoolDef(
+                "suspend_publish",
+                default=False,
+                label="Suspend publish"
+            ),
             NumberDef(
                 "priority",
                 label="Priority",
@@ -103,10 +109,15 @@ class HoudiniSubmitDeadline(
                 minimum=1,
                 maximum=1000
             ),
+            TextDef(
+                "group",
+                default=cls.group,
+                label="Group Name"
+            ),
             NumberDef(
                 "export_priority",
                 label="Export Priority",
-                default=cls.priority,
+                default=cls.export_priority,
                 decimals=0
             ),
             NumberDef(
@@ -117,11 +128,11 @@ class HoudiniSubmitDeadline(
                 minimum=1,
                 maximum=1000
             ),
-            BoolDef(
-                "suspend_publish",
-                default=False,
-                label="Suspend publish"
-            )
+            TextDef(
+                "export_group",
+                default=cls.export_group,
+                label="Export Group Name"
+            ),
         ]
 
     def get_job_info(self, dependency_job_ids=None):
@@ -163,15 +174,6 @@ class HoudiniSubmitDeadline(
         job_info.UserName = context.data.get(
             "deadlineUser", getpass.getuser())
 
-        if split_render_job and is_export_job:
-            job_info.Priority = attribute_values.get(
-                "export_priority", self.export_priority
-            )
-        else:
-            job_info.Priority = attribute_values.get(
-                "priority", self.priority
-            )
-
         if is_in_tests():
             job_info.BatchName += datetime.now().strftime("%d%m%Y%H%M%S")
 
@@ -192,15 +194,23 @@ class HoudiniSubmitDeadline(
 
         job_info.Pool = instance.data.get("primaryPool")
         job_info.SecondaryPool = instance.data.get("secondaryPool")
-        job_info.Group = self.group
+        
         if split_render_job and is_export_job:
+            job_info.Priority = attribute_values.get(
+                "export_priority", self.export_priority
+            )
             job_info.ChunkSize = attribute_values.get(
                 "export_chunk", self.export_chunk_size
             )
+            job_info.Group = self.export_group
         else:
+            job_info.Priority = attribute_values.get(
+                "priority", self.priority
+            )
             job_info.ChunkSize = attribute_values.get(
                 "chunk", self.chunk_size
             )
+            job_info.Group = self.group
 
         job_info.Comment = context.data.get("comment")
 

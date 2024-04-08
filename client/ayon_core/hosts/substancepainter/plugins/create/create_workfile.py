@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
 
+import ayon_api
+
 from ayon_core.pipeline import CreatedInstance, AutoCreator
-from ayon_core.client import get_asset_by_name
 
 from ayon_core.hosts.substancepainter.api.pipeline import (
     set_instances,
@@ -29,7 +30,7 @@ class CreateWorkfile(AutoCreator):
 
         variant = self.default_variant
         project_name = self.project_name
-        asset_name = self.create_context.get_current_asset_name()
+        folder_path = self.create_context.get_current_folder_path()
         task_name = self.create_context.get_current_task_name()
         host_name = self.create_context.host_name
 
@@ -41,42 +42,51 @@ class CreateWorkfile(AutoCreator):
                 if instance.creator_identifier == self.identifier
             ), None)
 
-        if current_instance is None:
-            current_instance_asset = None
-        else:
-            current_instance_asset = current_instance["folderPath"]
+        current_folder_path = None
+        if current_instance is not None:
+            current_folder_path = current_instance["folderPath"]
 
         if current_instance is None:
             self.log.info("Auto-creating workfile instance...")
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 variant,
                 host_name,
             )
             data = {
-                "folderPath": asset_name,
+                "folderPath": folder_path,
                 "task": task_name,
                 "variant": variant
             }
             current_instance = self.create_instance_in_context(product_name,
                                                                data)
         elif (
-            current_instance_asset != asset_name
+            current_folder_path != folder_path
             or current_instance["task"] != task_name
         ):
             # Update instance context if is not the same
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 variant,
                 host_name,
             )
-            current_instance["folderPath"] = asset_name
+            current_instance["folderPath"] = folder_path
             current_instance["task"] = task_name
             current_instance["productName"] = product_name
 

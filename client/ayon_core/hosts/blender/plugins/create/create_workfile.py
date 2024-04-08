@@ -1,7 +1,7 @@
 import bpy
+import ayon_api
 
 from ayon_core.pipeline import CreatedInstance, AutoCreator
-from ayon_core.client import get_asset_by_name
 from ayon_core.hosts.blender.api.plugin import BaseCreator
 from ayon_core.hosts.blender.api.pipeline import (
     AVALON_PROPERTY,
@@ -33,33 +33,38 @@ class CreateWorkfile(BaseCreator, AutoCreator):
         )
 
         project_name = self.project_name
-        asset_name = self.create_context.get_current_asset_name()
+        folder_path = self.create_context.get_current_folder_path()
         task_name = self.create_context.get_current_task_name()
         host_name = self.create_context.host_name
 
-        existing_asset_name = None
+        existing_folder_path = None
         if workfile_instance is not None:
-            existing_asset_name = workfile_instance.get("folderPath")
+            existing_folder_path = workfile_instance.get("folderPath")
 
         if not workfile_instance:
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 task_name,
                 host_name,
             )
             data = {
-                "folderPath": asset_name,
+                "folderPath": folder_path,
                 "task": task_name,
                 "variant": task_name,
             }
             data.update(
                 self.get_dynamic_data(
                     project_name,
-                    asset_doc,
-                    task_name,
+                    folder_entity,
+                    task_entity,
                     task_name,
                     host_name,
                     workfile_instance,
@@ -72,20 +77,25 @@ class CreateWorkfile(BaseCreator, AutoCreator):
             self._add_instance_to_context(workfile_instance)
 
         elif (
-            existing_asset_name != asset_name
+            existing_folder_path != folder_path
             or workfile_instance["task"] != task_name
         ):
             # Update instance context if it's different
-            asset_doc = get_asset_by_name(project_name, asset_name)
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
             product_name = self.get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                folder_entity,
+                task_entity,
                 self.default_variant,
                 host_name,
             )
 
-            workfile_instance["folderPath"] = asset_name
+            workfile_instance["folderPath"] = folder_path
             workfile_instance["task"] = task_name
             workfile_instance["productName"] = product_name
 

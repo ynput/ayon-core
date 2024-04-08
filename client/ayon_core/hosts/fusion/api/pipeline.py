@@ -5,6 +5,7 @@ import os
 import sys
 import logging
 import contextlib
+from pathlib import Path
 
 import pyblish.api
 from qtpy import QtCore
@@ -28,8 +29,8 @@ from ayon_core.tools.utils import host_tools
 
 from .lib import (
     get_current_comp,
-    comp_lock_and_undo_chunk,
-    validate_comp_prefs
+    validate_comp_prefs,
+    prompt_reset_context
 )
 
 log = Logger.get_logger(__name__)
@@ -40,6 +41,9 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
+
+# Track whether the workfile tool is about to save
+_about_to_save = False
 
 
 class FusionLogHandler(logging.Handler):
@@ -70,7 +74,7 @@ class FusionHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
     name = "fusion"
 
     def install(self):
-        """Install fusion-specific functionality of OpenPype.
+        """Install fusion-specific functionality of AYON.
 
         This is where you install menus and register families, data
         and loaders into fusion.
@@ -104,8 +108,10 @@ class FusionHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         # Register events
         register_event_callback("open", on_after_open)
+        register_event_callback("workfile.save.before", before_workfile_save)
         register_event_callback("save", on_save)
         register_event_callback("new", on_new)
+        register_event_callback("taskChanged", on_task_changed)
 
     # region workfile io api
     def has_unsaved_changes(self):
@@ -169,6 +175,19 @@ def on_save(event):
     comp = event["sender"]
     validate_comp_prefs(comp)
 
+    # We are now starting the actual save directly
+    global _about_to_save
+    _about_to_save = False
+
+
+def on_task_changed():
+    global _about_to_save
+    print(f"Task changed: {_about_to_save}")
+    # TODO: Only do this if not headless
+    if _about_to_save:
+        # Let's prompt the user to update the context settings or not
+        prompt_reset_context()
+
 
 def on_after_open(event):
     comp = event["sender"]
@@ -177,7 +196,7 @@ def on_after_open(event):
     if any_outdated_containers():
         log.warning("Scene has outdated content.")
 
-        # Find OpenPype menu to attach to
+        # Find AYON menu to attach to
         from . import menu
 
         def _on_show_scene_inventory():
@@ -200,6 +219,28 @@ def on_after_open(event):
         dialog.raise_()
         dialog.activateWindow()
         dialog.setStyleSheet(load_stylesheet())
+
+
+def before_workfile_save(event):
+    # Due to Fusion's external python process design we can't really
+    # detect whether the current Fusion environment matches the one the artists
+    # expects it to be. For example, our pipeline python process might
+    # have been shut down, and restarted - which will restart it to the
+    # environment Fusion started with; not necessarily where the artist
+    # is currently working.
+    # The `_about_to_save` var is used to detect context changes when
+    # saving into another asset. If we keep it False it will be ignored
+    # as context change. As such, before we change tasks we will only
+    # consider it the current filepath is within the currently known
+    # AVALON_WORKDIR. This way we avoid false positives of thinking it's
+    # saving to another context and instead sometimes just have false negatives
+    # where we fail to show the "Update on task change" prompt.
+    comp = get_current_comp()
+    filepath = comp.GetAttrs()["COMPS_FileName"]
+    workdir = os.environ.get("AYON_WORKDIR")
+    if Path(workdir) in Path(filepath).parents:
+        global _about_to_save
+        _about_to_save = True
 
 
 def ls():
@@ -252,7 +293,7 @@ def imprint_container(tool,
         ("name", str(name)),
         ("namespace", str(namespace)),
         ("loader", str(loader)),
-        ("representation", str(context["representation"]["_id"])),
+        ("representation", context["representation"]["id"]),
     ]
 
     for key, value in data:
@@ -326,9 +367,9 @@ class FusionEventThread(QtCore.QThread):
 
 
 class FusionEventHandler(QtCore.QObject):
-    """Emits OpenPype events based on Fusion events captured in a QThread.
+    """Emits AYON events based on Fusion events captured in a QThread.
 
-    This will emit the following OpenPype events based on Fusion actions:
+    This will emit the following AYON events based on Fusion actions:
         save: Comp_Save, Comp_SaveAs
         open: Comp_Opened
         new: Comp_New
@@ -337,7 +378,6 @@ class FusionEventHandler(QtCore.QObject):
     E.g.
         >>> handler = FusionEventHandler(parent=window)
         >>> handler.start()
-
 
     """
     ACTION_IDS = [
@@ -374,7 +414,7 @@ class FusionEventHandler(QtCore.QObject):
         self._event_thread.stop()
 
     def _on_event(self, event):
-        """Handle Fusion events to emit OpenPype events"""
+        """Handle Fusion events to emit AYON events"""
         if not event:
             return
 

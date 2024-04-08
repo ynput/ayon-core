@@ -3,10 +3,15 @@ from maya import cmds
 import pyblish.api
 
 import ayon_core.hosts.maya.api.action
-from ayon_core.pipeline.publish import ValidateContentsOrder
+from ayon_core.pipeline.publish import (
+    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
+    PublishValidationError
+)
 
 
-class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin):
+class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin,
+                                     OptionalPyblishPluginMixin):
     """Validate skinClusters on meshes have valid member relationships.
 
     In rare cases it can happen that a mesh has a skinCluster in its history
@@ -20,14 +25,19 @@ class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin):
     families = ['fbx']
     label = "Skincluster Deformer Relationships"
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = False
 
     def process(self, instance):
         """Process all the transform nodes in the instance"""
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
 
         if invalid:
-            raise ValueError("Invalid skinCluster relationships "
-                             "found on meshes: {0}".format(invalid))
+            raise PublishValidationError(
+                "Invalid skinCluster relationships found on meshes: {0}"
+                .format(invalid)
+            )
 
     @classmethod
     def get_invalid(cls, instance):

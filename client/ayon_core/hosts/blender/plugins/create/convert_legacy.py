@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Converter for legacy Houdini products."""
-from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
+from ayon_core.pipeline.create.creator_plugins import ProductConvertorPlugin
 from ayon_core.hosts.blender.api.lib import imprint
 
 
-class BlenderLegacyConvertor(SubsetConvertorPlugin):
+class BlenderLegacyConvertor(ProductConvertorPlugin):
     """Find and convert any legacy products in the scene.
 
     This Converter will find all legacy products in the scene and will

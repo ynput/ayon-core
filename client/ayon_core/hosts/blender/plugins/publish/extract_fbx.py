@@ -4,7 +4,6 @@ import bpy
 
 from ayon_core.pipeline import publish
 from ayon_core.hosts.blender.api import plugin
-from ayon_core.hosts.blender.api.pipeline import AVALON_PROPERTY
 
 
 class ExtractFBX(publish.Extractor, publish.OptionalPyblishPluginMixin):
@@ -21,7 +20,7 @@ class ExtractFBX(publish.Extractor, publish.OptionalPyblishPluginMixin):
 
         # Define extract output file path
         stagingdir = self.staging_dir(instance)
-        folder_name = instance.data["assetEntity"]["name"]
+        folder_name = instance.data["folderEntity"]["name"]
         product_name = instance.data["productName"]
         instance_name = f"{folder_name}_{product_name}"
         filename = f"{instance_name}.fbx"
