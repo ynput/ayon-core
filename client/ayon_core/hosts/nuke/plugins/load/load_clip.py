@@ -132,16 +132,15 @@ class LoadClip(plugin.NukeLoader):
 
         # If a slate is present, the frame range is 1 frame longer for movies,
         # but file sequences its the first frame that is 1 frame lower.
-        slate_frame = repre_entity["data"].get("slateFrame", False)
-        if slate_frame:
-            extension = "." + repre_entity["context"]["ext"]
+        slate_frames = repre_entity["data"].get("slateFrames", 0)
+        extension = "." + repre_entity["context"]["ext"]
 
-            if extension in VIDEO_EXTENSIONS:
-                last += 1
+        if extension in VIDEO_EXTENSIONS:
+            last += slate_frames
 
-            files_count = len(repre_entity["files"])
-            if extension in IMAGE_EXTENSIONS and files_count != 1:
-                first -= 1
+        files_count = len(repre_entity["files"])
+        if extension in IMAGE_EXTENSIONS and files_count != 1:
+            first -= slate_frames
 
         # Fallback to folder name when namespace is None
         if namespace is None:
@@ -181,7 +180,7 @@ class LoadClip(plugin.NukeLoader):
             )
 
             self._set_range_to_node(
-                read_node, first, last, start_at_workfile, slate_frame
+                read_node, first, last, start_at_workfile, slate_frames
             )
 
             version_name = version_entity["version"]
@@ -418,7 +417,7 @@ class LoadClip(plugin.NukeLoader):
                 nuke.delete(member)
 
     def _set_range_to_node(
-        self, read_node, first, last, start_at_workfile, slate_frame=False
+        self, read_node, first, last, start_at_workfile, slate_frames=0
     ):
         read_node['origfirst'].setValue(int(first))
         read_node['first'].setValue(int(first))
@@ -429,9 +428,7 @@ class LoadClip(plugin.NukeLoader):
         if start_at_workfile:
             read_node['frame_mode'].setValue("start at")
 
-            start_frame = self.script_start
-            if slate_frame:
-                start_frame -= 1
+            start_frame = self.script_start - slate_frames
 
             read_node['frame'].setValue(str(start_frame))
 
