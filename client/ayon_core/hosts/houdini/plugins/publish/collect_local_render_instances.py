@@ -62,6 +62,13 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
             staging_dir = os.path.dirname(aov_filepaths[0])
             ext = aov_filepaths[0].split(".")[-1]
 
+            # Support Single frame.
+            # The integrator wants single files to be a single
+            #  filename instead of a list.
+            # More info: https://github.com/ynput/ayon-core/issues/238
+            if len(aov_filenames) == 1:
+                aov_filenames = aov_filenames[0]
+
             aov_instance.data.update({
                 # 'label': label,
                 "task": instance.data["task"],
@@ -85,6 +92,7 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                     }
                 ]
             })
+        self.log.debug(aov_instance.data)
 
         # Remove Mantra instance
         # I can't remove it here as I still need it to trigger the render.
