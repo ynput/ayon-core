@@ -78,21 +78,20 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 "productType": product_type,
                 "productName": product_name,
                 "productGroup": product_group,
-                "tags": [],
-                "families": ["render.local.hou"],
+                "families": ["render.local.hou", "review"],
                 "instance_node": instance.data["instance_node"],
                 "representations": [
                     {
                         "stagingDir": staging_dir,
                         "ext": ext,
                         "name": ext,
+                        "tags": ["review"],
                         "files": aov_filenames,
                         "frameStart": instance.data["frameStartHandle"],
                         "frameEnd": instance.data["frameEndHandle"]
                     }
                 ]
             })
-        self.log.debug(aov_instance.data)
 
         # Remove Mantra instance
         # I can't remove it here as I still need it to trigger the render.
