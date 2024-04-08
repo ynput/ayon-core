@@ -27,7 +27,7 @@ class ExtractBurnin(publish.Extractor):
     Extractor to create video with pre-defined burnins from
     existing extracted video representation.
 
-    It will work only on represenations having `burnin = True` or
+    It will work only on representations having `burnin = True` or
     `tags` including `burnin`
     """
 
@@ -125,7 +125,7 @@ class ExtractBurnin(publish.Extractor):
 
             burnin_defs = copy.deepcopy(src_burnin_defs)
 
-            # Filter output definition by `burnin` represetation key
+            # Filter output definition by `burnin` representation key
             repre_linked_burnins = [
                 burnin_def
                 for burnin_def in burnin_defs
@@ -378,6 +378,7 @@ class ExtractBurnin(publish.Extractor):
                 # Prepare subprocess arguments
                 args = list(executable_args)
                 args.append(temporary_json_filepath)
+                args.append("--headless")
                 self.log.debug("Executing: {}".format(" ".join(args)))
 
                 # Run burnin script
@@ -547,7 +548,7 @@ class ExtractBurnin(publish.Extractor):
         return burnin_data, temp_data
 
     def repres_is_valid(self, repre):
-        """Validation if representaion should be processed.
+        """Validation if representation should be processed.
 
         Args:
             repre (dict): Representation which should be checked.
@@ -579,7 +580,7 @@ class ExtractBurnin(publish.Extractor):
             tags (list): Tags of processed representation.
 
         Returns:
-            list: Containg all burnin definitions matching entered tags.
+            list: Contain all burnin definitions matching entered tags.
 
         """
         filtered_burnins = []
@@ -604,7 +605,7 @@ class ExtractBurnin(publish.Extractor):
 
         Store data to `temp_data` for keys "full_input_path" which is full path
         to source files optionally with sequence formatting,
-        "full_output_path" full path to otput with optionally with sequence
+        "full_output_path" full path to output with optionally with sequence
         formatting, "full_input_paths" list of all source files which will be
         deleted when burnin script ends, "repre_files" list of output
         filenames.
@@ -754,7 +755,7 @@ class ExtractBurnin(publish.Extractor):
             profile (dict): Profile from presets matching current context.
 
         Returns:
-            list: Containg all valid output definitions.
+            list: Contain all valid output definitions.
         """
         filtered_burnin_defs = []
 
@@ -775,7 +776,7 @@ class ExtractBurnin(publish.Extractor):
             ):
                 self.log.debug((
                     "Skipped burnin definition \"{}\". Family"
-                    " fiters ({}) does not match current instance families: {}"
+                    " filters ({}) does not match current instance families: {}"
                 ).format(
                     filename_suffix, str(families_filters), str(families)
                 ))
