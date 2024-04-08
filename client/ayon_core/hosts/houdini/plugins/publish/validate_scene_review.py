@@ -19,6 +19,10 @@ class ValidateSceneReview(pyblish.api.InstancePlugin):
 
         report = []
         instance_node = hou.node(instance.data.get("instance_node"))
+        if instance_node.type().name() != "opengl":
+            self.log.debug("Skipping Validation. Rop node {} "
+                           "is not an OpenGl node.".format(instance_node.path()))
+            return
 
         invalid = self.get_invalid_scene_path(instance_node)
         if invalid:

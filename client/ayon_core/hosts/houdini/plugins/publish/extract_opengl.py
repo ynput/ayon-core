@@ -17,6 +17,10 @@ class ExtractOpenGL(publish.Extractor):
 
     def process(self, instance):
         ropnode = hou.node(instance.data.get("instance_node"))
+        if ropnode.type().name() != "opengl":
+            self.log.debug("Skipping OpenGl extraction. Rop node {} "
+                           "is not an OpenGl node.".format(ropnode.path()))
+            return
 
         output = ropnode.evalParm("picture")
         staging_dir = os.path.normpath(os.path.dirname(output))
