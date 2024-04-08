@@ -37,7 +37,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
-from ayon_core.pipeline.context_tools import get_current_folder_entity
+from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib.profiles_filtering import filter_profiles
 
@@ -2629,21 +2629,21 @@ def reset_frame_range(playback=True, render=True, fps=True):
 def reset_scene_resolution():
     """Apply the scene resolution  from the project definition
 
-    scene resolution can be overwritten by an folder if the folder.attrib
-    contains any information regarding scene resolution .
+    The scene resolution will be retrieved from the current task entity's
+    attributes.
 
     Returns:
         None
     """
 
-    folder_attributes = get_current_folder_entity()["attrib"]
+    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
 
     # Set resolution
-    width = folder_attributes.get("resolutionWidth", 1920)
-    height = folder_attributes.get("resolutionHeight", 1080)
-    pixelAspect = folder_attributes.get("pixelAspect", 1)
+    width = task_attributes.get("resolutionWidth", 1920)
+    height = task_attributes.get("resolutionHeight", 1080)
+    pixel_aspect = task_attributes.get("pixelAspect", 1)
 
-    set_scene_resolution(width, height, pixelAspect)
+    set_scene_resolution(width, height, pixel_aspect)
 
 
 def set_context_settings(
@@ -3129,7 +3129,7 @@ def load_capture_preset(data):
     return options
 
 
-def get_attr_in_layer(attr, layer):
+def get_attr_in_layer(attr, layer, as_string=True):
     """Return attribute value in specified renderlayer.
 
     Same as cmds.getAttr but this gets the attribute's value in a
@@ -3147,6 +3147,7 @@ def get_attr_in_layer(attr, layer):
     Args:
         attr (str): attribute name, ex. "node.attribute"
         layer (str): layer name
+        as_string (bool): whether attribute should convert to a string value
 
     Returns:
         The return value from `maya.cmds.getAttr`
@@ -3156,7 +3157,8 @@ def get_attr_in_layer(attr, layer):
     try:
         if cmds.mayaHasRenderSetup():
             from . import lib_rendersetup
-            return lib_rendersetup.get_attr_in_layer(attr, layer)
+            return lib_rendersetup.get_attr_in_layer(
+                attr, layer, as_string=as_string)
     except AttributeError:
         pass
 
@@ -3164,7 +3166,7 @@ def get_attr_in_layer(attr, layer):
     current_layer = cmds.editRenderLayerGlobals(query=True,
                                                 currentRenderLayer=True)
     if layer == current_layer:
-        return cmds.getAttr(attr)
+        return cmds.getAttr(attr, asString=as_string)
 
     connections = cmds.listConnections(attr,
                                        plugs=True,
@@ -3215,7 +3217,7 @@ def get_attr_in_layer(attr, layer):
                         value *= conversion
                     return value
 
-    return cmds.getAttr(attr)
+    return cmds.getAttr(attr, asString=as_string)
 
 
 def fix_incompatible_containers():
@@ -3244,33 +3246,46 @@ def update_content_on_context_change():
     """
     This will update scene content to match new folder on context change
     """
-    scene_sets = cmds.listSets(allSets=True)
-    folder_entity = get_current_folder_entity()
-    folder_attributes = folder_entity["attrib"]
-    new_folder_path = folder_entity["path"]
-    for s in scene_sets:
-        try:
-            if cmds.getAttr("{}.id".format(s)) in {
-                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
-            }:
-                attr = cmds.listAttr(s)
-                print(s)
-                if "folderPath" in attr:
-                    print(
-                        "  - setting folder to: [ {} ]".format(new_folder_path)
-                    )
-                    cmds.setAttr(
-                        "{}.folderPath".format(s),
-                        new_folder_path, type="string"
-                    )
-                if "frameStart" in attr:
-                    cmds.setAttr("{}.frameStart".format(s),
-                                 folder_attributes["frameStart"])
-                if "frameEnd" in attr:
-                    cmds.setAttr("{}.frameEnd".format(s),
-                                 folder_attributes["frameEnd"],)
-        except ValueError:
-            pass
+
+    host = registered_host()
+    create_context = CreateContext(host)
+    folder_entity = get_current_task_entity(fields={"attrib"})
+
+    instance_values = {
+        "folderPath": create_context.get_current_folder_path(),
+        "task": create_context.get_current_task_name(),
+    }
+    creator_attribute_values = {
+        "frameStart": folder_entity["attrib"]["frameStart"],
+        "frameEnd": folder_entity["attrib"]["frameEnd"],
+    }
+
+    has_changes = False
+    for instance in create_context.instances:
+        for key, value in instance_values.items():
+            if key not in instance or instance[key] == value:
+                continue
+
+            # Update instance value
+            print(f"Updating {instance.product_name} {key} to: {value}")
+            instance[key] = value
+            has_changes = True
+
+        creator_attributes = instance.creator_attributes
+        for key, value in creator_attribute_values.items():
+            if (
+                    key not in creator_attributes
+                    or creator_attributes[key] == value
+            ):
+                continue
+
+            # Update instance creator attribute value
+            print(f"Updating {instance.product_name} {key} to: {value}")
+            instance[key] = value
+            has_changes = True
+
+    if has_changes:
+        create_context.save_changes()
 
 
 def show_message(title, msg):
@@ -4004,17 +4019,26 @@ def len_flattened(components):
     return n
 
 
-def get_all_children(nodes):
+def get_all_children(nodes, ignore_intermediate_objects=False):
     """Return all children of `nodes` including each instanced child.
     Using maya.cmds.listRelatives(allDescendents=True) includes only the first
     instance. As such, this function acts as an optimal replacement with a
     focus on a fast query.
+
+    Args:
+        nodes (iterable): List of nodes to get children for.
+        ignore_intermediate_objects (bool): Ignore any children that
+            are intermediate objects.
+
+    Returns:
+        set: Children of input nodes.
 
     """
 
     sel = OpenMaya.MSelectionList()
     traversed = set()
     iterator = OpenMaya.MItDag(OpenMaya.MItDag.kDepthFirst)
+    fn_dag = OpenMaya.MFnDagNode()
     for node in nodes:
 
         if node in traversed:
@@ -4031,6 +4055,13 @@ def get_all_children(nodes):
         iterator.next()  # noqa: B305
         while not iterator.isDone():
 
+            if ignore_intermediate_objects:
+                fn_dag.setObject(iterator.currentItem())
+                if fn_dag.isIntermediateObject:
+                    iterator.prune()
+                    iterator.next()  # noqa: B305
+                    continue
+
             path = iterator.fullPathName()
 
             if path in traversed:
@@ -4041,7 +4072,7 @@ def get_all_children(nodes):
             traversed.add(path)
             iterator.next()  # noqa: B305
 
-    return list(traversed)
+    return traversed
 
 
 def get_capture_preset(
