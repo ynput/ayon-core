@@ -287,7 +287,7 @@ def run_detached_process(args, **kwargs):
             "env": kwargs.pop("env")
         }
         json_temp = tempfile.NamedTemporaryFile(
-            mode="w", prefix="op_app_args", suffix=".json", delete=False
+            mode="w", prefix="ayon_app_args", suffix=".json", delete=False
         )
         json_temp.close()
         json_temp_filpath = json_temp.name
