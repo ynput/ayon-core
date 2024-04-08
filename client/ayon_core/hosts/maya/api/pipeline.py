@@ -653,10 +653,6 @@ def on_task_changed():
             "Can't set project for new context because path does not exist: {}"
         ).format(workdir))
 
-    with lib.suspended_refresh():
-        lib.set_context_settings()
-        lib.update_content_on_context_change()
-
     global _about_to_save
     if not lib.IS_HEADLESS and _about_to_save:
         # Let's prompt the user to update the context settings or not
