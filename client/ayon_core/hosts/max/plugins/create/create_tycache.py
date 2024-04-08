@@ -17,3 +17,5 @@ class CreateTySpline(plugin.MaxCreator):
     label = "TyCache (TySpline)"
     family = "tyspline"
     icon = "gear"
+    # TODO: get the operator here and divide into
+    # new creators instead if multiple operator involved here.

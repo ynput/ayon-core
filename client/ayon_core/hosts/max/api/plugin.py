@@ -296,3 +296,94 @@ class MaxCreator(Creator, MaxCreatorBase):
         return [
             BoolDef("use_selection", label="Use selection")
         ]
+
+
+class MaxCacheCreator(Creator, MaxCreatorBase):
+    tyflow_op_nodes = []
+
+    def create(self, product_name, instance_data, pre_create_data):
+        self.tyflow_op_nodes = pre_create_data.get("tyflow_operators")
+        instance_node = self.create_instance_node(product_name)
+        instance_data["instance_node"] = instance_node.name
+        instance = CreatedInstance(
+            self.product_type,
+            product_name,
+            instance_data,
+            self
+        )
+        if self.tyflow_op_nodes:
+            node_list = []
+            sel_list = []
+            for i, node in enumerate(self.tyflow_op_nodes):
+                node_list.append(node)
+                sel_list.append(str(i))
+            # Setting the property
+            rt.setProperty(
+                instance_node.modifiers[0].openPypeData,
+                "all_handles", node_list)
+            rt.setProperty(
+                instance_node.modifiers[0].openPypeData,
+                "sel_list", sel_list)
+        self._add_instance_to_context(instance)
+        imprint(instance_node.name, instance.data_to_store())
+
+        return instance
+
+    def collect_instances(self):
+        self.cache_instance_data(self.collection_shared_data)
+        for instance in self.collection_shared_data["max_cached_instances"].get(self.identifier, []):  # noqa
+            created_instance = CreatedInstance.from_existing(
+                read(rt.GetNodeByName(instance)), self
+            )
+            self._add_instance_to_context(created_instance)
+
+    def update_instances(self, update_list):
+        for created_inst, changes in update_list:
+            instance_node = created_inst.get("instance_node")
+            new_values = {
+                key: changes[key].new_value
+                for key in changes.changed_keys
+            }
+            product_name = new_values.get("productName", "")
+            if product_name and instance_node != product_name:
+                node = rt.getNodeByName(instance_node)
+                new_product_name = new_values["productName"]
+                if rt.getNodeByName(new_product_name):
+                    raise CreatorError(
+                        "The product '{}' already exists.".format(
+                            new_product_name))
+                instance_node = new_product_name
+                created_inst["instance_node"] = instance_node
+                node.name = instance_node
+
+            imprint(
+                instance_node,
+                created_inst.data_to_store(),
+            )
+
+    def remove_instances(self, instances):
+        """Remove specified instance from the scene.
+
+        This is only removing `id` parameter so instance is no longer
+        instance, because it might contain valuable data for artist.
+
+        """
+        for instance in instances:
+            instance_node = rt.GetNodeByName(
+                instance.data.get("instance_node"))
+            if instance_node:
+                count = rt.custAttributes.count(instance_node.modifiers[0])
+                rt.custAttributes.delete(instance_node.modifiers[0], count)
+                rt.Delete(instance_node)
+
+            self._remove_instance_from_context(instance)
+
+    def get_pre_create_attr_defs(self):
+        tyflow_operator_enum = []
+        return [
+            BoolDef("tyflow_operators",
+                    tyflow_operator_enum,
+                    default=[],
+                    multiselection=True,
+                    label="Tyflow Operators to be Exported")
+        ]
