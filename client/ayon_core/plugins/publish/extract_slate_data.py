@@ -18,5 +18,5 @@ class ExtractSlateData(publish.Extractor):
                 continue
 
             data = representation.get("data", {})
-            data["slateFrame"] = True
+            data["slateFrames"] = 1
             representation["data"] = data

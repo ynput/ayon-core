@@ -301,7 +301,7 @@ class ExtractSlateFrame(publish.Extractor):
                 "__ matching_repre: {}".format(pformat(matching_repre)))
 
         data = matching_repre.get("data", {})
-        data["slateFrame"] = True
+        data["slateFrames"] = 1
         matching_repre["data"] = data
 
         self.log.info("Added slate frame to representation files")
