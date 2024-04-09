@@ -5,7 +5,9 @@ import contextlib
 
 from ayon_core.lib import Logger
 
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline import registered_host
+from ayon_core.pipeline.create import CreateContext
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 
 self = sys.modules[__name__]
 self._project = None
@@ -52,9 +54,15 @@ def update_frame_range(start, end, comp=None, set_render_range=True,
         comp.SetAttrs(attrs)
 
 
-def set_current_context_framerange():
+def set_current_context_framerange(folder_entity=None):
     """Set Comp's frame range based on current folder."""
-    folder_entity = get_current_project_folder()
+    if folder_entity is None:
+        folder_entity = get_current_folder_entity(
+            fields={"attrib.frameStart",
+                    "attrib.frameEnd",
+                    "attrib.handleStart",
+                    "attrib.handleEnd"})
+
     folder_attributes = folder_entity["attrib"]
     start = folder_attributes["frameStart"]
     end = folder_attributes["frameEnd"]
@@ -65,9 +73,24 @@ def set_current_context_framerange():
                        handle_end=handle_end)
 
 
-def set_current_context_resolution():
+def set_current_context_fps(folder_entity=None):
+    """Set Comp's frame rate (FPS) to based on current asset"""
+    if folder_entity is None:
+        folder_entity = get_current_folder_entity(fields={"attrib.fps"})
+
+    fps = float(folder_entity["attrib"].get("fps", 24.0))
+    comp = get_current_comp()
+    comp.SetPrefs({
+        "Comp.FrameFormat.Rate": fps,
+    })
+
+
+def set_current_context_resolution(folder_entity=None):
     """Set Comp's resolution width x height default based on current folder"""
-    folder_entity = get_current_project_folder()
+    if folder_entity is None:
+        folder_entity = get_current_folder_entity(
+            fields={"attrib.resolutionWidth", "attrib.resolutionHeight"})
+
     folder_attributes = folder_entity["attrib"]
     width = folder_attributes["resolutionWidth"]
     height = folder_attributes["resolutionHeight"]
@@ -101,7 +124,7 @@ def validate_comp_prefs(comp=None, force_repair=False):
         "attrib.resolutionHeight",
         "attrib.pixelAspect",
     }
-    folder_entity = get_current_project_folder(fields=fields)
+    folder_entity = get_current_folder_entity(fields=fields)
     folder_path = folder_entity["path"]
     folder_attributes = folder_entity["attrib"]
 
@@ -285,3 +308,98 @@ def comp_lock_and_undo_chunk(
     finally:
         comp.Unlock()
         comp.EndUndo(keep_undo)
+
+
+def update_content_on_context_change():
+    """Update all Creator instances to current asset"""
+    host = registered_host()
+    context = host.get_current_context()
+
+    folder_path = context["folder_path"]
+    task = context["task_name"]
+
+    create_context = CreateContext(host, reset=True)
+
+    for instance in create_context.instances:
+        instance_folder_path = instance.get("folderPath")
+        if instance_folder_path and instance_folder_path != folder_path:
+            instance["folderPath"] = folder_path
+        instance_task = instance.get("task")
+        if instance_task and instance_task != task:
+            instance["task"] = task
+
+    create_context.save_changes()
+
+
+def prompt_reset_context():
+    """Prompt the user what context settings to reset.
+    This prompt is used on saving to a different task to allow the scene to
+    get matched to the new context.
+    """
+    # TODO: Cleanup this prototyped mess of imports and odd dialog
+    from ayon_core.tools.attribute_defs.dialog import (
+        AttributeDefinitionsDialog
+    )
+    from ayon_core.style import load_stylesheet
+    from ayon_core.lib import BoolDef, UILabelDef
+    from qtpy import QtWidgets, QtCore
+
+    definitions = [
+        UILabelDef(
+            label=(
+                "You are saving your workfile into a different folder or task."
+                "\n\n"
+                "Would you like to update some settings to the new context?\n"
+            )
+        ),
+        BoolDef(
+            "fps", 
+            label="FPS", 
+            tooltip="Reset Comp FPS",
+            default=True
+        ),
+        BoolDef(
+            "frame_range", 
+            label="Frame Range",
+            tooltip="Reset Comp start and end frame ranges",
+            default=True
+        ),
+        BoolDef(
+            "resolution", 
+            label="Comp Resolution", 
+            tooltip="Reset Comp resolution",
+            default=True
+        ),
+        BoolDef(
+            "instances", 
+            label="Publish instances", 
+            tooltip="Update all publish instance's folder and task to match "
+                    "the new folder and task", 
+            default=True
+        ),
+    ]
+
+    dialog = AttributeDefinitionsDialog(definitions)
+    dialog.setWindowFlags(
+        dialog.windowFlags() | QtCore.Qt.WindowStaysOnTopHint
+    )
+    dialog.setWindowTitle("Saving to different context.")
+    dialog.setStyleSheet(load_stylesheet())
+    if not dialog.exec_():
+        return None
+
+    options = dialog.get_values()
+    folder_entity = get_current_folder_entity()
+    if options["frame_range"]:
+        set_current_context_framerange(folder_entity)
+
+    if options["fps"]:
+        set_current_context_fps(folder_entity)
+
+    if options["resolution"]:
+        set_current_context_resolution(folder_entity)
+
+    if options["instances"]:
+        update_content_on_context_change()
+
+    dialog.deleteLater()
