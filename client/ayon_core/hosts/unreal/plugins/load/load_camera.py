@@ -3,25 +3,24 @@
 from pathlib import Path
 
 import ayon_api
-
 import unreal
-from unreal import (
-    EditorAssetLibrary,
-    EditorLevelLibrary,
-    EditorLevelUtils,
-    LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
+from ayon_core.hosts.unreal.api import plugin
+from ayon_core.hosts.unreal.api.pipeline import (
+    create_container,
+    generate_sequence,
+    imprint,
+    set_sequence_hierarchy,
 )
 from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
     get_representation_path,
 )
-from ayon_core.hosts.unreal.api import plugin
-from ayon_core.hosts.unreal.api.pipeline import (
-    generate_sequence,
-    set_sequence_hierarchy,
-    create_container,
-    imprint,
+from unreal import (
+    EditorAssetLibrary,
+    EditorLevelLibrary,
+    EditorLevelUtils,
+    LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
 )
 
 
@@ -177,7 +176,11 @@ class CameraLoader(plugin.Loader):
                         seq.get_asset().get_playback_start(),
                         seq.get_asset().get_playback_end()))
             else:
-                sequence, frame_range = generate_sequence(h, h_dir)
+                sequence_data = generate_sequence(
+                    Path(folder_path), h_dir)
+                if not sequence_data:
+                    continue
+                sequence, frame_range = sequence_data[0], sequence_data[1]
 
                 sequences.append(sequence)
                 frame_ranges.append(frame_range)

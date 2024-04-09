@@ -5,6 +5,7 @@ import logging
 from typing import List
 from contextlib import contextmanager
 import time
+from pathlib import Path
 
 import semver
 import pyblish.api
@@ -47,7 +48,7 @@ INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 class UnrealHost(HostBase, ILoadHost, IPublishHost):
     """Unreal host implementation.
 
-    For some time this class will re-use functions from module based
+    For some time this class will reuse functions from module based
     implementation for backwards compatibility of older unreal projects.
     """
 
@@ -590,22 +591,27 @@ def set_sequence_hierarchy(
         hid_section.set_level_names(maps)
 
 
-def generate_sequence(h, h_dir):
+def generate_sequence(folder_path: Path, unreal_directory: str):
+    """Generate Level Sequence from AYON folder.
+
+    Args:
+        folder_path (Path): Path to AYON folder
+        unreal_directory (str): Unreal directory path
+
+    """
     tools = unreal.AssetToolsHelpers().get_asset_tools()
 
     sequence = tools.create_asset(
-        asset_name=h,
-        package_path=h_dir,
+        asset_name=folder_path.name,
+        package_path=unreal_directory,
         asset_class=unreal.LevelSequence,
         factory=unreal.LevelSequenceFactoryNew()
     )
 
     project_name = get_current_project_name()
-    # TODO Fix this does not return folder path
-    folder_path = h_dir.split('/')[-1],
     folder_entity = ayon_api.get_folder_by_path(
         project_name,
-        folder_path,
+        folder_path.as_posix(),
         fields={"id", "attrib.fps"}
     )
 
@@ -626,6 +632,10 @@ def generate_sequence(h, h_dir):
             parent_ids=[e["id"]],
             fields={"id", "attrib.clipIn", "attrib.clipOut"}
         ))
+
+    # folder doesn't have time data
+    if not start_frames or end_frames:
+        return
 
     min_frame = min(start_frames)
     max_frame = max(end_frames)

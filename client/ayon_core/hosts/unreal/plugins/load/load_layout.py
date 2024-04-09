@@ -587,7 +587,12 @@ class LayoutLoader(plugin.Loader):
                 ]
 
                 if not existing_sequences:
-                    sequence, frame_range = generate_sequence(h, h_dir)
+                    sequence_data = generate_sequence(
+                        Path(folder_path), h_dir
+                    )
+                    if not sequence_data:
+                        continue
+                    sequence, frame_range = sequence_data[0], sequence_data[1]
 
                     sequences.append(sequence)
                     frame_ranges.append(frame_range)
