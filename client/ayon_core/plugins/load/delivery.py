@@ -292,6 +292,10 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         for template_name, value in anatomy.templates["delivery"].items():
             directory_template = value["directory"]
             if not directory_template.startswith("{root"):
+                self.log.warning(
+                    "Skipping template '%s' because directory template does "
+                    "not start with `{root`", template_name
+                )
                 continue
 
             templates[template_name] = value
