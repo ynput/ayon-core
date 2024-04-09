@@ -4,6 +4,7 @@ import uuid
 
 import clique
 import ayon_api
+from ayon_api.operations import OperationsSession
 import qargparse
 from qtpy import QtWidgets, QtCore
 
@@ -231,20 +232,16 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
             versions_by_parent[ent["productId"]].append(ent)
 
         # Filter already deleted versions
-        versions_to_pop = []
         for version in versions:
-            version_tags = version["data"].get("tags")
-            if version_tags and "deleted" in version_tags:
-                versions_to_pop.append(version)
-
-        for version in versions_to_pop:
+            if version["active"] or "deleted" in version["tags"]:
+                continue
             msg = "Folder: \"{}\" | Product: \"{}\" | Version: \"{}\"".format(
                 folder_entity["path"],
                 product_entity["name"],
                 version["version"]
             )
             self.log.debug((
-                "Skipping version. Already tagged as `deleted`. < {} >"
+                "Skipping version. Already tagged as inactive. < {} >"
             ).format(msg))
             versions.remove(version)
 
@@ -323,7 +320,7 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
             "archive_product": versions_count == 0
         }
 
-    def main(self, data, remove_publish_folder):
+    def main(self, project_name, data, remove_publish_folder):
         # Size of files.
         size = 0
         if not data:
@@ -336,14 +333,25 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
                 data["dir_paths"], data["file_paths_by_dir"]
             )
 
+        op_session = OperationsSession()
         for version in data["versions"]:
-            orig_version_tags = version["data"].get("tags") or []
-            version_tags = [tag for tag in orig_version_tags]
+            orig_version_tags = version["tags"]
+            version_tags = list(orig_version_tags)
+            changes = {}
             if "deleted" not in version_tags:
                 version_tags.append("deleted")
+                changes["tags"] = version_tags
 
-            if version_tags == orig_version_tags:
+            if version["active"]:
+                changes["active"] = False
+
+            if not changes:
                 continue
+            op_session.update_entity(
+                project_name, "version", version["id"], changes
+            )
+
+        op_session.commit()
 
         return size
 
@@ -364,8 +372,8 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
                 data = self.get_data(context, versions_to_keep)
                 if not data:
                     continue
-
-                size += self.main(data, remove_publish_folder)
+                project_name = context["project"]["name"]
+                size += self.main(project_name, data, remove_publish_folder)
                 print("Progressing {}/{}".format(count + 1, len(contexts)))
 
             msg = "Total size of files: {}".format(format_file_size(size))
