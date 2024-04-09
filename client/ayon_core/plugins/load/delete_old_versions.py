@@ -199,7 +199,10 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
         anatomy = Anatomy(project_name, project_entity=context["project"])
 
         versions = list(ayon_api.get_versions(
-            project_name, product_ids=[product_entity["id"]]
+            project_name,
+            product_ids=[product_entity["id"]],
+            active=None,
+            hero=False
         ))
         self.log.debug(
             "Version Number ({})".format(len(versions))
