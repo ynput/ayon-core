@@ -129,8 +129,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         input_layout.addRow("Selected representations", selected_label)
         input_layout.addRow("Delivery template", dropdown)
-        input_layout.addRow("Template directory", template_dir_label)
-        input_layout.addRow("Template file", template_file_label)
+        input_layout.addRow("Directory template", template_dir_label)
+        input_layout.addRow("File template", template_file_label)
         input_layout.addRow("Renumber Frame", renumber_frame)
         input_layout.addRow("Renumber start frame", first_frame_start)
         input_layout.addRow("Root", root_line_edit)
