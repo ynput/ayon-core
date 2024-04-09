@@ -1,5 +1,5 @@
 import os
-from ayon_core.lib.applications import (
+from ayon_applications import (
     PreLaunchHook,
     LaunchTypes,
     ApplicationLaunchFailed,
