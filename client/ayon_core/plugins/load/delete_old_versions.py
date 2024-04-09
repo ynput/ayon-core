@@ -236,7 +236,7 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
 
         # Filter already deleted versions
         for version in versions:
-            if version["active"] or "deleted" in version["tags"]:
+            if "deleted" in version["tags"]:
                 continue
             msg = "Folder: \"{}\" | Product: \"{}\" | Version: \"{}\"".format(
                 folder_entity["path"],
