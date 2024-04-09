@@ -1,7 +1,7 @@
 from .selection import SelectionModel
 from .products import ProductsModel
 from .actions import LoaderActionsModel
-from .site_sync import SiteSyncModel
+from .sitesync import SiteSyncModel
 
 
 __all__ = (
