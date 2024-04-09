@@ -294,7 +294,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             if not directory_template.startswith("{root"):
                 self.log.warning(
                     "Skipping template '%s' because directory template does "
-                    "not start with `{root`", template_name
+                    "not start with `{root` in value: %s",
+                    template_name, directory_template
                 )
                 continue
 
