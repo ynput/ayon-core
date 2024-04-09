@@ -584,6 +584,29 @@ def get_tyflow_export_particle_operators(members):
     return opt_list
 
 
+def get_tyflow_export_operators():
+    opt_list = []
+    event_filter = {}
+    members = [obj for obj in rt.Objects if rt.ClassOf(obj) == rt.tyFlow]
+    for member in members:
+        obj = member.baseobject
+        anim_names = rt.GetSubAnimNames(obj)
+        for anim_name in anim_names:
+            sub_anim = rt.GetSubAnim(obj, anim_name)
+            if not rt.isKindOf(sub_anim, rt.tyEvent):
+                continue
+            node_names = rt.GetSubAnimNames(sub_anim)
+            event_filter[str(sub_anim)] = []
+            for node_name in node_names:
+                node_sub_anim = rt.GetSubAnim(sub_anim, node_name)
+                if rt.hasProperty(node_sub_anim, "exportMode"):
+                    element_sets = [node_sub_anim]
+                    if not event_filter.get(str(sub_anim), None):
+                        event_filter[str(sub_anim)] = element_sets
+            opt_list.extend(event_filter[str(sub_anim)])
+    return opt_list
+
+
 def reset_frame_range_tyflow(members, frameStart, frameEnd):
     """Reset frame range in Export Particles Operator(s).
 

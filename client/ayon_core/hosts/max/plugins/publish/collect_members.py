@@ -12,7 +12,9 @@ class CollectMembers(pyblish.api.InstancePlugin):
     hosts = ['max']
 
     def process(self, instance):
-        if instance.data["productType"] == "workfile":
+        if instance.data["productType"] == (
+            "workfile" or "tycache" or "tyspline"
+        ):
             self.log.debug(
                 "Skipping Collecting Members for workfile product type."
             )

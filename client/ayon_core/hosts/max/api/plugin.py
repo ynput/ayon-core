@@ -5,7 +5,7 @@ from abc import ABCMeta
 import six
 from pymxs import runtime as rt
 
-from ayon_core.lib import BoolDef
+from ayon_core.lib import BoolDef, EnumDef
 from ayon_core.pipeline import (
     CreatedInstance,
     Creator,
@@ -14,7 +14,7 @@ from ayon_core.pipeline import (
     AVALON_INSTANCE_ID,
 )
 
-from .lib import imprint, lsattr, read
+from .lib import imprint, lsattr, read, get_tyflow_export_operators
 
 MS_CUSTOM_ATTRIB = """attributes "openPypeData"
 (
@@ -156,6 +156,53 @@ MS_CUSTOM_ATTRIB = """attributes "openPypeData"
 )"""
 
 
+MS_TYCACHE_ATTRIB = """attributes "AYONTyCacheData"
+(
+    parameters main rollout:Cacheparams
+    (
+        tyc_exports type:#stringTab tabSize:0 tabSizeVariable:on
+        tyc_handles type:#stringTab tabSize:0 tabSizeVariable:on
+    )
+
+    rollout Cacheparams "AYON TyCache Parameters"
+    (
+        listbox export_node "Export Nodes" items:#()
+        button button_add "Add to Container"
+        button button_del "Delete from Container"
+        listbox tyflow_node "TyFlow Export Operators" items:#()
+
+        on button_add pressed do
+        (
+            i_node_arr = #()
+            temp_arr = #()
+            current_sel = tyflow_node.selected
+            idx = finditem export_node.items current_sel
+            if idx == 0 do (
+                append i_node_arr current_sel
+                append temp_arr current_sel
+            )
+            tyc_exports = join i_node_arr tyc_exports
+            export_node.items = join temp_arr export_node.items
+        )
+        on Cacheparams open do
+        (
+            temp_arr = #()
+            if tyc_handles.count != 0 then
+            (
+                tyflow_id = 0
+                for x in tyc_handles do
+                (
+                    tyflow_id += 1
+                    tyflow_op_name = x as string  + "<" + tyflow_id as string + ">"
+                    append temp_arr tyflow_op_name
+                )
+                tyflow_node.items = temp_arr
+            )
+        )
+    )
+)"""
+
+
 class MaxCreatorBase(object):
 
     @staticmethod
@@ -199,6 +246,31 @@ class MaxCreatorBase(object):
         rt.addModifier(node, modifier)
         node.modifiers[0].name = "OP Data"
         rt.custAttributes.add(node.modifiers[0], attrs)
+
+        return node
+
+
+class MaxCacheCreatorBase(MaxCreatorBase):
+    @staticmethod
+    def create_instance_node(node):
+        """Create instance node.
+
+        If the supplied node is existing node, it will be used to hold the
+        instance, otherwise new node of type Dummy will be created.
+
+        Args:
+            node (rt.MXSWrapperBase, str): Node or node name to use.
+
+        Returns:
+            instance
+        """
+        if isinstance(node, str):
+            node = rt.Container(name=node)
+            attrs = rt.Execute(MS_TYCACHE_ATTRIB)
+            modifier = rt.EmptyModifier()
+            rt.addModifier(node, modifier)
+            node.modifiers[0].name = "AYON TyCache Data"
+            rt.custAttributes.add(node.modifiers[0], attrs)
 
         return node
 
@@ -298,11 +370,13 @@ class MaxCreator(Creator, MaxCreatorBase):
         ]
 
 
-class MaxCacheCreator(Creator, MaxCreatorBase):
-    tyflow_op_nodes = []
+class MaxCacheCreator(Creator, MaxCacheCreatorBase):
 
     def create(self, product_name, instance_data, pre_create_data):
-        self.tyflow_op_nodes = pre_create_data.get("tyflow_operators")
+        tyflow_op_nodes = get_tyflow_export_operators()
+        if not tyflow_op_nodes:
+            raise CreatorError("No Export Particle Operators"
+                               " found in tyCache Editor.")
         instance_node = self.create_instance_node(product_name)
         instance_data["instance_node"] = instance_node.name
         instance = CreatedInstance(
@@ -311,19 +385,11 @@ class MaxCacheCreator(Creator, MaxCreatorBase):
             instance_data,
             self
         )
-        if self.tyflow_op_nodes:
-            node_list = []
-            sel_list = []
-            for i, node in enumerate(self.tyflow_op_nodes):
-                node_list.append(node)
-                sel_list.append(str(i))
-            # Setting the property
-            rt.setProperty(
-                instance_node.modifiers[0].openPypeData,
-                "all_handles", node_list)
-            rt.setProperty(
-                instance_node.modifiers[0].openPypeData,
-                "sel_list", sel_list)
+        # Setting the property
+        node_list = [sub_anim.name for sub_anim in opt_list]
+        rt.setProperty(
+            instance_node.modifiers[0].AYONTyCacheData,
+            "tyc_handles", node_list)
         self._add_instance_to_context(instance)
         imprint(instance_node.name, instance.data_to_store())
 
@@ -377,13 +443,3 @@ class MaxCacheCreator(Creator, MaxCreatorBase):
                 rt.Delete(instance_node)
 
             self._remove_instance_from_context(instance)
-
-    def get_pre_create_attr_defs(self):
-        tyflow_operator_enum = []
-        return [
-            BoolDef("tyflow_operators",
-                    tyflow_operator_enum,
-                    default=[],
-                    multiselection=True,
-                    label="Tyflow Operators to be Exported")
-        ]
