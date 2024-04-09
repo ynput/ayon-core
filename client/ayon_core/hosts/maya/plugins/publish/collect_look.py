@@ -413,7 +413,7 @@ class CollectLook(pyblish.api.InstancePlugin):
         # RuntimeError
         history = set()
         if materials:
-            history = set(cmds.listHistory(materials, allConnections=True))
+            history.update(cmds.listHistory(materials, allConnections=True))
 
         # Since we retrieved history only of the connected materials connected
         # to the look sets above we now add direct history for some of the
