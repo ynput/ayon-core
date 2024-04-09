@@ -126,6 +126,5 @@ class CreateKarmaROP(plugin.HoudiniCreator):
 
 
     def get_pre_create_attr_defs(self):
-        attrs = super(CreateKarmaROP, self).get_pre_create_attr_defs()
 
-        return attrs + self.get_instance_attr_defs()
+        return self.get_instance_attr_defs()
