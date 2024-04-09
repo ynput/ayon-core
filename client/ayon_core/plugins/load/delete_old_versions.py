@@ -312,7 +312,7 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
                 "'{}'".format(path[0].replace("\\", "/")) for path in paths
             ])
             self.log.debug((
-                "Folder does not exist. Deleting it's files skipped: {}"
+                "Folder does not exist. Deleting its files skipped: {}"
             ).format(paths_msg))
 
         return {
