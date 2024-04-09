@@ -75,6 +75,12 @@ class HooksModel(BaseSettingsModel):
         default_factory=HookOptionalModel,
         title="Install PySide2"
     )
+    FusionLaunchMenuHook: HookOptionalModel = SettingsField(
+        default_factory=HookOptionalModel,
+        title="Launch AYON Menu on Fusion Start",
+        description="Launch the AYON menu on Fusion application startup. "
+                    "This is only supported for Fusion 18+"
+    )
 
 
 class CreateSaverModel(CreateSaverPluginModel):
@@ -143,6 +149,9 @@ DEFAULT_VALUES = {
     "hooks": {
         "InstallPySideToFusion": {
             "enabled": True
+        },
+        "FusionLaunchMenuHook": {
+            "enabled": False
         }
     },
     "create": {
