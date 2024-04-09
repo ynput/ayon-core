@@ -315,6 +315,11 @@ class HoudiniSubmitDeadline(
         return attr.asdict(plugin_info)
 
     def process(self, instance):
+        if not instance.data["farm"]:
+            self.log.debug("Render on farm is disabled. "
+                           "Skipping deadline submission.")
+            return
+
         super(HoudiniSubmitDeadline, self).process(instance)
 
         # TODO: Avoid the need for this logic here, needed for submit publish
