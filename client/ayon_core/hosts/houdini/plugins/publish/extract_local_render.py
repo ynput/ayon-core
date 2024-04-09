@@ -49,7 +49,8 @@ class ExtractLocalRender(publish.Extractor):
         # Check missing frames.
         # Frames won't exist if user cancels the render.
         expected_files = next(iter(instance.data["expectedFiles"]), {})
-        expected_files =  sum(expected_files.values(), [])
+        # TODO: enhance the readability.
+        expected_files = sum(expected_files.values(), [])
         missing_frames = [
             frame
             for frame in expected_files
