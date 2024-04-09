@@ -904,7 +904,7 @@ class ExporterReviewMov(ExporterReview):
                     node, product_name, "Reposition node...   `{}`"
                 )
             # append reformatted tag
-            add_tags.append("reformated")
+            add_tags.append("reformatted")
 
         # only create colorspace baking if toggled on
         if bake_viewer_process:

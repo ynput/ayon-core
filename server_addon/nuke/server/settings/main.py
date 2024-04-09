@@ -28,11 +28,11 @@ from .create_plugins import (
     DEFAULT_CREATE_SETTINGS
 )
 from .publish_plugins import (
-    PublishPuginsModel,
+    PublishPluginsModel,
     DEFAULT_PUBLISH_PLUGIN_SETTINGS
 )
 from .loader_plugins import (
-    LoaderPuginsModel,
+    LoaderPluginsModel,
     DEFAULT_LOADER_PLUGINS_SETTINGS
 )
 from .workfile_builder import (
@@ -75,13 +75,13 @@ class NukeSettings(BaseSettingsModel):
         title="Creator Plugins",
     )
 
-    publish: PublishPuginsModel = SettingsField(
-        default_factory=PublishPuginsModel,
+    publish: PublishPluginsModel = SettingsField(
+        default_factory=PublishPluginsModel,
         title="Publish Plugins",
     )
 
-    load: LoaderPuginsModel = SettingsField(
-        default_factory=LoaderPuginsModel,
+    load: LoaderPluginsModel = SettingsField(
+        default_factory=LoaderPluginsModel,
         title="Loader Plugins",
     )
 
