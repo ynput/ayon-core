@@ -4,12 +4,12 @@ import pyblish.api
 from ayon_core.pipeline import publish
 
 
-class ExtractThumnail(publish.Extractor):
+class ExtractThumbnail(publish.Extractor):
     """
-    Extractor for track item's tumnails
+    Extractor for track item's tumbnails
     """
 
-    label = "Extract Thumnail"
+    label = "Extract Thumbnail"
     order = pyblish.api.ExtractorOrder
     families = ["plate", "take"]
     hosts = ["hiero"]
@@ -48,7 +48,7 @@ class ExtractThumnail(publish.Extractor):
         self.log.debug(
             "__ thumb_path: `{}`, frame: `{}`".format(thumbnail, thumb_frame))
 
-        self.log.info("Thumnail was generated to: {}".format(thumb_path))
+        self.log.info("Thumbnail was generated to: {}".format(thumb_path))
         thumb_representation = {
             'files': thumb_file,
             'stagingDir': staging_dir,

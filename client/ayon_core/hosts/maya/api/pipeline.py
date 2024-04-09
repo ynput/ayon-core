@@ -68,7 +68,7 @@ INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
 
 # Track whether the workfile tool is about to save
-ABOUT_TO_SAVE = False
+_about_to_save = False
 
 
 class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
@@ -580,13 +580,14 @@ def on_save():
     _remove_workfile_lock()
 
     # Generate ids of the current context on nodes in the scene
-    nodes = lib.get_id_required_nodes(referenced_nodes=False)
+    nodes = lib.get_id_required_nodes(referenced_nodes=False,
+                                      existing_ids=False)
     for node, new_id in lib.generate_ids(nodes):
         lib.set_id(node, new_id, overwrite=False)
 
     # We are now starting the actual save directly
-    global ABOUT_TO_SAVE
-    ABOUT_TO_SAVE = False
+    global _about_to_save
+    _about_to_save = False
 
 
 def on_open():
@@ -653,12 +654,8 @@ def on_task_changed():
             "Can't set project for new context because path does not exist: {}"
         ).format(workdir))
 
-    with lib.suspended_refresh():
-        lib.set_context_settings()
-        lib.update_content_on_context_change()
-
-    global ABOUT_TO_SAVE
-    if not lib.IS_HEADLESS and ABOUT_TO_SAVE:
+    global _about_to_save
+    if not lib.IS_HEADLESS and _about_to_save:
         # Let's prompt the user to update the context settings or not
         lib.prompt_reset_context()
 
@@ -676,8 +673,8 @@ def before_workfile_save(event):
     if workdir_path:
         create_workspace_mel(workdir_path, project_name)
 
-    global ABOUT_TO_SAVE
-    ABOUT_TO_SAVE = True
+    global _about_to_save
+    _about_to_save = True
 
 
 def workfile_save_before_xgen(event):
