@@ -24,7 +24,7 @@ class LoadGizmoInputProcess(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
     product_types = {"gizmo"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"nk"}
 
     label = "Load Gizmo - Input Process"
