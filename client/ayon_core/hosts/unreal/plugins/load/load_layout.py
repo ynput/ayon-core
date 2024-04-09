@@ -25,7 +25,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.settings import get_current_project_settings
 from ayon_core.hosts.unreal.api import plugin
 from ayon_core.hosts.unreal.api.pipeline import (
@@ -169,7 +169,7 @@ class LayoutLoader(plugin.Loader):
 
         anim_path = f"{asset_dir}/animations/{anim_file_name}"
 
-        folder_entity = get_current_project_folder()
+        folder_entity = get_current_folder_entity()
         # Import animation
         task = unreal.AssetImportTask()
         task.options = unreal.FbxImportUI()
