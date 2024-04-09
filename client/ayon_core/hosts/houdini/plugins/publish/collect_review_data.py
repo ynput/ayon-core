@@ -59,6 +59,18 @@ class CollectHoudiniReviewData(pyblish.api.InstancePlugin):
         burnin_members["focalLength"] = focal_length
 
     def _get_camera_path(self, ropnode):
+        """Get the camera path associated with the given rop node.
+
+        This function evaluates the camera parameter according to the
+        type of the given rop node.
+
+        Returns:
+            Union[str, None]: Camera path or None.
+
+            This function can return empty string if the camera
+            path is empty i.e. no camera path.
+        """
+
         if ropnode.type().name() in {
             "opengl", "karma", "ifd", "arnold"
         }:
@@ -70,4 +82,4 @@ class CollectHoudiniReviewData(pyblish.api.InstancePlugin):
         elif ropnode.type().name() == "vray_renderer":
             return ropnode.parm("render_camera").eval()
 
-        return ""
+        return None
