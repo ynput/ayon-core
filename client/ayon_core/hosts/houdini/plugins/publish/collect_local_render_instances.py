@@ -1,5 +1,6 @@
 import os
 import pyblish.api
+from ayon_core.pipeline.create import get_product_name
 
 
 class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
@@ -28,31 +29,24 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
 
         # Create Instance for each AOV.
         context = instance.context
+        self.log.debug(instance.data["expectedFiles"])
         expectedFiles = next(iter(instance.data["expectedFiles"]), {})
 
         product_type = "render"  # is always render
-        product_group = "render{Task}{productName}".format(
-            Task=self._capitalize(instance.data["task"]),
-            productName=self._capitalize(instance.data["productName"])
-        )  # is always the group
+        product_group = get_product_name(
+            context.data["projectName"],
+            context.data["taskEntity"]["name"],
+            context.data["taskEntity"]["taskType"],
+            context.data["hostName"],
+            product_type,
+            instance.data["productName"]
+        )
 
         for aov_name, aov_filepaths in expectedFiles.items():
-            # Some AOV instance data
-            # label = "{productName}_{AOV}".format(
-            #     AOV=aov_name,
-            #     productName=instance.data["productName"]
-            # )
-            name_template = "render{Task}{productName}_{AOV}"
-            if not aov_name:
-                # This is done to remove the trailing `_`
-                # if aov name is an empty string.
-                name_template = "render{Task}{productName}"
+            product_name = product_group
 
-            product_name = name_template.format(
-                Task=self._capitalize(instance.data["task"]),
-                productName=self._capitalize(instance.data["productName"]),
-                AOV=aov_name
-            )
+            if aov_name:
+                product_name = "{}_{}".format(product_name, aov_name)
 
             # Create instance for each AOV
             aov_instance = context.create_instance(product_name)
@@ -96,7 +90,3 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
         # Remove Mantra instance
         # I can't remove it here as I still need it to trigger the render.
         # context.remove(instance)
-
-    @staticmethod
-    def _capitalize(word):
-        return word[:1].upper() + word[1:]
