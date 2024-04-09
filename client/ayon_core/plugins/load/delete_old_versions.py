@@ -8,7 +8,6 @@ import qargparse
 from qtpy import QtWidgets, QtCore
 
 from ayon_core import style
-from ayon_core.addon import AddonsManager
 from ayon_core.lib import format_file_size
 from ayon_core.pipeline import load, Anatomy
 from ayon_core.pipeline.load import (
@@ -346,75 +345,7 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
             if version_tags == orig_version_tags:
                 continue
 
-        self._ftrack_delete_versions(data)
-
         return size
-
-    def _ftrack_delete_versions(self, data):
-        """Delete version on ftrack.
-
-        Handling of ftrack logic in this plugin is not ideal. But in OP3 it is
-        almost impossible to solve the issue other way.
-
-        Note:
-            Asset versions on ftrack are not deleted but marked as
-                "not published" which cause that they're invisible.
-
-        Args:
-            data (dict): Data sent to product loader with full context.
-        """
-
-        # First check for ftrack id on folder entity
-        #   - skip if ther is none
-        ftrack_id = data["folder"]["attrib"].get("ftrackId")
-        if not ftrack_id:
-            self.log.info((
-                "Folder does not have filled ftrack id. Skipped delete"
-                " of ftrack version."
-            ))
-            return
-
-        # Check if ftrack module is enabled
-        addons_manager = AddonsManager()
-        ftrack_addon = addons_manager.get("ftrack")
-        if not ftrack_addon or not ftrack_addon.enabled:
-            return
-
-        import ftrack_api
-
-        session = ftrack_api.Session()
-        product_name = data["product"]["name"]
-        versions = {
-            '"{}"'.format(version_doc["name"])
-            for version_doc in data["versions"]
-        }
-        asset_versions = session.query(
-            (
-                "select id, is_published from AssetVersion where"
-                " asset.parent.id is \"{}\""
-                " and asset.name is \"{}\""
-                " and version in ({})"
-            ).format(
-                ftrack_id,
-                product_name,
-                ",".join(versions)
-            )
-        ).all()
-
-        # Set attribute `is_published` to `False` on ftrack AssetVersions
-        for asset_version in asset_versions:
-            asset_version["is_published"] = False
-
-        try:
-            session.commit()
-
-        except Exception:
-            msg = (
-                "Could not set `is_published` attribute to `False`"
-                " for selected AssetVersions."
-            )
-            self.log.error(msg)
-            self.message(msg)
 
     def load(self, contexts, name=None, namespace=None, options=None):
         try:
