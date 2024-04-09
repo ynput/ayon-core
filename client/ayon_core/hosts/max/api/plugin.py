@@ -386,7 +386,7 @@ class MaxCacheCreator(Creator, MaxCacheCreatorBase):
             self
         )
         # Setting the property
-        node_list = [sub_anim.name for sub_anim in opt_list]
+        node_list = [sub_anim.name for sub_anim in tyflow_op_nodes]
         rt.setProperty(
             instance_node.modifiers[0].AYONTyCacheData,
             "tyc_handles", node_list)
