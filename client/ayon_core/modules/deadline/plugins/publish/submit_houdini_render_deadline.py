@@ -71,12 +71,11 @@ class HoudiniSubmitDeadline(
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
     families = ["usdrender",
-                "mantra_rop",
-                "karma_rop",
                 "redshift_rop",
                 "arnold_rop",
+                "mantra_rop",
+                "karma_rop",
                 "vray_rop"]
-
     targets = ["local"]
     use_published = True
 
@@ -266,23 +265,20 @@ class HoudiniSubmitDeadline(
         # Output driver to render
         if job_type == "render":
             product_type = instance.data.get("productType")
-            rop_node = hou.node(instance.data.get("instance_node"))
-            node_type = rop_node.type().name()
-
-            if node_type == "arnold":
+            if product_type == "arnold_rop":
                 plugin_info = ArnoldRenderDeadlinePluginInfo(
                     InputFile=instance.data["ifdFile"]
                 )
-            elif node_type == "ifd":
+            elif product_type == "mantra_rop":
                 plugin_info = MantraRenderDeadlinePluginInfo(
                     SceneFile=instance.data["ifdFile"],
                     Version=hou_major_minor,
                 )
-            elif node_type == "vray_renderer":
+            elif product_type == "vray_rop":
                 plugin_info = VrayRenderPluginInfo(
                     InputFilename=instance.data["ifdFile"],
                 )
-            elif node_type == "Redshift_ROP":
+            elif product_type == "redshift_rop":
                 plugin_info = RedshiftRenderPluginInfo(
                     SceneFile=instance.data["ifdFile"]
                 )
@@ -319,11 +315,6 @@ class HoudiniSubmitDeadline(
         return attr.asdict(plugin_info)
 
     def process(self, instance):
-        if not instance.data["farm"]:
-            self.log.debug("Render on farm is disabled. "
-                           "Skipping deadline submission.")
-            return
-
         super(HoudiniSubmitDeadline, self).process(instance)
 
         # TODO: Avoid the need for this logic here, needed for submit publish
