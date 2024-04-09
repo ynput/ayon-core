@@ -23,9 +23,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         # Transfer settings from pre create to instance
         creator_attributes = instance_data.setdefault(
             "creator_attributes", dict())
-        for key in ["render_target"]:
-            if key in pre_create_data:
-                creator_attributes[key] = pre_create_data[key]
+        creator_attributes.update(pre_create_data)
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "vray_renderer"})
