@@ -18,6 +18,12 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou
+        # Transfer settings from pre create to instance
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+        for key in ["render_target"]:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         # Remove the active, we are checking the bypass flag of the nodes
         instance_data.pop("active", None)
