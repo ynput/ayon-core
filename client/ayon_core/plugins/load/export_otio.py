@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_api import get_representations, get_folder_by_id
+from ayon_api import get_representations
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
@@ -216,10 +216,10 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
                     representation, anatomy
                 ),
                 "frames": (
-                    version["data"]["frameEnd"] -
-                    version["data"]["frameStart"]
+                    version["attrib"]["frameEnd"] -
+                    version["attrib"]["frameStart"]
                 ),
-                "framerate": version["data"]["fps"]
+                "framerate": version["attrib"]["fps"]
             }
 
         self.export_otio(clips_data, output_path)
@@ -227,7 +227,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         # Feedback about success.
         show_message_dialog(
             "Success!",
-            "Export was successfull.",
+            "Export was successful.",
             level="info",
             parent=self
         )
