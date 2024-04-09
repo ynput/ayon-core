@@ -47,7 +47,7 @@ class ExtractFBXAnimation(publish.Extractor):
                 i for i in instance
                 if i.endswith("skeletonAnim_SET")
             ]
-            self.log.debug(
+            self.log.warning(
                 "Top group of animated skeleton not found in "
                 "{}.\nSkipping fbx animation extraction.".format(skeleton_set))
             return

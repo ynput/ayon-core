@@ -22,14 +22,22 @@ class CollectFbxAnimation(pyblish.api.InstancePlugin,
             if i.endswith("skeletonAnim_SET")
         ]
         if not skeleton_sets:
+            self.log.debug(
+                "No animated skeleton found in instance: `{}`".format(
+                    instance.name
+                ))
             return
 
         instance.data["families"].append("animation.fbx")
         instance.data["animated_skeleton"] = []
         for skeleton_set in skeleton_sets:
+            if not skeleton_set:
+                self.log.debug(f"Skipping empty skeleton set: {skeleton_set}")
+                continue
             skeleton_content = cmds.sets(skeleton_set, query=True)
             self.log.debug(
-                "Collected animated skeleton data: {}".format(
+                "Collected animated skeleton data in {}: {}".format(
+                    skeleton_set,
                     skeleton_content
                 ))
             if skeleton_content:
