@@ -20,6 +20,10 @@ class CreateVrayROP(plugin.HoudiniCreator):
     render_target = "farm_split"
 
     def create(self, product_name, instance_data, pre_create_data):
+        # Transfer settings from pre create to instance
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+        creator_attributes.update(pre_create_data)
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "vray_renderer"})
