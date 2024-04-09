@@ -25,9 +25,14 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                ("Output node '{}' is incorrect. "
-                 "See plug-in log for details.").format(invalid),
-                title=self.label
+                "Output node '{}' is incorrect. "
+                "See plug-in log for details.".format(invalid),
+                title=self.label,
+                description=(
+                    "### Invalid COP output node\n\n"
+                    "The output node path for the instance must be set to a "
+                    "valid COP node path.\n\nSee the log for more details."
+                )
             )
 
     @classmethod
@@ -48,8 +53,8 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
             cls.log.error(
                 "Output node %s is not a COP node. "
                 "COP Path must point to a COP node, "
-                "instead found category type: %s"
-                % (output_node.path(), output_node.type().category().name())
+                "instead found category type: %s",
+                output_node.path(), output_node.type().category().name()
             )
             return [output_node.path()]
 
@@ -57,10 +62,7 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         # is Cop2 to avoid potential edge case scenarios even though
         # the isinstance check above should be stricter than this category
         if output_node.type().category().name() != "Cop2":
-            raise PublishValidationError(
-                f"Output node {output_node.path()} is not of category Cop2.",
-                description=(
-                    "### Invalid COP output node\n\n"
-                    "The output node path for the instance must be set to a "
-                    "valid COP node path. See the log for more details."
-                ))
+            cls.log.error(
+                "Output node %s is not of category Cop2.", output_node.path()
+            )
+            return [output_node.path()]
