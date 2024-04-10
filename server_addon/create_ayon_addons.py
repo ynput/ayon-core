@@ -44,6 +44,11 @@ version = "{addon_version}"
 plugin_for = ["ayon_server"]
 """
 
+CLIENT_VERSION_CONTENT = '''# -*- coding: utf-8 -*-
+"""Package declaring AYON core addon version."""
+__version__ = "{}"
+'''
+
 
 class ZipFileLongPaths(zipfile.ZipFile):
     """Allows longer paths in zip files.
@@ -175,6 +180,45 @@ def create_addon_zip(
         shutil.rmtree(str(output_dir / addon_name))
 
 
+def prepare_client_code(
+    addon_dir: Path,
+    addon_output_dir: Path,
+    addon_version: str
+):
+    client_dir = addon_dir / "client"
+    if not client_dir.exists():
+        return
+
+    # Prepare private dir in output
+    private_dir = addon_output_dir / "private"
+    private_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy pyproject toml if available
+    pyproject_toml = client_dir / "pyproject.toml"
+    if pyproject_toml.exists():
+        shutil.copy(pyproject_toml, private_dir)
+
+    for subpath in client_dir.iterdir():
+        if subpath.name == "pyproject.toml":
+            continue
+
+        if subpath.is_file():
+            continue
+
+        # Update version.py with server version if 'version.py' is available
+        version_path = subpath / "version.py"
+        if version_path.exists():
+            with open(version_path, "w") as stream:
+                stream.write(CLIENT_VERSION_CONTENT.format(addon_version))
+
+        zip_filepath = private_dir / "client.zip"
+        with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
+            # Add client code content to zip
+            for path, sub_path in find_files_in_subdir(str(subpath)):
+                sub_path = os.path.join(subpath.name, sub_path)
+                zipf.write(path, sub_path)
+
+
 def create_addon_package(
     addon_dir: Path,
     output_dir: Path,
@@ -204,6 +248,8 @@ def create_addon_package(
     shutil.copytree(
         server_dir, addon_output_dir / "server", dirs_exist_ok=True
     )
+
+    prepare_client_code(addon_dir, addon_output_dir, addon_version)
 
     if create_zip:
         create_addon_zip(
