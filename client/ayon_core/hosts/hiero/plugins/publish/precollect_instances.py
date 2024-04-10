@@ -92,10 +92,6 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
 
             folder_path, folder_name = self._get_folder_data(tag_data)
 
-            product_name = tag_data.get("productName")
-            if product_name is None:
-                product_name = tag_data["subset"]
-
             families = [str(f) for f in tag_data["families"]]
 
             # TODO: remove backward compatibility
