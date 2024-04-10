@@ -293,7 +293,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         label += " {}".format(product_name)
 
         data.update({
-            "name": "{}_{}".format(folder_path, subset),
+            "name": "{}_{}".format(folder_path, product_name),
             "label": label,
             "productName": product_name,
             "productType": product_type,
