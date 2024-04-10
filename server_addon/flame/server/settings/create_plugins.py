@@ -87,7 +87,7 @@ class CreateShotClipModel(BaseSettingsModel):
     )
 
 
-class CreatePuginsModel(BaseSettingsModel):
+class CreatePluginsModel(BaseSettingsModel):
     CreateShotClip: CreateShotClipModel = SettingsField(
         default_factory=CreateShotClipModel,
         title="Create Shot Clip"
