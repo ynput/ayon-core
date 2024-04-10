@@ -77,6 +77,20 @@ unfixable = []
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+exclude = [
+    "client/ayon_core/hosts/unreal/integration/*",
+    "client/ayon_core/hosts/aftereffects/api/extension/js/libs/*",
+    "client/ayon_core/hosts/hiero/api/startup/*",
+    "client/ayon_core/modules/deadline/repository/custom/plugins/CelAction/*",
+    "client/ayon_core/modules/deadline/repository/custom/plugins/HarmonyAYON/*",
+    "client/ayon_core/modules/click_wrap.py",
+    "client/ayon_core/scripts/slates/__init__.py"
+]
+
+[tool.ruff.lint.per-file-ignores]
+"client/ayon_core/lib/__init__.py" = ["E402"]
+"client/ayon_core/hosts/max/startup/startup.py" = ["E402"]
+
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
 quote-style = "double"
