@@ -91,9 +91,15 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             longest_key = max(self.templates.keys(), key=len)
             dropdown.setMinimumContentsLength(len(longest_key))
 
-        template_label = QtWidgets.QLabel()
-        template_label.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
-        template_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        template_dir_label = QtWidgets.QLabel()
+        template_dir_label.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
+        template_dir_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse)
+
+        template_file_label = QtWidgets.QLabel()
+        template_file_label.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
+        template_file_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse)
 
         renumber_frame = QtWidgets.QCheckBox()
 
@@ -123,7 +129,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         input_layout.addRow("Selected representations", selected_label)
         input_layout.addRow("Delivery template", dropdown)
-        input_layout.addRow("Template value", template_label)
+        input_layout.addRow("Directory template", template_dir_label)
+        input_layout.addRow("File template", template_file_label)
         input_layout.addRow("Renumber Frame", renumber_frame)
         input_layout.addRow("Renumber start frame", first_frame_start)
         input_layout.addRow("Root", root_line_edit)
@@ -151,7 +158,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         layout.addWidget(text_area)
 
         self.selected_label = selected_label
-        self.template_label = template_label
+        self.template_dir_label = template_dir_label
+        self.template_file_label = template_file_label
         self.dropdown = dropdown
         self.first_frame_start = first_frame_start
         self.renumber_frame = renumber_frame
@@ -282,11 +290,13 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         """Adds list of delivery templates from Anatomy to dropdown."""
         templates = {}
         for template_name, value in anatomy.templates["delivery"].items():
-            path_template = value["path"]
-            if (
-                not isinstance(path_template, str)
-                or not path_template.startswith('{root')
-            ):
+            directory_template = value["directory"]
+            if not directory_template.startswith("{root"):
+                self.log.warning(
+                    "Skipping template '%s' because directory template does "
+                    "not start with `{root` in value: %s",
+                    template_name, directory_template
+                )
                 continue
 
             templates[template_name] = value
@@ -350,7 +360,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         name = self.dropdown.currentText()
         template_value = self.templates.get(name)
         if template_value:
-            self.template_label.setText(template_value)
+            self.template_dir_label.setText(template_value["directory"])
+            self.template_file_label.setText(template_value["file"])
             self.btn_delivery.setEnabled(bool(self._get_selected_repres()))
 
     def _update_progress(self, uploaded):
