@@ -447,7 +447,7 @@ class CacheItem:
 
 
 class Anatomy(BaseAnatomy):
-    _sync_server_addon_cache = CacheItem()
+    _sitesync_addon_cache = CacheItem()
     _project_cache = collections.defaultdict(CacheItem)
     _default_site_id_cache = collections.defaultdict(CacheItem)
     _root_overrides_cache = collections.defaultdict(
@@ -482,13 +482,13 @@ class Anatomy(BaseAnatomy):
         return copy.deepcopy(project_cache.data)
 
     @classmethod
-    def get_sync_server_addon(cls):
-        if cls._sync_server_addon_cache.is_outdated:
+    def get_sitesync_addon(cls):
+        if cls._sitesync_addon_cache.is_outdated:
             manager = AddonsManager()
-            cls._sync_server_addon_cache.update_data(
-                manager.get_enabled_addon("sync_server")
+            cls._sitesync_addon_cache.update_data(
+                manager.get_enabled_addon("sitesync")
             )
-        return cls._sync_server_addon_cache.data
+        return cls._sitesync_addon_cache.data
 
     @classmethod
     def _get_studio_roots_overrides(cls, project_name):
@@ -525,8 +525,8 @@ class Anatomy(BaseAnatomy):
         """
 
         # First check if sync server is available and enabled
-        sync_server = cls.get_sync_server_addon()
-        if sync_server is None or not sync_server.enabled:
+        sitesync_addon = cls.get_sitesync_addon()
+        if sitesync_addon is None or not sitesync_addon.enabled:
             # QUESTION is ok to force 'studio' when site sync is not enabled?
             site_name = "studio"
 
@@ -535,7 +535,7 @@ class Anatomy(BaseAnatomy):
             project_cache = cls._default_site_id_cache[project_name]
             if project_cache.is_outdated:
                 project_cache.update_data(
-                    sync_server.get_active_site_type(project_name)
+                    sitesync_addon.get_active_site_type(project_name)
                 )
             site_name = project_cache.data
 
@@ -549,7 +549,7 @@ class Anatomy(BaseAnatomy):
                 )
             else:
                 # Ask sync server to get roots overrides
-                roots_overrides = sync_server.get_site_root_overrides(
+                roots_overrides = sitesync.get_site_root_overrides(
                     project_name, site_name
                 )
             site_cache.update_data(roots_overrides)
