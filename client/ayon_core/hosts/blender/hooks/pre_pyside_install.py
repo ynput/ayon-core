@@ -130,7 +130,7 @@ class InstallPySideToBlender(PreLaunchHook):
         # Install PySide2 in blender's python
         if platform == "windows":
             result = self.install_pyside_windows(
-                python_executable, qt_binding
+                python_executable, qt_binding, before_blender_4
             )
         else:
             result = self.install_pyside(
@@ -146,7 +146,9 @@ class InstallPySideToBlender(PreLaunchHook):
                 f"Failed to install {qt_binding} module to blender."
             )
 
-    def install_pyside_windows(self, python_executable, qt_binding):
+    def install_pyside_windows(
+        self, python_executable, qt_binding, before_blender_4
+    ):
         """Install PySide2 python module to blender's python.
 
         Installation requires administration rights that's why it is required
@@ -170,7 +172,29 @@ class InstallPySideToBlender(PreLaunchHook):
             # - use "-m pip" as module pip to install PySide2 and argument
             #   "--ignore-installed" is to force install module to blender's
             #   site-packages and make sure it is binary compatible
-            parameters = f"-m pip install --ignore-installed {qt_binding}"
+            fake_exe = "fake.exe"
+            site_packages_prefix = os.path.dirname(
+                os.path.dirname(python_executable)
+            )
+            args = [
+                fake_exe,
+                "-m",
+                "pip",
+                "install",
+                "--ignore-installed",
+                qt_binding,
+            ]
+            if not before_blender_4:
+                # Define prefix for site package
+                # Python in blender 4.x is installing packages in AppData and
+                #   not in blender's directory.
+                args.extend(["--prefix", site_packages_prefix])
+
+            parameters = (
+                subprocess.list2cmdline(args)
+                .lstrip(fake_exe)
+                .lstrip(" ")
+            )
 
             # Execute command and ask for administrator's rights
             process_info = ShellExecuteEx(
