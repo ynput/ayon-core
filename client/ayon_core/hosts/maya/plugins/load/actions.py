@@ -125,6 +125,11 @@ class ImportMayaLoader(ayon_core.hosts.maya.api.plugin.Loader):
         )
     ]
 
+    @classmethod
+    def apply_settings(cls, project_settings):
+        super(ImportMayaLoader, cls).apply_settings(project_settings)
+        cls.enabled = cls.load_settings["import_loader"].get("enabled", True)
+
     def load(self, context, name=None, namespace=None, data=None):
         import maya.cmds as cmds
 
