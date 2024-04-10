@@ -32,7 +32,7 @@ class LoadImage(load.LoaderPlugin):
         "review",
         "image",
     }
-    representations = ["*"]
+    representations = {"*"}
     extensions = set(
         ext.lstrip(".") for ext in IMAGE_EXTENSIONS
     )

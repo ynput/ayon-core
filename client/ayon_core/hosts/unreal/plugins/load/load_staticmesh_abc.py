@@ -20,7 +20,7 @@ class StaticMeshAlembicLoader(plugin.Loader):
 
     product_types = {"model", "staticMesh"}
     label = "Import Alembic Static Mesh"
-    representations = ["abc"]
+    representations = {"abc"}
     icon = "cube"
     color = "orange"
 
