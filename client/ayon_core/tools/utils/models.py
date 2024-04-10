@@ -2,7 +2,7 @@ import re
 import logging
 
 import qtpy
-from qtpy import QtCore, QtGui
+from qtpy import QtCore
 
 log = logging.getLogger(__name__)
 

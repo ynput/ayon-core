@@ -286,7 +286,7 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
         if not container:
             return
 
-        roots = cmds.sets(container, q=True)
+        roots = cmds.sets(container, q=True) or []
         ref_node = None
         try:
             ref_node = get_reference_node(roots)

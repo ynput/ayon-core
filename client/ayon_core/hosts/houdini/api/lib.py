@@ -3,7 +3,6 @@ import sys
 import os
 import errno
 import re
-import uuid
 import logging
 import json
 from contextlib import contextmanager
@@ -23,7 +22,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.template_data import get_template_data
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.tools.utils import PopupUpdateKeys, SimplePopup
 from ayon_core.tools.utils.host_tools import get_tool_by_name
 
@@ -40,86 +39,8 @@ def get_folder_fps(folder_entity=None):
     """Return current folder fps."""
 
     if folder_entity is None:
-        folder_entity = get_current_project_folder(fields=["attrib.fps"])
+        folder_entity = get_current_folder_entity(fields=["attrib.fps"])
     return folder_entity["attrib"]["fps"]
-
-
-def set_id(node, unique_id, overwrite=False):
-    exists = node.parm("id")
-    if not exists:
-        imprint(node, {"id": unique_id})
-
-    if not exists and overwrite:
-        node.setParm("id", unique_id)
-
-
-def get_id(node):
-    """Get the `cbId` attribute of the given node.
-
-    Args:
-        node (hou.Node): the name of the node to retrieve the attribute from
-
-    Returns:
-        str: cbId attribute of the node.
-
-    """
-
-    if node is not None:
-        return node.parm("id")
-
-
-def generate_ids(nodes, folder_id=None):
-    """Returns new unique ids for the given nodes.
-
-    Note: This does not assign the new ids, it only generates the values.
-
-    To assign new ids using this method:
-    >>> nodes = ["a", "b", "c"]
-    >>> for node, id in generate_ids(nodes):
-    >>>     set_id(node, id)
-
-    To also override any existing values (and assign regenerated ids):
-    >>> nodes = ["a", "b", "c"]
-    >>> for node, id in generate_ids(nodes):
-    >>>     set_id(node, id, overwrite=True)
-
-    Args:
-        nodes (list): List of nodes.
-        folder_id (str): Folder id . Use current folder id if is ``None``.
-
-    Returns:
-        list: A list of (node, id) tuples.
-
-    """
-
-    if folder_id is None:
-        project_name = get_current_project_name()
-        folder_path = get_current_folder_path()
-        # Get folder id of current context folder
-        folder_entity = ayon_api.get_folder_by_path(
-            project_name, folder_path, fields={"id"}
-        )
-        if not folder_entity:
-            raise ValueError("No current folder is set.")
-
-        folder_id = folder_entity["id"]
-
-    node_ids = []
-    for node in nodes:
-        _, uid = str(uuid.uuid4()).rsplit("-", 1)
-        unique_id = "{}:{}".format(folder_id, uid)
-        node_ids.append((node, unique_id))
-
-    return node_ids
-
-
-def get_id_required_nodes():
-
-    valid_types = ["geometry"]
-    nodes = {n for n in hou.node("/out").children() if
-             n.type().name() in valid_types}
-
-    return list(nodes)
 
 
 def get_output_parameter(node):
@@ -322,7 +243,10 @@ def render_rop(ropnode):
     try:
         ropnode.render(verbose=verbose,
                        # Allow Deadline to capture completion percentage
-                       output_progress=verbose)
+                       output_progress=verbose,
+                       # Render only this node
+                       # (do not render any of its dependencies)
+                       ignore_inputs=True)
     except hou.Error as exc:
         # The hou.Error is not inherited from a Python Exception class,
         # so we explicitly capture the houdini error, otherwise pyblish
@@ -526,7 +450,7 @@ def maintained_selection():
                 node.setSelected(on=True)
 
 
-def reset_framerange():
+def reset_framerange(fps=True, frame_range=True):
     """Set frame range and FPS to current folder."""
 
     project_name = get_current_project_name()
@@ -535,29 +459,32 @@ def reset_framerange():
     folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
     folder_attributes = folder_entity["attrib"]
 
-    # Get FPS
-    fps = get_folder_fps(folder_entity)
+    # Set FPS
+    if fps:
+        fps = get_folder_fps(folder_entity)
+        print("Setting scene FPS to {}".format(int(fps)))
+        set_scene_fps(fps)
 
-    # Get Start and End Frames
-    frame_start = folder_attributes.get("frameStart")
-    frame_end = folder_attributes.get("frameEnd")
+    if frame_range:
 
-    if frame_start is None or frame_end is None:
-        log.warning("No edit information found for '{}'".format(folder_path))
-        return
+        # Set Start and End Frames
+        frame_start = folder_attributes.get("frameStart")
+        frame_end = folder_attributes.get("frameEnd")
 
-    handle_start = folder_attributes.get("handleStart", 0)
-    handle_end = folder_attributes.get("handleEnd", 0)
+        if frame_start is None or frame_end is None:
+            log.warning("No edit information found for '%s'", folder_path)
+            return
 
-    frame_start -= int(handle_start)
-    frame_end += int(handle_end)
+        handle_start = folder_attributes.get("handleStart", 0)
+        handle_end = folder_attributes.get("handleEnd", 0)
 
-    # Set frame range and FPS
-    print("Setting scene FPS to {}".format(int(fps)))
-    set_scene_fps(fps)
-    hou.playbar.setFrameRange(frame_start, frame_end)
-    hou.playbar.setPlaybackRange(frame_start, frame_end)
-    hou.setFrame(frame_start)
+        frame_start -= int(handle_start)
+        frame_end += int(handle_end)
+
+        # Set frame range and FPS
+        hou.playbar.setFrameRange(frame_start, frame_end)
+        hou.playbar.setPlaybackRange(frame_start, frame_end)
+        hou.setFrame(frame_start)
 
 
 def get_main_window():
@@ -814,7 +741,7 @@ def set_camera_resolution(camera, folder_entity=None):
     """Apply resolution to camera from folder entity of the publish"""
 
     if not folder_entity:
-        folder_entity = get_current_project_folder()
+        folder_entity = get_current_folder_entity()
 
     resolution = get_resolution_from_folder(folder_entity)
 
@@ -1024,7 +951,7 @@ def self_publish():
 
     Firstly, it gets the node and its dependencies.
     Then, it deactivates all other ROPs
-    And finaly, it triggers the publishing action.
+    And finally, it triggers the publishing action.
     """
 
     result, comment = hou.ui.readInput(
@@ -1072,3 +999,84 @@ def add_self_publish_button(node):
     template = node.parmTemplateGroup()
     template.insertBefore((0,), button_parm)
     node.setParmTemplateGroup(template)
+
+
+def update_content_on_context_change():
+    """Update all Creator instances to current asset"""
+    host = registered_host()
+    context = host.get_current_context()
+
+    folder_path = context["folder_path"]
+    task = context["task_name"]
+
+    create_context = CreateContext(host, reset=True)
+
+    for instance in create_context.instances:
+        instance_folder_path = instance.get("folderPath")
+        if instance_folder_path and instance_folder_path != folder_path:
+            instance["folderPath"] = folder_path
+        instance_task = instance.get("task")
+        if instance_task and instance_task != task:
+            instance["task"] = task
+
+    create_context.save_changes()
+
+
+def prompt_reset_context():
+    """Prompt the user what context settings to reset.
+    This prompt is used on saving to a different task to allow the scene to
+    get matched to the new context.
+    """
+    # TODO: Cleanup this prototyped mess of imports and odd dialog
+    from ayon_core.tools.attribute_defs.dialog import (
+        AttributeDefinitionsDialog
+    )
+    from ayon_core.style import load_stylesheet
+    from ayon_core.lib import BoolDef, UILabelDef
+
+    definitions = [
+        UILabelDef(
+            label=(
+                "You are saving your workfile into a different folder or task."
+                "\n\n"
+                "Would you like to update some settings to the new context?\n"
+            )
+        ),
+        BoolDef(
+            "fps",
+            label="FPS",
+            tooltip="Reset workfile FPS",
+            default=True
+        ),
+        BoolDef(
+            "frame_range",
+            label="Frame Range",
+            tooltip="Reset workfile start and end frame ranges",
+            default=True
+        ),
+        BoolDef(
+            "instances",
+            label="Publish instances",
+            tooltip="Update all publish instance's folder and task to match "
+                    "the new folder and task",
+            default=True
+        ),
+    ]
+
+    dialog = AttributeDefinitionsDialog(definitions)
+    dialog.setWindowTitle("Saving to different context.")
+    dialog.setStyleSheet(load_stylesheet())
+    if not dialog.exec_():
+        return None
+
+    options = dialog.get_values()
+    if options["fps"] or options["frame_range"]:
+        reset_framerange(
+            fps=options["fps"],
+            frame_range=options["frame_range"]
+        )
+
+    if options["instances"]:
+        update_content_on_context_change()
+
+    dialog.deleteLater()

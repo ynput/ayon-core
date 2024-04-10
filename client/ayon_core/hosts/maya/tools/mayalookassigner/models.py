@@ -29,7 +29,8 @@ class AssetModel(models.TreeModel):
         self.beginResetModel()
 
         # Add the items sorted by label
-        sorter = lambda x: x["label"]
+        def sorter(x):
+            return x["label"]
 
         for item in sorted(items, key=sorter):
 

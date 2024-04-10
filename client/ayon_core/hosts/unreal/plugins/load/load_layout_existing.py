@@ -393,7 +393,7 @@ class ExistingLayoutLoader(plugin.Loader):
 
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
-        product_type = context["representation"]["context"]["family"]
+        product_type = context["product"]["productType"]
         asset_name = f"{folder_name}_{name}" if folder_name else name
         container_name = f"{folder_name}_{name}_CON"
 
