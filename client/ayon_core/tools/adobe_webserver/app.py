@@ -109,7 +109,7 @@ class WebServerTool:
         try:
             sock.bind((host_name, port))
             result = False
-        except:
+        except:  # noqa E722
             print("Port is in use")
 
         return result

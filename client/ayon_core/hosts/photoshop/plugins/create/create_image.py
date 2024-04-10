@@ -53,7 +53,7 @@ class ImageCreator(Creator):
             stub.select_layers(stub.get_layers())
             try:
                 group = stub.group_selected_layers(product_name_from_ui)
-            except:
+            except:  # noqa E722
                 raise CreatorError("Cannot group locked Background layer!")
             groups_to_create.append(group)
 
