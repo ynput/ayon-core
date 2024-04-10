@@ -48,10 +48,10 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
             return
 
         # Get all id required nodes
-        id_required_nodes = lib.get_id_required_nodes(referenced_nodes=True,
+        id_required_nodes = lib.get_id_required_nodes(referenced_nodes=False,
                                                       nodes=nodes)
         if not id_required_nodes:
-            return []
+            return
 
         # check ids against database ids
         folder_ids = cls.get_project_folder_ids(context=instance.context)
