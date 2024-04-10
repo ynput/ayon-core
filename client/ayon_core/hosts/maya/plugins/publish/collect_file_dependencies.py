@@ -1,5 +1,3 @@
-import json
-
 from maya import cmds
 
 import pyblish.api
@@ -11,18 +9,24 @@ class CollectFileDependencies(pyblish.api.ContextPlugin):
     label = "Collect File Dependencies"
     order = pyblish.api.CollectorOrder - 0.49
     hosts = ["maya"]
+    families = ["renderlayer"]
+
+    @classmethod
+    def apply_settings(cls, project_settings, system_settings):
+        # Disable plug-in if not used for deadline submission anyway
+        settings = project_settings["deadline"]["publish"]["MayaSubmitDeadline"]  # noqa
+        cls.enabled = settings.get("asset_dependencies", True)
 
     def process(self, context):
-        dependencies = []
+        dependencies = set()
         for node in cmds.ls(type="file"):
             path = cmds.getAttr("{}.{}".format(node, "fileTextureName"))
             if path not in dependencies:
-                dependencies.append(path)
+                dependencies.add(path)
 
         for node in cmds.ls(type="AlembicNode"):
             path = cmds.getAttr("{}.{}".format(node, "abc_File"))
             if path not in dependencies:
-                dependencies.append(path)
+                dependencies.add(path)
 
-        context.data["fileDependencies"] = dependencies
-        self.log.debug(json.dumps(dependencies, indent=4))
+        context.data["fileDependencies"] = list(dependencies)
