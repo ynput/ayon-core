@@ -13,7 +13,7 @@ from ayon_core.hosts.maya.api.workfile_template_builder import (
 class LoadAsTemplate(load.LoaderPlugin):
     """Load workfile as a template """
 
-    product_types = {"workfile"}
+    product_types = {"workfile", "mayaScene"}
     label = "Load as template"
     representations = ["ma", "mb"]
     icon = "wrench"
