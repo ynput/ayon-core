@@ -580,7 +580,8 @@ def on_save():
     _remove_workfile_lock()
 
     # Generate ids of the current context on nodes in the scene
-    nodes = lib.get_id_required_nodes(referenced_nodes=False)
+    nodes = lib.get_id_required_nodes(referenced_nodes=False,
+                                      existing_ids=False)
     for node, new_id in lib.generate_ids(nodes):
         lib.set_id(node, new_id, overwrite=False)
 
@@ -652,10 +653,6 @@ def on_task_changed():
         log.warning((
             "Can't set project for new context because path does not exist: {}"
         ).format(workdir))
-
-    with lib.suspended_refresh():
-        lib.set_context_settings()
-        lib.update_content_on_context_change()
 
     global _about_to_save
     if not lib.IS_HEADLESS and _about_to_save:
