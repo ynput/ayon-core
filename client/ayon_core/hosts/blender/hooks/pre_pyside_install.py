@@ -31,7 +31,7 @@ class InstallPySideToBlender(PreLaunchHook):
 
     def inner_execute(self):
         # Get blender's python directory
-        version_regex = re.compile(r"^[2-4]\.[0-9]+$")
+        version_regex = re.compile(r"^([2-4])\.[0-9]+$")
 
         platform = system().lower()
         executable = self.launch_context.executable.executable_path
@@ -42,7 +42,8 @@ class InstallPySideToBlender(PreLaunchHook):
         if os.path.basename(executable).lower() != expected_executable:
             self.log.info((
                 f"Executable does not lead to {expected_executable} file."
-                "Can't determine blender's python to check/install PySide2."
+                "Can't determine blender's python to check/install"
+                " Qt binding."
             ))
             return
 
@@ -73,6 +74,12 @@ class InstallPySideToBlender(PreLaunchHook):
             return
 
         version_subfolder = version_subfolders[0]
+        before_blender_4 = False
+        if int(version_regex.match(version_subfolder).group(1)) < 4:
+            before_blender_4 = True
+        # Blender 4 has Python 3.11 which does not support 'PySide2'
+        # QUESTION could we always install PySide6?
+        qt_binding = "PySide2" if before_blender_4 else "PySide6"
 
         python_dir = os.path.join(versions_dir, version_subfolder, "python")
         python_lib = os.path.join(python_dir, "lib")
