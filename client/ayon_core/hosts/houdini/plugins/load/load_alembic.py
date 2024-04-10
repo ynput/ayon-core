@@ -11,7 +11,7 @@ class AbcLoader(load.LoaderPlugin):
 
     product_types = {"model", "animation", "pointcache", "gpuCache"}
     label = "Load Alembic"
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"abc"}
     order = -10
     icon = "code-fork"
