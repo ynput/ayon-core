@@ -123,22 +123,30 @@ class InstallPySideToBlender(PreLaunchHook):
             return
 
         # Check if PySide2 is installed and skip if yes
-        if self.is_pyside_installed(python_executable):
+        if self.is_pyside_installed(python_executable, qt_binding):
             self.log.debug("Blender has already installed PySide2.")
             return
 
         # Install PySide2 in blender's python
         if platform == "windows":
-            result = self.install_pyside_windows(python_executable)
+            result = self.install_pyside_windows(
+                python_executable, qt_binding
+            )
         else:
-            result = self.install_pyside(python_executable)
+            result = self.install_pyside(
+                python_executable, qt_binding
+            )
 
         if result:
-            self.log.info("Successfully installed PySide2 module to blender.")
+            self.log.info(
+                f"Successfully installed {qt_binding} module to blender."
+            )
         else:
-            self.log.warning("Failed to install PySide2 module to blender.")
+            self.log.warning(
+                f"Failed to install {qt_binding} module to blender."
+            )
 
-    def install_pyside_windows(self, python_executable):
+    def install_pyside_windows(self, python_executable, qt_binding):
         """Install PySide2 python module to blender's python.
 
         Installation requires administration rights that's why it is required
@@ -162,7 +170,7 @@ class InstallPySideToBlender(PreLaunchHook):
             # - use "-m pip" as module pip to install PySide2 and argument
             #   "--ignore-installed" is to force install module to blender's
             #   site-packages and make sure it is binary compatible
-            parameters = "-m pip install --ignore-installed PySide2"
+            parameters = f"-m pip install --ignore-installed {qt_binding}"
 
             # Execute command and ask for administrator's rights
             process_info = ShellExecuteEx(
@@ -180,20 +188,22 @@ class InstallPySideToBlender(PreLaunchHook):
         except pywintypes.error:
             pass
 
-    def install_pyside(self, python_executable):
+    def install_pyside(self, python_executable, qt_binding):
         """Install PySide2 python module to blender's python."""
         try:
             # Parameters
-            # - use "-m pip" as module pip to install PySide2 and argument
+            # - use "-m pip" as module pip to install qt binding and argument
             #   "--ignore-installed" is to force install module to blender's
             #   site-packages and make sure it is binary compatible
+            # TODO find out if blender 4.x on linux/darwin does install
+            #   qt binding to correct place.
             args = [
                 python_executable,
                 "-m",
                 "pip",
                 "install",
                 "--ignore-installed",
-                "PySide2",
+                qt_binding,
             ]
             process = subprocess.Popen(
                 args, stdout=subprocess.PIPE, universal_newlines=True
@@ -210,13 +220,15 @@ class InstallPySideToBlender(PreLaunchHook):
         except subprocess.SubprocessError:
             pass
 
-    def is_pyside_installed(self, python_executable):
+    def is_pyside_installed(self, python_executable, qt_binding):
         """Check if PySide2 module is in blender's pip list.
 
         Check that PySide2 is installed directly in blender's site-packages.
         It is possible that it is installed in user's site-packages but that
         may be incompatible with blender's python.
         """
+
+        qt_binding_low = qt_binding.lower()
         # Get pip list from blender's python executable
         args = [python_executable, "-m", "pip", "list"]
         process = subprocess.Popen(args, stdout=subprocess.PIPE)
@@ -233,6 +245,6 @@ class InstallPySideToBlender(PreLaunchHook):
             if not line:
                 continue
             package_name = line[0:package_len].strip()
-            if package_name.lower() == "pyside2":
+            if package_name.lower() == qt_binding_low:
                 return True
         return False
