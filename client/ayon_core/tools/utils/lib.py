@@ -7,7 +7,6 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core.style import (
-    get_default_entity_icon_color,
     get_objected_colors,
     get_app_icon_path,
 )

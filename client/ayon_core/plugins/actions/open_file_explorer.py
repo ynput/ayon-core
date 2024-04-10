@@ -18,18 +18,14 @@ class OpenTaskPath(LauncherAction):
     icon = "folder-open"
     order = 500
 
-    def is_compatible(self, session):
+    def is_compatible(self, selection):
         """Return whether the action is compatible with the session"""
-        return bool(session.get("AYON_FOLDER_PATH"))
+        return selection.is_folder_selected
 
-    def process(self, session, **kwargs):
+    def process(self, selection, **kwargs):
         from qtpy import QtCore, QtWidgets
 
-        project_name = session["AYON_PROJECT_NAME"]
-        folder_path = session["AYON_FOLDER_PATH"]
-        task_name = session.get("AYON_TASK_NAME", None)
-
-        path = self._get_workdir(project_name, folder_path, task_name)
+        path = self._get_workdir(selection)
         if not path:
             return
 
@@ -60,16 +56,17 @@ class OpenTaskPath(LauncherAction):
             path = path.split(field, 1)[0]
         return path
 
-    def _get_workdir(self, project_name, folder_path, task_name):
-        project_entity = ayon_api.get_project(project_name)
-        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-        task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
+    def _get_workdir(self, selection):
+        data = get_template_data(
+            selection.project_entity,
+            selection.folder_entity,
+            selection.task_entity
         )
 
-        data = get_template_data(project_entity, folder_entity, task_entity)
-
-        anatomy = Anatomy(project_name)
+        anatomy = Anatomy(
+            selection.project_name,
+            project_entity=selection.project_entity
+        )
         workdir = anatomy.get_template_item(
             "work", "default", "folder"
         ).format(data)
