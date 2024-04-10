@@ -4,6 +4,8 @@ import re
 import shutil
 import argparse
 import zipfile
+import types
+import importlib
 import platform
 import collections
 from pathlib import Path
@@ -219,13 +221,34 @@ def prepare_client_code(
                 zipf.write(path, sub_path)
 
 
+def import_filepath(path: Path, module_name: Optional[str] = None):
+    if not module_name:
+        module_name = os.path.splitext(path.name)[0]
+
+    module = types.ModuleType(module_name)
+    module.__file__ = path
+
+    # Use loader so module has full specs
+    module_loader = importlib.machinery.SourceFileLoader(
+        module_name, path
+    )
+    module_loader.exec_module(module)
+    return module
+
+
 def create_addon_package(
     addon_dir: Path,
     output_dir: Path,
     create_zip: bool,
     keep_source: bool,
 ):
-    addon_version = get_addon_version(addon_dir)
+    src_package_py = addon_dir / "package.py"
+    package = None
+    if src_package_py.exists():
+        package = import_filepath(src_package_py)
+        addon_version = package.version
+    else:
+        addon_version = get_addon_version(addon_dir)
 
     addon_output_dir = output_dir / addon_dir.name / addon_version
     if addon_output_dir.exists():
@@ -233,16 +256,19 @@ def create_addon_package(
     addon_output_dir.mkdir(parents=True)
 
     # Copy server content
-    package_py = addon_output_dir / "package.py"
-    addon_name = addon_dir.name
-    if addon_name == "royal_render":
-        addon_name = "royalrender"
-    package_py_content = PACKAGE_PY_TEMPLATE.format(
-        addon_name=addon_name, addon_version=addon_version
-    )
+    dst_package_py = addon_output_dir / "package.py"
+    if package is not None:
+        shutil.copy(src_package_py, dst_package_py)
+    else:
+        addon_name = addon_dir.name
+        if addon_name == "royal_render":
+            addon_name = "royalrender"
+        package_py_content = PACKAGE_PY_TEMPLATE.format(
+            addon_name=addon_name, addon_version=addon_version
+        )
 
-    with open(package_py, "w+") as pkg_py:
-        pkg_py.write(package_py_content)
+        with open(dst_package_py, "w+") as pkg_py:
+            pkg_py.write(package_py_content)
 
     server_dir = addon_dir / "server"
     shutil.copytree(
