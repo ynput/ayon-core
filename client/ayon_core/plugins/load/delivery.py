@@ -28,7 +28,7 @@ class Delivery(load.ProductLoaderPlugin):
     is_multiple_contexts_compatible = True
     sequence_splitter = "__sequence_splitter__"
 
-    representations = ["*"]
+    representations = {"*"}
     product_types = {"*"}
     tool_names = ["library_loader"]
 
