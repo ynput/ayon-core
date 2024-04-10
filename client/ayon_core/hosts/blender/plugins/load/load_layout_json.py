@@ -167,7 +167,7 @@ class JsonLayoutLoader(plugin.AssetLoader):
         asset_group.empty_display_type = 'SINGLE_ARROW'
         avalon_container.objects.link(asset_group)
 
-        self._process(libpath, asset, asset_group, None)
+        self._process(libpath, asset_name, asset_group, None)
 
         bpy.context.scene.collection.objects.link(asset_group)
 
