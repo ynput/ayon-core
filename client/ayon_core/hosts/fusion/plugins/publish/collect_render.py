@@ -116,6 +116,8 @@ class CollectFusionRender(
                     # to skip ExtractReview locally
                     instance.families.remove("review")
 
+            instances.append(instance)
+
         return instances
 
     def post_collecting_action(self):
