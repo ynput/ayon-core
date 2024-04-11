@@ -415,10 +415,9 @@ class ExtractAnimation(ExtractAlembic):
         roots = cmds.sets(out_set, query=True) or []
 
         # Include all descendants
-        nodes = (
-            roots
-            + cmds.listRelatives(roots, allDescendents=True, fullPath=True)
-            or []
-        )
+        nodes = roots
+        nodes += cmds.listRelatives(
+            roots, allDescendents=True, fullPath=True
+        ) or []
 
         return nodes, roots
