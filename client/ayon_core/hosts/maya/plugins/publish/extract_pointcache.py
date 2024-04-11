@@ -20,7 +20,7 @@ from ayon_core.lib import (
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 
-class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
+class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals, uvs, creases are preserved, but nothing more,
