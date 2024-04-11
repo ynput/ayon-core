@@ -964,9 +964,9 @@ def replace_instance_in_context(
         destination_instance.data[key] = source_instance.data[key]
 
     # Replace the instance at the same index in the context
-    for i, instance in enumerate(context):
+    for idx, instance in enumerate(context):
         if source_instance is instance:
-            context[i] = destination_instance
+            context[idx] = destination_instance
             return True
 
     # Source was not found
