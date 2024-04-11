@@ -17,7 +17,7 @@ from ayon_core.lib import (
     UISeparatorDef,
     UILabelDef,
 )
-from ayon_core.pipeline.publish import OpenPypePyblishPluginMixin
+from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 
 class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
