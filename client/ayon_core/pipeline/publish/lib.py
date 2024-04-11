@@ -934,3 +934,41 @@ def get_publish_instance_families(instance):
         families.discard(family)
     output.extend(families)
     return output
+
+
+def replace_instance_in_context(
+        context: pyblish.api.Context,
+        source_instance: pyblish.api.Instance,
+        destination_instance: pyblish.api.Instance
+):
+    """Replace source instance with the destination instance.
+
+    This transfers the instance's IDs so that the new instance acts exactly
+    as if it was the source instance the whole time. This is required for
+    the publisher to correctly detect and transfer the logs relevant for the
+    instance.
+
+    Returns:
+        bool: Whether the source instance was replaced or the destination
+            instance was only added because source instance did not exist
+            in the context.
+
+    """
+
+    # Transfer the pyblish.api.Instance id
+    destination_instance._id = source_instance.id
+
+    # Transfer the `instance_id` of the new publisher's instances
+    key = "instance_id"
+    if key in source_instance.data:
+        destination_instance.data[key] = source_instance.data[key]
+
+    # Replace the instance at the same index in the context
+    for i, instance in enumerate(context):
+        if source_instance is instance:
+            context[i] = destination_instance
+            return True
+
+    # Source was not found
+    context.append(destination_instance)
+    return False

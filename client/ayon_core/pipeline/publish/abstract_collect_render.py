@@ -12,6 +12,7 @@ import six
 import pyblish.api
 
 from .publish_plugins import AbstractMetaContextPlugin
+from .lib import replace_instance_in_context
 
 
 @attr.s
@@ -80,6 +81,9 @@ class RenderInstance(object):
     anatomyData = attr.ib(default=None)
     outputDir = attr.ib(default=None)
     context = attr.ib(default=None)
+
+    # The source instance this render instance should replace in the context
+    source_instance = attr.ib(default=None, type=pyblish.api.Instance)
 
     @frameStart.validator
     def check_frame_start(self, _, value):
@@ -214,8 +218,15 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
             data = self.add_additional_data(data)
             render_instance_dict = attr.asdict(render_instance)
 
-            instance = context.create_instance(render_instance.name)
-            instance.data["label"] = render_instance.label
+            instance = pyblish.api.Instance(render_instance.name,
+                                            parent=context)
+            if render_instance.source_instance:
+                replace_instance_in_context(context,
+                                            render_instance.source_instance,
+                                            instance)
+            else:
+                context.append(instance)
+
             instance.data.update(render_instance_dict)
             instance.data.update(data)
 
