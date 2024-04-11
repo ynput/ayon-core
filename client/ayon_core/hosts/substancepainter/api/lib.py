@@ -549,7 +549,7 @@ def _get_new_project_action():
     return new_action
 
 
-def prompt_new_file_with_mesh(mesh_filepath):
+def prompt_new_file_with_mesh(mesh_filepath, allow_user_setting=True):
     """Prompts the user for a new file using Substance Painter's own dialog.
 
     This will set the mesh path to load to the given mesh and disables the
@@ -586,7 +586,6 @@ def prompt_new_file_with_mesh(mesh_filepath):
         # TODO: find a way to improve the process event to
         # load more complicated mesh
         app.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents, 3000)
-
         file_dialog.done(file_dialog.Accepted)
         app.processEvents(QtCore.QEventLoop.AllEvents)
 
@@ -624,7 +623,8 @@ def prompt_new_file_with_mesh(mesh_filepath):
                 f"{mesh_filepath}\n\n"
                 "Creating new project directly with the mesh path instead.")
         else:
-            dialog.done(dialog.Accepted)
+            if not allow_user_setting:
+                dialog.done(dialog.Accepted)
 
     new_action = _get_new_project_action()
     if not new_action:

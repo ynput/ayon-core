@@ -28,6 +28,11 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
     @classmethod
     def get_options(cls, contexts):
         return [
+            BoolDef("allow_user_setting",
+                    default=True,
+                    label="Allow User Setting",
+                    tooltip=("Allow user to set up the project"
+                             " by their own\n")),
             BoolDef("preserve_strokes",
                     default=True,
                     label="Preserve Strokes",
@@ -49,6 +54,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
     def load(self, context, name, namespace, options=None):
 
         # Get user inputs
+        allow_user_setting = options.get("allow_user_setting", True)
         import_cameras = options.get("import_cameras", True)
         preserve_strokes = options.get("preserve_strokes", True)
         texture_resolution = options.get("texture_resolution", 1024)
@@ -61,7 +67,8 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
             path = self.filepath_from_context(context)
             # TODO: improve the prompt dialog function to not
             # only works for simple polygon scene
-            result = prompt_new_file_with_mesh(mesh_filepath=path)
+            result = prompt_new_file_with_mesh(
+                mesh_filepath=path, allow_user_setting=allow_user_setting)
             if not result:
                 self.log.info("User cancelled new project prompt."
                               "Creating new project directly from"
