@@ -48,7 +48,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
                     items=[128, 256, 512, 1024, 2048, 4096],
                     default=1024,
                     label="Texture Resolution",
-                    tooltip="Set texture resolution for the project")
+                    tooltip="Set texture resolution when creating new project")
         ]
 
     def load(self, context, name, namespace, options=None):
