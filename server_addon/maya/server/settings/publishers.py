@@ -493,7 +493,9 @@ class ExtractAlembicModel(BaseSettingsModel):
         description=(
             "The frame to start scene evaluation at.  This is used to set the "
             "starting frame for time dependent translations and can be used to"
-            " evaluate run-up that isn't actually translated."
+            " evaluate run-up that isn't actually translated.\n"
+            "NOTE: preRoll needs to be enabled in the export flags for this "
+            "start frame to be considered."
         )
     )
     userAttr: str = SettingsField(
