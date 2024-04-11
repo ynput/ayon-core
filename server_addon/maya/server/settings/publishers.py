@@ -389,53 +389,54 @@ class ExtractAlembicModel(BaseSettingsModel):
         enum_resolver=extract_alembic_flags_enum,
         title="Export Flags",
         description=(
-            "Auto Subd - If this flag is present and the mesh has crease "
+            "**Auto Subd** - If this flag is present and the mesh has crease "
             "edges, crease vertices or holes, the mesh (OPolyMesh) would now "
             "be written out as an OSubD and crease info will be stored in the "
             "Alembic  file. Otherwise, creases info won't be preserved in "
             "Alembic file unless a custom Boolean attribute SubDivisionMesh "
             "has been added to mesh node and its value is true.\n"
 
-            "Dont Skip Unwritten Frames - When evaluating multiple translate "
-            "jobs, this decides whether to evaluate frames between jobs when "
-            "there is a gap in their frame ranges.\n"
+            "**Dont Skip Unwritten Frames** - When evaluating multiple "
+            "translate jobs, this decides whether to evaluate frames between "
+            "jobs when there is a gap in their frame ranges.\n"
 
-            "Euler Filter - Apply Euler filter while sampling rotations.\n"
+            "**Euler Filter** - Apply Euler filter while sampling rotations.\n"
 
-            "No Normals - Present normal data for Alembic poly meshes will not"
-            " be written.\n"
+            "**No Normals** - Present normal data for Alembic poly meshes will"
+            " not be written.\n"
 
-            "Pre Roll - This frame range will not be sampled.\n"
+            "**Pre Roll** - This frame range will not be sampled.\n"
 
-            "Renderable Only - Only export renderable visible shapes.\n"
+            "**Renderable Only** - Only export renderable visible shapes.\n"
 
-            "Strip Namespaces - Namespaces will be stripped off of the node "
-            "before being written to Alembic.\n"
+            "**Strip Namespaces** - Namespaces will be stripped off of the "
+            "node before being written to Alembic.\n"
 
-            "UV Write - Uv data for PolyMesh and SubD shapes will be written "
-            "to the Alembic file.\n"
+            "**UV Write** - Uv data for PolyMesh and SubD shapes will be "
+            "written to the Alembic file.\n"
 
-            "UVs Only - If this flag is present, only uv data for PolyMesh and"
-            " SubD shapes will be written to the Alembic file.\n"
+            "**UVs Only** - If this flag is present, only uv data for PolyMesh"
+            " and SubD shapes will be written to the Alembic file.\n"
 
-            "Verbose - Prints the current frame that is being evaluated.\n"
+            "**Verbose** - Prints the current frame that is being evaluated.\n"
 
-            "Whole Frame Geo - Data for geometry will only be written out on "
-            "whole frames.\n"
+            "**Whole Frame Geo** - Data for geometry will only be written out "
+            "on whole frames.\n"
 
-            "World Space - Any root nodes will be stored in world space.\n"
+            "**World Space** - Any root nodes will be stored in world space.\n"
 
-            "Write Color Sets - Write vertex colors with the geometry.\n"
+            "**Write Color Sets** - Write vertex colors with the geometry.\n"
 
-            "Write Face Sets - Write face sets with the geometry.\n"
+            "**Write Face Sets** - Write face sets with the geometry.\n"
 
-            "Write Normals - Write normals with the deforming geometry.\n"
+            "**Write Normals** - Write normals with the deforming geometry.\n"
 
-            "Write UV Sets - Write all uv sets on MFnMeshes as vector 2 "
+            "**Write UV Sets** - Write all uv sets on MFnMeshes as vector 2 "
             "indexed geometry parameters with face varying scope.\n"
 
-            "Write Visibility - Visibility state will be stored in the Alembic"
-            " file. Otherwise everything written out is treated as visible."
+            "**Write Visibility** - Visibility state will be stored in the "
+            "Alembic file. Otherwise everything written out is treated as "
+            "visible."
         )
     )
     attr: str = SettingsField(
