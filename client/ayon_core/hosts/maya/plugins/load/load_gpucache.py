@@ -1,5 +1,3 @@
-import os
-
 import maya.cmds as cmds
 
 from ayon_core.hosts.maya.api.pipeline import containerise
@@ -16,7 +14,7 @@ class GpuCacheLoader(load.LoaderPlugin):
     """Load Alembic as gpuCache"""
 
     product_types = {"model", "animation", "proxyAbc", "pointcache"}
-    representations = ["abc", "gpu_cache"]
+    representations = {"abc", "gpu_cache"}
 
     label = "Load Gpu Cache"
     order = -5

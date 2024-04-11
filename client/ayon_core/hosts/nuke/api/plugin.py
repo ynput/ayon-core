@@ -6,7 +6,6 @@ import six
 import random
 import string
 from collections import OrderedDict, defaultdict
-from abc import abstractmethod
 
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import (
@@ -14,7 +13,6 @@ from ayon_core.lib import (
     EnumDef
 )
 from ayon_core.pipeline import (
-    LegacyCreator,
     LoaderPlugin,
     CreatorError,
     Creator as NewCreator,
@@ -34,18 +32,13 @@ from ayon_core.lib.transcoding import (
 from .lib import (
     INSTANCE_DATA_KNOB,
     Knobby,
-    check_product_name_exists,
     maintained_selection,
     get_avalon_knob_data,
-    set_avalon_knob_data,
-    add_publish_knob,
-    get_nuke_imageio_settings,
     set_node_knobs_from_settings,
     set_node_data,
     get_node_data,
     get_view_process_node,
     get_viewer_config_from_string,
-    deprecated,
     get_filenames_without_hash,
     link_knobs
 )
@@ -910,8 +903,8 @@ class ExporterReviewMov(ExporterReview):
                 self._connect_to_above_nodes(
                     node, product_name, "Reposition node...   `{}`"
                 )
-            # append reformated tag
-            add_tags.append("reformated")
+            # append reformatted tag
+            add_tags.append("reformatted")
 
         # only create colorspace baking if toggled on
         if bake_viewer_process:
@@ -1114,7 +1107,7 @@ def convert_to_valid_instaces():
             transfer_data["active"] = (
                 node["publish"].value())
 
-        # add idetifier
+        # add identifier
         transfer_data["creator_identifier"] = product_type_to_identifier(
             product_type
         )

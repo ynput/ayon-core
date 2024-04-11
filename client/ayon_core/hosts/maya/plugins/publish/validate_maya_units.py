@@ -3,7 +3,6 @@ import maya.cmds as cmds
 import pyblish.api
 
 import ayon_core.hosts.maya.api.lib as mayalib
-from ayon_core.pipeline.context_tools import get_current_project_folder
 from ayon_core.pipeline.publish import (
     RepairContextAction,
     ValidateSceneOrder,
@@ -131,6 +130,5 @@ class ValidateMayaUnits(pyblish.api.ContextPlugin,
         cls.log.debug(current_linear)
 
         cls.log.info("Setting time unit to match project")
-        # TODO replace query with using 'context.data["folderEntity"]'
-        folder_entity = get_current_project_folder()
+        folder_entity = context.data["folderEntity"]
         mayalib.set_scene_fps(folder_entity["attrib"]["fps"])

@@ -6,7 +6,7 @@ from ayon_server.settings import (
 
 from .imageio import BlenderImageIOModel
 from .publish_plugins import (
-    PublishPuginsModel,
+    PublishPluginsModel,
     DEFAULT_BLENDER_PUBLISH_SETTINGS
 )
 from .render_settings import (
@@ -47,8 +47,8 @@ class BlenderSettings(BaseSettingsModel):
         default_factory=TemplateWorkfileBaseOptions,
         title="Workfile Builder"
     )
-    publish: PublishPuginsModel = SettingsField(
-        default_factory=PublishPuginsModel,
+    publish: PublishPluginsModel = SettingsField(
+        default_factory=PublishPluginsModel,
         title="Publish Plugins"
     )
 

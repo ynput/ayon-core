@@ -36,7 +36,7 @@ class SiteSyncModel:
         self._controller = controller
 
         self._site_icons = None
-        self._site_sync_enabled_cache = NestedCacheItem(
+        self._sitesync_enabled_cache = NestedCacheItem(
             levels=1, lifetime=self.lifetime
         )
         self._active_site_cache = NestedCacheItem(
@@ -57,17 +57,17 @@ class SiteSyncModel:
         )
 
         manager = AddonsManager()
-        self._site_sync_addon = manager.get("sync_server")
+        self._sitesync_addon = manager.get("sitesync")
 
     def reset(self):
         self._site_icons = None
-        self._site_sync_enabled_cache.reset()
+        self._sitesync_enabled_cache.reset()
         self._active_site_cache.reset()
         self._remote_site_cache.reset()
         self._version_availability_cache.reset()
         self._repre_status_cache.reset()
 
-    def is_site_sync_enabled(self, project_name=None):
+    def is_sitesync_enabled(self, project_name=None):
         """Site sync is enabled for a project.
 
         Returns false if site sync addon is not available or enabled
@@ -82,13 +82,13 @@ class SiteSyncModel:
             bool: Site sync is enabled.
         """
 
-        if not self._is_site_sync_addon_enabled():
+        if not self._is_sitesync_addon_enabled():
             return False
-        cache = self._site_sync_enabled_cache[project_name]
+        cache = self._sitesync_enabled_cache[project_name]
         if not cache.is_valid:
             enabled = True
             if project_name:
-                enabled = self._site_sync_addon.is_project_enabled(
+                enabled = self._sitesync_addon.is_project_enabled(
                     project_name, single=True
                 )
             cache.update_data(enabled)
@@ -107,8 +107,8 @@ class SiteSyncModel:
         cache = self._active_site_cache[project_name]
         if not cache.is_valid:
             site_name = None
-            if project_name and self._is_site_sync_addon_enabled():
-                site_name = self._site_sync_addon.get_active_site(project_name)
+            if project_name and self._is_sitesync_addon_enabled():
+                site_name = self._sitesync_addon.get_active_site(project_name)
             cache.update_data(site_name)
         return cache.get_data()
 
@@ -125,8 +125,8 @@ class SiteSyncModel:
         cache = self._remote_site_cache[project_name]
         if not cache.is_valid:
             site_name = None
-            if project_name and self._is_site_sync_addon_enabled():
-                site_name = self._site_sync_addon.get_remote_site(project_name)
+            if project_name and self._is_sitesync_addon_enabled():
+                site_name = self._sitesync_addon.get_remote_site(project_name)
             cache.update_data(site_name)
         return cache.get_data()
 
@@ -140,7 +140,7 @@ class SiteSyncModel:
             Union[dict[str, Any], None]: Site icon definition.
         """
 
-        if not project_name or not self.is_site_sync_enabled(project_name):
+        if not project_name or not self.is_sitesync_enabled(project_name):
             return None
         active_site = self.get_active_site(project_name)
         return self._get_site_icon_def(project_name, active_site)
@@ -155,14 +155,14 @@ class SiteSyncModel:
             Union[dict[str, Any], None]: Site icon definition.
         """
 
-        if not project_name or not self.is_site_sync_enabled(project_name):
+        if not project_name or not self.is_sitesync_enabled(project_name):
             return None
         remote_site = self.get_remote_site(project_name)
         return self._get_site_icon_def(project_name, remote_site)
 
     def _get_site_icon_def(self, project_name, site_name):
         # use different icon for studio even if provider is 'local_drive'
-        if site_name == self._site_sync_addon.DEFAULT_SITE:
+        if site_name == self._sitesync_addon.DEFAULT_SITE:
             provider = "studio"
         else:
             provider = self._get_provider_for_site(project_name, site_name)
@@ -179,7 +179,7 @@ class SiteSyncModel:
             dict[str, tuple[int, int]]
         """
 
-        if not self.is_site_sync_enabled(project_name):
+        if not self.is_sitesync_enabled(project_name):
             return {
                 version_id: _default_version_availability()
                 for version_id in version_ids
@@ -217,7 +217,7 @@ class SiteSyncModel:
             dict[str, tuple[float, float]]
         """
 
-        if not self.is_site_sync_enabled(project_name):
+        if not self.is_sitesync_enabled(project_name):
             return {
                 repre_id: _default_repre_status()
                 for repre_id in representation_ids
@@ -242,7 +242,7 @@ class SiteSyncModel:
                 output[repre_id] = repre_cache.get_data()
         return output
 
-    def get_site_sync_action_items(self, project_name, representation_ids):
+    def get_sitesync_action_items(self, project_name, representation_ids):
         """
 
         Args:
@@ -253,7 +253,7 @@ class SiteSyncModel:
             list[ActionItem]: Actions that can be shown in loader.
         """
 
-        if not self.is_site_sync_enabled(project_name):
+        if not self.is_sitesync_enabled(project_name):
             return []
 
         repres_status = self.get_representations_sync_status(
@@ -289,7 +289,7 @@ class SiteSyncModel:
 
         return action_items
 
-    def is_site_sync_action(self, identifier):
+    def is_sitesync_action(self, identifier):
         """Should be `identifier` handled by SiteSync.
 
         Args:
@@ -353,22 +353,22 @@ class SiteSyncModel:
                 )
 
             elif identifier == REMOVE_IDENTIFIER:
-                self._site_sync_addon.remove_site(
+                self._sitesync_addon.remove_site(
                     project_name,
                     repre_id,
                     active_site,
                     remove_local_files=True
                 )
 
-    def _is_site_sync_addon_enabled(self):
+    def _is_sitesync_addon_enabled(self):
         """
         Returns:
             bool: Site sync addon is enabled.
         """
 
-        if self._site_sync_addon is None:
+        if self._sitesync_addon is None:
             return False
-        return self._site_sync_addon.enabled
+        return self._sitesync_addon.enabled
 
     def _get_provider_for_site(self, project_name, site_name):
         """Provider for a site.
@@ -381,9 +381,9 @@ class SiteSyncModel:
             Union[str, None]: Provider name.
         """
 
-        if not self._is_site_sync_addon_enabled():
+        if not self._is_sitesync_addon_enabled():
             return None
-        return self._site_sync_addon.get_provider_for_site(
+        return self._sitesync_addon.get_provider_for_site(
             project_name, site_name
         )
 
@@ -398,7 +398,7 @@ class SiteSyncModel:
             return None
 
         if self._site_icons is None:
-            self._site_icons = self._site_sync_addon.get_site_icons()
+            self._site_icons = self._sitesync_addon.get_site_icons()
         return self._site_icons.get(provider)
 
     def _refresh_version_availability(self, project_name, version_ids):
@@ -406,7 +406,7 @@ class SiteSyncModel:
             return
         project_cache = self._version_availability_cache[project_name]
 
-        avail_by_id = self._site_sync_addon.get_version_availability(
+        avail_by_id = self._sitesync_addon.get_version_availability(
             project_name,
             version_ids,
             self.get_active_site(project_name),
@@ -425,7 +425,7 @@ class SiteSyncModel:
             return
         project_cache = self._repre_status_cache[project_name]
         status_by_repre_id = (
-            self._site_sync_addon.get_representations_sync_state(
+            self._sitesync_addon.get_representations_sync_state(
                 project_name,
                 representation_ids,
                 self.get_active_site(project_name),
@@ -496,7 +496,7 @@ class SiteSyncModel:
         )
 
     def _add_site(self, project_name, repre_entity, site_name, product_type):
-        self._site_sync_addon.add_site(
+        self._sitesync_addon.add_site(
             project_name, repre_entity["id"], site_name, force=True
         )
 
@@ -513,7 +513,7 @@ class SiteSyncModel:
             try:
                 print("Adding {} to linked representation: {}".format(
                     site_name, link_repre_id))
-                self._site_sync_addon.add_site(
+                self._sitesync_addon.add_site(
                     project_name,
                     link_repre_id,
                     site_name,

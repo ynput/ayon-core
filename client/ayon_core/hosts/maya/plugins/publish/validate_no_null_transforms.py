@@ -19,20 +19,15 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
 
 def has_shape_children(node):
     # Check if any descendants
-    allDescendents = cmds.listRelatives(node,
-                                        allDescendents=True,
-                                        fullPath=True)
-    if not allDescendents:
+    all_descendents = cmds.listRelatives(node,
+                                         allDescendents=True,
+                                         fullPath=True)
+    if not all_descendents:
         return False
 
     # Check if there are any shapes at all
-    shapes = cmds.ls(allDescendents, shapes=True)
+    shapes = cmds.ls(all_descendents, shapes=True, noIntermediate=True)
     if not shapes:
-        return False
-
-    # Check if all descendent shapes are intermediateObjects;
-    # if so we consider this node a null node and return False.
-    if all(cmds.getAttr('{0}.intermediateObject'.format(x)) for x in shapes):
         return False
 
     return True

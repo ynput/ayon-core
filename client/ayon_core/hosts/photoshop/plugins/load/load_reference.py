@@ -15,7 +15,7 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
     """
 
     product_types = {"image", "render"}
-    representations = ["*"]
+    representations = {"*"}
 
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()

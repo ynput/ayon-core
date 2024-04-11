@@ -12,7 +12,7 @@ class HdaLoader(load.LoaderPlugin):
 
     product_types = {"hda"}
     label = "Load Hda"
-    representations = ["hda"]
+    representations = {"hda"}
     order = -10
     icon = "code-fork"
     color = "orange"

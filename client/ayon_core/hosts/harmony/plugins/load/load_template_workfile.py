@@ -14,7 +14,7 @@ class ImportTemplateLoader(load.LoaderPlugin):
     """Import templates."""
 
     product_types = {"harmony.template", "workfile"}
-    representations = ["*"]
+    representations = {"*"}
     label = "Import Template"
 
     def load(self, context, name=None, namespace=None, data=None):
@@ -61,5 +61,5 @@ class ImportWorkfileLoader(ImportTemplateLoader):
     """Import workfiles."""
 
     product_types = {"workfile"}
-    representations = ["zip"]
+    representations = {"zip"}
     label = "Import Workfile"

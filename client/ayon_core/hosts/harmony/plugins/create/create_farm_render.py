@@ -21,12 +21,12 @@ class CreateFarmRender(plugin.Creator):
         path = "render/{0}/{0}.".format(node.split("/")[-1])
         harmony.send(
             {
-                "function": f"PypeHarmony.Creators.CreateRender.create",
+                "function": "PypeHarmony.Creators.CreateRender.create",
                 "args": [node, path]
             })
         harmony.send(
             {
-                "function": f"PypeHarmony.color",
+                "function": "PypeHarmony.color",
                 "args": [[0.9, 0.75, 0.3, 1.0]]
             }
         )
