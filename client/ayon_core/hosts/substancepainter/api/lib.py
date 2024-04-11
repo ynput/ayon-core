@@ -577,7 +577,7 @@ def prompt_new_file_with_mesh(mesh_filepath, allow_user_setting=True):
         assert isinstance(file_dialog, QtWidgets.QFileDialog)
 
         # Quickly hide the dialog
-        file_dialog.hide()
+        # file_dialog.hide()
         app.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents, 1000)
 
         file_dialog.setDirectory(os.path.dirname(mesh_filepath))
@@ -586,7 +586,7 @@ def prompt_new_file_with_mesh(mesh_filepath, allow_user_setting=True):
         # TODO: find a way to improve the process event to
         # load more complicated mesh
         app.processEvents(QtCore.QEventLoop.ExcludeUserInputEvents, 3000)
-        file_dialog.done(file_dialog.Accepted)
+        # file_dialog.done(file_dialog.Accepted)
         app.processEvents(QtCore.QEventLoop.AllEvents)
 
     def _setup_prompt():
