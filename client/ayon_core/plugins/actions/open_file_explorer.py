@@ -3,8 +3,6 @@ import platform
 import subprocess
 from string import Formatter
 
-import ayon_api
-
 from ayon_core.pipeline import (
     Anatomy,
     LauncherAction,
