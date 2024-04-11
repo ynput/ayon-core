@@ -21,7 +21,7 @@ class LoadOcioLookNodes(load.LoaderPlugin):
     """Loading Ocio look to the nuke.Node graph"""
 
     product_types = {"ociolook"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"json"}
 
     label = "Load OcioLook [nodes]"
