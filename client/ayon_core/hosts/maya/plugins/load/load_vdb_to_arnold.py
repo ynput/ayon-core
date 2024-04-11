@@ -13,7 +13,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
     """Load OpenVDB for Arnold in aiVolume"""
 
     product_types = {"vdbcache"}
-    representations = ["vdb"]
+    representations = {"vdb"}
 
     label = "Load VDB to Arnold"
     icon = "cloud"

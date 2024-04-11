@@ -24,7 +24,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
 
     label = "Load Redshift Proxy"
     product_types = {"redshiftproxy"}
-    representations = ["rs"]
+    representations = {"rs"}
     order = -9
     icon = "code-fork"
     color = "white"
