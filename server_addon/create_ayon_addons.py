@@ -225,6 +225,8 @@ def import_filepath(path: Path, module_name: Optional[str] = None):
     if not module_name:
         module_name = os.path.splitext(path.name)[0]
 
+    # Convert to string
+    path = str(path)
     module = types.ModuleType(module_name)
     module.__file__ = path
 
