@@ -595,16 +595,11 @@ def get_tyflow_export_operators():
             sub_anim = rt.GetSubAnim(obj, anim_name)
             if not rt.isKindOf(sub_anim, rt.tyEvent):
                 continue
-            node_names = rt.GetSubAnimNames(sub_anim)
-            event_filter[str(sub_anim)] = []
-            for node_name in node_names:
-                node_sub_anim = rt.GetSubAnim(sub_anim, node_name)
-                if rt.hasProperty(node_sub_anim, "exportMode"):
-                    element_sets = [node_sub_anim]
-                    if not event_filter.get(str(sub_anim), None):
-                        event_filter[str(sub_anim)] = element_sets
-            opt_list.extend(event_filter[str(sub_anim)])
-    return opt_list
+
+            export_node = _get_sub_anim_event_export_node(sub_anim)
+            if export_node:
+                operators.append(export_node)
+    return operators
 
 
 def reset_frame_range_tyflow(members, frameStart, frameEnd):

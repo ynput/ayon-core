@@ -5,7 +5,7 @@ from abc import ABCMeta
 import six
 from pymxs import runtime as rt
 
-from ayon_core.lib import BoolDef, EnumDef
+from ayon_core.lib import BoolDef
 from ayon_core.pipeline import (
     CreatedInstance,
     Creator,
@@ -162,13 +162,15 @@ MS_TYCACHE_ATTRIB = """attributes "AYONTyCacheData"
     (
         tyc_exports type:#stringTab tabSize:0 tabSizeVariable:on
         tyc_handles type:#stringTab tabSize:0 tabSizeVariable:on
+        sel_list type:#stringTab tabSize:0 tabSizeVariable:on
+        tyflow_ids type:#intTab tabSize:0 tabSizeVariable:on
     )
 
     rollout Cacheparams "AYON TyCache Parameters"
     (
         listbox export_node "Export Nodes" items:#()
-        button button_add "Add to Container"
-        button button_del "Delete from Container"
+        button button_add "Add to Exports"
+        button button_del "Delete from Exports"
         listbox tyflow_node "TyFlow Export Operators" items:#()
 
         on button_add pressed do
@@ -183,20 +185,49 @@ MS_TYCACHE_ATTRIB = """attributes "AYONTyCacheData"
             )
             tyc_exports = join i_node_arr tyc_exports
             export_node.items = join temp_arr export_node.items
+            sel_list = export_node.items
+        )
+        on button_del pressed do
+        (
+            i_node_arr = #()
+            temp_arr = #()
+            current_sel = tyflow_node.selected
+            idx = finditem export_node.items current_sel
+            if idx == 0 do (
+                append i_node_arr current_sel
+                append temp_arr current_sel
+            )
+            tyc_exports = join i_node_arr tyc_exports
+            export_node.items = join temp_arr export_node.items
+            sel_list = export_node.items
         )
         on Cacheparams open do
         (
             temp_arr = #()
+            tyflow_id_arr = #()
             if tyc_handles.count != 0 then
             (
                 tyflow_id = 0
                 for x in tyc_handles do
                 (
+                    if x == undefined do continue
                     tyflow_id += 1
-                    tyflow_op_name = x as string  + "<" + tyflow_id as string + ">"
+                    tyflow_op_name = x as string + "<" + tyflow_id as string + ">"
                     append temp_arr tyflow_op_name
+                    append tyflow_id_arr tyflow_id
                 )
                 tyflow_node.items = temp_arr
+                tyflow_ids = tyflow_id_arr
+            )
+            if sel_list.count != 0 then
+            (
+                sel_arr = #()
+                tyflow_id = 0
+                for x in sel_list do
+                (
+                    append sel_arr x
+                )
+                export_node.items = sel_arr
             )
         )
     )
@@ -250,7 +281,7 @@ class MaxCreatorBase(object):
         return node
 
 
-class MaxCacheCreatorBase(MaxCreatorBase):
+class MaxTyFlowDataCreatorBase(MaxCreatorBase):
     @staticmethod
     def create_instance_node(node):
         """Create instance node.
@@ -370,7 +401,7 @@ class MaxCreator(Creator, MaxCreatorBase):
         ]
 
 
-class MaxCacheCreator(Creator, MaxCacheCreatorBase):
+class MaxCacheCreator(Creator, MaxTyFlowDataCreatorBase):
 
     def create(self, product_name, instance_data, pre_create_data):
         tyflow_op_nodes = get_tyflow_export_operators()
