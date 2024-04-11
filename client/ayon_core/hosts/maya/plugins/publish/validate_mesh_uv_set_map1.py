@@ -29,8 +29,8 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
-    @staticmethod
-    def get_invalid(instance):
+    @classmethod
+    def get_invalid(cls, instance):
 
         meshes = cmds.ls(instance, type='mesh', long=True)
 
@@ -40,6 +40,11 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
             # Get existing mapping of uv sets by index
             indices = cmds.polyUVSet(mesh, query=True, allUVSetsIndices=True)
             maps = cmds.polyUVSet(mesh, query=True, allUVSets=True)
+            if not indices or not maps:
+                cls.log.warning("Mesh has no UV set: %s", mesh)
+                invalid.append(mesh)
+                continue
+
             mapping = dict(zip(indices, maps))
 
             # Get the uv set at index zero.
@@ -68,6 +73,12 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
             # Get existing mapping of uv sets by index
             indices = cmds.polyUVSet(mesh, query=True, allUVSetsIndices=True)
             maps = cmds.polyUVSet(mesh, query=True, allUVSets=True)
+            if not indices or not maps:
+                # No UV set exist at all, create a `map1` uv set
+                # This may fail silently if the mesh has no geometry at all
+                cmds.polyUVSet(mesh, create=True, uvSet="map1")
+                continue
+
             mapping = dict(zip(indices, maps))
 
             # Ensure there is no uv set named map1 to avoid
