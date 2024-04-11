@@ -954,7 +954,6 @@ def replace_instance_in_context(
             in the context.
 
     """
-
     # Transfer the pyblish.api.Instance id
     destination_instance._id = source_instance.id
 
