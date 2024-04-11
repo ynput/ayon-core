@@ -14,7 +14,7 @@ class USDReferenceLoader(load.LoaderPlugin):
         "usdCamera",
     }
     label = "Reference USD"
-    representations = ["usd", "usda", "usdlc", "usdnc", "abc"]
+    representations = {"usd", "usda", "usdlc", "usdnc", "abc"}
     order = -8
 
     icon = "code-fork"
