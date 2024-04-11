@@ -51,7 +51,7 @@ class AbcLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
         "camera",
         "pointcache",
     }
-    representations = ["abc"]
+    representations = {"abc"}
 
     label = "Reference animation"
     order = -10
@@ -81,7 +81,7 @@ class FbxLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
         "animation",
         "camera",
     }
-    representations = ["fbx"]
+    representations = {"fbx"}
 
     label = "Reference animation"
     order = -10

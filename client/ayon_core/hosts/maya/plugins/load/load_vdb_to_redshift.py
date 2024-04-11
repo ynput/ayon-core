@@ -19,7 +19,7 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
     """
 
     product_types = {"vdbcache"}
-    representations = ["vdb"]
+    representations = {"vdb"}
 
     label = "Load VDB to RedShift"
     icon = "cloud"
@@ -31,10 +31,7 @@ class LoadVDBtoRedShift(load.LoaderPlugin):
         from ayon_core.hosts.maya.api.pipeline import containerise
         from ayon_core.hosts.maya.api.lib import unique_namespace
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vdbcache"
+        product_type = context["product"]["productType"]
 
         # Check if the plugin for redshift is available on the pc
         try:

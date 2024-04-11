@@ -1,14 +1,11 @@
 import os
-import re
 import tempfile
-import attr
 
+import attr
 import pyblish.api
 
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import RenderInstance
-
 from ayon_core.hosts.aftereffects.api import get_stub
 
 
@@ -44,7 +41,6 @@ class CollectAERender(publish.AbstractCollectRender):
 
     def get_instances(self, context):
         instances = []
-        instances_to_remove = []
 
         app_version = CollectAERender.get_stub().get_app_version()
         app_version = app_version[0:4]
@@ -120,7 +116,10 @@ class CollectAERender(publish.AbstractCollectRender):
                 fps=fps,
                 app_version=app_version,
                 publish_attributes=inst.data.get("publish_attributes", {}),
-                file_names=[item.file_name for item in render_q]
+                file_names=[item.file_name for item in render_q],
+
+                # The source instance this render instance replaces
+                source_instance=inst
             )
 
             comp = compositions_by_id.get(comp_id)
@@ -148,10 +147,7 @@ class CollectAERender(publish.AbstractCollectRender):
                     instance.families.remove("review")
 
             instances.append(instance)
-            instances_to_remove.append(inst)
 
-        for instance in instances_to_remove:
-            context.remove(instance)
         return instances
 
     def get_expected_files(self, render_instance):

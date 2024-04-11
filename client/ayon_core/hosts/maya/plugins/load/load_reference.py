@@ -107,7 +107,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
         "matchmove",
     }
 
-    representations = ["ma", "abc", "fbx", "mb"]
+    representations = {"ma", "abc", "fbx", "mb"}
 
     label = "Reference"
     order = -10
@@ -117,11 +117,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
     def process_reference(self, context, name, namespace, options):
         import maya.cmds as cmds
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "model"
-
+        product_type = context["product"]["productType"]
         project_name = context["project"]["name"]
         # True by default to keep legacy behaviours
         attach_to_root = options.get("attach_to_root", True)
@@ -273,7 +269,7 @@ class MayaUSDReferenceLoader(ReferenceLoader):
 
     label = "Reference Maya USD"
     product_types = {"usd"}
-    representations = ["usd"]
+    representations = {"usd"}
     extensions = {"usd", "usda", "usdc"}
 
     options = ReferenceLoader.options + [

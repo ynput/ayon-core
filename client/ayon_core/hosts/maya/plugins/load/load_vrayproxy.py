@@ -28,7 +28,7 @@ class VRayProxyLoader(load.LoaderPlugin):
     """Load VRay Proxy with Alembic or VrayMesh."""
 
     product_types = {"vrayproxy", "model", "pointcache", "animation"}
-    representations = ["vrmesh", "abc"]
+    representations = {"vrmesh", "abc"}
 
     label = "Import VRay Proxy"
     order = -10
@@ -47,10 +47,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vrayproxy"
+        product_type = context["product"]["productType"]
 
         #  get all representations for this version
         filename = self._get_abc(

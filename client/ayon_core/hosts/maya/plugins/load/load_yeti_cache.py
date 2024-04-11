@@ -37,7 +37,7 @@ class YetiCacheLoader(load.LoaderPlugin):
     """Load Yeti Cache with one or more Yeti nodes"""
 
     product_types = {"yeticache", "yetiRig"}
-    representations = ["fur"]
+    representations = {"fur"}
 
     label = "Load Yeti Cache"
     order = -9
@@ -56,10 +56,7 @@ class YetiCacheLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "yeticache"
+        product_type = context["product"]["productType"]
 
         # Build namespace
         folder_name = context["folder"]["name"]
