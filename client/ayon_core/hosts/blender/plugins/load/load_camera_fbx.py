@@ -24,7 +24,7 @@ class FbxCameraLoader(plugin.AssetLoader):
     """
 
     product_types = {"camera"}
-    representations = ["fbx"]
+    representations = {"fbx"}
 
     label = "Load Camera (FBX)"
     icon = "code-fork"
