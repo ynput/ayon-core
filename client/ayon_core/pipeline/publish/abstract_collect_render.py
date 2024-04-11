@@ -12,7 +12,6 @@ import six
 import pyblish.api
 
 from .publish_plugins import AbstractMetaContextPlugin
-from .lib import replace_instance_in_context
 
 
 @attr.s
@@ -218,16 +217,10 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
             data = self.add_additional_data(data)
             render_instance_dict = attr.asdict(render_instance)
 
-            instance = context.create_instance(render_instance.name)
             if render_instance.source_instance is not None:
-                # remove the new instance, because we want to insert it
-                # at the position of the original instance to replace the
-                # source instance in the context completely
-                context.pop()
-                replace_instance_in_context(
-                    context,
-                    source_instance=render_instance.source_instance,
-                    destination_instance=instance)
+                instance = render_instance.source_instance
+            else:
+                instance = context.create_instance(render_instance.name)
 
             instance.data.update(render_instance_dict)
             instance.data.update(data)
