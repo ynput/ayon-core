@@ -408,7 +408,7 @@ class ExtractAnimation(ExtractAlembic):
         # Collect the out set nodes
         out_sets = [node for node in instance if node.endswith("out_SET")]
         if len(out_sets) != 1:
-            raise RuntimeError(
+            raise KnownPublishError(
                 "Couldn't find exactly one out_SET: {0}".format(out_sets)
             )
         out_set = out_sets[0]
