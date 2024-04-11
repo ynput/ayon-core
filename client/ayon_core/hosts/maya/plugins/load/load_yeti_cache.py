@@ -36,8 +36,8 @@ def set_attribute(node, attr, value):
 class YetiCacheLoader(load.LoaderPlugin):
     """Load Yeti Cache with one or more Yeti nodes"""
 
-    families = ["yeticache", "yetiRig"]
-    representations = ["fur"]
+    product_types = {"yeticache", "yetiRig"}
+    representations = {"fur"}
 
     label = "Load Yeti Cache"
     order = -9
@@ -56,15 +56,12 @@ class YetiCacheLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "yeticache"
+        product_type = context["product"]["productType"]
 
         # Build namespace
-        asset = context["asset"]
+        folder_name = context["folder"]["name"]
         if namespace is None:
-            namespace = self.create_namespace(asset["name"])
+            namespace = self.create_namespace(folder_name)
 
         # Ensure Yeti is loaded
         if not cmds.pluginInfo("pgYetiMaya", query=True, loaded=True):
@@ -123,11 +120,11 @@ class YetiCacheLoader(load.LoaderPlugin):
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         namespace = container["namespace"]
         container_node = container["objectName"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
         settings = self.read_settings(path)
 
         # Collect scene information of asset
@@ -216,22 +213,22 @@ class YetiCacheLoader(load.LoaderPlugin):
                         set_attribute(attr, value, yeti_node)
 
         cmds.setAttr("{}.representation".format(container_node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      typ="string")
 
     def switch(self, container, context):
         self.update(container, context)
 
     # helper functions
-    def create_namespace(self, asset):
+    def create_namespace(self, folder_name):
         """Create a unique namespace
         Args:
             asset (dict): asset information
 
         """
 
-        asset_name = "{}_".format(asset)
-        prefix = "_" if asset_name[0].isdigit()else ""
+        asset_name = "{}_".format(folder_name)
+        prefix = "_" if asset_name[0].isdigit() else ""
         namespace = lib.unique_namespace(
             asset_name,
             prefix=prefix,

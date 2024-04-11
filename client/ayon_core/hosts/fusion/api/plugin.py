@@ -16,6 +16,12 @@ from ayon_core.pipeline import (
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
 )
+from ayon_core.pipeline.workfile import get_workdir
+from ayon_api import (
+    get_project,
+    get_folder_by_path,
+    get_task_by_name
+)
 
 
 class GenericCreateSaver(Creator):
@@ -125,6 +131,8 @@ class GenericCreateSaver(Creator):
         product_name = data["productName"]
         if (
             original_product_name != product_name
+            or tool.GetData("openpype.task") != data["task"]
+            or tool.GetData("openpype.folderPath") != data["folderPath"]
             or original_format != data["creator_attributes"]["image_format"]
         ):
             self._configure_saver_tool(data, tool, product_name)
@@ -133,19 +141,42 @@ class GenericCreateSaver(Creator):
         formatting_data = deepcopy(data)
 
         # get frame padding from anatomy templates
-        frame_padding = self.project_anatomy.templates["frame_padding"]
+        frame_padding = self.project_anatomy.templates_obj.frame_padding
 
         # get output format
         ext = data["creator_attributes"]["image_format"]
 
-        # Subset change detected
+        # Product change detected
         product_type = formatting_data["productType"]
         f_product_name = formatting_data["productName"]
 
         folder_path = formatting_data["folderPath"]
         folder_name = folder_path.rsplit("/", 1)[-1]
 
-        workdir = os.path.normpath(os.getenv("AYON_WORKDIR"))
+        # If the folder path and task do not match the current context then the
+        # workdir is not just the `AYON_WORKDIR`. Hence, we need to actually
+        # compute the resulting workdir
+        if (
+            data["folderPath"] == self.create_context.get_current_folder_path()
+            and data["task"] == self.create_context.get_current_task_name()
+        ):
+            workdir = os.path.normpath(os.getenv("AYON_WORKDIR"))
+        else:
+            # TODO: Optimize this logic
+            project_name = self.create_context.get_current_project_name()
+            project_entity = get_project(project_name)
+            folder_entity = get_folder_by_path(project_name,
+                                               data["folderPath"])
+            task_entity = get_task_by_name(project_name,
+                                           folder_id=folder_entity["id"],
+                                           task_name=data["task"])
+            workdir = get_workdir(
+                project_entity=project_entity,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
+                host_name=self.create_context.host_name,
+            )
+
         formatting_data.update({
             "workdir": workdir,
             "frame": "0" * frame_padding,

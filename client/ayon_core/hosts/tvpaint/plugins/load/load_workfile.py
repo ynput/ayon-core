@@ -24,8 +24,8 @@ from ayon_core.pipeline.version_start import get_versioning_start
 class LoadWorkfile(plugin.Loader):
     """Load workfile."""
 
-    families = ["workfile"]
-    representations = ["tvpp"]
+    product_types = {"workfile"}
+    representations = {"tvpp"}
 
     label = "Load Workfile"
 
@@ -51,30 +51,36 @@ class LoadWorkfile(plugin.Loader):
 
         # Save workfile.
         host_name = "tvpaint"
-        project_name = work_context.get("project")
-        asset_name = work_context.get("asset")
-        task_name = work_context.get("task")
+        if "project_name" in work_context:
+            project_name = context["project_name"]
+            folder_path = context["folder_path"]
+            task_name = context["task_name"]
+        else:
+            project_name = work_context.get("project")
+            folder_path = work_context.get("asset")
+            task_name = work_context.get("task")
+
         # Far cases when there is workfile without work_context
-        if not asset_name:
+        if not folder_path:
             context = get_current_context()
             project_name = context["project_name"]
-            asset_name = context["folder_path"]
+            folder_path = context["folder_path"]
             task_name = context["task_name"]
 
         template_key = get_workfile_template_key_from_context(
-            asset_name,
+            project_name,
+            folder_path,
             task_name,
             host_name,
-            project_name=project_name
         )
         anatomy = Anatomy(project_name)
 
         data = get_template_data_with_names(
-            project_name, asset_name, task_name, host_name
+            project_name, folder_path, task_name, host_name
         )
         data["root"] = anatomy.roots
 
-        file_template = anatomy.templates[template_key]["file"]
+        work_template = anatomy.get_template_item("work", template_key)
 
         # Define saving file extension
         extensions = host.get_workfile_extensions()
@@ -85,14 +91,11 @@ class LoadWorkfile(plugin.Loader):
             # Fall back to the first extension supported for this host.
             extension = extensions[0]
 
-        data["ext"] = extension
+        data["ext"] = extension.lstrip(".")
 
-        folder_template = anatomy.templates[template_key]["folder"]
-        work_root = StringTemplate.format_strict_template(
-            folder_template, data
-        )
+        work_root = work_template["directory"].format_strict(data)
         version = get_last_workfile_with_version(
-            work_root, file_template, data, extensions
+            work_root, work_template["file"].template, data, extensions
         )[1]
 
         if version is None:

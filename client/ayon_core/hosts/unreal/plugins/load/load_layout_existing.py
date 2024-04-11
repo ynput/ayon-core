@@ -3,15 +3,14 @@ from pathlib import Path
 
 import unreal
 from unreal import EditorLevelLibrary
+import ayon_api
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
     load_container,
     get_representation_path,
     AYON_CONTAINER_ID,
-    get_current_project_name,
 )
 from ayon_core.hosts.unreal.api import plugin
 from ayon_core.hosts.unreal.api import pipeline as upipeline
@@ -22,8 +21,8 @@ class ExistingLayoutLoader(plugin.Loader):
     Load Layout for an existing scene, and match the existing assets.
     """
 
-    families = ["layout"]
-    representations = ["json"]
+    product_types = {"layout"}
+    representations = {"json"}
 
     label = "Load Layout on Existing Scene"
     icon = "code-fork"
@@ -43,11 +42,15 @@ class ExistingLayoutLoader(plugin.Loader):
 
     @staticmethod
     def _create_container(
-        asset_name, asset_dir, asset, representation, parent, family
+        asset_name,
+        asset_dir,
+        folder_path,
+        representation,
+        version_id,
+        product_type
     ):
         container_name = f"{asset_name}_CON"
 
-        container = None
         if not unreal.EditorAssetLibrary.does_asset_exist(
             f"{asset_dir}/{container_name}"
         ):
@@ -61,14 +64,17 @@ class ExistingLayoutLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             # "loader": str(self.__class__.__name__),
             "representation": representation,
-            "parent": parent,
-            "family": family
+            "parent": version_id,
+            "product_type": product_type,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
 
         upipeline.imprint(
@@ -195,19 +201,19 @@ class ExistingLayoutLoader(plugin.Loader):
 
         return assets
 
-    def _get_valid_repre_docs(self, project_name, version_ids):
+    def _get_valid_repre_entities(self, project_name, version_ids):
         valid_formats = ['fbx', 'abc']
 
-        repre_docs = list(get_representations(
+        repre_entities = list(ayon_api.get_representations(
             project_name,
             representation_names=valid_formats,
             version_ids=version_ids
         ))
-        repre_doc_by_version_id = {}
-        for repre_doc in repre_docs:
-            version_id = str(repre_doc["parent"])
-            repre_doc_by_version_id[version_id] = repre_doc
-        return repre_doc_by_version_id
+        repre_entities_by_version_id = {}
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            repre_entities_by_version_id[version_id] = repre_entity
+        return repre_entities_by_version_id
 
     def _process(self, lib_path, project_name):
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -226,39 +232,52 @@ class ExistingLayoutLoader(plugin.Loader):
                 repre_ids.add(repre_id)
                 elements.append(element)
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, representation_ids=repre_ids
         )
-        repre_docs_by_id = {
-            str(repre_doc["_id"]): repre_doc
-            for repre_doc in repre_docs
+        repre_entities_by_id = {
+            repre_entity["id"]: repre_entity
+            for repre_entity in repre_entities
         }
         layout_data = []
         version_ids = set()
         for element in elements:
             repre_id = element.get("representation")
-            repre_doc = repre_docs_by_id.get(repre_id)
-            if not repre_doc:
+            repre_entity = repre_entities_by_id.get(repre_id)
+            if not repre_entity:
                 raise AssertionError("Representation not found")
-            if not (repre_doc.get('data') or repre_doc['data'].get('path')):
+            if not (
+                repre_entity.get("attrib")
+                or repre_entity["attrib"].get("path")
+            ):
                 raise AssertionError("Representation does not have path")
-            if not repre_doc.get('context'):
+            if not repre_entity.get('context'):
                 raise AssertionError("Representation does not have context")
 
-            layout_data.append((repre_doc, element))
-            version_ids.add(repre_doc["parent"])
+            layout_data.append((repre_entity, element))
+            version_ids.add(repre_entity["versionId"])
+
+        repre_parents_by_id = ayon_api.get_representation_parents(
+            project_name, repre_entities_by_id.keys()
+        )
 
         # Prequery valid repre documents for all elements at once
-        valid_repre_doc_by_version_id = self._get_valid_repre_docs(
+        valid_repre_entities_by_version_id = self._get_valid_repre_entities(
             project_name, version_ids)
         containers = []
         actors_matched = []
 
-        for (repr_data, lasset) in layout_data:
+        for (repre_entity, lasset) in layout_data:
             # For every actor in the scene, check if it has a representation in
             # those we got from the JSON. If so, create a container for it.
             # Otherwise, remove it from the scene.
             found = False
+            repre_id = repre_entity["id"]
+            repre_parents = repre_parents_by_id[repre_id]
+            folder_path = repre_parents.folder["path"]
+            folder_name = repre_parents.folder["name"]
+            product_name = repre_parents.product["name"]
+            product_type = repre_parents.product["productType"]
 
             for actor in actors:
                 if not actor.get_class().get_name() == 'StaticMeshActor':
@@ -275,7 +294,7 @@ class ExistingLayoutLoader(plugin.Loader):
                 path = Path(filename)
 
                 if (not path.name or
-                        path.name not in repr_data.get('data').get('path')):
+                        path.name not in repre_entity["attrib"]["path"]):
                     continue
 
                 actor.set_actor_label(lasset.get('instance_name'))
@@ -283,12 +302,13 @@ class ExistingLayoutLoader(plugin.Loader):
                 mesh_path = Path(mesh.get_path_name()).parent.as_posix()
 
                 # Create the container for the asset.
-                asset = repr_data.get('context').get('asset')
-                product_name = repr_data.get('context').get('subset')
                 container = self._create_container(
-                    f"{asset}_{product_name}", mesh_path, asset,
-                    repr_data.get('_id'), repr_data.get('parent'),
-                    repr_data.get('context').get('family')
+                    f"{folder_name}_{product_name}",
+                    mesh_path,
+                    folder_path,
+                    repre_entity["id"],
+                    repre_entity["versionId"],
+                    product_type
                 )
                 containers.append(container)
 
@@ -316,18 +336,18 @@ class ExistingLayoutLoader(plugin.Loader):
             loaded = False
 
             for container in all_containers:
-                repr = container.get('representation')
+                repre_id = container.get('representation')
 
-                if not repr == str(repr_data.get('_id')):
+                if not repre_id == repre_entity["id"]:
                     continue
 
                 asset_dir = container.get('namespace')
 
-                filter = unreal.ARFilter(
+                arfilter = unreal.ARFilter(
                     class_names=["StaticMesh"],
                     package_paths=[asset_dir],
                     recursive_paths=False)
-                assets = ar.get_assets(filter)
+                assets = ar.get_assets(arfilter)
 
                 for asset in assets:
                     obj = asset.get_asset()
@@ -340,8 +360,9 @@ class ExistingLayoutLoader(plugin.Loader):
             if loaded:
                 continue
 
+            version_id = lasset.get('version')
             assets = self._load_asset(
-                valid_repre_doc_by_version_id.get(lasset.get('version')),
+                valid_repre_entities_by_version_id.get(version_id),
                 lasset.get('representation'),
                 lasset.get('instance_name'),
                 lasset.get('family')
@@ -370,9 +391,11 @@ class ExistingLayoutLoader(plugin.Loader):
     def load(self, context, name, namespace, options):
         print("Loading Layout and Match Assets")
 
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else name
-        container_name = f"{asset}_{name}_CON"
+        folder_name = context["folder"]["name"]
+        folder_path = context["folder"]["path"]
+        product_type = context["product"]["productType"]
+        asset_name = f"{folder_name}_{name}" if folder_name else name
+        container_name = f"{folder_name}_{name}_CON"
 
         curr_level = self._get_current_level()
 
@@ -395,15 +418,18 @@ class ExistingLayoutLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "folder_path": folder_path,
             "namespace": curr_level_path,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["_id"],
-            "parent": context["representation"]["parent"],
-            "family": context["representation"]["context"]["family"],
-            "loaded_assets": containers
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "product_type": product_type,
+            "loaded_assets": containers,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
         upipeline.imprint(f"{curr_level_path}/{container_name}", data)
 
@@ -411,15 +437,15 @@ class ExistingLayoutLoader(plugin.Loader):
         asset_dir = container.get('namespace')
 
         project_name = context["project"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
 
-        source_path = get_representation_path(repre_doc)
+        source_path = get_representation_path(repre_entity)
         containers = self._process(source_path, project_name)
 
         data = {
-            "representation": str(repre_doc["_id"]),
-            "parent": str(repre_doc["parent"]),
-            "loaded_assets": containers
+            "representation": repre_entity["id"],
+            "loaded_assets": containers,
+            "parent": repre_entity["versionId"],
         }
         upipeline.imprint(
             "{}/{}".format(asset_dir, container.get('container_name')), data)

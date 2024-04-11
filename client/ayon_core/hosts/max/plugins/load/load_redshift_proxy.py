@@ -23,8 +23,8 @@ class RedshiftProxyLoader(load.LoaderPlugin):
     """Load rs files with Redshift Proxy"""
 
     label = "Load Redshift Proxy"
-    families = ["redshiftproxy"]
-    representations = ["rs"]
+    product_types = {"redshiftproxy"}
+    representations = {"rs"}
     order = -9
     icon = "code-fork"
     color = "white"
@@ -55,8 +55,8 @@ class RedshiftProxyLoader(load.LoaderPlugin):
     def update(self, container, context):
         from pymxs import runtime as rt
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node = rt.getNodeByName(container["instance_node"])
         node_list = get_previous_loaded_object(node)
         rt.Select(node_list)
@@ -66,7 +66,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
             proxy.file = path
 
         lib.imprint(container["instance_node"], {
-            "representation": str(repre_doc["_id"])
+            "representation": repre_entity["id"]
         })
 
     def switch(self, container, context):

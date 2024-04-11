@@ -11,9 +11,9 @@ from ayon_core.hosts.houdini.api import pipeline
 class VdbLoader(load.LoaderPlugin):
     """Load VDB"""
 
-    families = ["vdbcache"]
+    product_types = {"vdbcache"}
     label = "Load VDB"
-    representations = ["vdb"]
+    representations = {"vdb"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -26,7 +26,7 @@ class VdbLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create a new geo node
@@ -80,7 +80,7 @@ class VdbLoader(load.LoaderPlugin):
         return filename
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         node = container["node"]
         try:
             file_node = next(
@@ -91,13 +91,13 @@ class VdbLoader(load.LoaderPlugin):
             return
 
         # Update the file path
-        file_path = get_representation_path(repre_doc)
-        file_path = self.format_path(file_path, repre_doc)
+        file_path = get_representation_path(repre_entity)
+        file_path = self.format_path(file_path, repre_entity)
 
         file_node.setParms({"file": file_path})
 
         # Update attribute
-        node.setParms({"representation": str(repre_doc["_id"])})
+        node.setParms({"representation": repre_entity["id"]})
 
     def remove(self, container):
 

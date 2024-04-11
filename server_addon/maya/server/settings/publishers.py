@@ -299,11 +299,27 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
+    bake_attributes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attributes",
+        description="List of attributes that will be included in the alembic "
+                    "export.",
+    )
+    bake_attribute_prefixes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attribute Prefixes",
+        description="List of attribute prefixes for attributes that will be "
+                    "included in the alembic export.",
+    )
 
 
 class ExtractObjModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
+
+
+class ExtractModelModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
 
 
 class ExtractMayaSceneRawModel(BaseSettingsModel):
@@ -315,14 +331,13 @@ class ExtractMayaSceneRawModel(BaseSettingsModel):
 
 
 class ExtractCameraAlembicModel(BaseSettingsModel):
-    """
-    List of attributes that will be added to the baked alembic camera. Needs to be written in python list syntax.
-    """
     enabled: bool = SettingsField(title="ExtractCameraAlembic")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     bake_attributes: str = SettingsField(
-        "[]", title="Base Attributes", widget="textarea"
+        "[]", title="Bake Attributes", widget="textarea",
+        description="List of attributes that will be included in the alembic "
+                    "camera export. Needs to be written as a JSON list.",
     )
 
     @validator("bake_attributes")
@@ -371,7 +386,9 @@ class ValidateInstanceInContextModel(BaseSettingsModel):
 
 
 class ExtractGPUCacheModel(BaseSettingsModel):
-    enabled: bool = True
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     families: list[str] = SettingsField(default_factory=list, title="Families")
     step: float = SettingsField(1.0, ge=1.0, title="Step")
     stepSave: int = SettingsField(1, ge=1, title="Step Save")
@@ -761,14 +778,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Ass Relative Paths"
     )
-    ValidateInstancerContent: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Instancer Content"
-    )
-    ValidateInstancerFrameRanges: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Instancer Cache Frame Ranges"
-    )
     ValidateNoDefaultCameras: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate No Default Cameras"
@@ -805,6 +814,10 @@ class PublishersModel(BaseSettingsModel):
     ExtractGPUCache: ExtractGPUCacheModel = SettingsField(
         default_factory=ExtractGPUCacheModel,
         title="Extract GPU Cache",
+    )
+    ExtractModel: ExtractModelModel = SettingsField(
+        default_factory=ExtractModelModel,
+        title="Extract Model (Maya Scene)"
     )
 
 
@@ -1202,7 +1215,9 @@ DEFAULT_PUBLISH_SETTINGS = {
             "pointcache",
             "model",
             "vrayproxy.alembic"
-        ]
+        ],
+        "bake_attributes": [],
+        "bake_attribute_prefixes": []
     },
     "ExtractObj": {
         "enabled": False,
@@ -1309,16 +1324,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
-    "ValidateInstancerContent": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
-    "ValidateInstancerFrameRanges": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
     "ValidateNoDefaultCameras": {
         "enabled": True,
         "optional": False,
@@ -1357,6 +1362,8 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ExtractGPUCache": {
         "enabled": False,
+        "optional": False,
+        "active": True,
         "families": [
             "model",
             "animation",
@@ -1369,5 +1376,10 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optimizeAnimationsForMotionBlur": True,
         "writeMaterials": True,
         "useBaseTessellation": True
+    },
+    "ExtractModel": {
+        "enabled": True,
+        "optional": True,
+        "active": True,
     }
 }

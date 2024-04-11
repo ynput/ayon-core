@@ -9,11 +9,10 @@ import os
 
 import maya.cmds as cmds
 
-from ayon_core.client import get_representation_by_name
+import ayon_api
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.maya.api.lib import (
@@ -28,8 +27,8 @@ from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 class VRayProxyLoader(load.LoaderPlugin):
     """Load VRay Proxy with Alembic or VrayMesh."""
 
-    families = ["vrayproxy", "model", "pointcache", "animation"]
-    representations = ["vrmesh", "abc"]
+    product_types = {"vrayproxy", "model", "pointcache", "animation"}
+    representations = {"vrmesh", "abc"}
 
     label = "Import VRay Proxy"
     order = -10
@@ -48,20 +47,19 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vrayproxy"
+        product_type = context["product"]["productType"]
 
         #  get all representations for this version
-        filename = self._get_abc(context["version"]["_id"])
+        filename = self._get_abc(
+            context["project"]["name"], context["version"]["id"]
+        )
         if not filename:
             filename = self.filepath_from_context(context)
 
-        asset_name = context['asset']["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset_name + "_",
-            prefix="_" if asset_name[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -107,11 +105,12 @@ class VRayProxyLoader(load.LoaderPlugin):
         assert vraymeshes, "Cannot find VRayMesh in container"
 
         #  get all representations for this version
-        repre_doc = context["representation"]
-        filename = (
-            self._get_abc(repre_doc["parent"])
-            or get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        filename = self._get_abc(
+            context["project"]["name"], context["version"]["id"]
         )
+        if not filename:
+            filename = get_representation_path(repre_entity)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.fileName".format(vray_mesh),
@@ -120,7 +119,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def remove(self, container):
@@ -170,7 +169,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         return [parent, proxy], parent
 
-    def _get_abc(self, version_id):
+    def _get_abc(self, project_name, version_id):
         # type: (str) -> str
         """Get abc representation file path if present.
 
@@ -178,6 +177,7 @@ class VRayProxyLoader(load.LoaderPlugin):
         vray proxy, get is file path.
 
         Args:
+            project_name (str): Project name.
             version_id (str): Version hash id.
 
         Returns:
@@ -187,8 +187,9 @@ class VRayProxyLoader(load.LoaderPlugin):
         """
         self.log.debug(
             "Looking for abc in published representations of this version.")
-        project_name = get_current_project_name()
-        abc_rep = get_representation_by_name(project_name, "abc", version_id)
+        abc_rep = ayon_api.get_representation_by_name(
+            project_name, "abc", version_id
+        )
         if abc_rep:
             self.log.debug("Found, we'll link alembic to vray proxy.")
             file_name = get_representation_path(abc_rep)

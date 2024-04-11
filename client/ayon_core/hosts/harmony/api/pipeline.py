@@ -13,15 +13,15 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import get_outdated_containers
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 
-from ayon_core.hosts.harmony import HARMONY_HOST_DIR
+from ayon_core.hosts.harmony import HARMONY_ADDON_ROOT
 import ayon_core.hosts.harmony.api as harmony
 
 
 log = logging.getLogger("ayon_core.hosts.harmony")
 
-PLUGINS_DIR = os.path.join(HARMONY_HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(HARMONY_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
@@ -42,24 +42,25 @@ def set_scene_settings(settings):
         {"function": "PypeHarmony.setSceneSettings", "args": settings})
 
 
-def get_asset_settings():
-    """Get settings on current asset from database.
+def get_current_context_settings():
+    """Get settings on current folder from server.
 
     Returns:
         dict: Scene data.
 
     """
 
-    asset_doc = get_current_project_asset()
-    asset_data = asset_doc["data"]
-    fps = asset_data.get("fps")
-    frame_start = asset_data.get("frameStart")
-    frame_end = asset_data.get("frameEnd")
-    handle_start = asset_data.get("handleStart")
-    handle_end = asset_data.get("handleEnd")
-    resolution_width = asset_data.get("resolutionWidth")
-    resolution_height = asset_data.get("resolutionHeight")
-    entity_type = asset_data.get("entityType")
+    folder_entity = get_current_folder_entity()
+    folder_attributes = folder_entity["attrib"]
+
+    fps = folder_attributes.get("fps")
+    frame_start = folder_attributes.get("frameStart")
+    frame_end = folder_attributes.get("frameEnd")
+    handle_start = folder_attributes.get("handleStart")
+    handle_end = folder_attributes.get("handleEnd")
+    resolution_width = folder_attributes.get("resolutionWidth")
+    resolution_height = folder_attributes.get("resolutionHeight")
+    entity_type = folder_attributes.get("entityType")
 
     scene_data = {
         "fps": fps,
@@ -77,7 +78,7 @@ def get_asset_settings():
 
 def ensure_scene_settings():
     """Validate if Harmony scene has valid settings."""
-    settings = get_asset_settings()
+    settings = get_current_context_settings()
 
     invalid_settings = []
     valid_settings = {}
@@ -336,7 +337,7 @@ def containerise(name,
         "name": name,
         "namespace": namespace,
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
         "nodes": nodes
     }
 

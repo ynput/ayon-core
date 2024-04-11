@@ -20,8 +20,8 @@ class BackgroundLoader(api.AfterEffectsLoader):
         metadata
     """
     label = "Load JSON Background"
-    families = ["background"]
-    representations = ["json"]
+    product_types = {"background"}
+    representations = {"json"}
 
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()
@@ -31,7 +31,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
 
         comp_name = get_unique_layer_name(
             existing_items,
-            "{}_{}".format(context["asset"]["name"], name))
+            "{}_{}".format(context["folder"]["name"], name))
 
         path = self.filepath_from_context(context)
         layers = get_background_layers(path)
@@ -59,12 +59,10 @@ class BackgroundLoader(api.AfterEffectsLoader):
     def update(self, container, context):
         """ Switch asset or change version """
         stub = self.get_stub()
-        asset_doc = context["asset"]
-        subset_doc = context["subset"]
-        repre_doc = context["representation"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        repre_entity = context["representation"]
 
-        folder_name = asset_doc["name"]
-        product_name = subset_doc["name"]
         _ = container.pop("layer")
 
         # without iterator number (_001, 002...)
@@ -82,7 +80,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
         else:  # switching version - keep same name
             comp_name = container["namespace"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
 
         layers = get_background_layers(path)
         comp = stub.reload_background(container["members"][1],
@@ -90,7 +88,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
                                       layers)
 
         # update container
-        container["representation"] = str(repre_doc["_id"])
+        container["representation"] = repre_entity["id"]
         container["name"] = product_name
         container["namespace"] = comp_name
         container["members"] = comp.members

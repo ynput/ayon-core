@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from functools import partial
 
@@ -8,7 +9,7 @@ import maya.utils
 import maya.cmds as cmds
 
 from ayon_core.pipeline import (
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
     registered_host
 )
@@ -43,14 +44,14 @@ def _get_menu(menu_name=None):
 
 def get_context_label():
     return "{}, {}".format(
-        get_current_asset_name(),
+        get_current_folder_path(),
         get_current_task_name()
     )
 
 
 def install(project_settings):
     if cmds.about(batch=True):
-        log.info("Skipping openpype.menu initialization in batch mode..")
+        log.info("Skipping AYON menu initialization in batch mode..")
         return
 
     def add_menu():
@@ -214,8 +215,18 @@ def install(project_settings):
             )
             return
 
-        config = project_settings["maya"]["scriptsmenu"]["definition"]
-        _menu = project_settings["maya"]["scriptsmenu"]["name"]
+        menu_settings = project_settings["maya"]["scriptsmenu"]
+        menu_name = menu_settings["name"]
+        config = menu_settings["definition"]
+
+        if menu_settings.get("definition_type") == "definition_json":
+            data = menu_settings["definition_json"]
+            try:
+                config = json.loads(data)
+            except json.JSONDecodeError as exc:
+                print("Skipping studio menu, error decoding JSON definition.")
+                log.error(exc)
+                return
 
         if not config:
             log.warning("Skipping studio menu, no definition found.")
@@ -223,8 +234,8 @@ def install(project_settings):
 
         # run the launcher for Maya menu
         studio_menu = launchformaya.main(
-            title=_menu.title(),
-            objectName=_menu.title().lower().replace(" ", "_")
+            title=menu_name.title(),
+            objectName=menu_name.title().lower().replace(" ", "_")
         )
 
         # apply configuration
@@ -261,7 +272,7 @@ def popup():
 
 
 def update_menu_task_label():
-    """Update the task label in Avalon menu to current session"""
+    """Update the task label in AYON menu to current session"""
 
     if IS_HEADLESS:
         return

@@ -89,23 +89,25 @@ def preserve_modelpanel_cameras(container, log=None):
 class ReferenceLoader(plugin.ReferenceLoader):
     """Reference file"""
 
-    families = ["model",
-                "pointcache",
-                "proxyAbc",
-                "animation",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "camera",
-                "rig",
-                "camerarig",
-                "staticMesh",
-                "skeletalMesh",
-                "mvLook",
-                "matchmove"]
+    product_types = {
+        "model",
+        "pointcache",
+        "proxyAbc",
+        "animation",
+        "mayaAscii",
+        "mayaScene",
+        "setdress",
+        "layout",
+        "camera",
+        "rig",
+        "camerarig",
+        "staticMesh",
+        "skeletalMesh",
+        "mvLook",
+        "matchmove",
+    }
 
-    representations = ["ma", "abc", "fbx", "mb"]
+    representations = {"ma", "abc", "fbx", "mb"}
 
     label = "Reference"
     order = -10
@@ -115,11 +117,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
     def process_reference(self, context, name, namespace, options):
         import maya.cmds as cmds
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "model"
-
+        product_type = context["product"]["productType"]
         project_name = context["project"]["name"]
         # True by default to keep legacy behaviours
         attach_to_root = options.get("attach_to_root", True)
@@ -270,8 +268,8 @@ class MayaUSDReferenceLoader(ReferenceLoader):
     """Reference USD file to native Maya nodes using MayaUSDImport reference"""
 
     label = "Reference Maya USD"
-    families = ["usd"]
-    representations = ["usd"]
+    product_types = {"usd"}
+    representations = {"usd"}
     extensions = {"usd", "usda", "usdc"}
 
     options = ReferenceLoader.options + [

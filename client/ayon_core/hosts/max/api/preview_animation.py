@@ -31,23 +31,26 @@ def viewport_layout_and_camera(camera, layout="layout_1"):
         layout (str): layout to use in viewport, defaults to `layout_1`
             Use None to not change viewport layout during context.
     """
+    needs_maximise = 0
+    # Set to first active non extended viewport
+    rt.viewport.activeViewportEx(1)
     original_camera = rt.viewport.getCamera()
-    original_layout = rt.viewport.getLayout()
-    if not original_camera:
-        # if there is no original camera
-        # use the current camera as original
-        original_camera = rt.getNodeByName(camera)
+    original_type = rt.viewport.getType()
     review_camera = rt.getNodeByName(camera)
+
     try:
-        if layout is not None:
-            layout = rt.Name(layout)
-            if rt.viewport.getLayout() != layout:
-                rt.viewport.setLayout(layout)
+        if rt.viewport.getLayout() != rt.name(layout):
+            rt.execute("max tool maximize")
+            needs_maximise = 1
         rt.viewport.setCamera(review_camera)
         yield
     finally:
-        rt.viewport.setLayout(original_layout)
-        rt.viewport.setCamera(original_camera)
+        if needs_maximise == 1:
+            rt.execute("max tool maximize")
+        if original_type == rt.Name("view_camera"):
+            rt.viewport.setCamera(original_camera)
+        else:
+            rt.viewport.setType(original_type)
 
 
 @contextlib.contextmanager
