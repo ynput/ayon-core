@@ -23,7 +23,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
     """Load Redshift proxy"""
 
     product_types = {"redshiftproxy"}
-    representations = ["rs"]
+    representations = {"rs"}
 
     label = "Import Redshift Proxy"
     order = -10

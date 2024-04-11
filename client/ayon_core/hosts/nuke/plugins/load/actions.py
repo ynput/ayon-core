@@ -19,7 +19,7 @@ class SetFrameRangeLoader(load.LoaderPlugin):
         "yeticache",
         "pointcache",
     }
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"*"}
 
     label = "Set frame range"
@@ -53,7 +53,7 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
         "yeticache",
         "pointcache",
     }
-    representations = ["*"]
+    representations = {"*"}
 
     label = "Set frame range (with handles)"
     order = 12
