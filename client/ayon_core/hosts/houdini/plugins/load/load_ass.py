@@ -13,7 +13,7 @@ class AssLoader(load.LoaderPlugin):
 
     product_types = {"ass"}
     label = "Load Arnold Procedural"
-    representations = ["ass"]
+    representations = {"ass"}
     order = -10
     icon = "code-fork"
     color = "orange"

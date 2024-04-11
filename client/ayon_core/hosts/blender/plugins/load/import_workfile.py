@@ -43,7 +43,7 @@ class AppendBlendLoader(plugin.AssetLoader):
         so you could also use it as a new base.
     """
 
-    representations = ["blend"]
+    representations = {"blend"}
     product_types = {"workfile"}
 
     label = "Append Workfile"
@@ -68,7 +68,7 @@ class ImportBlendLoader(plugin.AssetLoader):
         so you could also use it as a new base.
     """
 
-    representations = ["blend"]
+    representations = {"blend"}
     product_types = {"workfile"}
 
     label = "Import Workfile"

@@ -405,7 +405,7 @@ class CalculateOldVersions(DeleteOldVersions):
         )
     ]
 
-    def main(self, data, remove_publish_folder):
+    def main(self, project_name, data, remove_publish_folder):
         size = 0
 
         if not data:

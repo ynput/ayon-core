@@ -24,7 +24,7 @@ class TemplateLoader(load.LoaderPlugin):
     """
 
     product_types = {"template", "workfile"}
-    representations = ["*"]
+    representations = {"*"}
     label = "Load Template"
     icon = "gift"
 
