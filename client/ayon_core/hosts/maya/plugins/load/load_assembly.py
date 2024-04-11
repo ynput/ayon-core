@@ -13,7 +13,7 @@ from ayon_core.hosts.maya.api import setdress
 class AssemblyLoader(load.LoaderPlugin):
 
     product_types = {"assembly"}
-    representations = ["json"]
+    representations = {"json"}
 
     label = "Load Set Dress"
     order = -9

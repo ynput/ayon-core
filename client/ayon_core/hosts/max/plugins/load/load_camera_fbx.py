@@ -19,7 +19,7 @@ class FbxLoader(load.LoaderPlugin):
     """Fbx Loader."""
 
     product_types = {"camera"}
-    representations = ["fbx"]
+    representations = {"fbx"}
     order = -9
     icon = "code-fork"
     color = "white"

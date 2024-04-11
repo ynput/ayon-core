@@ -8,7 +8,7 @@ from maya import cmds  # noqa
 import pyblish.api
 from ayon_core.hosts.maya.api import lib
 
-SHAPE_ATTRS = ["castsShadows",
+SHAPE_ATTRS = {"castsShadows",
                "receiveShadows",
                "motionBlur",
                "primaryVisibility",
@@ -16,8 +16,7 @@ SHAPE_ATTRS = ["castsShadows",
                "visibleInReflections",
                "visibleInRefractions",
                "doubleSided",
-               "opposite"]
-SHAPE_ATTRS = set(SHAPE_ATTRS)
+               "opposite"}
 
 
 def get_pxr_multitexture_file_attrs(node):
@@ -59,9 +58,8 @@ for node_type in list(FILE_NODES.keys()):
     if node_type not in all_node_types:
         FILE_NODES.pop(node_type)
 
-for node_type in RENDER_SET_TYPES:
-    if node_type not in all_node_types:
-        RENDER_SET_TYPES.remove(node_type)
+RENDER_SET_TYPES = [node_type for node_type in RENDER_SET_TYPES
+                    if node_type in all_node_types]
 del all_node_types
 
 # Cache pixar dependency node types so we can perform a type lookup against it
@@ -109,8 +107,7 @@ def get_look_attrs(node):
     if cmds.objectType(node, isAType="shape"):
         attrs = cmds.listAttr(node, changedSinceFileOpen=True) or []
         for attr in attrs:
-            if attr in SHAPE_ATTRS or \
-                    attr not in SHAPE_ATTRS and attr.startswith('ai'):
+            if attr in SHAPE_ATTRS or attr.startswith('ai'):
                 result.append(attr)
     return result
 
@@ -290,7 +287,6 @@ class CollectLook(pyblish.api.InstancePlugin):
     families = ["look"]
     label = "Collect Look"
     hosts = ["maya"]
-    maketx = True
 
     def process(self, instance):
         """Collect the Look in the instance with the correct layer settings"""
@@ -302,14 +298,11 @@ class CollectLook(pyblish.api.InstancePlugin):
         """Collect looks.
 
         Args:
-            instance: Instance to collect.
+            instance (pyblish.api.Instance): Instance to collect.
 
         """
         self.log.debug("Looking for look associations "
                        "for %s" % instance.data['name'])
-
-        # Lookup set (optimization)
-        instance_lookup = set(cmds.ls(instance, long=True))
 
         # Discover related object sets
         self.log.debug("Gathering sets ...")
@@ -351,75 +344,15 @@ class CollectLook(pyblish.api.InstancePlugin):
         # Collect file nodes used by shading engines (if we have any)
         files = []
         look_sets = list(sets.keys())
-        shader_attrs = [
-            "surfaceShader",
-            "volumeShader",
-            "displacementShader",
-            "aiSurfaceShader",
-            "aiVolumeShader",
-            "rman__surface",
-            "rman__displacement"
-        ]
         if look_sets:
             self.log.debug("Found look sets: {}".format(look_sets))
-
-            # Get all material attrs for all look sets to retrieve their inputs
-            existing_attrs = []
-            for look in look_sets:
-                for attr in shader_attrs:
-                    if cmds.attributeQuery(attr, node=look, exists=True):
-                        existing_attrs.append("{}.{}".format(look, attr))
-
-            materials = cmds.listConnections(existing_attrs,
-                                             source=True,
-                                             destination=False) or []
-
-            self.log.debug("Found materials:\n{}".format(materials))
-
-            self.log.debug("Found the following sets:\n{}".format(look_sets))
-            # Get the entire node chain of the look sets
-            # history = cmds.listHistory(look_sets, allConnections=True)
-            # if materials list is empty, listHistory() will crash with
-            # RuntimeError
-            history = set()
-            if materials:
-                history = set(
-                    cmds.listHistory(materials, allConnections=True))
-
-            # Since we retrieved history only of the connected materials
-            # connected to the look sets above we now add direct history
-            # for some of the look sets directly
-            # handling render attribute sets
-
-            # Maya (at least 2024) crashes with Warning when render set type
-            # isn't available. cmds.ls() will return empty list
-            if RENDER_SET_TYPES:
-                render_sets = cmds.ls(look_sets, type=RENDER_SET_TYPES)
-                if render_sets:
-                    history.update(
-                        cmds.listHistory(render_sets,
-                                         future=False,
-                                         pruneDagObjects=True)
-                        or []
-                    )
-
-            # Ensure unique entries only
-            history = list(history)
-
-            files = cmds.ls(history,
-                            # It's important only node types are passed that
-                            # exist (e.g. for loaded plugins) because otherwise
-                            # the result will turn back empty
-                            type=list(FILE_NODES.keys()),
-                            long=True)
-
-            # Sort for log readability
-            files.sort()
+            files = self.collect_file_nodes(look_sets)
 
         self.log.debug("Collected file nodes:\n{}".format(files))
-        # Collect textures if any file nodes are found
+
+        # Collect texture resources if any file nodes are found
         resources = []
-        for node in files:  # sort for log readability
+        for node in files:
             resources.extend(self.collect_resources(node))
         instance.data["resources"] = resources
         self.log.debug("Collected resources: {}".format(resources))
@@ -439,6 +372,78 @@ class CollectLook(pyblish.api.InstancePlugin):
 
         self.log.debug("Collected look for %s" % instance)
 
+    def collect_file_nodes(self, look_sets):
+        """Get the entire node chain of the look sets and return file nodes
+
+        Arguments:
+            look_sets (List[str]): List of sets and shading engines relevant
+                to the look.
+
+        Returns:
+            List[str]: List of file node names.
+
+        """
+
+        shader_attrs = [
+            "surfaceShader",
+            "volumeShader",
+            "displacementShader",
+            "aiSurfaceShader",
+            "aiVolumeShader",
+            "rman__surface",
+            "rman__displacement"
+        ]
+
+        # Get all material attrs for all look sets to retrieve their inputs
+        existing_attrs = []
+        for look_set in look_sets:
+            for attr in shader_attrs:
+                if cmds.attributeQuery(attr, node=look_set, exists=True):
+                    existing_attrs.append("{}.{}".format(look_set, attr))
+
+        materials = cmds.listConnections(existing_attrs,
+                                         source=True,
+                                         destination=False) or []
+
+        self.log.debug("Found materials:\n{}".format(materials))
+
+        # Get the entire node chain of the look sets
+        # history = cmds.listHistory(look_sets, allConnections=True)
+        # if materials list is empty, listHistory() will crash with
+        # RuntimeError
+        history = set()
+        if materials:
+            history.update(cmds.listHistory(materials, allConnections=True))
+
+        # Since we retrieved history only of the connected materials connected
+        # to the look sets above we now add direct history for some of the
+        # look sets directly handling render attribute sets
+
+        # Maya (at least 2024) crashes with Warning when render set type
+        # isn't available. cmds.ls() will return empty list
+        if RENDER_SET_TYPES:
+            render_sets = cmds.ls(look_sets, type=RENDER_SET_TYPES)
+            if render_sets:
+                history.update(
+                    cmds.listHistory(render_sets,
+                                     future=False,
+                                     pruneDagObjects=True)
+                    or []
+                )
+
+        # Get file nodes in the material history
+        files = cmds.ls(list(history),
+                        # It's important only node types are passed that
+                        # exist (e.g. for loaded plugins) because otherwise
+                        # the result will turn back empty
+                        type=list(FILE_NODES.keys()),
+                        long=True)
+
+        # Sort for log readability
+        files.sort()
+
+        return files
+
     def collect_sets(self, instance):
         """Collect all objectSets which are of importance for publishing
 
@@ -446,7 +451,8 @@ class CollectLook(pyblish.api.InstancePlugin):
         which need to be
 
         Args:
-            instance (list): all nodes to be published
+            instance (pyblish.api.Instance): publish instance containing all
+                nodes to be published.
 
         Returns:
             dict
@@ -624,7 +630,7 @@ class CollectLook(pyblish.api.InstancePlugin):
                 "source": source,  # required for resources
                 "files": files,
                 "color_space": color_space
-            }  # required for resources
+            }
 
 
 class CollectModelRenderSets(CollectLook):
@@ -639,13 +645,13 @@ class CollectModelRenderSets(CollectLook):
     families = ["model"]
     label = "Collect Model Render Sets"
     hosts = ["maya"]
-    maketx = True
 
     def collect_sets(self, instance):
         """Collect all related objectSets except shadingEngines
 
         Args:
-            instance (list): all nodes to be published
+            instance (pyblish.api.Instance): publish instance containing all
+                nodes to be published.
 
         Returns:
             dict
@@ -661,7 +667,7 @@ class CollectModelRenderSets(CollectLook):
                 if objset in sets:
                     continue
 
-                if "shadingEngine" in cmds.nodeType(objset, inherited=True):
+                if cmds.objectType(objset, isAType="shadingEngine"):
                     continue
 
                 sets[objset] = {"uuid": lib.get_id(objset), "members": list()}
