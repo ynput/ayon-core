@@ -375,9 +375,7 @@ class ExtractAlembic(publish.Extractor, OpenPypePyblishPluginMixin):
                 "Otherwise everything written out is treated as visible."
             )
         }
-        tooltip = ""
-        for flag in flags:
-            tooltip += "{} - {}\n".format(flag, tooltips[flag])
+        tooltip = "\n".join(f"{flag} - {tooltips['flag']}" for flag in flags)
         defs.append(
             EnumDef(
                 "flags",
