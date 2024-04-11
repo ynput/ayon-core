@@ -937,9 +937,9 @@ def get_publish_instance_families(instance):
 
 
 def replace_instance_in_context(
-        context: pyblish.api.Context,
-        source_instance: pyblish.api.Instance,
-        destination_instance: pyblish.api.Instance
+    context: pyblish.api.Context,
+    source_instance: pyblish.api.Instance,
+    destination_instance: pyblish.api.Instance
 ):
     """Replace source instance with the destination instance.
 
