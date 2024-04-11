@@ -31,6 +31,7 @@ from .addon import ApplicationsAddon
 
 
 __all__ = (
+    "APPLICATIONS_ADDON_ROOT",
     "DEFAULT_ENV_SUBGROUP",
     "PLATFORM_NAMES",
 

@@ -300,6 +300,10 @@ class ExtractSlateFrame(publish.Extractor):
             self.log.debug(
                 "__ matching_repre: {}".format(pformat(matching_repre)))
 
+        data = matching_repre.get("data", {})
+        data["slateFrames"] = 1
+        matching_repre["data"] = data
+
         self.log.info("Added slate frame to representation files")
 
     def add_comment_slate_node(self, instance, node):

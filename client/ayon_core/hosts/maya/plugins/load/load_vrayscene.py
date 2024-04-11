@@ -18,7 +18,7 @@ class VRaySceneLoader(load.LoaderPlugin):
     """Load Vray scene"""
 
     product_types = {"vrayscene_layer"}
-    representations = ["vrscene"]
+    representations = {"vrscene"}
 
     label = "Import VRay Scene"
     order = -10

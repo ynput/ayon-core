@@ -52,7 +52,7 @@ class RenderSetupLoader(load.LoaderPlugin):
     """Load json preset for RenderSetup overwriting current one."""
 
     product_types = {"rendersetup"}
-    representations = ["json"]
+    representations = {"json"}
     defaults = ['Main']
 
     label = "Load RenderSetup template"

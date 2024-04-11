@@ -89,7 +89,7 @@ class ImagePlaneLoader(load.LoaderPlugin):
 
     product_types = {"image", "plate", "render"}
     label = "Load imagePlane"
-    representations = ["mov", "exr", "preview", "png", "jpg"]
+    representations = {"mov", "exr", "preview", "png", "jpg"}
     icon = "image"
     color = "orange"
 
@@ -171,7 +171,7 @@ class ImagePlaneLoader(load.LoaderPlugin):
             plug = "{}.{}".format(image_plane_shape, attr)
             cmds.setAttr(plug, value)
 
-        movie_representations = ["mov", "preview"]
+        movie_representations = {"mov", "preview"}
         if context["representation"]["name"] in movie_representations:
             cmds.setAttr(image_plane_shape + ".type", 2)
 
