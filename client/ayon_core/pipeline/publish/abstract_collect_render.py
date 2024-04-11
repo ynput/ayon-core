@@ -81,6 +81,9 @@ class RenderInstance(object):
     outputDir = attr.ib(default=None)
     context = attr.ib(default=None)
 
+    # The source instance the data of this render instance should merge into
+    source_instance = attr.ib(default=None, type=pyblish.api.Instance)
+
     @frameStart.validator
     def check_frame_start(self, _, value):
         """Validate if frame start is not larger then end."""
@@ -214,27 +217,11 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
             data = self.add_additional_data(data)
             render_instance_dict = attr.asdict(render_instance)
 
-            instance = context.create_instance(render_instance.name)
+            # Merge into source instance if provided, otherwise create instance
+            instance = render_instance_dict.pop("source_instance", None)
+            if instance is None:
+                instance = context.create_instance(render_instance.name)
 
-            # TODO: Avoid this transfer instance id hack
-            # Transfer the id from another instance, e.g. when the render
-            # instance is intended to "replace" an existing instance like
-            # fusion does in `CollectRender`. Without matching the ids any
-            # logs produced for the instance prior to the "replacement" will
-            # not show artist-facing logs in reports
-            transfer_id = getattr(render_instance, "id")
-            if transfer_id:
-                instance._id = transfer_id
-                # The `instance_id` data may be overridden on the Creator
-                # to e.g. maybe make unique by node name instead of uuid,
-                # like in Maya, Fusion, Houdini integration.
-                # This transfers that unique (named) instance id.
-                # This transfer logic is currently (only?) used in Fusion.
-                transfer_instance_id = getattr(render_instance, "instance_id")
-                if transfer_instance_id:
-                    instance.data["instance_id"] = transfer_instance_id
-
-            instance.data["label"] = render_instance.label
             instance.data.update(render_instance_dict)
             instance.data.update(data)
 

@@ -15,7 +15,7 @@ class SetFrameRangeLoader(load.LoaderPlugin):
         "vdbcache",
         "usd",
     }
-    representations = ["abc", "vdb", "usd"]
+    representations = {"abc", "vdb", "usd"}
 
     label = "Set frame range"
     order = 11
@@ -52,7 +52,7 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
         "vdbcache",
         "usd",
     }
-    representations = ["abc", "vdb", "usd"]
+    representations = {"abc", "vdb", "usd"}
 
     label = "Set frame range (with handles)"
     order = 12
@@ -76,8 +76,8 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
             return
 
         # Include handles
-        start -= version_data.get("handleStart", 0)
-        end += version_data.get("handleEnd", 0)
+        start -= version_attributes.get("handleStart", 0)
+        end += version_attributes.get("handleEnd", 0)
 
         hou.playbar.setFrameRange(start, end)
         hou.playbar.setPlaybackRange(start, end)

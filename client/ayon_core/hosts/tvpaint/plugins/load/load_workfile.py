@@ -1,6 +1,5 @@
 import os
 
-from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import (
     registered_host,
     get_current_context,
@@ -25,7 +24,7 @@ class LoadWorkfile(plugin.Loader):
     """Load workfile."""
 
     product_types = {"workfile"}
-    representations = ["tvpp"]
+    representations = {"tvpp"}
 
     label = "Load Workfile"
 
@@ -111,8 +110,6 @@ class LoadWorkfile(plugin.Loader):
 
         data["version"] = version
 
-        filename = StringTemplate.format_strict_template(
-            file_template, data
-        )
+        filename = work_template["file"].format_strict(data)
         path = os.path.join(work_root, filename)
         host.save_workfile(path)

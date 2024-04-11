@@ -66,7 +66,7 @@ class ExtractPlayblastModel(BaseSettingsModel):
         return validate_json_dict(value)
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class PublishPluginsModel(BaseSettingsModel):
     ValidateCameraZeroKeyframe: ValidatePluginModel = SettingsField(
         default_factory=ValidatePluginModel,
         title="Validate Camera Zero Keyframe",

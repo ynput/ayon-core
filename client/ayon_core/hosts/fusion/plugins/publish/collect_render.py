@@ -37,14 +37,13 @@ class CollectFusionRender(
         aspect_x = comp_frame_format_prefs["AspectX"]
         aspect_y = comp_frame_format_prefs["AspectY"]
 
-        instances = []
-        instances_to_remove = []
 
         current_file = context.data["currentFile"]
         version = context.data["version"]
 
         project_entity = context.data["projectEntity"]
 
+        instances = []
         for inst in context:
             if not inst.data.get("active", True):
                 continue
@@ -91,7 +90,10 @@ class CollectFusionRender(
                 frameStep=1,
                 fps=comp_frame_format_prefs.get("Rate"),
                 app_version=comp.GetApp().Version,
-                publish_attributes=inst.data.get("publish_attributes", {})
+                publish_attributes=inst.data.get("publish_attributes", {}),
+
+                # The source instance this render instance replaces
+                source_instance=inst
             )
 
             render_target = inst.data["creator_attributes"]["render_target"]
@@ -114,20 +116,7 @@ class CollectFusionRender(
                     # to skip ExtractReview locally
                     instance.families.remove("review")
 
-            # add new instance to the list and remove the original
-            # instance since it is not needed anymore
             instances.append(instance)
-            instances_to_remove.append(inst)
-
-            # TODO: Avoid this transfer instance id hack
-            # pass on the `id` of the original instance so any artist
-            # facing logs transfer as if they were made on the new instance
-            # instead, see `AbstractCollectRender.process()`
-            instance.id = inst.id
-            instance.instance_id = inst.data.get("instance_id")
-
-        for instance in instances_to_remove:
-            context.remove(instance)
 
         return instances
 

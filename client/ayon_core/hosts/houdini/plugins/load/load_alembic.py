@@ -11,7 +11,7 @@ class AbcLoader(load.LoaderPlugin):
 
     product_types = {"model", "animation", "pointcache", "gpuCache"}
     label = "Load Alembic"
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"abc"}
     order = -10
     icon = "code-fork"
@@ -59,7 +59,7 @@ class AbcLoader(load.LoaderPlugin):
 
         normal_node.setInput(0, unpack)
 
-        null = container.createNode("null", node_name="OUT".format(name))
+        null = container.createNode("null", node_name="OUT")
         null.setInput(0, normal_node)
 
         # Ensure display flag is on the Alembic input node and not on the OUT
