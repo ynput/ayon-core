@@ -405,7 +405,8 @@ class ExtractAlembicModel(BaseSettingsModel):
             "**No Normals** - Present normal data for Alembic poly meshes will"
             " not be written.\n"
 
-            "**Pre Roll** - This frame range will not be sampled.\n"
+            "Pre Roll - When enabled, the pre roll start frame is used to pre "
+            "roll the export for.\n"
 
             "**Renderable Only** - Only export renderable visible shapes.\n"
 
