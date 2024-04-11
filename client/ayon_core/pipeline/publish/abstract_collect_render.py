@@ -220,7 +220,7 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
 
             instance = pyblish.api.Instance(render_instance.name,
                                             parent=context)
-            if render_instance.source_instance:
+            if render_instance.source_instance is not None:
                 replace_instance_in_context(context,
                                             render_instance.source_instance,
                                             instance)
