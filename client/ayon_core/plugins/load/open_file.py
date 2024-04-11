@@ -19,7 +19,7 @@ class OpenFile(load.LoaderPlugin):
     """Open Image Sequence or Video with system default"""
 
     product_types = {"render2d"}
-    representations = ["*"]
+    representations = {"*"}
 
     label = "Open"
     order = -10

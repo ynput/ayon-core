@@ -78,7 +78,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
     """Load OpenVDB in a V-Ray Volume Grid"""
 
     product_types = {"vdbcache"}
-    representations = ["vdb"]
+    representations = {"vdb"}
 
     label = "Load VDB to VRay"
     icon = "cloud"
@@ -94,10 +94,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
             "Path does not exist: %s" % path
         )
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vdbcache"
+        product_type = context["product"]["productType"]
 
         # Ensure V-ray is loaded with the vrayvolumegrid
         if not cmds.pluginInfo("vrayformaya", query=True, loaded=True):

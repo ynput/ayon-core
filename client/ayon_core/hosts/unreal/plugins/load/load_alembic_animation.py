@@ -16,7 +16,7 @@ class AnimationAlembicLoader(plugin.Loader):
 
     product_types = {"animation"}
     label = "Import Alembic Animation"
-    representations = ["abc"]
+    representations = {"abc"}
     icon = "cube"
     color = "orange"
 
@@ -72,7 +72,7 @@ class AnimationAlembicLoader(plugin.Loader):
         root = unreal_pipeline.AYON_ASSET_DIR
         folder_name = context["folder"]["name"]
         folder_path = context["folder"]["path"]
-        product_type = context["representation"]["context"]["family"]
+        product_type = context["product"]["productType"]
         suffix = "_CON"
         if folder_name:
             asset_name = "{}_{}".format(folder_name, name)
