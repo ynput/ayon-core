@@ -81,7 +81,7 @@ class RenderInstance(object):
     outputDir = attr.ib(default=None)
     context = attr.ib(default=None)
 
-    # The source instance this render instance should replace in the context
+    # The source instance the data of this render instance should merge into
     source_instance = attr.ib(default=None, type=pyblish.api.Instance)
 
     @frameStart.validator
