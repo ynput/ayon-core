@@ -218,14 +218,15 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
             data = self.add_additional_data(data)
             render_instance_dict = attr.asdict(render_instance)
 
-            instance = pyblish.api.Instance(render_instance.name,
-                                            parent=context)
+            instance = context.create_instance(render_instance.name)
             if render_instance.source_instance is not None:
-                replace_instance_in_context(context,
-                                            render_instance.source_instance,
-                                            instance)
-            else:
-                context.append(instance)
+                # remove the new instance, because we want to insert it
+                # at the position of the original instance
+                context.pop()
+                replace_instance_in_context(
+                    context,
+                    source_instance=render_instance.source_instance,
+                    destination_instance=instance)
 
             instance.data.update(render_instance_dict)
             instance.data.update(data)
