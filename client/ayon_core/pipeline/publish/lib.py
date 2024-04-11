@@ -963,5 +963,6 @@ def replace_instance_in_context(
             context[idx] = destination_instance
             return
 
-    # Source was not found
-    context.append(destination_instance)
+    raise ValueError(
+        f"Source instance {source_instance} not found in context."
+    )
