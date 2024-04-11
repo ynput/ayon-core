@@ -6,13 +6,11 @@ from copy import deepcopy
 
 import attr
 import ayon_api
-import pyblish.api
 import clique
 
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
-    Anatomy,
 )
 from ayon_core.lib import Logger
 from ayon_core.pipeline.publish import KnownPublishError
@@ -137,7 +135,7 @@ def get_transferable_representations(instance):
         list of dicts: List of transferable representations.
 
     """
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
     to_transfer = []
 
     for representation in instance.data.get("representations", []):
@@ -166,7 +164,6 @@ def get_transferable_representations(instance):
 
 def create_skeleton_instance(
         instance, families_transfer=None, instance_transfer=None):
-    # type: (pyblish.api.Instance, list, dict) -> dict
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -191,7 +188,7 @@ def create_skeleton_instance(
 
     context = instance.context
     data = instance.data.copy()
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     # get time related data from instance (or context)
     time_data = get_time_data_from_instance_or_context(instance)
@@ -751,7 +748,6 @@ def get_resources(project_name, version_entity, extension=None):
 
 
 def create_skeleton_instance_cache(instance):
-    # type: (pyblish.api.Instance, list, dict) -> dict
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -771,7 +767,7 @@ def create_skeleton_instance_cache(instance):
 
     context = instance.context
     data = instance.data.copy()
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     # get time related data from instance (or context)
     time_data = get_time_data_from_instance_or_context(instance)
@@ -1005,7 +1001,7 @@ def copy_extend_frames(instance, representation):
     start = instance.data.get("frameStart")
     end = instance.data.get("frameEnd")
     project_name = instance.context.data["project"]
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     folder_entity = ayon_api.get_folder_by_path(
         project_name, instance.data.get("folderPath")
