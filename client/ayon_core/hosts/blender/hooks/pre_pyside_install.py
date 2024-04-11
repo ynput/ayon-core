@@ -80,6 +80,9 @@ class InstallPySideToBlender(PreLaunchHook):
         # Blender 4 has Python 3.11 which does not support 'PySide2'
         # QUESTION could we always install PySide6?
         qt_binding = "PySide2" if before_blender_4 else "PySide6"
+        # Use PySide6 6.6.3 because 6.7.0 had a bug
+        #   - 'QTextEdit' can't be added to 'QBoxLayout'
+        qt_binding_version = None if before_blender_4 else "6.6.3"
 
         python_dir = os.path.join(versions_dir, version_subfolder, "python")
         python_lib = os.path.join(python_dir, "lib")
@@ -130,11 +133,16 @@ class InstallPySideToBlender(PreLaunchHook):
         # Install PySide2 in blender's python
         if platform == "windows":
             result = self.install_pyside_windows(
-                python_executable, qt_binding, before_blender_4
+                python_executable,
+                qt_binding,
+                qt_binding_version,
+                before_blender_4,
             )
         else:
             result = self.install_pyside(
-                python_executable, qt_binding
+                python_executable,
+                qt_binding,
+                qt_binding_version,
             )
 
         if result:
@@ -147,7 +155,11 @@ class InstallPySideToBlender(PreLaunchHook):
             )
 
     def install_pyside_windows(
-        self, python_executable, qt_binding, before_blender_4
+        self,
+        python_executable,
+        qt_binding,
+        qt_binding_version,
+        before_blender_4,
     ):
         """Install PySide2 python module to blender's python.
 
@@ -166,6 +178,9 @@ class InstallPySideToBlender(PreLaunchHook):
         except Exception:
             self.log.warning("Couldn't import \"pywin32\" modules")
             return
+
+        if qt_binding_version:
+            qt_binding = f"{qt_binding}=={qt_binding_version}"
 
         try:
             # Parameters
@@ -212,8 +227,15 @@ class InstallPySideToBlender(PreLaunchHook):
         except pywintypes.error:
             pass
 
-    def install_pyside(self, python_executable, qt_binding):
-        """Install PySide2 python module to blender's python."""
+    def install_pyside(
+        self,
+        python_executable,
+        qt_binding,
+        qt_binding_version,
+    ):
+        """Install Qt binding python module to blender's python."""
+        if qt_binding_version:
+            qt_binding = f"{qt_binding}=={qt_binding_version}"
         try:
             # Parameters
             # - use "-m pip" as module pip to install qt binding and argument
