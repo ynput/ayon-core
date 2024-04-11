@@ -4,7 +4,7 @@ import os
 
 from maya import cmds  # noqa
 
-from openpype.hosts.maya.api.lib import evaluation
+from ayon_core.hosts.maya.api.lib import evaluation
 
 log = logging.getLogger(__name__)
 
