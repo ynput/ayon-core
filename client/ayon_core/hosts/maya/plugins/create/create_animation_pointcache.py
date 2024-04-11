@@ -44,7 +44,10 @@ def extract_alembic_attributes(node_data, class_name):
     if class_name in publish_attributes:
         return node_data
 
-    extract_alembic_flags = [
+    attributes = [
+        "attr",
+        "attrPrefix",
+        "visibleOnly",
         "writeColorSets",
         "writeFaceSets",
         "writeNormals",
@@ -53,22 +56,13 @@ def extract_alembic_attributes(node_data, class_name):
         "worldSpace",
         "renderableOnly"
     ]
-    extract_alembic_attributes = [
-        "attr",
-        "attrPrefix",
-        "visibleOnly"
-    ]
-    attributes = extract_alembic_flags + extract_alembic_attributes
-    plugin_attributes = {"flags": []}
+    plugin_attributes = {}
     for attr in attributes:
         if attr not in node_data["creator_attributes"].keys():
             continue
         value = node_data["creator_attributes"].pop(attr)
 
-        if value and attr in extract_alembic_flags:
-            plugin_attributes["flags"].append(attr)
-
-        if attr in extract_alembic_attributes:
+        if attr in attributes:
             plugin_attributes[attr] = value
 
     publish_attributes[class_name] = plugin_attributes

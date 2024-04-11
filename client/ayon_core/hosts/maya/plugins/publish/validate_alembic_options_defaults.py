@@ -8,7 +8,7 @@ class ValidateAlembicOptionsDefaults(
     pyblish.api.InstancePlugin, OptionalPyblishPluginMixin
 ):
     """Validate the attributes on the instance are defaults.
-    
+
     The defaults are defined in the project settings.
     """
 
@@ -29,11 +29,6 @@ class ValidateAlembicOptionsDefaults(
     def _get_settings(cls, context):
         maya_settings = context.data["project_settings"]["maya"]
         settings = maya_settings["publish"]["ExtractAlembic"]
-        # Flags are a special case since they are a combination of overrides
-        # and default flags from the settings.
-        settings["flags"] = [
-            x for x in settings["flags"] if x in settings["overrides"]
-        ]
         return settings
 
     @classmethod
@@ -43,16 +38,6 @@ class ValidateAlembicOptionsDefaults(
                 instance.data["publish_attributes"]
             )
         ]
-
-        settings = cls._get_settings(instance.context)
-
-        # Flags are a special case since they are a combination of exposed
-        # flags and default flags from the settings. So we need to add the
-        # default flags from the settings and ensure unique items.
-        non_exposed_flags = [
-            x for x in settings["flags"] if x not in settings["overrides"]
-        ]
-        attributes["flags"] = attributes["flags"] + non_exposed_flags
 
         return attributes
 

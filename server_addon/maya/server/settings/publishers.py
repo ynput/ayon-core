@@ -35,32 +35,6 @@ def angular_unit_enum():
     ]
 
 
-def extract_alembic_flags_enum():
-    """Get flags for alembic extraction enumerator."""
-    return [
-        {"label": "Auto Subd", "value": "autoSubd"},
-        {
-            "label": "Dont Skip Unwritten Frames",
-            "value": "dontSkipUnwrittenFrames"
-        },
-        {"label": "Euler Filter", "value": "eulerFilter"},
-        {"label": "No Normals", "value": "noNormals"},
-        {"label": "Pre Roll", "value": "preRoll"},
-        {"label": "Renderable Only", "value": "renderableOnly"},
-        {"label": "Strip Namespaces", "value": "stripNamespaces"},
-        {"label": "UV Write", "value": "uvWrite"},
-        {"label": "UVs Only", "value": "uvsOnly"},
-        {"label": "Verbose", "value": "verbose"},
-        {"label": "Whole Frame Geo", "value": "wholeFrameGeo"},
-        {"label": "World Space", "value": "worldSpace"},
-        {"label": "Write Color Sets", "value": "writeColorSets"},
-        {"label": "Write Face Sets", "value": "writeFaceSets"},
-        {"label": "Write Normals", "value": "writeNormals"},
-        {"label": "Write UV Sets", "value": "writeUVSets"},
-        {"label": "Write Visibility", "value": "writeVisibility"}
-    ]
-
-
 def extract_alembic_data_format_enum():
     return [
         {"label": "ogawa", "value": "ogawa"},
@@ -375,71 +349,6 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
-    bake_attributes: list[str] = SettingsField(
-        default_factory=list, title="Bake Attributes",
-        description="List of attributes that will be included in the alembic "
-                    "export.",
-    )
-    bake_attribute_prefixes: list[str] = SettingsField(
-        default_factory=list, title="Bake Attribute Prefixes",
-        description="List of attribute prefixes for attributes that will be "
-                    "included in the alembic export.",
-    )
-    flags: list[str] = SettingsField(
-        enum_resolver=extract_alembic_flags_enum,
-        title="Export Flags",
-        description=(
-            "**Auto Subd** - If this flag is present and the mesh has crease "
-            "edges, crease vertices or holes, the mesh (OPolyMesh) would now "
-            "be written out as an OSubD and crease info will be stored in the "
-            "Alembic  file. Otherwise, creases info won't be preserved in "
-            "Alembic file unless a custom Boolean attribute SubDivisionMesh "
-            "has been added to mesh node and its value is true.\n"
-
-            "**Dont Skip Unwritten Frames** - When evaluating multiple "
-            "translate jobs, this decides whether to evaluate frames between "
-            "jobs when there is a gap in their frame ranges.\n"
-
-            "**Euler Filter** - Apply Euler filter while sampling rotations.\n"
-
-            "**No Normals** - Present normal data for Alembic poly meshes will"
-            " not be written.\n"
-
-            "Pre Roll - When enabled, the pre roll start frame is used to pre "
-            "roll the export for.\n"
-
-            "**Renderable Only** - Only export renderable visible shapes.\n"
-
-            "**Strip Namespaces** - Namespaces will be stripped off of the "
-            "node before being written to Alembic.\n"
-
-            "**UV Write** - Uv data for PolyMesh and SubD shapes will be "
-            "written to the Alembic file.\n"
-
-            "**UVs Only** - If this flag is present, only uv data for PolyMesh"
-            " and SubD shapes will be written to the Alembic file.\n"
-
-            "**Verbose** - Prints the current frame that is being evaluated.\n"
-
-            "**Whole Frame Geo** - Data for geometry will only be written out "
-            "on whole frames.\n"
-
-            "**World Space** - Any root nodes will be stored in world space.\n"
-
-            "**Write Color Sets** - Write vertex colors with the geometry.\n"
-
-            "**Write Face Sets** - Write face sets with the geometry.\n"
-
-            "**Write Normals** - Write normals with the deforming geometry.\n"
-
-            "**Write UV Sets** - Write all uv sets on MFnMeshes as vector 2 "
-            "indexed geometry parameters with face varying scope.\n"
-
-            "**Write Visibility** - Visibility state will be stored in the "
-            "Alembic file. Otherwise everything written out is treated as "
-            "visible."
-        )
-    )
     attr: str = SettingsField(
         title="Custom Attributes",
         placeholder="attr1;attr2",
@@ -456,10 +365,43 @@ class ExtractAlembicModel(BaseSettingsModel):
             "Alembic export. Attributes should be separated by semi-colon `;`"
         )
     )
+    autoSubd: bool = SettingsField(
+        title="Auto Subd",
+        description=(
+            "If this flag is present and the mesh has crease edges, crease "
+            "vertices or holes, the mesh (OPolyMesh) would now be written out "
+            "as an OSubD and crease info will be stored in the Alembic  file. "
+            "Otherwise, creases info won't be preserved in Alembic file unless"
+            " a custom Boolean attribute SubDivisionMesh has been added to "
+            "mesh node and its value is true."
+        )
+    )
+    bake_attributes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attributes",
+        description="List of attributes that will be included in the alembic "
+                    "export.",
+    )
+    bake_attribute_prefixes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attribute Prefixes",
+        description="List of attribute prefixes for attributes that will be "
+                    "included in the alembic export.",
+    )
     dataFormat: str = SettingsField(
         enum_resolver=extract_alembic_data_format_enum,
         title="Data Format",
         description="The data format to use to write the file."
+    )
+    dontSkipUnwrittenFrames: bool = SettingsField(
+        title="Dont Skip Unwritten Frames",
+        description=(
+            "When evaluating multiple translate jobs, this decides whether to "
+            "evaluate frames between jobs when there is a gap in their frame "
+            "ranges."
+        )
+    )
+    eulerFilter: bool = SettingsField(
+        title="Euler Filter",
+        description="Apply Euler filter while sampling rotations."
     )
     melPerFrameCallback: str = SettingsField(
         title="Mel Per Frame Callback",
@@ -473,6 +415,29 @@ class ExtractAlembicModel(BaseSettingsModel):
         description=(
             "When the translation has finished the string specified is "
             "evaluated as a Mel command."
+        )
+    )
+    noNormals: bool = SettingsField(
+        title="No Normals",
+        description=(
+            "Present normal data for Alembic poly meshes will not be written."
+        )
+    )
+    preRoll: bool = SettingsField(
+        title="Pre Roll",
+        description=(
+            "When enabled, the pre roll start frame is used to pre roll the "
+            "export for."
+        )
+    )
+    preRollStartFrame: int = SettingsField(
+        title="Pre Roll Start Frame",
+        description=(
+            "The frame to start scene evaluation at.  This is used to set the "
+            "starting frame for time dependent translations and can be used to"
+            " evaluate run-up that isn't actually translated.\n"
+            "NOTE: preRoll needs to be enabled in the export flags for this "
+            "start frame to be considered."
         )
     )
     pythonPerFrameCallback: str = SettingsField(
@@ -489,14 +454,15 @@ class ExtractAlembicModel(BaseSettingsModel):
             "evaluated as a python command."
         )
     )
-    preRollStartFrame: int = SettingsField(
-        title="Pre Roll Start Frame",
+    renderableOnly: bool = SettingsField(
+        title="Renderable Only",
+        description="Only export renderable visible shapes."
+    )
+    stripNamespaces: bool = SettingsField(
+        title="Strip Namespaces",
         description=(
-            "The frame to start scene evaluation at.  This is used to set the "
-            "starting frame for time dependent translations and can be used to"
-            " evaluate run-up that isn't actually translated.\n"
-            "NOTE: preRoll needs to be enabled in the export flags for this "
-            "start frame to be considered."
+            "Namespaces will be stripped off of the node before being written "
+            "to Alembic."
         )
     )
     userAttr: str = SettingsField(
@@ -515,9 +481,63 @@ class ExtractAlembicModel(BaseSettingsModel):
             "Alembic export. Attributes should be separated by semi-colon `;`"
         )
     )
+    uvsOnly: bool = SettingsField(
+        title="UVs Only",
+        description=(
+            "If this flag is present, only uv data for PolyMesh and SubD "
+            "shapes will be written to the Alembic file."
+        )
+    )
+    uvWrite: bool = SettingsField(
+        title="UV Write",
+        description=(
+            "Uv data for PolyMesh and SubD shapes will be written to the "
+            "Alembic file."
+        )
+    )
+    verbose: bool = SettingsField(
+        title="Verbose",
+        description="Prints the current frame that is being evaluated."
+    )
     visibleOnly: bool = SettingsField(
         title="Visible Only",
         description="Only export dag objects visible during frame range."
+    )
+    wholeFrameGeo: bool = SettingsField(
+        title="Whole Frame Geo",
+        description=(
+            "Data for geometry will only be written out on whole frames."
+        )
+    )
+    worldSpace: bool = SettingsField(
+        title="World Space",
+        description="Any root nodes will be stored in world space."
+    )
+    writeColorSets: bool = SettingsField(
+        title="Write Color Sets",
+        description="Write vertex colors with the geometry."
+    )
+    writeFaceSets: bool = SettingsField(
+        title="Write Face Sets",
+        description="Write face sets with the geometry."
+    )
+    writeNormals: bool = SettingsField(
+        title="Write Normals",
+        description="Write normals with the deforming geometry."
+    )
+    writeUVSets: bool = SettingsField(
+        title="Write UV Sets",
+        description=(
+            "Write all uv sets on MFnMeshes as vector 2 indexed geometry "
+            "parameters with face varying scope."
+        )
+    )
+    writeVisibility: bool = SettingsField(
+        title="Write Visibility",
+        description=(
+            "Visibility state will be stored in the Alembic file. Otherwise "
+            "everything written out is treated as visible."
+        )
     )
     overrides: list[str] = SettingsField(
         enum_resolver=extract_alembic_overrides_enum,
@@ -1596,33 +1616,47 @@ DEFAULT_PUBLISH_SETTINGS = {
             "model",
             "vrayproxy.alembic"
         ],
-        "bake_attributes": [],
-        "bake_attribute_prefixes": [],
-        "flags": [
-            "stripNamespaces",
-            "writeNormals",
-            "worldSpace"
-        ],
         "attr": "",
         "attrPrefix": "",
+        "autoSubd": False,
+        "bake_attributes": [],
+        "bake_attribute_prefixes": [],
         "dataFormat": "ogawa",
+        "dontSkipUnwrittenFrames": False,
+        "eulerFilter": False,
         "melPerFrameCallback": "",
         "melPostFrameCallback": "",
-        "preRollStartFrame": 0,
-        "pythonPerFrameCallback": "",
-        "pythonPostJobCallback": "",
-        "userAttr": "",
-        "userAttrPrefix": "",
-        "visibleOnly": False,
+        "noNormals": False,
         "overrides": [
             "attr",
             "attrPrefix",
+            "renderableOnly",
+            "userAttr",
+            "userAttrPrefix",
+            "visibleOnly",
             "worldSpace",
             "writeColorSets",
-            "writeNormals",
             "writeFaceSets",
-            "renderableOnly",
-            "visibleOnly"
-        ]
+            "writeNormals"
+        ],
+        "preRoll": False,
+        "preRollStartFrame": 0,
+        "pythonPerFrameCallback": "",
+        "pythonPostJobCallback": "",
+        "renderableOnly": False,
+        "stripNamespaces": True,
+        "uvsOnly": False,
+        "uvWrite": False,
+        "userAttr": "",
+        "userAttrPrefix": "",
+        "verbose": False,
+        "visibleOnly": False,
+        "wholeFrameGeo": False,
+        "worldSpace": True,
+        "writeColorSets": False,
+        "writeFaceSets": False,
+        "writeNormals": True,
+        "writeUVSets": False,
+        "writeVisibility": False
     }
 }
