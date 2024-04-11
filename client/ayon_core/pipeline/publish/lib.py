@@ -948,11 +948,6 @@ def replace_instance_in_context(
     the publisher to correctly detect and transfer the logs relevant for the
     instance.
 
-    Returns:
-        bool: Whether the source instance was replaced or the destination
-            instance was only added because source instance did not exist
-            in the context.
-
     """
     # Transfer the pyblish.api.Instance id
     destination_instance._id = source_instance.id
@@ -966,8 +961,7 @@ def replace_instance_in_context(
     for idx, instance in enumerate(context):
         if source_instance is instance:
             context[idx] = destination_instance
-            return True
+            return
 
     # Source was not found
     context.append(destination_instance)
-    return False
