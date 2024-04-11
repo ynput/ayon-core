@@ -37,7 +37,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib.profiles_filtering import filter_profiles
 
@@ -1316,24 +1316,30 @@ def is_visible(node,
     return True
 
 # region ID
-def get_id_required_nodes(referenced_nodes=False, nodes=None):
-    """Filter out any node which are locked (reference) or readOnly
+def get_id_required_nodes(referenced_nodes=False,
+                          nodes=None,
+                          existing_ids=True):
+    """Return nodes that should receive a `cbId` attribute.
+
+    This includes only mesh and curve nodes, parent transforms of the shape
+    nodes, file texture nodes and object sets (including shading engines).
+
+    This filters out any node which is locked, referenced, read-only,
+    intermediate object.
 
     Args:
-        referenced_nodes (bool): set True to filter out reference nodes
+        referenced_nodes (bool): set True to include referenced nodes
         nodes (list, Optional): nodes to consider
+        existing_ids (bool): set True to include nodes with `cbId` attribute
+
     Returns:
         nodes (set): list of filtered nodes
     """
 
-    lookup = None
-    if nodes is None:
-        # Consider all nodes
-        nodes = cmds.ls()
-    else:
-        # Build a lookup for the only allowed nodes in output based
-        # on `nodes` input of the function (+ ensure long names)
-        lookup = set(cmds.ls(nodes, long=True))
+    if nodes is not None and not nodes:
+        # User supplied an empty `nodes` list to check so all we can
+        # do is return the empty result
+        return set()
 
     def _node_type_exists(node_type):
         try:
@@ -1342,63 +1348,142 @@ def get_id_required_nodes(referenced_nodes=False, nodes=None):
         except RuntimeError:
             return False
 
+    def iterate(maya_iterator):
+        while not maya_iterator.isDone():
+            yield maya_iterator.thisNode()
+            maya_iterator.next()
+
     # `readOnly` flag is obsolete as of Maya 2016 therefore we explicitly
     # remove default nodes and reference nodes
-    camera_shapes = ["frontShape", "sideShape", "topShape", "perspShape"]
+    default_camera_shapes = {
+        "frontShape", "sideShape", "topShape", "perspShape"
+    }
 
-    ignore = set()
-    if not referenced_nodes:
-        ignore |= set(cmds.ls(long=True, referencedNodes=True))
-
-    # list all defaultNodes to filter out from the rest
-    ignore |= set(cmds.ls(long=True, defaultNodes=True))
-    ignore |= set(cmds.ls(camera_shapes, long=True))
-
-    # Remove Turtle from the result of `cmds.ls` if Turtle is loaded
-    # TODO: This should be a less specific check for a single plug-in.
-    if _node_type_exists("ilrBakeLayer"):
-        ignore |= set(cmds.ls(type="ilrBakeLayer", long=True))
-
-    # Establish set of nodes types to include
-    types = ["objectSet", "file", "mesh", "nurbsCurve", "nurbsSurface"]
+    # The filtered types do not include transforms because we only want the
+    # parent transforms that have a child shape that we filtered to, so we
+    # include the parents here
+    types = ["mesh", "nurbsCurve", "nurbsSurface", "file", "objectSet"]
 
     # Check if plugin nodes are available for Maya by checking if the plugin
     # is loaded
     if cmds.pluginInfo("pgYetiMaya", query=True, loaded=True):
         types.append("pgYetiMaya")
 
-    # We *always* ignore intermediate shapes, so we filter them out directly
-    nodes = cmds.ls(nodes, type=types, long=True, noIntermediate=True)
+    iterator_type = OpenMaya.MIteratorType()
+    # This tries to be closest matching API equivalents of `types` variable
+    iterator_type.filterList = [
+        OpenMaya.MFn.kMesh,  # mesh
+        OpenMaya.MFn.kNurbsSurface,  # nurbsSurface
+        OpenMaya.MFn.kNurbsCurve,  # nurbsCurve
+        OpenMaya.MFn.kFileTexture,  # file
+        OpenMaya.MFn.kSet,  # objectSet
+        OpenMaya.MFn.kPluginShape  # pgYetiMaya
+    ]
+    it = OpenMaya.MItDependencyNodes(iterator_type)
 
-    # The items which need to pass the id to their parent
-    # Add the collected transform to the nodes
-    dag = cmds.ls(nodes, type="dagNode", long=True)  # query only dag nodes
-    transforms = cmds.listRelatives(dag,
-                                    parent=True,
-                                    fullPath=True) or []
+    fn_dep = OpenMaya.MFnDependencyNode()
+    fn_dag = OpenMaya.MFnDagNode()
+    result = set()
 
-    nodes = set(nodes)
-    nodes |= set(transforms)
+    def _should_include_parents(obj):
+        """Whether to include parents of obj in output"""
+        if not obj.hasFn(OpenMaya.MFn.kShape):
+            return False
 
-    nodes -= ignore  # Remove the ignored nodes
-    if not nodes:
-        return nodes
+        fn_dag.setObject(obj)
+        if fn_dag.isIntermediateObject:
+            return False
 
-    # Ensure only nodes from the input `nodes` are returned when a
-    # filter was applied on function call because we also iterated
-    # to parents and alike
-    if lookup is not None:
-        nodes &= lookup
+        # Skip default cameras
+        if (
+            obj.hasFn(OpenMaya.MFn.kCamera) and
+            fn_dag.name() in default_camera_shapes
+        ):
+            return False
 
-    # Avoid locked nodes
-    nodes_list = list(nodes)
-    locked = cmds.lockNode(nodes_list, query=True, lock=True)
-    for node, lock in zip(nodes_list, locked):
-        if lock:
-            log.warning("Skipping locked node: %s" % node)
-            nodes.remove(node)
+        return True
 
-    return nodes
+    def _add_to_result_if_valid(obj):
+        """Add to `result` if the object should be included"""
+        fn_dep.setObject(obj)
+        if not existing_ids and fn_dep.hasAttribute("cbId"):
+            return
+
+        if not referenced_nodes and fn_dep.isFromReferencedFile:
+            return
+
+        if fn_dep.isDefaultNode:
+            return
+
+        if fn_dep.isLocked:
+            return
+
+        # Skip default cameras
+        if (
+            obj.hasFn(OpenMaya.MFn.kCamera) and
+            fn_dep.name() in default_camera_shapes
+        ):
+            return
+
+        if obj.hasFn(OpenMaya.MFn.kDagNode):
+            # DAG nodes
+            fn_dag.setObject(obj)
+
+            # Skip intermediate objects
+            if fn_dag.isIntermediateObject:
+                return
+
+            # DAG nodes can be instanced and thus may have multiple paths.
+            # We need to identify each path
+            paths = OpenMaya.MDagPath.getAllPathsTo(obj)
+            for dag in paths:
+                path = dag.fullPathName()
+                result.add(path)
+        else:
+            # Dependency node
+            path = fn_dep.name()
+            result.add(path)
+
+    for obj in iterate(it):
+        # For any non-intermediate shape node always include the parent
+        # even if we exclude the shape itself (e.g. when locked, default)
+        if _should_include_parents(obj):
+            fn_dag.setObject(obj)
+            parents = [
+                fn_dag.parent(index) for index in range(fn_dag.parentCount())
+            ]
+            for parent_obj in parents:
+                _add_to_result_if_valid(parent_obj)
+
+        _add_to_result_if_valid(obj)
+
+    if not result:
+        return result
+
+    # Exclude some additional types
+    exclude_types = []
+    if _node_type_exists("ilrBakeLayer"):
+        # Remove Turtle from the result if Turtle is loaded
+        exclude_types.append("ilrBakeLayer")
+
+    if exclude_types:
+        exclude_nodes = set(cmds.ls(nodes, long=True, type=exclude_types))
+        if exclude_nodes:
+            result -= exclude_nodes
+
+    # Filter to explicit input nodes if provided
+    if nodes is not None:
+        # The amount of input nodes to filter to can be large and querying
+        # many nodes can be slow in Maya. As such we want to try and reduce
+        # it as much as possible, so we include the type filter to try and
+        # reduce the result of `maya.cmds.ls` here.
+        nodes = set(cmds.ls(nodes, long=True, type=types + ["dagNode"]))
+        if nodes:
+            result &= nodes
+        else:
+            return set()
+
+    return result
 
 
 def get_id(node):
@@ -1912,22 +1997,6 @@ def get_related_sets(node):
 
     """
 
-    # Ignore specific suffices
-    ignore_suffices = ["out_SET", "controls_SET", "_INST", "_CON"]
-
-    # Default nodes to ignore
-    defaults = {"defaultLightSet", "defaultObjectSet"}
-
-    # Ids to ignore
-    ignored = {
-        AVALON_INSTANCE_ID,
-        AVALON_CONTAINER_ID,
-        AYON_INSTANCE_ID,
-        AYON_CONTAINER_ID,
-    }
-
-    view_sets = get_isolate_view_sets()
-
     sets = cmds.listSets(object=node, extendToShape=False)
     if not sets:
         return []
@@ -1938,6 +2007,14 @@ def get_related_sets(node):
     # returned by `cmds.listSets(allSets=True)`
     sets = cmds.ls(sets)
 
+    # Ids to ignore
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
+
     # Ignore `avalon.container`
     sets = [
         s for s in sets
@@ -1946,21 +2023,31 @@ def get_related_sets(node):
            or cmds.getAttr(f"{s}.id") not in ignored
         )
     ]
+    if not sets:
+        return sets
 
     # Exclude deformer sets (`type=2` for `maya.cmds.listSets`)
-    deformer_sets = cmds.listSets(object=node,
-                                  extendToShape=False,
-                                  type=2) or []
-    deformer_sets = set(deformer_sets)  # optimize lookup
-    sets = [s for s in sets if s not in deformer_sets]
+    exclude_sets = cmds.listSets(object=node,
+                                 extendToShape=False,
+                                 type=2) or []
+    exclude_sets = set(exclude_sets)  # optimize lookup
+
+    # Default nodes to ignore
+    exclude_sets.update({"defaultLightSet", "defaultObjectSet"})
+
+    # Filter out the sets to exclude
+    sets = [s for s in sets if s not in exclude_sets]
 
     # Ignore when the set has a specific suffix
-    sets = [s for s in sets if not any(s.endswith(x) for x in ignore_suffices)]
+    ignore_suffices = ("out_SET", "controls_SET", "_INST", "_CON")
+    sets = [s for s in sets if not s.endswith(ignore_suffices)]
+    if not sets:
+        return sets
 
     # Ignore viewport filter view sets (from isolate select and
     # viewports)
+    view_sets = get_isolate_view_sets()
     sets = [s for s in sets if s not in view_sets]
-    sets = [s for s in sets if s not in defaults]
 
     return sets
 
@@ -2231,12 +2318,10 @@ def set_scene_fps(fps, update=True):
     cmds.currentUnit(time=unit, updateAnimation=update)
 
     # Set time slider data back to previous state
-    cmds.playbackOptions(edit=True, minTime=start_frame)
-    cmds.playbackOptions(edit=True, maxTime=end_frame)
-
-    # Set animation data
-    cmds.playbackOptions(edit=True, animationStartTime=animation_start)
-    cmds.playbackOptions(edit=True, animationEndTime=animation_end)
+    cmds.playbackOptions(minTime=start_frame,
+                         maxTime=end_frame,
+                         animationStartTime=animation_start,
+                         animationEndTime=animation_end)
 
     cmds.currentTime(current_frame, edit=True, update=True)
 
@@ -2312,7 +2397,7 @@ def get_fps_for_current_context():
 
 
 def get_frame_range(include_animation_range=False):
-    """Get the current folder frame range and handles.
+    """Get the current task frame range and handles.
 
     Args:
         include_animation_range (bool, optional): Whether to include
@@ -2320,25 +2405,34 @@ def get_frame_range(include_animation_range=False):
             range of the timeline. It is excluded by default.
 
     Returns:
-        dict: Folder's expected frame range values.
+        dict: Task's expected frame range values.
 
     """
 
     # Set frame start/end
     project_name = get_current_project_name()
     folder_path = get_current_folder_path()
-    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-    folder_attributes = folder_entity["attrib"]
+    task_name = get_current_task_name()
 
-    frame_start = folder_attributes.get("frameStart")
-    frame_end = folder_attributes.get("frameEnd")
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name,
+        folder_path,
+        fields={"id"})
+    task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+
+    task_attributes = task_entity["attrib"]
+
+    frame_start = task_attributes.get("frameStart")
+    frame_end = task_attributes.get("frameEnd")
 
     if frame_start is None or frame_end is None:
         cmds.warning("No edit information found for '{}'".format(folder_path))
         return
 
-    handle_start = folder_attributes.get("handleStart") or 0
-    handle_end = folder_attributes.get("handleEnd") or 0
+    handle_start = task_attributes.get("handleStart") or 0
+    handle_end = task_attributes.get("handleEnd") or 0
 
     frame_range = {
         "frameStart": frame_start,
@@ -2352,14 +2446,10 @@ def get_frame_range(include_animation_range=False):
         # Some usages of this function use the full dictionary to define
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
-        task_name = get_current_task_name()
+
         settings = get_project_settings(project_name)
-        task_entity = ayon_api.get_task_by_name(
-            project_name, folder_entity["id"], task_name
-        )
-        task_type = None
-        if task_entity:
-            task_type = task_entity["taskType"]
+
+        task_type = task_entity["taskType"]
 
         include_handles_settings = settings["maya"]["include_handles"]
 
@@ -2421,21 +2511,21 @@ def reset_frame_range(playback=True, render=True, fps=True):
 def reset_scene_resolution():
     """Apply the scene resolution  from the project definition
 
-    scene resolution can be overwritten by an folder if the folder.attrib
-    contains any information regarding scene resolution .
+    The scene resolution will be retrieved from the current task entity's
+    attributes.
 
     Returns:
         None
     """
 
-    folder_attributes = get_current_project_folder()["attrib"]
+    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
 
     # Set resolution
-    width = folder_attributes.get("resolutionWidth", 1920)
-    height = folder_attributes.get("resolutionHeight", 1080)
-    pixelAspect = folder_attributes.get("pixelAspect", 1)
+    width = task_attributes.get("resolutionWidth", 1920)
+    height = task_attributes.get("resolutionHeight", 1080)
+    pixel_aspect = task_attributes.get("pixelAspect", 1)
 
-    set_scene_resolution(width, height, pixelAspect)
+    set_scene_resolution(width, height, pixel_aspect)
 
 
 def set_context_settings(
@@ -2921,7 +3011,7 @@ def load_capture_preset(data):
     return options
 
 
-def get_attr_in_layer(attr, layer):
+def get_attr_in_layer(attr, layer, as_string=True):
     """Return attribute value in specified renderlayer.
 
     Same as cmds.getAttr but this gets the attribute's value in a
@@ -2939,6 +3029,7 @@ def get_attr_in_layer(attr, layer):
     Args:
         attr (str): attribute name, ex. "node.attribute"
         layer (str): layer name
+        as_string (bool): whether attribute should convert to a string value
 
     Returns:
         The return value from `maya.cmds.getAttr`
@@ -2948,7 +3039,8 @@ def get_attr_in_layer(attr, layer):
     try:
         if cmds.mayaHasRenderSetup():
             from . import lib_rendersetup
-            return lib_rendersetup.get_attr_in_layer(attr, layer)
+            return lib_rendersetup.get_attr_in_layer(
+                attr, layer, as_string=as_string)
     except AttributeError:
         pass
 
@@ -2956,7 +3048,7 @@ def get_attr_in_layer(attr, layer):
     current_layer = cmds.editRenderLayerGlobals(query=True,
                                                 currentRenderLayer=True)
     if layer == current_layer:
-        return cmds.getAttr(attr)
+        return cmds.getAttr(attr, asString=as_string)
 
     connections = cmds.listConnections(attr,
                                        plugs=True,
@@ -3007,7 +3099,7 @@ def get_attr_in_layer(attr, layer):
                         value *= conversion
                     return value
 
-    return cmds.getAttr(attr)
+    return cmds.getAttr(attr, asString=as_string)
 
 
 def fix_incompatible_containers():
@@ -3036,33 +3128,46 @@ def update_content_on_context_change():
     """
     This will update scene content to match new folder on context change
     """
-    scene_sets = cmds.listSets(allSets=True)
-    folder_entity = get_current_project_folder()
-    folder_attributes = folder_entity["attrib"]
-    new_folder_path = folder_entity["path"]
-    for s in scene_sets:
-        try:
-            if cmds.getAttr("{}.id".format(s)) in {
-                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
-            }:
-                attr = cmds.listAttr(s)
-                print(s)
-                if "folderPath" in attr:
-                    print(
-                        "  - setting folder to: [ {} ]".format(new_folder_path)
-                    )
-                    cmds.setAttr(
-                        "{}.folderPath".format(s),
-                        new_folder_path, type="string"
-                    )
-                if "frameStart" in attr:
-                    cmds.setAttr("{}.frameStart".format(s),
-                                 folder_attributes["frameStart"])
-                if "frameEnd" in attr:
-                    cmds.setAttr("{}.frameEnd".format(s),
-                                 folder_attributes["frameEnd"],)
-        except ValueError:
-            pass
+
+    host = registered_host()
+    create_context = CreateContext(host)
+    folder_entity = get_current_task_entity(fields={"attrib"})
+
+    instance_values = {
+        "folderPath": create_context.get_current_folder_path(),
+        "task": create_context.get_current_task_name(),
+    }
+    creator_attribute_values = {
+        "frameStart": folder_entity["attrib"]["frameStart"],
+        "frameEnd": folder_entity["attrib"]["frameEnd"],
+    }
+
+    has_changes = False
+    for instance in create_context.instances:
+        for key, value in instance_values.items():
+            if key not in instance or instance[key] == value:
+                continue
+
+            # Update instance value
+            print(f"Updating {instance.product_name} {key} to: {value}")
+            instance[key] = value
+            has_changes = True
+
+        creator_attributes = instance.creator_attributes
+        for key, value in creator_attribute_values.items():
+            if (
+                    key not in creator_attributes
+                    or creator_attributes[key] == value
+            ):
+                continue
+
+            # Update instance creator attribute value
+            print(f"Updating {instance.product_name} {key} to: {value}")
+            instance[key] = value
+            has_changes = True
+
+    if has_changes:
+        create_context.save_changes()
 
 
 def show_message(title, msg):
@@ -3796,17 +3901,26 @@ def len_flattened(components):
     return n
 
 
-def get_all_children(nodes):
+def get_all_children(nodes, ignore_intermediate_objects=False):
     """Return all children of `nodes` including each instanced child.
     Using maya.cmds.listRelatives(allDescendents=True) includes only the first
     instance. As such, this function acts as an optimal replacement with a
     focus on a fast query.
+
+    Args:
+        nodes (iterable): List of nodes to get children for.
+        ignore_intermediate_objects (bool): Ignore any children that
+            are intermediate objects.
+
+    Returns:
+        set: Children of input nodes.
 
     """
 
     sel = OpenMaya.MSelectionList()
     traversed = set()
     iterator = OpenMaya.MItDag(OpenMaya.MItDag.kDepthFirst)
+    fn_dag = OpenMaya.MFnDagNode()
     for node in nodes:
 
         if node in traversed:
@@ -3823,6 +3937,13 @@ def get_all_children(nodes):
         iterator.next()  # noqa: B305
         while not iterator.isDone():
 
+            if ignore_intermediate_objects:
+                fn_dag.setObject(iterator.currentItem())
+                if fn_dag.isIntermediateObject:
+                    iterator.prune()
+                    iterator.next()  # noqa: B305
+                    continue
+
             path = iterator.fullPathName()
 
             if path in traversed:
@@ -3833,7 +3954,7 @@ def get_all_children(nodes):
             traversed.add(path)
             iterator.next()  # noqa: B305
 
-    return list(traversed)
+    return traversed
 
 
 def get_capture_preset(

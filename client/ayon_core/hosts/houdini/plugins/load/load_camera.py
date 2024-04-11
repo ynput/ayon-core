@@ -89,7 +89,7 @@ class CameraLoader(load.LoaderPlugin):
 
     product_types = {"camera"}
     label = "Load Camera (abc)"
-    representations = ["abc"]
+    representations = {"abc"}
     order = -10
 
     icon = "code-fork"

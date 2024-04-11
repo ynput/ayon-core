@@ -17,7 +17,7 @@ class FusionSetFrameRangeLoader(load.LoaderPlugin):
         "pointcache",
         "render",
     }
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"*"}
 
     label = "Set frame range"
@@ -54,7 +54,7 @@ class FusionSetFrameRangeWithHandlesLoader(load.LoaderPlugin):
         "pointcache",
         "render",
     }
-    representations = ["*"]
+    representations = {"*"}
 
     label = "Set frame range (with handles)"
     order = 12
