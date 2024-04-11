@@ -4270,6 +4270,9 @@ def get_reference_node(members, log=None):
         if ref.rsplit(":", 1)[-1].startswith("_UNKNOWN_REF_NODE_"):
             continue
 
+        if not is_valid_reference_node(ref):
+            continue
+
         references.add(ref)
 
     assert references, "No reference node found in container"
@@ -4300,15 +4303,19 @@ def get_reference_node_parents(ref):
         list: The upstream parent reference nodes.
 
     """
-    parent = cmds.referenceQuery(ref,
-                                 referenceNode=True,
-                                 parent=True)
+    def _get_parent(reference_node):
+        """Return parent reference node, but ignore invalid reference nodes"""
+        if not is_valid_reference_node(reference_node):
+            return
+        return cmds.referenceQuery(reference_node,
+                                   referenceNode=True,
+                                   parent=True)
+
+    parent = _get_parent(ref)
     parents = []
     while parent:
         parents.append(parent)
-        parent = cmds.referenceQuery(parent,
-                                     referenceNode=True,
-                                     parent=True)
+        parent = _get_parent(parent)
     return parents
 
 
