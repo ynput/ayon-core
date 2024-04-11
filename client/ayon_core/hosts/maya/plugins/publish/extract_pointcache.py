@@ -18,6 +18,7 @@ from ayon_core.lib import (
     UILabelDef,
 )
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
+from ayon_core.pipeline import KnownPublishError
 
 
 class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
@@ -36,21 +37,37 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
     targets = ["local", "remote"]
 
     # From settings
-    bake_attributes = []
-    bake_attribute_prefixes = []
-    flags = []
     attr = []
     attrPrefix = []
+    autoSubd = False
+    bake_attributes = []
+    bake_attribute_prefixes = []
     dataFormat = "ogawa"
+    dontSkipUnwrittenFrames = False
+    eulerFilter = False
     melPerFrameCallback = ""
     melPostJobCallback = ""
+    noNormals = False
+    overrides = []
+    preRoll = False
     preRollStartFrame = 0
     pythonPerFrameCallback = ""
     pythonPostJobCallback = ""
+    renderableOnly = False
+    stripNamespaces = True
+    uvsOnly = False
+    uvWrite = False
     userAttr = ""
     userAttrPrefix = ""
+    verbose = False
     visibleOnly = False
-    overrides = []
+    wholeFrameGeo = False
+    worldSpace = True
+    writeColorSets = False
+    writeFaceSets = False
+    writeNormals = True
+    writeUVSets = False
+    writeVisibility = False
 
     def process(self, instance):
         if instance.data.get("farm"):
@@ -101,39 +118,50 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "file": path,
             "attr": attrs,
             "attrPrefix": attr_prefixes,
-            "dataFormat": attribute_values.get("dataFormat", "ogawa"),
+            "dataFormat": attribute_values.get("dataFormat", self.dataFormat),
             "endFrame": end,
-            "eulerFilter": False,
-            "noNormals": False,
-            "preRoll": False,
-            "preRollStartFrame": attribute_values.get(
-                "preRollStartFrame", 0
+            "eulerFilter": attribute_values.get(
+                "eulerFilter", self.eulerFilter
             ),
-            "renderableOnly": False,
+            "noNormals": attribute_values.get("noNormals", self.noNormals),
+            "preRoll": attribute_values.get("preRoll", self.preRoll),
+            "preRollStartFrame": attribute_values.get(
+                "preRollStartFrame", self.preRollStartFrame
+            ),
+            "renderableOnly": attribute_values.get(
+                "renderableOnly", self.renderableOnly
+            ),
             "root": root,
             "selection": True,
             "startFrame": start,
             "step": instance.data.get(
                 "creator_attributes", {}
-            ).get("step", 1.0),
-            "stripNamespaces": False,
-            "uvWrite": False,
-            "verbose": False,
-            "wholeFrameGeo": False,
-            "worldSpace": False,
-            "writeColorSets": False,
-            "writeCreases": False,
-            "writeFaceSets": False,
-            "writeUVSets": False,
-            "writeVisibility": False,
+            ).get("step", 1.0), #missing
+            "stripNamespaces": attribute_values.get(
+                "stripNamespaces", self.stripNamespaces
+            ),
+            "uvWrite": attribute_values.get("uvWrite", self.uvWrite),
+            "verbose": attribute_values.get("verbose", self.verbose),
+            "wholeFrameGeo": attribute_values.get(
+                "wholeFrameGeo", self.wholeFrameGeo
+            ),
+            "worldSpace": attribute_values.get("worldSpace", self.worldSpace),
+            "writeColorSets": attribute_values.get(
+                "writeColorSets", self.writeColorSets
+            ),
+            "writeCreases": attribute_values.get(
+                "writeCreases", self.writeCreases
+            ),
+            "writeFaceSets": attribute_values.get(
+                "writeFaceSets", self.writeFaceSets
+            ),
+            "writeUVSets": attribute_values.get(
+                "writeUVSets", self.writeUVSets
+            ),
+            "writeVisibility": attribute_values.get(
+                "writeVisibility", self.writeVisibility
+            )
         }
-
-        # Export flags are defined as default enabled flags plus publisher
-        # enabled flags.
-        non_exposed_flags = list(set(self.flags) - set(self.overrides))
-        flags = attribute_values["flags"] + non_exposed_flags
-        for flag in flags:
-            kwargs[flag] = True
 
         if instance.data.get("visibleOnly", False):
             # If we only want to include nodes that are visible in the frame
@@ -226,12 +254,42 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "semi-colon `;`"
                 )
             ),
+            "autoSubd": BoolDef(
+                "autoSubd",
+                label="Auto Subd",
+                default=cls.autoSubd,
+                tooltip=(
+                    "If this flag is present and the mesh has crease edges, "
+                    "crease vertices or holes, the mesh (OPolyMesh) would now "
+                    "be written out as an OSubD and crease info will be stored"
+                    " in the Alembic  file. Otherwise, creases info won't be "
+                    "preserved in Alembic file unless a custom Boolean "
+                    "attribute SubDivisionMesh has been added to mesh node and"
+                    " its value is true."
+                )
+            ),
             "dataFormat": EnumDef(
                 "dataFormat",
                 label="Data Format",
                 items=["ogawa", "HDF"],
                 default=cls.dataFormat,
                 tooltip="The data format to use to write the file."
+            ),
+            "dontSkipUnwrittenFrames": BoolDef(
+                "dontSkipUnwrittenFrames",
+                label="Dont Skip Unwritten Frames",
+                default=cls.dontSkipUnwrittenFrames,
+                tooltip=(
+                    "When evaluating multiple translate jobs, this decides "
+                    "whether to evaluate frames between jobs when there is a "
+                    "gap in their frame ranges."
+                )
+            ),
+            "eulerFilter": BoolDef(
+                "eulerFilter",
+                label="Euler Filter",
+                default=cls.eulerFilter,
+                tooltip="Apply Euler filter while sampling rotations."
             ),
             "melPerFrameCallback": TextDef(
                 "melPerFrameCallback",
@@ -250,6 +308,21 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "When the translation has finished the string specified "
                     "is evaluated as a Mel command."
                 )
+            ),
+            "noNormals": BoolDef(
+                "noNormals",
+                label="No Normals",
+                default=cls.noNormals,
+                tooltip=(
+                    "Present normal data for Alembic poly meshes will not be "
+                    "written."
+                )
+            ),
+            "preRoll": BoolDef(
+                "preRoll",
+                label="Pre Roll",
+                default=cls.preRoll,
+                tooltip="This frame range will not be sampled."
             ),
             "preRollStartFrame": NumberDef(
                 "preRollStartFrame",
@@ -280,6 +353,39 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "is evaluated as a python command."
                 )
             ),
+            "renderableOnly": BoolDef(
+                "renderableOnly",
+                label="Renderable Only",
+                default=cls.renderableOnly,
+                tooltip="Only export renderable visible shapes."
+            ),
+            "stripNamespaces": BoolDef(
+                "stripNamespaces",
+                label="Strip Namespaces",
+                default=cls.stripNamespaces,
+                tooltip=(
+                    "Namespaces will be stripped off of the node before being "
+                    "written to Alembic."
+                )
+            ),
+            "uvsOnly": BoolDef(
+                "uvsOnly",
+                label="UVs Only",
+                default=cls.uvsOnly,
+                tooltip=(
+                    "If this flag is present, only uv data for PolyMesh and "
+                    "SubD shapes will be written to the Alembic file."
+                )
+            ),
+            "uvWrite": BoolDef(
+                "uvWrite",
+                label="UV Write",
+                default=cls.uvWrite,
+                tooltip=(
+                    "Uv data for PolyMesh and SubD shapes will be written to "
+                    "the Alembic file."
+                )
+            ),
             "userAttr": TextDef(
                 "userAttr",
                 label="User Attr",
@@ -300,11 +406,68 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "semi-colon `;`"
                 )
             ),
+            "verbose": BoolDef(
+                "verbose",
+                label="Verbose",
+                default=cls.verbose,
+                tooltip="Prints the current frame that is being evaluated."
+            ),
             "visibleOnly": BoolDef(
                 "visibleOnly",
                 label="Visible Only",
                 default=cls.visibleOnly,
                 tooltip="Only export dag objects visible during frame range."
+            ),
+            "wholeFrameGeo": BoolDef(
+                "wholeFrameGeo",
+                label="Whole Frame Geo",
+                default=cls.wholeFrameGeo,
+                tooltip=(
+                    "Data for geometry will only be written out on whole "
+                    "frames."
+                )
+            ),
+            "worldSpace": BoolDef(
+                "worldSpace",
+                label="World Space",
+                default=cls.worldSpace,
+                tooltip="Any root nodes will be stored in world space."
+            ),
+            "writeColorSets": BoolDef(
+                "writeColorSets",
+                label="Write Color Sets",
+                default=cls.writeColorSets,
+                tooltip="Write vertex colors with the geometry."
+            ),
+            "writeFaceSets": BoolDef(
+                "writeFaceSets",
+                label="Write Face Sets",
+                default=cls.writeFaceSets,
+                tooltip="Write face sets with the geometry."
+            ),
+            "writeNormals": BoolDef(
+                "writeNormals",
+                label="Write Normals",
+                default=cls.writeNormals,
+                tooltip="Write normals with the deforming geometry."
+            ),
+            "writeUVSets": BoolDef(
+                "writeUVSets",
+                label="Write UV Sets",
+                default=cls.writeUVSets,
+                tooltip=(
+                    "Write all uv sets on MFnMeshes as vector 2 indexed "
+                    "geometry parameters with face varying scope."
+                )
+            ),
+            "writeVisibility": BoolDef(
+                "writeVisibility",
+                label="Write Visibility",
+                default=cls.writeVisibility,
+                tooltip=(
+                    "Visibility state will be stored in the Alembic file. "
+                    "Otherwise everything written out is treated as visible."
+                )
             )
         }
 
@@ -317,76 +480,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
 
         # The Arguments that can be modified by the Publisher
         overrides = set(cls.overrides)
-
-        # What we have set in the Settings as defaults.
-        flags = set(cls.flags)
-
-        enabled_flags = [x for x in flags if x in overrides]
-        flags = overrides - set(override_defs.keys())
-
-        tooltips = {
-            "autoSubd": (
-                "If this flag is present and the mesh has crease edges, crease"
-                " vertices or holes, the mesh (OPolyMesh) would now be written"
-                " out as an OSubD and crease info will be stored in the "
-                "Alembic  file. Otherwise, creases info won't be preserved in "
-                "Alembic file unless a custom Boolean attribute "
-                "SubDivisionMesh has been added to mesh node and its value is "
-                "true."
-            ),
-            "dontSkipUnwrittenFrames": (
-                "When evaluating multiple translate jobs, this decides whether"
-                " to evaluate frames between jobs when there is a gap in their"
-                " frame ranges."
-            ),
-            "eulerFilter": "Apply Euler filter while sampling rotations.",
-            "noNormals": (
-                "Present normal data for Alembic poly meshes will not be "
-                "written."
-            ),
-            "preRoll": "This frame range will not be sampled.",
-            "renderableOnly": "Only export renderable visible shapes.",
-            "stripNamespaces": (
-                "Namespaces will be stripped off of the node before being "
-                "written to Alembic."
-            ),
-            "uvWrite": (
-                "Uv data for PolyMesh and SubD shapes will be written to the "
-                "Alembic file."
-            ),
-            "uvsOnly": (
-                "If this flag is present, only uv data for PolyMesh and SubD "
-                "shapes will be written to the Alembic file."
-            ),
-            "verbose": "Prints the current frame that is being evaluated.",
-            "wholeFrameGeo": (
-                "Data for geometry will only be written out on whole frames."
-            ),
-            "worldSpace": "Any root nodes will be stored in world space.",
-            "writeColorSets": "Write vertex colors with the geometry.",
-            "writeFaceSets": "Write face sets with the geometry.",
-            "writeNormals": "Write normals with the deforming geometry.",
-            "writeUVSets": (
-                "Write all uv sets on MFnMeshes as vector 2 indexed geometry"
-                " parameters with face varying scope."
-            ),
-            "writeVisibility": (
-                "Visibility state will be stored in the Alembic file. "
-                "Otherwise everything written out is treated as visible."
-            )
-        }
-        tooltip = "\n".join(f"{flag} - {tooltips['flag']}" for flag in sorted(flags))
-        defs.append(
-            EnumDef(
-                "flags",
-                flags,
-                default=enabled_flags,
-                multiselection=True,
-                label="Export Flags",
-                tooltip=tooltip,
-            )
-        )
-
         for key, value in override_defs.items():
             if key not in overrides:
                 continue
