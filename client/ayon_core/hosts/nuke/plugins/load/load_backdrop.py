@@ -22,7 +22,7 @@ class LoadBackdropNodes(load.LoaderPlugin):
     """Loading Published Backdrop nodes (workfile, nukenodes)"""
 
     product_types = {"workfile", "nukenodes"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"nk"}
 
     label = "Import Nuke Nodes"
