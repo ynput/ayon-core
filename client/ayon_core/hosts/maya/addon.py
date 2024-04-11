@@ -22,15 +22,15 @@ class MayaAddon(AYONAddon, IHostAddon):
             if norm_path not in new_python_paths:
                 new_python_paths.append(norm_path)
 
+        # add vendor path
+        new_python_paths.append(
+            os.path.join(MAYA_ROOT_DIR, "vendor", "python")
+        )
         env["PYTHONPATH"] = os.pathsep.join(new_python_paths)
 
         # Set default environments
         envs = {
             "AYON_LOG_NO_COLORS": "1",
-            # For python module 'qtpy'
-            "QT_API": "PySide2",
-            # For python module 'Qt'
-            "QT_PREFERRED_BINDING": "PySide2"
         }
         for key, value in envs.items():
             env[key] = value

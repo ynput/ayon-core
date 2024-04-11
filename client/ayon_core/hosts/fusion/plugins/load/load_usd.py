@@ -17,7 +17,7 @@ class FusionLoadUSD(load.LoaderPlugin):
     """
 
     product_types = {"*"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"usd", "usda", "usdz"}
 
     label = "Load USD"
