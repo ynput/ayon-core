@@ -146,6 +146,8 @@ class CollectAERender(publish.AbstractCollectRender):
                     # to skip ExtractReview locally
                     instance.families.remove("review")
 
+            instances.append(instance)
+
         return instances
 
     def get_expected_files(self, render_instance):
