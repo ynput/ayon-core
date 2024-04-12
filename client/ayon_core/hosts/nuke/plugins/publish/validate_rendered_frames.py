@@ -1,6 +1,6 @@
-import os
 import pyblish.api
 import clique
+
 from ayon_core.pipeline import PublishXmlValidationError
 from ayon_core.pipeline.publish import get_errored_instances_from_context
 

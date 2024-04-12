@@ -140,7 +140,7 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
         invalid = []
         if instance.name not in file_name:
             cls.log.error("The renderpass filename should contain the instance name.")
-            invalid.append((f"Invalid instance name",
+            invalid.append(("Invalid instance name",
                             file_name))
         if renderpass is not None:
             if not file_name.rstrip(".").endswith(renderpass):

@@ -186,14 +186,15 @@ class ShotMetadataSolver:
             # in case first parent is project then start parents from start
             if (
                 _index == 0
-                and parent_token_type == "project"
+                and parent_token_type.lower() == "project"
             ):
                 project_parent = parents[0]
                 parents = [project_parent]
                 continue
 
             parents.append({
-                "entity_type": parent_token_type,
+                "entity_type": "folder",
+                "folder_type": parent_token_type.lower(),
                 "entity_name": parent_name
             })
 
@@ -264,7 +265,8 @@ class ShotMetadataSolver:
         }]
         for entity in folders_hierarchy:
             output.append({
-                "entity_type": entity["folderType"],
+                "entity_type": "folder",
+                "folder_type": entity["folderType"],
                 "entity_name": entity["name"]
             })
         return output
