@@ -108,7 +108,7 @@ class WebServerTool:
             result = con.connect_ex((host_name, port)) == 0
 
         if result:
-            print("Port is in use")
+            print(f"Port {port} is already in use")
         return result
 
     def call(self, func):
