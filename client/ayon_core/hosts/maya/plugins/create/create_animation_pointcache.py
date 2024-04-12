@@ -27,7 +27,11 @@ def _get_animation_attr_defs(cls):
             ),
             BoolDef(
                 "includeUserDefinedAttributes",
-                label="Include User Defined Attributes"
+                label="Include User Defined Attributes",
+                tooltip=(
+                    "Whether to include all custom maya attributes found "
+                    "on nodes as attributes in the Alembic data."
+                )
             ),
         ]
     )
