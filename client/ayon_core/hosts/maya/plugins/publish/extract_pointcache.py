@@ -238,7 +238,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "attr": TextDef(
                 "attr",
                 label="Custom Attributes",
-                placeholder="attr1;attr2",
+                placeholder="attr1; attr2; ...",
                 default=cls.attr,
                 tooltip=(
                     "Attributes matching by name will be included in the "
