@@ -196,6 +196,16 @@ def submit_headless_farm(node):
 
 
 def _submit_headless_farm(node):
+    """Headless farm submission
+
+    This function prepares the context for farm submission, validates it,
+    extracts relevant data, copies the current workfile to a timestamped copy,
+    and submits the job to the farm.
+
+    Args:
+        node (Node): The node for which the farm submission is being made.
+    """
+
     context = util.collect()
 
     success, error_report = create_error_report(context)
