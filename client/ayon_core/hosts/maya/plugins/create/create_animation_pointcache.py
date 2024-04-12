@@ -88,23 +88,10 @@ class CreateAnimation(plugin.MayaHiddenCreator):
     include_parent_hierarchy = False
     include_user_defined_attributes = False
 
-    def collect_instances(self):
-        key = "maya_cached_instance_data"
-        try:
-            cached_subsets = self.collection_shared_data[key]
-        except KeyError:
-            self.cache_instance_data(self.collection_shared_data)
-            cached_subsets = self.collection_shared_data[key]
-
-        for node in cached_subsets.get(self.identifier, []):
-            node_data = self.read_instance_node(node)
-
-            node_data = extract_alembic_attributes(
-                node_data, "ExtractAnimation"
-            )
-
-            created_instance = CreatedInstance.from_existing(node_data, self)
-            self._add_instance_to_context(created_instance)
+    def read_instance_node(self, node):
+        node_data = super(CreateAnimation, self).read_instance_node(node)
+        node_data = extract_alembic_attributes(node_data, "ExtractAnimation")
+        return node_data
 
     def get_instance_attr_defs(self):
         super(CreateAnimation, self).get_instance_attr_defs()
@@ -123,21 +110,10 @@ class CreatePointCache(plugin.MayaCreator):
     write_face_sets = False
     include_user_defined_attributes = False
 
-    def collect_instances(self):
-        key = "maya_cached_instance_data"
-        try:
-            cached_subsets = self.collection_shared_data[key]
-        except KeyError:
-            self.cache_instance_data(self.collection_shared_data)
-            cached_subsets = self.collection_shared_data[key]
-
-        for node in cached_subsets.get(self.identifier, []):
-            node_data = self.read_instance_node(node)
-
-            node_data = extract_alembic_attributes(node_data, "ExtractAlembic")
-
-            created_instance = CreatedInstance.from_existing(node_data, self)
-            self._add_instance_to_context(created_instance)
+    def read_instance_node(self, node):
+        node_data = super(CreatePointCache, self).read_instance_node(node)
+        node_data = extract_alembic_attributes(node_data, "ExtractAlembic")
+        return node_data
 
     def get_instance_attr_defs(self):
         super(CreatePointCache, self).get_instance_attr_defs()
