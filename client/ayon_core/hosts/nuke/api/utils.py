@@ -152,6 +152,19 @@ def is_headless():
 
 
 def create_error_report(context):
+    """Create an error report based on the given pyblish context.
+
+    This function iterates through the results in the context and formats any
+    errors into a comprehensive error report.
+
+    Args:
+        context (dict): Pyblish context.
+
+    Returns:
+        tuple: A tuple containing a boolean indicating success and a string
+        representing the error message.
+    """
+
     error_message = ""
     success = True
     for result in context.data["results"]:
