@@ -5,7 +5,7 @@ import sys
 import six
 import random
 import string
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import (

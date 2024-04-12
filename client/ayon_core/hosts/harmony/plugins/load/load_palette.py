@@ -12,7 +12,7 @@ class ImportPaletteLoader(load.LoaderPlugin):
     """Import palettes."""
 
     product_types = {"palette", "harmony.palette"}
-    representations = ["plt"]
+    representations = {"plt"}
     label = "Import Palette"
 
     def load(self, context, name=None, namespace=None, data=None):
