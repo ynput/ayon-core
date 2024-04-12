@@ -427,7 +427,10 @@ class ExtractAlembicModel(BaseSettingsModel):
         title="Pre Roll",
         description=(
             "When enabled, the pre roll start frame is used to pre roll the "
-            "export for."
+            "When enabled, the pre roll start frame is used to being the "
+            "evaluation of the mesh. From the pre roll start frame to the "
+            "alembic start frame, will not be written to disk. This can be "
+            "used for simulation run up."
         )
     )
     preRollStartFrame: int = SettingsField(
