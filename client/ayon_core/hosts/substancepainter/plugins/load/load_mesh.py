@@ -67,8 +67,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
             path = self.filepath_from_context(context)
             # TODO: improve the prompt dialog function to not
             # only works for simple polygon scene
-            result = prompt_new_file_with_mesh(
-                mesh_filepath=path, allow_user_setting=allow_user_setting)
+            result = prompt_new_file_with_mesh(mesh_filepath=path)
             if not result:
                 self.log.info("User cancelled new project prompt."
                               "Creating new project directly from"
