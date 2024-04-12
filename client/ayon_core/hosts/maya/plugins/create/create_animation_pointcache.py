@@ -58,7 +58,7 @@ def extract_alembic_attributes(node_data, class_name):
     ]
     plugin_attributes = {}
     for attr in attributes:
-        if attr not in node_data["creator_attributes"].keys():
+        if attr not in node_data["creator_attributes"]:
             continue
         value = node_data["creator_attributes"].pop(attr)
 
