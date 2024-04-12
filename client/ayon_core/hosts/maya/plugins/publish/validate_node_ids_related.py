@@ -1,3 +1,4 @@
+import uuid
 from collections import defaultdict
 import pyblish.api
 
@@ -6,6 +7,15 @@ from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin, PublishValidationError, ValidatePipelineOrder)
 from ayon_api import get_folders
+
+
+def is_valid_uuid(value) -> bool:
+    """Return whether value is a valid UUID"""
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
@@ -70,6 +80,14 @@ class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
         if nodes_by_other_folder_ids:
             project_name = instance.context.data["projectName"]
             other_folder_ids = set(nodes_by_other_folder_ids.keys())
+
+            # Remove folder ids that are not valid UUID identifiers, these
+            # may be legacy OpenPype ids
+            other_folder_ids = {folder_id for folder_id in other_folder_ids
+                                if is_valid_uuid(folder_id)}
+            if not other_folder_ids:
+                return invalid
+
             folder_entities = get_folders(project_name=project_name,
                                           folder_ids=other_folder_ids,
                                           fields=["path"])
