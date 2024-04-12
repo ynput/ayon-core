@@ -185,14 +185,18 @@ class UnrealPrelaunchHook(PreLaunchHook):
             unreal_project_name = f"P{unreal_project_name}"
             unreal_project_filename = f'{unreal_project_name}.uproject'
 
-        project_path = Path(os.path.join(workdir, unreal_project_name))
+        last_workfile_path = self.data.get("last_workfile_path")
+        if last_workfile_path and os.path.exists(last_workfile_path):
+            project_path = Path(os.path.dirname(last_workfile_path))
+            unreal_project_filename = Path(os.path.basename(last_workfile_path))
+        else:
+            project_path = Path(os.path.join(workdir, unreal_project_name))
+            project_path.mkdir(parents=True, exist_ok=True)
 
         self.log.info((
             f"{self.signature} requested UE version: "
             f"[ {engine_version} ]"
         ))
-
-        project_path.mkdir(parents=True, exist_ok=True)
 
         # engine_path points to the specific Unreal Engine root
         # so, we are going up from the executable itself 3 levels.
