@@ -209,16 +209,16 @@ def _submit_headless_farm(node):
     # Find instance for node and workfile.
     instance = None
     instance_workfile = None
-    for Instance in context:
-        if Instance.data["family"] == "workfile":
-            instance_workfile = Instance
+    for _instance in context:
+        if _instance.data["family"] == "workfile":
+            instance_workfile = _instance
             continue
 
-        instance_node = Instance.data["transientData"]["node"]
+        instance_node = _instance.data["transientData"]["node"]
         if node.name() == instance_node.name():
-            instance = Instance
+            instance = _instance
         else:
-            Instance.data["active"] = False
+            _instance.data["active"] = False
 
     if instance is None:
         show_message_dialog(
