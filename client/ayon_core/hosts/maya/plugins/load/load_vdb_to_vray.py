@@ -78,7 +78,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
     """Load OpenVDB in a V-Ray Volume Grid"""
 
     product_types = {"vdbcache"}
-    representations = ["vdb"]
+    representations = {"vdb"}
 
     label = "Load VDB to VRay"
     icon = "cloud"

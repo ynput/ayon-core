@@ -13,7 +13,7 @@ class VdbLoader(load.LoaderPlugin):
 
     product_types = {"vdbcache"}
     label = "Load VDB"
-    representations = ["vdb"]
+    representations = {"vdb"}
     order = -10
     icon = "code-fork"
     color = "orange"
