@@ -136,7 +136,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "startFrame": start,
             "step": instance.data.get(
                 "creator_attributes", {}
-            ).get("step", 1.0), #missing
+            ).get("step", 1.0),
             "stripNamespaces": attribute_values.get(
                 "stripNamespaces", self.stripNamespaces
             ),
