@@ -1,3 +1,4 @@
+import inspect
 import uuid
 from collections import defaultdict
 import pyblish.api
@@ -20,10 +21,7 @@ def is_valid_uuid(value) -> bool:
 
 class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
                              OptionalPyblishPluginMixin):
-    """Validate nodes have a related Colorbleed Id to the
-    instance.data[folderPath]
-
-    """
+    """Validate nodes have a related `cbId` to the instance.data[folderPath]"""
 
     order = ValidatePipelineOrder
     label = 'Node Ids Related (ID)'
@@ -51,11 +49,14 @@ class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
         # Ensure all nodes have a cbId
         invalid = self.get_invalid(instance)
         if invalid:
+
+            invalid_list = "\n".join(f"- {node}" for node in sorted(invalid))
+
             raise PublishValidationError((
-                "Nodes IDs found that are not related to folder '{}' : {}"
-            ).format(
-                instance.data["folderPath"], invalid
-            ))
+                "Nodes IDs found that are not related to folder '{}':\n{}"
+                ).format(instance.data["folderPath"], invalid_list),
+                description=self.get_description()
+            )
 
     @classmethod
     def get_invalid(cls, instance):
@@ -98,8 +99,24 @@ class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
                 # takes care of that.
                 folder_paths = {entity["path"] for entity in folder_entities}
                 cls.log.error(
-                    "Found nodes related to other assets: {}"
-                    .format(", ".join(sorted(folder_paths)))
+                    "Found nodes related to other folders:\n{}".format(
+                        "\n".join(f"- {path}" for path in sorted(folder_paths))
+                    )
                 )
 
         return invalid
+
+    @staticmethod
+    def get_description():
+        return inspect.cleandoc("""### Node IDs must match folder id
+        
+        The node ids must match the folder entity id you are publishing to.
+        
+        Usually these mismatch occurs if you are re-using nodes from another 
+        folder or project. 
+        
+        #### How to repair?
+        
+        The repair action will regenerate new ids for 
+        the invalid nodes to match the instance's folder.
+        """)
