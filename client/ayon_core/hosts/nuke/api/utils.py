@@ -235,6 +235,7 @@ def _submit_headless_farm(node):
     for _instance in context:
         if _instance.data["family"] == "workfile":
             instance_workfile = _instance
+            _instance.data["active"] = False
             continue
 
         instance_node = _instance.data["transientData"]["node"]
