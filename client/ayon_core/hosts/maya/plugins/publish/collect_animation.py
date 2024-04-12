@@ -58,8 +58,3 @@ class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
 
         if instance.data.get("farm"):
             instance.data["families"].append("publish.farm")
-
-        # User defined attributes.
-        instance.data["includeUserDefinedAttributes"] = (
-            instance.data["creator_attributes"]["includeUserDefinedAttributes"]
-        )

@@ -14,7 +14,10 @@ class CollectUserDefinedAttributes(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         # Collect user defined attributes.
-        if not instance.data.get("includeUserDefinedAttributes", False):
+        if not instance.data.get(
+            "includeUserDefinedAttributes",
+            instance.data["creator_attributes"]["includeUserDefinedAttributes"]
+        ):
             return
 
         if "out_hierarchy" in instance.data:
