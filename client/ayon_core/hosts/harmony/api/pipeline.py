@@ -13,7 +13,7 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import get_outdated_containers
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 
 from ayon_core.hosts.harmony import HARMONY_ADDON_ROOT
 import ayon_core.hosts.harmony.api as harmony
@@ -50,7 +50,7 @@ def get_current_context_settings():
 
     """
 
-    folder_entity = get_current_project_folder()
+    folder_entity = get_current_folder_entity()
     folder_attributes = folder_entity["attrib"]
 
     fps = folder_attributes.get("fps")

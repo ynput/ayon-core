@@ -24,7 +24,7 @@ class ModelUSDLoader(load.LoaderPlugin):
 
     product_types = {"model"}
     label = "Load Model(USD)"
-    representations = ["usda"]
+    representations = {"usda"}
     order = -10
     icon = "code-fork"
     color = "orange"

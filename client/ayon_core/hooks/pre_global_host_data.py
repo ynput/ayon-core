@@ -1,7 +1,7 @@
 from ayon_api import get_project, get_folder_by_path, get_task_by_name
 
-from ayon_core.lib.applications import (
-    PreLaunchHook,
+from ayon_applications import PreLaunchHook
+from ayon_applications.utils import (
     EnvironmentPrepData,
     prepare_app_environments,
     prepare_context_environments

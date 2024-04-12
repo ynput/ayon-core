@@ -16,7 +16,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateNoAnimation(pyblish.api.Validator,
+class ValidateNoAnimation(pyblish.api.InstancePlugin,
                           OptionalPyblishPluginMixin):
     """Ensure no keyframes on nodes in the Instance.
 
