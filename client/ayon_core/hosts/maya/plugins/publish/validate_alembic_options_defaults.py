@@ -74,13 +74,10 @@ class ValidateAlembicOptionsDefaults(
     def repair(cls, instance):
         # Find create instance twin.
         create_context = instance.context.data["create_context"]
-        create_instance = None
         create_instance = next(
             inst for inst in create_context.instances
             if inst.data["instance_id"] == instance.data["instance_id"]
         )
-
-        assert create_instance is not None
 
         # Set the settings values on the create context then save to workfile.
         publish_attributes = instance.data["publish_attributes"]
