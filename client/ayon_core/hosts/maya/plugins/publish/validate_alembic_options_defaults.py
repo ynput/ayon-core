@@ -22,7 +22,7 @@ class ValidateAlembicOptionsDefaults(
     @classmethod
     def _get_plugin_name(cls, publish_attributes):
         for key in ["ExtractAnimation", "ExtractAlembic"]:
-            if key in publish_attributes.keys():
+            if key in publish_attributes:
                 return key
 
     @classmethod
