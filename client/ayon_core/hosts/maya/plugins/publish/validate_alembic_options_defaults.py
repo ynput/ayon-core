@@ -75,10 +75,10 @@ class ValidateAlembicOptionsDefaults(
         # Find create instance twin.
         create_context = instance.context.data["create_context"]
         create_instance = None
-        for Instance in create_context.instances:
-            if Instance.data["instance_id"] == instance.data["instance_id"]:
-                create_instance = Instance
-                break
+        create_instance = next(
+            inst for inst in create_context.instances
+            if inst.data["instance_id"] == instance.data["instance_id"]
+        )
 
         assert create_instance is not None
 
