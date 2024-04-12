@@ -392,6 +392,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "userAttr": TextDef(
                 "userAttr",
                 label="User Attr",
+                placeholder="attr1; attr2; ...",
                 default=cls.userAttr,
                 tooltip=(
                     "Attributes matching by name will be included in the "
@@ -402,6 +403,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "userAttrPrefix": TextDef(
                 "userAttrPrefix",
                 label="User Attr Prefix",
+                placeholder="prefix1; prefix2; ...",
                 default=cls.userAttrPrefix,
                 tooltip=(
                     "Attributes starting with these prefixes will be included "
