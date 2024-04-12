@@ -35,7 +35,7 @@ def _get_animation_attr_defs(cls):
     return defs
 
 
-def extract_alembic_attributes(node_data, class_name):
+def convert_legacy_alembic_creator_attributes(node_data, class_name):
     """This is a legacy transfer of creator attributes to publish attributes
     for ExtractAlembic/ExtractAnimation plugin.
     """
@@ -90,7 +90,9 @@ class CreateAnimation(plugin.MayaHiddenCreator):
 
     def read_instance_node(self, node):
         node_data = super(CreateAnimation, self).read_instance_node(node)
-        node_data = extract_alembic_attributes(node_data, "ExtractAnimation")
+        node_data = convert_legacy_alembic_creator_attributes(
+            node_data, "ExtractAnimation"
+        )
         return node_data
 
     def get_instance_attr_defs(self):
@@ -112,7 +114,9 @@ class CreatePointCache(plugin.MayaCreator):
 
     def read_instance_node(self, node):
         node_data = super(CreatePointCache, self).read_instance_node(node)
-        node_data = extract_alembic_attributes(node_data, "ExtractAlembic")
+        node_data = convert_legacy_alembic_creator_attributes(
+            node_data, "ExtractAlembic"
+        )
         return node_data
 
     def get_instance_attr_defs(self):
