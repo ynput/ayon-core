@@ -3,8 +3,8 @@ import sys
 import re
 import contextlib
 
-from ayon_core.lib import Logger
-
+from ayon_core.lib import Logger, BoolDef, UILabelDef
+from ayon_core.style import load_stylesheet
 from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.context_tools import get_current_folder_entity
@@ -181,7 +181,6 @@ def validate_comp_prefs(comp=None, force_repair=False):
 
         from . import menu
         from ayon_core.tools.utils import SimplePopup
-        from ayon_core.style import load_stylesheet
         dialog = SimplePopup(parent=menu.menu)
         dialog.setWindowTitle("Fusion comp has invalid configuration")
 
@@ -340,9 +339,7 @@ def prompt_reset_context():
     from ayon_core.tools.attribute_defs.dialog import (
         AttributeDefinitionsDialog
     )
-    from ayon_core.style import load_stylesheet
-    from ayon_core.lib import BoolDef, UILabelDef
-    from qtpy import QtWidgets, QtCore
+    from qtpy import QtCore
 
     definitions = [
         UILabelDef(

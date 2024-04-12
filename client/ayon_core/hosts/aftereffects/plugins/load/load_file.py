@@ -20,7 +20,7 @@ class FileLoader(api.AfterEffectsLoader):
         "review",
         "audio",
     }
-    representations = ["*"]
+    representations = {"*"}
 
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()

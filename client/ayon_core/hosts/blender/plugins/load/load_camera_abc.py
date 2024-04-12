@@ -24,7 +24,7 @@ class AbcCameraLoader(plugin.AssetLoader):
     """
 
     product_types = {"camera"}
-    representations = ["abc"]
+    representations = {"abc"}
 
     label = "Load Camera (ABC)"
     icon = "code-fork"

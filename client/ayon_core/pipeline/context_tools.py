@@ -1,7 +1,6 @@
 """Core pipeline functionality"""
 
 import os
-import types
 import logging
 import platform
 import uuid
@@ -21,7 +20,6 @@ from .anatomy import Anatomy
 from .template_data import get_template_data_with_names
 from .workfile import (
     get_workdir,
-    get_workfile_template_key,
     get_custom_workfile_template_by_string_context,
 )
 from . import (

@@ -15,6 +15,7 @@ from abc import ABCMeta, abstractmethod
 import six
 import appdirs
 import ayon_api
+from semver import VersionInfo
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import Logger, is_dev_mode_enabled
@@ -46,6 +47,11 @@ IGNORED_HOSTS_IN_AYON = {
 }
 IGNORED_MODULES_IN_AYON = set()
 
+# When addon was moved from ayon-core codebase
+# - this is used to log the missing addon
+MOVED_ADDON_MILESTONE_VERSIONS = {
+    "applications": VersionInfo(2, 0, 0),
+}
 
 # Inherit from `object` for Python 2 hosts
 class _ModuleClass(object):
@@ -192,6 +198,45 @@ def _get_ayon_addons_information(bundle_info):
     return output
 
 
+def _handle_moved_addons(addon_name, milestone_version, log):
+    """Log message that addon version is not compatible with current core.
+
+    The function can return path to addon client code, but that can happen
+        only if ayon-core is used from code (for development), but still
+        logs a warning.
+
+    Args:
+        addon_name (str): Addon name.
+        milestone_version (str): Milestone addon version.
+        log (logging.Logger): Logger object.
+
+    Returns:
+        Union[str, None]: Addon dir or None.
+    """
+    # Handle addons which were moved out of ayon-core
+    # - Try to fix it by loading it directly from server addons dir in
+    #   ayon-core repository. But that will work only if ayon-core is
+    #   used from code.
+    addon_dir = os.path.join(
+        os.path.dirname(os.path.dirname(AYON_CORE_ROOT)),
+        "server_addon",
+        addon_name,
+        "client",
+    )
+    if not os.path.exists(addon_dir):
+        log.error((
+            "Addon '{}' is not be available."
+            " Please update applications addon to '{}' or higher."
+        ).format(addon_name, milestone_version))
+        return None
+
+    log.warning((
+        "Please update '{}' addon to '{}' or higher."
+        " Using client code from ayon-core repository."
+    ).format(addon_name, milestone_version))
+    return addon_dir
+
+
 def _load_ayon_addons(openpype_modules, modules_key, log):
     """Load AYON addons based on information from server.
 
@@ -249,12 +294,23 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
         use_dev_path = dev_addon_info.get("enabled", False)
 
         addon_dir = None
+        milestone_version = MOVED_ADDON_MILESTONE_VERSIONS.get(addon_name)
         if use_dev_path:
             addon_dir = dev_addon_info["path"]
             if not addon_dir or not os.path.exists(addon_dir):
                 log.warning((
                     "Dev addon {} {} path does not exists. Path \"{}\""
                 ).format(addon_name, addon_version, addon_dir))
+                continue
+
+        elif (
+            milestone_version is not None
+            and VersionInfo.parse(addon_version) < milestone_version
+        ):
+            addon_dir = _handle_moved_addons(
+                addon_name, milestone_version, log
+            )
+            if not addon_dir:
                 continue
 
         elif addons_dir_exists:
@@ -336,66 +392,9 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
     return addons_to_skip_in_core
 
 
-def _load_ayon_core_addons_dir(
-    ignore_addon_names, openpype_modules, modules_key, log
-):
-    addons_dir = os.path.join(AYON_CORE_ROOT, "addons")
-    if not os.path.exists(addons_dir):
-        return
-
-    imported_modules = []
-
-    # Make sure that addons which already have client code are not loaded
-    #   from core again, with older code
-    filtered_paths = []
-    for name in os.listdir(addons_dir):
-        if name in ignore_addon_names:
-            continue
-        path = os.path.join(addons_dir, name)
-        if os.path.isdir(path):
-            filtered_paths.append(path)
-
-    for path in filtered_paths:
-        while path in sys.path:
-            sys.path.remove(path)
-        sys.path.insert(0, path)
-
-        for name in os.listdir(path):
-            fullpath = os.path.join(path, name)
-            if os.path.isfile(fullpath):
-                basename, ext = os.path.splitext(name)
-                if ext != ".py":
-                    continue
-            else:
-                basename = name
-            try:
-                module = __import__(basename, fromlist=("",))
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if (
-                        inspect.isclass(attr)
-                        and issubclass(attr, AYONAddon)
-                    ):
-                        new_import_str = "{}.{}".format(modules_key, basename)
-                        sys.modules[new_import_str] = module
-                        setattr(openpype_modules, basename, module)
-                        imported_modules.append(module)
-                        break
-
-            except Exception:
-                log.error(
-                    "Failed to import addon '{}'.".format(fullpath),
-                    exc_info=True
-                )
-    return imported_modules
-
-
 def _load_addons_in_core(
     ignore_addon_names, openpype_modules, modules_key, log
 ):
-    _load_ayon_core_addons_dir(
-        ignore_addon_names, openpype_modules, modules_key, log
-    )
     # Add current directory at first place
     #   - has small differences in import logic
     hosts_dir = os.path.join(AYON_CORE_ROOT, "hosts")
