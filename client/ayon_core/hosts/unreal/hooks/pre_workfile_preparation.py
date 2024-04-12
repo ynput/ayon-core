@@ -14,6 +14,7 @@ from ayon_applications import (
     ApplicationLaunchFailed,
     LaunchTypes,
 )
+from ayon_common.utils import get_local_site_id
 from ayon_core.pipeline.workfile import get_workfile_template_key
 import ayon_core.hosts.unreal.lib as unreal_lib
 from ayon_core.hosts.unreal.ue_workers import (
@@ -172,7 +173,8 @@ class UnrealPrelaunchHook(PreLaunchHook):
                 project_name=self.data["project_name"]
             )
             workdir = conn_info["workspace_dir"]
-            self._sync_latest_version(version_control_addon, conn_info)
+            self._sync_latest_version(version_control_addon, conn_info,
+                                      self.data["project_name"])
         unreal_project_name = os.path.splitext(unreal_project_filename)[0]
         # Unreal is sensitive about project names longer then 20 chars
         if len(unreal_project_name) > 20:
@@ -267,7 +269,7 @@ class UnrealPrelaunchHook(PreLaunchHook):
             return version_control_addon
         return None
 
-    def _sync_latest_version(self, version_addon, conn_info):
+    def _sync_latest_version(self, version_addon, conn_info, project_name):
         from version_control.backends.perforce.api.rest_stub import \
             PerforceRestStub
         try:
@@ -278,7 +280,11 @@ class UnrealPrelaunchHook(PreLaunchHook):
                                    workspace=conn_info["workspace_dir"])
             PerforceRestStub.sync_latest_version(conn_info["workspace_dir"])
         except RuntimeError:
+            sett_link = (f"ayon+settings://version_control?"
+                         f"project={project_name}"
+                         f"&site={get_local_site_id()}")
+
             raise RuntimeError("Perforce should be used, please provide "
                                "valid credentials in "
-                               "'ayon+settings://version_control'")
+                               f"{sett_link}")
         return
