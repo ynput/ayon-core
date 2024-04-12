@@ -144,7 +144,8 @@ class CreateTextures(Creator):
                         9: "512",
                         10: "1024",
                         11: "2048",
-                        12: "4096"
+                        12: "4096",
+                        13: "8192"
                     },
                     default=None,
                     label="Size"),
