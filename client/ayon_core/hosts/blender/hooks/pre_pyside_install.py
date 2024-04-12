@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 from platform import system
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 
 
 class InstallPySideToBlender(PreLaunchHook):
@@ -139,7 +139,6 @@ class InstallPySideToBlender(PreLaunchHook):
         administration rights.
         """
         try:
-            import win32api
             import win32con
             import win32process
             import win32event
