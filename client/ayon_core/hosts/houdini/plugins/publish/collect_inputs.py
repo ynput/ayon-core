@@ -1,9 +1,21 @@
+from collections import deque
+
 import pyblish.api
 
 from ayon_core.pipeline import registered_host
 
 
-def collect_input_containers(nodes):
+def get_container_members(container):
+    node = container["node"]
+    # Usually the loaded containers don't have any complex references
+    # and the contained children should be all we need. So we disregard
+    # checking for .references() on the nodes.
+    members = set(node.allSubChildren())
+    members.add(node)  # include the node itself
+    return members
+
+
+def collect_input_containers(containers, nodes):
     """Collect containers that contain any of the node in `nodes`.
 
     This will return any loaded Avalon container that contains at least one of
@@ -11,30 +23,13 @@ def collect_input_containers(nodes):
     there are member nodes of that container.
 
     Returns:
-        list: Input avalon containers
+        list: Loaded containers that contain the `nodes`
 
     """
-
-    # Lookup by node ids
-    lookup = frozenset(nodes)
-
-    containers = []
-    host = registered_host()
-    for container in host.ls():
-
-        node = container["node"]
-
-        # Usually the loaded containers don't have any complex references
-        # and the contained children should be all we need. So we disregard
-        # checking for .references() on the nodes.
-        members = set(node.allSubChildren())
-        members.add(node)  # include the node itself
-
-        # If there's an intersection
-        if not lookup.isdisjoint(members):
-            containers.append(container)
-
-    return containers
+    # Assume the containers have collected their cached '_members' data
+    # in the collector.
+    return [container for container in containers
+            if any(node in container["_members"] for node in nodes)]
 
 
 def iter_upstream(node):
@@ -54,7 +49,7 @@ def iter_upstream(node):
     )
 
     # Initialize process queue with the node's ancestors itself
-    queue = list(upstream)
+    queue = deque(upstream)
     collected = set(upstream)
 
     # Traverse upstream references for all nodes and yield them as we
@@ -72,6 +67,10 @@ def iter_upstream(node):
 
         # Include the references' ancestors that have not been collected yet.
         for reference in references:
+            if reference in collected:
+                # Might have been collected in previous iteration
+                continue
+
             ancestors = reference.inputAncestors(
                 include_ref_inputs=True, follow_subnets=True
             )
@@ -108,13 +107,32 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
             )
             return
 
-        # Collect all upstream parents
-        nodes = list(iter_upstream(output))
-        nodes.append(output)
+        # For large scenes the querying of "host.ls()" can be relatively slow
+        # e.g. up to a second. Many instances calling it easily slows this
+        # down. As such, we cache it so we trigger it only once.
+        # todo: Instead of hidden cache make "CollectContainers" plug-in
+        cache_key = "__cache_containers"
+        scene_containers = instance.context.data.get(cache_key, None)
+        if scene_containers is None:
+            # Query the scenes' containers if there's no cache yet
+            host = registered_host()
+            scene_containers = list(host.ls())
+            for container in scene_containers:
+                # Embed the members into the container dictionary
+                container_members = set(get_container_members(container))
+                container["_members"] = container_members
+            instance.context.data[cache_key] = scene_containers
 
-        # Collect containers for the given set of nodes
-        containers = collect_input_containers(nodes)
+        inputs = []
+        if scene_containers:
+            # Collect all upstream parents
+            nodes = list(iter_upstream(output))
+            nodes.append(output)
 
-        inputs = [c["representation"] for c in containers]
+            # Collect containers for the given set of nodes
+            containers = collect_input_containers(scene_containers, nodes)
+
+            inputs = [c["representation"] for c in containers]
+
         instance.data["inputRepresentations"] = inputs
         self.log.debug("Collected inputs: %s" % inputs)
