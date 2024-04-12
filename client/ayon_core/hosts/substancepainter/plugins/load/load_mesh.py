@@ -27,6 +27,11 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
 
     @classmethod
     def get_options(cls, contexts):
+        project_workflow_option = {
+            substance_painter.project.ProjectWorkflow.Default: "default",
+            substance_painter.project.ProjectWorkflow.UVTile: "uvTile",
+            substance_painter.project.ProjectWorkflow.TextureSetPerUVTile: "textureSetPerUVTile"     # noqa
+        }
         return [
             BoolDef("preserve_strokes",
                     default=True,
@@ -43,7 +48,12 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
                     items=[128, 256, 512, 1024, 2048, 4096],
                     default=1024,
                     label="Texture Resolution",
-                    tooltip="Set texture resolution when creating new project")
+                    tooltip="Set texture resolution when creating new project"),
+            EnumDef("project_uv_workflow",
+                    items=project_workflow_option,
+                    default="default",
+                    label="UV Workflow",
+                    tooltip="Set UV workflow when creating new project")
         ]
 
     def load(self, context, name, namespace, options=None):
@@ -52,9 +62,11 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         import_cameras = options.get("import_cameras", True)
         preserve_strokes = options.get("preserve_strokes", True)
         texture_resolution = options.get("texture_resolution", 1024)
+        uv_workflow = options.get("project_uv_workflow", "default")
         sp_settings = substance_painter.project.Settings(
             default_texture_resolution=texture_resolution,
-            import_cameras=import_cameras
+            import_cameras=import_cameras,
+            project_workflow=uv_workflow
         )
         if not substance_painter.project.is_open():
             # Allow to 'initialize' a new project
