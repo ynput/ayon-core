@@ -163,7 +163,6 @@ MS_TYCACHE_ATTRIB = """attributes "AYONTyCacheData"
         tyc_exports type:#stringTab tabSize:0 tabSizeVariable:on
         tyc_handles type:#stringTab tabSize:0 tabSizeVariable:on
         sel_list type:#stringTab tabSize:0 tabSizeVariable:on
-        tyflow_ids type:#intTab tabSize:0 tabSizeVariable:on
     )
 
     rollout Cacheparams "AYON TyCache Parameters"
@@ -191,14 +190,19 @@ MS_TYCACHE_ATTRIB = """attributes "AYONTyCacheData"
         (
             i_node_arr = #()
             temp_arr = #()
-            current_sel = tyflow_node.selected
+            updated_node_arr = #()
+            new_temp_arr = #()
+            current_sel = export_node.selected
             idx = finditem export_node.items current_sel
-            if idx == 0 do (
-                append i_node_arr current_sel
-                append temp_arr current_sel
+            if idx do (
+                updated_node_arr = DeleteItem export_node.items idx
             )
-            tyc_exports = join i_node_arr tyc_exports
-            export_node.items = join temp_arr export_node.items
+            idx = finditem tyc_exports current_sel
+            if idx do (
+                new_temp_arr = DeleteItem tyc_exports idx
+            )
+            tyc_exports = join i_node_arr updated_node_arr
+            export_node.items = join temp_arr new_temp_arr
             sel_list = export_node.items
         )
         on Cacheparams open do
@@ -207,22 +211,17 @@ MS_TYCACHE_ATTRIB = """attributes "AYONTyCacheData"
             tyflow_id_arr = #()
             if tyc_handles.count != 0 then
             (
-                tyflow_id = 0
                 for x in tyc_handles do
                 (
                     if x == undefined do continue
-                    tyflow_id += 1
-                    tyflow_op_name = x as string + "<" + tyflow_id as string + ">"
+                    tyflow_op_name = x as string
                     append temp_arr tyflow_op_name
-                    append tyflow_id_arr tyflow_id
                 )
                 tyflow_node.items = temp_arr
-                tyflow_ids = tyflow_id_arr
             )
             if sel_list.count != 0 then
             (
                 sel_arr = #()
-                tyflow_id = 0
                 for x in sel_list do
                 (
                     append sel_arr x
@@ -232,7 +231,6 @@ MS_TYCACHE_ATTRIB = """attributes "AYONTyCacheData"
         )
     )
 )"""
-
 
 class MaxCreatorBase(object):
 
