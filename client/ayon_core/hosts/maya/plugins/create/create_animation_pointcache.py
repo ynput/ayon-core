@@ -62,8 +62,7 @@ def extract_alembic_attributes(node_data, class_name):
             continue
         value = node_data["creator_attributes"].pop(attr)
 
-        if attr in attributes:
-            plugin_attributes[attr] = value
+        plugin_attributes[attr] = value
 
     publish_attributes[class_name] = plugin_attributes
 
