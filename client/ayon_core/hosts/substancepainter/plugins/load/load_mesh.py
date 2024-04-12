@@ -28,11 +28,6 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
     @classmethod
     def get_options(cls, contexts):
         return [
-            BoolDef("allow_user_setting",
-                    default=True,
-                    label="Allow User Setting",
-                    tooltip=("Allow user to set up the project"
-                             " by their own\n")),
             BoolDef("preserve_strokes",
                     default=True,
                     label="Preserve Strokes",
@@ -54,7 +49,6 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
     def load(self, context, name, namespace, options=None):
 
         # Get user inputs
-        allow_user_setting = options.get("allow_user_setting", True)
         import_cameras = options.get("import_cameras", True)
         preserve_strokes = options.get("preserve_strokes", True)
         texture_resolution = options.get("texture_resolution", 1024)
