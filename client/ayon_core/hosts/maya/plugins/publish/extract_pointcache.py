@@ -231,6 +231,9 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
 
     @classmethod
     def get_attribute_defs(cls):
+        if not cls.overrides:
+            return []
+
         override_defs = {
             "attr": TextDef(
                 "attr",
