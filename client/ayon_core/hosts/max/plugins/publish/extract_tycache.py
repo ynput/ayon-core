@@ -27,7 +27,7 @@ class ExtractTyCache(publish.Extractor):
     order = pyblish.api.ExtractorOrder - 0.2
     label = "Extract TyCache"
     hosts = ["max"]
-    families = ["tyflow", "tycache", "tyspline"]
+    families = ["tycache", "tyspline"]
 
     def process(self, instance):
         # TODO: let user decide the param
