@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Pipeline tools for OpenPype Houdini integration."""
 import os
+import six
+import json
 import logging
 
 import hou  # noqa
@@ -24,6 +26,8 @@ from ayon_core.lib import (
     register_event_callback,
     emit_event,
 )
+
+from .lib import JSON_PREFIX
 
 
 log = logging.getLogger("ayon_core.hosts.houdini")
@@ -264,9 +268,6 @@ def parse_container(container):
     """
     # Read only relevant parms
     # TODO: Clean up this hack replacing `lib.read(container)`
-    import six
-    import json
-    from .lib import JSON_PREFIX
 
     data = {}
     for name in ["name", "namespace", "loader", "representation", "id"]:
