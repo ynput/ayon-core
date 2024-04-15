@@ -1163,8 +1163,10 @@ def create_write_node(
         if char in special_characters:
             found_special_characters.append(char)
 
-    msg = f"Special characters found in name \"{name}\": "
-    msg += f"{' '.join(found_special_characters)}"
+    msg = (
+        f"Special characters found in name \"{name}\": "
+        f"{' '.join(found_special_characters)}"
+    )
     assert not found_special_characters, msg
 
     prenodes = prenodes or []
