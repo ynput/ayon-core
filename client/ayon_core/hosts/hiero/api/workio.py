@@ -54,10 +54,9 @@ def open_file(filepath):
     # open project file
     hiero.core.openProject(filepath.replace(os.path.sep, "/"))
 
-    # close previous project
-    project.close()
-
-
+    # Close previous project if its different to the current project.
+    if project.path() != filepath:
+        project.close()
 
     return True
 
