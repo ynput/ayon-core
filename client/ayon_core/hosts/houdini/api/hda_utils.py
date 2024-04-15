@@ -2,6 +2,7 @@
 
 import os
 import contextlib
+import uuid
 
 import ayon_api
 from ayon_api import (
@@ -22,6 +23,15 @@ from ayon_core.pipeline.context_tools import get_current_project_name
 from ayon_core.hosts.houdini.api import lib
 
 import hou
+
+
+def is_valid_uuid(value) -> bool:
+    """Return whether value is a valid UUID"""
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 @contextlib.contextmanager
@@ -137,9 +147,10 @@ def set_representation(node, repre_id):
     if repre_id:
         project_name = node.evalParm("project_name") or \
                        get_current_project_name()
-        try:
+
+        if is_valid_uuid(repre_id):
             repre_entity = get_representation_by_id(project_name, repre_id)
-        except ayon_api.exceptions.GraphQlQueryFailed:
+        else:
             # Ignore invalid representation ids silently
             repre_entity = None
 
