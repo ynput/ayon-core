@@ -1587,14 +1587,14 @@ class PlaceholderLoadMixin(object):
 
         placeholder_representations = self._get_representations(placeholder)
 
-        filtered_representations = []
-        for representation in self._reduce_last_version_repre_entities(
-            placeholder_representations
-        ):
-            repre_id = representation["id"]
-            if repre_id not in ignore_repre_ids:
-                filtered_representations.append(representation)
-
+        filtered_representations = [
+            repre_entity
+            for repre_entity in self._get_representations(placeholder)
+            if repre_entity["id"] not in ignore_repre_ids
+        ]
+        filtered_representations = self._reduce_last_version_repre_entities(
+            filtered_representations
+        )
         if not filtered_representations:
             self.log.info((
                 "There's no representation for this placeholder: {}"
