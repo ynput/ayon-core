@@ -175,6 +175,30 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             ),
             "writeVisibility": attribute_values.get(
                 "writeVisibility", self.writeVisibility
+            ),
+            "autoSubd": attribute_values.get(
+                "autoSubd", self.autoSubd
+            ),
+            "dontSkipUnwrittenFrames": attribute_values.get(
+                "dontSkipUnwrittenFrames", self.dontSkipUnwrittenFrames
+            ),
+            "uvsOnly": attribute_values.get(
+                "uvsOnly", self.uvsOnly
+            ),
+            "writeNormals": attribute_values.get(
+                "writeNormals", self.writeNormals
+            ),
+            "melPerFrameCallback": attribute_values.get(
+                "melPerFrameCallback", self.melPerFrameCallback
+            ),
+            "melPostJobCallback": attribute_values.get(
+                "melPostJobCallback", self.melPostJobCallback
+            ),
+            "pythonPerFrameCallback": attribute_values.get(
+                "pythonPerFrameCallback", self.pythonPostJobCallback
+            ),
+            "pythonPostJobCallback": attribute_values.get(
+                "pythonPostJobCallback", self.pythonPostJobCallback
             )
         }
 
