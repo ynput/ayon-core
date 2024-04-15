@@ -72,6 +72,7 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 "frameStart": instance.data["frameStartHandle"],
                 "frameEnd": instance.data["frameEndHandle"],
                 "productType": product_type,
+                "family": product_type,
                 "productName": product_name,
                 "productGroup": product_group,
                 "families": ["render.local.hou"],
