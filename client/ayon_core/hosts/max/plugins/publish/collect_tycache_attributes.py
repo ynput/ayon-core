@@ -37,8 +37,10 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
             tyc_instance = context.create_instance(tyc_product_name)
             tyc_instance[:] = instance[:]
             tyc_instance.data.update(copy.deepcopy(dict(instance.data)))
-            tyc_instance.data["name"] = tyc_product_name
-            tyc_instance.data["label"] = tyc_product_name
+            tyc_instance.data["name"] = "{}_{}".format(
+                instance.data["tyc_exportMode"], tyc_product_name)
+            tyc_instance.data["label"] = "{}_{}".format(
+                instance.data["tyc_exportMode"], tyc_product_name)
             tyc_instance.data["family"] = instance.data["tyc_exportMode"]
             tyc_instance.data["productName"] = tyc_product_name
             tyc_instance.data["productType"] = instance.data["tyc_exportMode"]
