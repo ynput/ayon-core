@@ -43,10 +43,8 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
         default_prefix = evalParmNoFrame(rop, "RS_outputFileNamePrefix")
         beauty_suffix = rop.evalParm("RS_outputBeautyAOVSuffix")
         # Store whether we are splitting the render job (export + render)
-        split_render = bool(rop.parm("RS_archive_enable").eval())
-        instance.data["splitRender"] = split_render
         export_products = []
-        if split_render:
+        if instance.data["splitRender"]:
             export_prefix = evalParmNoFrame(
                 rop, "RS_archive_file", pad_character="0"
             )
