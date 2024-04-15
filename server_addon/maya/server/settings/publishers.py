@@ -378,16 +378,6 @@ class ExtractAlembicModel(BaseSettingsModel):
             "Present normal data for Alembic poly meshes will not be written."
         )
     )
-    preRoll: bool = SettingsField(
-        title="Pre Roll",
-        description=(
-            "When enabled, the pre roll start frame is used to pre roll the "
-            "When enabled, the pre roll start frame is used to being the "
-            "evaluation of the mesh. From the pre roll start frame to the "
-            "alembic start frame, will not be written to disk. This can be "
-            "used for simulation run up."
-        )
-    )
     renderableOnly: bool = SettingsField(
         title="Renderable Only",
         description="Only export renderable visible shapes."
@@ -455,6 +445,16 @@ class ExtractAlembicModel(BaseSettingsModel):
         description=(
             "Visibility state will be stored in the Alembic file. Otherwise "
             "everything written out is treated as visible."
+        )
+    )
+    preRoll: bool = SettingsField(
+        title="Pre Roll",
+        description=(
+            "When enabled, the pre roll start frame is used to pre roll the "
+            "When enabled, the pre roll start frame is used to being the "
+            "evaluation of the mesh. From the pre roll start frame to the "
+            "alembic start frame, will not be written to disk. This can be "
+            "used for simulation run up."
         )
     )
     preRollStartFrame: int = SettingsField(
