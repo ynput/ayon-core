@@ -33,7 +33,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance = super(CreateVrayROP, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 

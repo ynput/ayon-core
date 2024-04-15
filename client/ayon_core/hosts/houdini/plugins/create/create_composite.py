@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating composite sequences."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance, CreatorError
+from ayon_core.pipeline import CreatorError
 
 import hou
 
@@ -25,7 +25,7 @@ class CreateCompositeSequence(plugin.HoudiniCreator):
         instance = super(CreateCompositeSequence, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
         filepath = "{}{}".format(

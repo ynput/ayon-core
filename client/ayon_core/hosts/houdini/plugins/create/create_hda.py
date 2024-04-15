@@ -78,7 +78,7 @@ class CreateHDA(plugin.HoudiniCreator):
         instance = super(CreateHDA, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: plugin.CreatedInstance
+            pre_create_data)
 
         return instance
 
