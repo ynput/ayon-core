@@ -28,9 +28,11 @@ from .pipeline import (
 )
 
 __all__ = [
+    "UnrealActorCreator",
+    "UnrealAssetCreator",
+    "Loader",
     "install",
     "uninstall",
-    "Loader",
     "ls",
     "publish",
     "containerise",

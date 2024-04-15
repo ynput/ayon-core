@@ -14,9 +14,9 @@ class BgeoLoader(load.LoaderPlugin):
 
     label = "Load bgeo"
     product_types = {"model", "pointcache", "bgeo"}
-    representations = [
+    representations = {
         "bgeo", "bgeosc", "bgeogz",
-        "bgeo.sc", "bgeo.gz", "bgeo.lzma", "bgeo.bz2"]
+        "bgeo.sc", "bgeo.gz", "bgeo.lzma", "bgeo.bz2"}
     order = -10
     icon = "code-fork"
     color = "orange"
