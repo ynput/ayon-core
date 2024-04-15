@@ -13,6 +13,15 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
     label = "Collect tyCache attribute Data"
     hosts = ['max']
     families = ["tyflow"]
+    validate_tycache_frame_range = True
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+
+        settings = (
+            project_settings["max"]["publish"]["ValidateTyCacheFrameRange"]
+        )
+        cls.validate_tycache_frame_range = settings["active"]
 
     def process(self, instance):
         context = instance.context
@@ -47,5 +56,5 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
         return [
             BoolDef("has_frame_range_validator",
                     label="Validate TyCache Frame Range",
-                    default=True),
+                    default=cls.validate_tycache_frame_range)
         ]
