@@ -14,6 +14,15 @@ from ayon_core.hosts.substancepainter.api.lib import prompt_new_file_with_mesh
 import substance_painter.project
 
 
+def get_uv_workflow(uv_option="default"):
+    if uv_option == "default":
+        return substance_painter.project.ProjectWorkflow.Default
+    elif uv_option == "uvTile":
+        return substance_painter.project.ProjectWorkflow.UVTile
+    else:
+        return substance_painter.project.ProjectWorkflow.TextureSetPerUVTile
+
+
 class SubstanceLoadProjectMesh(load.LoaderPlugin):
     """Load mesh for project"""
 
@@ -50,7 +59,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
                     label="Texture Resolution",
                     tooltip="Set texture resolution when creating new project"),
             EnumDef("project_uv_workflow",
-                    items=project_uv_workflow_items,
+                    items=["default", "uvTile", "textureSetPerUVTile"],
                     default="default",
                     label="UV Workflow",
                     tooltip="Set UV workflow when creating new project")
@@ -62,7 +71,8 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         import_cameras = options.get("import_cameras", True)
         preserve_strokes = options.get("preserve_strokes", True)
         texture_resolution = options.get("texture_resolution", 1024)
-        uv_workflow = options.get("project_uv_workflow", "default")
+        uv_option = options.get("project_uv_workflow", "default")
+        uv_workflow = get_uv_workflow(uv_option=uv_option)
         sp_settings = substance_painter.project.Settings(
             default_texture_resolution=texture_resolution,
             import_cameras=import_cameras,
@@ -75,12 +85,16 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
             # only works for simple polygon scene
             result = prompt_new_file_with_mesh(mesh_filepath=path)
             if not result:
-                self.log.info("User cancelled new project prompt."
-                              "Creating new project directly from"
-                              " Substance Painter API Instead.")
-                settings = substance_painter.project.create(
-                    mesh_file_path=path, settings=sp_settings
-                )
+                if not substance_painter.project.is_open():
+                    self.log.info("User cancelled new project prompt."
+                                  "Creating new project directly from"
+                                  " Substance Painter API Instead.")
+                    settings = substance_painter.project.create(
+                        mesh_file_path=path, settings=sp_settings
+                    )
+                else:
+                    self.log.info("The project is already created after "
+                                  "the new project prompt action")
 
         else:
             # Reload the mesh
