@@ -562,6 +562,7 @@ def get_tyflow_export_operators():
     return operators
 
 
+@contextlib.contextmanager
 def suspended_refresh():
     """Suspended refresh for scene and modify panel redraw.
     """
