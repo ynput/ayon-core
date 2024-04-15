@@ -120,7 +120,6 @@ class ValidateTyCacheFrameRange(ValidateFrameRange):
 
     @classmethod
     def repair(cls, instance):
-
         frame_range = get_frame_range()
         frame_start_handle = frame_range["frameStartHandle"]
         frame_end_handle = frame_range["frameEndHandle"]
