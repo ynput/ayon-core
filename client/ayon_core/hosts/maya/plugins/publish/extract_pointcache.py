@@ -47,7 +47,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
     eulerFilter = False
     melPerFrameCallback = ""
     melPostJobCallback = ""
-    noNormals = False
     overrides = []
     preRoll = False
     preRollStartFrame = 0
@@ -137,7 +136,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "eulerFilter": attribute_values.get(
                 "eulerFilter", self.eulerFilter
             ),
-            "noNormals": attribute_values.get("noNormals", self.noNormals),
             "preRoll": attribute_values.get("preRoll", self.preRoll),
             "preRollStartFrame": attribute_values.get(
                 "preRollStartFrame", self.preRollStartFrame
@@ -289,15 +287,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                 label="Euler Filter",
                 default=cls.eulerFilter,
                 tooltip="Apply Euler filter while sampling rotations."
-            ),
-            "noNormals": BoolDef(
-                "noNormals",
-                label="No Normals",
-                default=cls.noNormals,
-                tooltip=(
-                    "Present normal data for Alembic poly meshes will not be "
-                    "written."
-                )
             ),
             "renderableOnly": BoolDef(
                 "renderableOnly",

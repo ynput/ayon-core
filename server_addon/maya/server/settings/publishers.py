@@ -48,14 +48,9 @@ def extract_alembic_overrides_enum():
         {"label": "Custom Attributes Prefix", "value": "attrPrefix"},
         {"label": "Auto Subd", "value": "autoSubd"},
         {"label": "Data Format", "value": "dataFormat"},
-        {
-            "label": "Dont Skip Unwritten Frames",
-            "value": "dontSkipUnwrittenFrames"
-        },
         {"label": "Euler Filter", "value": "eulerFilter"},
         {"label": "Mel Per Frame Callback", "value": "melPerFrameCallback"},
         {"label": "Mel Post Job Callback", "value": "melPostJobCallback"},
-        {"label": "No Normals", "value": "noNormals"},
         {"label": "Pre Roll", "value": "preRoll"},
         {"label": "Pre Roll Start Frame", "value": "preRollStartFrame"},
         {
@@ -363,12 +358,6 @@ class ExtractAlembicModel(BaseSettingsModel):
     eulerFilter: bool = SettingsField(
         title="Euler Filter",
         description="Apply Euler filter while sampling rotations."
-    )
-    noNormals: bool = SettingsField(
-        title="No Normals",
-        description=(
-            "Present normal data for Alembic poly meshes will not be written."
-        )
     )
     renderableOnly: bool = SettingsField(
         title="Renderable Only",
@@ -1620,7 +1609,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "eulerFilter": False,
         "melPerFrameCallback": "",
         "melPostJobCallback": "",
-        "noNormals": False,
         "overrides": [
             "attr",
             "attrPrefix",
