@@ -1634,8 +1634,6 @@ DEFAULT_PUBLISH_SETTINGS = {
             "attr",
             "attrPrefix",
             "renderableOnly",
-            "userAttr",
-            "userAttrPrefix",
             "visibleOnly",
             "worldSpace",
             "writeColorSets",
