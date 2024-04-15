@@ -44,7 +44,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
     bake_attributes = []
     bake_attribute_prefixes = []
     dataFormat = "ogawa"
-    dontSkipUnwrittenFrames = False
     eulerFilter = False
     melPerFrameCallback = ""
     melPostJobCallback = ""
@@ -179,9 +178,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "autoSubd": attribute_values.get(
                 "autoSubd", self.autoSubd
             ),
-            "dontSkipUnwrittenFrames": attribute_values.get(
-                "dontSkipUnwrittenFrames", self.dontSkipUnwrittenFrames
-            ),
             "uvsOnly": attribute_values.get(
                 "uvsOnly", self.uvsOnly
             ),
@@ -286,16 +282,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "preserved in Alembic file unless a custom Boolean "
                     "attribute SubDivisionMesh has been added to mesh node and"
                     " its value is true."
-                )
-            ),
-            "dontSkipUnwrittenFrames": BoolDef(
-                "dontSkipUnwrittenFrames",
-                label="Dont Skip Unwritten Frames",
-                default=cls.dontSkipUnwrittenFrames,
-                tooltip=(
-                    "When evaluating multiple translate jobs, this decides "
-                    "whether to evaluate frames between jobs when there is a "
-                    "gap in their frame ranges."
                 )
             ),
             "eulerFilter": BoolDef(

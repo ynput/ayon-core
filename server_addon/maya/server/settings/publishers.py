@@ -360,14 +360,6 @@ class ExtractAlembicModel(BaseSettingsModel):
             "mesh node and its value is true."
         )
     )
-    dontSkipUnwrittenFrames: bool = SettingsField(
-        title="Dont Skip Unwritten Frames",
-        description=(
-            "When evaluating multiple translate jobs, this decides whether to "
-            "evaluate frames between jobs when there is a gap in their frame "
-            "ranges."
-        )
-    )
     eulerFilter: bool = SettingsField(
         title="Euler Filter",
         description="Apply Euler filter while sampling rotations."
@@ -1625,7 +1617,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "bake_attributes": [],
         "bake_attribute_prefixes": [],
         "dataFormat": "ogawa",
-        "dontSkipUnwrittenFrames": False,
         "eulerFilter": False,
         "melPerFrameCallback": "",
         "melPostJobCallback": "",
