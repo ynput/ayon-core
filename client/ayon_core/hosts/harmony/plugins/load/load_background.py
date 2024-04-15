@@ -234,7 +234,7 @@ class BackgroundLoader(load.LoaderPlugin):
     Stores the imported asset in a container named after the asset.
     """
     product_types = {"background"}
-    representations = ["json"]
+    representations = {"json"}
 
     def load(self, context, name=None, namespace=None, data=None):
 

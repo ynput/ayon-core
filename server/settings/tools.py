@@ -173,6 +173,7 @@ def _product_types_enum():
         "rig",
         "setdress",
         "take",
+        "usd",
         "usdShade",
         "vdbcache",
         "vrayproxy",

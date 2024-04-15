@@ -67,7 +67,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         "FTRACK_SERVER",
         "AYON_APP_NAME",
         "AYON_USERNAME",
-        "OPENPYPE_SG_USER",
+        "AYON_SG_USERNAME",
         "KITSU_LOGIN",
         "KITSU_PWD"
     ]

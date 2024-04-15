@@ -28,7 +28,7 @@ class VRayProxyLoader(load.LoaderPlugin):
     """Load VRay Proxy with Alembic or VrayMesh."""
 
     product_types = {"vrayproxy", "model", "pointcache", "animation"}
-    representations = ["vrmesh", "abc"]
+    representations = {"vrmesh", "abc"}
 
     label = "Import VRay Proxy"
     order = -10
