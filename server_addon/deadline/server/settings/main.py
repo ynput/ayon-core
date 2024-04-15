@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 from pydantic import validator
 
 from ayon_server.settings import (
@@ -5,6 +6,8 @@ from ayon_server.settings import (
     SettingsField,
     ensure_unique_names,
 )
+if TYPE_CHECKING:
+    from ayon_server.addons import BaseServerAddon
 
 from .publish_plugins import (
     PublishPluginsModel,
@@ -19,7 +22,7 @@ class ServerListSubmodel(BaseSettingsModel):
 
 
 async def defined_deadline_ws_name_enum_resolver(
-    addon: "BaseServerAddon",
+    addon: BaseServerAddon,
     settings_variant: str = "production",
     project_name: str | None = None,
 ) -> list[str]:
