@@ -254,7 +254,6 @@ def _submit_headless_farm(node):
 
     # Enable for farm publishing.
     instance.data["farm"] = True
-    instance.data["transfer"] = False
 
     # Clear the families as we only want the main family, ei. no review etc.
     instance.data["families"] = []
