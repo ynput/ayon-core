@@ -113,7 +113,9 @@ def override_toolbox_ui():
             annotation="Look Manager",
             label="Look Manager",
             image=os.path.join(icons, "lookmanager.png"),
-            command=show_look_assigner,
+            command=lambda: show_look_assigner(
+                parent=parent_widget
+            ),
             width=icon_size,
             height=icon_size,
             parent=parent

@@ -9,7 +9,7 @@ from pathlib import Path
 from qtpy import QtCore
 
 from ayon_core import resources
-from ayon_core.lib.applications import (
+from ayon_applications import (
     PreLaunchHook,
     ApplicationLaunchFailed,
     LaunchTypes,
