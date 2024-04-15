@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating USDs."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
 
 import hou
 
@@ -23,7 +22,7 @@ class CreateUSD(plugin.HoudiniCreator):
         instance = super(CreateUSD, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
