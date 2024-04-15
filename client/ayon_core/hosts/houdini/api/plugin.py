@@ -14,7 +14,9 @@ from ayon_core.pipeline import (
     CreatedInstance,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
+    registered_host
 )
+from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
 
@@ -253,7 +255,15 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
                 key: changes[key].new_value
                 for key in changes.changed_keys
             }
-            # Update parm templates and values
+
+            # Update Houdini node's parameters based on creator attributes.
+            # This is done by re-using the logic inside the creators.
+            host = registered_host()
+            create_context = CreateContext(host, reset=True)
+            create_plugin = create_context.creators[created_inst.creator_identifier]
+            create_plugin.update_node_parameters(instance_node, new_values["creator_attributes"])
+
+            # Update Extra AYON parm templates and values.
             self.imprint(
                 instance_node,
                 new_values,
@@ -347,3 +357,22 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
         for key, value in settings.items():
             setattr(self, key, value)
+
+    @staticmethod
+    def update_node_parameters(node, creator_attributes):
+        """Update node parameters according to creator attributes.
+
+        This method is used in `update_instances` to update Houdini node
+        according to the values of creator_attributes.
+
+        Note:
+            Implementation differs based on the node type.
+            This method should include the key parameters that
+              you want to change on creator parameters change.
+
+        Args:
+            node(hou.Node): Houdini node to apply changes to.
+            creator_attributes(dict): Dictionary of creator attributes.
+        """
+
+        pass
