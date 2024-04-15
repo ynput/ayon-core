@@ -289,12 +289,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "written."
                 )
             ),
-            "preRoll": BoolDef(
-                "preRoll",
-                label="Pre Roll",
-                default=cls.preRoll,
-                tooltip="This frame range will not be sampled."
-            ),
             "renderableOnly": BoolDef(
                 "renderableOnly",
                 label="Renderable Only",
@@ -390,6 +384,12 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "Visibility state will be stored in the Alembic file. "
                     "Otherwise everything written out is treated as visible."
                 )
+            ),
+            "preRoll": BoolDef(
+                "preRoll",
+                label="Pre Roll",
+                default=cls.preRoll,
+                tooltip="This frame range will not be sampled."
             ),
             "preRollStartFrame": NumberDef(
                 "preRollStartFrame",
