@@ -101,6 +101,18 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
         ]
         attr_prefixes += self.bake_attribute_prefixes
 
+        user_attrs = [
+            attr.strip()
+            for attr in attribute_values.get("userAttr", "").split(";")
+            if attr.strip()
+        ]
+
+        user_attr_prefixes = [
+            attr.strip()
+            for attr in attribute_values.get("userAttrPrefix", "").split(";")
+            if attr.strip()
+        ]
+
         self.log.debug("Extracting pointcache..")
         dirname = self.staging_dir(instance)
 
@@ -119,6 +131,8 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "file": path,
             "attr": attrs,
             "attrPrefix": attr_prefixes,
+            "userAttr": user_attrs,
+            "userAttrPrefix": user_attr_prefixes,
             "dataFormat": attribute_values.get("dataFormat", self.dataFormat),
             "endFrame": end,
             "eulerFilter": attribute_values.get(
