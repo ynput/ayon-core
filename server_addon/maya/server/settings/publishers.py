@@ -322,6 +322,24 @@ class ExtractModelModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
+class ExtractMayaUsdModelModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
+class ExtractMayaUsdPointcacheModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
+class ExtractMayaUsdAnimationModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+
+
 class ExtractMayaSceneRawModel(BaseSettingsModel):
     """Add loaded instances to those published families:"""
     enabled: bool = SettingsField(title="ExtractMayaSceneRaw")
@@ -810,6 +828,18 @@ class PublishersModel(BaseSettingsModel):
     ExtractModel: ExtractModelModel = SettingsField(
         default_factory=ExtractModelModel,
         title="Extract Model (Maya Scene)"
+    )
+    ExtractMayaUsdModel: ExtractMayaUsdModelModel = SettingsField(
+        default_factory=ExtractMayaUsdModelModel,
+        title="Extract Maya USD with Model"
+    )
+    ExtractMayaUsdPointcache: ExtractMayaUsdPointcacheModel = SettingsField(
+        default_factory=ExtractMayaUsdPointcacheModel,
+        title="Extract Maya USD with Pointcache"
+    )
+    ExtractMayaUsdAnimation: ExtractMayaUsdAnimationModel = SettingsField(
+        default_factory=ExtractMayaUsdAnimationModel,
+        title="Extract Maya USD with Animation"
     )
 
 
@@ -1372,5 +1402,20 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "active": True,
+    },
+    "ExtractMayaUsdModel": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+    },
+    "ExtractMayaUsdPointcache": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
+    },
+    "ExtractMayaUsdAnimation": {
+        "enabled": True,
+        "optional": True,
+        "active": False,
     }
 }

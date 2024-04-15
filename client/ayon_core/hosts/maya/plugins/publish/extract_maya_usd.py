@@ -393,6 +393,7 @@ class ExtractMayaUsdAnim(ExtractMayaUsd):
     label = "Extract USD Animation"
     families = ["animation"]
 
+    # Exposed in settings
     optional = True
     active = False
 
@@ -419,8 +420,9 @@ class ExtractMayaUsdModel(ExtractMayaUsd):
     label = "Extract USD"
     families = ["model"]
 
-    # TODO: Expose in settings
+    # Exposed in settings
     optional = True
+    active = False
 
     def process(self, instance):
         # TODO: Fix this without changing instance data
@@ -434,6 +436,6 @@ class ExtractMayaUsdPointcache(ExtractMayaUsd):
     label = "Extract USD"
     families = ["pointcache"]
 
-    # TODO: Expose in settings
+    # Exposed in settings
     optional = True
     active = False
