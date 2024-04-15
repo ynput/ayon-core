@@ -70,7 +70,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         view = SceneInventoryView(controller, self)
         view.setModel(proxy)
 
-        sync_enabled = controller.is_sync_server_enabled()
+        sync_enabled = controller.is_sitesync_enabled()
         view.setColumnHidden(model.active_site_col, not sync_enabled)
         view.setColumnHidden(model.remote_site_col, not sync_enabled)
 

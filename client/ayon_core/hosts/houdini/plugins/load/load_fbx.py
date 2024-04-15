@@ -17,7 +17,7 @@ class FbxLoader(load.LoaderPlugin):
     order = -10
 
     product_types = {"*"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"fbx"}
 
     def load(self, context, name=None, namespace=None, data=None):
