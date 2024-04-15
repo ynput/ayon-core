@@ -14,7 +14,7 @@ class USDSublayerLoader(load.LoaderPlugin):
         "usdCamera",
     }
     label = "Sublayer USD"
-    representations = ["usd", "usda", "usdlc", "usdnc", "abc"]
+    representations = {"usd", "usda", "usdlc", "usdnc", "abc"}
     order = 1
 
     icon = "code-fork"

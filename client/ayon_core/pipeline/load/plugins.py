@@ -24,7 +24,7 @@ class LoaderPlugin(list):
     """
 
     product_types = set()
-    representations = []
+    representations = set()
     extensions = {"*"}
     order = 0
     is_multiple_contexts_compatible = False
@@ -162,6 +162,15 @@ class LoaderPlugin(list):
 
     @classmethod
     def get_representations(cls):
+        """Representation names with which is plugin compatible.
+
+        Empty set makes the plugin incompatible with any representation. To
+            allow compatibility with all representations use '{"*"}'.
+
+        Returns:
+            set[str]: Names with which is plugin compatible.
+
+        """
         return cls.representations
 
     @classmethod

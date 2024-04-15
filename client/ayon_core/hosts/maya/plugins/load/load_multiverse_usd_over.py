@@ -20,7 +20,7 @@ class MultiverseUsdOverLoader(load.LoaderPlugin):
     """Reference file"""
 
     product_types = {"mvUsdOverride"}
-    representations = ["usda", "usd", "udsz"]
+    representations = {"usda", "usd", "udsz"}
 
     label = "Load Usd Override into Compound"
     order = -10
