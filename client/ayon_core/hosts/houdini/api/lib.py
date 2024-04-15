@@ -1021,11 +1021,11 @@ def get_background_images(node, raw=False):
 
     try:
         images = json.loads(data)
-        if not raw:
-            images = [_parse(_data) for _data in images]
     except json.decoder.JSONDecodeError:
         images = []
 
+    if not raw:
+        images = [_parse(_data) for _data in images]
     return images
 
 
@@ -1051,13 +1051,11 @@ def set_background_images(node, images):
         data = {
             "path": image.path(),
             "rect": [rect_min.x(), rect_min.y(), rect_max.x(), rect_max.y()],
-            "brightness": image.brightness(),
-            "relativetopath": image.relativeToPath()
         }
-        if data["brightness"] == 1.0:
-            del data["brightness"]
-        if data["relativetopath"] == "":
-            del data["relativetopath"]
+        if image.brightness() != 1.0:
+            data["brightness"] = image.brightness()
+        if image.relativeToPath():
+            data["relativetopath"] = image.relativeToPath()
         return data
 
     with hou.undos.group('Edit Background Images'):
@@ -1204,10 +1202,10 @@ def find_active_network(category, default):
     index = 0
     while True:
         pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor, index)
-        index += 1
         if pane is None:
             break
 
+        index += 1
         if not pane.isCurrentTab():
             continue
 
