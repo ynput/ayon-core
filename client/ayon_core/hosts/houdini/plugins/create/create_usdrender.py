@@ -110,8 +110,8 @@ class CreateUSDRender(plugin.HoudiniCreator):
         renderer_plugin_to_display_name = get_usd_rop_renderers()
         default_renderer = self.default_renderer or None
         if (
-                default_renderer
-                and default_renderer not in renderer_plugin_to_display_name
+            default_renderer
+            and default_renderer not in renderer_plugin_to_display_name
         ):
             # Map default renderer display name to plugin name
             for name, display_name in renderer_plugin_to_display_name.items():
