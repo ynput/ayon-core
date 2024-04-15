@@ -139,7 +139,7 @@ def set_representation(node, repre_id):
                        get_current_project_name()
         try:
             repre_entity = get_representation_by_id(project_name, repre_id)
-        except Exception:
+        except ayon_api.exceptions.GraphQlQueryFailed:
             # Ignore invalid representation ids silently
             repre_entity = None
 
@@ -320,24 +320,24 @@ def get_representation_id(
     if not product_entity:
         load_message_parm.set(f"Product not found: '{product_name}'")
         return
-    version_doc = get_version_by_name(
+    version_entity = get_version_by_name(
         project_name,
         version,
         product_id=product_entity["id"],
         fields=id_only)
-    if not version_doc:
+    if not version_entity:
         load_message_parm.set(f"Version not found: '{version}'")
         return
-    representation_doc = get_representation_by_name(
+    representation_entity = get_representation_by_name(
         project_name,
         representation_name,
-        version_id=version_doc["id"],
+        version_id=version_entity["id"],
         fields=id_only)
-    if not representation_doc:
+    if not representation_entity:
         load_message_parm.set(
             f"Representation not found: '{representation_name}'.")
         return
-    return representation_doc["id"]
+    return representation_entity["id"]
 
 
 def setup_flag_changed_callback(node):
