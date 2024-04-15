@@ -1530,7 +1530,7 @@ class PlaceholderLoadMixin(object):
         pass
 
     def _reduce_last_version_repre_entities(self, repre_contexts):
-        """Reduce representations to last verison."""
+        """Reduce representations to last version."""
 
         version_mapping_by_product_id = {}
         for repre_context in repre_contexts:
