@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating pointcache bgeo files."""
-from ayon_core.hosts.houdini.api import plugin
+from ayon_core.hosts.houdini.api import lib, plugin
 from ayon_core.pipeline import CreatorError
 import hou
 from ayon_core.lib import EnumDef, BoolDef
@@ -29,11 +29,10 @@ class CreateBGEO(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
-        file_path = "{}{}".format(
-            hou.text.expandString("$HIP/pyblish/"),
-            "{}.$F4.{}".format(
-                product_name,
-                pre_create_data.get("bgeo_type") or "bgeo.sc")
+        file_path = "{export_dir}/{product_name}.$F4.{ext}".format(
+            export_dir=hou.text.expandString("$HIP/pyblish"),
+            product_name=product_name,
+            ext=pre_create_data.get("bgeo_type") or "bgeo.sc"
         )
         parms = {
             "sopoutput": file_path
@@ -61,45 +60,56 @@ class CreateBGEO(plugin.HoudiniCreator):
 
         instance_node.setParms(parms)
 
+    @staticmethod
+    def update_node_parameters(node, creator_attributes):
+        """update node parameters according to creator attributes.
+
+        Implementation of update_node_parameters.
+
+        Args:
+            node(hou.Node): Houdini node to apply changes to.
+            creator_attributes(dict): Dictionary of creator attributes.
+        """
+
+        file_path, _ = lib.splitext(
+            node.evalParm("sopoutput"),
+            allowed_multidot_extensions=[
+                ".ass.gz", ".bgeo.sc", ".bgeo.gz",
+                ".bgeo.lzma", ".bgeo.bz2"
+            ]
+        )
+
+        output = "{file_path}.{ext}".format(
+            file_path=file_path,
+            ext=creator_attributes["bgeo_type"]
+        )
+
+        node.setParms({"sopoutput": output})
+
     def get_instance_attr_defs(self):
+        bgeo_enum = {
+            "bgeo": "uncompressed bgeo (.bgeo)",
+            "bgeosc": "BLOSC compressed bgeo (.bgeosc)",
+            "bgeo.sc": "BLOSC compressed bgeo (.bgeo.sc)",
+            "bgeo.gz": "GZ compressed bgeo (.bgeo.gz)",
+            "bgeo.lzma": "LZMA compressed bgeo (.bgeo.lzma)",
+            "bgeo.bz2": "BZip2 compressed bgeo (.bgeo.bz2)",
+        }
+
         return [
             BoolDef("farm",
                     label="Submitting to Farm",
-                    default=False)
+                    default=False),
+            EnumDef("bgeo_type",
+                    items=bgeo_enum,
+                    default="bgeo",
+                    label="BGEO Options")
         ]
 
     def get_pre_create_attr_defs(self):
         attrs = super().get_pre_create_attr_defs()
-        bgeo_enum = [
-            {
-                "value": "bgeo",
-                "label": "uncompressed bgeo (.bgeo)"
-            },
-            {
-                "value": "bgeosc",
-                "label": "BLOSC compressed bgeo (.bgeosc)"
-            },
-            {
-                "value": "bgeo.sc",
-                "label": "BLOSC compressed bgeo (.bgeo.sc)"
-            },
-            {
-                "value": "bgeo.gz",
-                "label": "GZ compressed bgeo (.bgeo.gz)"
-            },
-            {
-                "value": "bgeo.lzma",
-                "label": "LZMA compressed bgeo (.bgeo.lzma)"
-            },
-            {
-                "value": "bgeo.bz2",
-                "label": "BZip2 compressed bgeo (.bgeo.bz2)"
-            }
-        ]
 
-        return attrs + [
-            EnumDef("bgeo_type", bgeo_enum, label="BGEO Options"),
-        ] + self.get_instance_attr_defs()
+        return attrs + self.get_instance_attr_defs()
 
     def get_network_categories(self):
         return [
