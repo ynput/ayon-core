@@ -28,4 +28,3 @@ class CollectMembers(pyblish.api.InstancePlugin):
                     member.node for member
                     in container.modifiers[0].openPypeData.all_handles
                 ]
-                self.log.debug("{}".format(instance.data["members"]))

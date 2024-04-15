@@ -4,7 +4,6 @@ import pyblish.api
 from pymxs import runtime as rt
 
 from ayon_core.hosts.max.api import maintained_selection
-from ayon_core.hosts.max.api.lib import get_tyflow_export_particle_operators
 from ayon_core.pipeline import publish
 
 
@@ -28,7 +27,7 @@ class ExtractTyCache(publish.Extractor):
     order = pyblish.api.ExtractorOrder - 0.2
     label = "Extract TyCache"
     hosts = ["max"]
-    families = ["tycache", "tyspline"]
+    families = ["tyflow", "tycache", "tyspline"]
 
     def process(self, instance):
         # TODO: let user decide the param
@@ -37,22 +36,22 @@ class ExtractTyCache(publish.Extractor):
         stagingdir = self.staging_dir(instance)
 
         export_mode = instance.data.get("exportMode", 2)
-        members = instance.data["members"]
+        operator = instance.data["operator"]
         representations = instance.data.setdefault("representations", [])
+        start_frame = instance.data["frameStartHandle"]
+        end_frame = instance.data["frameEndHandle"]
+        name = instance.data.get("productName")
         tyc_fnames = []
         tyc_mesh_fnames = []
         with maintained_selection():
-            self.log.debug(get_tyflow_export_particle_operators(members))
-            for operators in get_tyflow_export_particle_operators(members):
-                operator, start_frame, end_frame, name = operators
-                filename = f"{instance.name}_{name}.tyc"
-                path = os.path.join(stagingdir, filename)
-                filenames = self.get_files(
-                    instance, name, start_frame, end_frame)
-                self._extract_tyflow_particles(operator, path, export_mode)
-                mesh_filename = f"{instance.name}_{name}__tyMesh.tyc"
-                tyc_fnames.extend(filenames)
-                tyc_mesh_fnames.append(mesh_filename)
+            filename = f"{instance.name}_{name}.tyc"
+            path = os.path.join(stagingdir, filename)
+            filenames = self.get_files(
+                instance, name, start_frame, end_frame)
+            self._extract_tyflow_particles(operator, path, export_mode)
+            mesh_filename = f"{instance.name}_{name}__tyMesh.tyc"
+            tyc_fnames.extend(filenames)
+            tyc_mesh_fnames.append(mesh_filename)
         representation = {
             "name": "tyc",
             "ext": "tyc",

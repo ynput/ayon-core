@@ -153,18 +153,19 @@ class ValidateTyFlowTySplineData(ValidateTyFlowData):
         """
         invalid = []
         node_sub_anim = instance.data["operator"]
-        if rt.hasProperty(node_sub_anim, "exportMode"):
-            # check if the current export mode of the operator
-            # is valid for the tycache export.
-            if instance.data["exportMode"] == 2:
-                family = instance.data["family"]
-                self.log.debug(
-                    "Skipping to check tycache spline"
-                    f" nodes for {family} instance")
-                return invalid
-        if not rt.hasProperty(node_sub_anim, "splinePathsNode"):
-            invalid.append(
-                f"{node_sub_anim.name} has no tycache spline nodes.")
+        if node_sub_anim is not None:
+            if rt.hasProperty(node_sub_anim, "exportMode"):
+                # check if the current export mode of the operator
+                # is valid for the tycache export.
+                if instance.data["exportMode"] == 2:
+                    family = instance.data["productType"]
+                    self.log.debug(
+                        "Skipping to check tycache spline"
+                        f" nodes for {family} instance")
+                    return invalid
+            if not rt.hasProperty(node_sub_anim, "splinePathsNode"):
+                invalid.append(
+                    f"{node_sub_anim.name} has no tycache spline nodes.")
 
         return invalid
 
@@ -172,14 +173,15 @@ class ValidateTyFlowTySplineData(ValidateTyFlowData):
         invalid = []
         node_sub_anim = instance.data["operator"]
         has_export_particle = []
-        if rt.hasProperty(node_sub_anim, "exportMode"):
-            if node_sub_anim.exportMode == 2 or \
-                    node_sub_anim.exportMode == 6:
-                has_export_particle.append("True")
-            else:
-                has_export_particle.append("False")
-                if "False" in has_export_particle:
-                    invalid.append(
-                        f"{node_sub_anim.name} has invalid Export Mode.")
+        if node_sub_anim is not None:
+            if rt.hasProperty(node_sub_anim, "exportMode"):
+                if node_sub_anim.exportMode == 2 or \
+                        node_sub_anim.exportMode == 6:
+                    has_export_particle.append("True")
+                else:
+                    has_export_particle.append("False")
+                    if "False" in has_export_particle:
+                        invalid.append(
+                            f"{node_sub_anim.name} has invalid Export Mode.")
 
         return invalid
