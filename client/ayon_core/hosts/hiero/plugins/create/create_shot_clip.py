@@ -137,7 +137,7 @@ class CreateShotClip(phiero.Creator):
                     "value": ["<track_name>", "main", "bg", "fg", "bg",
                               "animatic"],
                     "type": "QComboBox",
-                    "label": "pRODUCT Name",
+                    "label": "Product Name",
                     "target": "ui",
                     "toolTip": "chose product name pattern, if <track_name> is selected, name of track layer will be used",  # noqa
                     "order": 0},
@@ -159,7 +159,7 @@ class CreateShotClip(phiero.Creator):
                     "type": "QCheckBox",
                     "label": "Include audio",
                     "target": "tag",
-                    "toolTip": "Process productS with corresponding audio",  # noqa
+                    "toolTip": "Process products with corresponding audio",  # noqa
                     "order": 3},
                 "sourceResolution": {
                     "value": False,
