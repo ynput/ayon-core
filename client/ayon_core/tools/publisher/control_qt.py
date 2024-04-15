@@ -343,8 +343,9 @@ class QtRemotePublishController(BasePublisherController):
 
     @abstractmethod
     def _send_instance_changes_to_client(self):
-        instance_changes = self._get_instance_changes_for_client()
-        # Implement to send 'instance_changes' value to client
+        # TODO Implement to send 'instance_changes' value to client
+        # instance_changes = self._get_instance_changes_for_client()
+        pass
 
     @abstractmethod
     def save_changes(self):

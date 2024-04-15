@@ -94,8 +94,12 @@ def prepare_template_data(fill_pairs):
     output = {}
     for item in valid_items:
         keys, value = item
-        upper_value = value.upper()
-        capitalized_value = _capitalize_value(value)
+        # Convert only string values
+        if isinstance(value, str):
+            upper_value = value.upper()
+            capitalized_value = _capitalize_value(value)
+        else:
+            upper_value = capitalized_value = value
 
         first_key = keys.pop(0)
         if not keys:
