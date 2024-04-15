@@ -63,6 +63,8 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
             if len(aov_filenames) == 1:
                 aov_filenames = aov_filenames[0]
 
+            # TODO: Add some option to allow users to mark
+            #       aov_instances as reviewable.
             aov_instance.data.update({
                 # 'label': label,
                 "task": instance.data["task"],
@@ -72,14 +74,14 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 "productType": product_type,
                 "productName": product_name,
                 "productGroup": product_group,
-                "families": ["render.local.hou", "review"],
+                "families": ["render.local.hou"],
                 "instance_node": instance.data["instance_node"],
                 "representations": [
                     {
                         "stagingDir": staging_dir,
                         "ext": ext,
                         "name": ext,
-                        "tags": ["review"],
+                        "tags": [],
                         "files": aov_filenames,
                         "frameStart": instance.data["frameStartHandle"],
                         "frameEnd": instance.data["frameEndHandle"]
