@@ -21,7 +21,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
     """
 
     product_types = {"camera"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"abc"}
 
     label = "Load Alembic Camera"

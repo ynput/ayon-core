@@ -8,7 +8,7 @@ class MatchmoveLoader(load.LoaderPlugin):
     """
 
     product_types = {"matchmove"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"py"}
 
     defaults = ["Camera", "Object"]

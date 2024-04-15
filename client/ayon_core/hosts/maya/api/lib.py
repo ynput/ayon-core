@@ -1519,24 +1519,30 @@ def extract_alembic(file,
 
 
 # region ID
-def get_id_required_nodes(referenced_nodes=False, nodes=None):
-    """Filter out any node which are locked (reference) or readOnly
+def get_id_required_nodes(referenced_nodes=False,
+                          nodes=None,
+                          existing_ids=True):
+    """Return nodes that should receive a `cbId` attribute.
+
+    This includes only mesh and curve nodes, parent transforms of the shape
+    nodes, file texture nodes and object sets (including shading engines).
+
+    This filters out any node which is locked, referenced, read-only,
+    intermediate object.
 
     Args:
-        referenced_nodes (bool): set True to filter out reference nodes
+        referenced_nodes (bool): set True to include referenced nodes
         nodes (list, Optional): nodes to consider
+        existing_ids (bool): set True to include nodes with `cbId` attribute
+
     Returns:
         nodes (set): list of filtered nodes
     """
 
-    lookup = None
-    if nodes is None:
-        # Consider all nodes
-        nodes = cmds.ls()
-    else:
-        # Build a lookup for the only allowed nodes in output based
-        # on `nodes` input of the function (+ ensure long names)
-        lookup = set(cmds.ls(nodes, long=True))
+    if nodes is not None and not nodes:
+        # User supplied an empty `nodes` list to check so all we can
+        # do is return the empty result
+        return set()
 
     def _node_type_exists(node_type):
         try:
@@ -1545,63 +1551,142 @@ def get_id_required_nodes(referenced_nodes=False, nodes=None):
         except RuntimeError:
             return False
 
+    def iterate(maya_iterator):
+        while not maya_iterator.isDone():
+            yield maya_iterator.thisNode()
+            maya_iterator.next()
+
     # `readOnly` flag is obsolete as of Maya 2016 therefore we explicitly
     # remove default nodes and reference nodes
-    camera_shapes = ["frontShape", "sideShape", "topShape", "perspShape"]
+    default_camera_shapes = {
+        "frontShape", "sideShape", "topShape", "perspShape"
+    }
 
-    ignore = set()
-    if not referenced_nodes:
-        ignore |= set(cmds.ls(long=True, referencedNodes=True))
-
-    # list all defaultNodes to filter out from the rest
-    ignore |= set(cmds.ls(long=True, defaultNodes=True))
-    ignore |= set(cmds.ls(camera_shapes, long=True))
-
-    # Remove Turtle from the result of `cmds.ls` if Turtle is loaded
-    # TODO: This should be a less specific check for a single plug-in.
-    if _node_type_exists("ilrBakeLayer"):
-        ignore |= set(cmds.ls(type="ilrBakeLayer", long=True))
-
-    # Establish set of nodes types to include
-    types = ["objectSet", "file", "mesh", "nurbsCurve", "nurbsSurface"]
+    # The filtered types do not include transforms because we only want the
+    # parent transforms that have a child shape that we filtered to, so we
+    # include the parents here
+    types = ["mesh", "nurbsCurve", "nurbsSurface", "file", "objectSet"]
 
     # Check if plugin nodes are available for Maya by checking if the plugin
     # is loaded
     if cmds.pluginInfo("pgYetiMaya", query=True, loaded=True):
         types.append("pgYetiMaya")
 
-    # We *always* ignore intermediate shapes, so we filter them out directly
-    nodes = cmds.ls(nodes, type=types, long=True, noIntermediate=True)
+    iterator_type = OpenMaya.MIteratorType()
+    # This tries to be closest matching API equivalents of `types` variable
+    iterator_type.filterList = [
+        OpenMaya.MFn.kMesh,  # mesh
+        OpenMaya.MFn.kNurbsSurface,  # nurbsSurface
+        OpenMaya.MFn.kNurbsCurve,  # nurbsCurve
+        OpenMaya.MFn.kFileTexture,  # file
+        OpenMaya.MFn.kSet,  # objectSet
+        OpenMaya.MFn.kPluginShape  # pgYetiMaya
+    ]
+    it = OpenMaya.MItDependencyNodes(iterator_type)
 
-    # The items which need to pass the id to their parent
-    # Add the collected transform to the nodes
-    dag = cmds.ls(nodes, type="dagNode", long=True)  # query only dag nodes
-    transforms = cmds.listRelatives(dag,
-                                    parent=True,
-                                    fullPath=True) or []
+    fn_dep = OpenMaya.MFnDependencyNode()
+    fn_dag = OpenMaya.MFnDagNode()
+    result = set()
 
-    nodes = set(nodes)
-    nodes |= set(transforms)
+    def _should_include_parents(obj):
+        """Whether to include parents of obj in output"""
+        if not obj.hasFn(OpenMaya.MFn.kShape):
+            return False
 
-    nodes -= ignore  # Remove the ignored nodes
-    if not nodes:
-        return nodes
+        fn_dag.setObject(obj)
+        if fn_dag.isIntermediateObject:
+            return False
 
-    # Ensure only nodes from the input `nodes` are returned when a
-    # filter was applied on function call because we also iterated
-    # to parents and alike
-    if lookup is not None:
-        nodes &= lookup
+        # Skip default cameras
+        if (
+            obj.hasFn(OpenMaya.MFn.kCamera) and
+            fn_dag.name() in default_camera_shapes
+        ):
+            return False
 
-    # Avoid locked nodes
-    nodes_list = list(nodes)
-    locked = cmds.lockNode(nodes_list, query=True, lock=True)
-    for node, lock in zip(nodes_list, locked):
-        if lock:
-            log.warning("Skipping locked node: %s" % node)
-            nodes.remove(node)
+        return True
 
-    return nodes
+    def _add_to_result_if_valid(obj):
+        """Add to `result` if the object should be included"""
+        fn_dep.setObject(obj)
+        if not existing_ids and fn_dep.hasAttribute("cbId"):
+            return
+
+        if not referenced_nodes and fn_dep.isFromReferencedFile:
+            return
+
+        if fn_dep.isDefaultNode:
+            return
+
+        if fn_dep.isLocked:
+            return
+
+        # Skip default cameras
+        if (
+            obj.hasFn(OpenMaya.MFn.kCamera) and
+            fn_dep.name() in default_camera_shapes
+        ):
+            return
+
+        if obj.hasFn(OpenMaya.MFn.kDagNode):
+            # DAG nodes
+            fn_dag.setObject(obj)
+
+            # Skip intermediate objects
+            if fn_dag.isIntermediateObject:
+                return
+
+            # DAG nodes can be instanced and thus may have multiple paths.
+            # We need to identify each path
+            paths = OpenMaya.MDagPath.getAllPathsTo(obj)
+            for dag in paths:
+                path = dag.fullPathName()
+                result.add(path)
+        else:
+            # Dependency node
+            path = fn_dep.name()
+            result.add(path)
+
+    for obj in iterate(it):
+        # For any non-intermediate shape node always include the parent
+        # even if we exclude the shape itself (e.g. when locked, default)
+        if _should_include_parents(obj):
+            fn_dag.setObject(obj)
+            parents = [
+                fn_dag.parent(index) for index in range(fn_dag.parentCount())
+            ]
+            for parent_obj in parents:
+                _add_to_result_if_valid(parent_obj)
+
+        _add_to_result_if_valid(obj)
+
+    if not result:
+        return result
+
+    # Exclude some additional types
+    exclude_types = []
+    if _node_type_exists("ilrBakeLayer"):
+        # Remove Turtle from the result if Turtle is loaded
+        exclude_types.append("ilrBakeLayer")
+
+    if exclude_types:
+        exclude_nodes = set(cmds.ls(nodes, long=True, type=exclude_types))
+        if exclude_nodes:
+            result -= exclude_nodes
+
+    # Filter to explicit input nodes if provided
+    if nodes is not None:
+        # The amount of input nodes to filter to can be large and querying
+        # many nodes can be slow in Maya. As such we want to try and reduce
+        # it as much as possible, so we include the type filter to try and
+        # reduce the result of `maya.cmds.ls` here.
+        nodes = set(cmds.ls(nodes, long=True, type=types + ["dagNode"]))
+        if nodes:
+            result &= nodes
+        else:
+            return set()
+
+    return result
 
 
 def get_id(node):
@@ -1832,6 +1917,29 @@ def apply_attributes(attributes, nodes_by_id):
                 set_attribute(attr, value, node)
 
 
+def is_valid_reference_node(reference_node):
+    """Return whether Maya considers the reference node a valid reference.
+
+    Maya might report an error when using `maya.cmds.referenceQuery`:
+    Reference node 'reference_node' is not associated with a reference file.
+
+    Note that this does *not* check whether the reference node points to an
+    existing file. Instead it only returns whether maya considers it valid
+    and thus is not an unassociated reference node
+
+    Arguments:
+         reference_node (str): Reference node name
+
+    Returns:
+        bool: Whether reference node is a valid reference
+
+    """
+    sel = OpenMaya.MSelectionList()
+    sel.add(reference_node)
+    depend_node = sel.getDependNode(0)
+    return OpenMaya.MFnReference(depend_node).isValidReference()
+
+
 def get_container_members(container):
     """Returns the members of a container.
     This includes the nodes from any loaded references in the container.
@@ -1857,7 +1965,16 @@ def get_container_members(container):
         if ref.rsplit(":", 1)[-1].startswith("_UNKNOWN_REF_NODE_"):
             continue
 
-        reference_members = cmds.referenceQuery(ref, nodes=True, dagPath=True)
+        try:
+            reference_members = cmds.referenceQuery(ref,
+                                                    nodes=True,
+                                                    dagPath=True)
+        except RuntimeError:
+            # Ignore reference nodes that are not associated with a
+            # referenced file on which `referenceQuery` command fails
+            if not is_valid_reference_node(ref):
+                continue
+            raise
         reference_members = cmds.ls(reference_members,
                                     long=True,
                                     objectsOnly=True)
@@ -4153,6 +4270,9 @@ def get_reference_node(members, log=None):
         if ref.rsplit(":", 1)[-1].startswith("_UNKNOWN_REF_NODE_"):
             continue
 
+        if not is_valid_reference_node(ref):
+            continue
+
         references.add(ref)
 
     assert references, "No reference node found in container"
@@ -4183,15 +4303,19 @@ def get_reference_node_parents(ref):
         list: The upstream parent reference nodes.
 
     """
-    parent = cmds.referenceQuery(ref,
-                                 referenceNode=True,
-                                 parent=True)
+    def _get_parent(reference_node):
+        """Return parent reference node, but ignore invalid reference nodes"""
+        if not is_valid_reference_node(reference_node):
+            return
+        return cmds.referenceQuery(reference_node,
+                                   referenceNode=True,
+                                   parent=True)
+
+    parent = _get_parent(ref)
     parents = []
     while parent:
         parents.append(parent)
-        parent = cmds.referenceQuery(parent,
-                                     referenceNode=True,
-                                     parent=True)
+        parent = _get_parent(parent)
     return parents
 
 

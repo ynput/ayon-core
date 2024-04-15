@@ -92,10 +92,6 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
 
             folder_path, folder_name = self._get_folder_data(tag_data)
 
-            product_name = tag_data.get("productName")
-            if product_name is None:
-                product_name = tag_data["subset"]
-
             families = [str(f) for f in tag_data["families"]]
 
             # TODO: remove backward compatibility
@@ -293,7 +289,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
         label += " {}".format(product_name)
 
         data.update({
-            "name": "{}_{}".format(folder_path, subset),
+            "name": "{}_{}".format(folder_path, product_name),
             "label": label,
             "productName": product_name,
             "productType": product_type,
