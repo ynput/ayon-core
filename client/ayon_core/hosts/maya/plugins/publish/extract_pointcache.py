@@ -506,7 +506,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             defs.append(value)
 
         defs.append(
-            UISeparatorDef("sep_alembic_options")
+            UISeparatorDef("sep_alembic_options_end")
         )
 
         return defs
