@@ -585,8 +585,7 @@ def get_tyflow_export_particle_operators(members):
 
 
 def get_tyflow_export_operators():
-    opt_list = []
-    event_filter = {}
+    operators = []
     members = [obj for obj in rt.Objects if rt.ClassOf(obj) == rt.tyFlow]
     for member in members:
         obj = member.baseobject
@@ -595,10 +594,11 @@ def get_tyflow_export_operators():
             sub_anim = rt.GetSubAnim(obj, anim_name)
             if not rt.isKindOf(sub_anim, rt.tyEvent):
                 continue
-
-            export_node = _get_sub_anim_event_export_node(sub_anim)
-            if export_node:
-                operators.append(export_node)
+            node_names = rt.GetSubAnimNames(sub_anim)
+            for node_name in node_names:
+                node_sub_anim = rt.GetSubAnim(sub_anim, node_name)
+                if rt.hasProperty(node_sub_anim, "exportMode"):
+                    operators.append(node_sub_anim)
     return operators
 
 

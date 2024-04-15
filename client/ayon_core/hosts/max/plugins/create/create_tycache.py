@@ -3,19 +3,9 @@
 from ayon_core.hosts.max.api import plugin
 
 
-class CreateTyCache(plugin.MaxCreator):
+class CreateTyFlow(plugin.MaxCacheCreator):
     """Creator plugin for TyCache."""
-    identifier = "io.openpype.creators.max.tycache"
-    label = "TyCache"
-    product_type = "tycache"
+    identifier = "io.openpype.creators.max.tyflow"
+    label = "TyFlow"
+    product_type = "tyflow"
     icon = "gear"
-
-
-class CreateTySpline(plugin.MaxCreator):
-    """Creator plugin for TyCache."""
-    identifier = "io.openpype.creators.max.tyspline"
-    label = "TyCache (TySpline)"
-    family = "tyspline"
-    icon = "gear"
-    # TODO: get the operator here and divide into
-    # new creators instead if multiple operator involved here.
