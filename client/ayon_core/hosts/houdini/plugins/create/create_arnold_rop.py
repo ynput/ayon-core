@@ -1,4 +1,4 @@
-from ayon_core.hosts.houdini.api import plugin
+from ayon_core.hosts.houdini.api import lib, plugin
 from ayon_core.lib import EnumDef, BoolDef
 
 
@@ -66,15 +66,37 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
-    def get_pre_create_attr_defs(self):
-        attrs = super(CreateArnoldRop, self).get_pre_create_attr_defs()
+    @staticmethod
+    def update_node_parameters(node, creator_attributes):
+        """update node parameters according to creator attributes.
 
+        Implementation of update_node_parameters.
+
+        Args:
+            node(hou.Node): Houdini node to apply changes to.
+            creator_attributes(dict): Dictionary of creator attributes.
+        """
+        file_path, _ = lib.splitext(
+            node.evalParm("ar_picture"),
+            allowed_multidot_extensions=["pic.gz"]
+        )
+        output = "{file_path}.{ext}".format(
+            file_path=file_path,
+            ext=creator_attributes["image_format"]
+        )
+
+        node.setParms({
+            "ar_picture": output,
+            "ar_ass_export_enable": creator_attributes.get("export_job")
+        })
+
+    def get_instance_attr_defs(self):
         image_format_enum = [
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
 
-        return attrs + [
+        return [
             BoolDef("farm",
                     label="Submitting to Farm",
                     default=True),
@@ -86,3 +108,8 @@ class CreateArnoldRop(plugin.HoudiniCreator):
                     default=self.ext,
                     label="Image Format Options")
         ]
+
+    def get_pre_create_attr_defs(self):
+        attrs = super(CreateArnoldRop, self).get_pre_create_attr_defs()
+
+        return attrs + self.get_instance_attr_defs()
