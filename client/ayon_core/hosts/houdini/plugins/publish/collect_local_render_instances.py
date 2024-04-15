@@ -89,6 +89,6 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 ]
             })
 
-        # Remove Mantra instance
+        # Remove original render instance
         # I can't remove it here as I still need it to trigger the render.
         # context.remove(instance)
