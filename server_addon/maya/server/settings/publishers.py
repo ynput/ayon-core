@@ -1628,7 +1628,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "dontSkipUnwrittenFrames": False,
         "eulerFilter": False,
         "melPerFrameCallback": "",
-        "melPostFrameCallback": "",
+        "melPostJobCallback": "",
         "noNormals": False,
         "overrides": [
             "attr",
