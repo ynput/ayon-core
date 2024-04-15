@@ -79,7 +79,7 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
             return [instance.data["instance_node"]]
 
         # Ensure single top group
-        top_parents = {x.split("|", 2)[1] for x in content_instance}
+        top_parents = {"|" + x.split("|", 2)[1] for x in content_instance}
         if cls.validate_top_group and len(top_parents) != 1:
             cls.log.error(
                 "A model instance must have exactly one top group. "
