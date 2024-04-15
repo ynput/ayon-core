@@ -1532,19 +1532,17 @@ class PlaceholderLoadMixin(object):
     def _reduce_last_version_repre_entities(self, repre_contexts):
         """Reduce representations to last verison."""
 
-        mapping = {}
+        version_mapping_by_product_id = {}
         for repre_context in repre_contexts:
-            folder_id = repre_context["folder"]["id"]
             product_id = repre_context["product"]["id"]
             version = repre_context["version"]["version"]
-
-            parents_path = "/".join([folder_id, product_id])
-            version_mapping = mapping.setdefault(parents_path, {})
-
+            version_mapping = version_mapping_by_product_id.setdefault(
+                product_id, {}
+            )
             version_mapping[version].append(repre_context)
 
         output = []
-        for version_mapping in mapping.values():
+        for version_mapping in version_mapping_by_product_id.values():
             last_version = tuple(sorted(version_mapping.keys()))[-1]
             output.extend(version_mapping[last_version])
         return output
