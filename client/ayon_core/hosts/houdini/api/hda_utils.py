@@ -102,10 +102,11 @@ def update_info(node, context):
     version = str(context["version"]["version"])
 
     # We only set the values if the value does not match the currently
-    # evaluated result of the other parms, so that if the the project name
+    # evaluated result of the other parms, so that if the project name
     # value was dynamically set by the user with an expression or alike
     # then if it still matches the value of the current representation id
-    # we preserve it
+    # we preserve it. In essence, only update the value if the current
+    # *evaluated* value of the parm differs.
     parms = {
         "project_name": context["project"]["name"],
         "folder_path": context["folder"]["path"],
