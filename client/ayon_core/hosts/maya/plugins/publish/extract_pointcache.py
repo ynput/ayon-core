@@ -1,4 +1,5 @@
 import os
+from collections import OrderedDict
 
 from maya import cmds
 
@@ -234,29 +235,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
         if not cls.overrides:
             return []
 
-        override_defs = {
-            "attr": TextDef(
-                "attr",
-                label="Custom Attributes",
-                placeholder="attr1; attr2; ...",
-                default=cls.attr,
-                tooltip=(
-                    "Attributes matching by name will be included in the "
-                    "Alembic export. Attributes should be separated by "
-                    "semi-colon `;`"
-                )
-            ),
-            "attrPrefix": TextDef(
-                "attrPrefix",
-                label="Custom Attributes Prefix",
-                placeholder="prefix1; prefix2; ...",
-                default=cls.attrPrefix,
-                tooltip=(
-                    "Attributes starting with these prefixes will be included "
-                    "in the Alembic export. Attributes should be separated by "
-                    "semi-colon `;`"
-                )
-            ),
+        override_defs = OrderedDict({
             "autoSubd": BoolDef(
                 "autoSubd",
                 label="Auto Subd",
@@ -270,13 +249,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "attribute SubDivisionMesh has been added to mesh node and"
                     " its value is true."
                 )
-            ),
-            "dataFormat": EnumDef(
-                "dataFormat",
-                label="Data Format",
-                items=["ogawa", "HDF"],
-                default=cls.dataFormat,
-                tooltip="The data format to use to write the file."
             ),
             "dontSkipUnwrittenFrames": BoolDef(
                 "dontSkipUnwrittenFrames",
@@ -294,24 +266,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                 default=cls.eulerFilter,
                 tooltip="Apply Euler filter while sampling rotations."
             ),
-            "melPerFrameCallback": TextDef(
-                "melPerFrameCallback",
-                label="Mel Per Frame Callback",
-                default=cls.melPerFrameCallback,
-                tooltip=(
-                    "When each frame (and the static frame) is evaluated the "
-                    "string specified is evaluated as a Mel command."
-                )
-            ),
-            "melPostJobCallback": TextDef(
-                "melPostJobCallback",
-                label="Mel Post Job Callback",
-                default=cls.melPostJobCallback,
-                tooltip=(
-                    "When the translation has finished the string specified "
-                    "is evaluated as a Mel command."
-                )
-            ),
             "noNormals": BoolDef(
                 "noNormals",
                 label="No Normals",
@@ -326,35 +280,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                 label="Pre Roll",
                 default=cls.preRoll,
                 tooltip="This frame range will not be sampled."
-            ),
-            "preRollStartFrame": NumberDef(
-                "preRollStartFrame",
-                label="Pre Roll Start Frame",
-                tooltip=(
-                    "The frame to start scene evaluation at. This is used"
-                    " to set the starting frame for time dependent "
-                    "translations and can be used to evaluate run-up that"
-                    " isn't actually translated."
-                ),
-                default=cls.preRollStartFrame
-            ),
-            "pythonPerFrameCallback": TextDef(
-                "pythonPerFrameCallback",
-                label="Python Per Frame Callback",
-                default=cls.pythonPerFrameCallback,
-                tooltip=(
-                    "When each frame (and the static frame) is evaluated the "
-                    "string specified is evaluated as a python command."
-                )
-            ),
-            "pythonPostJobCallback": TextDef(
-                "pythonPostJobCallback",
-                label="Python Post Frame Callback",
-                default=cls.pythonPostJobCallback,
-                tooltip=(
-                    "When the translation has finished the string specified "
-                    "is evaluated as a python command."
-                )
             ),
             "renderableOnly": BoolDef(
                 "renderableOnly",
@@ -387,28 +312,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                 tooltip=(
                     "Uv data for PolyMesh and SubD shapes will be written to "
                     "the Alembic file."
-                )
-            ),
-            "userAttr": TextDef(
-                "userAttr",
-                label="User Attr",
-                placeholder="attr1; attr2; ...",
-                default=cls.userAttr,
-                tooltip=(
-                    "Attributes matching by name will be included in the "
-                    "Alembic export. Attributes should be separated by "
-                    "semi-colon `;`"
-                )
-            ),
-            "userAttrPrefix": TextDef(
-                "userAttrPrefix",
-                label="User Attr Prefix",
-                placeholder="prefix1; prefix2; ...",
-                default=cls.userAttrPrefix,
-                tooltip=(
-                    "Attributes starting with these prefixes will be included "
-                    "in the Alembic export. Attributes should be separated by "
-                    "semi-colon `;`"
                 )
             ),
             "verbose": BoolDef(
@@ -473,8 +376,106 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                     "Visibility state will be stored in the Alembic file. "
                     "Otherwise everything written out is treated as visible."
                 )
+            ),
+            "preRollStartFrame": NumberDef(
+                "preRollStartFrame",
+                label="Pre Roll Start Frame",
+                tooltip=(
+                    "The frame to start scene evaluation at. This is used"
+                    " to set the starting frame for time dependent "
+                    "translations and can be used to evaluate run-up that"
+                    " isn't actually translated."
+                ),
+                default=cls.preRollStartFrame
+            ),
+            "dataFormat": EnumDef(
+                "dataFormat",
+                label="Data Format",
+                items=["ogawa", "HDF"],
+                default=cls.dataFormat,
+                tooltip="The data format to use to write the file."
+            ),
+            "attr": TextDef(
+                "attr",
+                label="Custom Attributes",
+                placeholder="attr1; attr2; ...",
+                default=cls.attr,
+                tooltip=(
+                    "Attributes matching by name will be included in the "
+                    "Alembic export. Attributes should be separated by "
+                    "semi-colon `;`"
+                )
+            ),
+            "attrPrefix": TextDef(
+                "attrPrefix",
+                label="Custom Attributes Prefix",
+                placeholder="prefix1; prefix2; ...",
+                default=cls.attrPrefix,
+                tooltip=(
+                    "Attributes starting with these prefixes will be included "
+                    "in the Alembic export. Attributes should be separated by "
+                    "semi-colon `;`"
+                )
+            ),
+            "userAttr": TextDef(
+                "userAttr",
+                label="User Attr",
+                placeholder="attr1; attr2; ...",
+                default=cls.userAttr,
+                tooltip=(
+                    "Attributes matching by name will be included in the "
+                    "Alembic export. Attributes should be separated by "
+                    "semi-colon `;`"
+                )
+            ),
+            "userAttrPrefix": TextDef(
+                "userAttrPrefix",
+                label="User Attr Prefix",
+                placeholder="prefix1; prefix2; ...",
+                default=cls.userAttrPrefix,
+                tooltip=(
+                    "Attributes starting with these prefixes will be included "
+                    "in the Alembic export. Attributes should be separated by "
+                    "semi-colon `;`"
+                )
+            ),
+            "melPerFrameCallback": TextDef(
+                "melPerFrameCallback",
+                label="Mel Per Frame Callback",
+                default=cls.melPerFrameCallback,
+                tooltip=(
+                    "When each frame (and the static frame) is evaluated the "
+                    "string specified is evaluated as a Mel command."
+                )
+            ),
+            "melPostJobCallback": TextDef(
+                "melPostJobCallback",
+                label="Mel Post Job Callback",
+                default=cls.melPostJobCallback,
+                tooltip=(
+                    "When the translation has finished the string specified "
+                    "is evaluated as a Mel command."
+                )
+            ),
+            "pythonPerFrameCallback": TextDef(
+                "pythonPerFrameCallback",
+                label="Python Per Frame Callback",
+                default=cls.pythonPerFrameCallback,
+                tooltip=(
+                    "When each frame (and the static frame) is evaluated the "
+                    "string specified is evaluated as a python command."
+                )
+            ),
+            "pythonPostJobCallback": TextDef(
+                "pythonPostJobCallback",
+                label="Python Post Frame Callback",
+                default=cls.pythonPostJobCallback,
+                tooltip=(
+                    "When the translation has finished the string specified "
+                    "is evaluated as a python command."
+                )
             )
-        }
+        })
 
         defs = super(ExtractAlembic, cls).get_attribute_defs()
 
