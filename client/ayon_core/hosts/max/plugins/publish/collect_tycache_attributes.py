@@ -6,7 +6,7 @@ from pymxs import runtime as rt
 class CollectTyFlowData(pyblish.api.InstancePlugin):
     """Collect Channel Attributes for TyCache Export"""
 
-    order = pyblish.api.CollectorOrder + 0.02
+    order = pyblish.api.CollectorOrder + 0.005
     label = "Collect tyCache attribute Data"
     hosts = ['max']
     families = ["tyflow"]
@@ -31,4 +31,6 @@ class CollectTyFlowData(pyblish.api.InstancePlugin):
             tyc_instance.data["productType"] = instance.data["tyc_exportMode"]
             tyc_instance.data["exportMode"] = 2 if family == "tycache" else 6
             tyc_instance.data["families"] = [instance.data["tyc_exportMode"]]
+            tyc_instance.data["instance_node"] = tyc_product_name
             instance.data.update(tyc_instance.data)
+            self.log.debug(f"{instance.data}")
