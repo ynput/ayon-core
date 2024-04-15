@@ -4,7 +4,7 @@ import hou  # noqa
 
 from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import EnumDef
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class CreateRedshiftROP(plugin.HoudiniCreator):
@@ -15,7 +15,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
     product_type = "redshift_rop"
     icon = "magic"
     ext = "exr"
-    multi_layered_mode = "No Multi-Layered EXR File"
+    multi_layered_mode = "1"
 
     # Default to split export and render jobs
     split_render = True
@@ -68,22 +68,22 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             product_name=product_name
         )
 
-        camera = ""
-        if self.selected_nodes:
-            # set up the render camera from the selected node
-            for node in self.selected_nodes:
-                if node.type().name() == "cam":
-                    camera = node.path()
-
         parms = {
             # Render frame range
             "trange": 1,
             # Redshift ROP settings
             "RS_outputFileNamePrefix": filepath,
             "RS_outputBeautyAOVSuffix": "beauty",
-            "RS_archive_file": rs_filepath,
-            "RS_renderCamera": camera
+            "RS_archive_file": rs_filepath
         }
+
+        camera = None
+        if self.selected_nodes:
+            # set up the render camera from the selected node
+            for node in self.selected_nodes:
+                if node.type().name() == "cam":
+                    camera = node.path()
+                    parms["RS_renderCamera"] = camera or ""
 
         instance_node.setParms(parms)
 
@@ -129,8 +129,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             parms["RS_outputMultilayerMode"] = multi_layered_mode
             parms["RS_aovMultipart"] = multipart
 
-        if creator_attributes.get("render_target") == "farm_split":
-            parms["RS_archive_enable"] = 1
+        parms["RS_archive_enable"] = creator_attributes.get("split_render")
 
         node.setParms(parms)
 
@@ -142,18 +141,14 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             "1": "No Multi-Layered EXR File",
             "2": "Full Multi-Layered EXR File"
         }
-        render_target_items = {
-            "local": "Local machine rendering",
-            "local_no_render": "Use existing frames (local)",
-            "farm": "Farm Rendering",
-            "farm_split": "Farm Rendering - Split export & render jobs",
-        }
 
         return [
-            EnumDef("render_target",
-                    items=render_target_items,
-                    label="Render target",
-                    default=self.render_target),
+            BoolDef("farm",
+                    label="Submitting to Farm",
+                    default=True),
+            BoolDef("split_render",
+                    label="Split export and render jobs",
+                    default=self.split_render),
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
@@ -163,3 +158,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                     default=self.multi_layered_mode,
                     label="Multi-Layered EXR")
         ]
+
+    def get_pre_create_attr_defs(self):
+
+        return self.get_instance_attr_defs()
