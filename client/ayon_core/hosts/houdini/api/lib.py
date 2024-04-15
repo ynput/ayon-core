@@ -1040,9 +1040,12 @@ def set_background_images(node, images):
         """Return hou.NetworkImage as serialized dict"""
         if isinstance(image, dict):
             # Assume already serialized, only do some minor validations
-            assert "path" in image
-            assert "rect" in image
-            assert len(image["rect"]) == 4
+            if "path" not in image:
+                raise ValueError("Missing `path` key in image dictionary.")
+            if "rect" not in image:
+                raise ValueError("Missing `rect` key in image dictionary.")
+            if len(image["rect"]) != 4:
+                raise ValueError("`rect` value must be list of four floats.")
             return image
 
         rect = image.rect()
