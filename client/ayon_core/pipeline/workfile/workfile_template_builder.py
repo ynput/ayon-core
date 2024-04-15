@@ -1529,35 +1529,24 @@ class PlaceholderLoadMixin(object):
 
         pass
 
-    def _reduce_last_version_repre_entities(self, representations):
+    def _reduce_last_version_repre_entities(self, repre_contexts):
         """Reduce representations to last verison."""
 
         mapping = {}
-        # TODO use representation context with entities
-        # - using 'folder', 'subset' and 'version' from context on
-        #   representation is danger
-        for repre_entity in representations:
-            repre_context = repre_entity["context"]
+        for repre_context in repre_contexts:
+            folder_id = repre_context["folder"]["id"]
+            product_id = repre_context["product"]["id"]
+            version = repre_context["version"]["version"]
 
-            folder_name = repre_context["asset"]
-            product_name = repre_context["subset"]
-            version = repre_context.get("version", -1)
+            parents_path = "/".join([folder_id, product_id])
+            version_mapping = mapping.setdefault(parents_path, {})
 
-            if folder_name not in mapping:
-                mapping[folder_name] = {}
-
-            product_mapping = mapping[folder_name]
-            if product_name not in product_mapping:
-                product_mapping[product_name] = collections.defaultdict(list)
-
-            version_mapping = product_mapping[product_name]
-            version_mapping[version].append(repre_entity)
+            version_mapping[version].append(repre_context)
 
         output = []
-        for product_mapping in mapping.values():
-            for version_mapping in product_mapping.values():
-                last_version = tuple(sorted(version_mapping.keys()))[-1]
-                output.extend(version_mapping[last_version])
+        for version_mapping in mapping.values():
+            last_version = tuple(sorted(version_mapping.keys()))[-1]
+            output.extend(version_mapping[last_version])
         return output
 
     def populate_load_placeholder(self, placeholder, ignore_repre_ids=None):
@@ -1585,32 +1574,31 @@ class PlaceholderLoadMixin(object):
         loader_name = placeholder.data["loader"]
         loader_args = self.parse_loader_args(placeholder.data["loader_args"])
 
-        placeholder_representations = self._get_representations(placeholder)
-
-        filtered_representations = [
+        placeholder_representations = [
             repre_entity
             for repre_entity in self._get_representations(placeholder)
             if repre_entity["id"] not in ignore_repre_ids
         ]
-        filtered_representations = self._reduce_last_version_repre_entities(
-            filtered_representations
+
+        repre_load_contexts = get_representation_contexts(
+            self.project_name, placeholder_representations
         )
-        if not filtered_representations:
+        filtered_repre_contexts = self._reduce_last_version_repre_entities(
+            repre_load_contexts
+        )
+        if not filtered_repre_contexts:
             self.log.info((
                 "There's no representation for this placeholder: {}"
             ).format(placeholder.scene_identifier))
             return
 
-        repre_load_contexts = get_representation_contexts(
-            self.project_name, filtered_representations
-        )
         loaders_by_name = self.builder.get_loaders_by_name()
         self._before_placeholder_load(
             placeholder
         )
 
         failed = False
-        for repre_load_context in repre_load_contexts.values():
+        for repre_load_context in filtered_repre_contexts:
             folder_path = repre_load_context["folder"]["path"]
             product_name = repre_load_context["product"]["name"]
             representation = repre_load_context["representation"]
