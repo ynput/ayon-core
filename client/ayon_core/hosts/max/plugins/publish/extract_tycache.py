@@ -17,9 +17,6 @@ class ExtractTyCache(publish.Extractor):
             attributes and export tyCache with the export
             particle operator(s)
 
-        self.get_tyflow_export_particle_operators(): get the
-            export_particle operator(s)
-
         self.get_files(): get the files with tyFlow naming convention
             before publishing
     """

@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 from pymxs import runtime as rt
-from ayon_core.hosts.max.api.lib import (
-    get_tyflow_export_particle_operators
-)
 
 
 class CollectFrameRange(pyblish.api.InstancePlugin):
