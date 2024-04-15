@@ -28,7 +28,7 @@ class SceneInventoryController:
         self._current_folder_id = None
         self._current_folder_set = False
 
-        self._site_sync_model = SiteSyncModel(self)
+        self._sitesync_model = SiteSyncModel(self)
         # Switch dialog requirements
         self._hierarchy_model = HierarchyModel(self)
         self._event_system = self._create_event_system()
@@ -47,7 +47,7 @@ class SceneInventoryController:
         self._current_folder_id = None
         self._current_folder_set = False
 
-        self._site_sync_model.reset()
+        self._sitesync_model.reset()
         self._hierarchy_model.reset()
 
     def get_current_context(self):
@@ -89,22 +89,22 @@ class SceneInventoryController:
         return []
 
     # Site Sync methods
-    def is_sync_server_enabled(self):
-        return self._site_sync_model.is_sync_server_enabled()
+    def is_sitesync_enabled(self):
+        return self._sitesync_model.is_sitesync_enabled()
 
     def get_sites_information(self):
-        return self._site_sync_model.get_sites_information()
+        return self._sitesync_model.get_sites_information()
 
     def get_site_provider_icons(self):
-        return self._site_sync_model.get_site_provider_icons()
+        return self._sitesync_model.get_site_provider_icons()
 
     def get_representations_site_progress(self, representation_ids):
-        return self._site_sync_model.get_representations_site_progress(
+        return self._sitesync_model.get_representations_site_progress(
             representation_ids
         )
 
     def resync_representations(self, representation_ids, site_type):
-        return self._site_sync_model.resync_representations(
+        return self._sitesync_model.resync_representations(
             representation_ids, site_type
         )
 

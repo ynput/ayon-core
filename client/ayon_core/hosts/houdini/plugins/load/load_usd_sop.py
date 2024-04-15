@@ -9,7 +9,7 @@ class SopUsdImportLoader(load.LoaderPlugin):
 
     label = "Load USD to SOPs"
     product_types = {"*"}
-    representations = ["usd"]
+    representations = {"usd"}
     order = -6
     icon = "code-fork"
     color = "orange"

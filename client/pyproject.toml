@@ -4,14 +4,9 @@ description="AYON core addon."
 
 [tool.poetry.dependencies]
 python = ">=3.9.1,<3.10"
-aiohttp_json_rpc = "*" # TVPaint server
-aiohttp-middlewares = "^2.0.0"
-wsrpc_aiohttp = "^3.1.1" # websocket server
-Click = "^8"
 clique = "1.6.*"
 jsonschema = "^2.6.0"
 pyblish-base = "^1.8.11"
-pynput = "^1.7.2" # Timers manager - TODO remove
 speedcopy = "^2.1"
 six = "^1.15"
 qtawesome = "0.7.3"
@@ -20,6 +15,11 @@ openassetio-mediacreation = "*" # for default media creation traits
 ayon-openassetio-manager-plugin = { git = "https://github.com/ynput/ayon-openassetio-manager-plugin.git", branch = "master" }
 
 [ayon.runtimeDependencies]
+aiohttp_json_rpc = "*" # TVPaint server
+aiohttp-middlewares = "^2.0.0"
+wsrpc_aiohttp = "^3.1.1" # websocket server
+Click = "^8"
 OpenTimelineIO = "0.14.1"
 opencolorio = "2.2.1"
 Pillow = "9.5.0"
+pynput = "^1.7.2" # Timers manager - TODO remove
