@@ -521,8 +521,8 @@ class ExtractAlembicModel(BaseSettingsModel):
             "specified is evaluated as a Mel command."
         )
     )
-    melPostFrameCallback: str = SettingsField(
-        title="Mel Post Frame Callback",
+    melPostJobCallback: str = SettingsField(
+        title="Mel Post Job Callback",
         description=(
             "When the translation has finished the string specified is "
             "evaluated as a Mel command."
