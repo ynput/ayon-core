@@ -349,22 +349,6 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
-    attr: str = SettingsField(
-        title="Custom Attributes",
-        placeholder="attr1;attr2",
-        description=(
-            "Attributes matching by name will be included in the Alembic "
-            "export. Attributes should be separated by semi-colon `;`"
-        )
-    )
-    attrPrefix: str = SettingsField(
-        title="Custom Attributes Prefix",
-        placeholder="prefix1;prefix2",
-        description=(
-            "Attributes starting with these prefixes will be included in the "
-            "Alembic export. Attributes should be separated by semi-colon `;`"
-        )
-    )
     autoSubd: bool = SettingsField(
         title="Auto Subd",
         description=(
@@ -375,21 +359,6 @@ class ExtractAlembicModel(BaseSettingsModel):
             " a custom Boolean attribute SubDivisionMesh has been added to "
             "mesh node and its value is true."
         )
-    )
-    bake_attributes: list[str] = SettingsField(
-        default_factory=list, title="Bake Attributes",
-        description="List of attributes that will be included in the alembic "
-                    "export.",
-    )
-    bake_attribute_prefixes: list[str] = SettingsField(
-        default_factory=list, title="Bake Attribute Prefixes",
-        description="List of attribute prefixes for attributes that will be "
-                    "included in the alembic export.",
-    )
-    dataFormat: str = SettingsField(
-        enum_resolver=extract_alembic_data_format_enum,
-        title="Data Format",
-        description="The data format to use to write the file."
     )
     dontSkipUnwrittenFrames: bool = SettingsField(
         title="Dont Skip Unwritten Frames",
@@ -402,20 +371,6 @@ class ExtractAlembicModel(BaseSettingsModel):
     eulerFilter: bool = SettingsField(
         title="Euler Filter",
         description="Apply Euler filter while sampling rotations."
-    )
-    melPerFrameCallback: str = SettingsField(
-        title="Mel Per Frame Callback",
-        description=(
-            "When each frame (and the static frame) is evaluated the string "
-            "specified is evaluated as a Mel command."
-        )
-    )
-    melPostFrameCallback: str = SettingsField(
-        title="Mel Post Frame Callback",
-        description=(
-            "When the translation has finished the string specified is "
-            "evaluated as a Mel command."
-        )
     )
     noNormals: bool = SettingsField(
         title="No Normals",
@@ -433,30 +388,6 @@ class ExtractAlembicModel(BaseSettingsModel):
             "used for simulation run up."
         )
     )
-    preRollStartFrame: int = SettingsField(
-        title="Pre Roll Start Frame",
-        description=(
-            "The frame to start scene evaluation at.  This is used to set the "
-            "starting frame for time dependent translations and can be used to"
-            " evaluate run-up that isn't actually translated.\n"
-            "NOTE: Pre Roll needs to be enabled for this start frame "
-            "to be considered."
-        )
-    )
-    pythonPerFrameCallback: str = SettingsField(
-        title="Python Per Frame Callback",
-        description=(
-            "When each frame (and the static frame) is evaluated the string "
-            "specified is evaluated as a python command."
-        )
-    )
-    pythonPostJobCallback: str = SettingsField(
-        title="Python Post Job Callback",
-        description=(
-            "When the translation has finished the string specified is "
-            "evaluated as a python command."
-        )
-    )
     renderableOnly: bool = SettingsField(
         title="Renderable Only",
         description="Only export renderable visible shapes."
@@ -466,22 +397,6 @@ class ExtractAlembicModel(BaseSettingsModel):
         description=(
             "Namespaces will be stripped off of the node before being written "
             "to Alembic."
-        )
-    )
-    userAttr: str = SettingsField(
-        title="User Attr",
-        placeholder="attr1;attr2",
-        description=(
-            "Attributes matching by name will be included in the Alembic "
-            "export. Attributes should be separated by semi-colon `;`"
-        )
-    )
-    userAttrPrefix: str = SettingsField(
-        title="User Attr Prefix",
-        placeholder="prefix1;prefix2",
-        description=(
-            "Attributes starting with these prefixes will be included in the "
-            "Alembic export. Attributes should be separated by semi-colon `;`"
         )
     )
     uvsOnly: bool = SettingsField(
@@ -540,6 +455,91 @@ class ExtractAlembicModel(BaseSettingsModel):
         description=(
             "Visibility state will be stored in the Alembic file. Otherwise "
             "everything written out is treated as visible."
+        )
+    )
+    preRollStartFrame: int = SettingsField(
+        title="Pre Roll Start Frame",
+        description=(
+            "The frame to start scene evaluation at.  This is used to set the "
+            "starting frame for time dependent translations and can be used to"
+            " evaluate run-up that isn't actually translated.\n"
+            "NOTE: Pre Roll needs to be enabled for this start frame "
+            "to be considered."
+        )
+    )
+    dataFormat: str = SettingsField(
+        enum_resolver=extract_alembic_data_format_enum,
+        title="Data Format",
+        description="The data format to use to write the file."
+    )
+    bake_attributes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attributes",
+        description="List of attributes that will be included in the alembic "
+                    "export.",
+    )
+    bake_attribute_prefixes: list[str] = SettingsField(
+        default_factory=list, title="Bake Attribute Prefixes",
+        description="List of attribute prefixes for attributes that will be "
+                    "included in the alembic export.",
+    )
+    attr: str = SettingsField(
+        title="Custom Attributes",
+        placeholder="attr1;attr2",
+        description=(
+            "Attributes matching by name will be included in the Alembic "
+            "export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    attrPrefix: str = SettingsField(
+        title="Custom Attributes Prefix",
+        placeholder="prefix1;prefix2",
+        description=(
+            "Attributes starting with these prefixes will be included in the "
+            "Alembic export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    userAttr: str = SettingsField(
+        title="User Attr",
+        placeholder="attr1;attr2",
+        description=(
+            "Attributes matching by name will be included in the Alembic "
+            "export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    userAttrPrefix: str = SettingsField(
+        title="User Attr Prefix",
+        placeholder="prefix1;prefix2",
+        description=(
+            "Attributes starting with these prefixes will be included in the "
+            "Alembic export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    melPerFrameCallback: str = SettingsField(
+        title="Mel Per Frame Callback",
+        description=(
+            "When each frame (and the static frame) is evaluated the string "
+            "specified is evaluated as a Mel command."
+        )
+    )
+    melPostFrameCallback: str = SettingsField(
+        title="Mel Post Frame Callback",
+        description=(
+            "When the translation has finished the string specified is "
+            "evaluated as a Mel command."
+        )
+    )
+    pythonPerFrameCallback: str = SettingsField(
+        title="Python Per Frame Callback",
+        description=(
+            "When each frame (and the static frame) is evaluated the string "
+            "specified is evaluated as a python command."
+        )
+    )
+    pythonPostJobCallback: str = SettingsField(
+        title="Python Post Job Callback",
+        description=(
+            "When the translation has finished the string specified is "
+            "evaluated as a python command."
         )
     )
     overrides: list[str] = SettingsField(
