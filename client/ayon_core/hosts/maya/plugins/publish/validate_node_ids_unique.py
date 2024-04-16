@@ -8,6 +8,8 @@ from ayon_core.pipeline.publish import (
 import ayon_core.hosts.maya.api.action
 from ayon_core.hosts.maya.api import lib
 
+from maya import cmds
+
 
 class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
     """Validate the nodes in the instance have a unique Colorbleed Id
@@ -41,7 +43,7 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
         if invalid:
             label = "Nodes found with non-unique folder ids"
             raise PublishValidationError(
-                message="{}: {}".format(label, invalid),
+                message="{}, see log".format(label),
                 title="Non-unique folder ids on nodes",
                 description="{}\n- {}".format(label,
                                               "\n- ".join(sorted(invalid)))
@@ -54,7 +56,6 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
         # Check only non intermediate shapes
         # todo: must the instance itself ensure to have no intermediates?
         # todo: how come there are intermediates?
-        from maya import cmds
         instance_members = cmds.ls(instance, noIntermediate=True, long=True)
 
         # Collect each id with their members
@@ -67,10 +68,14 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
 
         # Take only the ids with more than one member
         invalid = list()
-        _iteritems = getattr(ids, "iteritems", ids.items)
-        for _ids, members in _iteritems():
+        for members in ids.values():
             if len(members) > 1:
-                cls.log.error("ID found on multiple nodes: '%s'" % members)
+                members_text = "\n".join(
+                    "- {}".format(member) for member in sorted(members)
+                )
+                cls.log.error(
+                    "ID found on multiple nodes:\n{}".format(members_text)
+                )
                 invalid.extend(members)
 
         return invalid
