@@ -24,6 +24,7 @@ class CollectFarmInstances(pyblish.api.InstancePlugin):
             "farm_split", "farm"
         }:
             instance.data["farm"] = False
+            instance.data["splitRender"] = False
             self.log.debug("Render on farm is disabled. "
                            "Skipping farm collecting.")
             return
