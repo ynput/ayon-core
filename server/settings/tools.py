@@ -173,6 +173,7 @@ def _product_types_enum():
         "rig",
         "setdress",
         "take",
+        "usd",
         "usdShade",
         "vdbcache",
         "vrayproxy",
@@ -410,14 +411,14 @@ DEFAULT_TOOLS_VALUES = {
             {
                 "task_types": [],
                 "hosts": [],
-                "workfile_template": "work"
+                "workfile_template": "default"
             },
             {
                 "task_types": [],
                 "hosts": [
                     "unreal"
                 ],
-                "workfile_template": "work_unreal"
+                "workfile_template": "unreal"
             }
         ],
         "last_workfile_on_startup": [
@@ -457,7 +458,7 @@ DEFAULT_TOOLS_VALUES = {
                 "hosts": [],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish"
+                "template_name": "default"
             },
             {
                 "product_types": [
@@ -468,7 +469,7 @@ DEFAULT_TOOLS_VALUES = {
                 "hosts": [],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_render"
+                "template_name": "render"
             },
             {
                 "product_types": [
@@ -479,7 +480,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_simpleUnrealTexture"
+                "template_name": "simpleUnrealTexture"
             },
             {
                 "product_types": [
@@ -491,7 +492,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_maya2unreal"
+                "template_name": "maya2unreal"
             },
             {
                 "product_types": [
@@ -502,7 +503,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_online"
+                "template_name": "online"
             },
             {
                 "product_types": [
@@ -513,7 +514,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_tycache"
+                "template_name": "tycache"
             }
         ],
         "hero_template_name_profiles": [
@@ -526,7 +527,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "hero_simpleUnrealTextureHero"
+                "template_name": "simpleUnrealTextureHero"
             }
         ]
     }

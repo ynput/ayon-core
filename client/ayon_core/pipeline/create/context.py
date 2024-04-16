@@ -529,7 +529,7 @@ class AttributeValues(object):
     Has dictionary like methods. Not all of them are allowed all the time.
 
     Args:
-        attr_defs(AbstractAttrDef): Defintions of value type and properties.
+        attr_defs(AbstractAttrDef): Definitions of value type and properties.
         values(dict): Values after possible conversion.
         origin_data(dict): Values loaded from host before conversion.
     """
@@ -1790,10 +1790,10 @@ class CreateContext:
 
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
-                self.log.warning((
-                    "Duplicated Creator identifier. "
-                    "Using first and skipping following"
-                ))
+                self.log.warning(
+                    "Duplicate Creator identifier: '%s'. Using first Creator "
+                    "and skipping: %s", creator_identifier, creator_class
+                )
                 continue
 
             # Filter by host name

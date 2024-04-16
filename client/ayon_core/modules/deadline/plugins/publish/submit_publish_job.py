@@ -130,7 +130,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         "FTRACK_SERVER",
         "AYON_APP_NAME",
         "AYON_USERNAME",
-        "OPENPYPE_SG_USER",
+        "AYON_SG_USERNAME",
         "KITSU_LOGIN",
         "KITSU_PWD"
     ]
@@ -210,6 +210,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "AYON_RENDER_JOB": "0",
             "AYON_REMOTE_PUBLISH": "0",
             "AYON_BUNDLE_NAME": os.environ["AYON_BUNDLE_NAME"],
+            "AYON_DEFAULT_SETTINGS_VARIANT": (
+                os.environ["AYON_DEFAULT_SETTINGS_VARIANT"]
+            ),
         }
 
         # add environments from self.environ_keys
@@ -573,23 +576,10 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "type": product_type,
         }
 
-        render_templates = anatomy.templates_obj[template_name]
-        if "folder" in render_templates:
-            publish_folder = render_templates["folder"].format_strict(
-                template_data
-            )
-        else:
-            # solve deprecated situation when `folder` key is not underneath
-            # `publish` anatomy
-            self.log.warning((
-                "Deprecation warning: Anatomy does not have set `folder`"
-                " key underneath `publish` (in global of for project `{}`)."
-            ).format(project_name))
-
-            file_path = render_templates["path"].format_strict(template_data)
-            publish_folder = os.path.dirname(file_path)
-
-        return publish_folder
+        render_dir_template = anatomy.get_template_item(
+            "publish", template_name, "directory"
+        )
+        return render_dir_template.format_strict(template_data)
 
     @classmethod
     def get_attribute_defs(cls):

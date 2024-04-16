@@ -17,7 +17,7 @@ class UAssetLoader(plugin.Loader):
 
     product_types = {"uasset"}
     label = "Load UAsset"
-    representations = ["uasset"]
+    representations = {"uasset"}
     icon = "cube"
     color = "orange"
 
@@ -166,6 +166,6 @@ class UMapLoader(UAssetLoader):
 
     product_types = {"uasset"}
     label = "Load Level"
-    representations = ["umap"]
+    representations = {"umap"}
 
     extension = "umap"

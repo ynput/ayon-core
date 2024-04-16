@@ -18,7 +18,7 @@ class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Specific loader for lookdev"""
 
     product_types = {"look"}
-    representations = ["ma"]
+    representations = {"ma"}
 
     label = "Reference look"
     order = -10

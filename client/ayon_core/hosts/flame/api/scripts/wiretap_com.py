@@ -61,7 +61,7 @@ class WireTapCom(object):
 
     def get_launch_args(
             self, project_name, project_data, user_name, *args, **kwargs):
-        """Forming launch arguments for OpenPype launcher.
+        """Forming launch arguments for AYON launcher.
 
         Args:
             project_name (str): name of project
