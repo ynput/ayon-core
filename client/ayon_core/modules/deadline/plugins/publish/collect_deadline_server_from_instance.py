@@ -7,7 +7,6 @@ attribute or using default server if that attribute doesn't exists.
 """
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
-from ayon_core.pipeline.context_tools import get_current_host_name
 
 
 class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
