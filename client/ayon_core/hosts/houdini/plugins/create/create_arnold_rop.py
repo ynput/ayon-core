@@ -1,5 +1,5 @@
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import EnumDef
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class CreateArnoldRop(plugin.HoudiniCreator):
@@ -81,6 +81,10 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         }
 
         return [
+            BoolDef("review",
+                    label="Review",
+                    tooltip="Mark as reviewable",
+                    default=True),
             EnumDef("render_target",
                     items=render_target_items,
                     label="Render target",

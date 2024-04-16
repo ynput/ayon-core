@@ -72,6 +72,8 @@ class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
                                                    beauty_product)
         }
 
+        # Assume it's a multipartExr Render.
+        multipartExr = True
         aov_numbers = rop.evalParm("vm_numaux")
         if aov_numbers > 0:
             # get the filenames of the AOVs
@@ -83,6 +85,9 @@ class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
                     aov_enabled = rop.evalParm(aov_boolean)
                     has_aov_path = rop.evalParm(aov_name)
                     if has_aov_path and aov_enabled == 1:
+                        # Set to False as soon as we have a separated aov.
+                        multipartExr = False
+
                         aov_prefix = evalParmNoFrame(rop, aov_name)
                         aov_product = self.get_render_product_name(
                             prefix=aov_prefix, suffix=None
@@ -90,6 +95,11 @@ class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
                         render_products.append(aov_product)
 
                         files_by_aov[var] = self.generate_expected_files(instance, aov_product)     # noqa
+
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = multipartExr
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)

@@ -80,6 +80,9 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
                     "RS_aovMultipart": True
                 })
 
+        # Assume it's a multipartExr Render.
+        multipartExr = True
+
         # Default beauty/main layer AOV
         beauty_product = self.get_render_product_name(
             prefix=default_prefix, suffix=beauty_suffix
@@ -118,6 +121,14 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
                 files_by_aov[aov_suffix] = self.generate_expected_files(instance,
                                                                         aov_product)    # noqa
+
+                # Set to False as soon as we have a separated aov.
+                multipartExr = False
+
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = multipartExr
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)
