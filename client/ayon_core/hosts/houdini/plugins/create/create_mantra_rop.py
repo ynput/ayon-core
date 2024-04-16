@@ -92,6 +92,10 @@ class CreateMantraROP(plugin.HoudiniCreator):
         }
 
         return [
+            BoolDef("review",
+                    label="Review",
+                    tooltip="Mark as reviewable",
+                    default=True),
             EnumDef("render_target",
                     items=render_target_items,
                     label="Render target",

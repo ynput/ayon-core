@@ -4,7 +4,7 @@ import hou  # noqa
 
 from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import EnumDef
+from ayon_core.lib import EnumDef, BoolDef
 
 
 class CreateRedshiftROP(plugin.HoudiniCreator):
@@ -136,6 +136,10 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         }
 
         return [
+            BoolDef("review",
+                    label="Review",
+                    tooltip="Mark as reviewable",
+                    default=True),
             EnumDef("render_target",
                     items=render_target_items,
                     label="Render target",
