@@ -837,16 +837,11 @@ def set_review_color_space(opengl_node, review_color_space="", log=None):
             " 'OpenColorIO'".format(opengl_node.path())
         )
 
-    # fall to default review color space if the setting is empty.
-    if not review_color_space:
-        from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
-        review_color_space = get_default_display_view_colorspace()
-
     opengl_node.setParms(
         {"ociocolorspace": review_color_space}
     )
 
-    self.log.debug(
+    log.debug(
         "'OCIO Colorspace' parm on '{}' has been set to "
         "the view color space '{}'"
         .format(opengl_node, review_color_space)
