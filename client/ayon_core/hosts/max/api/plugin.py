@@ -267,9 +267,10 @@ class MaxCreatorBase(object):
         Returns:
             instance
         """
-        if isinstance(node, str):
-            node = rt.Container(name=node)
+        if not isinstance(node, str):
+            raise CreatorError(f"Instance node is not at the string value.")
 
+        node = rt.Container(name=node)
         attrs = rt.Execute(MS_CUSTOM_ATTRIB)
         modifier = rt.EmptyModifier()
         rt.addModifier(node, modifier)
@@ -293,13 +294,14 @@ class MaxTyFlowDataCreatorBase(MaxCreatorBase):
         Returns:
             instance
         """
-        if isinstance(node, str):
-            node = rt.Container(name=node)
-            attrs = rt.Execute(MS_TYCACHE_ATTRIB)
-            modifier = rt.EmptyModifier()
-            rt.addModifier(node, modifier)
-            node.modifiers[0].name = "AYON TyCache Data"
-            rt.custAttributes.add(node.modifiers[0], attrs)
+        if not isinstance(node, str):
+            raise CreatorError(f"Instance node is not at the string value.")
+        node = rt.Container(name=node)
+        attrs = rt.Execute(MS_TYCACHE_ATTRIB)
+        modifier = rt.EmptyModifier()
+        rt.addModifier(node, modifier)
+        node.modifiers[0].name = "AYON TyCache Data"
+        rt.custAttributes.add(node.modifiers[0], attrs)
 
         return node
 
@@ -461,8 +463,9 @@ class MaxCacheCreator(Creator, MaxTyFlowDataCreatorBase):
     def remove_instances(self, instances):
         """Remove specified instance from the scene.
 
-        This is only removing `id` parameter so instance is no longer
-        instance, because it might contain valuable data for artist.
+        This is only removing AYON-related parameters based on the modifier
+        so instance is no longer instance, because it might contain
+        valuable data for artist.
 
         """
         for instance in instances:

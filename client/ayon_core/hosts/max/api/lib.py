@@ -545,6 +545,12 @@ def render_resolution(width, height):
 
 
 def get_tyflow_export_operators():
+    """Get Tyflow Export Particles Operators.
+
+    Returns:
+        list: Particle operators
+
+    """
     operators = []
     members = [obj for obj in rt.Objects if rt.ClassOf(obj) == rt.tyFlow]
     for member in members:

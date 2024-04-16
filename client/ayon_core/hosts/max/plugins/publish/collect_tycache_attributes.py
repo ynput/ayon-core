@@ -27,33 +27,30 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
         context = instance.context
         container = rt.GetNodeByName(instance.data["instance_node"])
         tyc_product_names = [
-                name for name
-                in container.modifiers[0].AYONTyCacheData.tyc_exports
+            name for name
+            in container.modifiers[0].AYONTyCacheData.tyc_exports
         ]
         attr_values = self.get_attr_values_from_data(instance.data)
-        # TODO: need to do regex when the export particle has some names without regex.
         for tyc_product_name in tyc_product_names:
             self.log.debug(f"Creating instance for operator:{tyc_product_name}")
             tyc_instance = context.create_instance(tyc_product_name)
             tyc_instance[:] = instance[:]
             tyc_instance.data.update(copy.deepcopy(dict(instance.data)))
-            tyc_instance.data["name"] = "{}_{}".format(
-                instance.data["tyc_exportMode"], tyc_product_name)
-            tyc_instance.data["label"] = "{}_{}".format(
-                instance.data["tyc_exportMode"], tyc_product_name)
-            tyc_instance.data["family"] = instance.data["tyc_exportMode"]
-            tyc_instance.data["productName"] = tyc_product_name
-            tyc_instance.data["productType"] = instance.data["tyc_exportMode"]
-            tyc_instance.data["exportMode"] = (
-                2 if instance.data["tyc_exportMode"] == "tycache" else 6
-            )
-            tyc_instance.data["families"] = [instance.data["tyc_exportMode"]]
-            tyc_instance.data["creator_identifier"] = "io.openpype.creators.max.{}".format(
-                instance.data["tyc_exportMode"]
-            )
-            tyc_instance.data["publish_attributes"] = {
-                "ValidateTyCacheFrameRange":{"active": attr_values.get(
-                    "has_frame_range_validator")}}
+            export_mode = instance.data["tyc_exportMode"]
+            tyc_instance.update({
+                "name": f"{export_mode}_{tyc_product_name}",
+                "label": f"{export_mode}_{tyc_product_name}",
+                "family": export_mode,
+                "families": [export_mode],
+                "productName": tyc_product_name,
+                "exportMode": (2 if instance.data["tyc_exportMode"] == "tycache" else 6),
+                "productType": export_mode,
+                "creator_identifier": f"io.openpype.creators.max.{export_mode}",
+                "publish_attributes": {
+                    "ValidateTyCacheFrameRange": {
+                        "active": attr_values.get("has_frame_range_validator")}
+                }
+            })
             instance.append(tyc_instance)
 
     @classmethod
