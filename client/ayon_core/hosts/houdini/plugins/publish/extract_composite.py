@@ -46,7 +46,7 @@ class ExtractComposite(publish.Extractor,
             "frameEnd": instance.data["frameEndHandle"],
         }
 
-        if ext == "exr":
+        if ext.lower() == "exr":
             # Inject colorspace with 'scene_linear' as that's the
             # default Houdini working colorspace and all extracted
             # OpenEXR images should be in that colorspace.
