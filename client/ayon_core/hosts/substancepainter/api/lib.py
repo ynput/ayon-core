@@ -640,3 +640,39 @@ def prompt_new_file_with_mesh(mesh_filepath):
         return
 
     return project_mesh
+
+
+def convert_substance_object_to_python(subst_proj_option="default"):
+    if subst_proj_option == "default":
+        return substance_painter.project.ProjectWorkflow.Default
+    elif subst_proj_option == "uvTile":
+        return substance_painter.project.ProjectWorkflow.UVTile
+    elif subst_proj_option == "textureSetPerUVTile":
+        return substance_painter.project.ProjectWorkflow.TextureSetPerUVTile
+    elif subst_proj_option == "PerFragment":
+        return substance_painter.project.TangentSpace.PerFragment
+    elif subst_proj_option == "PerVertex":
+        return substance_painter.project.TangentSpace.PerVertex
+    elif subst_proj_option == "DirectX":
+        return substance_painter.project.NormalMapFormat.DirectX
+    elif subst_proj_option == "OpenGL":
+        return substance_painter.project.NormalMapFormat.OpenGL
+    else:
+        raise ValueError(
+            f"Unsupported Substance Objects: {subst_proj_option}")
+
+
+def parse_substance_attributes_setting(template_name, project_templates):
+    attributes_data = {}
+    for template in project_templates:
+        if template["name"] == template_name:
+            attributes_data.update(template)
+    attributes_data["normal_map_format"] = convert_substance_object_to_python(
+        subst_proj_option=attributes_data["normal_map_format"])
+    attributes_data["project_workflow"] = convert_substance_object_to_python(
+        subst_proj_option=attributes_data["project_workflow"])
+    attributes_data["tangent_space_mode"] = convert_substance_object_to_python(
+        subst_proj_option=attributes_data["tangent_space_mode"])
+    attributes_data.pop("name")
+    attributes_data.pop("preserve_strokes")
+    return attributes_data
