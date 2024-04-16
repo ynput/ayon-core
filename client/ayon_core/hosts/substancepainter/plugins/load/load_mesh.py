@@ -2,17 +2,15 @@ from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from ayon_core.lib import BoolDef, EnumDef
+from ayon_core.lib import EnumDef
 from ayon_core.pipeline.load import LoadError
 from ayon_core.hosts.substancepainter.api.pipeline import (
     imprint_container,
     set_container_metadata,
     remove_container_metadata
 )
-from ayon_core.hosts.substancepainter.api.lib import (
-    prompt_new_file_with_mesh,
-    parse_substance_attributes_setting
-)
+from ayon_core.hosts.substancepainter.api.lib import parse_substance_attributes_setting
+
 
 import substance_painter.project
 
@@ -83,8 +81,9 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         # We want store some options for updating to keep consistent behavior
         # from the user's original choice. We don't store 'preserve_strokes'
         # as we always preserve strokes on updates.
+        # TODO: update the code
         container["options"] = {
-            "import_cameras": import_cameras,
+            "import_cameras": True,
         }
 
         set_container_metadata(project_mesh_object_name, container)
