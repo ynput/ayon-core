@@ -9,18 +9,12 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
     set_container_metadata,
     remove_container_metadata
 )
-from ayon_core.hosts.substancepainter.api.lib import prompt_new_file_with_mesh
+from ayon_core.hosts.substancepainter.api.lib import (
+    prompt_new_file_with_mesh,
+    parse_substance_attributes_setting
+)
 
 import substance_painter.project
-
-
-def get_uv_workflow(uv_option="default"):
-    if uv_option == "default":
-        return substance_painter.project.ProjectWorkflow.Default
-    elif uv_option == "uvTile":
-        return substance_painter.project.ProjectWorkflow.UVTile
-    else:
-        return substance_painter.project.ProjectWorkflow.TextureSetPerUVTile
 
 
 class SubstanceLoadProjectMesh(load.LoaderPlugin):
@@ -33,74 +27,37 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
     order = -10
     icon = "code-fork"
     color = "orange"
+    project_templates = []
 
     @classmethod
     def get_options(cls, contexts):
-        project_uv_workflow_items = {
-            substance_painter.project.ProjectWorkflow.Default: "default",
-            substance_painter.project.ProjectWorkflow.UVTile: "uvTile",
-            substance_painter.project.ProjectWorkflow.TextureSetPerUVTile: "textureSetPerUVTile"     # noqa
-        }
+        template_enum = [template["name"] for template in cls.project_templates]
         return [
-            BoolDef("preserve_strokes",
-                    default=True,
-                    label="Preserve Strokes",
-                    tooltip=("Preserve strokes positions on mesh.\n"
-                             "(only relevant when loading into "
-                             "existing project)")),
-            BoolDef("import_cameras",
-                    default=True,
-                    label="Import Cameras",
-                    tooltip="Import cameras from the mesh file."
-            ),
-            EnumDef("texture_resolution",
-                    items=[128, 256, 512, 1024, 2048, 4096],
-                    default=1024,
-                    label="Texture Resolution",
-                    tooltip="Set texture resolution when creating new project"),
-            EnumDef("project_uv_workflow",
-                    items=["default", "uvTile", "textureSetPerUVTile"],
+            EnumDef("project_template",
+                    items=template_enum,
                     default="default",
-                    label="UV Workflow",
-                    tooltip="Set UV workflow when creating new project")
+                    label="Project Template")
         ]
 
     def load(self, context, name, namespace, options=None):
 
         # Get user inputs
-        import_cameras = options.get("import_cameras", True)
-        preserve_strokes = options.get("preserve_strokes", True)
-        texture_resolution = options.get("texture_resolution", 1024)
-        uv_option = options.get("project_uv_workflow", "default")
-        uv_workflow = get_uv_workflow(uv_option=uv_option)
-        sp_settings = substance_painter.project.Settings(
-            default_texture_resolution=texture_resolution,
-            import_cameras=import_cameras,
-            project_workflow=uv_workflow
-        )
+        template_name = options.get("project_template", "default")
+        template_settings = parse_substance_attributes_setting(template_name, self.project_templates)
+        sp_settings = substance_painter.project.Settings(**template_settings)
         if not substance_painter.project.is_open():
             # Allow to 'initialize' a new project
             path = self.filepath_from_context(context)
-            # TODO: improve the prompt dialog function to not
-            # only works for simple polygon scene
-            result = prompt_new_file_with_mesh(mesh_filepath=path)
-            if not result:
-                if not substance_painter.project.is_open():
-                    self.log.info("User cancelled new project prompt."
-                                  "Creating new project directly from"
-                                  " Substance Painter API Instead.")
-                    settings = substance_painter.project.create(
-                        mesh_file_path=path, settings=sp_settings
-                    )
-                else:
-                    self.log.info("The project is already created after "
-                                  "the new project prompt action")
 
+            settings = substance_painter.project.create(
+                mesh_file_path=path, settings=sp_settings
+            )
         else:
             # Reload the mesh
+            # TODO: fix the hardcoded when the preset setting in SP addon.
             settings = substance_painter.project.MeshReloadingSettings(
-                import_cameras=import_cameras,
-                preserve_strokes=preserve_strokes
+                import_cameras=True,
+                preserve_strokes=True
             )
 
             def on_mesh_reload(status: substance_painter.project.ReloadMeshStatus):  # noqa
