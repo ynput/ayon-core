@@ -839,7 +839,7 @@ def set_review_color_space(opengl_node, review_color_space="", log=None):
 
     # fall to default review color space if the setting is empty.
     if not review_color_space:
-        from openpype.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
+        from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
         review_color_space = get_default_display_view_colorspace()
 
     opengl_node.setParms(
