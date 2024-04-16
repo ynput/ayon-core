@@ -37,7 +37,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
             instance.data["deadline"] = {}
 
         # todo: separate logic should be removed, all hosts should have same
-        host_name = get_current_host_name()
+        host_name = instance.context.data["hostName"]
         if host_name == "maya":
             deadline_url = self._collect_deadline_url(instance)
         else:
