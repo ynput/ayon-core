@@ -63,8 +63,18 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
             if len(aov_filenames) == 1:
                 aov_filenames = aov_filenames[0]
 
-            # TODO: Add some option to allow users to mark
-            #       aov_instances as reviewable.
+            preview = False
+            if instance.data.get("multipartExr", False):
+                self.log.debug(
+                    "Adding preview tag because its multipartExr"
+                )
+                preview = True
+            else:
+                # TODO: set Preview to True if aov_name matched some regex.
+                # Also, I'm not sure where that regex is defined.
+                pass
+
+            preview = preview and instance.data.get("review", False)
             aov_instance.data.update({
                 # 'label': label,
                 "task": instance.data["task"],
@@ -75,14 +85,14 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 "family": product_type,
                 "productName": product_name,
                 "productGroup": product_group,
-                "families": ["render.local.hou"],
+                "families": ["render.local.hou", "review"],
                 "instance_node": instance.data["instance_node"],
                 "representations": [
                     {
                         "stagingDir": staging_dir,
                         "ext": ext,
                         "name": ext,
-                        "tags": [],
+                        "tags": ["review"] if preview else [],
                         "files": aov_filenames,
                         "frameStart": instance.data["frameStartHandle"],
                         "frameEnd": instance.data["frameEndHandle"]
