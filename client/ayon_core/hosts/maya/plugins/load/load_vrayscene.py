@@ -18,7 +18,7 @@ class VRaySceneLoader(load.LoaderPlugin):
     """Load Vray scene"""
 
     product_types = {"vrayscene_layer"}
-    representations = ["vrscene"]
+    representations = {"vrscene"}
 
     label = "Import VRay Scene"
     order = -10
@@ -26,10 +26,7 @@ class VRaySceneLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "vrayscene_layer"
+        product_type = context["product"]["productType"]
 
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(

@@ -166,7 +166,7 @@ def get_current_track(sequence, name, audio=False):
     Creates new if none is found.
 
     Args:
-        sequence (hiero.core.Sequence): hiero sequene object
+        sequence (hiero.core.Sequence): hiero sequence object
         name (str): name of track we want to return
         audio (bool)[optional]: switch to AudioTrack
 
@@ -248,8 +248,12 @@ def get_track_items(
     # collect all available active sequence track items
     if not return_list:
         sequence = get_current_sequence(name=sequence_name)
-        # get all available tracks from sequence
-        tracks = list(sequence.audioTracks()) + list(sequence.videoTracks())
+        tracks = []
+        if sequence is not None:
+            # get all available tracks from sequence
+            tracks.extend(sequence.audioTracks())
+            tracks.extend(sequence.videoTracks())
+
         # loop all tracks
         for track in tracks:
             if check_locked and track.isLocked():
@@ -632,7 +636,9 @@ def sync_avalon_data_to_workfile():
     project_name = get_current_project_name()
 
     anatomy = Anatomy(project_name)
-    work_template = anatomy.templates["work"]["path"]
+    work_template = anatomy.get_template_item(
+        "work", "default", "path"
+    )
     work_root = anatomy.root_value_for_template(work_template)
     active_project_root = (
         os.path.join(work_root, project_name)
@@ -825,7 +831,7 @@ class PublishAction(QtWidgets.QAction):
 #     root_node = hiero.core.nuke.RootNode()
 #
 #     anatomy = Anatomy(get_current_project_name())
-#     work_template = anatomy.templates["work"]["path"]
+#     work_template = anatomy.get_template_item("work", "default", "path")
 #     root_path = anatomy.root_value_for_template(work_template)
 #
 #     nuke_script.addNode(root_node)
@@ -844,8 +850,8 @@ def create_nuke_workfile_clips(nuke_workfiles, seq=None):
     [{
         'path': 'P:/Jakub_testy_pipeline/test_v01.nk',
         'name': 'test',
-        'handleStart': 15, # added asymetrically to handles
-        'handleEnd': 10, # added asymetrically to handles
+        'handleStart': 15, # added asymmetrically to handles
+        'handleEnd': 10, # added asymmetrically to handles
         "clipIn": 16,
         "frameStart": 991,
         "frameEnd": 1023,
@@ -1190,7 +1196,7 @@ def get_sequence_pattern_and_padding(file):
 
     Return:
         string: any matching sequence pattern
-        int: padding of sequnce numbering
+        int: padding of sequence numbering
     """
     foundall = re.findall(
         r"(#+)|(%\d+d)|(?<=[^a-zA-Z0-9])(\d+)(?=\.\w+$)", file)

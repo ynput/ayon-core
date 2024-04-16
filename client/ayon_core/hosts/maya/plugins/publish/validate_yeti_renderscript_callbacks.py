@@ -3,8 +3,10 @@ from maya import cmds
 import pyblish.api
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
+    PublishValidationError,
     OptionalPyblishPluginMixin
 )
+
 
 class ValidateYetiRenderScriptCallbacks(pyblish.api.InstancePlugin,
                                         OptionalPyblishPluginMixin):
@@ -45,8 +47,8 @@ class ValidateYetiRenderScriptCallbacks(pyblish.api.InstancePlugin,
             return
         invalid = self.get_invalid(instance)
         if invalid:
-            raise ValueError("Invalid render callbacks found for '%s'!"
-                             % instance.name)
+            raise PublishValidationError(
+                f"Invalid render callbacks found for '{instance.name}'.")
 
     @classmethod
     def get_invalid(cls, instance):

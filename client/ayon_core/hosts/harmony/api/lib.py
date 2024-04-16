@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Utility functions used for Avalon - Harmony integration."""
+import platform
 import subprocess
 import threading
 import os
@@ -14,15 +15,16 @@ import json
 import signal
 import time
 from uuid import uuid4
-from qtpy import QtWidgets, QtCore, QtGui
 import collections
 
-from .server import Server
+from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib import is_using_ayon_console
 from ayon_core.tools.stdout_broker.app import StdOutBroker
 from ayon_core.tools.utils import host_tools
 from ayon_core import style
-from ayon_core.lib.applications import get_non_python_host_kwargs
+
+from .server import Server
 
 # Setup logging.
 log = logging.getLogger(__name__)
@@ -324,7 +326,18 @@ def launch_zip_file(filepath):
         return
 
     print("Launching {}".format(scene_path))
-    kwargs = get_non_python_host_kwargs({}, False)
+    # QUESTION Could we use 'run_detached_process' from 'ayon_core.lib'?
+    kwargs = {}
+    if (
+        platform.system().lower() == "windows"
+        and not is_using_ayon_console()
+    ):
+        kwargs.update({
+            "creationflags": subprocess.CREATE_NO_WINDOW,
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL
+        })
+
     process = subprocess.Popen(
         [ProcessContext.application_path, scene_path],
         **kwargs
@@ -555,7 +568,7 @@ def save_scene():
     """Save the Harmony scene safely.
 
     The built-in (to Avalon) background zip and moving of the Harmony scene
-    folder, interfers with server/client communication by sending two requests
+    folder, interferes with server/client communication by sending two requests
     at the same time. This only happens when sending "scene.saveAll()". This
     method prevents this double request and safely saves the scene.
 

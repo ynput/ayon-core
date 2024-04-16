@@ -1,10 +1,8 @@
-import os
 import copy
 
 from ayon_core.lib import EnumDef
 from ayon_core.pipeline import (
     load,
-    get_representation_context,
     get_current_host_name,
 )
 from ayon_core.pipeline.load.utils import get_representation_path_from_context
@@ -95,7 +93,7 @@ class FileNodeLoader(load.LoaderPlugin):
 
     product_types = {"image", "plate", "render"}
     label = "Load file node"
-    representations = ["exr", "tif", "png", "jpg"]
+    representations = {"exr", "tif", "png", "jpg"}
     icon = "image"
     color = "orange"
     order = 2

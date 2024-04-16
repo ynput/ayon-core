@@ -7,7 +7,6 @@ from ayon_core.hosts.max.api.lib import (
     maintained_selection,
     object_transform_set
 )
-from ayon_core.hosts.max.api.lib import maintained_selection
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
@@ -21,7 +20,7 @@ class ObjLoader(load.LoaderPlugin):
     """Obj Loader."""
 
     product_types = {"model"}
-    representations = ["obj"]
+    representations = {"obj"}
     order = -9
     icon = "code-fork"
     color = "white"
