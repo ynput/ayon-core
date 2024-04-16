@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from functools import partial
 
@@ -214,8 +215,18 @@ def install(project_settings):
             )
             return
 
-        config = project_settings["maya"]["scriptsmenu"]["definition"]
-        _menu = project_settings["maya"]["scriptsmenu"]["name"]
+        menu_settings = project_settings["maya"]["scriptsmenu"]
+        menu_name = menu_settings["name"]
+        config = menu_settings["definition"]
+
+        if menu_settings.get("definition_type") == "definition_json":
+            data = menu_settings["definition_json"]
+            try:
+                config = json.loads(data)
+            except json.JSONDecodeError as exc:
+                print("Skipping studio menu, error decoding JSON definition.")
+                log.error(exc)
+                return
 
         if not config:
             log.warning("Skipping studio menu, no definition found.")
@@ -223,8 +234,8 @@ def install(project_settings):
 
         # run the launcher for Maya menu
         studio_menu = launchformaya.main(
-            title=_menu.title(),
-            objectName=_menu.title().lower().replace(" ", "_")
+            title=menu_name.title(),
+            objectName=menu_name.title().lower().replace(" ", "_")
         )
 
         # apply configuration

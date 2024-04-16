@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin to create Mantra ROP."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
 from ayon_core.lib import EnumDef, BoolDef
 
 
@@ -28,7 +27,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
         instance = super(CreateMantraROP, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 

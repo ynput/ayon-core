@@ -1,5 +1,5 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
-from ayon_server.types import ColorRGBA_uint8, ColorRGB_uint8
+from ayon_server.types import ColorRGBA_uint8
 
 
 class CollectRenderInstancesModel(BaseSettingsModel):

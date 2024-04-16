@@ -22,7 +22,7 @@ class ExistingLayoutLoader(plugin.Loader):
     """
 
     product_types = {"layout"}
-    representations = ["json"]
+    representations = {"json"}
 
     label = "Load Layout on Existing Scene"
     icon = "code-fork"

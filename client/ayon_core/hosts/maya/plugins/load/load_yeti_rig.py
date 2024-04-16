@@ -8,7 +8,7 @@ class YetiRigLoader(plugin.ReferenceLoader):
     """This loader will load Yeti rig."""
 
     product_types = {"yetiRig"}
-    representations = ["ma"]
+    representations = {"ma"}
 
     label = "Load Yeti Rig"
     order = -9

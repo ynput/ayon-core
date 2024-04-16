@@ -22,7 +22,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.template_data import get_template_data
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.tools.utils import PopupUpdateKeys, SimplePopup
 from ayon_core.tools.utils.host_tools import get_tool_by_name
 
@@ -39,7 +39,7 @@ def get_folder_fps(folder_entity=None):
     """Return current folder fps."""
 
     if folder_entity is None:
-        folder_entity = get_current_project_folder(fields=["attrib.fps"])
+        folder_entity = get_current_folder_entity(fields=["attrib.fps"])
     return folder_entity["attrib"]["fps"]
 
 
@@ -243,7 +243,10 @@ def render_rop(ropnode):
     try:
         ropnode.render(verbose=verbose,
                        # Allow Deadline to capture completion percentage
-                       output_progress=verbose)
+                       output_progress=verbose,
+                       # Render only this node
+                       # (do not render any of its dependencies)
+                       ignore_inputs=True)
     except hou.Error as exc:
         # The hou.Error is not inherited from a Python Exception class,
         # so we explicitly capture the houdini error, otherwise pyblish
@@ -738,7 +741,7 @@ def set_camera_resolution(camera, folder_entity=None):
     """Apply resolution to camera from folder entity of the publish"""
 
     if not folder_entity:
-        folder_entity = get_current_project_folder()
+        folder_entity = get_current_folder_entity()
 
     resolution = get_resolution_from_folder(folder_entity)
 
@@ -1038,6 +1041,82 @@ def add_self_publish_button(node):
     template = node.parmTemplateGroup()
     template.insertBefore((0,), button_parm)
     node.setParmTemplateGroup(template)
+
+
+def get_scene_viewer():
+    """
+    Return an instance of a visible viewport.
+
+    There may be many, some could be closed, any visible are current
+
+    Returns:
+        Optional[hou.SceneViewer]: A scene viewer, if any.
+    """
+    panes = hou.ui.paneTabs()
+    panes = [x for x in panes if x.type() == hou.paneTabType.SceneViewer]
+    panes = sorted(panes, key=lambda x: x.isCurrentTab())
+    if panes:
+        return panes[-1]
+
+    return None
+
+
+def sceneview_snapshot(
+        sceneview,
+        filepath="$HIP/thumbnails/$HIPNAME.$F4.jpg",
+        frame_start=None,
+        frame_end=None):
+    """Take a snapshot of your scene view.
+
+    It takes snapshot of your scene view for the given frame range.
+    So, it's capable of generating snapshots image sequence.
+    It works in different Houdini context e.g. Objects, Solaris
+
+    Example:
+    	This is how the function can be used::
+
+        	from ayon_core.hosts.houdini.api import lib
+	        sceneview = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
+        	lib.sceneview_snapshot(sceneview)
+
+    Notes:
+        .png output will render poorly, so use .jpg.
+
+        How it works:
+            Get the current sceneviewer (may be more than one or hidden)
+            and screengrab the perspective viewport to a file in the
+            publish location to be picked up with the publish.
+
+        Credits:
+            https://www.sidefx.com/forum/topic/42808/?page=1#post-354796
+
+    Args:
+        sceneview (hou.SceneViewer): The scene view pane from which you want
+                                     to take a snapshot.
+        filepath (str): thumbnail filepath. it expects `$F4` token
+                        when frame_end is bigger than frame_star other wise
+                        each frame will override its predecessor.
+        frame_start (int): the frame at which snapshot starts
+        frame_end (int): the frame at which snapshot ends
+    """
+
+    if frame_start is None:
+        frame_start = hou.frame()
+    if frame_end is None:
+        frame_end = frame_start
+
+    if not isinstance(sceneview, hou.SceneViewer):
+        log.debug("Wrong Input. {} is not of type hou.SceneViewer."
+                  .format(sceneview))
+        return
+    viewport = sceneview.curViewport()
+
+    flip_settings = sceneview.flipbookSettings().stash()
+    flip_settings.frameRange((frame_start, frame_end))
+    flip_settings.output(filepath)
+    flip_settings.outputToMPlay(False)
+    sceneview.flipbook(viewport, flip_settings)
+    log.debug("A snapshot of sceneview has been saved to: {}".format(filepath))
 
 
 def update_content_on_context_change():
