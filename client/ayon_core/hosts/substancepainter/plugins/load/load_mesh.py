@@ -9,7 +9,10 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
     set_container_metadata,
     remove_container_metadata
 )
-from ayon_core.hosts.substancepainter.api.lib import parse_substance_attributes_setting
+from ayon_core.hosts.substancepainter.api.lib import (
+    parse_substance_attributes_setting,
+    parse_subst_attrs_reloading_mesh
+)
 
 
 import substance_painter.project
@@ -41,7 +44,8 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
 
         # Get user inputs
         template_name = options.get("project_template", "default")
-        template_settings = parse_substance_attributes_setting(template_name, self.project_templates)
+        template_settings = parse_substance_attributes_setting(
+            template_name, self.project_templates)
         sp_settings = substance_painter.project.Settings(**template_settings)
         if not substance_painter.project.is_open():
             # Allow to 'initialize' a new project
@@ -52,11 +56,10 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
             )
         else:
             # Reload the mesh
+            mesh_settings = parse_subst_attrs_reloading_mesh(
+                template_name, self.project_templates)
             # TODO: fix the hardcoded when the preset setting in SP addon.
-            settings = substance_painter.project.MeshReloadingSettings(
-                import_cameras=True,
-                preserve_strokes=True
-            )
+            settings = substance_painter.project.MeshReloadingSettings(**mesh_settings)
 
             def on_mesh_reload(status: substance_painter.project.ReloadMeshStatus):  # noqa
                 if status == substance_painter.project.ReloadMeshStatus.SUCCESS:  # noqa
@@ -83,7 +86,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         # as we always preserve strokes on updates.
         # TODO: update the code
         container["options"] = {
-            "import_cameras": True,
+            "import_cameras": template_settings["import_cameras"],
         }
 
         set_container_metadata(project_mesh_object_name, container)

@@ -643,6 +643,21 @@ def prompt_new_file_with_mesh(mesh_filepath):
 
 
 def convert_substance_object_to_python(subst_proj_option="default"):
+    """Function to convert substance C++ objects to python instance.
+    It is made to avoid any possible ValueError when C++ objects casting
+    as python instance.
+
+    Args:
+        subst_proj_option (str, optional): Substance project option.
+            Defaults to "default".
+
+    Raises:
+        ValueError: Raise Error when unsupported Substance
+            Project was detected
+
+    Returns:
+        python instance: converted python instance of the C++ objects.
+    """
     if subst_proj_option == "default":
         return substance_painter.project.ProjectWorkflow.Default
     elif subst_proj_option == "uvTile":
@@ -663,6 +678,16 @@ def convert_substance_object_to_python(subst_proj_option="default"):
 
 
 def parse_substance_attributes_setting(template_name, project_templates):
+    """Function to parse the dictionary from the AYON setting to be used
+    as the attributes for Substance Project Creation
+
+    Args:
+        template_name (str): name of the template from the setting
+        project_templates (dict): project template data from the setting
+
+    Returns:
+        dict: data to be used as attributes for Substance Project Creation
+    """
     attributes_data = {}
     for template in project_templates:
         if template["name"] == template_name:
@@ -675,4 +700,26 @@ def parse_substance_attributes_setting(template_name, project_templates):
         subst_proj_option=attributes_data["tangent_space_mode"])
     attributes_data.pop("name")
     attributes_data.pop("preserve_strokes")
+    return attributes_data
+
+
+def parse_subst_attrs_reloading_mesh(template_name, project_templates):
+    """Function to parse the substances attributes ('import_cameras'
+        and 'preserve_strokes') for reloading mesh
+        with the existing projects.
+
+    Args:
+        template_name (str): name of the template from the setting
+        project_templates (dict): project template data from the setting
+
+    Returns:
+        dict: data to be used as attributes for reloading mesh with the
+            existing project
+    """
+    attributes_data = {}
+    for template in project_templates:
+        if template["name"] == template_name:
+            for key, value in template.items():
+                if isinstance(value, bool):
+                    attributes_data.update({key: value})
     return attributes_data
