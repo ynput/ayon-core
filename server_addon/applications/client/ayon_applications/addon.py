@@ -160,10 +160,10 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
                 name="launch",
                 help="Launch application"
             )
-            .option("--app", help="Application name")
-            .option("--project", help="Project name")
-            .option("--folder", help="Folder path")
-            .option("--task", help="Task name")
+            .option("--app", required=True, help="Application name")
+            .option("--project", required=True, help="Project name")
+            .option("--folder", required=True, help="Folder path")
+            .option("--task", required=True, help="Task name")
         )
         # Convert main command to click object and add it to parent group
         addon_click_group.add_command(
