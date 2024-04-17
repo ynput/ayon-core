@@ -15,7 +15,7 @@ class SetFrameRangeLoader(load.LoaderPlugin):
         "vdbcache",
         "usd",
     }
-    representations = ["abc", "vdb", "usd"]
+    representations = {"abc", "vdb", "usd"}
 
     label = "Set frame range"
     order = 11
@@ -52,7 +52,7 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
         "vdbcache",
         "usd",
     }
-    representations = ["abc", "vdb", "usd"]
+    representations = {"abc", "vdb", "usd"}
 
     label = "Set frame range (with handles)"
     order = 12

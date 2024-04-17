@@ -11,7 +11,7 @@ class AbcArchiveLoader(load.LoaderPlugin):
 
     product_types = {"model", "animation", "pointcache", "gpuCache"}
     label = "Load Alembic as Archive"
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"abc"}
     order = -5
     icon = "code-fork"
