@@ -50,7 +50,7 @@ IGNORED_MODULES_IN_AYON = set()
 # When addon was moved from ayon-core codebase
 # - this is used to log the missing addon
 MOVED_ADDON_MILESTONE_VERSIONS = {
-    "applications": VersionInfo(2, 0, 0),
+    "applications": VersionInfo(0, 2, 0),
 }
 
 # Inherit from `object` for Python 2 hosts
