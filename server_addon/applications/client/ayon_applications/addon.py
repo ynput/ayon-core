@@ -204,9 +204,7 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
             json.dump(env, file_stream, indent=4)
 
     def _cli_launch_applications(self, project, folder, task, app):
-        """Produces json file with environment based on project and app.
-
-        Called by farm integration to propagate environment into farm jobs.
+        """Launch application.
 
         Args:
             project (str): Project name.
