@@ -3,24 +3,24 @@ from ayon_server.settings import BaseSettingsModel, SettingsField
 
 def normal_map_format_enum():
     return [
-        {"label": "DirectX", "value": "DirectX"},
-        {"label": "OpenGL", "value": "OpenGL"},
+        {"label": "DirectX", "value": "NormalMapFormat.DirectX"},
+        {"label": "OpenGL", "value": "NormalMapFormat.OpenGL"},
     ]
 
 
 def tangent_space_enum():
     return [
-        {"label": "Per Fragment", "value": "PerFragment"},
-        {"label": "Per Vertex", "value": "PerVertex"},
+        {"label": "Per Fragment", "value": "TangentSpace.PerFragment"},
+        {"label": "Per Vertex", "value": "TangentSpace.PerVertex"},
     ]
 
 
 def uv_workflow_enum():
     return [
-        {"label": "Default", "value": "Default"},
-        {"label": "UV Tile", "value": "UVTile"},
+        {"label": "Default", "value": "ProjectWorkflow.Default"},
+        {"label": "UV Tile", "value": "ProjectWorkflow.UVTile"},
         {"label": "Texture Set Per UV Tile",
-         "value": "TextureSetPerUVTile"}
+         "value": "ProjectWorkflow.TextureSetPerUVTile"}
     ]
 
 
