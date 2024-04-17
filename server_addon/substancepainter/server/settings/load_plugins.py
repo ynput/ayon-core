@@ -10,17 +10,17 @@ def normal_map_format_enum():
 
 def tangent_space_enum():
     return [
-        {"label": "PerFragment", "value": "PerFragment"},
-        {"label": "PerVertex", "value": "PerVertex"},
+        {"label": "Per Fragment", "value": "PerFragment"},
+        {"label": "Per Vertex", "value": "PerVertex"},
     ]
 
 
 def uv_workflow_enum():
     return [
-        {"label": "Default", "value": "default"},
-        {"label": "UV Tile", "value": "uvTile"},
+        {"label": "Default", "value": "Default"},
+        {"label": "UV Tile", "value": "UVTile"},
         {"label": "Texture Set Per UV Tile",
-         "value": "textureSetPerUVTile"}
+         "value": "TextureSetPerUVTile"}
     ]
 
 
@@ -54,7 +54,7 @@ class ProjectTemplatesModel(BaseSettingsModel):
                      "creating new project.")
     )
     project_workflow: str = SettingsField(
-        "default", enum_resolver=uv_workflow_enum,
+        "Default", enum_resolver=uv_workflow_enum,
         title="UV Tile Settings",
         description=("Set UV workflow when "
                      "creating new project.")
@@ -90,11 +90,29 @@ class LoadersModel(BaseSettingsModel):
 DEFAULT_LOADER_SETTINGS = {
     "SubstanceLoadProjectMesh":{
         "project_templates": [{
-            "name": "default",
-            "default_texture_resolution": 1024,
+            "name": "2K(Default)",
+            "default_texture_resolution": 2048,
             "import_cameras": True,
             "normal_map_format": "DirectX",
-            "project_workflow": "default",
+            "project_workflow": "Default",
+            "tangent_space_mode": "PerFragment",
+            "preserve_strokes": True
+        },
+        {
+            "name": "2K(UV tile)",
+            "default_texture_resolution": 2048,
+            "import_cameras": True,
+            "normal_map_format": "DirectX",
+            "project_workflow": "UVTile",
+            "tangent_space_mode": "PerFragment",
+            "preserve_strokes": True
+        },
+        {
+            "name": "4K(Custom)",
+            "default_texture_resolution": 4096,
+            "import_cameras": True,
+            "normal_map_format": "OpenGL",
+            "project_workflow": "UVTile",
             "tangent_space_mode": "PerFragment",
             "preserve_strokes": True
         }]
