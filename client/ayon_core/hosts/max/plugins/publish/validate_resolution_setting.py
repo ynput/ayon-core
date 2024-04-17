@@ -7,7 +7,10 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     PublishValidationError
 )
-from ayon_core.hosts.max.api.lib import reset_scene_resolution
+from ayon_core.hosts.max.api.lib import (
+    reset_scene_resolution,
+    imprint
+)
 
 
 class ValidateResolutionSetting(pyblish.api.InstancePlugin,
@@ -79,5 +82,12 @@ class ValidateReviewResolutionSetting(ValidateResolutionSetting):
         context_width, context_height = (
             cls.get_folder_resolution(instance)
         )
-        instance.data["review_width"] = context_width
-        instance.data["review_height"] = context_height
+        creator_attrs = instance.data["creator_attributes"]
+        creator_attrs["review_width"] = context_width
+        creator_attrs["review_height"] = context_height
+        creator_attrs_data = {
+            "creator_attributes": creator_attrs
+        }
+        # update the width and height of review
+        # data in creator_attributes
+        imprint(instance.data["instance_node"], creator_attrs_data)
