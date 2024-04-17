@@ -1917,6 +1917,29 @@ def apply_attributes(attributes, nodes_by_id):
                 set_attribute(attr, value, node)
 
 
+def is_valid_reference_node(reference_node):
+    """Return whether Maya considers the reference node a valid reference.
+
+    Maya might report an error when using `maya.cmds.referenceQuery`:
+    Reference node 'reference_node' is not associated with a reference file.
+
+    Note that this does *not* check whether the reference node points to an
+    existing file. Instead it only returns whether maya considers it valid
+    and thus is not an unassociated reference node
+
+    Arguments:
+         reference_node (str): Reference node name
+
+    Returns:
+        bool: Whether reference node is a valid reference
+
+    """
+    sel = OpenMaya.MSelectionList()
+    sel.add(reference_node)
+    depend_node = sel.getDependNode(0)
+    return OpenMaya.MFnReference(depend_node).isValidReference()
+
+
 def get_container_members(container):
     """Returns the members of a container.
     This includes the nodes from any loaded references in the container.
@@ -1942,7 +1965,16 @@ def get_container_members(container):
         if ref.rsplit(":", 1)[-1].startswith("_UNKNOWN_REF_NODE_"):
             continue
 
-        reference_members = cmds.referenceQuery(ref, nodes=True, dagPath=True)
+        try:
+            reference_members = cmds.referenceQuery(ref,
+                                                    nodes=True,
+                                                    dagPath=True)
+        except RuntimeError:
+            # Ignore reference nodes that are not associated with a
+            # referenced file on which `referenceQuery` command fails
+            if not is_valid_reference_node(ref):
+                continue
+            raise
         reference_members = cmds.ls(reference_members,
                                     long=True,
                                     objectsOnly=True)
@@ -4238,6 +4270,9 @@ def get_reference_node(members, log=None):
         if ref.rsplit(":", 1)[-1].startswith("_UNKNOWN_REF_NODE_"):
             continue
 
+        if not is_valid_reference_node(ref):
+            continue
+
         references.add(ref)
 
     assert references, "No reference node found in container"
@@ -4268,15 +4303,19 @@ def get_reference_node_parents(ref):
         list: The upstream parent reference nodes.
 
     """
-    parent = cmds.referenceQuery(ref,
-                                 referenceNode=True,
-                                 parent=True)
+    def _get_parent(reference_node):
+        """Return parent reference node, but ignore invalid reference nodes"""
+        if not is_valid_reference_node(reference_node):
+            return
+        return cmds.referenceQuery(reference_node,
+                                   referenceNode=True,
+                                   parent=True)
+
+    parent = _get_parent(ref)
     parents = []
     while parent:
         parents.append(parent)
-        parent = cmds.referenceQuery(parent,
-                                     referenceNode=True,
-                                     parent=True)
+        parent = _get_parent(parent)
     return parents
 
 

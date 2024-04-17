@@ -3,7 +3,6 @@
 import os
 import attr
 import json
-import re
 
 import pyblish.api
 

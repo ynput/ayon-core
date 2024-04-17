@@ -103,17 +103,17 @@ class FusionSubmitDeadline(
 
         # Collect all saver instances in context that are to be rendered
         saver_instances = []
-        for instance in context:
-            if instance.data["productType"] != "render":
+        for inst in context:
+            if inst.data["productType"] != "render":
                 # Allow only saver family instances
                 continue
 
-            if not instance.data.get("publish", True):
+            if not inst.data.get("publish", True):
                 # Skip inactive instances
                 continue
 
-            self.log.debug(instance.data["name"])
-            saver_instances.append(instance)
+            self.log.debug(inst.data["name"])
+            saver_instances.append(inst)
 
         if not saver_instances:
             raise RuntimeError("No instances found for Deadline submission")
