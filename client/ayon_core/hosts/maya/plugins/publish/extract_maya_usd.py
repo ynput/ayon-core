@@ -180,8 +180,8 @@ class ExtractMayaUsd(publish.Extractor,
             "shadingMode": (str, None),  # optional str
             "jobContext": (list, None),  # optional list
             "filterTypes": (list, None),  # optional list
-            "staticSingleSample": bool
-            # "worldspace": bool,
+            "staticSingleSample": bool,
+            "worldspace": bool,
         }
 
     @property
@@ -206,8 +206,8 @@ class ExtractMayaUsd(publish.Extractor,
             "convertMaterialsTo": "none",
             "jobContext": None,
             "filterTypes": None,
-            "staticSingleSample": True
-            # "worldspace": False
+            "staticSingleSample": True,
+            "worldspace": False
         }
 
     def parse_overrides(self, instance, options):
@@ -289,6 +289,7 @@ class ExtractMayaUsd(publish.Extractor,
         options["stripNamespaces"] = attr_values.get("stripNamespaces", True)
         options["exportComponentTags"] = attr_values.get("exportComponentTags",
                                                          False)
+        options["worldspace"] = attr_values.get("worldspace", True)
 
         # TODO: Remove hardcoded filterTypes
         # We always filter constraint types because they serve no valuable
@@ -373,6 +374,11 @@ class ExtractMayaUsd(publish.Extractor,
             BoolDef("stripNamespaces",
                     label="Strip Namespaces (USD)",
                     tooltip="Strip Namespaces in the USD Export",
+                    default=True),
+            BoolDef("worldspace",
+                    label="World-Space (USD)",
+                    tooltip="Export all root prim using their full worldspace "
+                            "transform instead of their local transform.",
                     default=True),
             BoolDef("exportComponentTags",
                     label="Export Component Tags",
