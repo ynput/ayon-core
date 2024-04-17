@@ -1,5 +1,5 @@
 import os
-from ayon_core.lib import PreLaunchHook
+from ayon_applications import PreLaunchHook
 from ayon_core.hosts.fusion import FUSION_HOST_DIR
 
 
