@@ -1267,8 +1267,6 @@ class PlaceholderLoadMixin(object):
         representations. Use it in 'get_placeholder_options'.
 
         Args:
-            plugin (PlaceholderPlugin): Plugin used for loading of
-                representations.
             options (Dict[str, Any]): Already available options which are used
                 as defaults for attributes.
 
@@ -1695,8 +1693,6 @@ class PlaceholderCreateMixin(object):
         publishable instances. Use it with 'get_placeholder_options'.
 
         Args:
-            plugin (PlaceholderPlugin): Plugin used for creating of
-                publish instances.
             options (Dict[str, Any]): Already available options which are used
                 as defaults for attributes.
 
