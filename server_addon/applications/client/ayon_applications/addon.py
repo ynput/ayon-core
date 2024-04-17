@@ -215,4 +215,4 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
             app (str): Full application name e.g. 'maya/2024'.
 
         """
-        self.launch_application(app, project, folder, task,)
+        self.launch_application(app, project, folder, task)
