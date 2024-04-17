@@ -62,7 +62,7 @@ class ProductConvertorPlugin(object):
     can store any information to it's object for conversion purposes.
 
     Args:
-        create_context (CreateContext) Context which initialized the plugin.
+        create_context (CreateContext): Context which initialized the plugin.
     """
 
     _log = None
