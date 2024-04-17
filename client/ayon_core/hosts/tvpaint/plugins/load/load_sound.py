@@ -23,7 +23,7 @@ class ImportSound(plugin.Loader):
     """
 
     product_types = {"audio", "review", "plate"}
-    representations = ["*"]
+    representations = {"*"}
 
     label = "Import Sound"
     order = 1

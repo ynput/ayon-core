@@ -402,7 +402,7 @@ or updating already created. Publishing will create OTIO file.
                     ):
                         continue
 
-                    instance = self._make_product_instance(
+                    self._make_product_instance(
                         otio_clip,
                         product_type_preset,
                         deepcopy(base_instance_data),

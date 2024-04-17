@@ -31,7 +31,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         instance = super(CreateArnoldRop, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: plugin.CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
