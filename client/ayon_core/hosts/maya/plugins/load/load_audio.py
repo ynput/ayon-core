@@ -13,7 +13,7 @@ class AudioLoader(load.LoaderPlugin):
 
     product_types = {"audio"}
     label = "Load audio"
-    representations = ["wav"]
+    representations = {"wav"}
     icon = "volume-up"
     color = "orange"
 
