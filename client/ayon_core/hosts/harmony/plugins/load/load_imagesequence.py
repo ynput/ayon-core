@@ -28,7 +28,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         "reference",
         "review",
     }
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"jpeg", "png", "jpg"}
 
     def load(self, context, name=None, namespace=None, data=None):
