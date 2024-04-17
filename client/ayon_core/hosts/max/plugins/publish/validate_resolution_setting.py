@@ -68,7 +68,6 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
 
 class ValidateReviewResolutionSetting(ValidateResolutionSetting):
     families = ["review"]
-    label = "Validate Review Animation Resolution Setting"
     optional = True
     actions = [RepairAction]
 
