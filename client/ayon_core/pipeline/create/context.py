@@ -2501,7 +2501,7 @@ class CreateContext:
     def collection_shared_data(self):
         """Access to shared data that can be used during creator's collection.
 
-        Retruns:
+        Returns:
             Dict[str, Any]: Shared data.
 
         Raises:
