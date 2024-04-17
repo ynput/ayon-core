@@ -25,6 +25,7 @@ from .legacy_create import LegacyCreator
 
 if TYPE_CHECKING:
     from .context import CreateContext, CreatedInstance, UpdateData
+    from ayon_core.lib import AbstractAttrDef
 
 
 class CreatorError(Exception):
@@ -191,7 +192,7 @@ class BaseCreator:
     # Instance attribute definitions that can be changed per instance
     # - returns list of attribute definitions from
     #       `ayon_core.lib.attribute_definitions`
-    instance_attr_defs = []
+    instance_attr_defs: List[AbstractAttrDef] = []
 
     # Filtering by host name - can be used to be filtered by host name
     # - used on all hosts when set to 'None' for Backwards compatibility
