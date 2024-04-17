@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
-from typing import TYPE_CHECKING, List, Dict, Any, Optional, Union
+from typing import TYPE_CHECKING, List, Dict, Optional, Union
 
 from abc import ABCMeta, abstractmethod
 
