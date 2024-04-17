@@ -17,7 +17,7 @@ class CollectFrames(pyblish.api.InstancePlugin):
     label = "Collect Frames"
     families = ["vdbcache", "imagesequence", "ass",
                 "mantraifd", "redshiftproxy", "review",
-                "bgeo"]
+                "pointcache"]
 
     def process(self, instance):
 
@@ -61,6 +61,7 @@ class CollectFrames(pyblish.api.InstancePlugin):
         # todo: `frames` currently conflicts with "explicit frames" for a
         #       for a custom frame list. So this should be refactored.
         instance.data.update({"frames": result})
+        self.log.debug(instance.data["frames"])
 
     @staticmethod
     def create_file_list(match, start_frame, end_frame):
