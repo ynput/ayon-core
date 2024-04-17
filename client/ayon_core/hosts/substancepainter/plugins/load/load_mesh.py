@@ -13,10 +13,10 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
 import substance_painter.project
 
 
-def _convert(subst_attr):
+def _convert(substance_attr):
     """Function to convert substance C++ objects to python instance.
-    It is made to avoid any possible ValueError when C++ objects casting
-    as python instance.
+    It is made to avoid any possible ValueError when C++ objects is
+    converted to the Substance Painter Python API equivalent objects.
 
     Args:
         subst_attr (str): Substance attributes
@@ -28,63 +28,21 @@ def _convert(subst_attr):
     Returns:
         python instance: converted python instance of the C++ objects.
     """
-    if subst_attr in {"Default", "UVTile", "TextureSetPerUVTile"}:
-        return getattr(substance_painter.project.ProjectWorkflow, subst_attr)
-    elif subst_attr in {"PerFragment", "PerVertex"}:
-        return getattr(substance_painter.project.TangentSpace, subst_attr)
-    elif subst_attr in {"DirectX", "OpenGL"}:
-        return getattr(substance_painter.project.NormalMapFormat, subst_attr)
-    else:
-        raise ValueError(
-            f"Unsupported Substance Objects: {subst_attr}")
+    root = substance_painter.project
+    for attr in substance_attr.split("."):
+        root = getattr(root, attr, None)
+        if root is None:
+            raise ValueError(
+                f"Substance Painter project attribute does not exist: {substance_attr}")
+
+    return root
 
 
-def parse_substance_attributes_setting(template_name, project_templates):
-    """Function to parse the dictionary from the AYON setting to be used
-    as the attributes for Substance Project Creation
-
-    Args:
-        template_name (str): name of the template from the setting
-        project_templates (dict): project template data from the setting
-
-    Returns:
-        dict: data to be used as attributes for Substance Project Creation
-    """
-    attributes_data = {}
-    for template in project_templates:
-        if template["name"] == template_name:
-            attributes_data.update(template)
-    attributes_data["normal_map_format"] = _convert(
-        attributes_data["normal_map_format"])
-    attributes_data["project_workflow"] = _convert(
-        attributes_data["project_workflow"])
-    attributes_data["tangent_space_mode"] = _convert(
-        attributes_data["tangent_space_mode"])
-    attributes_data.pop("name")
-    attributes_data.pop("preserve_strokes")
-    return attributes_data
-
-
-def parse_subst_attrs_reloading_mesh(template_name, project_templates):
-    """Function to parse the substances attributes ('import_cameras'
-        and 'preserve_strokes') for reloading mesh
-        with the existing projects.
-
-    Args:
-        template_name (str): name of the template from the setting
-        project_templates (dict): project template data from the setting
-
-    Returns:
-        dict: data to be used as attributes for reloading mesh with the
-            existing project
-    """
-    attributes_data = {}
-    for template in project_templates:
-        if template["name"] == template_name:
-            for key, value in template.items():
-                if isinstance(value, bool):
-                    attributes_data.update({key: value})
-    return attributes_data
+def get_template_by_name(name: str, templates: list[dict]) -> dict:
+    return next(
+        template for template in templates
+        if template["name"] == name
+    )
 
 
 class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
@@ -139,14 +97,18 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
 
     def load(self, context, name, namespace, options=None):
         # Get user inputs
+        print(self.project_templates)
         template_enum = [template["name"] for template in self.project_templates]
         window = SubstanceProjectConfigurationWindow(template_enum)
         window.exec_()
         template_name = window.template_name
-
-        template_settings = parse_substance_attributes_setting(
-            template_name, self.project_templates)
-        sp_settings = substance_painter.project.Settings(**template_settings)
+        template = get_template_by_name(template_name, self.project_templates)
+        sp_settings = substance_painter.project.Settings(
+            normal_map_format=_convert(template["normal_map_format"]),
+            project_workflow=_convert(template["project_workflow"]),
+            tangent_space_mode=_convert(template["tangent_space_mode"]),
+            default_texture_resolution=template["default_texture_resolution"]
+        )
         if not substance_painter.project.is_open():
             # Allow to 'initialize' a new project
             path = self.filepath_from_context(context)
@@ -156,10 +118,9 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
             )
         else:
             # Reload the mesh
-            mesh_settings = parse_subst_attrs_reloading_mesh(
-                template_name, self.project_templates)
-            # TODO: fix the hardcoded when the preset setting in SP addon.
-            settings = substance_painter.project.MeshReloadingSettings(**mesh_settings)
+            settings = substance_painter.project.MeshReloadingSettings(
+                import_cameras=template["import_cameras"],
+                preserve_strokes=template["preserve_strokes"])
 
             def on_mesh_reload(status: substance_painter.project.ReloadMeshStatus):  # noqa
                 if status == substance_painter.project.ReloadMeshStatus.SUCCESS:  # noqa
@@ -186,7 +147,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         # as we always preserve strokes on updates.
         # TODO: update the code
         container["options"] = {
-            "import_cameras": template_settings["import_cameras"],
+            "import_cameras": template["import_cameras"],
         }
 
         set_container_metadata(project_mesh_object_name, container)
