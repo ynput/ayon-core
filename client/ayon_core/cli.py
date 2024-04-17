@@ -176,9 +176,9 @@ def run(script):
     #     future versions might remove it.
     first_arg = sys.argv[0]
     if is_running_from_build():
-        comp_path = os.path.join(os.environ["AYON_ROOT"], "start.py")
-    else:
         comp_path = os.getenv("AYON_EXECUTABLE")
+    else:
+        comp_path = os.path.join(os.environ["AYON_ROOT"], "start.py")
     # Compare paths and remove first argument if it is the same as AYON
     if Path(first_arg).resolve() == Path(comp_path).resolve():
         sys.argv.pop(0)
