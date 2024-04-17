@@ -45,7 +45,7 @@ class UnavailableSharedData(Exception):
 
 
 class ImmutableKeyError(TypeError):
-    """Accessed key is immutable so does not allow changes or removements."""
+    """Accessed key is immutable so does not allow changes or removals."""
 
     def __init__(self, key, msg=None):
         self.immutable_key = key
