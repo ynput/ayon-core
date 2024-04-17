@@ -7,7 +7,7 @@ from ayon_core.hosts.fusion import (
     FUSION_VERSIONS_DICT,
     get_fusion_version,
 )
-from ayon_core.lib.applications import (
+from ayon_applications import (
     PreLaunchHook,
     LaunchTypes,
     ApplicationLaunchFailed,
