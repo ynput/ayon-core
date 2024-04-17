@@ -238,9 +238,12 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
             versions_by_parent[ent["productId"]].append(ent)
 
         # Filter already deleted versions
+        versions_to_pop = []
         for version in versions:
             if "deleted" in version["tags"]:
-                continue
+                versions_to_pop.append(version)
+
+        for version in versions_to_pop:
             msg = "Folder: \"{}\" | Product: \"{}\" | Version: \"{}\"".format(
                 folder_entity["path"],
                 product_entity["name"],
