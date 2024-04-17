@@ -31,7 +31,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
     product_types = {
         "ass", "animation", "model", "proxyAbc", "pointcache", "usd"
     }
-    representations = ["ass", "abc", "usda", "usdc", "usd"]
+    representations = {"ass", "abc", "usda", "usdc", "usd"}
 
     label = "Load as Arnold standin"
     order = -5

@@ -15,7 +15,7 @@ class FusionLoadWorkfile(load.LoaderPlugin):
     """Load the content of a workfile into Fusion"""
 
     product_types = {"workfile"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"comp"}
 
     label = "Load Workfile"
