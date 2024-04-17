@@ -22,7 +22,7 @@ class FilePathLoader(load.LoaderPlugin):
     icon = "link"
     color = "white"
     product_types = {"*"}
-    representations = ["*"]
+    representations = {"*"}
 
     def load(self, context, name=None, namespace=None, data=None):
 
