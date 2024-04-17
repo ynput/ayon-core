@@ -25,7 +25,6 @@ from .legacy_create import LegacyCreator
 
 if TYPE_CHECKING:
     from .context import CreateContext, CreatedInstance, UpdateData
-    ProjectSettings = Dict[str, Any]  # typing alias
 
 
 class CreatorError(Exception):
@@ -164,7 +163,7 @@ class BaseCreator:
     to `self` if it's not Plugin specific.
 
     Args:
-        project_settings (ProjectSettings): Project settings.
+        project_settings (Dict[str, Any]): Project settings.
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
     """
@@ -224,7 +223,7 @@ class BaseCreator:
         """Helper method to get settings values.
 
         Args:
-            project_settings (ProjectSettings): Project settings.
+            project_settings (Dict[str, Any]): Project settings.
             category_name (str): Category of settings.
             plugin_name (str): Name of settings.
 
@@ -275,7 +274,7 @@ class BaseCreator:
             }
 
         Args:
-            project_settings (ProjectSettings): Project settings.
+            project_settings (Dict[str, Any]): Project settings.
         """
 
         settings_category = self.settings_category
