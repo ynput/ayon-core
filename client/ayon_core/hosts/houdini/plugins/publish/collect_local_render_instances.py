@@ -1,6 +1,11 @@
 import os
 import pyblish.api
 from ayon_core.pipeline.create import get_product_name
+from ayon_core.pipeline.farm.patterning import match_aov_pattern
+from ayon_core.pipeline.publish import (
+    get_plugin_settings,
+    apply_plugin_settings_automatically
+)
 
 
 class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
@@ -20,6 +25,32 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
     hosts = ["houdini"]
     label = "Collect local render instances"
 
+    override_deadline_aov_filter = False
+    aov_filter = {}
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Preserve automatic settings applying logic
+        settings = get_plugin_settings(plugin=cls,
+                                       project_settings=project_settings,
+                                       log=cls.log,
+                                       category="houdini")
+        apply_plugin_settings_automatically(cls, settings, logger=cls.log)
+
+        if not cls.override_deadline_aov_filter:
+            # get aov_filter from collector settings
+            # and restructure it as match_aov_pattern requires.
+            cls.aov_filter = {
+                "houdini": cls.aov_filter["value"]
+            }
+        else:
+            # get aov_filter from deadline settings
+            cls.aov_filter = project_settings["deadline"]["publish"]["ProcessSubmittedJobOnFarm"]["aov_filter"]
+            cls.aov_filter = {
+            item["name"]: item["value"]
+            for item in cls.aov_filter
+        }
+
     def process(self, instance):
 
         if instance.data["farm"]:
@@ -29,7 +60,6 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
 
         # Create Instance for each AOV.
         context = instance.context
-        self.log.debug(instance.data["expectedFiles"])
         expectedFiles = next(iter(instance.data["expectedFiles"]), {})
 
         product_type = "render"  # is always render
@@ -56,6 +86,19 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
             staging_dir = os.path.dirname(aov_filepaths[0])
             ext = aov_filepaths[0].split(".")[-1]
 
+            # Decide if instance is reviewable
+            preview = False
+            if instance.data.get("multipartExr", False):
+                # Add preview tag because its multipartExr.
+                preview = True
+            else:
+                # Add Preview tag if the AOV matches the filter.
+                preview = match_aov_pattern(
+                    "houdini", self.aov_filter, aov_filenames[0]
+                )
+
+            preview = preview and instance.data.get("review", False)
+
             # Support Single frame.
             # The integrator wants single files to be a single
             #  filename instead of a list.
@@ -63,18 +106,6 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
             if len(aov_filenames) == 1:
                 aov_filenames = aov_filenames[0]
 
-            preview = False
-            if instance.data.get("multipartExr", False):
-                self.log.debug(
-                    "Adding preview tag because its multipartExr"
-                )
-                preview = True
-            else:
-                # TODO: set Preview to True if aov_name matched some regex.
-                # Also, I'm not sure where that regex is defined.
-                pass
-
-            preview = preview and instance.data.get("review", False)
             aov_instance.data.update({
                 # 'label': label,
                 "task": instance.data["task"],
