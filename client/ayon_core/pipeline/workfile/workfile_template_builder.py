@@ -36,6 +36,7 @@ from ayon_core.lib import (
     filter_profiles,
     attribute_definitions,
 )
+from ayon_core.lib.events import EventSystem
 from ayon_core.lib.attribute_definitions import get_attributes_keys
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import (
@@ -123,6 +124,8 @@ class AbstractTemplateBuilder(object):
         self._current_folder_entity = _NOT_SET
         self._current_task_entity = _NOT_SET
         self._linked_folder_entities = _NOT_SET
+
+        self._event_system = EventSystem()
 
     @property
     def project_name(self):
@@ -244,6 +247,14 @@ class AbstractTemplateBuilder(object):
             self._log = Logger.get_logger(repr(self))
         return self._log
 
+    @property
+    def event_system(self):
+        """Event System of the Workfile templatee builder.
+        Returns:
+            EventSystem: The event system.
+        """
+        return self._event_system
+
     def refresh(self):
         """Reset cached data."""
 
@@ -256,6 +267,8 @@ class AbstractTemplateBuilder(object):
         self._linked_folder_entities = _NOT_SET
 
         self._project_settings = None
+
+        self._event_system = EventSystem()
 
         self.clear_shared_data()
         self.clear_shared_populate_data()
@@ -729,6 +742,16 @@ class AbstractTemplateBuilder(object):
 
                 placeholder.set_finished()
 
+            # Trigger on_depth_processed event
+            self.event_system.emit(
+                topic="template.depth_processed",
+                data={
+                    "depth": iter_counter,
+                    "placeholders_by_scene_id": placeholder_by_scene_id
+                },
+                source="builder"
+            )
+
             # Clear shared data before getting new placeholders
             self.clear_shared_populate_data()
 
@@ -746,6 +769,16 @@ class AbstractTemplateBuilder(object):
                 all_processed = False
                 placeholder_by_scene_id[identifier] = placeholder
                 placeholders.append(placeholder)
+
+        # Trigger on_finished event
+        self.event_system.emit(
+            topic="template.finished",
+            data={
+                "depth": iter_counter,
+                "placeholders_by_scene_id": placeholder_by_scene_id,
+            },
+            source="builder"
+        )
 
         self.refresh()
 
@@ -1101,6 +1134,41 @@ class PlaceholderPlugin(object):
             plugin_data = {}
         plugin_data[key] = value
         self.builder.set_shared_populate_data(self.identifier, plugin_data)
+
+    def register_on_finished_callback(
+            self, placeholder, callback, order=None
+    ):
+        self.register_callback(
+            placeholder,
+            topic="template.finished",
+            callback=callback,
+            order=order
+        )
+
+    def register_on_depth_processed_callback(
+            self, placeholder, callback, order=0
+    ):
+        self.register_callback(
+            placeholder,
+            topic="template.depth_processed",
+            callback=callback,
+            order=order
+        )
+
+    def register_callback(self, placeholder, topic, callback, order=None):
+
+        if order is None:
+            # Match placeholder order by default
+            order = placeholder.order
+
+        # We must persist the callback over time otherwise it will be removed
+        # by the event system as a valid function reference. We do that here
+        # always just so it's easier to develop plugins where callbacks might
+        # be partials or lambdas
+        placeholder.data.setdefault("callbacks", []).append(callback)
+        self.log.debug("Registering '%s' callback: %s", topic, callback)
+        self.builder.event_system.add_callback(topic, callback, order=order)
+
 
 
 class PlaceholderItem(object):
