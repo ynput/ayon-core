@@ -190,7 +190,7 @@ class BaseCreator:
 
     # Instance attribute definitions that can be changed per instance
     # - returns list of attribute definitions from
-    #       `ayon_core.pipeline.attribute_definitions`
+    #       `ayon_core.lib.attribute_definitions`
     instance_attr_defs = []
 
     # Filtering by host name - can be used to be filtered by host name
