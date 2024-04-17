@@ -1599,6 +1599,8 @@ class PlaceholderLoadMixin(object):
             self.log.info((
                 "There's no representation for this placeholder: {}"
             ).format(placeholder.scene_identifier))
+            if not placeholder.data.get("keep_placeholder", True):
+                self.delete_placeholder(placeholder)
             return
 
         repre_load_contexts = get_representation_contexts(
