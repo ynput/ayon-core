@@ -241,6 +241,10 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             if "AYON_productName" in node_data:
                 node_data["productName"] = node_data.pop("AYON_productName")
 
+            # Override metadata with node parameters
+            # We should use node parameters as source of truth.
+            node_data.update(self.read_node_data(instance))
+
             created_instance = CreatedInstance.from_existing(
                 node_data, self
             )
@@ -377,3 +381,26 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
         """
 
         pass
+
+    @staticmethod
+    def read_node_data(node):
+        """Read node data from node parameters.
+
+        This method is used in `collect_instances` to compute creator
+        from node parameters.
+        It should invert the logic of `update_node_parameters`
+
+        Note:
+            Implementation differs based on the node type.
+            This method should include the key parameters that
+              you want to change in AYON parameters based
+              the values of node parameters.
+
+        Args:
+            node(hou.Node): Houdini node to read changes from.
+
+        Returns:
+            settings (Optional[dict[str, Any]]):
+        """
+
+        return {}
