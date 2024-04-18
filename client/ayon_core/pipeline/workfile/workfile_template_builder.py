@@ -247,14 +247,6 @@ class AbstractTemplateBuilder(object):
             self._log = Logger.get_logger(repr(self))
         return self._log
 
-    @property
-    def event_system(self):
-        """Event System of the Workfile templatee builder.
-        Returns:
-            EventSystem: The event system.
-        """
-        return self._event_system
-
     def refresh(self):
         """Reset cached data."""
 
@@ -743,7 +735,7 @@ class AbstractTemplateBuilder(object):
                 placeholder.set_finished()
 
             # Trigger on_depth_processed event
-            self.event_system.emit(
+            self.trigger_event(
                 topic="template.depth_processed",
                 data={
                     "depth": iter_counter,
@@ -771,7 +763,7 @@ class AbstractTemplateBuilder(object):
                 placeholders.append(placeholder)
 
         # Trigger on_finished event
-        self.event_system.emit(
+        self.trigger_event(
             topic="template.finished",
             data={
                 "depth": iter_counter,
@@ -904,6 +896,30 @@ class AbstractTemplateBuilder(object):
             "keep_placeholder": keep_placeholder,
             "create_first_version": create_first_version
         }
+
+    def trigger_event(self, topic, data=None, source=None):
+        self._event_system.emit(topic, data, source)
+
+    def register_event_callback(self, topic, callback, order=None):
+        self._event_system.add_callback(topic, callback, order=order)
+
+    def register_on_finished_callback(
+            self, callback, order=None
+    ):
+        self.register_event_callback(
+            topic="template.finished",
+            callback=callback,
+            order=order
+        )
+
+    def register_on_depth_processed_callback(
+            self, callback, order=None
+    ):
+        self.register_event_callback(
+            topic="template.depth_processed",
+            callback=callback,
+            order=order
+        )
 
 
 @six.add_metaclass(ABCMeta)
@@ -1134,30 +1150,6 @@ class PlaceholderPlugin(object):
             plugin_data = {}
         plugin_data[key] = value
         self.builder.set_shared_populate_data(self.identifier, plugin_data)
-
-    def register_on_finished_callback(
-            self, placeholder, callback, order=None
-    ):
-        self.register_callback(
-            placeholder,
-            topic="template.finished",
-            callback=callback,
-            order=order
-        )
-
-    def register_on_depth_processed_callback(
-            self, placeholder, callback, order=None
-    ):
-        self.register_callback(
-            placeholder,
-            topic="template.depth_processed",
-            callback=callback,
-            order=order
-        )
-
-    def register_callback(self, placeholder, topic, callback, order=None):
-        self.log.debug("Registering '%s' callback: %s", topic, callback)
-        self.builder.event_system.add_callback(topic, callback, order=order)
 
 
 class PlaceholderItem(object):
