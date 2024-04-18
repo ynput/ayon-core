@@ -21,7 +21,7 @@ class XgenLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Load Xgen as reference"""
 
     product_types = {"xgen"}
-    representations = ["ma", "mb"]
+    representations = {"ma", "mb"}
 
     label = "Reference Xgen"
     icon = "code-fork"

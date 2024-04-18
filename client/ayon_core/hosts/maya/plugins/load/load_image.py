@@ -93,7 +93,7 @@ class FileNodeLoader(load.LoaderPlugin):
 
     product_types = {"image", "plate", "render"}
     label = "Load file node"
-    representations = ["exr", "tif", "png", "jpg"]
+    representations = {"exr", "tif", "png", "jpg"}
     icon = "image"
     color = "orange"
     order = 2

@@ -18,7 +18,7 @@ class PointCloudLoader(load.LoaderPlugin):
     """Point Cloud Loader."""
 
     product_types = {"pointcloud"}
-    representations = ["prt"]
+    representations = {"prt"}
     order = -8
     icon = "code-fork"
     color = "green"
