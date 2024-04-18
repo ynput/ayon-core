@@ -118,18 +118,16 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         ext = creator_attributes.get("image_format")
         ext_format_index = {"exr": 0, "tif": 1, "jpg": 2, "png": 3}
 
-        parms = {"RS_outputFileFormat": ext_format_index[ext]}
-
-        multi_layered_mode = creator_attributes.get("multi_layered_mode")
-        multipart = False
-        if multi_layered_mode == "2":
-            multipart = True
+        parms = {
+            "RS_outputFileFormat": ext_format_index[ext],
+            "RS_archive_enable": creator_attributes.get("split_render")
+        }
 
         if ext == "exr":
+            multi_layered_mode = creator_attributes.get("multi_layered_mode")
+            multipart = multi_layered_mode != "2"
             parms["RS_outputMultilayerMode"] = multi_layered_mode
             parms["RS_aovMultipart"] = multipart
-
-        parms["RS_archive_enable"] = creator_attributes.get("split_render")
 
         node.setParms(parms)
 
