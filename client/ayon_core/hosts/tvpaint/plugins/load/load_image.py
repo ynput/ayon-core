@@ -7,7 +7,7 @@ class ImportImage(plugin.Loader):
     """Load image or image sequence to TVPaint as new layer."""
 
     product_types = {"render", "image", "background", "plate", "review"}
-    representations = ["*"]
+    representations = {"*"}
 
     label = "Import Image"
     order = 1
