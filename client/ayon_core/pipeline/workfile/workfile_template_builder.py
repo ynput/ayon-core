@@ -1539,11 +1539,11 @@ class PlaceholderLoadMixin(object):
             version_mapping = version_mapping_by_product_id.setdefault(
                 product_id, {}
             )
-            version_mapping[version].append(repre_context)
+            version_mapping.setdefault(version, []).append(repre_context)
 
         output = []
         for version_mapping in version_mapping_by_product_id.values():
-            last_version = tuple(sorted(version_mapping.keys()))[-1]
+            last_version = max(version_mapping.keys())
             output.extend(version_mapping[last_version])
         return output
 
