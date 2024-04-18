@@ -14,19 +14,22 @@ import substance_painter.project
 
 
 def _convert(substance_attr):
-    """Function to convert substance C++ objects to python instance.
-    It is made to avoid any possible ValueError when C++ objects is
-    converted to the Substance Painter Python API equivalent objects.
+    """Return Substance Painter Python API Project attribute from string.
+    
+    This converts a string like "ProjectWorkflow.Default" to for example
+    the Substance Painter Python API equivalent object, like:
+        `substance_painter.project.ProjectWorkflow.Default`
 
     Args:
-        subst_attr (str): Substance attributes
-
-    Raises:
-        ValueError: Raise Error when unsupported Substance
-            Project was detected
+        substance_attr (str): The `substance_painter.project` attribute,
+            for example "ProjectWorkflow.Default"
 
     Returns:
-        python instance: converted python instance of the C++ objects.
+        Any: Substance Python API object of the project attribute.
+
+    Raises:
+        ValueError: If attribute does not exist on the
+            `substance_painter.project` python api.
     """
     root = substance_painter.project
     for attr in substance_attr.split("."):
