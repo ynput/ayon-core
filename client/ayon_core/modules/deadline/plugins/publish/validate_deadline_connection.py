@@ -17,6 +17,10 @@ class ValidateDeadlineConnection(pyblish.api.InstancePlugin):
     responses = {}
 
     def process(self, instance):
+        if not instance.data.get("farm"):
+            self.log.debug("Should not be processed on farm, skipping.")
+            return
+
         deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
 

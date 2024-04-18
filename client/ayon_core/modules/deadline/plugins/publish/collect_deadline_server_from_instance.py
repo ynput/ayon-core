@@ -13,7 +13,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
     """Collect Deadline Webservice URL from instance."""
 
     # Run before collect_render.
-    order = pyblish.api.CollectorOrder + 0.005
+    order = pyblish.api.CollectorOrder + 0.225
     label = "Deadline Webservice from the Instance"
     targets = ["local"]
     families = ["render",
@@ -32,7 +32,11 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
                 "image"]  # for Fusion
 
     def process(self, instance):
-        if not "deadline" in instance.data:
+        if not instance.data.get("farm"):
+            self.log.debug("Should not be processed on farm, skipping.")
+            return
+
+        if not instance.data.get("deadline"):
             instance.data["deadline"] = {}
 
         # todo: separate logic should be removed, all hosts should have same
