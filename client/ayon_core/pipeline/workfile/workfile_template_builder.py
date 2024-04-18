@@ -1146,7 +1146,7 @@ class PlaceholderPlugin(object):
         )
 
     def register_on_depth_processed_callback(
-            self, placeholder, callback, order=0
+            self, placeholder, callback, order=None
     ):
         self.register_callback(
             placeholder,
@@ -1156,11 +1156,6 @@ class PlaceholderPlugin(object):
         )
 
     def register_callback(self, placeholder, topic, callback, order=None):
-
-        if order is None:
-            # Match placeholder order by default
-            order = placeholder.order
-
         self.log.debug("Registering '%s' callback: %s", topic, callback)
         self.builder.event_system.add_callback(topic, callback, order=order)
 
