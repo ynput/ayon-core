@@ -73,7 +73,8 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
 
         if not deadline_info["require_authentication"]:
             return
-
+        # TODO import 'get_addon_site_settings' when available 
+        #   in public 'ayon_api'
         local_settings = get_server_api_connection().get_addon_site_settings(
             DeadlineModule.name, __version__)
         local_settings = local_settings["local_settings"]
