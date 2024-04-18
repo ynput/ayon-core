@@ -99,8 +99,8 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
     project_templates = []
 
     def load(self, context, name, namespace, options=None):
+
         # Get user inputs
-        print(self.project_templates)
         template_enum = [template["name"] for template in self.project_templates]
         window = SubstanceProjectConfigurationWindow(template_enum)
         window.exec_()
