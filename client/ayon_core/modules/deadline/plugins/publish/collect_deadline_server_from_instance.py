@@ -46,7 +46,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
         if deadline_url:
             instance.data["deadline"]["url"] = deadline_url.strip().rstrip("/")
         else:
-            instance.data["deadline"]["url"] = instance.context.data["deadline"]["defaultDeadline"]  # noqa
+            instance.data["deadline"]["url"] = instance.context.data["deadline"]["defaultUrl"]  # noqa
         self.log.debug(
             "Using {} for submission".format(instance.data["deadline"]["url"]))
 
@@ -74,13 +74,13 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
             ["project_settings"]
             ["deadline"]
         )
-        default_server = (render_instance.context.data["deadline"]
-                                                      ["defaultDeadline"])
+        default_server_url = (render_instance.context.data["deadline"]
+                                                          ["defaultUrl"])
         # QUESTION How and where is this is set? Should be removed?
         instance_server = render_instance.data.get("deadlineServers")
         if not instance_server:
             self.log.debug("Using default server.")
-            return default_server
+            return default_server_url
 
         # Get instance server as sting.
         if isinstance(instance_server, int):
