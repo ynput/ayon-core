@@ -7,7 +7,6 @@ attribute or using default server if that attribute doesn't exists.
 """
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
-from ayon_core.pipeline.context_tools import get_current_host_name
 
 
 class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
@@ -37,7 +36,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
             instance.data["deadline"] = {}
 
         # todo: separate logic should be removed, all hosts should have same
-        host_name = get_current_host_name()
+        host_name = instance.context.data["hostName"]
         if host_name == "maya":
             deadline_url = self._collect_deadline_url(instance)
         else:
