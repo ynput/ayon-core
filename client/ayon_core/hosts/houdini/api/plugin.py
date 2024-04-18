@@ -265,7 +265,11 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             # This is done by re-using the logic inside the creators.
             # Note: self is instance of the creator plugin that's responsible for
             #  the product type of instance_node.
-            self.update_node_parameters(instance_node, new_values["creator_attributes"])
+            if "creator_attributes" in new_values:
+                self.update_node_parameters(
+                    instance_node,
+                    new_values["creator_attributes"]
+                )
 
     def imprint(self, node, values, update=False):
         # Never store instance node and instance id since that data comes
