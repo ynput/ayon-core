@@ -131,6 +131,32 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
         node.setParms(parms)
 
+    @staticmethod
+    def read_node_data(node):
+        """Read node data from node parameters.
+
+        Implementation of `read_node_data`.
+        It should invert the logic of `update_node_parameters`
+
+        Args:
+            node(hou.Node): Houdini node to read changes from.
+
+        Returns:
+            settings (Optional[dict[str, Any]]):
+        """
+        ext_format_index = {0: "exr", 1: "tif", 2: "jpg", 3:"png"}
+
+        node_data = {
+            "creator_attributes": {
+                "multi_layered_mode": node.evalParm("RS_outputMultilayerMode"),
+                "farm": node.evalParm("farm"),
+                "split_render": node.evalParm("RS_archive_enable"),
+                "image_format": ext_format_index[node.evalParm("RS_outputFileFormat")],
+            }
+        }
+
+        return node_data
+
     def get_instance_attr_defs(self):
         image_format_enum = [
             "exr", "tif", "jpg", "png",
