@@ -5,8 +5,8 @@ import maya.cmds as cmds
 from ayon_core.hosts.maya.api import plugin
 from ayon_core.hosts.maya.api import lib
 
-from openpype.pipeline import registered_host
-from openpype.pipeline.create import CreateContext
+from ayon_core.pipeline import registered_host
+from ayon_core.pipeline.create import CreateContext
 
 
 class YetiRigLoader(plugin.ReferenceLoader):
