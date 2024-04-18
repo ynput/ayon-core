@@ -93,27 +93,27 @@ DEFAULT_LOADER_SETTINGS = {
             "name": "2K(Default)",
             "default_texture_resolution": 2048,
             "import_cameras": True,
-            "normal_map_format": "DirectX",
-            "project_workflow": "Default",
-            "tangent_space_mode": "PerFragment",
+            "normal_map_format": "NormalMapFormat.DirectX",
+            "project_workflow": "ProjectWorkflow.Default",
+            "tangent_space_mode": "TangentSpace.PerFragment",
             "preserve_strokes": True
         },
         {
             "name": "2K(UV tile)",
             "default_texture_resolution": 2048,
             "import_cameras": True,
-            "normal_map_format": "DirectX",
-            "project_workflow": "UVTile",
-            "tangent_space_mode": "PerFragment",
+            "normal_map_format": "NormalMapFormat.DirectX",
+            "project_workflow": "ProjectWorkflow.UVTile",
+            "tangent_space_mode": "TangentSpace.PerFragment",
             "preserve_strokes": True
         },
         {
             "name": "4K(Custom)",
             "default_texture_resolution": 4096,
             "import_cameras": True,
-            "normal_map_format": "OpenGL",
-            "project_workflow": "UVTile",
-            "tangent_space_mode": "PerFragment",
+            "normal_map_format": "NormalMapFormat.OpenGL",
+            "project_workflow": "ProjectWorkflow.UVTile",
+            "tangent_space_mode": "TangentSpace.PerFragment",
             "preserve_strokes": True
         }]
     }
