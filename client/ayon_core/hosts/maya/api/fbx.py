@@ -47,7 +47,7 @@ class FBXExtractor:
             "smoothMesh": bool,
             "instances": bool,
             # "referencedContainersContent": bool, # deprecated in Maya 2016+
-            "bakeComplexAnimation": bool,
+            "bakeComplexAnimation": int,
             "bakeComplexStart": int,
             "bakeComplexEnd": int,
             "bakeComplexStep": int,
