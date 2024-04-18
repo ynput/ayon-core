@@ -1582,7 +1582,7 @@ class PlaceholderLoadMixin(object):
             self.project_name, placeholder_representations
         )
         filtered_repre_contexts = self._reduce_last_version_repre_entities(
-            repre_load_contexts
+            repre_load_contexts.values()
         )
         if not filtered_repre_contexts:
             self.log.info((
