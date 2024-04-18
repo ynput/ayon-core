@@ -20,7 +20,7 @@ from ayon_core.modules.deadline import __version__
 class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
     """Collects user name and password for artist if DL requires authentication
     """
-    order = pyblish.api.CollectorOrder + 0.200
+    order = pyblish.api.CollectorOrder + 0.250
     label = "Collect Deadline User Credentials"
 
     targets = ["local"]
@@ -47,6 +47,10 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
                 "publish.hou"]
 
     def process(self, instance):
+        if not instance.data.get("farm"):
+            self.log.debug("Should not be processed on farm, skipping.")
+            return
+
         collected_deadline_url = instance.data["deadline"]["url"]
         if not collected_deadline_url:
             raise ValueError("Instance doesn't have '[deadline][url]'.")

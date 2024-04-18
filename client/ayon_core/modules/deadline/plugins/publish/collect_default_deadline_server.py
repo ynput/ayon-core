@@ -18,7 +18,7 @@ class CollectDefaultDeadlineServer(pyblish.api.ContextPlugin):
     """
 
     # Run before collect_deadline_server_instance.
-    order = pyblish.api.CollectorOrder + 0.0025
+    order = pyblish.api.CollectorOrder + 0.200
     label = "Default Deadline Webservice"
     targets = ["local"]
 
