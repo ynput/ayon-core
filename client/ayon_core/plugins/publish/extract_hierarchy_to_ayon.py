@@ -115,6 +115,10 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
 
         entity_hub = EntityHub(project_name)
         project = entity_hub.project_entity
+        folder_type_name_by_low_name = {
+            folder_type_item["name"].lower(): folder_type_item["name"]
+            for folder_type_item in project.get_folder_types()
+        }
 
         hierarchy_match_queue = collections.deque()
         hierarchy_match_queue.append((project, hierarchy_context))
@@ -167,8 +171,18 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                 # TODO check if existing entity have 'folder' type
                 child_entity = children_by_low_name.get(child_name.lower())
                 if child_entity is None:
+                    folder_type = folder_type_name_by_low_name.get(
+                        child_info["folder_type"].lower()
+                    )
+                    if folder_type is None:
+                        # TODO add validator for folder type validations
+                        self.log.warning((
+                            "Couldn't find folder type '{}'"
+                        ).format(child_info["folder_type"]))
+                        folder_type = "Folder"
+
                     child_entity = entity_hub.add_new_folder(
-                        child_info["entity_type"],
+                        folder_type,
                         parent_id=entity.id,
                         name=child_name
                     )
@@ -223,12 +237,11 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         # filter only the active publishing instances
         active_folder_paths = set()
         for instance in context:
-            if instance.data.get("publish") is not False:
+            if instance.data.get("publish", True) is not False:
                 active_folder_paths.add(instance.data.get("folderPath"))
 
         active_folder_paths.discard(None)
 
-        self.log.debug("Active folder paths: {}".format(active_folder_paths))
         if not active_folder_paths:
             return None
 
@@ -237,11 +250,11 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         hierarchy_context = copy.deepcopy(context.data["hierarchyContext"])
         for key, value in hierarchy_context.items():
             project_item = copy.deepcopy(value)
-            project_children_context = project_item.pop("childs", None)
+            project_children_context = project_item.pop("children", None)
             project_item["name"] = key
             project_item["tasks"] = []
             project_item["attributes"] = project_item.pop(
-                "custom_attributes", {}
+                "attributes", {}
             )
             project_item["children"] = []
 
@@ -265,22 +278,23 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                 folder_path = "{}/{}".format(parent_path, folder_name)
                 if (
                     folder_path not in active_folder_paths
-                    and not folder_info.get("childs")
+                    and not folder_info.get("children")
                 ):
                     continue
 
                 item_id = uuid.uuid4().hex
                 new_item = copy.deepcopy(folder_info)
+                new_children_context = new_item.pop("children", None)
+                tasks = new_item.pop("tasks", {})
+
                 new_item["name"] = folder_name
                 new_item["children"] = []
-                new_children_context = new_item.pop("childs", None)
-                tasks = new_item.pop("tasks", {})
                 task_items = []
                 for task_name, task_info in tasks.items():
                     task_info["name"] = task_name
                     task_items.append(task_info)
                 new_item["tasks"] = task_items
-                new_item["attributes"] = new_item.pop("custom_attributes", {})
+                new_item["attributes"] = new_item.pop("attributes", {})
 
                 items_by_id[item_id] = new_item
                 parent_id_by_item_id[item_id] = parent_id

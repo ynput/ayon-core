@@ -3,11 +3,11 @@ import sys
 from pprint import pformat
 
 
-class CollectCelactionCliKwargs(pyblish.api.Collector):
+class CollectCelactionCliKwargs(pyblish.api.ContextPlugin):
     """ Collects all keyword arguments passed from the terminal """
 
     label = "Collect Celaction Cli Kwargs"
-    order = pyblish.api.Collector.order - 0.1
+    order = pyblish.api.CollectorOrder - 0.1
 
     def process(self, context):
         args = list(sys.argv[1:])

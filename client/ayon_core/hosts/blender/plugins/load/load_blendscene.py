@@ -19,7 +19,7 @@ class BlendSceneLoader(plugin.AssetLoader):
     """Load assets from a .blend file."""
 
     product_types = {"blendScene"}
-    representations = ["blend"]
+    representations = {"blend"}
 
     label = "Append Blend"
     icon = "code-fork"
