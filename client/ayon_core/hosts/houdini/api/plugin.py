@@ -13,10 +13,8 @@ from ayon_core.pipeline import (
     Creator as NewCreator,
     CreatedInstance,
     AYON_INSTANCE_ID,
-    AVALON_INSTANCE_ID,
-    registered_host
+    AVALON_INSTANCE_ID
 )
-from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
 
@@ -256,19 +254,18 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
                 for key in changes.changed_keys
             }
 
-            # Update Houdini node's parameters based on creator attributes.
-            # This is done by re-using the logic inside the creators.
-            host = registered_host()
-            create_context = CreateContext(host, reset=True)
-            create_plugin = create_context.creators[created_inst.creator_identifier]
-            create_plugin.update_node_parameters(instance_node, new_values["creator_attributes"])
-
             # Update Extra AYON parm templates and values.
             self.imprint(
                 instance_node,
                 new_values,
                 update=True
             )
+
+            # Update Houdini node's parameters based on creator attributes.
+            # This is done by re-using the logic inside the creators.
+            # Note: self is instance of the creator plugin that's responsible for
+            #  the product type of instance_node.
+            self.update_node_parameters(instance_node, new_values["creator_attributes"])
 
     def imprint(self, node, values, update=False):
         # Never store instance node and instance id since that data comes
