@@ -50,14 +50,21 @@ class ExtractRender(publish.Extractor):
             ropnode = hou.node(instance.data.get("instance_node"))
             render_rop(ropnode)
 
+        # `ExpectedFiles` is a list that includes one dict.
+        expected_files = instance.data["expectedFiles"][0]
+        # Each key in that dict is a list of files.
+        # Combine lists of files into one big list.
+        all_frames = []
+        for value in  expected_files.values():
+            if isinstance(value, str):
+                all_frames.append(value)
+            elif isinstance(value, list):
+                all_frames.extend(value)
         # Check missing frames.
         # Frames won't exist if user cancels the render.
-        expected_files = next(iter(instance.data["expectedFiles"]), {})
-        # TODO: enhance the readability.
-        expected_files = sum(expected_files.values(), [])
         missing_frames = [
             frame
-            for frame in expected_files
+            for frame in all_frames
             if not os.path.exists(frame)
         ]
         if missing_frames:
