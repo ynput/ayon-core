@@ -599,7 +599,7 @@ class CreateRenderPass(TVPaintCreator):
         if filtered_layers:
             self.log.info((
                 "Changing group of "
-                f"{','.join([l['name'] for l in filtered_layers])}"
+                f"{','.join([layer['name'] for layer in filtered_layers])}"
                 f" to {group_id}"
             ))
             george_lines = [
@@ -760,7 +760,9 @@ class TVPaintAutoDetectRenderCreator(TVPaintCreator):
         grg_lines: list[str] = []
         for group_id, group_name in new_group_name_by_id.items():
             group: dict[str, Any] = groups_by_id[group_id]
-            grg_line: str = "tv_layercolor \"setcolor\" {} {} {} {} {}".format(
+            grg_line: str = (
+                "tv_layercolor \"setcolor\" {} {} {} {} {} \"{}\""
+            ).format(
                 group["clip_id"],
                 group_id,
                 group["red"],

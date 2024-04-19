@@ -25,7 +25,7 @@ class BlendActionLoader(plugin.AssetLoader):
     """
 
     product_types = {"action"}
-    representations = ["blend"]
+    representations = {"blend"}
 
     label = "Link Action"
     icon = "code-fork"

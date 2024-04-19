@@ -84,19 +84,11 @@ class ValidateResolution(pyblish.api.InstancePlugin,
 
     @classmethod
     def get_folder_resolution(cls, instance):
-        folder_attributes = instance.data["folderEntity"]["attrib"]
-        if (
-            "resolutionWidth" in folder_attributes
-            and "resolutionHeight" in folder_attributes
-            and "pixelAspect" in folder_attributes
-        ):
-            width = folder_attributes["resolutionWidth"]
-            height = folder_attributes["resolutionHeight"]
-            pixelAspect = folder_attributes["pixelAspect"]
-            return int(width), int(height), float(pixelAspect)
-
-        # Defaults if not found in asset document or project document
-        return 1920, 1080, 1.0
+        task_attributes = instance.data["taskEntity"]["attrib"]
+        width = task_attributes["resolutionWidth"]
+        height = task_attributes["resolutionHeight"]
+        pixel_aspect = task_attributes["pixelAspect"]
+        return int(width), int(height), float(pixel_aspect)
 
     @classmethod
     def repair(cls, instance):

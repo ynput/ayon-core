@@ -219,7 +219,7 @@ class IncrementScriptVersionModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class PublishPluginsModel(BaseSettingsModel):
     CollectInstanceData: CollectInstanceDataModel = SettingsField(
         title="Collect Instance Version",
         default_factory=CollectInstanceDataModel,

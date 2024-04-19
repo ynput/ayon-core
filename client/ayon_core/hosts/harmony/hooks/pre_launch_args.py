@@ -6,10 +6,7 @@ from ayon_core.lib import (
     get_ayon_launcher_args,
     is_using_ayon_console,
 )
-from ayon_core.lib.applications import (
-    PreLaunchHook,
-    LaunchTypes,
-)
+from ayon_applications import PreLaunchHook, LaunchTypes
 from ayon_core.hosts.harmony import get_launch_script_path
 
 
