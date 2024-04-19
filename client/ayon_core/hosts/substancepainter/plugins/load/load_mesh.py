@@ -1,3 +1,4 @@
+import copy
 from qtpy import QtWidgets, QtCore
 from ayon_core.pipeline import (
     load,
@@ -77,11 +78,11 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
                 QtWidgets.QDialogButtonBox.Ok
                 | QtWidgets.QDialogButtonBox.Cancel)
         }
-        for template in self.template_names:
-            self.widgets["template_options"].addItem(template)
+
+        self.widgets["template_options"].addItem(self.template_names)
 
         template_name = self.widgets["template_options"].currentText()
-        self.get_boolean_setting(template_name)
+        self._update_to_match_template(template_name)
         # Build clickboxes
         layout = QtWidgets.QHBoxLayout(self.widgets["clickbox"])
         layout.addWidget(self.widgets["import_cameras"])
@@ -100,14 +101,14 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         layout.addWidget(self.widgets["buttons"])
 
         self.widgets["template_options"].currentTextChanged.connect(
-            self.on_options_changed)
-        self.widgets["buttons"].accepted.connect(self.on_ok_pressed)
-        self.widgets["buttons"].rejected.connect(self.on_cancel_pressed)
+            self._update_to_match_template)
+        self.widgets["buttons"].accepted.connect(self.on_accept)
+        self.widgets["buttons"].rejected.connect(self.on_reject)
 
     def on_options_changed(self, value):
         self.get_boolean_setting(value)
 
-    def on_ok_pressed(self):
+    def on_accept(self):
         if self.widgets["import_cameras"].isChecked():
             self.import_cameras = True
         if self.widgets["preserve_strokes"].isChecked():
@@ -117,32 +118,28 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         )
         self.close()
 
-    def on_cancel_pressed(self):
-        self.template_name = None
+    def on_reject(self):
         self.close()
 
-    def get_boolean_setting(self, template_name):
-        self.import_cameras = next(template["import_cameras"] for
-                                   template in self.project_templates
-                                   if template["name"] == template_name)
-        self.preserve_strokes = next(template["preserve_strokes"] for
-                                     template in self.project_templates
-                                     if template["name"] == template_name)
-        self.widgets["import_cameras"].setChecked(self.import_cameras)
-        self.widgets["preserve_strokes"].setChecked(self.preserve_strokes)
+    def _update_to_match_template(self, template_name):
+        template = get_template_by_name(template_name, self.project_templates)
+        self.widgets["import_cameras"].setChecked(template["import_cameras"])
+        self.widgets["preserve_strokes"].setChecked(
+            template["preserve_strokes"])
 
-    def get_result(self):
-        import copy
+    def get_project_configuration(self):
         templates = self.project_templates
-        name = self.template_name
-        if not name:
-            # if user close the dialog,
-            # template name would be None
+        if not self.template_name:
             return None
-        template = get_template_by_name(name, templates)
+        template = get_template_by_name(self.template_name, templates)
         template = copy.deepcopy(template) # do not edit the original
         template["import_cameras"] = self.widgets["import_cameras"].isChecked()
         template["preserve_strokes"] = self.widgets["preserve_strokes"].isChecked()
+        for key in template.keys():
+            if key in ["normal_map_format",
+                       "project_workflow",
+                       "tangent_space_mode"]:
+                template[key] = _convert(template[key])
         return template
 
     @classmethod
@@ -150,7 +147,7 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         dialog = cls(templates)
         dialog.exec_()
 
-        return dialog
+        return dialog.get_project_configuration()
 
 
 class SubstanceLoadProjectMesh(load.LoaderPlugin):
@@ -169,15 +166,14 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
 
         # Get user inputs
         result = SubstanceProjectConfigurationWindow.prompt(
-            self.project_templates).get_result()
+            self.project_templates)
         if result is None:
             return
-        import_cameras = result["import_cameras"]
         sp_settings = substance_painter.project.Settings(
-            normal_map_format=_convert(result["normal_map_format"]),
+            normal_map_format=result["normal_map_format"],
             import_cameras=result["import_cameras"],
-            project_workflow=_convert(result["project_workflow"]),
-            tangent_space_mode=_convert(result["tangent_space_mode"]),
+            project_workflow=result["project_workflow"],
+            tangent_space_mode=result["tangent_space_mode"],
             default_texture_resolution=result["default_texture_resolution"]
         )
         if not substance_painter.project.is_open():
@@ -189,10 +185,9 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
             )
         else:
             # Reload the mesh
-            preserve_strokes = result["preserve_cameras"]
             settings = substance_painter.project.MeshReloadingSettings(
-                import_cameras=import_cameras,
-                preserve_strokes=preserve_strokes)
+                import_cameras=result["import_cameras"],
+                preserve_strokes=result["preserve_strokes"])
 
             def on_mesh_reload(status: substance_painter.project.ReloadMeshStatus):  # noqa
                 if status == substance_painter.project.ReloadMeshStatus.SUCCESS:  # noqa
@@ -219,7 +214,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         # as we always preserve strokes on updates.
         # TODO: update the code
         container["options"] = {
-            "import_cameras": import_cameras,
+            "import_cameras": result["import_cameras"],
         }
 
         set_container_metadata(project_mesh_object_name, container)
