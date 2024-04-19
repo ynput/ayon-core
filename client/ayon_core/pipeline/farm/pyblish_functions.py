@@ -621,9 +621,11 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         new_instance = deepcopy(skeleton)
         new_instance["productName"] = product_name
         new_instance["productGroup"] = group_name
+        if aov:
+            new_instance["aovName"] = aov
 
         # toggle preview on if multipart is on
-        # Because we cant query the multipartExr data member of each AOV we'll
+        # Because we can't query the multipartExr data member of each AOV we'll
         # need to have hardcoded rule of excluding any renders with
         # "cryptomatte" in the file name from being a multipart EXR. This issue
         # happens with Redshift that forces Cryptomatte renders to be separate
