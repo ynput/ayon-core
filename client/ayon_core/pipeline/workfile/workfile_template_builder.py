@@ -36,7 +36,7 @@ from ayon_core.lib import (
     filter_profiles,
     attribute_definitions,
 )
-from ayon_core.lib.events import EventSystem
+from ayon_core.lib.events import EventSystem, EventCallback, Event
 from ayon_core.lib.attribute_definitions import get_attributes_keys
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import (
@@ -897,16 +897,16 @@ class AbstractTemplateBuilder(object):
             "create_first_version": create_first_version
         }
 
-    def emit_event(self, topic, data=None, source=None):
-        self._event_system.emit(topic, data, source)
+    def emit_event(self, topic, data=None, source=None) -> Event:
+        return self._event_system.emit(topic, data, source)
 
     def add_event_callback(self, topic, callback, order=None):
-        self._event_system.add_callback(topic, callback, order=order)
+        return self._event_system.add_callback(topic, callback, order=order)
 
     def add_on_finished_callback(
             self, callback, order=None
-    ):
-        self.add_event_callback(
+    ) -> EventCallback:
+        return self.add_event_callback(
             topic="template.finished",
             callback=callback,
             order=order
@@ -914,8 +914,8 @@ class AbstractTemplateBuilder(object):
 
     def add_on_depth_processed_callback(
             self, callback, order=None
-    ):
-        self.add_event_callback(
+    ) -> EventCallback:
+        return self.add_event_callback(
             topic="template.depth_processed",
             callback=callback,
             order=order
