@@ -37,7 +37,7 @@ PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
-TEMPLATE_PLUGINS_PATH = os.path.join(PLUGINS_DIR, "template")
+WORKFILE_BUILD_PATH = os.path.join(PLUGINS_DIR, "workfile_build")
 
 
 class AfterEffectsHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
@@ -74,7 +74,7 @@ class AfterEffectsHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
-        register_template_placeholder_plugin_path(TEMPLATE_PLUGINS_PATH)
+        register_template_placeholder_plugin_path(WORKFILE_BUILD_PATH)
 
         register_event_callback("application.launched", application_launch)
 
