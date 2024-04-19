@@ -897,25 +897,25 @@ class AbstractTemplateBuilder(object):
             "create_first_version": create_first_version
         }
 
-    def trigger_event(self, topic, data=None, source=None):
+    def emit_event(self, topic, data=None, source=None):
         self._event_system.emit(topic, data, source)
 
-    def register_event_callback(self, topic, callback, order=None):
+    def add_event_callback(self, topic, callback, order=None):
         self._event_system.add_callback(topic, callback, order=order)
 
-    def register_on_finished_callback(
+    def add_on_finished_callback(
             self, callback, order=None
     ):
-        self.register_event_callback(
+        self.add_event_callback(
             topic="template.finished",
             callback=callback,
             order=order
         )
 
-    def register_on_depth_processed_callback(
+    def add_on_depth_processed_callback(
             self, callback, order=None
     ):
-        self.register_event_callback(
+        self.add_event_callback(
             topic="template.depth_processed",
             callback=callback,
             order=order
