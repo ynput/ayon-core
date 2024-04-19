@@ -7,7 +7,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
 from ayon_core.hosts.maya.api.lib import (
     get_container_transforms,
     get_node_parent,
-    Reorder
+    get_node_index_under_parent
 )
 from ayon_core.hosts.maya.api.workfile_template_builder import (
     MayaPlaceholderPlugin,
@@ -127,6 +127,6 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
 
             # Move loaded nodes in index order next to their placeholder node
             cmds.reorder(node, back=True)
-            index = Reorder.get_index(placeholder.scene_identifier)
+            index = get_node_index_under_parent(placeholder.scene_identifier)
             cmds.reorder(node, front=True)
             cmds.reorder(node, relative=index + 1)
