@@ -98,8 +98,8 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         # Build layout.
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.widgets["label"])
-        layout.addWidget(self.widgets["clickbox"])
         layout.addWidget(self.widgets["combobox"])
+        layout.addWidget(self.widgets["clickbox"])
         layout.addWidget(self.widgets["buttons"])
 
         self.widgets["template_options"].currentTextChanged.connect(
