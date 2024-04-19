@@ -16,7 +16,7 @@ import substance_painter.project
 
 def _convert(substance_attr):
     """Return Substance Painter Python API Project attribute from string.
-    
+
     This converts a string like "ProjectWorkflow.Default" to for example
     the Substance Painter Python API equivalent object, like:
         `substance_painter.project.ProjectWorkflow.Default`
@@ -122,16 +122,16 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         template = copy.deepcopy(template) # do not edit the original
         template["import_cameras"] = self.widgets["import_cameras"].isChecked()
         template["preserve_strokes"] = self.widgets["preserve_strokes"].isChecked()
-        for key in template.keys():
-            if key in ["normal_map_format",
-                       "project_workflow",
-                       "tangent_space_mode"]:
-                template[key] = _convert(template[key])
+        for key in ["normal_map_format",
+                   "project_workflow",
+                   "tangent_space_mode"]:
+            template[key] = _convert(template[key])
         return template
 
     @classmethod
     def prompt(cls, templates):
         dialog = cls(templates)
+        dialog.deleteLater()
         dialog.exec_()
 
         return dialog.configuration
@@ -147,6 +147,8 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
     order = -10
     icon = "code-fork"
     color = "orange"
+
+    # Defined via settings
     project_templates = []
 
     def load(self, context, name, namespace, options=None):
@@ -161,7 +163,6 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
             tangent_space_mode=result["tangent_space_mode"],
             default_texture_resolution=result["default_texture_resolution"]
         )
-        print(sp_settings)
         if not substance_painter.project.is_open():
             # Allow to 'initialize' a new project
             path = self.filepath_from_context(context)
