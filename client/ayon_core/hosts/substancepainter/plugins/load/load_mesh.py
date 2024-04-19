@@ -131,8 +131,8 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
     @classmethod
     def prompt(cls, templates):
         dialog = cls(templates)
-        dialog.deleteLater()
         dialog.exec_()
+        dialog.deleteLater()
 
         return dialog.configuration
 
@@ -156,6 +156,8 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         # Get user inputs
         result = SubstanceProjectConfigurationWindow.prompt(
             self.project_templates)
+        if not result:
+            return
         sp_settings = substance_painter.project.Settings(
             import_cameras=result["import_cameras"],
             normal_map_format=result["normal_map_format"],
