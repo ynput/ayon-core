@@ -81,16 +81,7 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
             self.widgets["template_options"].addItem(template)
 
         template_name = self.widgets["template_options"].currentText()
-
-        self.import_cameras = next(template["import_cameras"] for
-                                   template in self.project_templates
-                                   if template["name"] == template_name)
-        self.preserve_strokes = next(template["preserve_strokes"] for
-                                     template in self.project_templates
-                                     if template["name"] == template_name)
-        self.widgets["import_cameras"].setChecked(self.import_cameras)
-        self.widgets["preserve_strokes"].setChecked(self.preserve_strokes)
-
+        self.get_boolean_setting(template_name)
         # Build clickboxes
         layout = QtWidgets.QHBoxLayout(self.widgets["clickbox"])
         layout.addWidget(self.widgets["import_cameras"])
@@ -117,14 +108,7 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         self.widgets["cancelButton"].pressed.connect(self.on_cancel_pressed)
 
     def on_options_changed(self, value):
-        self.import_cameras = next(template["import_cameras"] for
-                                   template in self.project_templates
-                                   if template["name"] == value)
-        self.preserve_strokes = next(template["preserve_strokes"] for
-                                     template in self.project_templates
-                                     if template["name"] == value)
-        self.widgets["import_cameras"].setChecked(self.import_cameras)
-        self.widgets["preserve_strokes"].setChecked(self.preserve_strokes)
+        self.get_boolean_setting(value)
 
     def on_ok_pressed(self):
         if self.widgets["import_cameras"].isChecked():
@@ -139,6 +123,16 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
     def on_cancel_pressed(self):
         self.template_name = None
         self.close()
+
+    def get_boolean_setting(self, template_name):
+        self.import_cameras = next(template["import_cameras"] for
+                                   template in self.project_templates
+                                   if template["name"] == template_name)
+        self.preserve_strokes = next(template["preserve_strokes"] for
+                                     template in self.project_templates
+                                     if template["name"] == template_name)
+        self.widgets["import_cameras"].setChecked(self.import_cameras)
+        self.widgets["preserve_strokes"].setChecked(self.preserve_strokes)
 
     @classmethod
     def prompt(cls, templates):
