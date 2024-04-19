@@ -78,14 +78,14 @@ class AssignLookPlaceholderPlugin(MayaPlaceholderPlugin):
 
     def populate_placeholder(self, placeholder):
         callback = weakref_partial(self.assign_look, placeholder)
-        self.builder.register_on_depth_processed_callback(
+        self.builder.add_on_depth_processed_callback(
             callback, order=placeholder.order)
 
         # If placeholder should be deleted, delete it after finish
         if not placeholder.data.get("keep_placeholder", True):
             delete_callback = weakref_partial(self.delete_placeholder,
                                               placeholder)
-            self.builder.register_on_finished_callback(
+            self.builder.add_on_finished_callback(
                 delete_callback, order=placeholder.order)
 
     def assign_look(self, placeholder):
