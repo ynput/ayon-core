@@ -157,6 +157,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         result = SubstanceProjectConfigurationWindow.prompt(
             self.project_templates)
         if not result:
+            # cancelling loader action
             return
         sp_settings = substance_painter.project.Settings(
             import_cameras=result["import_cameras"],
