@@ -136,6 +136,8 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         templates = self.project_templates
         name = self.template_name
         if not name:
+            # if user close the dialog,
+            # template name would be None
             return None
         template = get_template_by_name(name, templates)
         template = copy.deepcopy(template) # do not edit the original
