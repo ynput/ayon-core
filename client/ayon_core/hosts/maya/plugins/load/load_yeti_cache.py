@@ -49,7 +49,7 @@ class YetiCacheLoader(load.LoaderPlugin):
     """Load Yeti Cache with one or more Yeti nodes"""
 
     product_types = {"yeticache", "yetiRig"}
-    representations = ["fur"]
+    representations = {"fur"}
 
     label = "Load Yeti Cache"
     order = -9
