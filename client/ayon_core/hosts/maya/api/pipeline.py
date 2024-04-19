@@ -65,7 +65,7 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
-TEMPLATE_PLUGINS_PATH = os.path.join(PLUGINS_DIR, "template")
+WORKFILE_BUILD_PATH = os.path.join(PLUGINS_DIR, "workfile_build")
 
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
 
@@ -95,7 +95,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
-        register_template_placeholder_plugin_path(TEMPLATE_PLUGINS_PATH)
+        register_template_placeholder_plugin_path(WORKFILE_BUILD_PATH)
 
         self.log.info("Installing callbacks ... ")
         register_event_callback("init", on_init)
@@ -335,7 +335,7 @@ def uninstall():
     deregister_loader_plugin_path(LOAD_PATH)
     deregister_creator_plugin_path(CREATE_PATH)
     deregister_inventory_action_path(INVENTORY_PATH)
-    deregister_template_placeholder_plugin_path(TEMPLATE_PLUGINS_PATH)
+    deregister_template_placeholder_plugin_path(WORKFILE_BUILD_PATH)
 
     menu.uninstall()
 

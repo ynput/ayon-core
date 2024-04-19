@@ -75,7 +75,7 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
-TEMPLATE_PLUGINS_PATH = os.path.join(PLUGINS_DIR, "template")
+WORKFILE_BUILD_PATH = os.path.join(PLUGINS_DIR, "workfile_build")
 
 # registering pyblish gui regarding settings in presets
 if os.getenv("PYBLISH_GUI", None):
@@ -118,7 +118,7 @@ class NukeHost(
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
-        register_template_placeholder_plugin_path(TEMPLATE_PLUGINS_PATH)
+        register_template_placeholder_plugin_path(WORKFILE_BUILD_PATH)
 
         # Register AYON event for workfiles loading.
         register_event_callback("workio.open_file", check_inventory_versions)
