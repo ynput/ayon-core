@@ -1,3 +1,5 @@
+import inspect
+
 from maya import cmds
 
 import pyblish.api
@@ -29,8 +31,8 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
 
-    @staticmethod
-    def get_invalid(instance):
+    @classmethod
+    def get_invalid(cls, instance):
 
         meshes = cmds.ls(instance, type='mesh', long=True)
 
@@ -40,6 +42,11 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
             # Get existing mapping of uv sets by index
             indices = cmds.polyUVSet(mesh, query=True, allUVSetsIndices=True)
             maps = cmds.polyUVSet(mesh, query=True, allUVSets=True)
+            if not indices or not maps:
+                cls.log.warning("Mesh has no UV set: %s", mesh)
+                invalid.append(mesh)
+                continue
+
             mapping = dict(zip(indices, maps))
 
             # Get the uv set at index zero.
@@ -56,8 +63,14 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
 
         invalid = self.get_invalid(instance)
         if invalid:
+
+            invalid_list = "\n".join(f"- {node}" for node in invalid)
+
             raise PublishValidationError(
-                "Meshes found without 'map1' UV set: {0}".format(invalid))
+                "Meshes found without 'map1' UV set:\n"
+                "{0}".format(invalid_list),
+                description=self.get_description()
+            )
 
     @classmethod
     def repair(cls, instance):
@@ -68,6 +81,12 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
             # Get existing mapping of uv sets by index
             indices = cmds.polyUVSet(mesh, query=True, allUVSetsIndices=True)
             maps = cmds.polyUVSet(mesh, query=True, allUVSets=True)
+            if not indices or not maps:
+                # No UV set exist at all, create a `map1` uv set
+                # This may fail silently if the mesh has no geometry at all
+                cmds.polyUVSet(mesh, create=True, uvSet="map1")
+                continue
+
             mapping = dict(zip(indices, maps))
 
             # Ensure there is no uv set named map1 to avoid
@@ -97,3 +116,23 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
                            rename=True,
                            uvSet=original,
                            newUVSet="map1")
+
+    @staticmethod
+    def get_description():
+        return inspect.cleandoc("""### Mesh found without map1 uv set
+        
+        A mesh must have a default UV set named `map1` to adhere to the default
+        mesh behavior of Maya meshes.
+        
+        There may be meshes that:
+        - Have no UV set
+        - Have no `map1` uv set but are using a different name
+        - Have a `map1` uv set, but it's not the default (first index)
+
+
+        #### Repair
+        
+        Using repair will try to make the first UV set the `map1` uv set. If it
+        does not exist yet it will be created or renames the current first
+        UV set to `map1`.
+        """)
