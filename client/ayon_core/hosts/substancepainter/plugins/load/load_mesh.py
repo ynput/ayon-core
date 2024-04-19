@@ -131,7 +131,6 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         self.widgets["import_cameras"].setChecked(self.import_cameras)
         self.widgets["preserve_strokes"].setChecked(self.preserve_strokes)
 
-
     def get_result(self):
         import copy
         templates = self.project_templates
