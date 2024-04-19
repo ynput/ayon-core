@@ -73,9 +73,9 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
             "preserve_strokes": QtWidgets.QCheckBox("Preserve Strokes"),
             "clickbox": QtWidgets.QWidget(),
             "combobox": QtWidgets.QWidget(),
-            "buttons": QtWidgets.QWidget(),
-            "okButton": QtWidgets.QPushButton("Ok"),
-            "cancelButton": QtWidgets.QPushButton("Cancel")
+            "buttons": QtWidgets.QDialogButtonBox(
+                QtWidgets.QDialogButtonBox.Ok
+                | QtWidgets.QDialogButtonBox.Cancel)
         }
         for template in self.template_names:
             self.widgets["template_options"].addItem(template)
@@ -92,9 +92,6 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
 
         # Build buttons
         layout = QtWidgets.QHBoxLayout(self.widgets["buttons"])
-        layout.addWidget(self.widgets["okButton"])
-        layout.addWidget(self.widgets["cancelButton"])
-
         # Build layout.
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.widgets["label"])
@@ -104,8 +101,8 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
 
         self.widgets["template_options"].currentTextChanged.connect(
             self.on_options_changed)
-        self.widgets["okButton"].pressed.connect(self.on_ok_pressed)
-        self.widgets["cancelButton"].pressed.connect(self.on_cancel_pressed)
+        self.widgets["buttons"].accepted.connect(self.on_ok_pressed)
+        self.widgets["buttons"].rejected.connect(self.on_cancel_pressed)
 
     def on_options_changed(self, value):
         self.get_boolean_setting(value)
@@ -134,10 +131,24 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         self.widgets["import_cameras"].setChecked(self.import_cameras)
         self.widgets["preserve_strokes"].setChecked(self.preserve_strokes)
 
+
+    def get_result(self):
+        import copy
+        templates = self.project_templates
+        name = self.template_name
+        if not name:
+            return None
+        template = get_template_by_name(name, templates)
+        template = copy.deepcopy(template) # do not edit the original
+        template["import_cameras"] = self.widgets["import_cameras"].isChecked()
+        template["preserve_strokes"] = self.widgets["preserve_strokes"].isChecked()
+        return template
+
     @classmethod
     def prompt(cls, templates):
         dialog = cls(templates)
         dialog.exec_()
+
         return dialog
 
 
@@ -157,17 +168,16 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
 
         # Get user inputs
         result = SubstanceProjectConfigurationWindow.prompt(
-            self.project_templates)
-        template_name = result.template_name
-        if template_name is None:
+            self.project_templates).get_result()
+        if result is None:
             return
-        import_cameras = result.import_cameras
-        template = get_template_by_name(template_name, self.project_templates)
+        import_cameras = result["import_cameras"]
         sp_settings = substance_painter.project.Settings(
-            normal_map_format=_convert(template["normal_map_format"]),
-            project_workflow=_convert(template["project_workflow"]),
-            tangent_space_mode=_convert(template["tangent_space_mode"]),
-            default_texture_resolution=template["default_texture_resolution"]
+            normal_map_format=_convert(result["normal_map_format"]),
+            import_cameras=result["import_cameras"],
+            project_workflow=_convert(result["project_workflow"]),
+            tangent_space_mode=_convert(result["tangent_space_mode"]),
+            default_texture_resolution=result["default_texture_resolution"]
         )
         if not substance_painter.project.is_open():
             # Allow to 'initialize' a new project
@@ -178,7 +188,7 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
             )
         else:
             # Reload the mesh
-            preserve_strokes = result.preserve_strokes
+            preserve_strokes = result["preserve_cameras"]
             settings = substance_painter.project.MeshReloadingSettings(
                 import_cameras=import_cameras,
                 preserve_strokes=preserve_strokes)
