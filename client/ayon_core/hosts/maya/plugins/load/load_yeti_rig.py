@@ -20,6 +20,9 @@ class YetiRigLoader(plugin.ReferenceLoader):
     icon = "code-fork"
     color = "orange"
 
+    # From settings
+    create_cache_instance_on_load = True
+
     def process_reference(
         self, context, name=None, namespace=None, options=None
     ):
@@ -54,9 +57,10 @@ class YetiRigLoader(plugin.ReferenceLoader):
             )
         self[:] = nodes
 
-        # Automatically create in instance to allow publishing the loaded
-        # yeti rig into a yeti cache
-        self._create_yeti_cache_instance(nodes, variant=namespace)
+        if self.create_cache_instance_on_load:
+            # Automatically create in instance to allow publishing the loaded
+            # yeti rig into a yeti cache
+            self._create_yeti_cache_instance(nodes, variant=namespace)
 
         return nodes
 
