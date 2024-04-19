@@ -36,6 +36,7 @@ from ayon_core.lib import (
     filter_profiles,
     attribute_definitions,
 )
+from ayon_core.lib.events import EventSystem
 from ayon_core.lib.attribute_definitions import get_attributes_keys
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import (
@@ -130,6 +131,8 @@ class AbstractTemplateBuilder(object):
         self._current_folder_entity = _NOT_SET
         self._current_task_entity = _NOT_SET
         self._linked_folder_entities = _NOT_SET
+
+        self._event_system = EventSystem()
 
     @property
     def project_name(self):
@@ -267,6 +270,8 @@ class AbstractTemplateBuilder(object):
         self._linked_folder_entities = _NOT_SET
 
         self._project_settings = None
+
+        self._event_system = EventSystem()
 
         self.clear_shared_data()
         self.clear_shared_populate_data()
@@ -740,6 +745,16 @@ class AbstractTemplateBuilder(object):
 
                 placeholder.set_finished()
 
+            # Trigger on_depth_processed event
+            self.trigger_event(
+                topic="template.depth_processed",
+                data={
+                    "depth": iter_counter,
+                    "placeholders_by_scene_id": placeholder_by_scene_id
+                },
+                source="builder"
+            )
+
             # Clear shared data before getting new placeholders
             self.clear_shared_populate_data()
 
@@ -757,6 +772,16 @@ class AbstractTemplateBuilder(object):
                 all_processed = False
                 placeholder_by_scene_id[identifier] = placeholder
                 placeholders.append(placeholder)
+
+        # Trigger on_finished event
+        self.trigger_event(
+            topic="template.finished",
+            data={
+                "depth": iter_counter,
+                "placeholders_by_scene_id": placeholder_by_scene_id,
+            },
+            source="builder"
+        )
 
         self.refresh()
 
@@ -882,6 +907,30 @@ class AbstractTemplateBuilder(object):
             "keep_placeholder": keep_placeholder,
             "create_first_version": create_first_version
         }
+
+    def trigger_event(self, topic, data=None, source=None):
+        self._event_system.emit(topic, data, source)
+
+    def register_event_callback(self, topic, callback, order=None):
+        self._event_system.add_callback(topic, callback, order=order)
+
+    def register_on_finished_callback(
+            self, callback, order=None
+    ):
+        self.register_event_callback(
+            topic="template.finished",
+            callback=callback,
+            order=order
+        )
+
+    def register_on_depth_processed_callback(
+            self, callback, order=None
+    ):
+        self.register_event_callback(
+            topic="template.depth_processed",
+            callback=callback,
+            order=order
+        )
 
 
 @six.add_metaclass(ABCMeta)
