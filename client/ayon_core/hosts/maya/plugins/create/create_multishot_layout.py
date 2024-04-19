@@ -163,9 +163,12 @@ class CreateMultishotLayout(plugin.MayaCreator):
 
             shot_name = f"{shot['name']}%s" % (
                 f" ({shot['label']})" if shot["label"] else "")
-            shot_node = cmds.shot(sequenceStartTime=shot["attrib"]["clipIn"],
-                      sequenceEndTime=shot["attrib"]["clipOut"],
-                      shotName=shot_name)
+            shot_node = cmds.shot(
+                sequenceStartTime=shot["attrib"]["clipIn"],
+                sequenceEndTime=shot["attrib"]["clipOut"],
+                startTime=shot["attrib"]["clipIn"],
+                endTime=shot["attrib"]["clipOut"],
+                shotName=shot_name)
 
             # Create layout instance by the layout creator
 
