@@ -59,9 +59,7 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         super(SubstanceProjectConfigurationWindow, self).__init__()
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
-        self.import_cameras = False
-        self.preserve_strokes = False
-        self.template_name = None
+        self.configuration = None
         self.template_names = [template["name"] for template
                                in project_templates]
         self.project_templates = project_templates
@@ -79,7 +77,7 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
                 | QtWidgets.QDialogButtonBox.Cancel)
         }
 
-        self.widgets["template_options"].addItem(self.template_names)
+        self.widgets["template_options"].addItems(self.template_names)
 
         template_name = self.widgets["template_options"].currentText()
         self._update_to_match_template(template_name)
@@ -90,7 +88,6 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         # Build combobox
         layout = QtWidgets.QHBoxLayout(self.widgets["combobox"])
         layout.addWidget(self.widgets["template_options"])
-
         # Build buttons
         layout = QtWidgets.QHBoxLayout(self.widgets["buttons"])
         # Build layout.
@@ -105,17 +102,8 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         self.widgets["buttons"].accepted.connect(self.on_accept)
         self.widgets["buttons"].rejected.connect(self.on_reject)
 
-    def on_options_changed(self, value):
-        self.get_boolean_setting(value)
-
     def on_accept(self):
-        if self.widgets["import_cameras"].isChecked():
-            self.import_cameras = True
-        if self.widgets["preserve_strokes"].isChecked():
-            self.preserve_strokes = True
-        self.template_name = (
-            self.widgets["template_options"].currentText()
-        )
+        self.configuration = self.get_project_configuration()
         self.close()
 
     def on_reject(self):
@@ -129,9 +117,8 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
 
     def get_project_configuration(self):
         templates = self.project_templates
-        if not self.template_name:
-            return None
-        template = get_template_by_name(self.template_name, templates)
+        template_name = self.widgets["template_options"].currentText()
+        template = get_template_by_name(template_name, templates)
         template = copy.deepcopy(template) # do not edit the original
         template["import_cameras"] = self.widgets["import_cameras"].isChecked()
         template["preserve_strokes"] = self.widgets["preserve_strokes"].isChecked()
@@ -147,7 +134,7 @@ class SubstanceProjectConfigurationWindow(QtWidgets.QDialog):
         dialog = cls(templates)
         dialog.exec_()
 
-        return dialog.get_project_configuration()
+        return dialog.configuration
 
 
 class SubstanceLoadProjectMesh(load.LoaderPlugin):
@@ -167,15 +154,14 @@ class SubstanceLoadProjectMesh(load.LoaderPlugin):
         # Get user inputs
         result = SubstanceProjectConfigurationWindow.prompt(
             self.project_templates)
-        if result is None:
-            return
         sp_settings = substance_painter.project.Settings(
-            normal_map_format=result["normal_map_format"],
             import_cameras=result["import_cameras"],
+            normal_map_format=result["normal_map_format"],
             project_workflow=result["project_workflow"],
             tangent_space_mode=result["tangent_space_mode"],
             default_texture_resolution=result["default_texture_resolution"]
         )
+        print(sp_settings)
         if not substance_painter.project.is_open():
             # Allow to 'initialize' a new project
             path = self.filepath_from_context(context)
