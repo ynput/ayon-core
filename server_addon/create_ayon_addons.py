@@ -4,6 +4,8 @@ import re
 import shutil
 import argparse
 import zipfile
+import types
+import importlib
 import platform
 import collections
 from pathlib import Path
@@ -43,6 +45,11 @@ PACKAGE_PY_TEMPLATE = """name = "{addon_name}"
 version = "{addon_version}"
 plugin_for = ["ayon_server"]
 """
+
+CLIENT_VERSION_CONTENT = '''# -*- coding: utf-8 -*-
+"""Package declaring AYON core addon version."""
+__version__ = "{}"
+'''
 
 
 class ZipFileLongPaths(zipfile.ZipFile):
@@ -175,13 +182,75 @@ def create_addon_zip(
         shutil.rmtree(str(output_dir / addon_name))
 
 
+def prepare_client_code(
+    addon_dir: Path,
+    addon_output_dir: Path,
+    addon_version: str
+):
+    client_dir = addon_dir / "client"
+    if not client_dir.exists():
+        return
+
+    # Prepare private dir in output
+    private_dir = addon_output_dir / "private"
+    private_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy pyproject toml if available
+    pyproject_toml = client_dir / "pyproject.toml"
+    if pyproject_toml.exists():
+        shutil.copy(pyproject_toml, private_dir)
+
+    for subpath in client_dir.iterdir():
+        if subpath.name == "pyproject.toml":
+            continue
+
+        if subpath.is_file():
+            continue
+
+        # Update version.py with server version if 'version.py' is available
+        version_path = subpath / "version.py"
+        if version_path.exists():
+            with open(version_path, "w") as stream:
+                stream.write(CLIENT_VERSION_CONTENT.format(addon_version))
+
+        zip_filepath = private_dir / "client.zip"
+        with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
+            # Add client code content to zip
+            for path, sub_path in find_files_in_subdir(str(subpath)):
+                sub_path = os.path.join(subpath.name, sub_path)
+                zipf.write(path, sub_path)
+
+
+def import_filepath(path: Path, module_name: Optional[str] = None):
+    if not module_name:
+        module_name = os.path.splitext(path.name)[0]
+
+    # Convert to string
+    path = str(path)
+    module = types.ModuleType(module_name)
+    module.__file__ = path
+
+    # Use loader so module has full specs
+    module_loader = importlib.machinery.SourceFileLoader(
+        module_name, path
+    )
+    module_loader.exec_module(module)
+    return module
+
+
 def create_addon_package(
     addon_dir: Path,
     output_dir: Path,
     create_zip: bool,
     keep_source: bool,
 ):
-    addon_version = get_addon_version(addon_dir)
+    src_package_py = addon_dir / "package.py"
+    package = None
+    if src_package_py.exists():
+        package = import_filepath(src_package_py)
+        addon_version = package.version
+    else:
+        addon_version = get_addon_version(addon_dir)
 
     addon_output_dir = output_dir / addon_dir.name / addon_version
     if addon_output_dir.exists():
@@ -189,21 +258,26 @@ def create_addon_package(
     addon_output_dir.mkdir(parents=True)
 
     # Copy server content
-    package_py = addon_output_dir / "package.py"
-    addon_name = addon_dir.name
-    if addon_name == "royal_render":
-        addon_name = "royalrender"
-    package_py_content = PACKAGE_PY_TEMPLATE.format(
-        addon_name=addon_name, addon_version=addon_version
-    )
+    dst_package_py = addon_output_dir / "package.py"
+    if package is not None:
+        shutil.copy(src_package_py, dst_package_py)
+    else:
+        addon_name = addon_dir.name
+        if addon_name == "royal_render":
+            addon_name = "royalrender"
+        package_py_content = PACKAGE_PY_TEMPLATE.format(
+            addon_name=addon_name, addon_version=addon_version
+        )
 
-    with open(package_py, "w+") as pkg_py:
-        pkg_py.write(package_py_content)
+        with open(dst_package_py, "w+") as pkg_py:
+            pkg_py.write(package_py_content)
 
     server_dir = addon_dir / "server"
     shutil.copytree(
         server_dir, addon_output_dir / "server", dirs_exist_ok=True
     )
+
+    prepare_client_code(addon_dir, addon_output_dir, addon_version)
 
     if create_zip:
         create_addon_zip(

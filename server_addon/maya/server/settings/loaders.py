@@ -1,5 +1,9 @@
 from ayon_server.settings import BaseSettingsModel, SettingsField
-from ayon_server.types import ColorRGB_float, ColorRGBA_uint8
+from ayon_server.types import ColorRGBA_uint8
+
+
+class LoaderEnabledModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
 
 
 class ColorsSetting(BaseSettingsModel):
@@ -94,8 +98,20 @@ class ReferenceLoaderModel(BaseSettingsModel):
 
 
 class ImportLoaderModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
     namespace: str = SettingsField(title="Namespace")
     group_name: str = SettingsField(title="Group name")
+
+
+class YetiRigLoaderModel(LoaderEnabledModel):
+    create_cache_instance_on_load: bool = SettingsField(
+        title="Create Yeti Cache instance on load",
+        description=(
+            "When enabled, upon loading a Yeti Rig product a new Yeti cache "
+            "instance is automatically created as preparation to publishing "
+            "the output directly."
+        )
+    )
 
 
 class LoadersModel(BaseSettingsModel):
@@ -112,6 +128,89 @@ class LoadersModel(BaseSettingsModel):
         default_factory=ImportLoaderModel,
         title="Import Loader"
     )
+
+    # Enable/disable loaders
+    ArnoldStandinLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Arnold Standin Loader"
+    )
+    AssemblyLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Assembly Loader"
+    )
+    AudioLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Audio Loader"
+    )
+    GpuCacheLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="GPU Cache Loader"
+    )
+    FileNodeLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="File Node (Image) Loader"
+    )
+    ImagePlaneLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Image Plane Loader"
+    )
+    LookLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Look Loader"
+    )
+    MatchmoveLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Matchmove Loader"
+    )
+    MultiverseUsdLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Multiverse USD Loader"
+    )
+    MultiverseUsdOverLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Multiverse USD Override Loader"
+    )
+    RedshiftProxyLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Redshift Proxy Loader"
+    )
+    RenderSetupLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Render Setup Loader"
+    )
+    LoadVDBtoArnold: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="VDB to Arnold Loader"
+    )
+    LoadVDBtoRedShift: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="VDB to Redshift Loader"
+    )
+    LoadVDBtoVRay: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="VDB to V-Ray Loader"
+    )
+    VRayProxyLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Vray Proxy Loader"
+    )
+    VRaySceneLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="VrayScene Loader"
+    )
+    XgenLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Xgen Loader"
+    )
+    YetiCacheLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Yeti Cache Loader"
+    )
+    YetiRigLoader: YetiRigLoaderModel = SettingsField(
+        default_factory=YetiRigLoaderModel,
+        title="Yeti Rig Loader"
+    )
+
 
 DEFAULT_LOADERS_SETTING = {
     "colors": {
@@ -154,8 +253,32 @@ DEFAULT_LOADERS_SETTING = {
         "display_handle": True
     },
     "import_loader": {
+        "enabled": True,
         "namespace": "{folder[name]}_{product[name]}_##_",
         "group_name": "_GRP",
         "display_handle": True
-    }
+    },
+    "ArnoldStandinLoader": {"enabled": True},
+    "AssemblyLoader": {"enabled": True},
+    "AudioLoader": {"enabled": True},
+    "FileNodeLoader": {"enabled": True},
+    "GpuCacheLoader": {"enabled": True},
+    "ImagePlaneLoader": {"enabled": True},
+    "LookLoader": {"enabled": True},
+    "MatchmoveLoader": {"enabled": True},
+    "MultiverseUsdLoader": {"enabled": True},
+    "MultiverseUsdOverLoader": {"enabled": True},
+    "RedshiftProxyLoader": {"enabled": True},
+    "RenderSetupLoader": {"enabled": True},
+    "LoadVDBtoArnold": {"enabled": True},
+    "LoadVDBtoRedShift": {"enabled": True},
+    "LoadVDBtoVRay": {"enabled": True},
+    "VRayProxyLoader": {"enabled": True},
+    "VRaySceneLoader": {"enabled": True},
+    "XgenLoader": {"enabled": True},
+    "YetiCacheLoader": {"enabled": True},
+    "YetiRigLoader": {
+        "enabled": True,
+        "create_cache_instance_on_load": True
+    },
 }

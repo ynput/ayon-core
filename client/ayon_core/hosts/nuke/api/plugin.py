@@ -5,7 +5,7 @@ import sys
 import six
 import random
 import string
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import (
@@ -904,7 +904,7 @@ class ExporterReviewMov(ExporterReview):
                     node, product_name, "Reposition node...   `{}`"
                 )
             # append reformatted tag
-            add_tags.append("reformated")
+            add_tags.append("reformatted")
 
         # only create colorspace baking if toggled on
         if bake_viewer_process:

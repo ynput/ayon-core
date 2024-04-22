@@ -168,7 +168,7 @@ class JobQueueAddon(AYONAddon):
     @classmethod
     def start_worker(cls, app_name, server_url=None):
         import requests
-        from ayon_core.lib import ApplicationManager
+        from ayon_applications import ApplicationManager
 
         if not server_url:
             server_url = cls.get_server_url_from_settings()

@@ -33,12 +33,12 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         instance = super(CreateArnoldRop, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: plugin.CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
         ext = pre_create_data.get("image_format")
-        
+
         filepath = self.render_staging_dir.format(
             product={"name": "`chs(\"AYON_productName\")`"},
             ext=ext
@@ -58,7 +58,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
                 product={"name": "`chs(\"AYON_productName\")`"},
                 ext="ass"
             )
-            
+
             parms["ar_ass_export_enable"] = 1
             parms["ar_ass_file"] = ass_filepath
 
