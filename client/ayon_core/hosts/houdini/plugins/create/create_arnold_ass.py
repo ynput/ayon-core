@@ -16,7 +16,6 @@ class CreateArnoldAss(plugin.HoudiniCreator):
     # however calling HoudiniCreator.create()
     # will override it by the value in the project settings
     ext = ".ass"
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou
@@ -40,9 +39,11 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         parm_template_group.hideFolder("Properties", True)
         instance_node.setParmTemplateGroup(parm_template_group)
 
-        filepath = self.staging_dir.format(
-            product={"name": "`chs(\"AYON_productName\")`"},
-            ext=self.ext.lstrip(".")
+        filepath = "{staging_dir}/{product_name}.$F4.{ext}".format(
+            staging_dir=hou.text.expandString("$HIP/pyblish"),
+            # keep dynamic link to product name
+            product_name="`chs(\"AYON_productName\")`",
+            ext=self.ext.lstrip(".") # ignore the dot in self.ext
         )
 
         parms = {
