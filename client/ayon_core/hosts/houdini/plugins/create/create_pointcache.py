@@ -105,7 +105,7 @@ class CreatePointCache(plugin.HoudiniCreator):
         elif len(outputs) == 1:
             return outputs[0]
 
-        # if there are more than one, then it have multiple ouput nodes
+        # if there are more than one, then it have multiple output nodes
         # return the one with the minimum 'outputidx'
         else:
             return min(outputs,
