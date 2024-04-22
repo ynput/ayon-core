@@ -56,14 +56,11 @@ class CreateVrayROP(plugin.HoudiniCreator):
         }
 
         if pre_create_data.get("export_job"):
-            scene_filepath = (
-                "{staging_dir}/{product_name}/vrscene/{product_name}.$F4.vrscene"
-                .format(
-                    staging_dir=hou.text.expandString("$HIP/pyblish"),
-                    # keep dynamic link to product name
-                    product_name="`chs(\"AYON_productName\")`"
+            scene_filepath = \
+                "{export_dir}{product_name}/{product_name}.$F4.vrscene".format(
+                    export_dir=hou.text.expandString("$HIP/pyblish/vrscene/"),
+                    product_name=product_name,
                 )
-            )
             # Setting render_export_mode to "2" because that's for
             # "Export only" ("1" is for "Export & Render")
             parms["render_export_mode"] = "2"
@@ -84,14 +81,18 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance_data["RenderElement"] = pre_create_data.get("render_element_enabled")         # noqa
         if pre_create_data.get("render_element_enabled", True):
             # Vray has its own tag for AOV file output
-            filepath = (
-                "{render_dir}/{product_name}/{product_name}.$AOV.$F4.{ext}"
-                .format(
-                    render_dir=hou.text.expandString("$HIP/pyblish/renders"),
-                    # keep dynamic link to product name
-                    product_name="`chs(\"AYON_productName\")`",
-                    ext=ext,
-                )
+            filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
+                renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
+                product_name=product_name,
+                fmt="${aov}.$F4.{ext}".format(aov="AOV",
+                                              ext=ext)
+            )
+            filepath = "{}{}".format(
+                hou.text.expandString("$HIP/pyblish/renders/"),
+                "{}/{}.${}.$F4.{}".format(product_name,
+                                          product_name,
+                                          "AOV",
+                                          ext)
             )
             re_rop = instance_node.parent().createNode(
                 "vray_render_channels",
@@ -107,14 +108,10 @@ class CreateVrayROP(plugin.HoudiniCreator):
             })
 
         else:
-            filepath = (
-                "{render_dir}/{product_name}/{product_name}.$F4.{ext}"
-                .format(
-                    render_dir=hou.text.expandString("$HIP/ayon/renders"),
-                    # keep dynamic link to product name
-                    product_name="`chs(\"AYON_productName\")`",
-                    ext=ext,
-                )
+            filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
+                renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
+                product_name=product_name,
+                fmt="$F4.{ext}".format(ext=ext)
             )
             parms.update({
                 "use_render_channels": 0,

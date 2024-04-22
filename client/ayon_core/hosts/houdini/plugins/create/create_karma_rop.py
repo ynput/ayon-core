@@ -30,28 +30,19 @@ class CreateKarmaROP(plugin.HoudiniCreator):
 
         ext = pre_create_data.get("image_format")
 
-        filepath = "{render_dir}/{product_name}/{product_name}.$F4.{ext}".format(
-            render_dir=hou.text.expandString("$HIP/ayon/renders"),
-            # keep dynamic link to product name
-            product_name="`chs(\"AYON_productName\")`",
+        filepath = "{renders_dir}{product_name}/{product_name}.$F4.{ext}".format(
+            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
+            product_name=product_name,
             ext=ext,
         )
-        checkpoint = (
-            "{render_dir}/{product_name}/checkpoints/{product_name}.$F4.checkpoint"
-            .format(
-                render_dir=hou.text.expandString("$HIP/ayon/renders"),
-                # keep dynamic link to product name
-                product_name="`chs(\"AYON_productName\")`",
-            )
+        checkpoint = "{cp_dir}{product_name}.$F4.checkpoint".format(
+            cp_dir=hou.text.expandString("$HIP/pyblish/"),
+            product_name=product_name
         )
 
-        usd_directory = (
-            "{render_dir}/{product_name}/usd/{product_name}_$RENDERID"
-            .format(
-                render_dir=hou.text.expandString("$HIP/ayon/renders"),
-                # keep dynamic link to product name
-                product_name="`chs(\"AYON_productName\")`"
-            )
+        usd_directory = "{usd_dir}{product_name}_$RENDERID".format(
+            usd_dir=hou.text.expandString("$HIP/pyblish/renders/usd_renders/"),     # noqa
+            product_name=product_name
         )
 
         parms = {

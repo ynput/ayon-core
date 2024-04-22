@@ -33,10 +33,9 @@ class CreateMantraROP(plugin.HoudiniCreator):
 
         ext = pre_create_data.get("image_format")
 
-        filepath = "{render_dir}/{product_name}/{product_name}.$F4.{ext}".format(
-            render_dir=hou.text.expandString("$HIP/ayon/renders"),
-            # keep dynamic link to product name
-            product_name="`chs(\"AYON_productName\")`",
+        filepath = "{renders_dir}{product_name}/{product_name}.$F4.{ext}".format(
+            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
+            product_name=product_name,
             ext=ext,
         )
 
@@ -48,14 +47,11 @@ class CreateMantraROP(plugin.HoudiniCreator):
         }
 
         if pre_create_data.get("export_job"):
-            ifd_filepath = (
-                "{staging_dir}/{product_name}/ifd/{product_name}.$F4.ifd"
-                .format(
-                    staging_dir=hou.text.expandString("$HIP/ayon"),
-                    # keep dynamic link to product name
-                    product_name="`chs(\"AYON_productName\")`"
+            ifd_filepath = \
+                "{export_dir}{product_name}/{product_name}.$F4.ifd".format(
+                    export_dir=hou.text.expandString("$HIP/pyblish/ifd/"),
+                    product_name=product_name,
                 )
-            )
             parms["soho_outputmode"] = 1
             parms["soho_diskfile"] = ifd_filepath
 
