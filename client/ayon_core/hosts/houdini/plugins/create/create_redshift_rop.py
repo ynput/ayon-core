@@ -63,12 +63,11 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         multilayer_mode_index = {"No Multi-Layered EXR File": "1",
                                  "Full Multi-Layered EXR File": "2" }
 
-        filepath = "{render_dir}/{product_name}/{product_name}.$AOV.$F4.{ext}".format(
-            render_dir=hou.text.expandString("$HIP/ayon/renders"),
-            # keep dynamic link to product name
-            product_name="`chs(\"AYON_productName\")`",
-            ext=ext,
-        )
+        filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
+                renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
+                product_name=product_name,
+                fmt="$AOV.$F4.{ext}".format(ext=ext)
+            )
 
         if multilayer_mode_index[multi_layered_mode] == "1":
             multipart = False
@@ -96,11 +95,8 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                     camera = node.path()
             parms["RS_renderCamera"] = camera or ""
 
-        rs_filepath = "{staging_dir}/{product_name}/rs/{product_name}.$F4.rs".format(
-            staging_dir=hou.text.expandString("$HIP/ayon"),
-            # keep dynamic link to product name
-            product_name="`chs(\"AYON_productName\")`"
-        )
+        export_dir = hou.text.expandString("$HIP/pyblish/rs/")
+        rs_filepath = f"{export_dir}{product_name}/{product_name}.$F4.rs"
         parms["RS_archive_file"] = rs_filepath
 
         if pre_create_data.get("split_render", self.split_render):

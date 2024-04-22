@@ -25,11 +25,9 @@ class CreateMantraIFD(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
-        filepath = "{staging_dir}/{product_name}/{product_name}.$F4.ifd".format(
-            staging_dir=hou.text.expandString("$HIP/ayon"),
-            # keep dynamic link to product name
-            product_name="`chs(\"AYON_productName\")`"
-        )
+        filepath = "{}{}".format(
+            hou.text.expandString("$HIP/pyblish/"),
+            "{}.$F4.ifd".format(product_name))
         parms = {
             # Render frame range
             "trange": 1,

@@ -28,14 +28,11 @@ class CreateVDBCache(plugin.HoudiniCreator):
             pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
-        filepath = "{staging_dir}/{product_name}/{product_name}.$F4.vdb".format(
-            staging_dir=hou.text.expandString("$HIP/ayon"),
-            # keep dynamic link to product name
-            product_name="`chs(\"AYON_productName\")`"
-        )
-
+        file_path = "{}{}".format(
+            hou.text.expandString("$HIP/pyblish/"),
+            "{}.$F4.vdb".format(product_name))
         parms = {
-            "sopoutput": filepath,
+            "sopoutput": file_path,
             "initsim": True,
             "trange": 1
         }

@@ -39,13 +39,10 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         parm_template_group.hideFolder("Properties", True)
         instance_node.setParmTemplateGroup(parm_template_group)
 
-        filepath = "{staging_dir}/{product_name}/{product_name}.$F4.{ext}".format(
-            staging_dir=hou.text.expandString("$HIP/ayon"),
-            # keep dynamic link to product name
-            product_name="`chs(\"AYON_productName\")`",
-            ext=self.ext.lstrip(".")  # ignore the dot in self.ext
+        filepath = "{}{}".format(
+            hou.text.expandString("$HIP/pyblish/"),
+            "{}.$F4{}".format(product_name, self.ext)
         )
-
         parms = {
             # Render frame range
             "trange": 1,
