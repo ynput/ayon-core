@@ -30,7 +30,7 @@ class CameraLoader(plugin.Loader):
 
     product_types = {"camera"}
     label = "Load Camera"
-    representations = ["fbx"]
+    representations = {"fbx"}
     icon = "cube"
     color = "orange"
 

@@ -30,7 +30,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         instance = super(CreateArnoldAss, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: plugin.CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
@@ -39,12 +39,12 @@ class CreateArnoldAss(plugin.HoudiniCreator):
         parm_template_group = instance_node.parmTemplateGroup()
         parm_template_group.hideFolder("Properties", True)
         instance_node.setParmTemplateGroup(parm_template_group)
-        
+
         filepath = self.staging_dir.format(
             product={"name": "`chs(\"AYON_productName\")`"},
             ext=self.ext.lstrip(".")
         )
-        
+
         parms = {
             # Render frame range
             "trange": 1,

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin to create Mantra ROP."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
 from ayon_core.lib import EnumDef, BoolDef
 
 
@@ -30,12 +29,12 @@ class CreateMantraROP(plugin.HoudiniCreator):
         instance = super(CreateMantraROP, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
         ext = pre_create_data.get("image_format")
-        
+
         filepath = self.render_staging_dir.format(
             product={"name": "`chs(\"AYON_productName\")`"},
             ext=ext
@@ -53,7 +52,7 @@ class CreateMantraROP(plugin.HoudiniCreator):
                 product={"name": "`chs(\"AYON_productName\")`"},
                 ext="ifd"
             )
-            
+
             parms["soho_outputmode"] = 1
             parms["soho_diskfile"] = ifd_filepath
 

@@ -78,7 +78,7 @@ class MaxSceneLoader(load.LoaderPlugin):
         "model",
     }
 
-    representations = ["max"]
+    representations = {"max"}
     order = -8
     icon = "code-fork"
     color = "green"

@@ -311,9 +311,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         menu.addAction(remove_action)
 
-        self._handle_sync_server(menu, repre_ids)
+        self._handle_sitesync(menu, repre_ids)
 
-    def _handle_sync_server(self, menu, repre_ids):
+    def _handle_sitesync(self, menu, repre_ids):
         """Adds actions for download/upload when SyncServer is enabled
 
         Args:
@@ -324,7 +324,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             (OptionMenu)
         """
 
-        if not self._controller.is_sync_server_enabled():
+        if not self._controller.is_sitesync_enabled():
             return
 
         menu.addSeparator()
