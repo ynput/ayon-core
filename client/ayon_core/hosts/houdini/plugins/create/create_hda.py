@@ -15,8 +15,6 @@ class CreateHDA(plugin.HoudiniCreator):
     product_type = "hda"
     icon = "gears"
     maintain_selection = False
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
-    ext = "hda"
 
     def _check_existing(self, folder_path, product_name):
         # type: (str, str) -> bool
@@ -58,11 +56,10 @@ class CreateHDA(plugin.HoudiniCreator):
                 raise CreatorError(
                     "cannot create hda from node {}".format(to_hda))
 
-            # for consistency I'm using {subset} as it's
-            # the same key used in other creators
-            filepath = self.staging_dir.format(
-                product={"name": "`chs(\"AYON_productName\")`"},
-                ext=self.ext
+            filepath = "{staging_dir}/HDAs/{product_name}.hda".format(
+                staging_dir=hou.text.expandString("$HIP/ayon"),
+                # keep dynamic link to product name
+                product_name="`chs(\"AYON_productName\")`"
             )
 
             hda_node = to_hda.createDigitalAsset(

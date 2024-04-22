@@ -38,7 +38,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         ext = pre_create_data.get("image_format")
 
         filepath = "{render_dir}/{product_name}/{product_name}.$F4.{ext}".format(
-            render_dir=hou.text.expandString("$HIP/pyblish/renders"),
+            render_dir=hou.text.expandString("$HIP/ayon/renders"),
             # keep dynamic link to product name
             product_name="`chs(\"AYON_productName\")`",
             ext=ext,
@@ -54,7 +54,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             ass_filepath = "{render_dir}/{product_name}/ass/{product_name}.$F4.ass".format(
-                    render_dir=hou.text.expandString("$HIP/pyblish/renders/"),
+                    render_dir=hou.text.expandString("$HIP/ayon/renders/"),
                     # keep dynamic link to product name
                     product_name="`chs(\"AYON_productName\")`",
                 )
