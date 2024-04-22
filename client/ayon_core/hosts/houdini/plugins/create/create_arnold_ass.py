@@ -43,7 +43,7 @@ class CreateArnoldAss(plugin.HoudiniCreator):
             staging_dir=hou.text.expandString("$HIP/pyblish"),
             # keep dynamic link to product name
             product_name="`chs(\"AYON_productName\")`",
-            ext=self.ext.lstrip(".") # ignore the dot in self.ext
+            ext=self.ext.lstrip(".")  # ignore the dot in self.ext
         )
 
         parms = {
