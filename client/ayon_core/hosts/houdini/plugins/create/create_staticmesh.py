@@ -29,13 +29,15 @@ class CreateStaticMesh(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         # prepare parms
-        output_path = hou.text.expandString(
-            "$HIP/pyblish/{}.fbx".format(product_name)
+        filepath = "{staging_dir}/{product_name}.fbx".format(
+            staging_dir=hou.text.expandString("$HIP/ayon"),
+            # keep dynamic link to product name
+            product_name="`chs(\"AYON_productName\")`",
         )
 
         parms = {
             "startnode": self.get_selection(),
-            "sopoutput": output_path,
+            "sopoutput": filepath,
             # vertex cache format
             "vcformat": pre_create_data.get("vcformat"),
             "convertunits": pre_create_data.get("convertunits"),

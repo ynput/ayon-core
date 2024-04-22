@@ -25,8 +25,15 @@ class CreateUSD(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
+        filepath = "{staging_dir}/{product_name}/{product_name}.{ext}".format(
+            staging_dir=hou.text.expandString("$HIP/ayon"),
+            # keep dynamic link to product name
+            product_name="`chs(\"AYON_productName\")`",
+            ext=self.ext
+        )
+
         parms = {
-            "lopoutput": "$HIP/pyblish/{}.usd".format(product_name),
+            "lopoutput": filepath,
             "enableoutputprocessor_simplerelativepaths": False,
         }
 

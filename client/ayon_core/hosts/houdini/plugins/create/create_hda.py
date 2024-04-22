@@ -56,9 +56,15 @@ class CreateHDA(plugin.HoudiniCreator):
                 raise CreatorError(
                     "cannot create hda from node {}".format(to_hda))
 
+            filepath = "{staging_dir}/HDAs/{product_name}.hda".format(
+                staging_dir=hou.text.expandString("$HIP/ayon"),
+                # keep dynamic link to product name
+                product_name="`chs(\"AYON_productName\")`"
+            )
+
             hda_node = to_hda.createDigitalAsset(
                 name=node_name,
-                hda_file_name="$HIP/{}.hda".format(node_name)
+                hda_file_name=filepath
             )
             hda_node.layoutChildren()
         elif self._check_existing(folder_path, node_name):
