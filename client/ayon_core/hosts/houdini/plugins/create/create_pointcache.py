@@ -13,8 +13,6 @@ class CreatePointCache(plugin.HoudiniCreator):
     label = "PointCache (Abc)"
     product_type = "pointcache"
     icon = "gears"
-    ext = "abc"
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
@@ -29,12 +27,6 @@ class CreatePointCache(plugin.HoudiniCreator):
             pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
-
-        filepath = self.staging_dir.format(
-            product={"name": "`chs(\"AYON_productName\")`"},
-            ext=self.ext
-        )
-
         parms = {
             "use_sop_path": True,
             "build_from_path": True,
@@ -42,7 +34,8 @@ class CreatePointCache(plugin.HoudiniCreator):
             "prim_to_detail_pattern": "cbId",
             "format": 2,
             "facesets": 0,
-            "filename": filepath
+            "filename": hou.text.expandString(
+                "$HIP/pyblish/{}.abc".format(product_name))
         }
 
         if self.selected_nodes:
@@ -112,7 +105,7 @@ class CreatePointCache(plugin.HoudiniCreator):
         elif len(outputs) == 1:
             return outputs[0]
 
-        # if there are more than one, then it have multiple ouput nodes
+        # if there are more than one, then it have multiple output nodes
         # return the one with the minimum 'outputidx'
         else:
             return min(outputs,
