@@ -29,7 +29,7 @@ class CreatePointCache(plugin.HoudiniCreator):
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = "{staging_dir}/{product_name}.abc".format(
-            staging_dir=hou.text.expandString("$HIP/pyblish/"),
+            staging_dir=hou.text.expandString("$HIP/pyblish"),
             # keep dynamic link to product name
             product_name="`chs(\"AYON_productName\")`",
         )
