@@ -414,16 +414,20 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         ):
             return
 
-        first_index = self._proxy_model.index(0, 0)
-        last_index = self._proxy_model.index(
-            0, self._proxy_model.columnCount() - 1
+        # Find the row with latest date modified
+        latest_index = max(
+            (self._proxy_model.index(i, 0) for
+             i in range(self._proxy_model.rowCount())),
+            key=lambda model_index: model_index.date(DATE_MODIFIED_ROLE)
         )
-        selection = QtCore.QItemSelection(first_index, last_index)
-        seleciton_model = self._view.selectionModel()
-        seleciton_model.select(
-            selection,
+
+        # Select row of latest modified
+        selection_model = self._view.selectionModel()
+        selection_model.select(
+            latest_index,
             (
                 QtCore.QItemSelectionModel.ClearAndSelect
                 | QtCore.QItemSelectionModel.Current
+                | QtCore.QItemSelectionModel.Rows
             )
         )
