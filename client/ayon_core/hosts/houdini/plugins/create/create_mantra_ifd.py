@@ -10,8 +10,6 @@ class CreateMantraIFD(plugin.HoudiniCreator):
     label = "Mantra IFD"
     product_type = "mantraifd"
     icon = "gears"
-    ext = "ifd"
-    staging_dir = "$HIP/ayon/{product[name]}/{product[name]}.$F4.{ext}"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou
@@ -27,11 +25,11 @@ class CreateMantraIFD(plugin.HoudiniCreator):
 
         instance_node = hou.node(instance.get("instance_node"))
 
-        filepath = self.staging_dir.format(
-            product={"name": "`chs(\"AYON_productName\")`"},
-            ext=self.ext
+        filepath = "{staging_dir}/{product_name}/{product_name}.$F4.ifd".format(
+            staging_dir=hou.text.expandString("$HIP/ayon"),
+            # keep dynamic link to product name
+            product_name="`chs(\"AYON_productName\")`"
         )
-
         parms = {
             # Render frame range
             "trange": 1,
