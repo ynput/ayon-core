@@ -24,11 +24,11 @@ def product_types_enum():
     return [
         {"value": "camera", "label": "Camera (Abc)"},
         {"value": "pointcache", "label": "PointCache (Abc)/PointCache (Bgeo)"},
-        {"value": "review", "staticMesh": "Static Mesh (FBX)"},
+        {"value": "review", "label": "Review"},
+        {"value": "staticMesh", "label": "Static Mesh (FBX)"},
         {"value": "usd", "label": "USD (experimental)"},
         {"value": "vdbcache", "label": "VDB Cache"},
         {"value": "imagesequence", "label": "Composite (Image Sequence)"},
-        {"value": "review", "review": "Review"},
         {"value": "ass", "label": "Arnold ASS"},
         {"value": "arnold_rop", "label": "Arnold ROP"},
         {"value": "mantraifd", "label": "Mantra IFD"},
