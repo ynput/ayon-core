@@ -41,9 +41,11 @@ class CollectArnoldROPRenderProducts(pyblish.api.InstancePlugin):
         render_products = []
 
         # Store whether we are splitting the render job (export + render)
+        split_render = bool(rop.parm("ar_ass_export_enable").eval())
+        instance.data["splitRender"] = split_render
         export_prefix = None
         export_products = []
-        if instance.data["splitRender"]:
+        if split_render:
             export_prefix = evalParmNoFrame(
                 rop, "ar_ass_file", pad_character="0"
             )
@@ -70,6 +72,8 @@ class CollectArnoldROPRenderProducts(pyblish.api.InstancePlugin):
         multipartExr = True
 
         num_aovs = rop.evalParm("ar_aovs")
+        # TODO: Check the following logic.
+        #       as it always assumes that all AOV are not merged.
         for index in range(1, num_aovs + 1):
             # Skip disabled AOVs
             if not rop.evalParm("ar_enable_aov{}".format(index)):
