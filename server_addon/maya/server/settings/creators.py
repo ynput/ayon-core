@@ -54,7 +54,8 @@ class BasicExportMeshModel(BaseSettingsModel):
     default_variants: list[str] = SettingsField(
         default_factory=list,
         title="Default Products"
-    )
+    ),
+    strip_shaders: bool = SettingsField(title="Strip Shaders")
 
 
 class CreateAnimationModel(BaseSettingsModel):
@@ -292,7 +293,8 @@ DEFAULT_CREATORS_SETTINGS = {
             "Main",
             "Proxy",
             "Sculpt"
-        ]
+        ],
+        "strip_shaders": True,
     },
     "CreatePointCache": {
         "enabled": True,

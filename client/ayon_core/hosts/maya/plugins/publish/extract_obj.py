@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
+from contextlib import nullcontext
 
-from maya import cmds
 import pyblish.api
-from ayon_core.pipeline import publish
 from ayon_core.hosts.maya.api import lib
+from ayon_core.pipeline import publish
+from maya import cmds
 
 
 class ExtractObj(publish.Extractor):
@@ -45,6 +46,8 @@ class ExtractObj(publish.Extractor):
         if not cmds.pluginInfo('objExport', query=True, loaded=True):
             cmds.loadPlugin('objExport')
 
+        strip_shader = instance.data.get("strip_shaders", True)
+
         # Export
         with lib.no_display_layers(instance):
             with lib.displaySmoothness(members,
@@ -54,7 +57,7 @@ class ExtractObj(publish.Extractor):
                                        pointsShaded=1,
                                        polygonObject=1):
                 with lib.shader(members,
-                                shadingEngine="initialShadingGroup"):
+                                shadingEngine="initialShadingGroup") if strip_shader else nullcontext():  # noqa: E501:
                     with lib.maintained_selection():
                         cmds.select(members, noExpand=True)
                         cmds.file(path,
