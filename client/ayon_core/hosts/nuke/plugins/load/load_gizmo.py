@@ -22,7 +22,7 @@ class LoadGizmo(load.LoaderPlugin):
     """Loading nuke Gizmo"""
 
     product_types = {"gizmo"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"nk"}
 
     label = "Load Gizmo"
