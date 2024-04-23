@@ -24,6 +24,8 @@ class CollectChunkSizeModel(BaseSettingsModel):
 
 
 class AOVFilterSubmodel(BaseSettingsModel):
+    """You should use the same host name you are using for Houdini."""
+    host_name: str = SettingsField("", title="Houdini Host name")
     value: list[str] = SettingsField(
         default_factory=list,
         title="AOV regex"
@@ -31,9 +33,9 @@ class AOVFilterSubmodel(BaseSettingsModel):
 
 class CollectLocalRenderInstancesModel(BaseSettingsModel):
 
-    override_deadline_aov_filter: bool = SettingsField(
+    use_deadline_aov_filter: bool = SettingsField(
         False,
-        title="Override Deadline AOV Filter"
+        title="Use Deadline AOV Filter"
     )
 
     aov_filter: AOVFilterSubmodel = SettingsField(
@@ -109,8 +111,9 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "chunk_size": 999999
     },
     "CollectLocalRenderInstances": {
-        "override_deadline_aov_filter": False,
+        "use_deadline_aov_filter": False,
         "aov_filter" : {
+            "host_name": "houdini",
             "value": [
                 ".*([Bb]eauty).*"
             ]

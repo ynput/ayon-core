@@ -25,8 +25,9 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
     hosts = ["houdini"]
     label = "Collect local render instances"
 
-    override_deadline_aov_filter = False
-    aov_filter = {}
+    use_deadline_aov_filter = False
+    aov_filter = {"host_name": "houdini",
+                  "value": [".*([Bb]eauty).*"]}
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -37,11 +38,11 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                                        category="houdini")
         apply_plugin_settings_automatically(cls, settings, logger=cls.log)
 
-        if not cls.override_deadline_aov_filter:
+        if not cls.use_deadline_aov_filter:
             # get aov_filter from collector settings
             # and restructure it as match_aov_pattern requires.
             cls.aov_filter = {
-                "houdini": cls.aov_filter["value"]
+                cls.aov_filter["host_name"]: cls.aov_filter["value"]
             }
         else:
             # get aov_filter from deadline settings
