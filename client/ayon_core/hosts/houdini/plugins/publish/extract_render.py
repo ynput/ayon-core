@@ -23,7 +23,7 @@ class ExtractRender(publish.Extractor):
         rop_node = hou.node(instance.data.get("instance_node"))
 
         # Align split parameter value on rop node to the render target.
-        if creator_attribute.get("render_target") == "farm_split":
+        if instance.data["splitRender"]:
             if product_type == "arnold_rop":
                 rop_node.setParms({"ar_ass_export_enable": 1})
             elif product_type == "mantra_rop":
