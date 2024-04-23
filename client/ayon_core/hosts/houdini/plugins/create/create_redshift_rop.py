@@ -24,7 +24,9 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         # Transfer settings from pre create to instance
         creator_attributes = instance_data.setdefault(
             "creator_attributes", dict())
-        creator_attributes.update(pre_create_data)
+        for key in ["render_target", "review"]:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "Redshift_ROP"})
@@ -121,13 +123,12 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         return super(CreateRedshiftROP, self).remove_instances(instances)
 
     def get_instance_attr_defs(self):
-        image_format_enum = [
-            "exr", "tif", "jpg", "png",
-        ]
-        multi_layered_mode = [
-            "No Multi-Layered EXR File",
-            "Full Multi-Layered EXR File"
-        ]
+        """get instance attribute definitions.
+
+        Attributes defined in this method are exposed in
+            publish tab in the publisher UI.
+        """
+
         render_target_items = {
             "local": "Local machine rendering",
             "local_no_render": "Use existing frames (local)",
@@ -143,7 +144,22 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             EnumDef("render_target",
                     items=render_target_items,
                     label="Render target",
-                    default=self.render_target),
+                    default=self.render_target)
+        ]
+
+    def get_pre_create_attr_defs(self):
+
+        image_format_enum = [
+            "exr", "tif", "jpg", "png",
+        ]
+
+        multi_layered_mode = [
+            "No Multi-Layered EXR File",
+            "Full Multi-Layered EXR File"
+        ]
+
+        attrs = super(CreateRedshiftROP, self).get_pre_create_attr_defs()
+        attrs += [
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
@@ -153,7 +169,4 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                     default=self.multi_layered_mode,
                     label="Multi-Layered EXR"),
         ]
-
-    def get_pre_create_attr_defs(self):
-
-        return self.get_instance_attr_defs()
+        return attrs + self.get_instance_attr_defs()
