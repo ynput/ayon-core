@@ -416,9 +416,11 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
 
         # Find the row with latest date modified
         latest_index = max(
-            (self._proxy_model.index(i, 0) for
-             i in range(self._proxy_model.rowCount())),
-            key=lambda model_index: model_index.date(DATE_MODIFIED_ROLE)
+            (
+                self._proxy_model.index(idx, 0)
+                for idx in range(self._proxy_model.rowCount())
+            ),
+            key=lambda model_index: model_index.data(DATE_MODIFIED_ROLE)
         )
 
         # Select row of latest modified
