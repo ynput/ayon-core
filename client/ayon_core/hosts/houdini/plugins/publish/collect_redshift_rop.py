@@ -43,8 +43,10 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
         default_prefix = evalParmNoFrame(rop, "RS_outputFileNamePrefix")
         beauty_suffix = rop.evalParm("RS_outputBeautyAOVSuffix")
         # Store whether we are splitting the render job (export + render)
+        split_render = bool(rop.parm("RS_archive_enable").eval())
+        instance.data["splitRender"] = split_render
         export_products = []
-        if instance.data["splitRender"]:
+        if split_render:
             export_prefix = evalParmNoFrame(
                 rop, "RS_archive_file", pad_character="0"
             )
@@ -58,27 +60,11 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             instance.data["ifdFile"] = beauty_export_product
             instance.data["exportFiles"] = list(export_products)
 
-        # Set MultiLayer Mode.
-        creator_attribute = instance.data["creator_attributes"]
-        ext = creator_attribute.get("image_format")
-        multi_layered_mode = creator_attribute.get("multi_layered_mode")
-        full_exr_mode = False
-        if ext == "exr":
-            if multi_layered_mode == "No Multi-Layered EXR File":
-                rop.setParms({
-                    "RS_outputMultilayerMode": "1",
-                    "RS_aovMultipart": False
-                })
-                full_exr_mode = True
-                # Ignore beauty suffix if full mode is enabled
-                # As this is what the rop does.
-                beauty_suffix = ""
-
-            elif multi_layered_mode == "Full Multi-Layered EXR File":
-                rop.setParms({
-                    "RS_outputMultilayerMode": "2",
-                    "RS_aovMultipart": True
-                })
+        full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
+        if full_exr_mode:
+            # Ignore beauty suffix if full mode is enabled
+            # As this is what the rop does.
+            beauty_suffix = ""
 
         # Assume it's a multipartExr Render.
         multipartExr = True

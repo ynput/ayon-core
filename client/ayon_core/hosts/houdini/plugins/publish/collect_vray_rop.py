@@ -46,9 +46,11 @@ class CollectVrayROPRenderProducts(pyblish.api.InstancePlugin):
         # TODO: add render elements if render element
 
         # Store whether we are splitting the render job in an export + render
+        split_render = rop.parm("render_export_mode").eval() == "2"
+        instance.data["splitRender"] = split_render
         export_prefix = None
         export_products = []
-        if instance.data["splitRender"]:
+        if split_render:
             export_prefix = evalParmNoFrame(
                 rop, "render_export_filepath", pad_character="0"
             )
@@ -78,7 +80,6 @@ class CollectVrayROPRenderProducts(pyblish.api.InstancePlugin):
                     render_products.append(renderpass)
                     files_by_aov[aov] = self.generate_expected_files(
                         instance, renderpass)
-
                     # Set to False as soon as we have a separated aov.
                     multipartExr = False
 
