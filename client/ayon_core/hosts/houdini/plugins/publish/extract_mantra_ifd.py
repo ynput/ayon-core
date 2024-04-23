@@ -33,9 +33,11 @@ class ExtractMantraIFD(publish.Extractor):
                 os.path.normpath(os.path.join(staging_dir, frame)))
         ]
         if missing_frames:
-            raise KnownPublishError("Failed to complete Mantra ifd extraction. ",
-                                    # "Missing output files: {}".format(missing_frames),
-                                    label="Render was interrupted or canceled.")
+            self.log.error("Missing output files: {}".format(missing_frames))
+            raise KnownPublishError("Extraction was failed due to missing frames. "
+                                    "Check Details tab for more info.",
+                                    label="Failed to complete Mantra ifd extraction for '{}'."
+                                    .format(ropnode.path()))
 
         if "representations" not in instance.data:
             instance.data["representations"] = []

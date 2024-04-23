@@ -248,14 +248,16 @@ def render_rop(ropnode):
                        # Render only this node
                        # (do not render any of its dependencies)
                        ignore_inputs=True)
-    except hou.Error:
+    except hou.Error as exc:
         # The hou.Error is not inherited from a Python Exception class,
         # so we explicitly capture the houdini error, otherwise pyblish
         # will remain hanging.
         import traceback
         traceback.print_exc()
-        raise KnownPublishError("'{}' failed to render!".format(ropnode.path()),
-                                label="Render was interrupted or canceled.")
+        self.log.error("Exception: {}".format(exc))
+        raise KnownPublishError("Render maybe interrupted. "
+                                "Check Details tab for more info.",
+                                label="Failed to render '{}'".format(ropnode.path()))
 
 
 def imprint(node, data, update=False):
