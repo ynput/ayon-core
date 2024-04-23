@@ -21,7 +21,9 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         # Transfer settings from pre create to instance
         creator_attributes = instance_data.setdefault(
             "creator_attributes", dict())
-        creator_attributes.update(pre_create_data)
+        for key in ["render_target", "review"]:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         # Remove the active, we are checking the bypass flag of the nodes
         instance_data.pop("active", None)
@@ -69,10 +71,12 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         self.lock_parameters(instance_node, to_lock)
 
     def get_instance_attr_defs(self):
-        image_format_enum = [
-            "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
-            "rad", "rat", "rta", "sgi", "tga", "tif",
-        ]
+        """get instance attribute definitions.
+
+        Attributes defined in this method are exposed in
+            publish tab in the publisher UI.
+        """
+
         render_target_items = {
             "local": "Local machine rendering",
             "local_no_render": "Use existing frames (local)",
@@ -89,12 +93,18 @@ class CreateArnoldRop(plugin.HoudiniCreator):
                     items=render_target_items,
                     label="Render target",
                     default=self.render_target),
+        ]
+
+    def get_pre_create_attr_defs(self):
+        image_format_enum = [
+            "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
+            "rad", "rat", "rta", "sgi", "tga", "tif",
+        ]
+
+        attrs = [
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
                     label="Image Format Options"),
         ]
-
-    def get_pre_create_attr_defs(self):
-
-        return self.get_instance_attr_defs()
+        return attrs + self.get_instance_attr_defs()
