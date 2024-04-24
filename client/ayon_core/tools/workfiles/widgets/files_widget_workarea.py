@@ -20,6 +20,8 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         controller (AbstractWorkfilesFrontend): The control object.
     """
 
+    refreshed = QtCore.Signal()
+
     def __init__(self, controller):
         super(WorkAreaFilesModel, self).__init__()
 
@@ -163,6 +165,12 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             self._fill_items()
 
     def _fill_items(self):
+        try:
+            self._fill_items_impl()
+        finally:
+            self.refreshed.emit()
+
+    def _fill_items_impl(self):
         folder_id = self._selected_folder_id
         task_id = self._selected_task_id
         if not folder_id or not task_id:
@@ -285,6 +293,7 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         selection_model.selectionChanged.connect(self._on_selection_change)
         view.double_clicked.connect(self._on_mouse_double_click)
         view.customContextMenuRequested.connect(self._on_context_menu)
+        model.refreshed.connect(self._on_model_refresh)
 
         controller.register_event_callback(
             "expected_selection_changed",
@@ -298,6 +307,7 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         self._controller = controller
 
         self._published_mode = False
+        self._change_selection_on_refresh = True
 
     def set_published_mode(self, published_mode):
         """Set the published mode.
@@ -379,7 +389,9 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         if not workfile_info["current"]:
             return
 
+        self._change_selection_on_refresh = False
         self._model.refresh()
+        self._change_selection_on_refresh = True
 
         workfile_name = workfile_info["name"]
         if (
@@ -393,4 +405,31 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
 
         self._controller.expected_workfile_selected(
             event["folder"]["id"], event["task"]["name"], workfile_name
+        )
+
+    def _on_model_refresh(self):
+        if (
+            not self._change_selection_on_refresh
+            or self._proxy_model.rowCount() < 1
+        ):
+            return
+
+        # Find the row with latest date modified
+        latest_index = max(
+            (
+                self._proxy_model.index(idx, 0)
+                for idx in range(self._proxy_model.rowCount())
+            ),
+            key=lambda model_index: model_index.data(DATE_MODIFIED_ROLE)
+        )
+
+        # Select row of latest modified
+        selection_model = self._view.selectionModel()
+        selection_model.select(
+            latest_index,
+            (
+                QtCore.QItemSelectionModel.ClearAndSelect
+                | QtCore.QItemSelectionModel.Current
+                | QtCore.QItemSelectionModel.Rows
+            )
         )
