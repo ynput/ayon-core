@@ -139,6 +139,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
     deadline_department = ""
     deadline_pool = ""
     deadline_pool_secondary = ""
+    deadline_disable_secondary_pool = True
     deadline_group = ""
     deadline_chunk_size = 1
     deadline_priority = None
@@ -301,7 +302,8 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                 }
             )
         # remove secondary pool
-        payload["JobInfo"].pop("SecondaryPool", None)
+        if self.deadline_disable_secondary_pool:
+            payload["JobInfo"].pop("SecondaryPool", None)
 
         self.log.debug("Submitting Deadline publish job ...")
 

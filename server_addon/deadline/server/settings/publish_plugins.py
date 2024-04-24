@@ -166,6 +166,10 @@ class NukeSubmitDeadlineModel(BaseSettingsModel):
     priority: int = SettingsField(title="Priority")
     chunk_size: int = SettingsField(title="Chunk Size")
     concurrent_tasks: int = SettingsField(title="Number of concurrent tasks")
+    primary_pool: str = SettingsField("", title="Primary pool")
+    secondary_pool: str = SettingsField(
+        "", title="Secondary pool"
+    )
     group: str = SettingsField(title="Group")
     department: str = SettingsField(title="Department")
     use_gpu: bool = SettingsField(title="Use GPU")
@@ -305,6 +309,8 @@ class ProcessSubmittedJobOnFarmModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     deadline_department: str = SettingsField(title="Department")
     deadline_pool: str = SettingsField(title="Pool")
+    deadline_disable_secondary_pool: bool = SettingsField(title="Disable Secondary Pool")
+    deadline_pool_secondary: str = SettingsField(title="Secondary Pool")
     deadline_group: str = SettingsField(title="Group")
     deadline_chunk_size: int = SettingsField(title="Chunk Size")
     deadline_priority: int = SettingsField(title="Priority")
@@ -502,6 +508,8 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "priority": 50,
         "chunk_size": 10,
         "concurrent_tasks": 1,
+        "primary_pool": "",
+        "secondary_pool": "",
         "group": "",
         "department": "",
         "use_gpu": True,
@@ -523,6 +531,8 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "enabled": True,
         "deadline_department": "",
         "deadline_pool": "",
+        "deadline_pool_secondary": "",
+        "deadline_disable_secondary_pool": True,
         "deadline_group": "",
         "deadline_chunk_size": 1,
         "deadline_priority": 50,

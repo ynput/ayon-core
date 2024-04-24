@@ -4,7 +4,7 @@ from ayon_core.lib import TextDef
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 
-class CollectDeadlinePools(pyblish.api.InstancePlugin,
+class CollectNukeDeadlinePools(pyblish.api.InstancePlugin,
                            AYONPyblishPluginMixin):
     """Collect pools from instance or Publisher attributes, from Setting
     otherwise.
@@ -25,27 +25,13 @@ class CollectDeadlinePools(pyblish.api.InstancePlugin,
     """
 
     order = pyblish.api.CollectorOrder + 0.420
-    label = "Collect Deadline Pools"
-    hosts = ["aftereffects",
-             "fusion",
-             "harmony",
-             "maya",
-             "max",
-             "houdini"]
+    label = "Collect Nuke Deadline Pools"
+    hosts = ["nuke"]
 
     families = ["render",
                 "rendering",
                 "render.farm",
-                "renderFarm",
-                "renderlayer",
-                "maxrender",
-                "usdrender",
-                "redshift_rop",
-                "arnold_rop",
-                "mantra_rop",
-                "karma_rop",
-                "vray_rop",
-                "publish.hou"]
+                "renderFarm"]
 
     primary_pool = None
     secondary_pool = None
@@ -53,9 +39,14 @@ class CollectDeadlinePools(pyblish.api.InstancePlugin,
     @classmethod
     def apply_settings(cls, project_settings):
         # deadline.publish.CollectDeadlinePools
-        settings = project_settings["deadline"]["publish"]["CollectDeadlinePools"]  # noqa
+        settings = project_settings["deadline"]["publish"]["NukeSubmitDeadline"]  # noqa
+        default_settings = project_settings["deadline"]["publish"]["CollectDeadlinePools"]
         cls.primary_pool = settings.get("primary_pool", None)
+        if not cls.primary_pool:
+            cls.primary_pool = default_settings.get("primary_pool", None)
         cls.secondary_pool = settings.get("secondary_pool", None)
+        if not cls.secondary_pool:
+            cls.secondary_pool = default_settings.get("secondary_pool", None)
 
     def process(self, instance):
         attr_values = self.get_attr_values_from_data(instance.data)
