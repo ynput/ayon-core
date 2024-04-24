@@ -406,6 +406,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 "parent": parent_name,
                 "folder": {
                     "name": folder_name,
+                    "path": instance.data["folderPath"],
                     # TODO get folder type from hierarchy
                     #   Using 'Shot' is current default behavior of editorial
                     #   (or 'newAssetPublishing') publishing.
