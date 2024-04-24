@@ -12,6 +12,8 @@ from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
 )
+from ayon_core.pipeline.create import get_product_name
+
 from ayon_core.lib import Logger
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
@@ -463,7 +465,9 @@ def create_instances_for_aov(instance, skeleton, aov_filter,
     Args:
         instance (pyblish.api.Instance): Original instance.
         skeleton (dict): Skeleton instance data.
+        aov_filter (dict): AOV filter.
         skip_integration_repre_list (list): skip
+        do_not_add_review (bool): explicitly disable review
 
     Returns:
         list of pyblish.api.Instance: Instances created from
@@ -525,10 +529,10 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         instance (pyblish.api.Instance): Original instance.
         skeleton (dict): Skeleton data for instance (those needed) later
             by collector.
-        additional_data (dict): ..
+        additional_data (dict): ...
         skip_integration_repre_list (list): list of extensions that shouldn't
             be published
-        do_not_addbe _review (bool): explicitly disable review
+        do_not_add_review (bool): explicitly disable review
 
 
     Returns:
@@ -538,68 +542,60 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         ValueError:
 
     """
-    # TODO: this needs to be taking the task from context or instance
-    task = os.environ["AYON_TASK_NAME"]
+    task_name = instance.data['taskEntity']['name']
 
     anatomy = instance.context.data["anatomy"]
-    s_product_name = skeleton["productName"]
+    src_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
-    exp_files = instance.data["expectedFiles"]
+    expected_files = instance.data["expectedFiles"]
     log = Logger.get_logger("farm_publishing")
 
     instances = []
     # go through AOVs in expected files
-    for aov, files in exp_files[0].items():
-        cols, rem = clique.assemble(files)
-        # we shouldn't have any reminders. And if we do, it should
-        # be just one item for single frame renders.
-        if not cols and rem:
-            if len(rem) != 1:
-                raise ValueError("Found multiple non related files "
-                                 "to render, don't know what to do "
-                                 "with them.")
-            col = rem[0]
-            ext = os.path.splitext(col)[1].lstrip(".")
-        else:
-            # but we really expect only one collection.
-            # Nothing else make sense.
-            if len(cols) != 1:
-                raise ValueError("Only one image sequence type is expected.")  # noqa: E501
-            ext = cols[0].tail.lstrip(".")
-            col = list(cols[0])
+    for aov, files in expected_files[0].items():
+        collected_files = _collect_expected_files_for_aov(files)
 
-        # create product name `<product type><Task><Product name>`
-        # TODO refactor/remove me
-        product_type = skeleton["productType"]
-        if not s_product_name.startswith(product_type):
+        # get file path (use first from the list or single frame)
+        expected_filepath = collected_files[0] if isinstance(collected_files, (list, tuple)) else collected_files
+
+        dynamic_data = {
+            "aov": aov,
+            "renderlayer": instance.data.get("renderlayer"),
+        }
+
+        # find if camera is used in the file path
+        camera = [cam for cam in cameras if cam in expected_filepath]
+
+        # Is there just one camera matching?
+        # TODO: this is not true, we can have multiple cameras in the scene
+        #       and we should be able to detect them all. Currently, we are
+        #       keeping the old behavior, taking the first one found.
+        if camera:
+            dynamic_data["camera"] = camera[0]
+
+        product_name = get_product_name(
+            project_name=instance.context.data["projectName"],
+            task_name=task_name,
+            task_type=instance.data['taskEntity']['taskType'],
+            host_name=instance.context.data["hostName"],
+            product_type=skeleton['productType'],
+            dynamic_data=dynamic_data,
+            variant=instance.data.get('variant', ''),
+            project_settings=instance.context.data.get("project_settings"),
+        )
+
+        # Group name isn't based on a product name template as it is
+        # difficult to differentiate in the custom defined template
+        # what part is the least common denominator.
+        if not src_product_name.startswith(skeleton["productType"]):
             group_name = '{}{}{}{}{}'.format(
-                product_type,
-                task[0].upper(), task[1:],
-                s_product_name[0].upper(), s_product_name[1:])
+                skeleton["productType"],
+                task_name[0].upper(), task_name[1:],
+                src_product_name[0].upper(), src_product_name[1:])
         else:
-            group_name = s_product_name
+            group_name = src_product_name
 
-        # if there are multiple cameras, we need to add camera name
-        expected_filepath = col[0] if isinstance(col, (list, tuple)) else col
-        cams = [cam for cam in cameras if cam in expected_filepath]
-        if cams:
-            for cam in cams:
-                if not aov:
-                    product_name = '{}_{}'.format(group_name, cam)
-                elif not aov.startswith(cam):
-                    product_name = '{}_{}_{}'.format(group_name, cam, aov)
-                else:
-                    product_name = "{}_{}".format(group_name, aov)
-        else:
-            if aov:
-                product_name = '{}_{}'.format(group_name, aov)
-            else:
-                product_name = '{}'.format(group_name)
-
-        if isinstance(col, (list, tuple)):
-            staging = os.path.dirname(col[0])
-        else:
-            staging = os.path.dirname(col)
+        staging = os.path.dirname(expected_filepath)
 
         try:
             staging = remap_source(staging, anatomy)
@@ -610,20 +606,18 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
         app = os.environ.get("AYON_HOST_NAME", "")
 
-        if isinstance(col, list):
-            render_file_name = os.path.basename(col[0])
-        else:
-            render_file_name = os.path.basename(col)
-        aov_patterns = aov_filter
+        render_file_name = os.path.basename(expected_filepath)
 
+        aov_patterns = aov_filter
         preview = match_aov_pattern(app, aov_patterns, render_file_name)
 
         new_instance = deepcopy(skeleton)
         new_instance["productName"] = product_name
         new_instance["productGroup"] = group_name
+        new_instance["aov"] = aov
 
         # toggle preview on if multipart is on
-        # Because we cant query the multipartExr data member of each AOV we'll
+        # Because we can't query the multipartExr data member of each AOV we'll
         # need to have hardcoded rule of excluding any renders with
         # "cryptomatte" in the file name from being a multipart EXR. This issue
         # happens with Redshift that forces Cryptomatte renders to be separate
@@ -649,10 +643,9 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
             new_instance["review"] = True
 
         # create representation
-        if isinstance(col, (list, tuple)):
-            files = [os.path.basename(f) for f in col]
-        else:
-            files = os.path.basename(col)
+        ext = os.path.splitext(
+            os.path.basename(expected_filepath)
+        )[1].lstrip(".")
 
         # Copy render product "colorspace" data to representation.
         colorspace = ""
@@ -705,6 +698,36 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         instances.append(new_instance)
         log.debug("instances:{}".format(instances))
     return instances
+
+
+def _collect_expected_files_for_aov(files):
+    """Collect expected files.
+
+    Args:
+        files (list): List of files.
+
+    Returns:
+        list or str: Collection of files or single file.
+
+    Raises:
+        ValueError: If there are multiple collections.
+
+    """
+    cols, rem = clique.assemble(files)
+    # we shouldn't have any reminders. And if we do, it should
+    # be just one item for single frame renders.
+    if not cols and rem:
+        if len(rem) != 1:
+            raise ValueError("Found multiple non related files "
+                             "to render, don't know what to do "
+                             "with them.")
+        return rem[0]
+    else:
+        # but we really expect only one collection.
+        # Nothing else make sense.
+        if len(cols) != 1:
+            raise ValueError("Only one image sequence type is expected.")  # noqa: E501
+        return list(cols[0])
 
 
 def get_resources(project_name, version_entity, extension=None):
@@ -836,6 +859,8 @@ def create_skeleton_instance_cache(instance):
         # map inputVersions `ObjectId` -> `str` so json supports it
         "inputVersions": list(map(str, data.get("inputVersions", []))),
     }
+    if instance.data.get("renderlayer"):
+        instance_skeleton_data["renderlayer"] = instance.data["renderlayer"]
 
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
