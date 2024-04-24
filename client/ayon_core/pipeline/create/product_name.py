@@ -1,5 +1,5 @@
+from ayon_core.lib import StringTemplate, filter_profiles, prepare_template_data
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import filter_profiles, prepare_template_data
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
 
@@ -138,6 +138,7 @@ def get_product_name(
         default_template=default_template,
         project_settings=project_settings
     )
+
     # Simple check of task name existence for template with {task} in
     #   - missing task should be possible only in Standalone publisher
     if not task_name and "{task" in template.lower():
@@ -164,7 +165,11 @@ def get_product_name(
             fill_pairs[key] = value
 
     try:
-        return template.format(**prepare_template_data(fill_pairs))
+        return StringTemplate.format_template(
+            template=template,
+            data=prepare_template_data(fill_pairs)
+        )
+        # return template.format(**prepare_template_data(fill_pairs))
     except KeyError as exp:
         raise TemplateFillError(
             "Value for {} key is missing in template '{}'."
