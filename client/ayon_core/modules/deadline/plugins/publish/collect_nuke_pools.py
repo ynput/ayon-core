@@ -5,22 +5,14 @@ from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
 
 class CollectNukeDeadlinePools(pyblish.api.InstancePlugin,
-                           AYONPyblishPluginMixin):
+                               AYONPyblishPluginMixin):
     """Collect pools from instance or Publisher attributes, from Setting
     otherwise.
 
-    Pools are used to control which DL workers could render the job.
+    Based on collect_pools.py
 
-    Pools might be set:
-    - directly on the instance (set directly in DCC)
-    - from Publisher attributes
-    - from defaults from Settings.
-
-    Publisher attributes could be shown even for instances that should be
-    rendered locally as visibility is driven by product type of the instance
-    (which will be `render` most likely).
-    (Might be resolved in the future and class attribute 'families' should
-    be cleaned up.)
+    This allows nuke to have it's own set of pools with the fallback to the
+    default pools if no nuke-specific pools are specified.
 
     """
 
@@ -39,8 +31,12 @@ class CollectNukeDeadlinePools(pyblish.api.InstancePlugin,
     @classmethod
     def apply_settings(cls, project_settings):
         # deadline.publish.CollectDeadlinePools
-        settings = project_settings["deadline"]["publish"]["NukeSubmitDeadline"]  # noqa
-        default_settings = project_settings["deadline"]["publish"]["CollectDeadlinePools"]
+        settings = (project_settings["deadline"]
+                    ["publish"]
+                    ["NukeSubmitDeadline"])
+        default_settings = (project_settings["deadline"]
+                            ["publish"]
+                            ["CollectDeadlinePools"])
         cls.primary_pool = settings.get("primary_pool", None)
         if not cls.primary_pool:
             cls.primary_pool = default_settings.get("primary_pool", None)
