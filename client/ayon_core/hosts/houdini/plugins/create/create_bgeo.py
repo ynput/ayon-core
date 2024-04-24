@@ -95,6 +95,38 @@ class CreateBGEO(plugin.HoudiniCreator):
 
         node.setParms({"sopoutput": output})
 
+    @staticmethod
+    def read_node_data(node):
+        """Read node data from node parameters.
+
+        Implementation of `HoudiniCreator.read_node_data`.
+        This method is used in `HoudiniCreator.collect_instances`
+          which triggered on `refresh` action in the publisher.
+        It's used to compute ayon attributes (mainly creator attributes)
+          based on the values of the parameters of instance node.
+        It should invert the logic of `update_node_parameters`
+
+        Args:
+            node(hou.Node): Houdini node to read changes from.
+
+        Returns:
+            settings (Optional[dict[str, Any]]):
+        """
+        _, ext = lib.splitext(
+            node.parm("sopoutput").unexpandedString(),
+            allowed_multidot_extensions=[
+                ".ass.gz", ".bgeo.sc", ".bgeo.gz",
+                ".bgeo.lzma", ".bgeo.bz2"
+            ]
+        )
+        node_data = {
+            "creator_attributes": {
+                "bgeo_type": ext[1:]  # Remove the leading .
+            }
+        }
+
+        return node_data
+
     def get_instance_attr_defs(self):
         bgeo_enum = {
             "bgeo": "uncompressed bgeo (.bgeo)",

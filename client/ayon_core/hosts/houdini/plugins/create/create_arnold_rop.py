@@ -102,6 +102,38 @@ class CreateArnoldRop(plugin.HoudiniCreator):
             "farm": creator_attributes.get("farm")
         })
 
+    @staticmethod
+    def read_node_data(node):
+        """Read node data from node parameters.
+
+        Implementation of `HoudiniCreator.read_node_data`.
+        This method is used in `HoudiniCreator.collect_instances`
+          which triggered on `refresh` action in the publisher.
+        It's used to compute ayon attributes (mainly creator attributes)
+          based on the values of the parameters of instance node.
+        It should invert the logic of `update_node_parameters`
+
+        Args:
+            node(hou.Node): Houdini node to read changes from.
+
+        Returns:
+            settings (Optional[dict[str, Any]]):
+        """
+        _, ext = lib.splitext(
+            node.parm("ar_picture").unexpandedString(),
+            allowed_multidot_extensions=[".pic.gz"]
+        )
+
+        node_data = {
+            "creator_attributes": {
+                "image_format": ext[1:],  # Remove the leading .
+                "farm": node.evalParm("farm"),
+                "split_render": node.evalParm("ar_ass_export_enable"),
+            }
+        }
+
+        return node_data
+
     def get_instance_attr_defs(self):
         image_format_enum = [
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
