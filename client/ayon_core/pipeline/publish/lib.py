@@ -165,7 +165,7 @@ class HelpContent:
 
 def load_help_content_from_filepath(filepath):
     """Load help content from xml file.
-    Xml file may containt errors and warnings.
+    Xml file may contain errors and warnings.
     """
     errors = {}
     warnings = {}
@@ -430,7 +430,7 @@ def filter_pyblish_plugins(plugins):
     log = Logger.get_logger("filter_pyblish_plugins")
 
     # TODO: Don't use host from 'pyblish.api' but from defined host by us.
-    #   - kept becau on farm is probably used host 'shell' which propably
+    #   - kept because on farm is probably used host 'shell' which probably
     #       affect how settings are applied there
     host_name = pyblish.api.current_host()
     project_name = os.environ.get("AYON_PROJECT_NAME")
@@ -526,7 +526,7 @@ def filter_instances_for_context_plugin(plugin, context):
 
     Args:
         plugin (pyblish.api.Plugin): Plugin with filters.
-        context (pyblish.api.Context): Pyblish context with insances.
+        context (pyblish.api.Context): Pyblish context with instances.
 
     Returns:
         Iterator[pyblish.lib.Instance]: Iteration of valid instances.
@@ -934,3 +934,18 @@ def get_publish_instance_families(instance):
         families.discard(family)
     output.extend(families)
     return output
+
+
+def register_representation(instance, traits_data):
+    """Register representation on instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance on which should be
+            representation registered.
+        traits_data (dict): Representation traits data.
+    """
+
+    if "representations" not in instance.data:
+        instance.data["representations"] = []
+
+    instance.data["representations"].append(traits_data)
