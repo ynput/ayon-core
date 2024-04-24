@@ -33,6 +33,8 @@ class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         rop = hou.node(instance.data.get("instance_node"))
+        # to align with maya render layers
+        instance.data["renderlayer"] = rop.name()
 
         # Collect chunkSize
         chunk_size_parm = rop.parm("chunkSize")

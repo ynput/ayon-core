@@ -32,6 +32,17 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
     def process(self, instance):
         rop = hou.node(instance.data.get("instance_node"))
+        # to align with maya render layers
+        instance.data["renderlayer"] = rop.name()
+        """
+        print("-" * 20)
+        print(f"project_name: {instance.context.data['projectName']}")
+        print(f"task_name: {instance.data['taskEntity']['name']}")
+        print(f"task_type: {instance.data['taskEntity']['type']}")
+        print(f"product_type: {instance.data['productType']}")
+        print(f"variant: {instance.data.get('variant')}")
+        print("-" * 20)
+        """
 
         # Collect chunkSize
         chunk_size_parm = rop.parm("chunkSize")
@@ -63,7 +74,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
         full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
         if full_exr_mode:
             # Ignore beauty suffix if full mode is enabled
-            # As this is what the rop does. 
+            # As this is what the rop does.
             beauty_suffix = ""
 
         # Default beauty/main layer AOV
@@ -75,7 +86,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             beauty_suffix: self.generate_expected_files(instance,
                                                         beauty_product)
         }
-        
+
         aovs_rop = rop.parm("RS_aovGetFromNode").evalAsNode()
         if aovs_rop:
             rop = aovs_rop
@@ -98,7 +109,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
             if rop.parm(f"RS_aovID_{i}").evalAsString() == "CRYPTOMATTE" or \
                   not full_exr_mode:
-                
+
                 aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
                 render_products.append(aov_product)
 
