@@ -137,7 +137,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         folder_path_by_id = {}
         for instance in context:
             folder_entity = instance.data.get("folderEntity")
-            # Skip if instnace does not have filled folder entity
+            # Skip if instance does not have filled folder entity
             if not folder_entity:
                 continue
             folder_id = folder_entity["id"]
@@ -352,6 +352,17 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if resolution_height:
                 anatomy_data["resolution_height"] = resolution_height
 
+            # make render layer name (or ROP name) available in the
+            # templates
+            render_layer = instance.data.get("renderlayer")
+            if render_layer:
+                anatomy_data["renderlayer"] = render_layer
+
+            # make AOV name if present available for templates
+            aov = instance.data.get("aov")
+            if aov:
+                anatomy_data["aov"] = aov
+
             pixel_aspect = instance.data.get("pixelAspect")
             if pixel_aspect:
                 anatomy_data["pixel_aspect"] = float(
@@ -378,7 +389,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             ))
 
     def _fill_folder_data(self, instance, project_entity, anatomy_data):
-        # QUESTION should we make sure that all folder data are poped if
+        # QUESTION should we make sure that all folder data are popped if
         #   folder data cannot be found?
         # - 'folder', 'hierarchy', 'parent', 'folder'
         folder_entity = instance.data.get("folderEntity")
@@ -422,7 +433,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             })
 
     def _fill_task_data(self, instance, task_types_by_name, anatomy_data):
-        # QUESTION should we make sure that all task data are poped if task
+        # QUESTION should we make sure that all task data are popped if task
         #   data cannot be resolved?
         # - 'task'
 
