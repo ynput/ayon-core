@@ -243,6 +243,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
             # Override metadata with node parameters
             # We should use node parameters as source of truth.
+            # TODO: Fix node_data update
+            #       node_data is a multilevel dictionary
             node_data.update(self.read_node_data(instance))
 
             created_instance = CreatedInstance.from_existing(
