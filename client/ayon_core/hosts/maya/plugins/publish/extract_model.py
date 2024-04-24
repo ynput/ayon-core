@@ -4,7 +4,6 @@ import os
 from contextlib import nullcontext
 
 from ayon_core.hosts.maya.api import lib
-from ayon_core.lib import BoolDef
 from ayon_core.pipeline import publish
 from maya import cmds
 
@@ -72,6 +71,7 @@ class ExtractModel(publish.Extractor,
                           long=True)
 
         strip_shader = instance.data.get("strip_shaders", True)
+        self.log.debug("Stripping shaders: %s" % strip_shader)
 
         with lib.no_display_layers(instance):
             with lib.displaySmoothness(members,
@@ -109,14 +109,3 @@ class ExtractModel(publish.Extractor,
 
         self.log.debug("Extracted instance '%s' to: %s" % (instance.name,
                                                            path))
-
-    @classmethod
-    def get_attribute_defs(cls):
-        return [
-            BoolDef("strip_shaders",
-                    label="Strip shaders from the model",
-                    default=True,
-                    tooltip=("Remove shaders from the model "
-                             "before extraction and re-apply "
-                             "them afterwards."))
-        ]
