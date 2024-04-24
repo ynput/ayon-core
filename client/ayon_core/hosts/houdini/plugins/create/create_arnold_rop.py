@@ -88,8 +88,8 @@ class CreateArnoldRop(plugin.HoudiniCreator):
             creator_attributes(dict): Dictionary of creator attributes.
         """
         file_path, _ = lib.splitext(
-            node.evalParm("ar_picture"),
-            allowed_multidot_extensions=["pic.gz"]
+            node.parm("ar_picture").unexpandedString(),
+            allowed_multidot_extensions=[".pic.gz"]
         )
         output = "{file_path}.{ext}".format(
             file_path=file_path,

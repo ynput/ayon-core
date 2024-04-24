@@ -81,7 +81,7 @@ class CreateBGEO(plugin.HoudiniCreator):
         """
 
         file_path, _ = lib.splitext(
-            node.evalParm("sopoutput"),
+            node.parm("sopoutput").unexpandedString(),
             allowed_multidot_extensions=[
                 ".ass.gz", ".bgeo.sc", ".bgeo.gz",
                 ".bgeo.lzma", ".bgeo.bz2"
