@@ -64,7 +64,11 @@ class CreateBGEO(plugin.HoudiniCreator):
     def update_node_parameters(node, creator_attributes):
         """update node parameters according to creator attributes.
 
-        Implementation of update_node_parameters.
+        Implementation of `HoudiniCreator.update_node_parameters`.
+        This method is used in `HoudiniCreator.update_instances`
+            which triggered on `save` action in the publisher.
+        It's used to update the parameters of instance node
+            according to the values of creator_attributes.
 
         Args:
             node(hou.Node): Houdini node to apply changes to.

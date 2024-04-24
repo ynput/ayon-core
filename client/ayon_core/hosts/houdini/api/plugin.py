@@ -367,8 +367,10 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
     def update_node_parameters(node, creator_attributes):
         """Update node parameters according to creator attributes.
 
-        This method is used in `update_instances` to update Houdini node
-        according to the values of creator_attributes.
+        This method is used in `HoudiniCreator.update_instances`
+          which triggered on `save` action in the publisher.
+        It's used to update the parameters of instance node
+          according to the values of creator_attributes.
 
         Note:
             Implementation differs based on the node type.
@@ -386,8 +388,10 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
     def read_node_data(node):
         """Read node data from node parameters.
 
-        This method is used in `collect_instances` to compute creator
-        from node parameters.
+        This method is used in `HoudiniCreator.collect_instances`
+          which triggered on `refresh` action in the publisher.
+        It's used to compute ayon attributes (mainly creator attributes)
+          based on the values of the parameters of instance node.
         It should invert the logic of `update_node_parameters`
 
         Note:
