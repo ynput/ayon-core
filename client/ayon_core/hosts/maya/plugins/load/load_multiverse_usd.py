@@ -28,7 +28,7 @@ class MultiverseUsdLoader(load.LoaderPlugin):
         "pointcache",
         "animation",
     }
-    representations = ["usd", "usda", "usdc", "usdz", "abc"]
+    representations = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Multiverse"
     order = -10
