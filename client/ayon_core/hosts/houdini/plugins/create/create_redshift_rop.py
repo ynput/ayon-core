@@ -120,7 +120,8 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
         parms = {
             "RS_outputFileFormat": ext_format_index[ext],
-            "RS_archive_enable": creator_attributes.get("split_render")
+            "RS_archive_enable": creator_attributes.get("split_render"),
+            "farm": creator_attributes.get("farm")
         }
 
         if ext == "exr":
