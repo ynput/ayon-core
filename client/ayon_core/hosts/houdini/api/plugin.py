@@ -269,6 +269,11 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             # This is done by re-using the logic inside the creators.
             # Note: self is instance of the creator plugin that's responsible for
             #  the product type of instance_node.
+            # TODO: Allow update node to consider other attributes if needed.
+            #       As some publish plugins read 'publish_attributes'
+            #       and creator logic we can add some Houdini parameters
+            #       to allow users to change that on node directly.
+            #       e.g. 'chunkSize' however, it's not used for now.
             if "creator_attributes" in new_values:
                 self.update_node_parameters(
                     instance_node,
