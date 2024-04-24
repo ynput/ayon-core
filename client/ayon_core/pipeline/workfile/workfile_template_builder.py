@@ -329,7 +329,7 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_name'
 
@@ -375,7 +375,7 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_path'
 
@@ -395,7 +395,7 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_path'
 
@@ -466,7 +466,7 @@ class AbstractTemplateBuilder(object):
 
         return list(sorted(
             placeholders,
-            key=lambda i: i.order
+            key=lambda placeholder: placeholder.order
         ))
 
     def build_template(
@@ -685,7 +685,7 @@ class AbstractTemplateBuilder(object):
             for placeholder in placeholders
         }
         all_processed = len(placeholders) == 0
-        # Counter is checked at the ned of a loop so the loop happens at least
+        # Counter is checked at the end of a loop so the loop happens at least
         #   once.
         iter_counter = 0
         while not all_processed:
@@ -1045,7 +1045,7 @@ class PlaceholderPlugin(object):
 
         Using shared data from builder but stored under plugin identifier.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_path'
 
@@ -1085,7 +1085,7 @@ class PlaceholderPlugin(object):
 
         Using shared data from builder but stored under plugin identifier.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_path'
 
@@ -1107,10 +1107,10 @@ class PlaceholderItem(object):
     """Item representing single item in scene that is a placeholder to process.
 
     Items are always created and updated by their plugins. Each plugin can use
-    modified class of 'PlacehoderItem' but only to add more options instead of
+    modified class of 'PlaceholderItem' but only to add more options instead of
     new other.
 
-    Scene identifier is used to avoid processing of the palceholder item
+    Scene identifier is used to avoid processing of the placeholder item
     multiple times so must be unique across whole workfile builder.
 
     Args:
@@ -1162,7 +1162,7 @@ class PlaceholderItem(object):
         """Placeholder data which can modify how placeholder is processed.
 
         Possible general keys
-        - order: Can define the order in which is palceholder processed.
+        - order: Can define the order in which is placeholder processed.
                     Lower == earlier.
 
         Other keys are defined by placeholder and should validate them on item
@@ -1264,11 +1264,9 @@ class PlaceholderLoadMixin(object):
         """Unified attribute definitions for load placeholder.
 
         Common function for placeholder plugins used for loading of
-        repsentations. Use it in 'get_placeholder_options'.
+        representations. Use it in 'get_placeholder_options'.
 
         Args:
-            plugin (PlaceholderPlugin): Plugin used for loading of
-                representations.
             options (Dict[str, Any]): Already available options which are used
                 as defaults for attributes.
 
@@ -1468,7 +1466,9 @@ class PlaceholderLoadMixin(object):
         product_name_regex = None
         if product_name_regex_value:
             product_name_regex = re.compile(product_name_regex_value)
-        product_type = placeholder.data["family"]
+        product_type = placeholder.data.get("product_type")
+        if product_type is None:
+            product_type = placeholder.data["family"]
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
@@ -1529,35 +1529,22 @@ class PlaceholderLoadMixin(object):
 
         pass
 
-    def _reduce_last_version_repre_entities(self, representations):
-        """Reduce representations to last verison."""
+    def _reduce_last_version_repre_entities(self, repre_contexts):
+        """Reduce representations to last version."""
 
-        mapping = {}
-        # TODO use representation context with entities
-        # - using 'folder', 'subset' and 'version' from context on
-        #   representation is danger
-        for repre_entity in representations:
-            repre_context = repre_entity["context"]
-
-            folder_name = repre_context["asset"]
-            product_name = repre_context["subset"]
-            version = repre_context.get("version", -1)
-
-            if folder_name not in mapping:
-                mapping[folder_name] = {}
-
-            product_mapping = mapping[folder_name]
-            if product_name not in product_mapping:
-                product_mapping[product_name] = collections.defaultdict(list)
-
-            version_mapping = product_mapping[product_name]
-            version_mapping[version].append(repre_entity)
+        version_mapping_by_product_id = {}
+        for repre_context in repre_contexts:
+            product_id = repre_context["product"]["id"]
+            version = repre_context["version"]["version"]
+            version_mapping = version_mapping_by_product_id.setdefault(
+                product_id, {}
+            )
+            version_mapping.setdefault(version, []).append(repre_context)
 
         output = []
-        for product_mapping in mapping.values():
-            for version_mapping in product_mapping.values():
-                last_version = tuple(sorted(version_mapping.keys()))[-1]
-                output.extend(version_mapping[last_version])
+        for version_mapping in version_mapping_by_product_id.values():
+            last_version = max(version_mapping.keys())
+            output.extend(version_mapping[last_version])
         return output
 
     def populate_load_placeholder(self, placeholder, ignore_repre_ids=None):
@@ -1585,32 +1572,33 @@ class PlaceholderLoadMixin(object):
         loader_name = placeholder.data["loader"]
         loader_args = self.parse_loader_args(placeholder.data["loader_args"])
 
-        placeholder_representations = self._get_representations(placeholder)
+        placeholder_representations = [
+            repre_entity
+            for repre_entity in self._get_representations(placeholder)
+            if repre_entity["id"] not in ignore_repre_ids
+        ]
 
-        filtered_representations = []
-        for representation in self._reduce_last_version_repre_entities(
-            placeholder_representations
-        ):
-            repre_id = representation["id"]
-            if repre_id not in ignore_repre_ids:
-                filtered_representations.append(representation)
-
-        if not filtered_representations:
+        repre_load_contexts = get_representation_contexts(
+            self.project_name, placeholder_representations
+        )
+        filtered_repre_contexts = self._reduce_last_version_repre_entities(
+            repre_load_contexts.values()
+        )
+        if not filtered_repre_contexts:
             self.log.info((
                 "There's no representation for this placeholder: {}"
             ).format(placeholder.scene_identifier))
+            if not placeholder.data.get("keep_placeholder", True):
+                self.delete_placeholder(placeholder)
             return
 
-        repre_load_contexts = get_representation_contexts(
-            self.project_name, filtered_representations
-        )
         loaders_by_name = self.builder.get_loaders_by_name()
         self._before_placeholder_load(
             placeholder
         )
 
         failed = False
-        for repre_load_context in repre_load_contexts.values():
+        for repre_load_context in filtered_repre_contexts:
             folder_path = repre_load_context["folder"]["path"]
             product_name = repre_load_context["product"]["name"]
             representation = repre_load_context["representation"]
@@ -1695,8 +1683,6 @@ class PlaceholderCreateMixin(object):
         publishable instances. Use it with 'get_placeholder_options'.
 
         Args:
-            plugin (PlaceholderPlugin): Plugin used for creating of
-                publish instances.
             options (Dict[str, Any]): Already available options which are used
                 as defaults for attributes.
 
