@@ -28,7 +28,14 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         instance_data["chunkSize"] = 10
         # Submit for job publishing
         instance_data["farm"] = pre_create_data.get("farm")
-
+        # Transfer settings from pre create to instance
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+        data_to_transfer = ["farm", "split_render",
+                            "image_format", "multi_layered_mode"]
+        for key in data_to_transfer:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
         instance = super(CreateRedshiftROP, self).create(
             product_name,
             instance_data,

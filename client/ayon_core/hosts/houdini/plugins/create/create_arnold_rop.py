@@ -27,6 +27,13 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         instance_data["chunkSize"] = 1
         # Submit for job publishing
         instance_data["farm"] = pre_create_data.get("farm")
+        # Transfer settings from pre create to instance
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+        data_to_transfer = ["farm", "export_job", "image_format"]
+        for key in data_to_transfer:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         instance = super(CreateArnoldRop, self).create(
             product_name,
@@ -91,7 +98,8 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
         node.setParms({
             "ar_picture": output,
-            "ar_ass_export_enable": creator_attributes.get("export_job")
+            "ar_ass_export_enable": creator_attributes.get("export_job"),
+            "farm": creator_attributes.get("farm")
         })
 
     def get_instance_attr_defs(self):
@@ -104,6 +112,8 @@ class CreateArnoldRop(plugin.HoudiniCreator):
             BoolDef("farm",
                     label="Submitting to Farm",
                     default=True),
+            # TODO: Rename export_job to split_render
+            #         to align with creators and collectors
             BoolDef("export_job",
                     label="Split export and render jobs",
                     default=self.export_job),

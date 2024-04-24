@@ -21,6 +21,11 @@ class CreateBGEO(plugin.HoudiniCreator):
         creator_attributes = instance_data.setdefault(
             "creator_attributes", dict())
         creator_attributes["farm"] = pre_create_data["farm"]
+        # Transfer settings from pre create to instance
+        data_to_transfer = ["farm", "bgeo_type"]
+        for key in data_to_transfer:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         instance = super(CreateBGEO, self).create(
             product_name,
