@@ -102,6 +102,7 @@ def get_folder_template_data(folder_entity, project_name):
         "folder": {
             "name": folder_name,
             "type": folder_entity["folderType"],
+            "path": path,
         },
         "asset": folder_name,
         "hierarchy": hierarchy,
