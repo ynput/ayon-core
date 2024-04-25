@@ -73,9 +73,8 @@ class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
             files.extend(sum(aovs.values(), []))
 
         # Intermediate exported render files.
-        # TODO : For products like Karma,
-        #   Karma has more intermediate files
-        #   e.g. USD and checkpoint
+        # TODO : Clean up intermediate files of Karma product type.
+        #        as "ifdFile" works for other render product types only.
         ifdFile = instance.data.get("ifdFile")
         if self.intermediate_exported_render and ifdFile:
             start_frame = instance.data.get("frameStartHandle", None)
