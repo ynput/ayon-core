@@ -412,3 +412,79 @@ def keep_background_images_linked(node, old_name):
 
     if changes:
         set_background_images(parent, images)
+
+
+def get_products_menu_items(node):
+    """get products menu items
+
+    It gets a list of available products of the specified product types
+      within the specified folder path with in the specified project.
+
+    Users can specify those in the HDA parameters.
+
+    Returns:
+        List[str]: Product options for Products menu.
+    """
+    project_name = node.evalParm("project_name")
+    folder_path = node.evalParm("folder_path")
+    my_product_type = node.evalParm("representation_name")
+
+    id_only = ["id"]
+    folder_entity = ayon_api.get_folder_by_path(project_name,
+                                                folder_path,
+                                                fields=id_only)
+    my_folder_id = folder_entity["id"]
+
+    products = ayon_api.get_products(
+        project_name,
+        folder_ids = [my_folder_id],
+        product_types = [my_product_type]
+
+    )
+
+    items = list(map(lambda p: p["name"], products))
+
+    result = []
+
+    for i in items:
+        result.append(i)
+        result.append(i)
+
+    return(result)
+
+
+def select_folder_path(node):
+    """select folder path.
+
+    When triggered it should opens a dialog shows the available
+      folder paths within a given project.
+
+    Users can specify that in the HDA parameters.
+
+    Note:
+        This function should be refactored.
+        It currently shows shows the available
+          folder paths within the current project only.
+        It also should include a button to set the the folder path
+          parameter to `$AYON_FOLDER_PATH`.
+    """
+    from ayon_core.tools.publisher.widgets.folders_dialog import FoldersDialog
+    from ayon_core.tools.utils.host_tools import get_tool_by_name
+    from ayon_core.hosts.houdini.api.lib import get_main_window
+
+
+    main_window = get_main_window()
+    publisher_window = get_tool_by_name( tool_name="publisher", parent=main_window)
+
+    # TODO: `FoldersDialog` as It's highly recommend to
+    #         never use inner widgets of any tool...
+    #       A dedicated Dialog should be implement using `SimpleFoldersWidget`
+    # Note: The following dialog doesn't support changing `the project_name`
+    #         But, having a semi-functional dialog is better than nothing.
+    dialog = FoldersDialog(publisher_window.controller, main_window)
+    dialog.exec_()
+
+    selected_folder_path = dialog.get_selected_folder_path()
+
+    if selected_folder_path:
+        node.parm("folder_path").set(selected_folder_path)
