@@ -118,11 +118,11 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         overlay_invalid_host = InvalidHostOverlay(self)
         overlay_invalid_host.setVisible(False)
 
-        first_show_timer = QtCore.QTimer()
-        first_show_timer.setSingleShot(True)
-        first_show_timer.setInterval(50)
+        show_timer = QtCore.QTimer()
+        show_timer.setSingleShot(True)
+        show_timer.setInterval(50)
 
-        first_show_timer.timeout.connect(self._on_first_show)
+        show_timer.timeout.connect(self._on_show)
 
         controller.register_event_callback(
             "save_as.finished",
@@ -159,7 +159,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._tasks_widget = tasks_widget
         self._side_panel = side_panel
 
-        self._first_show_timer = first_show_timer
+        self._show_timer = show_timer
 
         self._post_init()
 
@@ -287,9 +287,9 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
     def showEvent(self, event):
         super(WorkfilesToolWindow, self).showEvent(event)
+        self._show_timer.start()
         if self._first_show:
             self._first_show = False
-            self._first_show_timer.start()
             self.setStyleSheet(style.load_stylesheet())
 
     def keyPressEvent(self, event):
@@ -303,9 +303,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         pass
 
-    def _on_first_show(self):
-        if not self._controller_refreshed:
-            self.refresh()
+    def _on_show(self):
+        self.refresh()
 
     def _on_file_text_filter_change(self, text):
         self._files_widget.set_text_filter(text)
