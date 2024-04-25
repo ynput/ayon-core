@@ -291,7 +291,9 @@ class UEProjectGenerationWorker(UEWorker):
         pyside_version = "PySide2"
         ue_version = self.ue_version.split(".")
         if int(ue_version[0]) == 5 and int(ue_version[1]) >= 4:
-            pyside_version = "PySide6"
+            # Use PySide6 6.6.3 because 6.7.0 had a bug
+            #   - 'QPushButton' can't be added to 'QBoxLayout'
+            pyside_version = "PySide6==6.6.3"
 
         site_packages_prefix = python_path.parent.as_posix()
 
