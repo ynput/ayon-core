@@ -23,6 +23,8 @@ class CreateColorspaceLook(plugin.Creator):
     icon = "film"
     # enabled = False
 
+    ociolook_tool_settings = None
+
     def process(self):
         pstart = time.time()
         if not self.selected:
@@ -48,12 +50,13 @@ class CreateColorspaceLook(plugin.Creator):
 
             # create ociolook group
             if not ociolook_group:
-                with TOOLGROUP_TEMPLATE.open("rb") as f:
-                    ociolook_tool_settings = pickle.load(f)
-                self.log.debug(f"{ociolook_tool_settings = }")
-                pasted = comp.Paste(ociolook_tool_settings)
+                if not self.ociolook_tool_settings:
+                    with TOOLGROUP_TEMPLATE.open("rb") as f:
+                        self.ociolook_tool_settings = pickle.load(f)
+                self.log.debug(f"{self.ociolook_tool_settings = }")
+                pasted = comp.Paste(self.ociolook_tool_settings)
                 if not pasted:
-                    self.log.err(f"Failed to paste Group {ociolook_tool_settings}")
+                    self.log.err(f"Failed to paste Group {self.ociolook_tool_settings}")
 
         dur = pstart - time.time()
         self.log.warning(f"Duration: {dur:.2f}s")
