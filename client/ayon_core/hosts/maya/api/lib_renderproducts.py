@@ -588,6 +588,20 @@ class RenderProductsArnold(ARenderProducts):
                     "Unrecognized arnold driver format "
                     "for AOV - {}".format(aov_name)
                 )
+            global_aov_enabled = bool(
+                self._get_attr(
+                    "defaultArnoldRenderOptions.aovMode", as_string=False)
+            )
+            if not global_aov_enabled:
+                for camera in cameras:
+                    products.insert(0,
+                                    RenderProduct(productName="",
+                                                  ext=ext,
+                                                  driver=ai_driver,
+                                                  multipart=self.multipart,
+                                                  camera=camera,
+                                                  colorspace=colorspace))
+                return products
 
             # If aov RGBA is selected, arnold will translate it to `beauty`
             name = aov_name
