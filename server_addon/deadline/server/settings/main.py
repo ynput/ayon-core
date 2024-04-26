@@ -22,7 +22,7 @@ class ServerListSubmodel(BaseSettingsModel):
 
 
 async def defined_deadline_ws_name_enum_resolver(
-    addon: BaseServerAddon,
+    addon: "BaseServerAddon",
     settings_variant: str = "production",
     project_name: str | None = None,
 ) -> list[str]:

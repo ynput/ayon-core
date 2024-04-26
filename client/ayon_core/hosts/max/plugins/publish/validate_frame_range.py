@@ -46,7 +46,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
             return
 
         frame_range = get_frame_range(
-            instance.data["folderEntity"])
+            instance.data["taskEntity"])
 
         inst_frame_start = instance.data.get("frameStartHandle")
         inst_frame_end = instance.data.get("frameEndHandle")

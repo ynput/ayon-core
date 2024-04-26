@@ -8,10 +8,15 @@ from typing import Any, Dict, Union
 import six
 import ayon_api
 
-from ayon_core.pipeline import get_current_project_name, colorspace
+from ayon_core.pipeline import (
+    get_current_project_name,
+    get_current_folder_path,
+    get_current_task_name,
+    colorspace
+)
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.context_tools import (
-    get_current_folder_entity,
+    get_current_task_entity
 )
 from ayon_core.style import load_stylesheet
 from pymxs import runtime as rt
@@ -221,41 +226,30 @@ def reset_scene_resolution():
     scene resolution can be overwritten by a folder if the folder.attrib
     contains any information regarding scene resolution.
     """
-
-    folder_entity = get_current_folder_entity(
-        fields={"attrib.resolutionWidth", "attrib.resolutionHeight"}
-    )
-    folder_attributes = folder_entity["attrib"]
-    width = int(folder_attributes["resolutionWidth"])
-    height = int(folder_attributes["resolutionHeight"])
+    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
+    width = int(task_attributes["resolutionWidth"])
+    height = int(task_attributes["resolutionHeight"])
 
     set_scene_resolution(width, height)
 
 
-def get_frame_range(folder_entiy=None) -> Union[Dict[str, Any], None]:
-    """Get the current folder frame range and handles.
+def get_frame_range(task_entity=None) -> Union[Dict[str, Any], None]:
+    """Get the current task frame range and handles
 
     Args:
-        folder_entiy (dict): Folder eneity.
+        task_entity (dict): Task Entity.
 
     Returns:
         dict: with frame start, frame end, handle start, handle end.
     """
     # Set frame start/end
-    if folder_entiy is None:
-        folder_entiy = get_current_folder_entity()
-
-    folder_attributes = folder_entiy["attrib"]
-    frame_start = folder_attributes.get("frameStart")
-    frame_end = folder_attributes.get("frameEnd")
-
-    if frame_start is None or frame_end is None:
-        return {}
-
-    frame_start = int(frame_start)
-    frame_end = int(frame_end)
-    handle_start = int(folder_attributes.get("handleStart", 0))
-    handle_end = int(folder_attributes.get("handleEnd", 0))
+    if task_entity is None:
+        task_entity = get_current_task_entity(fields={"attrib"})
+    task_attributes = task_entity["attrib"]
+    frame_start = int(task_attributes["frameStart"])
+    frame_end = int(task_attributes["frameEnd"])
+    handle_start = int(task_attributes["handleStart"])
+    handle_end = int(task_attributes["handleEnd"])
     frame_start_handle = frame_start - handle_start
     frame_end_handle = frame_end + handle_end
 
@@ -281,9 +275,9 @@ def reset_frame_range(fps: bool = True):
             scene frame rate in frames-per-second.
     """
     if fps:
-        project_name = get_current_project_name()
-        project_entity = ayon_api.get_project(project_name)
-        fps_number = float(project_entity["attrib"].get("fps"))
+        task_entity = get_current_task_entity()
+        task_attributes = task_entity["attrib"]
+        fps_number = float(task_attributes["fps"])
         rt.frameRate = fps_number
     frame_range = get_frame_range()
 
