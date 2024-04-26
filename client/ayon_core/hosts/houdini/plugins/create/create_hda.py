@@ -70,7 +70,8 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_node = to_hda.createDigitalAsset(
                 name=node_name,
                 hda_file_name="$HIP/{}.hda".format(node_name),
-                max_num_inputs=self.max_num_inputs
+                max_num_inputs=self.max_num_inputs,
+                ignore_external_references=True
             )
             hda_node.layoutChildren()
         elif self._check_existing(folder_path, node_name):
