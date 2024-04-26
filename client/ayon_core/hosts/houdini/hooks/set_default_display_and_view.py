@@ -25,7 +25,12 @@ class SetDefaultDisplayView(PreLaunchHook):
             return
 
         houdini_color_settings = \
-            self.data["project_settings"]["houdini"]["imageio"]["workfile"]
+            self.data["project_settings"]["houdini"]["imageio"].get("workfile", {})
+
+        if not houdini_color_settings:
+            self.log.info("Hook 'SetDefaultDisplayView' requires Houdini "
+                           "addon version >= '0.2.13'")
+            return
 
         if not houdini_color_settings["enabled"]:
             self.log.info(
