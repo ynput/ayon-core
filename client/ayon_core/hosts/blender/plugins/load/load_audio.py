@@ -21,7 +21,7 @@ class AudioLoader(plugin.AssetLoader):
     """Load audio in Blender."""
 
     product_types = {"audio"}
-    representations = ["wav"]
+    representations = {"wav"}
 
     label = "Load Audio"
     icon = "volume-up"

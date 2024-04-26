@@ -3,11 +3,11 @@ import sys
 import re
 import contextlib
 
-from ayon_core.lib import Logger
-
+from ayon_core.lib import Logger, BoolDef, UILabelDef
+from ayon_core.style import load_stylesheet
 from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.create import CreateContext
-from ayon_core.pipeline.context_tools import get_current_project_folder
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 
 self = sys.modules[__name__]
 self._project = None
@@ -57,7 +57,7 @@ def update_frame_range(start, end, comp=None, set_render_range=True,
 def set_current_context_framerange(folder_entity=None):
     """Set Comp's frame range based on current folder."""
     if folder_entity is None:
-        folder_entity = get_current_project_folder(
+        folder_entity = get_current_folder_entity(
             fields={"attrib.frameStart",
                     "attrib.frameEnd",
                     "attrib.handleStart",
@@ -76,7 +76,7 @@ def set_current_context_framerange(folder_entity=None):
 def set_current_context_fps(folder_entity=None):
     """Set Comp's frame rate (FPS) to based on current asset"""
     if folder_entity is None:
-        folder_entity = get_current_project_folder(fields={"attrib.fps"})
+        folder_entity = get_current_folder_entity(fields={"attrib.fps"})
 
     fps = float(folder_entity["attrib"].get("fps", 24.0))
     comp = get_current_comp()
@@ -88,7 +88,7 @@ def set_current_context_fps(folder_entity=None):
 def set_current_context_resolution(folder_entity=None):
     """Set Comp's resolution width x height default based on current folder"""
     if folder_entity is None:
-        folder_entity = get_current_project_folder(
+        folder_entity = get_current_folder_entity(
             fields={"attrib.resolutionWidth", "attrib.resolutionHeight"})
 
     folder_attributes = folder_entity["attrib"]
@@ -124,7 +124,7 @@ def validate_comp_prefs(comp=None, force_repair=False):
         "attrib.resolutionHeight",
         "attrib.pixelAspect",
     }
-    folder_entity = get_current_project_folder(fields=fields)
+    folder_entity = get_current_folder_entity(fields=fields)
     folder_path = folder_entity["path"]
     folder_attributes = folder_entity["attrib"]
 
@@ -181,7 +181,6 @@ def validate_comp_prefs(comp=None, force_repair=False):
 
         from . import menu
         from ayon_core.tools.utils import SimplePopup
-        from ayon_core.style import load_stylesheet
         dialog = SimplePopup(parent=menu.menu)
         dialog.setWindowTitle("Fusion comp has invalid configuration")
 
@@ -340,9 +339,7 @@ def prompt_reset_context():
     from ayon_core.tools.attribute_defs.dialog import (
         AttributeDefinitionsDialog
     )
-    from ayon_core.style import load_stylesheet
-    from ayon_core.lib import BoolDef, UILabelDef
-    from qtpy import QtWidgets, QtCore
+    from qtpy import QtCore
 
     definitions = [
         UILabelDef(
@@ -389,7 +386,7 @@ def prompt_reset_context():
         return None
 
     options = dialog.get_values()
-    folder_entity = get_current_project_folder()
+    folder_entity = get_current_folder_entity()
     if options["frame_range"]:
         set_current_context_framerange(folder_entity)
 
