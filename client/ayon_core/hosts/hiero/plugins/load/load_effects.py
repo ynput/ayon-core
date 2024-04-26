@@ -15,7 +15,7 @@ class LoadEffects(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
     product_types = {"effect"}
-    representations = ["*"]
+    representations = {"*"}
     extension = {"json"}
 
     label = "Load Effects"

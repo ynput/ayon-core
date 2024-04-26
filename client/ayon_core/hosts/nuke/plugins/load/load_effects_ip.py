@@ -20,7 +20,7 @@ class LoadEffectsInputProcess(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
     product_types = {"effect"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"json"}
 
     label = "Load Effects - Input Process"

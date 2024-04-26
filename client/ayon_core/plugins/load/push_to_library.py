@@ -11,7 +11,7 @@ class PushToLibraryProject(load.ProductLoaderPlugin):
 
     is_multiple_contexts_compatible = True
 
-    representations = ["*"]
+    representations = {"*"}
     product_types = {"*"}
 
     label = "Push to Library project"
