@@ -1,4 +1,4 @@
-from .site_sync import SiteSyncModel
+from .sitesync import SiteSyncModel
 
 
 __all__ = (

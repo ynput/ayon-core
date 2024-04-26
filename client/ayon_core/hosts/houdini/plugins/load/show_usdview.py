@@ -10,7 +10,7 @@ class ShowInUsdview(load.LoaderPlugin):
     """Open USD file in usdview"""
 
     label = "Show in usdview"
-    representations = ["*"]
+    representations = {"*"}
     product_types = {"*"}
     extensions = {"usd", "usda", "usdlc", "usdnc", "abc"}
     order = 15

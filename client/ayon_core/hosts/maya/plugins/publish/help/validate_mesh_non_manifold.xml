@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>Non-Manifold Edges/Vertices</title>
+<description>## Non-Manifold Edges/Vertices
+
+Meshes found with non-manifold edges or vertices.
+
+### How to repair?
+
+Run select invalid to select the invalid components.
+
+You can also try the _cleanup matching polygons_ action which will perform a
+cleanup like Maya's `Mesh > Cleanup...` modeling tool.
+
+It is recommended to always select the invalid to see where the issue is
+because if you run any repair on it you will need to double check the topology
+is still like you wanted.
+
+</description>
+<detail>
+### What is non-manifold topology?
+
+_Non-manifold topology_ polygons have a configuration that cannot be unfolded
+into a continuous flat piece, for example:
+
+- Three or more faces share an edge
+- Two or more faces share a single vertex but no edge.
+- Adjacent faces have opposite normals
+
+</detail>
+</error>
+</root>

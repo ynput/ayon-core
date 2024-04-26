@@ -1,7 +1,7 @@
 import os
 import shutil
 from ayon_core.settings import get_project_settings
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 from ayon_core.pipeline.workfile import (
     get_custom_workfile_template,
     get_custom_workfile_template_by_string_context

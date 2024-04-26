@@ -25,7 +25,7 @@ class ImageFromSequenceLoader(photoshop.PhotoshopLoader):
     """
 
     product_types = {"render"}
-    representations = ["*"]
+    representations = {"*"}
     options = []
 
     def load(self, context, name=None, namespace=None, data=None):
