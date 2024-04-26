@@ -4,6 +4,7 @@ import ayon_api
 
 from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
+from ayon_core.lib import NumberDef
 import hou
 
 
@@ -15,6 +16,8 @@ class CreateHDA(plugin.HoudiniCreator):
     product_type = "hda"
     icon = "gears"
     maintain_selection = False
+
+    max_num_inputs = 0
 
     def _check_existing(self, folder_path, product_name):
         # type: (str, str) -> bool
@@ -66,7 +69,8 @@ class CreateHDA(plugin.HoudiniCreator):
 
             hda_node = to_hda.createDigitalAsset(
                 name=node_name,
-                hda_file_name="$HIP/{}.hda".format(node_name)
+                hda_file_name="$HIP/{}.hda".format(node_name),
+                max_num_inputs=self.max_num_inputs
             )
             hda_node.layoutChildren()
         elif self._check_existing(folder_path, node_name):
@@ -83,6 +87,8 @@ class CreateHDA(plugin.HoudiniCreator):
     def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
 
+        self.max_num_inputs = pre_create_data["max_num_inputs"]
+
         instance = super(CreateHDA, self).create(
             product_name,
             instance_data,
@@ -93,4 +99,13 @@ class CreateHDA(plugin.HoudiniCreator):
     def get_network_categories(self):
         return [
             hou.objNodeTypeCategory()
+        ]
+
+    def get_pre_create_attr_defs(self):
+        attrs = super(CreateHDA, self).get_pre_create_attr_defs()
+        return attrs + [
+            NumberDef("max_num_inputs",
+                      label="Maximum Inputs",
+                      default=self.max_num_inputs,
+                      decimals=0)
         ]
