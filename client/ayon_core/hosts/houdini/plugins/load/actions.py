@@ -8,14 +8,14 @@ from ayon_core.pipeline import load
 class SetFrameRangeLoader(load.LoaderPlugin):
     """Set frame range excluding pre- and post-handles"""
 
-    families = [
+    product_types = {
         "animation",
         "camera",
         "pointcache",
         "vdbcache",
         "usd",
-    ]
-    representations = ["abc", "vdb", "usd"]
+    }
+    representations = {"abc", "vdb", "usd"}
 
     label = "Set frame range"
     order = 11
@@ -26,11 +26,10 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 
         import hou
 
-        version = context["version"]
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        start = version_attributes.get("frameStart")
+        end = version_attributes.get("frameEnd")
 
         if start is None or end is None:
             print(
@@ -46,14 +45,14 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     """Set frame range including pre- and post-handles"""
 
-    families = [
+    product_types = {
         "animation",
         "camera",
         "pointcache",
         "vdbcache",
         "usd",
-    ]
-    representations = ["abc", "vdb", "usd"]
+    }
+    representations = {"abc", "vdb", "usd"}
 
     label = "Set frame range (with handles)"
     order = 12
@@ -64,11 +63,10 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
 
         import hou
 
-        version = context["version"]
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        start = version_attributes.get("frameStart")
+        end = version_attributes.get("frameEnd")
 
         if start is None or end is None:
             print(
@@ -78,8 +76,8 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
             return
 
         # Include handles
-        start -= version_data.get("handleStart", 0)
-        end += version_data.get("handleEnd", 0)
+        start -= version_attributes.get("handleStart", 0)
+        end += version_attributes.get("handleEnd", 0)
 
         hou.playbar.setFrameRange(start, end)
         hou.playbar.setPlaybackRange(start, end)

@@ -38,7 +38,7 @@ class CreatorWidget(QtWidgets.QDialog):
             | QtCore.Qt.WindowCloseButtonHint
             | QtCore.Qt.WindowStaysOnTopHint
         )
-        self.setWindowTitle(name or "Pype Creator Input")
+        self.setWindowTitle(name or "AYON Creator Input")
         self.resize(500, 700)
 
         # Where inputs and labels are set
@@ -644,13 +644,13 @@ class PublishableClip:
             "families": [self.base_product_type, self.product_type]
         }
 
-    def _convert_to_entity(self, type, template):
+    def _convert_to_entity(self, src_type, template):
         """ Converting input key to key with type. """
         # convert to entity type
-        entity_type = self.types.get(type, None)
+        folder_type = self.types.get(src_type, None)
 
-        assert entity_type, "Missing entity type for `{}`".format(
-            type
+        assert folder_type, "Missing folder type for `{}`".format(
+            src_type
         )
 
         # first collect formatting data to use for formatting template
@@ -661,7 +661,7 @@ class PublishableClip:
             formatting_data[_k] = value
 
         return {
-            "entity_type": entity_type,
+            "folder_type": folder_type,
             "entity_name": template.format(
                 **formatting_data
             )
@@ -748,18 +748,16 @@ class ClipLoader(LoaderPlugin):
         Returns:
             str: colorspace name or None
         """
-        version = context['version']
-        version_data = version.get("data", {})
-        colorspace = version_data.get(
-            "colorspace", None
-        )
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        colorspace = version_attributes.get("colorSpace")
 
         if (
             not colorspace
             or colorspace == "Unknown"
         ):
             colorspace = context["representation"]["data"].get(
-                "colorspace", None)
+                "colorspace")
 
         return colorspace
 
@@ -1020,7 +1018,7 @@ class OpenClipSolver(flib.MediaInfoFile):
                             self.feed_version_name))
                 else:
                     self.log.debug("adding new track element ..")
-                    # create new track as it doesnt exists yet
+                    # create new track as it doesn't exist yet
                     # set current version to feeds on tmp
                     tmp_xml_feeds = tmp_xml_track.find('feeds')
                     tmp_xml_feeds.set('currentVersion', self.feed_version_name)

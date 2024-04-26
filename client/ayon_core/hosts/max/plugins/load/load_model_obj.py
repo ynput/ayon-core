@@ -7,7 +7,6 @@ from ayon_core.hosts.max.api.lib import (
     maintained_selection,
     object_transform_set
 )
-from ayon_core.hosts.max.api.lib import maintained_selection
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
@@ -20,8 +19,8 @@ from ayon_core.pipeline import get_representation_path, load
 class ObjLoader(load.LoaderPlugin):
     """Obj Loader."""
 
-    families = ["model"]
-    representations = ["obj"]
+    product_types = {"model"}
+    representations = {"obj"}
     order = -9
     icon = "code-fork"
     color = "white"
@@ -47,10 +46,11 @@ class ObjLoader(load.LoaderPlugin):
             name, selections, context,
             namespace, loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         from pymxs import runtime as rt
 
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         node = rt.getNodeByName(node_name)
         namespace, _ = get_namespace(node_name)
@@ -77,11 +77,11 @@ class ObjLoader(load.LoaderPlugin):
             rt.Select(node)
 
         lib.imprint(node_name, {
-            "representation": str(representation["_id"])
+            "representation": repre_entity["id"]
         })
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         from pymxs import runtime as rt

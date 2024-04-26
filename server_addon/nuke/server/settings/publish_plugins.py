@@ -56,7 +56,7 @@ class CollectInstanceDataModel(BaseSettingsModel):
     sync_workfile_version_on_product_types: list[str] = SettingsField(
         default_factory=list,
         enum_resolver=nuke_product_types_enum,
-        title="Sync workfile versions for familes"
+        title="Product types"
     )
 
 
@@ -219,7 +219,7 @@ class IncrementScriptVersionModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class PublishPluginsModel(BaseSettingsModel):
     CollectInstanceData: CollectInstanceDataModel = SettingsField(
         title="Collect Instance Version",
         default_factory=CollectInstanceDataModel,

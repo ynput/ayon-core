@@ -1,6 +1,6 @@
 from maya import cmds
 
-from ayon_core.pipeline import InventoryAction, get_representation_context
+from ayon_core.pipeline import InventoryAction, get_repres_contexts
 from ayon_core.hosts.maya.api.lib import get_id
 
 
@@ -28,14 +28,19 @@ class ConnectGeometry(InventoryAction):
 
         # Categorize containers by family.
         containers_by_product_type = {}
+        repre_ids = {
+            container["representation"]
+            for container in containers
+        }
+        repre_contexts_by_id = get_repres_contexts(repre_ids)
         for container in containers:
-            product_type = get_representation_context(
-                container["representation"]
-            )["subset"]["data"]["family"]
-            try:
-                containers_by_product_type[product_type].append(container)
-            except KeyError:
-                containers_by_product_type[product_type] = [container]
+            repre_id = container["representation"]
+            repre_context = repre_contexts_by_id[repre_id]
+
+            product_type = repre_context["product"]["productType"]
+
+            containers_by_product_type.setdefault(product_type, [])
+            containers_by_product_type[product_type].append(container)
 
         # Validate to only 1 source container.
         source_containers = containers_by_product_type.get("animation", [])

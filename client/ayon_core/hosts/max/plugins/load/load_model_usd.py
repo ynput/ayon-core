@@ -22,9 +22,9 @@ from ayon_core.pipeline import get_representation_path, load
 class ModelUSDLoader(load.LoaderPlugin):
     """Loading model with the USD loader."""
 
-    families = ["model"]
+    product_types = {"model"}
     label = "Load Model(USD)"
-    representations = ["usda"]
+    representations = {"usda"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -65,8 +65,9 @@ class ModelUSDLoader(load.LoaderPlugin):
             name, usd_objects, context,
             namespace, loader=self.__class__.__name__)
 
-    def update(self, container, representation):
-        path = get_representation_path(representation)
+    def update(self, container, context):
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         node = rt.GetNodeByName(node_name)
         namespace, name = get_namespace(node_name)
@@ -107,11 +108,11 @@ class ModelUSDLoader(load.LoaderPlugin):
             rt.Select(node)
 
         lib.imprint(node_name, {
-            "representation": str(representation["_id"])
+            "representation": repre_entity["id"]
         })
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         from pymxs import runtime as rt

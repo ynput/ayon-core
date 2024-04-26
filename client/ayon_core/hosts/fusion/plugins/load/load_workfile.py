@@ -14,8 +14,8 @@ from ayon_core.hosts.fusion.api import (
 class FusionLoadWorkfile(load.LoaderPlugin):
     """Load the content of a workfile into Fusion"""
 
-    families = ["workfile"]
-    representations = ["*"]
+    product_types = {"workfile"}
+    representations = {"*"}
     extensions = {"comp"}
 
     label = "Load Workfile"

@@ -1,16 +1,13 @@
 import os
 import json
 import secrets
+
 import nuke
 import six
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id
-)
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api import (
@@ -23,8 +20,8 @@ from ayon_core.hosts.nuke.api import (
 class LoadOcioLookNodes(load.LoaderPlugin):
     """Loading Ocio look to the nuke.Node graph"""
 
-    families = ["ociolook"]
-    representations = ["*"]
+    product_types = {"ociolook"}
+    representations = {"*"}
     extensions = {"json"}
 
     label = "Load OcioLook [nodes]"
@@ -47,13 +44,13 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         Arguments:
             context (dict): context of version
             name (str): name of the version
-            namespace (str): asset name
+            namespace (str): namespace name
             data (dict): compulsory attribute > not used
 
         Returns:
             nuke.Node: containerized nuke.Node object
         """
-        namespace = namespace or context['asset']['name']
+        namespace = namespace or context["folder"]["name"]
         suffix = secrets.token_hex(nbytes=4)
         node_name = "{}_{}_{}".format(
             name, namespace, suffix)
@@ -68,7 +65,11 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         # renaming group node
         group_node["name"].setValue(node_name)
 
-        self._node_version_color(context["version"], group_node)
+        self._node_version_color(
+            context["project"]["name"],
+            context["version"],
+            group_node
+        )
 
         self.log.info(
             "Loaded lut setup: `{}`".format(group_node["name"].value()))
@@ -219,14 +220,12 @@ class LoadOcioLookNodes(load.LoaderPlugin):
 
         return group_node
 
-    def update(self, container, representation):
-
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
+    def update(self, container, context):
+        repre_entity = context["representation"]
 
         group_node = container["node"]
 
-        filepath = get_representation_path(representation)
+        filepath = get_representation_path(repre_entity)
 
         json_f = self._load_json_data(filepath)
 
@@ -236,13 +235,15 @@ class LoadOcioLookNodes(load.LoaderPlugin):
             group_node
         )
 
-        self._node_version_color(version_doc, group_node)
+        self._node_version_color(
+            context["project"]["name"], context["version"], group_node
+        )
 
         self.log.info("Updated lut setup: `{}`".format(
             group_node["name"].value()))
 
         return update_container(
-            group_node, {"representation": str(representation["_id"])})
+            group_node, {"representation": repre_entity["id"]})
 
     def _load_json_data(self, filepath):
         # getting data from json file with unicode conversion
@@ -280,24 +281,23 @@ class LoadOcioLookNodes(load.LoaderPlugin):
         else:
             return input
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         node = nuke.toNode(container['objectName'])
         with viewer_update_and_undo_stop():
             nuke.delete(node)
 
-    def _node_version_color(self, version, node):
+    def _node_version_color(self, project_name, version_entity, node):
         """ Coloring a node by correct color by actual version"""
 
-        project_name = get_current_project_name()
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version["parent"], fields=["_id"]
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
 
         # change color of node
-        if version["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = self.current_node_color
         else:
             color_value = self.old_node_color

@@ -1,11 +1,9 @@
 import os
 from copy import deepcopy
+
+import ayon_api
 import opentimelineio as otio
 
-from ayon_core.client import (
-    get_asset_by_name,
-    get_project
-)
 from ayon_core.hosts.traypublisher.api.plugin import (
     TrayPublishCreator,
     HiddenTrayPublishCreator
@@ -196,12 +194,14 @@ or updating already created. Publishing will create OTIO file.
             if k not in product_types
         }
 
-        asset_name = instance_data["folderPath"]
-        asset_doc = get_asset_by_name(self.project_name, asset_name)
+        folder_path = instance_data["folderPath"]
+        folder_entity = ayon_api.get_folder_by_path(
+            self.project_name, folder_path
+        )
 
         if pre_create_data["fps"] == "from_selection":
-            # get asset doc data attributes
-            fps = asset_doc["data"]["fps"]
+            # get 'fps' from folder attributes
+            fps = folder_entity["attrib"]["fps"]
         else:
             fps = float(pre_create_data["fps"])
 
@@ -226,18 +226,18 @@ or updating already created. Publishing will create OTIO file.
             # Create all clip instances
             clip_instance_properties.update({
                 "fps": fps,
-                "parent_asset_name": asset_name,
                 "variant": instance_data["variant"]
             })
 
             # create clip instances
             self._get_clip_instances(
+                folder_entity,
                 otio_timeline,
                 media_path,
                 clip_instance_properties,
                 allowed_product_type_presets,
                 os.path.basename(seq_path),
-                first_otio_timeline
+                first_otio_timeline,
             )
 
             if not first_otio_timeline:
@@ -248,7 +248,8 @@ or updating already created. Publishing will create OTIO file.
         self._create_otio_instance(
             product_name,
             instance_data,
-            seq_path, media_path,
+            seq_path,
+            media_path,
             first_otio_timeline
         )
 
@@ -332,6 +333,7 @@ or updating already created. Publishing will create OTIO file.
 
     def _get_clip_instances(
         self,
+        folder_entity,
         otio_timeline,
         media_path,
         instance_data,
@@ -342,6 +344,7 @@ or updating already created. Publishing will create OTIO file.
         """Helping function for creating clip instance
 
         Args:
+            folder_entity (dict[str, Any]): Folder entity.
             otio_timeline (otio.Timeline): otio timeline object
             media_path (str): media file path string
             instance_data (dict): clip instance data
@@ -373,7 +376,6 @@ or updating already created. Publishing will create OTIO file.
                 if not self._validate_clip_for_processing(otio_clip):
                     continue
 
-
                 # get available frames info to clip data
                 self._create_otio_reference(otio_clip, media_path, media_data)
 
@@ -383,7 +385,8 @@ or updating already created. Publishing will create OTIO file.
                 base_instance_data = self._get_base_instance_data(
                     otio_clip,
                     instance_data,
-                    track_start_frame
+                    track_start_frame,
+                    folder_entity
                 )
 
                 parenting_data = {
@@ -399,7 +402,7 @@ or updating already created. Publishing will create OTIO file.
                     ):
                         continue
 
-                    instance = self._make_product_instance(
+                    self._make_product_instance(
                         otio_clip,
                         product_type_preset,
                         deepcopy(base_instance_data),
@@ -566,7 +569,7 @@ or updating already created. Publishing will create OTIO file.
         return c_instance
 
     def _make_product_naming(self, product_type_preset, instance_data):
-        """Subset name maker
+        """Product name maker
 
         Args:
             product_type_preset (dict): single preset item
@@ -575,7 +578,7 @@ or updating already created. Publishing will create OTIO file.
         Returns:
             str: label string
         """
-        asset_name = instance_data["creator_attributes"]["folderPath"]
+        folder_path = instance_data["creator_attributes"]["folderPath"]
 
         variant_name = instance_data["variant"]
         product_type = product_type_preset["product_type"]
@@ -588,7 +591,7 @@ or updating already created. Publishing will create OTIO file.
             product_type, _variant_name.capitalize()
         )
         label = "{} {}".format(
-            asset_name,
+            folder_path,
             product_name
         )
 
@@ -606,6 +609,7 @@ or updating already created. Publishing will create OTIO file.
         otio_clip,
         instance_data,
         track_start_frame,
+        folder_entity,
     ):
         """Factoring basic set of instance data.
 
@@ -616,9 +620,12 @@ or updating already created. Publishing will create OTIO file.
 
         Returns:
             dict: instance data
+
         """
+        parent_folder_path = folder_entity["path"]
+        parent_folder_name = parent_folder_path.rsplit("/", 1)[-1]
+
         # get clip instance properties
-        parent_asset_name = instance_data["parent_asset_name"]
         handle_start = instance_data["handle_start"]
         handle_end = instance_data["handle_end"]
         timeline_offset = instance_data["timeline_offset"]
@@ -626,9 +633,9 @@ or updating already created. Publishing will create OTIO file.
         fps = instance_data["fps"]
         variant_name = instance_data["variant"]
 
-        # basic unique asset name
+        # basic unique folder name
         clip_name = os.path.splitext(otio_clip.name)[0]
-        project_doc = get_project(self.project_name)
+        project_entity = ayon_api.get_project(self.project_name)
 
         shot_name, shot_metadata = self._shot_metadata_solver.generate_data(
             clip_name,
@@ -636,14 +643,13 @@ or updating already created. Publishing will create OTIO file.
                 "anatomy_data": {
                     "project": {
                         "name": self.project_name,
-                        "code": project_doc["data"]["code"]
+                        "code": project_entity["code"]
                     },
-                    "parent": parent_asset_name,
+                    "parent": parent_folder_name,
                     "app": self.host_name
                 },
-                "selected_asset_doc": get_asset_by_name(
-                    self.project_name, parent_asset_name),
-                "project_doc": project_doc
+                "selected_folder_entity": folder_entity,
+                "project_entity": project_entity
             }
         )
 
@@ -669,7 +675,7 @@ or updating already created. Publishing will create OTIO file.
         base_instance_data = {
             "shotName": shot_name,
             "variant": variant_name,
-            "task": "",
+            "task": None,
             "newAssetPublishing": True,
             "trackStartFrame": track_start_frame,
             "timelineOffset": timeline_offset,
@@ -680,7 +686,7 @@ or updating already created. Publishing will create OTIO file.
         # update base instance data with context data
         # and also update creator attributes with context data
         creator_attributes["folderPath"] = shot_metadata.pop("folderPath")
-        base_instance_data["folderPath"] = parent_asset_name
+        base_instance_data["folderPath"] = parent_folder_path
 
         # add creator attributes to shared instance data
         base_instance_data["creator_attributes"] = creator_attributes

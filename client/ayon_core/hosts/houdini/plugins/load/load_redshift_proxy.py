@@ -13,9 +13,9 @@ import hou
 class RedshiftProxyLoader(load.LoaderPlugin):
     """Load Redshift Proxy"""
 
-    families = ["redshiftproxy"]
+    product_types = {"redshiftproxy"}
     label = "Load Redshift Proxy"
-    representations = ["rs"]
+    representations = {"rs"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -26,7 +26,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create a new geo node
@@ -72,19 +72,19 @@ class RedshiftProxyLoader(load.LoaderPlugin):
             suffix="",
         )
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_entity = context["representation"]
         # Update the file path
-        file_path = get_representation_path(representation)
+        file_path = get_representation_path(repre_entity)
 
         node = container["node"]
         node.setParms({
             "RS_objprop_proxy_file": self.format_path(
-                file_path, representation)
+                file_path, repre_entity)
         })
 
         # Update attribute
-        node.setParms({"representation": str(representation["_id"])})
+        node.setParms({"representation": repre_entity["id"]})
 
     def remove(self, container):
 

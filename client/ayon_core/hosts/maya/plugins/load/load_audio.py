@@ -11,9 +11,9 @@ from ayon_core.hosts.maya.api.lib import unique_namespace, get_container_members
 class AudioLoader(load.LoaderPlugin):
     """Specific loader of audio."""
 
-    families = ["audio"]
+    product_types = {"audio"}
     label = "Load audio"
-    representations = ["wav"]
+    representations = {"wav"}
     icon = "volume-up"
     color = "orange"
 
@@ -30,10 +30,10 @@ class AudioLoader(load.LoaderPlugin):
             displaySound=True
         )
 
-        asset = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -45,7 +45,8 @@ class AudioLoader(load.LoaderPlugin):
             loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_entity = context["representation"]
 
         members = get_container_members(container)
         audio_nodes = cmds.ls(members, type="audio")
@@ -60,7 +61,7 @@ class AudioLoader(load.LoaderPlugin):
         )
         activate_sound = current_sound == audio_node
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_entity)
 
         cmds.sound(
             audio_node,
@@ -93,12 +94,12 @@ class AudioLoader(load.LoaderPlugin):
 
         cmds.setAttr(
             container["objectName"] + ".representation",
-            str(representation["_id"]),
+            repre_entity["id"],
             type="string"
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)

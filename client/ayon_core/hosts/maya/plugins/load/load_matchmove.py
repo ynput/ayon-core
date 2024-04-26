@@ -8,8 +8,8 @@ class MatchmoveLoader(load.LoaderPlugin):
     Supported script types are .py and .mel
     """
 
-    families = ["matchmove"]
-    representations = ["py", "mel"]
+    product_types = {"matchmove"}
+    representations = {"py", "mel"}
     defaults = ["Camera", "Object", "Mocap"]
 
     label = "Run matchmove script"

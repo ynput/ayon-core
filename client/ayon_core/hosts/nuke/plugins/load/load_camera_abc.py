@@ -1,12 +1,8 @@
 import nuke
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id
-)
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api import (
@@ -24,8 +20,8 @@ class AlembicCameraLoader(load.LoaderPlugin):
     This will load alembic camera into script.
     """
 
-    families = ["camera"]
-    representations = ["*"]
+    product_types = {"camera"}
+    representations = {"*"}
     extensions = {"abc"}
 
     label = "Load Alembic Camera"
@@ -35,27 +31,25 @@ class AlembicCameraLoader(load.LoaderPlugin):
 
     def load(self, context, name, namespace, data):
         # get main variables
-        version = context['version']
-        version_data = version.get("data", {})
-        vname = version.get("name", None)
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
-        fps = version_data.get("fps") or nuke.root()["fps"].getValue()
-        namespace = namespace or context['asset']['name']
+        version_entity = context["version"]
+
+        version_attributes = version_entity["attrib"]
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
+        fps = version_attributes.get("fps") or nuke.root()["fps"].getValue()
+
+        namespace = namespace or context["folder"]["name"]
         object_name = "{}_{}".format(name, namespace)
 
         # prepare data for imprinting
-        # add additional metadata from the version to imprint to Avalon knob
-        add_keys = ["source", "author", "fps"]
-
+        # add additional metadata from the version to imprint to metadata knob
         data_imprint = {
             "frameStart": first,
             "frameEnd": last,
-            "version": vname,
+            "version": version_entity["version"],
         }
-
-        for k in add_keys:
-            data_imprint.update({k: version_data[k]})
+        for k in ["source", "author", "fps"]:
+            data_imprint[k] = version_attributes[k]
 
         # getting file path
         file = self.filepath_from_context(context).replace("\\", "/")
@@ -82,7 +76,9 @@ class AlembicCameraLoader(load.LoaderPlugin):
             camera_node.setXYpos(xpos, ypos)
 
         # color node by correct color by actual version
-        self.node_version_color(version, camera_node)
+        self.node_version_color(
+            context["project"]["name"], version_entity, camera_node
+        )
 
         return containerise(
             node=camera_node,
@@ -92,7 +88,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
             loader=self.__class__.__name__,
             data=data_imprint)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """
             Called by Scene Inventory when look should be updated to current
             version.
@@ -109,32 +105,29 @@ class AlembicCameraLoader(load.LoaderPlugin):
             None
         """
         # Get version from io
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
+        version_entity = context["version"]
+        repre_entity = context["representation"]
 
         # get main variables
-        version_data = version_doc.get("data", {})
-        vname = version_doc.get("name", None)
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
-        fps = version_data.get("fps") or nuke.root()["fps"].getValue()
+        version_attributes = version_entity["attrib"]
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
+        fps = version_attributes.get("fps") or nuke.root()["fps"].getValue()
 
         # prepare data for imprinting
-        # add additional metadata from the version to imprint to Avalon knob
-        add_keys = ["source", "author", "fps"]
-
         data_imprint = {
-            "representation": str(representation["_id"]),
+            "representation": repre_entity["id"],
             "frameStart": first,
             "frameEnd": last,
-            "version": vname
+            "version": version_entity["version"]
         }
 
-        for k in add_keys:
-            data_imprint.update({k: version_data[k]})
+        # add attributes from the version to imprint to metadata knob
+        for k in ["source", "author", "fps"]:
+            data_imprint[k] = version_attributes[k]
 
         # getting file path
-        file = get_representation_path(representation).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         with maintained_selection():
             camera_node = container["node"]
@@ -169,30 +162,33 @@ class AlembicCameraLoader(load.LoaderPlugin):
                 d.setInput(index, camera_node)
 
         # color node by correct color by actual version
-        self.node_version_color(version_doc, camera_node)
+        self.node_version_color(
+            context["project"]["name"], version_entity, camera_node
+        )
 
-        self.log.info("updated to version: {}".format(version_doc.get("name")))
+        self.log.info(
+            "updated to version: {}".format(version_entity["version"])
+        )
 
         return update_container(camera_node, data_imprint)
 
-    def node_version_color(self, version_doc, node):
+    def node_version_color(self, project_name, version_entity, node):
         """ Coloring a node by correct color by actual version
         """
         # get all versions in list
-        project_name = get_current_project_name()
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version_doc["parent"], fields=["_id"]
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
 
         # change color of node
-        if version_doc["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = self.node_color
         else:
             color_value = "0xd88467ff"
         node["tile_color"].setValue(int(color_value, 16))
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         node = container["node"]

@@ -10,9 +10,9 @@ from ayon_core.hosts.houdini.api import pipeline
 class HdaLoader(load.LoaderPlugin):
     """Load Houdini Digital Asset file."""
 
-    families = ["hda"]
+    product_types = {"hda"}
     label = "Load Hda"
-    representations = ["hda"]
+    representations = {"hda"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -30,7 +30,7 @@ class HdaLoader(load.LoaderPlugin):
 
         # Create a unique name
         counter = 1
-        namespace = namespace or context["asset"]["name"]
+        namespace = namespace or context["folder"]["name"]
         formatted = "{}_{}".format(namespace, name) if namespace else name
         node_name = "{0}_{1:03d}".format(formatted, counter)
 
@@ -48,11 +48,12 @@ class HdaLoader(load.LoaderPlugin):
             suffix="",
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         import hou
 
+        repre_entity = context["representation"]
         hda_node = container["node"]
-        file_path = get_representation_path(representation)
+        file_path = get_representation_path(repre_entity)
         file_path = file_path.replace("\\", "/")
         hou.hda.installFile(file_path)
         defs = hda_node.type().allInstalledDefinitions()
@@ -60,7 +61,7 @@ class HdaLoader(load.LoaderPlugin):
         new = def_paths.index(file_path)
         defs[new].setIsPreferred(True)
         hda_node.setParms({
-            "representation": str(representation["_id"])
+            "representation": repre_entity["id"]
         })
 
     def remove(self, container):

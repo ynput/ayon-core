@@ -1,12 +1,8 @@
 import os
 import platform
 import subprocess
-
 from string import Formatter
-from ayon_core.client import (
-    get_project,
-    get_asset_by_name,
-)
+
 from ayon_core.pipeline import (
     Anatomy,
     LauncherAction,
@@ -20,18 +16,14 @@ class OpenTaskPath(LauncherAction):
     icon = "folder-open"
     order = 500
 
-    def is_compatible(self, session):
+    def is_compatible(self, selection):
         """Return whether the action is compatible with the session"""
-        return bool(session.get("AYON_FOLDER_PATH"))
+        return selection.is_folder_selected
 
-    def process(self, session, **kwargs):
+    def process(self, selection, **kwargs):
         from qtpy import QtCore, QtWidgets
 
-        project_name = session["AYON_PROJECT_NAME"]
-        asset_name = session["AYON_FOLDER_PATH"]
-        task_name = session.get("AYON_TASK_NAME", None)
-
-        path = self._get_workdir(project_name, asset_name, task_name)
+        path = self._get_workdir(selection)
         if not path:
             return
 
@@ -62,14 +54,20 @@ class OpenTaskPath(LauncherAction):
             path = path.split(field, 1)[0]
         return path
 
-    def _get_workdir(self, project_name, asset_name, task_name):
-        project = get_project(project_name)
-        asset = get_asset_by_name(project_name, asset_name)
+    def _get_workdir(self, selection):
+        data = get_template_data(
+            selection.project_entity,
+            selection.folder_entity,
+            selection.task_entity
+        )
 
-        data = get_template_data(project, asset, task_name)
-
-        anatomy = Anatomy(project_name)
-        workdir = anatomy.templates_obj["work"]["folder"].format(data)
+        anatomy = Anatomy(
+            selection.project_name,
+            project_entity=selection.project_entity
+        )
+        workdir = anatomy.get_template_item(
+            "work", "default", "folder"
+        ).format(data)
 
         # Remove any potential un-formatted parts of the path
         valid_workdir = self._find_first_filled_path(workdir)
@@ -84,7 +82,9 @@ class OpenTaskPath(LauncherAction):
             return valid_workdir
 
         data.pop("task", None)
-        workdir = anatomy.templates_obj["work"]["folder"].format(data)
+        workdir = anatomy.get_template_item(
+            "work", "default", "folder"
+        ).format(data)
         valid_workdir = self._find_first_filled_path(workdir)
         if valid_workdir:
             # Normalize

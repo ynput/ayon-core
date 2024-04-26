@@ -3,7 +3,8 @@ import re
 import copy
 import platform
 
-from ayon_core.client import get_project, get_asset_by_name
+import ayon_api
+
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import (
     filter_profiles,
@@ -15,7 +16,11 @@ from ayon_core.pipeline.template_data import get_template_data
 
 
 def get_workfile_template_key_from_context(
-    asset_name, task_name, host_name, project_name, project_settings=None
+    project_name,
+    folder_path,
+    task_name,
+    host_name,
+    project_settings=None
 ):
     """Helper function to get template key for workfile template.
 
@@ -23,41 +28,39 @@ def get_workfile_template_key_from_context(
     context".
 
     Args:
-        asset_name(str): Name of asset document.
-        task_name(str): Task name for which is template key retrieved.
-            Must be available on asset document under `data.tasks`.
-        host_name(str): Name of host implementation for which is workfile
-            used.
-        project_name(str): Project name where asset and task is.
-        project_settings(Dict[str, Any]): Project settings for passed
+        project_name (str): Project name.
+        folder_path (str): Folder path.
+        task_name (str): Task name.
+        host_name (str): Host name.
+        project_settings (Dict[str, Any]): Project settings for passed
             'project_name'. Not required at all but makes function faster.
     """
 
-    asset_doc = get_asset_by_name(
-        project_name, asset_name, fields=["data.tasks"]
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path, fields={"id"}
     )
-    asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
-    task_info = asset_tasks.get(task_name) or {}
-    task_type = task_info.get("type")
+    task_entity = ayon_api.get_task_by_name(
+        project_name, folder_entity["id"], task_name
+    )
+    task_type = task_entity.get("type")
 
     return get_workfile_template_key(
-        task_type, host_name, project_name, project_settings
+        project_name, task_type, host_name, project_settings
     )
 
 
 def get_workfile_template_key(
-    task_type, host_name, project_name, project_settings=None
+    project_name, task_type, host_name, project_settings=None
 ):
     """Workfile template key which should be used to get workfile template.
 
     Function is using profiles from project settings to return right template
-    for passet task type and host name.
+    for passed task type and host name.
 
     Args:
-        task_type(str): Name of task type.
-        host_name(str): Name of host implementation (e.g. "maya", "nuke", ...)
-        project_name(str): Name of project in which context should look for
-            settings.
+        project_name(str): Project name.
+        task_type(str): Task type.
+        host_name(str): Host name (e.g. "maya", "nuke", ...)
         project_settings(Dict[str, Any]): Prepared project settings for
             project name. Optional to make processing faster.
     """
@@ -126,13 +129,15 @@ def get_workdir_with_workdir_data(
 
     if not template_key:
         template_key = get_workfile_template_key(
+            workdir_data["project"]["name"],
             workdir_data["task"]["type"],
             workdir_data["app"],
-            workdir_data["project"]["name"],
             project_settings
         )
 
-    template_obj = anatomy.templates_obj[template_key]["folder"]
+    template_obj = anatomy.get_template_item(
+        "work", template_key, "directory"
+    )
     # Output is TemplateResult object which contain useful data
     output = template_obj.format_strict(workdir_data)
     if output:
@@ -141,9 +146,9 @@ def get_workdir_with_workdir_data(
 
 
 def get_workdir(
-    project_doc,
-    asset_doc,
-    task_name,
+    project_entity,
+    folder_entity,
+    task_entity,
     host_name,
     anatomy=None,
     template_key=None,
@@ -152,14 +157,14 @@ def get_workdir(
     """Fill workdir path from entered data and project's anatomy.
 
     Args:
-        project_doc (Dict[str, Any]): Mongo document of project from MongoDB.
-        asset_doc (Dict[str, Any]): Mongo document of asset from MongoDB.
-        task_name (str): Task name for which are workdir data preapred.
+        project_entity (Dict[str, Any]): Project entity.
+        folder_entity (Dict[str, Any]): Folder entity.
+        task_entity (dict[str, Any]): Task entity.
         host_name (str): Host which is used to workdir. This is required
             because workdir template may contain `{app}` key. In `Session`
             is stored under `AYON_HOST_NAME` key.
         anatomy (Anatomy): Optional argument. Anatomy object is created using
-            project name from `project_doc`. It is preferred to pass this
+            project name from `project_entity`. It is preferred to pass this
             argument as initialization of a new Anatomy object may be time
             consuming.
         template_key (str): Key of work templates in anatomy templates. Default
@@ -173,10 +178,15 @@ def get_workdir(
     """
 
     if not anatomy:
-        anatomy = Anatomy(project_doc["name"])
+        anatomy = Anatomy(
+            project_entity["name"], project_entity=project_entity
+        )
 
     workdir_data = get_template_data(
-        project_doc, asset_doc, task_name, host_name
+        project_entity,
+        folder_entity,
+        task_entity,
+        host_name,
     )
     # Output is TemplateResult object which contain useful data
     return get_workdir_with_workdir_data(
@@ -301,11 +311,12 @@ def get_last_workfile(
     Returns file with version 1 if there is not workfile yet.
 
     Args:
-        workdir(str): Path to dir where workfiles are stored.
-        file_template(str): Template of file name.
-        fill_data(Dict[str, Any]): Data for filling template.
-        extensions(Iterable[str]): All allowed file extensions of workfile.
-        full_path(bool): Full path to file is returned if set to True.
+        workdir (str): Path to dir where workfiles are stored.
+        file_template (str): Template of file name.
+        fill_data (Dict[str, Any]): Data for filling template.
+        extensions (Iterable[str]): All allowed file extensions of workfile.
+        full_path (Optional[bool]): Full path to file is returned if
+            set to True.
 
     Returns:
         str: Last or first workfile as filename of full path to filename.
@@ -326,7 +337,7 @@ def get_last_workfile(
         data.pop("comment", None)
         if not data.get("ext"):
             data["ext"] = extensions[0]
-        data["ext"] = data["ext"].replace('.', '')
+        data["ext"] = data["ext"].lstrip(".")
         filename = StringTemplate.format_strict_template(file_template, data)
 
     if full_path:
@@ -336,9 +347,9 @@ def get_last_workfile(
 
 
 def get_custom_workfile_template(
-    project_doc,
-    asset_doc,
-    task_name,
+    project_entity,
+    folder_entity,
+    task_entity,
     host_name,
     anatomy=None,
     project_settings=None
@@ -356,13 +367,13 @@ def get_custom_workfile_template(
                                     points to a file which is copied as
                                     first workfile
 
-    It is expected that passed argument are already queried documents of
-    project and asset as parents of processing task name.
+    It is expected that passed argument are already queried entities of
+    project and folder as parents of processing task name.
 
     Args:
-        project_doc (Dict[str, Any]): Project document from MongoDB.
-        asset_doc (Dict[str, Any]): Asset document from MongoDB.
-        task_name (str): Name of task for which templates are filtered.
+        project_entity (Dict[str, Any]): Project entity.
+        folder_entity (Dict[str, Any]): Folder entity.
+        task_entity (Dict[str, Any]): Task entity.
         host_name (str): Name of host.
         anatomy (Anatomy): Optionally passed anatomy object for passed project
             name.
@@ -376,7 +387,7 @@ def get_custom_workfile_template(
 
     log = Logger.get_logger("CustomWorkfileResolve")
 
-    project_name = project_doc["name"]
+    project_name = project_entity["name"]
     if project_settings is None:
         project_settings = get_project_settings(project_name)
 
@@ -411,9 +422,9 @@ def get_custom_workfile_template(
     if anatomy is None:
         anatomy = Anatomy(project_name)
 
-    # get project, asset, task anatomy context data
+    # get project, folder, task anatomy context data
     anatomy_context_data = get_template_data(
-        project_doc, asset_doc, task_name, host_name
+        project_entity, folder_entity, task_entity, host_name
     )
     # add root dict
     anatomy_context_data["root"] = anatomy.roots
@@ -444,7 +455,7 @@ def get_custom_workfile_template(
 
 def get_custom_workfile_template_by_string_context(
     project_name,
-    asset_name,
+    folder_path,
     task_name,
     host_name,
     anatomy=None,
@@ -452,30 +463,38 @@ def get_custom_workfile_template_by_string_context(
 ):
     """Filter and fill workfile template profiles by passed context.
 
-    Passed context are string representations of project, asset and task.
-    Function will query documents of project and asset to be able use
+    Passed context are string representations of project, folder and task.
+    Function will query documents of project and folder to be able to use
     `get_custom_workfile_template` for rest of logic.
 
     Args:
-        project_name(str): Project name.
-        asset_name(str): Asset name.
-        task_name(str): Task name.
+        project_name (str): Project name.
+        folder_path (str): Folder path.
+        task_name (str): Task name.
         host_name (str): Name of host.
-        anatomy(Anatomy): Optionally prepared anatomy object for passed
+        anatomy (Anatomy): Optionally prepared anatomy object for passed
             project.
-        project_settings(Dict[str, Any]): Preloaded project settings.
+        project_settings (Dict[str, Any]): Preloaded project settings.
 
     Returns:
-        str: Path to template or None if none of profiles match current
-            context. (Existence of formatted path is not validated.)
-        None: If no profile is matching context.
+        Union[str, None]: Path to template or None if none of profiles match
+            current context. (Existence of formatted path is not validated.)
+
     """
 
-    project_doc = get_project(project_name)
-    asset_doc = get_asset_by_name(project_name, asset_name)
+    project_entity = ayon_api.get_project(project_name)
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    task_entity = ayon_api.get_task_by_name(
+        project_name, folder_entity["id"], task_name
+    )
 
     return get_custom_workfile_template(
-        project_doc, asset_doc, task_name, host_name, anatomy, project_settings
+        project_entity,
+        folder_entity,
+        task_entity,
+        host_name,
+        anatomy,
+        project_settings
     )
 
 

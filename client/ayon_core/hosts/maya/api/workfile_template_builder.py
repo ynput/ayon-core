@@ -4,7 +4,7 @@ from maya import cmds
 
 from ayon_core.pipeline import (
     registered_host,
-    get_current_asset_name,
+    get_current_folder_path,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
 )
@@ -74,7 +74,7 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
             return True
 
         # update imported sets information
-        asset_name = get_current_asset_name()
+        folder_path = get_current_folder_path()
         for node in imported_sets:
             if not cmds.attributeQuery("id", node=node, exists=True):
                 continue
@@ -82,11 +82,11 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
                 AYON_INSTANCE_ID, AVALON_INSTANCE_ID
             }:
                 continue
-            if not cmds.attributeQuery("asset", node=node, exists=True):
+            if not cmds.attributeQuery("folderPath", node=node, exists=True):
                 continue
 
             cmds.setAttr(
-                "{}.asset".format(node), asset_name, type="string")
+                "{}.folderPath".format(node), folder_path, type="string")
 
         return True
 
@@ -286,7 +286,7 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
         if not container:
             return
 
-        roots = cmds.sets(container, q=True)
+        roots = cmds.sets(container, q=True) or []
         ref_node = None
         try:
             ref_node = get_reference_node(roots)

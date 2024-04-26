@@ -20,8 +20,8 @@ from ayon_core.pipeline import get_representation_path
 class XgenLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Load Xgen as reference"""
 
-    families = ["xgen"]
-    representations = ["ma", "mb"]
+    product_types = {"xgen"}
+    representations = {"ma", "mb"}
 
     label = "Reference Xgen"
     icon = "code-fork"
@@ -113,7 +113,7 @@ class XgenLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
         )
         cmds.setAttr("{}.xgExportAsDelta".format(xgen_palette), True)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Workflow for updating Xgen.
 
         - Export changes to delta file.
@@ -147,7 +147,8 @@ class XgenLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
 
         self.set_palette_attributes(xgen_palette, xgen_file, xgd_file)
 
-        maya_file = get_representation_path(representation)
+        repre_entity = context["representation"]
+        maya_file = get_representation_path(repre_entity)
         _, extension = os.path.splitext(maya_file)
         new_xgen_file = maya_file.replace(extension, ".xgen")
         data_path = ""
@@ -173,7 +174,7 @@ class XgenLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
             "{}.xgExportAsDelta".format(xgen_palette): False
         }
         with attribute_values(attribute_data):
-            super().update(container, representation)
+            super().update(container, context)
 
             xgenm.applyDelta(xgen_palette.replace("|", ""), xgd_file)
 
