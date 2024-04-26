@@ -161,6 +161,7 @@ class Commands:
             ),
             DeprecationWarning
         )
+
         addons_manager = AddonsManager()
         applications_addon = addons_manager.get_enabled_addon("applications")
         if applications_addon is None:

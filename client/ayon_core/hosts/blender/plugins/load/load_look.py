@@ -24,7 +24,7 @@ class BlendLookLoader(plugin.AssetLoader):
     """
 
     product_types = {"look"}
-    representations = ["json"]
+    representations = {"json"}
 
     label = "Load Look"
     icon = "code-fork"

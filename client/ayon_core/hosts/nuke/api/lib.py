@@ -2627,11 +2627,11 @@ class NukeDirmap(HostDirmap):
 
 
 class DirmapCache:
-    """Caching class to get settings and sync_module easily and only once."""
+    """Caching class to get settings and sitesync easily and only once."""
     _project_name = None
     _project_settings = None
-    _sync_module_discovered = False
-    _sync_module = None
+    _sitesync_addon_discovered = False
+    _sitesync_addon = None
     _mapping = None
 
     @classmethod
@@ -2647,11 +2647,11 @@ class DirmapCache:
         return cls._project_settings
 
     @classmethod
-    def sync_module(cls):
-        if not cls._sync_module_discovered:
-            cls._sync_module_discovered = True
-            cls._sync_module = AddonsManager().get("sync_server")
-        return cls._sync_module
+    def sitesync_addon(cls):
+        if not cls._sitesync_addon_discovered:
+            cls._sitesync_addon_discovered = True
+            cls._sitesync_addon = AddonsManager().get("sitesync")
+        return cls._sitesync_addon
 
     @classmethod
     def mapping(cls):
@@ -2673,7 +2673,7 @@ def dirmap_file_name_filter(file_name):
         "nuke",
         DirmapCache.project_name(),
         DirmapCache.project_settings(),
-        DirmapCache.sync_module(),
+        DirmapCache.sitesync_addon(),
     )
     if not DirmapCache.mapping():
         DirmapCache.set_mapping(dirmap_processor.get_mappings())

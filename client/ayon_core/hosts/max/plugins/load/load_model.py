@@ -16,7 +16,7 @@ class ModelAbcLoader(load.LoaderPlugin):
 
     product_types = {"model"}
     label = "Load Model with Alembic"
-    representations = ["abc"]
+    representations = {"abc"}
     order = -10
     icon = "code-fork"
     color = "orange"
