@@ -4,15 +4,19 @@ from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.pipeline.publish import RepairAction
+from ayon_core.pipeline.publish import (
+    RepairAction,
+    get_plugin_settings,
+    apply_plugin_settings_automatically
+)
 from ayon_core.hosts.houdini.api.action import SelectROPAction
 
 import os
 import hou
 
 
-class SetDefaultViewSpaceAction(RepairAction):
-    label = "Set default view colorspace"
+class ResetViewSpaceAction(RepairAction):
+    label = "Reset OCIO colorspace parm"
     icon = "mdi.monitor"
 
 
@@ -27,9 +31,25 @@ class ValidateReviewColorspace(pyblish.api.InstancePlugin,
     families = ["review"]
     hosts = ["houdini"]
     label = "Validate Review Colorspace"
-    actions = [SetDefaultViewSpaceAction, SelectROPAction]
+    actions = [ResetViewSpaceAction, SelectROPAction]
 
     optional = True
+    review_color_space = ""
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Preserve automatic settings applying logic
+        settings = get_plugin_settings(plugin=cls,
+                                       project_settings=project_settings,
+                                       log=cls.log,
+                                       category="houdini")
+        apply_plugin_settings_automatically(cls, settings, logger=cls.log)
+
+        # Add review color settings
+        color_settings = project_settings["houdini"]["imageio"]["workfile"]
+        if color_settings["enabled"]:
+            cls.review_color_space = color_settings.get("review_color_space")
+
 
     def process(self, instance):
 
@@ -52,39 +72,54 @@ class ValidateReviewColorspace(pyblish.api.InstancePlugin,
                 " 'OpenColorIO'".format(rop_node.path())
             )
 
-        if rop_node.evalParm("ociocolorspace") not in \
-                hou.Color.ocio_spaces():
-
+        current_color_space = rop_node.evalParm("ociocolorspace")
+        if current_color_space not in hou.Color.ocio_spaces():
             raise PublishValidationError(
                 "Invalid value: Colorspace name doesn't exist.\n"
                 "Check 'OCIO Colorspace' parameter on '{}' ROP"
                 .format(rop_node.path())
             )
 
-    @classmethod
-    def repair(cls, instance):
-        """Set Default View Space Action.
+        # if houdini/imageio/workfile is enabled and
+        #  Review colorspace setting is empty then this check should
+        #  actually check if the current_color_space setting equals
+        #  the default colorspace value.
+        # However, it will make the black cmd screen show up more often
+        #   which is very annoying.
+        if self.review_color_space and \
+                self.review_color_space != current_color_space:
 
-        It is a helper action more than a repair action,
-        used to set colorspace on opengl node to the default view.
-        """
-        from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
-
-        rop_node = hou.node(instance.data["instance_node"])
-
-        if rop_node.evalParm("colorcorrect") != 2:
-            rop_node.setParms({"colorcorrect": 2})
-            cls.log.debug(
-                "'Color Correction' parm on '{}' has been set to"
-                " 'OpenColorIO'".format(rop_node.path())
+            raise PublishValidationError(
+                "Invalid value: Colorspace name doesn't match"
+                "the Colorspace specified in settings."
             )
 
-        # Get default view colorspace name
-        default_view_space = get_default_display_view_colorspace()
+    @classmethod
+    def repair(cls, instance):
+        """Reset view colorspace.
 
-        rop_node.setParms({"ociocolorspace": default_view_space})
-        cls.log.info(
-            "'OCIO Colorspace' parm on '{}' has been set to "
-            "the default view color space '{}'"
-            .format(rop_node, default_view_space)
-        )
+        It is used to set colorspace on opengl node.
+
+        It uses the colorspace value specified in the Houdini addon settings.
+        If the value in the Houdini addon settings is empty,
+            it will fall to the default colorspace.
+
+        Note:
+            This repair action assumes that OCIO is enabled.
+            As if OCIO is disabled the whole validation is skipped
+            and this repair action won't show up.
+        """
+        from ayon_core.hosts.houdini.api.lib import set_review_color_space
+
+        # Fall to the default value if cls.review_color_space is empty.
+        if not cls.review_color_space:
+            # cls.review_color_space is an empty string
+            #  when the imageio/workfile setting is disabled or
+            #  when the Review colorspace setting is empty.
+            from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
+            cls.review_color_space = get_default_display_view_colorspace()
+
+        rop_node = hou.node(instance.data["instance_node"])
+        set_review_color_space(rop_node,
+                               cls.review_color_space,
+                               cls.log)
