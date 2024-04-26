@@ -80,7 +80,11 @@ class CreateHDA(plugin.HoudiniCreator):
         else:
             hda_node = to_hda
 
-        hda_node.setName(node_name)
+        # If user tries to create the same HDA instance more than
+        # once, then all of them will have the same product name and
+        # point to the same hda_file_name. But, their node names will
+        # be incremented.
+        hda_node.setName(node_name, unique_name=True)
         self.customize_node_look(hda_node)
         return hda_node
 
