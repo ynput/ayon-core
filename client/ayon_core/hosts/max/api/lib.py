@@ -539,11 +539,10 @@ def update_modifier_node_names(event, node):
     if not containers:
         return
     for container in containers:
-        ayon_data = container.modifiers[0]
+        ayon_data = container.modifiers[0].openPypeData
         updated_node_names = [str(node.node) for node
-                              in ayon_data.openPypeData.all_handles]
-        rt.setProperty(
-            ayon_data.openPypeData, "sel_list", updated_node_names)
+                              in ayon_data.all_handles]
+        rt.setProperty(ayon_data, "sel_list", updated_node_names)
 
 
 @contextlib.contextmanager
