@@ -37,16 +37,24 @@ class CreateHDA(plugin.HoudiniCreator):
         self, folder_path, node_name, parent, node_type="geometry"
     ):
 
-        parent_node = hou.node("/obj")
         if self.selected_nodes:
             # if we have `use selection` enabled, and we have some
             # selected nodes ...
+            parent_node = self.selected_nodes[0].parent()
             subnet = parent_node.collapseIntoSubnet(
                 self.selected_nodes,
                 subnet_name="{}_subnet".format(node_name))
             subnet.moveToGoodPosition()
             to_hda = subnet
         else:
+            # Use Obj as the default path
+            parent_node = hou.node("/obj")
+            # Find and return the NetworkEditor pane tab with the minimum index
+            pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+            if isinstance(pane, hou.NetworkEditor):
+                # Use the NetworkEditor pane path as the parent path.
+                parent_node = pane.pwd()
+
             to_hda = parent_node.createNode(
                 "subnet", node_name="{}_subnet".format(node_name))
         if not to_hda.type().definition():
