@@ -103,6 +103,17 @@ class ImportLoaderModel(BaseSettingsModel):
     group_name: str = SettingsField(title="Group name")
 
 
+class YetiRigLoaderModel(LoaderEnabledModel):
+    create_cache_instance_on_load: bool = SettingsField(
+        title="Create Yeti Cache instance on load",
+        description=(
+            "When enabled, upon loading a Yeti Rig product a new Yeti cache "
+            "instance is automatically created as preparation to publishing "
+            "the output directly."
+        )
+    )
+
+
 class LoadersModel(BaseSettingsModel):
     colors: ColorsSetting = SettingsField(
         default_factory=ColorsSetting,
@@ -195,8 +206,8 @@ class LoadersModel(BaseSettingsModel):
         default_factory=LoaderEnabledModel,
         title="Yeti Cache Loader"
     )
-    YetiRigLoader: LoaderEnabledModel = SettingsField(
-        default_factory=LoaderEnabledModel,
+    YetiRigLoader: YetiRigLoaderModel = SettingsField(
+        default_factory=YetiRigLoaderModel,
         title="Yeti Rig Loader"
     )
 
@@ -266,5 +277,8 @@ DEFAULT_LOADERS_SETTING = {
     "VRaySceneLoader": {"enabled": True},
     "XgenLoader": {"enabled": True},
     "YetiCacheLoader": {"enabled": True},
-    "YetiRigLoader": {"enabled": True},
+    "YetiRigLoader": {
+        "enabled": True,
+        "create_cache_instance_on_load": True
+    },
 }
