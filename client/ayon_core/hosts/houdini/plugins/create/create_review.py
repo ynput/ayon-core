@@ -18,8 +18,8 @@ class CreateReview(plugin.HoudiniCreator):
 
     def apply_settings(self, project_settings):
         super(CreateReview, self).apply_settings(project_settings)
-        color_settings = project_settings["houdini"]["imageio"]["workfile"]
-        if color_settings["enabled"]:
+        color_settings = project_settings["houdini"]["imageio"].get("workfile", {})
+        if color_settings and color_settings["enabled"]:
             self.review_color_space = color_settings.get("review_color_space")
 
     def create(self, product_name, instance_data, pre_create_data):
