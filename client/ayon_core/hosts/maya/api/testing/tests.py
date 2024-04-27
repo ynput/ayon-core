@@ -232,6 +232,10 @@ def test_load():
     )
 
     error_message = ""
+
+    if not placeholders:
+        error_message = "No placeholders found to test loading."
+
     for placeholder in placeholders:
         for err in placeholder.get_errors():
             msg = "Failed to process placeholder \"{}\" with plugin \"{}\""

@@ -668,12 +668,12 @@ class AbstractTemplateBuilder(object):
 
         if not self.placeholder_plugins:
             self.log.warning("There are no placeholder plugins available.")
-            return
+            return False, []
 
         placeholders = self.get_placeholders()
         if not placeholders:
             self.log.warning("No placeholders were found.")
-            return
+            return False, []
 
         # Avoid infinite loop
         # - 1000 iterations of placeholders processing must be enough
