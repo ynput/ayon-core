@@ -100,8 +100,8 @@ class CreateAnimation(plugin.MayaHiddenCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        super(CreateAnimation, self).get_instance_attr_defs()
-        defs = _get_animation_attr_defs(self)
+        defs = super(CreateAnimation, self).get_instance_attr_defs()
+        defs += _get_animation_attr_defs(self)
         return defs
 
 
@@ -124,7 +124,9 @@ class CreatePointCache(plugin.MayaCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        return _get_animation_attr_defs(self)
+        defs = super(CreatePointCache, self).get_instance_attr_defs()
+        defs += _get_animation_attr_defs(self)
+        return defs
 
     def create(self, product_name, instance_data, pre_create_data):
         instance = super(CreatePointCache, self).create(
