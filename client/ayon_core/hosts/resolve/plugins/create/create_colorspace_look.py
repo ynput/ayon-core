@@ -4,13 +4,16 @@
 This creator is used to publish colorspace look files
 based on pickled fusion tool group settings.
 """
+
 import time
 from pathlib import Path
 import pickle
 from ayon_core.hosts.resolve.api import plugin
 
 
-TOOLGROUP_TEMPLATE = Path(__file__).parent / "resources" / "ociolook_template.toolgroup"
+TOOLGROUP_TEMPLATE = (
+    Path(__file__).parent / "resources" / "ociolook_template.toolgroup"
+)
 
 
 class CreateColorspaceLook(plugin.Creator):
