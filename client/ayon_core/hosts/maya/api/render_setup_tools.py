@@ -19,7 +19,7 @@ from .lib import pairwise
 
 
 @contextlib.contextmanager
-def _allow_export_from_render_setup_layer():
+def allow_export_from_render_setup_layer():
     """Context manager to override Maya settings to allow RS layer export"""
     try:
 
@@ -102,7 +102,7 @@ def export_in_rs_layer(path, nodes, export=None):
         cmds.disconnectAttr(src, dest)
 
     # Export Selected
-    with _allow_export_from_render_setup_layer():
+    with allow_export_from_render_setup_layer():
         cmds.select(nodes, noExpand=True)
         if export:
             export()
