@@ -4,7 +4,7 @@ from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_core.pipeline.publish import RepairAction, PublishValidationError
 
 
-class ValidateAlembicOptionsDefaults(
+class ValidateAlembicDefaultsPointcache(
     pyblish.api.InstancePlugin, OptionalPyblishPluginMixin
 ):
     """Validate the attributes on the instance are defaults.
@@ -13,17 +13,13 @@ class ValidateAlembicOptionsDefaults(
     """
 
     order = pyblish.api.ValidatorOrder
-    families = ["pointcache", "animation"]
+    families = ["pointcache"]
     hosts = ["maya"]
     label = "Validate Alembic Options Defaults"
     actions = [RepairAction]
     optional = True
 
-    @classmethod
-    def _get_plugin_name(cls, publish_attributes):
-        for key in ["ExtractAnimation", "ExtractAlembic"]:
-            if key in publish_attributes:
-                return key
+    plugin_name = "ExtractAlembic"
 
     @classmethod
     def _get_settings(cls, context):
@@ -34,7 +30,7 @@ class ValidateAlembicOptionsDefaults(
     @classmethod
     def _get_publish_attributes(cls, instance):
         attributes = instance.data["publish_attributes"][
-            cls._get_plugin_name(
+            cls.plugin_name(
                 instance.data["publish_attributes"]
             )
         ]
@@ -74,13 +70,13 @@ class ValidateAlembicOptionsDefaults(
     def repair(cls, instance):
         # Find create instance twin.
         create_context = instance.context.data["create_context"]
-        create_instance =  create_context.get_instance_by_id(
-            instance.data["instance_id"])
+        create_instance = create_context.get_instance_by_id(
+            instance.data["instance_id"]
         )
 
         # Set the settings values on the create context then save to workfile.
         publish_attributes = instance.data["publish_attributes"]
-        plugin_name = cls._get_plugin_name(publish_attributes)
+        plugin_name = cls.plugin_name(publish_attributes)
         attributes = cls._get_publish_attributes(instance)
         settings = cls._get_settings(instance.context)
         create_publish_attributes = create_instance.data["publish_attributes"]
@@ -88,3 +84,15 @@ class ValidateAlembicOptionsDefaults(
             create_publish_attributes[plugin_name][key] = settings[key]
 
         create_context.save_changes()
+
+
+class ValidateAlembicDefaultsAnimation(
+    ValidateAlembicDefaultsPointcache
+):
+    """Validate the attributes on the instance are defaults.
+
+    The defaults are defined in the project settings.
+    """
+    label = "Validate Alembic Options   Defaults"
+    families = ["animation"]
+    plugin_name = "ExtractAnimation"
