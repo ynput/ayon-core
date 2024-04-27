@@ -80,21 +80,28 @@ def extract_alembic(
     the extracted content to solely what was Collected into the instance.
 
     Arguments:
+        file (str): The filepath to write the alembic file to.
 
-        startFrame (float): Start frame of output. Ignored if `frameRange`
-            provided.
+        attr (list of str, optional): A specific geometric attribute to write
+            out. Defaults to [].
+
+        attrPrefix (list of str, optional): Prefix filter for determining which
+            geometric attributes to write out. Defaults to ["ABC_"].
+
+        dataFormat (str): The data format to use for the cache,
+                          defaults to "ogawa"
 
         endFrame (float): End frame of output. Ignored if `frameRange`
             provided.
-
-        frameRange (tuple or str): Two-tuple with start and end frame or a
-            string formatted as: "startFrame endFrame". This argument
-            overrides `startFrame` and `endFrame` arguments.
 
         eulerFilter (bool): When on, X, Y, and Z rotation data is filtered with
             an Euler filter. Euler filtering helps resolve irregularities in
             rotations especially if X, Y, and Z rotations exceed 360 degrees.
             Defaults to True.
+
+        frameRange (tuple or str): Two-tuple with start and end frame or a
+            string formatted as: "startFrame endFrame". This argument
+            overrides `startFrame` and `endFrame` arguments.
 
         noNormals (bool): When on, normal data from the original polygon
             objects is not included in the exported Alembic cache file.
@@ -102,24 +109,41 @@ def extract_alembic(
         preRoll (bool): This frame range will not be sampled.
             Defaults to False.
 
+        preRollStartFrame (float): The frame to start scene
+            evaluation at.  This is used to set the starting frame for time
+            dependent translations and can be used to evaluate run-up that
+            isn't actually translated. Defaults to 0.
+
         renderableOnly (bool): When on, any non-renderable nodes or hierarchy,
             such as hidden objects, are not included in the Alembic file.
             Defaults to False.
+
+        root (list of str): Maya dag path which will be parented to
+            the root of the Alembic file. Defaults to [], which means the
+            entire scene will be written out.
 
         selection (bool): Write out all all selected nodes from the
             active selection list that are descendents of the roots specified
             with -root. Defaults to False.
 
+        startFrame (float): Start frame of output. Ignored if `frameRange`
+            provided.
+
+        step (float): The time interval (expressed in frames) at
+            which the frame range is sampled. Additional samples around each
+            frame can be specified with -frs. Defaults to 1.0.
+
+        stripNamespaces (bool): When on, any namespaces associated with the
+            exported objects are removed from the Alembic file. For example, an
+            object with the namespace taco:foo:bar appears as bar in the
+            Alembic file.
+
         uvWrite (bool): When on, UV data from polygon meshes and subdivision
             objects are written to the Alembic file. Only the current UV map is
             included.
 
-        writeColorSets (bool): Write all color sets on MFnMeshes as
-            color 3 or color 4 indexed geometry parameters with face varying
-            scope. Defaults to False.
-
-        writeFaceSets (bool): Write all Face sets on MFnMeshes.
-            Defaults to False.
+        verbose (bool): When on, outputs frame number information to the
+            Script Editor or output window during extraction.
 
         wholeFrameGeo (bool): Data for geometry will only be written
             out on whole frames. Defaults to False.
@@ -128,13 +152,9 @@ def extract_alembic(
             stored as world space. By default, these nodes are stored as local
             space. Defaults to False.
 
-        writeVisibility (bool): Visibility state will be stored in
-            the Alembic file.  Otherwise everything written out is treated as
-            visible. Defaults to False.
-
-        writeUVSets (bool): Write all uv sets on MFnMeshes as vector
-            2 indexed geometry parameters with face varying scope. Defaults to
-            False.
+        writeColorSets (bool): Write all color sets on MFnMeshes as
+            color 3 or color 4 indexed geometry parameters with face varying
+            scope. Defaults to False.
 
         writeCreases (bool): If the mesh has crease edges or crease
             vertices, the mesh (OPolyMesh) would now be written out as an OSubD
@@ -143,35 +163,16 @@ def extract_alembic(
             Boolean attribute SubDivisionMesh has been added to mesh node and
             its value is true. Defaults to False.
 
-        dataFormat (str): The data format to use for the cache,
-                          defaults to "ogawa"
+        writeFaceSets (bool): Write all Face sets on MFnMeshes.
+            Defaults to False.
 
-        step (float): The time interval (expressed in frames) at
-            which the frame range is sampled. Additional samples around each
-            frame can be specified with -frs. Defaults to 1.0.
+        writeUVSets (bool): Write all uv sets on MFnMeshes as vector
+            2 indexed geometry parameters with face varying scope. Defaults to
+            False.
 
-        attr (list of str, optional): A specific geometric attribute to write
-            out. Defaults to [].
-
-        attrPrefix (list of str, optional): Prefix filter for determining which
-            geometric attributes to write out. Defaults to ["ABC_"].
-
-        root (list of str): Maya dag path which will be parented to
-            the root of the Alembic file. Defaults to [], which means the
-            entire scene will be written out.
-
-        stripNamespaces (bool): When on, any namespaces associated with the
-            exported objects are removed from the Alembic file. For example, an
-            object with the namespace taco:foo:bar appears as bar in the
-            Alembic file.
-
-        verbose (bool): When on, outputs frame number information to the
-            Script Editor or output window during extraction.
-
-        preRollStartFrame (float): The frame to start scene
-            evaluation at.  This is used to set the starting frame for time
-            dependent translations and can be used to evaluate run-up that
-            isn't actually translated. Defaults to 0.
+        writeVisibility (bool): Visibility state will be stored in
+            the Alembic file.  Otherwise everything written out is treated as
+            visible. Defaults to False.
     """
 
     # Ensure alembic exporter is loaded
