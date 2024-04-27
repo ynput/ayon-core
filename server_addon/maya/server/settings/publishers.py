@@ -889,9 +889,13 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Alembic Visible Node",
     )
-    ValidateAlembicOptionsDefaults: BasicValidateModel = SettingsField(
+    ValidateAlembicDefaultsPointcache: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Alembic Options Defaults"
+        title="Validate Alembic Defaults Pointcache"
+    )
+    ValidateAlembicDefaultsAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Alembic Defaults Animation"
     )
     ExtractProxyAlembic: ExtractProxyAlembicModel = SettingsField(
         default_factory=ExtractProxyAlembicModel,
@@ -1545,7 +1549,12 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "validate_shapes": True
     },
-    "ValidateAlembicOptionsDefaults": {
+    "ValidateAlembicDefaultsPointcache": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ValidateAlembicDefaultsAnimation": {
         "enabled": True,
         "optional": True,
         "active": True
