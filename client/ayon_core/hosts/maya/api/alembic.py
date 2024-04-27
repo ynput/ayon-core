@@ -14,7 +14,6 @@ ALEMBIC_ARGS = {
     "attrPrefix": (list, tuple),
     "autoSubd": bool,
     "dataFormat": str,
-    "dontSkipUnwrittenFrames": bool,
     "endFrame": float,
     "eulerFilter": bool,
     "frameRange": str,  # "start end"; overrides startFrame & endFrame
