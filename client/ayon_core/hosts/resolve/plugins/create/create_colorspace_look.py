@@ -56,7 +56,9 @@ class CreateColorspaceLook(plugin.Creator):
                 self.log.debug(f"{self.ociolook_tool_settings = }")
                 pasted = comp.Paste(self.ociolook_tool_settings)
                 if not pasted:
-                    self.log.err(f"Failed to paste Group {self.ociolook_tool_settings}")
+                    self.log.error(
+                        f"Failed to paste Group {self.ociolook_tool_settings}"
+                    )
 
         dur = pstart - time.time()
         self.log.warning(f"Duration: {dur:.2f}s")
