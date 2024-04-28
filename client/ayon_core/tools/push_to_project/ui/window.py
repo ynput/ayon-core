@@ -14,12 +14,16 @@ from ayon_core.tools.push_to_project.control import (
 )
 
 
-class PushToContextSelectWindow(QtWidgets.QWidget):
-    def __init__(self, controller=None):
+class PushToContextSelectWindow(QtWidgets.QDialog):
+    def __init__(
+        self, controller=None, library_filter=True, context_only=False
+    ):
         super(PushToContextSelectWindow, self).__init__()
         if controller is None:
             controller = PushToContextController()
         self._controller = controller
+        self.context_only = context_only
+        self.context = None
 
         self.setWindowTitle("Push to project (select context)")
         self.setWindowIcon(QtGui.QIcon(get_app_icon_path()))
@@ -45,7 +49,9 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         projects_combobox = ProjectsCombobox(controller, context_widget)
         projects_combobox.set_select_item_visible(True)
-        projects_combobox.set_standard_filter_enabled(True)
+        projects_combobox.set_standard_filter_enabled(False)
+        if library_filter:
+            projects_combobox.set_standard_filter_enabled(True)
 
         context_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Vertical, context_widget
@@ -89,13 +95,13 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         # --- Buttons widget ---
         btns_widget = QtWidgets.QWidget(self)
         cancel_btn = QtWidgets.QPushButton("Cancel", btns_widget)
-        publish_btn = QtWidgets.QPushButton("Publish", btns_widget)
+        push_btn = QtWidgets.QPushButton("Push", btns_widget)
 
         btns_layout = QtWidgets.QHBoxLayout(btns_widget)
         btns_layout.setContentsMargins(0, 0, 0, 0)
         btns_layout.addStretch(1)
         btns_layout.addWidget(cancel_btn, 0)
-        btns_layout.addWidget(publish_btn, 0)
+        btns_layout.addWidget(push_btn, 0)
 
         sep_1 = SeparatorWidget(parent=main_context_widget)
         sep_2 = SeparatorWidget(parent=main_context_widget)
@@ -160,7 +166,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         variant_input.textChanged.connect(self._on_variant_change)
         comment_input.textChanged.connect(self._on_comment_change)
 
-        publish_btn.clicked.connect(self._on_select_click)
+        push_btn.clicked.connect(self._on_select_click)
         cancel_btn.clicked.connect(self._on_close_click)
         overlay_close_btn.clicked.connect(self._on_close_click)
         overlay_try_btn.clicked.connect(self._on_try_again_click)
@@ -206,7 +212,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._folder_name_input = folder_name_input
         self._comment_input = comment_input
 
-        self._publish_btn = publish_btn
+        self._push_btn = push_btn
 
         self._overlay_widget = overlay_widget
         self._overlay_close_btn = overlay_close_btn
@@ -234,7 +240,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._variant_is_valid = None
         self._folder_is_valid = None
 
-        publish_btn.setEnabled(False)
+        push_btn.setEnabled(False)
         overlay_close_btn.setVisible(False)
         overlay_try_btn.setVisible(False)
 
@@ -372,13 +378,30 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         set_style_property(self._variant_input, "state", state)
 
     def _on_submission_change(self, event):
-        self._publish_btn.setEnabled(event["enabled"])
+        self._push_btn.setEnabled(event["enabled"])
 
     def _on_close_click(self):
         self.close()
 
     def _on_select_click(self):
-        self._process_item_id = self._controller.submit(wait=False)
+        result = self._controller.submit(
+            wait=True, context_only=self.context_only
+        )
+
+        if self.context_only:
+            user_values = self._controller.get_user_values()
+            selection_model = self._controller._selection_model
+            self.context = {
+                "project_name": selection_model._project_name,
+                "folder_id": selection_model._folder_id,
+                "task_id": selection_model._task_id,
+                "variant": user_values["variant"],
+                "comment": user_values["comment"],
+                "folder_name": user_values["new_folder_name"]
+            }
+            self.close()
+
+        self._process_item = result
 
     def _on_try_again_click(self):
         self._process_item_id = None
