@@ -331,7 +331,8 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
             if scene_parent:
                 cmds.parent(node, scene_parent)
             else:
-                cmds.parent(node, world=True)
+                if cmds.listRelatives(node, parent=True):
+                    cmds.parent(node, world=True)
 
         holding_sets = cmds.listSets(object=placeholder.scene_identifier)
         if not holding_sets:
