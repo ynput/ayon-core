@@ -33,7 +33,7 @@ class CollectFilesForCleaningUpModel(BaseSettingsModel):
         default_factory=list,
         title="Product Types",
         description="Find a list of all stock product types in "
-                    "[Houdini admin docs](https://ayon.ynput.io/docs/addon_houdini_admin)."
+                    "[Houdini admin docs](https://ayon.ynput.io/docs/addon_houdini_admin#stock-product-types)."  # noqa: E501
     )
 
 
