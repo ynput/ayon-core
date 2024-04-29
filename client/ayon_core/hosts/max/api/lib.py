@@ -530,11 +530,15 @@ def update_modifier_node_names(event, node):
 
     """
     containers = [
-        obj for obj in rt.Objects
-        if rt.ClassOf(obj) == rt.Container and
-            rt.getUserProp(obj, "id") == "pyblish.avalon.instance"
-                and rt.getUserProp(
-                    obj, "productType") not in {"workfile", "tyflow"}
+        obj
+        for obj in rt.Objects
+        if (
+            rt.ClassOf(obj) == rt.Container
+            and rt.getUserProp(obj, "id") == "pyblish.avalon.instance"
+            and rt.getUserProp(obj, "productType") not in {
+                "workfile", "tyflow"
+            }
+        )
     ]
     if not containers:
         return
