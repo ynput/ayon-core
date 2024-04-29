@@ -7,7 +7,10 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     PublishValidationError
 )
-from ayon_core.hosts.max.api.lib import reset_scene_resolution
+from ayon_core.hosts.max.api.lib import (
+    reset_scene_resolution,
+    imprint
+)
 
 
 class ValidateResolutionSetting(pyblish.api.InstancePlugin,
@@ -25,8 +28,10 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
         if not self.is_active(instance.data):
             return
         width, height = self.get_folder_resolution(instance)
-        current_width = rt.renderWidth
-        current_height = rt.renderHeight
+        current_width, current_height = (
+            self.get_current_resolution(instance)
+        )
+
         if current_width != width and current_height != height:
             raise PublishValidationError("Resolution Setting "
                                          "not matching resolution "
@@ -41,12 +46,16 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
                                          "not matching resolution set "
                                          "on asset or shot.")
 
-    def get_folder_resolution(self, instance):
-        folder_entity = instance.data["folderEntity"]
-        if folder_entity:
-            folder_attributes = folder_entity["attrib"]
-            width = folder_attributes["resolutionWidth"]
-            height = folder_attributes["resolutionHeight"]
+    def get_current_resolution(self, instance):
+        return rt.renderWidth, rt.renderHeight
+
+    @classmethod
+    def get_folder_resolution(cls, instance):
+        task_entity = instance.data.get("taskEntity")
+        if task_entity:
+            task_attributes = task_entity["attrib"]
+            width = task_attributes["resolutionWidth"]
+            height = task_attributes["resolutionHeight"]
             return int(width), int(height)
 
         # Defaults if not found in folder entity
@@ -55,3 +64,29 @@ class ValidateResolutionSetting(pyblish.api.InstancePlugin,
     @classmethod
     def repair(cls, instance):
         reset_scene_resolution()
+
+
+class ValidateReviewResolutionSetting(ValidateResolutionSetting):
+    families = ["review"]
+    optional = True
+    actions = [RepairAction]
+
+    def get_current_resolution(self, instance):
+        current_width = instance.data["review_width"]
+        current_height = instance.data["review_height"]
+        return current_width, current_height
+
+    @classmethod
+    def repair(cls, instance):
+        context_width, context_height = (
+            cls.get_folder_resolution(instance)
+        )
+        creator_attrs = instance.data["creator_attributes"]
+        creator_attrs["review_width"] = context_width
+        creator_attrs["review_height"] = context_height
+        creator_attrs_data = {
+            "creator_attributes": creator_attrs
+        }
+        # update the width and height of review
+        # data in creator_attributes
+        imprint(instance.data["instance_node"], creator_attrs_data)
