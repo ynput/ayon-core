@@ -22,7 +22,7 @@ class CreateReview(plugin.HoudiniCreator):
         color_settings = project_settings["houdini"]["imageio"].get(
             "workfile", {}
         )
-        if not color_settings.get("enabled"):
+        if color_settings.get("enabled"):
             self.review_color_space = color_settings.get("review_color_space")
 
     def create(self, product_name, instance_data, pre_create_data):

@@ -50,7 +50,7 @@ class ValidateReviewColorspace(pyblish.api.InstancePlugin,
             "workfile", {}
         )
         # Add review color settings
-        if not color_settings.get("enabled"):
+        if color_settings.get("enabled"):
             cls.review_color_space = color_settings.get("review_color_space")
 
 
