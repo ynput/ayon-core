@@ -6,8 +6,7 @@ import ayon_api
 import six
 
 from ayon_core.style import get_default_entity_icon_color
-
-from .cache import NestedCacheItem
+from ayon_core.lib import NestedCacheItem
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
 
