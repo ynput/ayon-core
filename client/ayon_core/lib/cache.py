@@ -110,6 +110,7 @@ class NestedCacheItem:
         default_factory (Optional[callable]): Function that returns default
             value used on init and on reset.
         lifetime (Optional[int]): Lifetime of the cache data in seconds.
+            Default value is based on default value of 'CacheItem'.
         _init_info (Optional[InitInfo]): Private argument. Init info for
             nested cache where created from parent item.
 
