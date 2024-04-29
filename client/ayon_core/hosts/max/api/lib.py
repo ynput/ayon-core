@@ -519,6 +519,36 @@ def get_plugins() -> list:
     return plugin_info_list
 
 
+def update_modifier_node_names(event, node):
+    """Update the name of the nodes after renaming
+
+    Args:
+        event (pymxs.MXSWrapperBase): Event Name (
+            Mandatory argument for rt.NodeEventCallback)
+        node (list): Event Number (
+            Mandatory argument for rt.NodeEventCallback)
+
+    """
+    containers = [
+        obj
+        for obj in rt.Objects
+        if (
+            rt.ClassOf(obj) == rt.Container
+            and rt.getUserProp(obj, "id") == "pyblish.avalon.instance"
+            and rt.getUserProp(obj, "productType") not in {
+                "workfile", "tyflow"
+            }
+        )
+    ]
+    if not containers:
+        return
+    for container in containers:
+        ayon_data = container.modifiers[0].openPypeData
+        updated_node_names = [str(node.node) for node
+                              in ayon_data.all_handles]
+        rt.setProperty(ayon_data, "sel_list", updated_node_names)
+
+
 @contextlib.contextmanager
 def render_resolution(width, height):
     """Set render resolution option during context
