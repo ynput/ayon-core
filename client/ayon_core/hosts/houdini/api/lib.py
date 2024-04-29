@@ -811,6 +811,43 @@ def get_current_context_template_data_with_folder_attrs():
     return template_data
 
 
+def set_review_color_space(opengl_node, review_color_space="", log=None):
+    """Set ociocolorspace parameter for the given OpenGL node.
+
+    Set `ociocolorspace` parameter of the given OpenGl node
+    to to the given review_color_space value.
+    If review_color_space is empty, a default colorspace corresponding to
+    the display & view of the current Houdini session will be used.
+
+    Args:
+        opengl_node (hou.Node): ROP node to set its ociocolorspace parm.
+        review_color_space (str): Colorspace value for ociocolorspace parm.
+        log (logging.Logger): Logger to log to.
+    """
+
+    if log is None:
+        log = self.log
+
+    # Set Color Correction parameter to OpenColorIO
+    colorcorrect_parm = opengl_node.parm("colorcorrect")
+    if colorcorrect_parm.eval() != 2:
+        colorcorrect_parm.set(2)
+        log.debug(
+            "'Color Correction' parm on '{}' has been set to"
+            " 'OpenColorIO'".format(opengl_node.path())
+        )
+
+    opengl_node.setParms(
+        {"ociocolorspace": review_color_space}
+    )
+
+    log.debug(
+        "'OCIO Colorspace' parm on '{}' has been set to "
+        "the view color space '{}'"
+        .format(opengl_node, review_color_space)
+    )
+
+
 def get_context_var_changes():
     """get context var changes."""
 
