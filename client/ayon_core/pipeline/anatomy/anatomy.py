@@ -403,10 +403,10 @@ class BaseAnatomy(object):
 
 
 class Anatomy(BaseAnatomy):
-    _sitesync_addon_cache = CacheItem(lifetime=10)
     _project_cache = NestedCacheItem(lifetime=10)
-    _default_site_id_cache = NestedCacheItem(lifetime=10)
-    _root_overrides_cache = NestedCacheItem(2, lifetime=10)
+    _sitesync_addon_cache = CacheItem(lifetime=60)
+    _default_site_id_cache = NestedCacheItem(lifetime=60)
+    _root_overrides_cache = NestedCacheItem(2, lifetime=60)
 
     def __init__(
         self, project_name=None, site_name=None, project_entity=None
