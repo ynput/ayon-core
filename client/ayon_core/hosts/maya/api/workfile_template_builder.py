@@ -338,9 +338,9 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
             cmds.xform(node, matrix=placeholder_form, ws=True)
             if scene_parent:
                 cmds.parent(node, scene_parent)
-            # When parented to world, the parent returns None.
-            elif cmds.listRelatives(node, parent=True) is not None:
-                cmds.parent(node, world=True)
+            else:
+                if cmds.listRelatives(node, parent=True):
+                    cmds.parent(node, world=True)
 
         holding_sets = cmds.listSets(object=placeholder.scene_identifier)
         if not holding_sets:

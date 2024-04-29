@@ -498,15 +498,21 @@ class AbstractTemplateBuilder(object):
                                               process if version is created
 
         """
-        template_preset = self.get_template_preset()
-
-        if template_path is None:
-            template_path = template_preset["path"]
-
-        if keep_placeholders is None:
-            keep_placeholders = template_preset["keep_placeholder"]
-        if create_first_version is None:
-            create_first_version = template_preset["create_first_version"]
+        if any(
+            value is None
+            for value in [
+                template_path,
+                keep_placeholders,
+                create_first_version,
+            ]
+        ):
+            template_preset = self.get_template_preset()
+            if template_path is None:
+                template_path = template_preset["path"]
+            if keep_placeholders is None:
+                keep_placeholders = template_preset["keep_placeholder"]
+            if create_first_version is None:
+                create_first_version = template_preset["create_first_version"]
 
         # check if first version is created
         created_version_workfile = False
@@ -776,12 +782,14 @@ class AbstractTemplateBuilder(object):
         - 'project_settings/{host name}/templated_workfile_build/profiles'
 
         Returns:
-            str: Path to a template file with placeholders.
+            dict: Dictionary with `path`, `keep_placeholder` and
+                `create_first_version` settings from the template preset
+                for current context.
 
         Raises:
             TemplateProfileNotFound: When profiles are not filled.
             TemplateLoadFailed: Profile was found but path is not set.
-            TemplateNotFound: Path was set but file does not exists.
+            TemplateNotFound: Path was set but file does not exist.
         """
 
         host_name = self.host_name
