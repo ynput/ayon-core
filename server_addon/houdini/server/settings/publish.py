@@ -20,26 +20,6 @@ class CollectChunkSizeModel(BaseSettingsModel):
         title="Frames Per Task")
 
 
-def product_types_enum():
-    return [
-        {"value": "camera", "label": "Camera (Abc)"},
-        {"value": "pointcache", "label": "PointCache (Abc)/PointCache (Bgeo)"},
-        {"value": "review", "label": "Review"},
-        {"value": "staticMesh", "label": "Static Mesh (FBX)"},
-        {"value": "usd", "label": "USD (experimental)"},
-        {"value": "vdbcache", "label": "VDB Cache"},
-        {"value": "imagesequence", "label": "Composite (Image Sequence)"},
-        {"value": "ass", "label": "Arnold ASS"},
-        {"value": "arnold_rop", "label": "Arnold ROP"},
-        {"value": "mantraifd", "label": "Mantra IFD"},
-        {"value": "mantra_rop", "label": "Mantra ROP"},
-        {"value": "redshiftproxy", "label": "Redshift Proxy"},
-        {"value": "redshift_rop", "label": "Redshift ROP"},
-        {"value": "karma_rop", "label": "Karma ROP"},
-        {"value": "vray_rop", "label": "VRay ROP"},
-    ]
-
-
 class CollectFilesForCleaningUpModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -51,9 +31,9 @@ class CollectFilesForCleaningUpModel(BaseSettingsModel):
     )
     families: list[str] = SettingsField(
         default_factory=list,
-        enum_resolver=product_types_enum,
-        conditionalEnum=True,
         title="Product Types",
+        description="Find a list of all stock product types in "
+                    "[Houdini admin docs](https://ayon.ynput.io/docs/addon_houdini_admin)."
     )
 
 
