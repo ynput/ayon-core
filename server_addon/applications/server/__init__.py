@@ -6,7 +6,6 @@ from ayon_server.addons import BaseServerAddon, AddonLibrary
 from ayon_server.entities.core import attribute_library
 from ayon_server.lib.postgres import Postgres
 
-from .version import __version__
 from .settings import ApplicationsAddonSettings, DEFAULT_VALUES
 
 try:
@@ -87,9 +86,6 @@ def get_enum_items_from_groups(groups):
 
 
 class ApplicationsAddon(BaseServerAddon):
-    name = "applications"
-    title = "Applications"
-    version = __version__
     settings_model = ApplicationsAddonSettings
 
     async def get_default_settings(self):
