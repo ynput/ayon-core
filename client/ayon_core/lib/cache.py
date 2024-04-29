@@ -21,6 +21,7 @@ class CacheItem:
         default_factory (Optional[callable]): Function that returns default
             value used on init and on reset.
         lifetime (Optional[int]): Lifetime of the cache data in seconds.
+            Default lifetime is 120 seconds.
 
     """
     def __init__(self, default_factory=None, lifetime=None):
