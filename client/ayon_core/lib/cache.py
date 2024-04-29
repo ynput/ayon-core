@@ -14,7 +14,6 @@ def _default_factory_func():
 class CacheItem:
     """Simple cache item with lifetime and default factory for default value.
 
-
     Default factory should return default value that is used on init
         and on reset.
 
@@ -22,8 +21,8 @@ class CacheItem:
         default_factory (Optional[callable]): Function that returns default
             value used on init and on reset.
         lifetime (Optional[int]): Lifetime of the cache data in seconds.
-    """
 
+    """
     def __init__(self, default_factory=None, lifetime=None):
         if lifetime is None:
             lifetime = 120
@@ -40,8 +39,8 @@ class CacheItem:
 
         Return:
             bool: True if cache is valid, False otherwise.
-        """
 
+        """
         if self._last_update is None:
             return False
 
@@ -72,8 +71,8 @@ class CacheItem:
 
         Returns:
             Any: Any data that are cached.
-        """
 
+        """
         return self._data
 
     def update_data(self, data):
@@ -106,8 +105,8 @@ class NestedCacheItem:
         lifetime (Optional[int]): Lifetime of the cache data in seconds.
         _init_info (Optional[InitInfo]): Private argument. Init info for
             nested cache where created from parent item.
-    """
 
+    """
     def __init__(
         self, levels=1, default_factory=None, lifetime=None, _init_info=None
     ):
@@ -127,8 +126,8 @@ class NestedCacheItem:
 
         Returns:
             Union[NestedCacheItem, CacheItem]: Cache item.
-        """
 
+        """
         cache = self._data_by_key.get(key)
         if cache is None:
             if self._levels > 1:
@@ -150,8 +149,8 @@ class NestedCacheItem:
         Args:
             key (str): Key of the cache item.
             value (Any): Any data that are cached.
-        """
 
+        """
         if self._levels > 1:
             raise AttributeError((
                 "{} does not support '__setitem__'. Lower nested level by {}"
@@ -167,8 +166,8 @@ class NestedCacheItem:
 
         Returns:
             Union[NestedCacheItem, CacheItem]: Cache item.
-        """
 
+        """
         return self[key]
 
     def cached_count(self):
@@ -176,8 +175,8 @@ class NestedCacheItem:
 
         Returns:
             int: Amount of cached items.
-        """
 
+        """
         return len(self._data_by_key)
 
     def clear_key(self, key):
@@ -185,8 +184,8 @@ class NestedCacheItem:
 
         Args:
             key (str): Key of the cache item.
-        """
 
+        """
         self._data_by_key.pop(key, None)
 
     def clear_invalid(self):
@@ -194,8 +193,8 @@ class NestedCacheItem:
 
         Note:
             To clear all cache items use 'reset'.
-        """
 
+        """
         changed = {}
         children_are_nested = self._levels > 1
         for key, cache in tuple(self._data_by_key.items()):
@@ -215,8 +214,8 @@ class NestedCacheItem:
 
         Note:
             To clear only invalid cache items use 'clear_invalid'.
-        """
 
+        """
         self._data_by_key = {}
 
     def set_lifetime(self, lifetime):
@@ -224,8 +223,8 @@ class NestedCacheItem:
 
         Args:
             lifetime (int): Lifetime of the cache data in seconds.
-        """
 
+        """
         self._init_info.lifetime = lifetime
         for cache in self._data_by_key.values():
             cache.set_lifetime(lifetime)
@@ -236,8 +235,8 @@ class NestedCacheItem:
 
         Raises:
             AttributeError: If called on nested cache item.
-        """
 
+        """
         raise AttributeError((
             "{} does not support 'is_valid'. Lower nested level by '{}'"
         ).format(self.__class__.__name__, self._levels))
