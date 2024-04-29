@@ -431,13 +431,13 @@ class Anatomy(BaseAnatomy):
     @classmethod
     def get_project_entity_from_cache(cls, project_name):
         project_cache = cls._project_cache[project_name]
-        if project_cache.is_outdated:
+        if not project_cache.is_valid:
             project_cache.update_data(ayon_api.get_project(project_name))
         return copy.deepcopy(project_cache.get_data())
 
     @classmethod
     def get_sitesync_addon(cls):
-        if cls._sitesync_addon_cache.is_outdated:
+        if not cls._sitesync_addon_cache.is_valid:
             manager = AddonsManager()
             cls._sitesync_addon_cache.update_data(
                 manager.get_enabled_addon("sitesync")
@@ -487,14 +487,14 @@ class Anatomy(BaseAnatomy):
         elif not site_name:
             # Use sync server to receive active site name
             project_cache = cls._default_site_id_cache[project_name]
-            if project_cache.is_outdated:
+            if not project_cache.is_valid:
                 project_cache.update_data(
                     sitesync_addon.get_active_site_type(project_name)
                 )
             site_name = project_cache.get_data()
 
         site_cache = cls._root_overrides_cache[project_name][site_name]
-        if site_cache.is_outdated:
+        if not site_cache.is_valid:
             if site_name == "studio":
                 # Handle studio root overrides without sync server
                 # - studio root overrides can be done even without sync server
