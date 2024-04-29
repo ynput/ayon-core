@@ -17,6 +17,7 @@ class CreateHDA(plugin.HoudiniCreator):
     icon = "gears"
     maintain_selection = False
 
+    min_num_inputs = 0
     max_num_inputs = 0
 
     def _check_existing(self, folder_path, product_name):
@@ -74,6 +75,7 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_node = to_hda.createDigitalAsset(
                 name=node_name,
                 hda_file_name="$HIP/{}.hda".format(node_name),
+                min_num_inputs=self.min_num_inputs,
                 max_num_inputs=self.max_num_inputs,
                 ignore_external_references=True
             )
@@ -96,6 +98,7 @@ class CreateHDA(plugin.HoudiniCreator):
     def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
 
+        self.min_num_inputs = pre_create_data["min_num_inputs"]
         self.max_num_inputs = pre_create_data["max_num_inputs"]
 
         instance = super(CreateHDA, self).create(
@@ -113,6 +116,10 @@ class CreateHDA(plugin.HoudiniCreator):
     def get_pre_create_attr_defs(self):
         attrs = super(CreateHDA, self).get_pre_create_attr_defs()
         return attrs + [
+            NumberDef("min_num_inputs",
+                      label="Minimum Inputs",
+                      default=self.min_num_inputs,
+                      decimals=0),
             NumberDef("max_num_inputs",
                       label="Maximum Inputs",
                       default=self.max_num_inputs,
