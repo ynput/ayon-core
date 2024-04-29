@@ -76,6 +76,12 @@ class CacheItem:
         return self._data
 
     def update_data(self, data):
+        """Update cache data.
+
+        Args:
+            data (Any): Any data that are cached.
+
+        """
         self._data = data
         self._last_update = time.time()
 
