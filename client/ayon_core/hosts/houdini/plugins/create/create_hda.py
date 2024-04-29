@@ -43,12 +43,16 @@ class CreateHDA(plugin.HoudiniCreator):
         if self.selected_nodes:
             # if we have `use selection` enabled, and we have some
             # selected nodes ...
-            parent_node = self.selected_nodes[0].parent()
-            subnet = parent_node.collapseIntoSubnet(
-                self.selected_nodes,
-                subnet_name="{}_subnet".format(node_name))
-            subnet.moveToGoodPosition()
-            to_hda = subnet
+            if self.selected_nodes[0].type().name() == "subnet":
+                to_hda = self.selected_nodes[0]
+                to_hda.setName("{}_subnet".format(node_name), unique_name=True)
+            else:
+                parent_node = self.selected_nodes[0].parent()
+                subnet = parent_node.collapseIntoSubnet(
+                    self.selected_nodes,
+                    subnet_name="{}_subnet".format(node_name))
+                subnet.moveToGoodPosition()
+                to_hda = subnet
         else:
             # Use Obj as the default path
             parent_node = hou.node("/obj")
