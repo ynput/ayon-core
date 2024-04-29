@@ -168,6 +168,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "blendScene",
                 "yeticacheUE",
                 "tycache",
+                "csv_ingest_file",
                 "render.local.hou"
                 ]
 
