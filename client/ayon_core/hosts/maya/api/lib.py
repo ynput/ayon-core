@@ -6,7 +6,6 @@ from pprint import pformat
 import sys
 import uuid
 import re
-import operator
 
 import json
 import logging
