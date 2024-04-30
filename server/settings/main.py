@@ -55,7 +55,7 @@ class CoreImageIOFileRulesModel(BaseSettingsModel):
 
 
 _ocio_config_profile_types = [
-    {"value": "builtin_path", "label": "Ayon built-in OCIO config"},
+    {"value": "builtin_path", "label": "AYON built-in OCIO config"},
     {"value": "custom_path", "label": "Path to OCIO config"},
     {"value": "product", "label": "Published product"},
 ]
