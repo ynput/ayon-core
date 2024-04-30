@@ -8,12 +8,12 @@ from ayon_core.tools.utils.dialogs import show_message_dialog
 def open_template_ui(builder, main_window):
     """Open template from `builder`
 
-    Asks user about overwriting current scene and feedsback exceptions.
+    Asks user about overwriting current scene and feedback exceptions.
     """
     result = QtWidgets.QMessageBox.question(
         main_window,
         "Opening template",
-        "Caution! You will loose unsaved changes.\nDo you want to continue?",
+        "Caution! You will lose unsaved changes.\nDo you want to continue?",
         QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
     )
     if result == QtWidgets.QMessageBox.Yes:
