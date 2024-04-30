@@ -184,7 +184,7 @@ class ValidateAttributesModel(BaseSettingsModel):
 
         if not success:
             raise BadRequestException(
-                "The attibutes can't be parsed as json object"
+                "The attributes can't be parsed as json object"
             )
         return value
 
@@ -220,7 +220,7 @@ class ValidateUnrealStaticMeshNameModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateUnrealStaticMeshName")
     optional: bool = SettingsField(title="Optional")
     validate_mesh: bool = SettingsField(title="Validate mesh names")
-    validate_collision: bool = SettingsField(title="Validate collison names")
+    validate_collision: bool = SettingsField(title="Validate collision names")
 
 
 class ValidateCycleErrorModel(BaseSettingsModel):
@@ -265,6 +265,7 @@ class RendererAttributesModel(BaseSettingsModel):
 
 
 class ValidateRenderSettingsModel(BaseSettingsModel):
+    optional: bool = SettingsField(title="Optional")
     arnold_render_attributes: list[RendererAttributesModel] = SettingsField(
         default_factory=list, title="Arnold Render Attributes")
     vray_render_attributes: list[RendererAttributesModel] = SettingsField(
@@ -392,7 +393,7 @@ class ExtractGPUCacheModel(BaseSettingsModel):
         title="Optimize Animations For Motion Blur"
     )
     writeMaterials: bool = SettingsField(title="Write Materials")
-    useBaseTessellation: bool = SettingsField(title="User Base Tesselation")
+    useBaseTessellation: bool = SettingsField(title="User Based Tessellation")
 
 
 class PublishersModel(BaseSettingsModel):
@@ -942,6 +943,8 @@ DEFAULT_PUBLISH_SETTINGS = {
         ]
     },
     "ValidateRenderSettings": {
+        "enabled": True,
+        "optional": False,
         "arnold_render_attributes": [],
         "vray_render_attributes": [],
         "redshift_render_attributes": [],
