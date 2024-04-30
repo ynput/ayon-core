@@ -194,6 +194,11 @@ class MayaPlaceholderPlugin(PlaceholderPlugin):
         # Hide placeholder and add them to placeholder set
         node = placeholder.scene_identifier
 
+        # If we just populate the placeholders from current scene, the
+        # placeholder set will not be created so account for that.
+        if not cmds.objExists(PLACEHOLDER_SET):
+            cmds.sets(name=PLACEHOLDER_SET, empty=True)
+
         cmds.sets(node, addElement=PLACEHOLDER_SET)
         cmds.hide(node)
         cmds.setAttr("{}.hiddenInOutliner".format(node), True)
