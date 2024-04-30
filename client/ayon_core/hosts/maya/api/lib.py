@@ -2520,7 +2520,6 @@ def set_scene_fps(fps, update=True):
     """
 
     fps_mapping = {
-        # 2, 3, 4, 5, 6, 8, 10, 12, 16
         '2': '2fps',
         '3': '3fps',
         '4': '4fps',
