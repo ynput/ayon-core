@@ -56,7 +56,6 @@ def main():
     folder = get_folder_by_id(project_name, context["folder_id"])
     task = get_task_by_id(project_name, context["task_id"])
     host = registered_host()
-    ayon_settings = get_ayon_settings()
     project_settings = get_project_settings(project_name)
     anatomy = Anatomy(project_name)
 
