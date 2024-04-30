@@ -741,7 +741,7 @@ class AbstractTemplateBuilder(object):
                 placeholder.set_finished()
 
             # Trigger on_depth_processed event
-            self.trigger_event(
+            self.emit_event(
                 topic="template.depth_processed",
                 data={
                     "depth": iter_counter,
@@ -769,7 +769,7 @@ class AbstractTemplateBuilder(object):
                 placeholders.append(placeholder)
 
         # Trigger on_finished event
-        self.trigger_event(
+        self.emit_event(
             topic="template.finished",
             data={
                 "depth": iter_counter,
@@ -912,7 +912,7 @@ class AbstractTemplateBuilder(object):
         return self._event_system.add_callback(topic, callback, order=order)
 
     def add_on_finished_callback(
-            self, callback, order=None
+        self, callback, order=None
     ) -> EventCallback:
         return self.add_event_callback(
             topic="template.finished",
@@ -921,7 +921,7 @@ class AbstractTemplateBuilder(object):
         )
 
     def add_on_depth_processed_callback(
-            self, callback, order=None
+        self, callback, order=None
     ) -> EventCallback:
         return self.add_event_callback(
             topic="template.depth_processed",
