@@ -54,11 +54,12 @@ class CoreImageIOFileRulesModel(BaseSettingsModel):
         return value
 
 
-_ocio_config_profile_types = [
-    {"value": "builtin_path", "label": "AYON built-in OCIO config"},
-    {"value": "custom_path", "label": "Path to OCIO config"},
-    {"value": "product", "label": "Published product"},
-]
+def _ocio_config_profile_types():
+    return [
+        {"value": "builtin_path", "label": "AYON built-in OCIO config"},
+        {"value": "custom_path", "label": "Path to OCIO config"},
+        {"value": "product", "label": "Published product"},
+    ]
 
 
 def _ocio_built_in_paths():
@@ -91,7 +92,7 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
     )
     type: str = SettingsField(
         title="Profile type",
-        enum_resolver=lambda: _ocio_config_profile_types,
+        enum_resolver=_ocio_config_profile_types,
         conditionalEnum=True,
         default="builtin_path",
         section="---",
