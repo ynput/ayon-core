@@ -149,15 +149,15 @@ class ImageIOSettings(BaseSettingsModel):
 
 DEFAULT_IMAGEIO_SETTINGS = {
     "workfile": {
-        "ocioConfigName": "nuke-default",
-        "workingSpace": "linear",
-        "viewerLut": "sRGB",
-        "eightBitLut": "sRGB",
-        "sixteenBitLut": "sRGB",
-        "logLut": "Cineon",
-        "floatLut": "linear",
-        "thumbnailLut": "sRGB",
-        "monitorOutLut": "sRGB"
+        "ocioConfigName": "aces_1.2",
+        "workingSpace": "role_scene_linear",
+        "viewerLut": "ACES/sRGB",
+        "eightBitLut": "role_matte_paint",
+        "sixteenBitLut": "role_texture_paint",
+        "logLut": "role_compositing_log",
+        "floatLut": "role_scene_linear",
+        "thumbnailLut": "ACES/sRGB",
+        "monitorOutLut": "ACES/sRGB"
     },
     "regexInputs": {
         "inputs": [

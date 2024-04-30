@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-import sys
+import hou
 import pyblish.api
-import six
 
 from ayon_core.pipeline import PublishValidationError
 
@@ -26,28 +25,21 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                ("Output node(s) `{}` are incorrect. "
-                 "See plug-in log for details.").format(invalid),
-                title=self.label
+                "Output node '{}' is incorrect. "
+                "See plug-in log for details.".format(invalid),
+                title=self.label,
+                description=(
+                    "### Invalid COP output node\n\n"
+                    "The output node path for the instance must be set to a "
+                    "valid COP node path.\n\nSee the log for more details."
+                )
             )
 
     @classmethod
     def get_invalid(cls, instance):
+        output_node = instance.data.get("output_node")
 
-        import hou
-
-        try:
-            output_node = instance.data["output_node"]
-        except KeyError:
-            six.reraise(
-                PublishValidationError,
-                PublishValidationError(
-                    "Can't determine COP output node.",
-                    title=cls.__name__),
-                sys.exc_info()[2]
-            )
-
-        if output_node is None:
+        if not output_node:
             node = hou.node(instance.data.get("instance_node"))
             cls.log.error(
                 "COP Output node in '%s' does not exist. "
@@ -61,8 +53,8 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
             cls.log.error(
                 "Output node %s is not a COP node. "
                 "COP Path must point to a COP node, "
-                "instead found category type: %s"
-                % (output_node.path(), output_node.type().category().name())
+                "instead found category type: %s",
+                output_node.path(), output_node.type().category().name()
             )
             return [output_node.path()]
 
@@ -70,9 +62,7 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         # is Cop2 to avoid potential edge case scenarios even though
         # the isinstance check above should be stricter than this category
         if output_node.type().category().name() != "Cop2":
-            raise PublishValidationError(
-                (
-                    "Output node {} is not of category Cop2."
-                    " This is a bug..."
-                ).format(output_node.path()),
-                title=cls.label)
+            cls.log.error(
+                "Output node %s is not of category Cop2.", output_node.path()
+            )
+            return [output_node.path()]
