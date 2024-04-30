@@ -60,7 +60,7 @@ def main():
     anatomy = Anatomy(project_name)
 
     workdir_data = get_template_data(
-        project, folder, task, host.name, ayon_settings
+        project, folder, task, host.name, project_settings
     )
 
     workdir = get_workdir_with_workdir_data(
