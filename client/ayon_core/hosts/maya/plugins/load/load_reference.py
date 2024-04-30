@@ -15,6 +15,26 @@ from ayon_core.hosts.maya.api.lib import (
 
 
 @contextlib.contextmanager
+def preserve_time_units():
+    """Preserve current frame, frame range and fps"""
+    frame = cmds.currentTime(query=True)
+    fps = cmds.currentUnit(query=True, time=True)
+    start = cmds.playbackOptions(query=True, minTime=True)
+    end = cmds.playbackOptions(query=True, maxTime=True)
+    anim_start = cmds.playbackOptions(query=True, animationStartTime=True)
+    anim_end = cmds.playbackOptions(query=True, animationEndTime=True)
+    try:
+        yield
+    finally:
+        cmds.currentUnit(time=fps, updateAnimation=False)
+        cmds.currentTime(frame)
+        cmds.playbackOptions(minTime=start,
+                             maxTime=end,
+                             animationStartTime=anim_start,
+                             animationEndTime=anim_end)
+
+
+@contextlib.contextmanager
 def preserve_modelpanel_cameras(container, log=None):
     """Preserve camera members of container in the modelPanels.
 
@@ -349,6 +369,15 @@ class MayaUSDReferenceLoader(ReferenceLoader):
         ])
         options["file_type"] = self.file_type
 
-        return super(MayaUSDReferenceLoader, self).process_reference(
-            context, name, namespace, options
-        )
+        # Maya USD import reference has the tendency to change the time slider
+        # range and current frame, so we force revert it after
+        with preserve_time_units():
+            return super(MayaUSDReferenceLoader, self).process_reference(
+                context, name, namespace, options
+            )
+
+    def update(self, container, context):
+        # Maya USD import reference has the tendency to change the time slider
+        # range and current frame, so we force revert it after
+        with preserve_time_units():
+            super(MayaUSDReferenceLoader, self).update(container, context)
