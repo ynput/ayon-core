@@ -27,6 +27,10 @@ from .local_settings import (
     get_openpype_username,
 )
 from .ayon_connection import initialize_ayon_connection
+from .cache import (
+    CacheItem,
+    NestedCacheItem,
+)
 from .events import (
     emit_event,
     register_event_callback
@@ -156,6 +160,9 @@ __all__ = [
     "get_openpype_username",
 
     "initialize_ayon_connection",
+
+    "CacheItem",
+    "NestedCacheItem",
 
     "emit_event",
     "register_event_callback",
