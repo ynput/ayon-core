@@ -222,11 +222,10 @@ class ApplicationsAddonSettings(BaseSettingsModel):
     only_available: bool = SettingsField(
         True,
         title="Show only available applications",
-        description="Enable to show available applications in AYON Launcher"
-                    " i.e. Show them if they are installed on the user"
-                    " machine. Note: AYON Launcher shows only the selected"
-                    " applications in project anatomy and this is another"
-                    " filter to ignore uninstalled apps."
+        description="Enable to show only available applications in AYON Launcher"
+                    " for which the executable paths are found on the running machine."
+                    " This applies as an additional filter to the applications defined in a "
+                    " project's anatomy settings to ignore unavailable applications."
     )
 
     @validator("tool_groups")
