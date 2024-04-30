@@ -2520,7 +2520,17 @@ def set_scene_fps(fps, update=True):
     """
 
     fps_mapping = {
+        # 2, 3, 4, 5, 6, 8, 10, 12, 16
+        '2': '2fps',
+        '3': '3fps',
+        '4': '4fps',
+        '5': '5fps',
+        '6': '6fps',
+        '8': '8fps',
+        '10': '10fps',
+        '12': '12fps',
         '15': 'game',
+        '16': '16fps',
         '24': 'film',
         '25': 'pal',
         '30': 'ntsc',
@@ -2612,21 +2622,24 @@ def get_fps_for_current_context():
     Returns:
         Union[int, float]: FPS value.
     """
-
-    project_name = get_current_project_name()
-    folder_path = get_current_folder_path()
-    folder_entity = ayon_api.get_folder_by_path(
-        project_name, folder_path, fields={"attrib.fps"}
-    ) or {}
-    fps = folder_entity.get("attrib", {}).get("fps")
+    task_entity = get_current_task_entity(fields={"attrib"})
+    fps = task_entity.get("attrib", {}).get("fps")
     if not fps:
-        project_entity = ayon_api.get_project(
-            project_name, fields=["attrib.fps"]
+        project_name = get_current_project_name()
+        folder_path = get_current_folder_path()
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields={"attrib.fps"}
         ) or {}
-        fps = project_entity.get("attrib", {}).get("fps")
 
+        fps = folder_entity.get("attrib", {}).get("fps")
         if not fps:
-            fps = 25
+            project_entity = ayon_api.get_project(
+                project_name, fields=["attrib.fps"]
+            ) or {}
+            fps = project_entity.get("attrib", {}).get("fps")
+
+            if not fps:
+                fps = 25
 
     return convert_to_maya_fps(fps)
 
