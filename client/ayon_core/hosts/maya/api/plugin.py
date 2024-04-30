@@ -821,6 +821,8 @@ class ReferenceLoader(Loader):
         # Get reference node from container members
         members = get_container_members(node)
         reference_node = lib.get_reference_node(members, self.log)
+        if reference_node is None:
+            raise LoadError("No reference node found in container")
         namespace = cmds.referenceQuery(reference_node, namespace=True)
 
         file_type = {
@@ -831,7 +833,8 @@ class ReferenceLoader(Loader):
             "usd": "USD Import"
         }.get(repre_entity["name"])
 
-        assert file_type, "Unsupported representation: %s" % repre_entity
+        if file_type is None:
+            raise LoadError(f"Unsupported representation: {repre_entity}")
 
         assert os.path.exists(path), "%s does not exist." % path
 

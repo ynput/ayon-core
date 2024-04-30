@@ -4275,7 +4275,8 @@ def get_reference_node(members, log=None):
 
         references.add(ref)
 
-    assert references, "No reference node found in container"
+    if not references:
+        return
 
     # Get highest reference node (least parents)
     highest = min(references,
