@@ -3,7 +3,7 @@
 import os
 import logging
 from operator import attrgetter
-
+import errno
 import json
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
@@ -14,6 +14,7 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     AYON_CONTAINER_ID,
 )
+from ayon_core.lib import register_event_callback
 from ayon_core.hosts.max.api.menu import AYONMenu
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.plugin import MS_CUSTOM_ATTRIB
@@ -47,8 +48,11 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
 
-        # self._register_callbacks()
+        _set_project()
+
         self.menu = AYONMenu()
+
+        register_event_callback("taskChanged", on_task_changed)
 
         self._has_been_setup = True
 
@@ -179,6 +183,28 @@ def containerise(name: str, nodes: list, context,
     if not lib.imprint(container_name, data):
         print(f"imprinting of {container_name} failed.")
     return container
+
+
+def _set_project():
+    workdir = os.getenv("AYON_WORKDIR")
+
+    try:
+        os.makedirs(workdir)
+    except OSError as e:
+        # An already existing working directory is fine.
+        if e.errno == errno.EEXIST:
+            pass
+        else:
+            raise
+    # TODO: set the Project Directory Create Filter
+    rt.pathConfig.setCurrentProjectFolder(workdir)
+
+
+def on_task_changed():
+    workdir = os.getenv("AYON_WORKDIR")
+    if os.path.exists(workdir):
+        log.info("Updating 3dsMax workspace for task change to %s", workdir)
+        rt.pathConfig.setCurrentProjectFolder(workdir)
 
 
 def load_custom_attribute_data():
