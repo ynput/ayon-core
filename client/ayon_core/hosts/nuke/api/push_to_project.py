@@ -3,13 +3,14 @@ import shutil
 import os
 
 from ayon_api import get_project, get_folder_by_id, get_task_by_id
-from ayon_core.settings import get_ayon_settings, get_project_settings
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.workfile import get_workdir_with_workdir_data
-from ayon_core.tools.push_to_project.main import main_show
+from ayon_core.tools.push_to_project.main import show
 
 from .utils import bake_gizmos_recursively
+from .lib import MENU_LABEL
 
 import nuke
 
@@ -45,7 +46,7 @@ def bake_container(container):
 
 
 def main():
-    context = main_show("", "", False, True)
+    context = show("", "", False, True)
 
     if context is None:
         return
