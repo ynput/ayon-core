@@ -97,7 +97,6 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
         default="builtin_path",
         section="---",
     )
-
     builtin_path: str = SettingsField(
         "ACES 1.2",
         title="Built-in OCIO config",
@@ -108,7 +107,7 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
         title="OCIO config path",
         description="Path to OCIO config. Anatomy formatting is supported.",
     )
-    product: str = SettingsField(
+    product_name: str = SettingsField(
         "",
         title="Product name",
         description=(
@@ -251,7 +250,7 @@ DEFAULT_VALUES = {
                 "type": "builtin_path",
                 "builtin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
                 "custom_path": "",
-                "product": "",
+                "product_name": "",
             }
         ],
         "file_rules": {
