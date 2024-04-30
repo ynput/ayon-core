@@ -12,7 +12,7 @@ class CollectFileDependencies(pyblish.api.ContextPlugin):
     families = ["renderlayer"]
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         # Disable plug-in if not used for deadline submission anyway
         settings = project_settings["deadline"]["publish"]["MayaSubmitDeadline"]  # noqa
         cls.enabled = settings.get("asset_dependencies", True)
