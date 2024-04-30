@@ -1925,21 +1925,21 @@ class CreatePlaceholderItem(PlaceholderItem):
         self._failed_created_publish_instances.append(creator_data)
 
 
-def discover_template_placeholder_plugins(*args, **kwargs):
+def discover_workfile_build_plugins(*args, **kwargs):
     return discover(PlaceholderPlugin, *args, **kwargs)
 
 
-def register_template_placeholder_plugin(plugin: PlaceholderPlugin):
+def register_workfile_build_plugin(plugin: PlaceholderPlugin):
     register_plugin(PlaceholderPlugin, plugin)
 
 
-def deregister_template_placeholder_plugin(plugin: PlaceholderPlugin):
+def deregister_workfile_build_plugin(plugin: PlaceholderPlugin):
     deregister_plugin(PlaceholderPlugin, plugin)
 
 
-def register_template_placeholder_plugin_path(path: str):
+def register_workfile_build_plugin_path(path: str):
     register_plugin_path(PlaceholderPlugin, path)
 
 
-def deregister_template_placeholder_plugin_path(path: str):
+def deregister_workfile_build_plugin_path(path: str):
     deregister_plugin_path(PlaceholderPlugin, path)
