@@ -26,7 +26,7 @@ def bake_container(container):
         knob = node.knob(count)
 
         # All knobs from "AYON" tab knob onwards.
-        if knob.name() == "AYON":
+        if knob.name() == MENU_LABEL:
             remove = True
 
         if remove:
