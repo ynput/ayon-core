@@ -25,7 +25,7 @@ def bake_container(container):
     for count in range(0, node.numKnobs()):
         knob = node.knob(count)
 
-        # All knobs from "OpenPype" tab knob onwards.
+        # All knobs from "AYON" tab knob onwards.
         if knob.name() == "AYON":
             remove = True
 
