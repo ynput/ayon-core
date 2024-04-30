@@ -144,7 +144,17 @@ class ToolGroupModel(BaseSettingsModel):
 
 
 class ApplicationsSettings(BaseSettingsModel):
-    """Applications settings"""
+    """Applications settings
+
+    Define applications are available to your studio, locations of their
+    executables, and their additional environments.
+
+    AYON uses the following definitions to populate the applications list
+    in project anatomy > attributes.
+    So, You'd still need modify your project anatomy settings.
+
+    Use shortcut **a+a** to navigate to project anatomy.
+    """
 
     maya: AppGroupWithPython = SettingsField(
         default_factory=AppGroupWithPython, title="Autodesk Maya")
@@ -210,7 +220,14 @@ class ApplicationsAddonSettings(BaseSettingsModel):
         scope=["studio"]
     )
     only_available: bool = SettingsField(
-        True, title="Show only available applications")
+        True,
+        title="Show only available applications",
+        description="Enable to show available applications in AYON Launcher"
+                    " i.e. Show them if they are installed on the user"
+                    " machine. Note: AYON Launcher shows only the selected"
+                    " applications in project anatomy and this is another"
+                    " filter to ignore uninstalled apps."
+    )
 
     @validator("tool_groups")
     def validate_unique_name(cls, value):
