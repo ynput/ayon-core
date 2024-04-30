@@ -8,7 +8,7 @@ from ayon_core.lib import Logger, register_event_callback
 from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
-    register_template_placeholder_plugin_path,
+    register_workfile_build_plugin_path,
     AVALON_CONTAINER_ID,
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
@@ -74,7 +74,7 @@ class AfterEffectsHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
-        register_template_placeholder_plugin_path(WORKFILE_BUILD_PATH)
+        register_workfile_build_plugin_path(WORKFILE_BUILD_PATH)
 
         register_event_callback("application.launched", application_launch)
 
