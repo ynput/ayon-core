@@ -55,13 +55,13 @@ class CoreImageIOFileRulesModel(BaseSettingsModel):
 
 
 _ocio_config_profile_types = [
-    {"value": "buildin_path", "label": "Ayon built-in OCIO config"},
+    {"value": "builtin_path", "label": "Ayon built-in OCIO config"},
     {"value": "custom_path", "label": "Path to OCIO config"},
     {"value": "product", "label": "Published product"},
 ]
 
 
-def _ocio_build_in_paths():
+def _ocio_built_in_paths():
     return [
         {
             "value": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
@@ -93,14 +93,14 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
         title="Profile type",
         enum_resolver=lambda: _ocio_config_profile_types,
         conditionalEnum=True,
-        default="buildin_path",
+        default="builtin_path",
         section="---",
     )
 
-    buildin_path: str = SettingsField(
+    builtin_path: str = SettingsField(
         "ACES 1.2",
         title="Built-in OCIO config",
-        enum_resolver=_ocio_build_in_paths,
+        enum_resolver=_ocio_built_in_paths,
     )
     custom_path: str = SettingsField(
         "",
@@ -247,8 +247,8 @@ DEFAULT_VALUES = {
                 "host_names": [],
                 "task_types": [],
                 "task_names": [],
-                "type": "buildin_path",
-                "buildin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
+                "type": "builtin_path",
+                "builtin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
                 "custom_path": "",
                 "product": "",
             }
