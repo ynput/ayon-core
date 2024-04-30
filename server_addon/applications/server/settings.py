@@ -152,8 +152,6 @@ class ApplicationsSettings(BaseSettingsModel):
     AYON uses the following definitions to populate the applications list
     in project anatomy > attributes.
     So, You'd still need modify your project anatomy settings.
-
-    Use shortcut **a+a** to navigate to project anatomy.
     """
 
     maya: AppGroupWithPython = SettingsField(
