@@ -97,8 +97,23 @@ class WorkfileColorspaceSettings(BaseSettingsModel):
     working_space: str = SettingsField(
         title="Working Space"
     )
-    thumbnail_space: str = SettingsField(
-        title="Thumbnail Space"
+    monitor_lut: str = SettingsField(
+        title="Thumbnails"
+    )
+    monitor_out_lut: str = SettingsField(
+        title="Monitor Out"
+    )
+    int_8_lut: str = SettingsField(
+        title="8-bit Files"
+    )
+    int_16_lut: str = SettingsField(
+        title="16-bit Files"
+    )
+    log_lut: str = SettingsField(
+        title="Log Files"
+    )
+    float_lut: str = SettingsField(
+        title="Float Files"
     )
 
 
@@ -119,6 +134,9 @@ class RegexInputsModel(BaseSettingsModel):
 class ViewProcessModel(BaseSettingsModel):
     viewerProcess: str = SettingsField(
         title="Viewer Process Name"
+    )
+    output_transform: str = SettingsField(
+        title="Output Transform"
     )
 
 
@@ -214,16 +232,23 @@ class ImageIOSettings(BaseSettingsModel):
 
 DEFAULT_IMAGEIO_SETTINGS = {
     "viewer": {
-        "viewerProcess": "sRGB (default)"
+        "viewerProcess": "ACES/sRGB",
+        "output_transform": "ACES/sRGB"
     },
     "baking": {
-        "viewerProcess": "rec709 (default)"
+        "viewerProcess": "ACES/Rec.709",
+        "output_transform": "ACES/Rec.709"
     },
     "workfile": {
         "color_management": "OCIO",
-        "native_ocio_config": "nuke-default",
-        "working_space": "scene_linear",
-        "thumbnail_space": "sRGB (default)",
+        "native_ocio_config": "aces_1.2",
+        "working_space": "role_scene_linear",
+        "monitor_lut": "ACES/sRGB",
+        "monitor_out_lut": "ACES/sRGB",
+        "int_8_lut": "role_matte_paint",
+        "int_16_lut": "role_texture_paint",
+        "log_lut": "role_compositing_log",
+        "float_lut": "role_scene_linear"
     },
     "nodes": {
         "required_nodes": [
