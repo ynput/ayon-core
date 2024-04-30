@@ -720,7 +720,8 @@ class RenderProductsArnold(ARenderProducts):
 
         # AOVs > Legacy > Maya Render View > Mode
         aovs_enabled = bool(
-            self._get_attr("defaultArnoldRenderOptions.aovMode")
+            self._get_attr(
+                "defaultArnoldRenderOptions.aovMode", as_string=False)
         )
         if not aovs_enabled:
             return beauty_products
