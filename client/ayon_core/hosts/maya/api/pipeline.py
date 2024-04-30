@@ -30,9 +30,11 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
+    register_workfile_build_plugin_path,
     deregister_loader_plugin_path,
     deregister_inventory_action_path,
     deregister_creator_plugin_path,
+    deregister_workfile_build_plugin_path,
     AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
 )
@@ -47,7 +49,6 @@ from ayon_core.hosts.maya import MAYA_ROOT_DIR
 from ayon_core.hosts.maya.lib import create_workspace_mel
 
 from . import menu, lib
-from .workfile_template_builder import MayaPlaceholderLoadPlugin
 from .workio import (
     open_file,
     save_file,
@@ -64,6 +65,7 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
+WORKFILE_BUILD_PATH = os.path.join(PLUGINS_DIR, "workfile_build")
 
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
 
@@ -93,7 +95,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
-        self.log.info(PUBLISH_PATH)
+        register_workfile_build_plugin_path(WORKFILE_BUILD_PATH)
 
         self.log.info("Installing callbacks ... ")
         register_event_callback("init", on_init)
@@ -147,11 +149,6 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def get_containers(self):
         return ls()
-
-    def get_workfile_build_placeholder_plugins(self):
-        return [
-            MayaPlaceholderLoadPlugin
-        ]
 
     @contextlib.contextmanager
     def maintained_selection(self):
@@ -338,6 +335,7 @@ def uninstall():
     deregister_loader_plugin_path(LOAD_PATH)
     deregister_creator_plugin_path(CREATE_PATH)
     deregister_inventory_action_path(INVENTORY_PATH)
+    deregister_workfile_build_plugin_path(WORKFILE_BUILD_PATH)
 
     menu.uninstall()
 
