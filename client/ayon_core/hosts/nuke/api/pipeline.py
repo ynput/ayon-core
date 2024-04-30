@@ -18,7 +18,7 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     register_inventory_action_path,
-    register_template_placeholder_plugin_path,
+    register_workfile_build_plugin_path,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
@@ -118,7 +118,7 @@ class NukeHost(
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
-        register_template_placeholder_plugin_path(WORKFILE_BUILD_PATH)
+        register_workfile_build_plugin_path(WORKFILE_BUILD_PATH)
 
         # Register AYON event for workfiles loading.
         register_event_callback("workio.open_file", check_inventory_versions)

@@ -99,11 +99,11 @@ from .context_tools import (
 )
 
 from .workfile import (
-    discover_template_placeholder_plugins,
-    register_template_placeholder_plugin,
-    deregister_template_placeholder_plugin,
-    register_template_placeholder_plugin_path,
-    deregister_template_placeholder_plugin_path,
+    discover_workfile_build_plugins,
+    register_workfile_build_plugin,
+    deregister_workfile_build_plugin,
+    register_workfile_build_plugin_path,
+    deregister_workfile_build_plugin_path,
 )
 
 install = install_host
@@ -208,11 +208,11 @@ __all__ = (
     "get_current_task_name",
 
     # Workfile templates
-    "discover_template_placeholder_plugins",
-    "register_template_placeholder_plugin",
-    "deregister_template_placeholder_plugin",
-    "register_template_placeholder_plugin_path",
-    "deregister_template_placeholder_plugin_path",
+    "discover_workfile_build_plugins",
+    "register_workfile_build_plugin",
+    "deregister_workfile_build_plugin",
+    "register_workfile_build_plugin_path",
+    "deregister_workfile_build_plugin_path",
 
     # Backwards compatible function names
     "install",

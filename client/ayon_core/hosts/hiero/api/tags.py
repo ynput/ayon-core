@@ -144,7 +144,7 @@ def add_tags_to_workfile():
     # Get project task types.
     project_name = get_current_project_name()
     project_entity = ayon_api.get_project(project_name)
-    task_types = project_entity["taskType"]
+    task_types = project_entity["taskTypes"]
     nks_pres_tags["[Tasks]"] = {}
     log.debug("__ tasks: {}".format(task_types))
     for task_type in task_types:

@@ -22,11 +22,11 @@ from .build_workfile import BuildWorkfile
 
 
 from .workfile_template_builder import (
-    discover_template_placeholder_plugins,
-    register_template_placeholder_plugin,
-    deregister_template_placeholder_plugin,
-    register_template_placeholder_plugin_path,
-    deregister_template_placeholder_plugin_path,
+    discover_workfile_build_plugins,
+    register_workfile_build_plugin,
+    deregister_workfile_build_plugin,
+    register_workfile_build_plugin_path,
+    deregister_workfile_build_plugin_path,
 )
 
 
@@ -49,9 +49,9 @@ __all__ = (
 
     "BuildWorkfile",
 
-    "discover_template_placeholder_plugins",
-    "register_template_placeholder_plugin",
-    "deregister_template_placeholder_plugin",
-    "register_template_placeholder_plugin_path",
-    "deregister_template_placeholder_plugin_path",
+    "discover_workfile_build_plugins",
+    "register_workfile_build_plugin",
+    "deregister_workfile_build_plugin",
+    "register_workfile_build_plugin_path",
+    "deregister_workfile_build_plugin_path",
 )
