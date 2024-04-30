@@ -110,7 +110,11 @@ class CreateHDA(plugin.HoudiniCreator):
 
     def get_network_categories(self):
         return [
-            hou.objNodeTypeCategory()
+            category for name, category in hou.nodeTypeCategories().items()
+            if name in {
+                "Chop", "Cop2", "Dop", "Driver", "Lop",
+                "Object", "Shop", "Sop", "Top", "Vop"
+            }
         ]
 
     def get_pre_create_attr_defs(self):
