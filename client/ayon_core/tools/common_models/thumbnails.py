@@ -5,7 +5,7 @@ import collections
 import ayon_api
 import appdirs
 
-from .cache import NestedCacheItem
+from ayon_core.lib import NestedCacheItem
 
 FileInfo = collections.namedtuple(
     "FileInfo",
