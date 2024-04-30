@@ -1289,7 +1289,7 @@
                         "darwin": [],
                         "linux": []
                     },
-
+                    "environment": "{}"
                 }
             ]
         },
