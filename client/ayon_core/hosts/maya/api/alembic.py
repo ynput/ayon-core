@@ -22,7 +22,6 @@ ALEMBIC_ARGS = {
     "melPostJobCallback": str,
     "noNormals": bool,
     "preRoll": bool,
-    "preRollStartFrame": int,
     "pythonPerFrameCallback": str,
     "pythonPostJobCallback": str,
     "renderableOnly": bool,
@@ -259,8 +258,7 @@ def extract_alembic(
         "userAttr": userAttr,
         "userAttrPrefix": userAttrPrefix,
         "stripNamespaces": stripNamespaces,
-        "verbose": verbose,
-        "preRollStartFrame": preRollStartFrame
+        "verbose": verbose
     }
 
     # Validate options
@@ -340,7 +338,11 @@ def extract_alembic(
     # exports are made. (PLN-31)
     # TODO: Make sure this actually fixes the issues
     with evaluation("off"):
-        cmds.AbcExport(j=job_str, verbose=verbose)
+        cmds.AbcExport(
+            j=job_str,
+            verbose=verbose,
+            preRollStartFrame=preRollStartFrame
+        )
 
     if verbose:
         log.debug("Extracted Alembic to: %s", file)
