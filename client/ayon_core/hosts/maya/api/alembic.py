@@ -65,6 +65,7 @@ def extract_alembic(
     stripNamespaces=True,
     userAttr=None,
     userAttrPrefix=None,
+    uvsOnly=False,
     uvWrite=True,
     verbose=False,
     wholeFrameGeo=False,
@@ -144,6 +145,9 @@ def extract_alembic(
 
         userAttrPrefix (list of str, optional): Prefix filter for determining
             which user defined attributes to write out. Defaults to [].
+
+        uvsOnly (bool): When on, only uv data for PolyMesh and SubD shapes
+            will be written to the Alembic file.
 
         uvWrite (bool): When on, UV data from polygon meshes and subdivision
             objects are written to the Alembic file. Only the current UV map is
@@ -225,6 +229,7 @@ def extract_alembic(
         "preRoll": preRoll,
         "renderableOnly": renderableOnly,
         "uvWrite": uvWrite,
+        "uvsOnly": uvsOnly,
         "writeColorSets": writeColorSets,
         "writeFaceSets": writeFaceSets,
         "wholeFrameGeo": wholeFrameGeo,
