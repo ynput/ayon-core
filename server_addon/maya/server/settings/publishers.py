@@ -406,6 +406,10 @@ class ExtractAlembicModel(BaseSettingsModel):
         title="Write Color Sets",
         description="Write vertex colors with the geometry."
     )
+    writeCreases: bool = SettingsField(
+        title="Write Creases",
+        description="Write the geometry's edge and vertex crease information."
+    )
     writeFaceSets: bool = SettingsField(
         title="Write Face Sets",
         description="Write face sets with the geometry."
@@ -1643,6 +1647,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "wholeFrameGeo": False,
         "worldSpace": True,
         "writeColorSets": False,
+        "writeCreases": False,
         "writeFaceSets": False,
         "writeNormals": True,
         "writeUVSets": False,

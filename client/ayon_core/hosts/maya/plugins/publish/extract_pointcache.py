@@ -63,6 +63,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
     wholeFrameGeo = False
     worldSpace = True
     writeColorSets = False
+    writeCreases = False
     writeFaceSets = False
     writeNormals = True
     writeUVSets = False
@@ -353,6 +354,13 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                 label="Write Color Sets",
                 default=cls.writeColorSets,
                 tooltip="Write vertex colors with the geometry."
+            ),
+            "writeCreases": BoolDef(
+                "writeCreases",
+                label="Write Creases",
+                default=cls.writeCreases,
+                tooltip="Write the geometry's edge and vertex crease "
+                        "information."
             ),
             "writeFaceSets": BoolDef(
                 "writeFaceSets",
