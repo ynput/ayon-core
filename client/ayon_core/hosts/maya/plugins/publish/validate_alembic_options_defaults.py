@@ -29,13 +29,7 @@ class ValidateAlembicDefaultsPointcache(
 
     @classmethod
     def _get_publish_attributes(cls, instance):
-        attributes = instance.data["publish_attributes"][
-            cls.plugin_name(
-                instance.data["publish_attributes"]
-            )
-        ]
-
-        return attributes
+        return instance.data["publish_attributes"][cls.plugin_name]
 
     def process(self, instance):
         if not self.is_active(instance.data):
