@@ -63,6 +63,8 @@ def extract_alembic(
     startFrame=None,
     step=1.0,
     stripNamespaces=True,
+    userAttr=None,
+    userAttrPrefix=None,
     uvWrite=True,
     verbose=False,
     wholeFrameGeo=False,
@@ -137,6 +139,12 @@ def extract_alembic(
             object with the namespace taco:foo:bar appears as bar in the
             Alembic file.
 
+        userAttr (list of str, optional): A specific user defined attribute to
+            write out. Defaults to [].
+
+        userAttrPrefix (list of str, optional): Prefix filter for determining
+            which user defined attributes to write out. Defaults to [].
+
         uvWrite (bool): When on, UV data from polygon meshes and subdivision
             objects are written to the Alembic file. Only the current UV map is
             included.
@@ -183,6 +191,8 @@ def extract_alembic(
     # Ensure list arguments are valid.
     attr = attr or []
     attrPrefix = attrPrefix or []
+    userAttr = userAttr or []
+    userAttrPrefix = userAttrPrefix or []
     root = root or []
 
     # Pass the start and end frame on as `frameRange` so that it
@@ -226,6 +236,8 @@ def extract_alembic(
         "step": step,
         "attr": attr,
         "attrPrefix": attrPrefix,
+        "userAttr": userAttr,
+        "userAttrPrefix": userAttrPrefix,
         "stripNamespaces": stripNamespaces,
         "verbose": verbose,
         "preRollStartFrame": preRollStartFrame
