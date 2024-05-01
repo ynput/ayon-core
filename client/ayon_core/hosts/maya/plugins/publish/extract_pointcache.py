@@ -40,7 +40,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
     # From settings
     attr = []
     attrPrefix = []
-    autoSubd = False
     bake_attributes = []
     bake_attribute_prefixes = []
     dataFormat = "ogawa"
@@ -174,9 +173,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "writeVisibility": attribute_values.get(
                 "writeVisibility", self.writeVisibility
             ),
-            "autoSubd": attribute_values.get(
-                "autoSubd", self.autoSubd
-            ),
             "uvsOnly": attribute_values.get(
                 "uvsOnly", self.uvsOnly
             ),
@@ -250,7 +246,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             with maintained_selection():
                 cmds.select(instance.data["proxy"])
                 extract_alembic(**kwargs)
-
+        raise RuntimeError("FAIL")
         representation = {
             "name": "proxy",
             "ext": "abc",
@@ -269,20 +265,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             return []
 
         override_defs = OrderedDict({
-            "autoSubd": BoolDef(
-                "autoSubd",
-                label="Auto Subd",
-                default=cls.autoSubd,
-                tooltip=(
-                    "If this flag is present and the mesh has crease edges, "
-                    "crease vertices or holes, the mesh (OPolyMesh) would now "
-                    "be written out as an OSubD and crease info will be stored"
-                    " in the Alembic  file. Otherwise, creases info won't be "
-                    "preserved in Alembic file unless a custom Boolean "
-                    "attribute SubDivisionMesh has been added to mesh node and"
-                    " its value is true."
-                )
-            ),
             "eulerFilter": BoolDef(
                 "eulerFilter",
                 label="Euler Filter",
