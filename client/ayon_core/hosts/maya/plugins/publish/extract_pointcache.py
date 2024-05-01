@@ -6,6 +6,7 @@ from maya import cmds
 from ayon_core.pipeline import publish
 from ayon_core.hosts.maya.api.alembic import extract_alembic
 from ayon_core.hosts.maya.api.lib import (
+    get_all_children,
     suspended_refresh,
     maintained_selection,
     iter_visible_nodes_in_range
@@ -518,9 +519,7 @@ class ExtractAnimation(ExtractAlembic):
         roots = cmds.sets(out_set, query=True) or []
 
         # Include all descendants
-        nodes = roots
-        nodes += cmds.listRelatives(
-            roots, allDescendents=True, fullPath=True
-        ) or []
+        nodes = roots.copy()
+        nodes.extend(get_all_children(roots, ignore_intermediate_objects=True))
 
         return nodes, roots
