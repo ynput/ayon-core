@@ -85,6 +85,6 @@ class ValidateAlembicDefaultsAnimation(
 
     The defaults are defined in the project settings.
     """
-    label = "Validate Alembic Options   Defaults"
+    label = "Validate Alembic Options Defaults"
     families = ["animation"]
     plugin_name = "ExtractAnimation"
