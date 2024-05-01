@@ -36,7 +36,6 @@ class ValidateAlembicDefaultsPointcache(
             return
 
         settings = self._get_settings(instance.context)
-
         attributes = self._get_publish_attributes(instance)
 
         msg = (
