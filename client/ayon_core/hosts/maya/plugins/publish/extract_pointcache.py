@@ -176,9 +176,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "uvsOnly": attribute_values.get(
                 "uvsOnly", self.uvsOnly
             ),
-            "writeNormals": attribute_values.get(
-                "writeNormals", self.writeNormals
-            ),
             "melPerFrameCallback": attribute_values.get(
                 "melPerFrameCallback", self.melPerFrameCallback
             ),
@@ -190,7 +187,12 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             ),
             "pythonPostJobCallback": attribute_values.get(
                 "pythonPostJobCallback", self.pythonPostJobCallback
-            )
+            ),
+            # Note that this converts `writeNormals` to `noNormals` for the
+            # `AbcExport` equivalent in `extract_alembic`
+            "noNormals": not attribute_values.get(
+                "writeNormals", self.writeNormals
+            ),
         }
 
         if instance.data.get("visibleOnly", False):
