@@ -60,6 +60,15 @@ class ExtractTyCache(publish.Extractor):
             "stagingDir": stagingdir
         }
         representations.append(representation)
+        mesh_repres = {
+            'name': 'tyMesh',
+            'ext': 'tyc',
+            'files': (
+                tyc_mesh_fnames if len(tyc_mesh_fnames) > 1
+                else tyc_mesh_fnames[0]),
+            "stagingDir": stagingdir
+        }
+        representations.append(mesh_repres)
         # Get the material filename of which assigned in
         # tyCache for extraction
         material_filename = f"{instance.name}__tyMtl.mat"
