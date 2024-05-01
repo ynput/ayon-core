@@ -69,13 +69,11 @@ class ValidateAlembicDefaultsPointcache(
         )
 
         # Set the settings values on the create context then save to workfile.
-        publish_attributes = instance.data["publish_attributes"]
-        plugin_name = cls.plugin_name(publish_attributes)
         attributes = cls._get_publish_attributes(instance)
         settings = cls._get_settings(instance.context)
         create_publish_attributes = create_instance.data["publish_attributes"]
         for key in attributes:
-            create_publish_attributes[plugin_name][key] = settings[key]
+            create_publish_attributes[cls.plugin_name][key] = settings[key]
 
         create_context.save_changes()
 
