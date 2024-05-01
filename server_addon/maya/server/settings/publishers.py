@@ -46,7 +46,6 @@ def extract_alembic_overrides_enum():
     return [
         {"label": "Custom Attributes", "value": "attr"},
         {"label": "Custom Attributes Prefix", "value": "attrPrefix"},
-        {"label": "Auto Subd", "value": "autoSubd"},
         {"label": "Data Format", "value": "dataFormat"},
         {"label": "Euler Filter", "value": "eulerFilter"},
         {"label": "Mel Per Frame Callback", "value": "melPerFrameCallback"},
@@ -344,17 +343,6 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
-    autoSubd: bool = SettingsField(
-        title="Auto Subd",
-        description=(
-            "If this flag is present and the mesh has crease edges, crease "
-            "vertices or holes, the mesh (OPolyMesh) would now be written out "
-            "as an OSubD and crease info will be stored in the Alembic  file. "
-            "Otherwise, creases info won't be preserved in Alembic file unless"
-            " a custom Boolean attribute SubDivisionMesh has been added to "
-            "mesh node and its value is true."
-        )
-    )
     eulerFilter: bool = SettingsField(
         title="Euler Filter",
         description="Apply Euler filter while sampling rotations."
@@ -1615,7 +1603,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         ],
         "attr": "",
         "attrPrefix": "",
-        "autoSubd": False,
         "bake_attributes": [],
         "bake_attribute_prefixes": [],
         "dataFormat": "ogawa",
