@@ -54,9 +54,13 @@ def extract_alembic(
     endFrame=None,
     eulerFilter=True,
     frameRange="",
+    melPerFrameCallback=None,
+    melPostJobCallback=None,
     noNormals=False,
     preRoll=False,
     preRollStartFrame=0,
+    pythonPerFrameCallback=None,
+    pythonPostJobCallback=None,
     renderableOnly=False,
     root=None,
     selection=True,
@@ -105,6 +109,11 @@ def extract_alembic(
             string formatted as: "startFrame endFrame". This argument
             overrides `startFrame` and `endFrame` arguments.
 
+        melPerFrameCallback (Optional[str]): MEL callback run per frame.
+
+        melPostJobCallback (Optional[str]): MEL callback after last frame is
+            written.
+
         noNormals (bool): When on, normal data from the original polygon
             objects is not included in the exported Alembic cache file.
 
@@ -115,6 +124,11 @@ def extract_alembic(
             evaluation at.  This is used to set the starting frame for time
             dependent translations and can be used to evaluate run-up that
             isn't actually translated. Defaults to 0.
+
+        pythonPerFrameCallback (Optional[str]): Python callback run per frame.
+
+        pythonPostJobCallback (Optional[str]): Python callback after last frame
+            is written.
 
         renderableOnly (bool): When on, any non-renderable nodes or hierarchy,
             such as hidden objects, are not included in the Alembic file.
@@ -281,6 +295,17 @@ def extract_alembic(
     maya_version = int(cmds.about(version=True))
     if maya_version >= 2018:
         options['autoSubd'] = options.pop('writeCreases', False)
+
+    # Only add callbacks if they are set so that we're not passing `None`
+    callbacks = {
+        "melPerFrameCallback": melPerFrameCallback,
+        "melPostJobCallback": melPostJobCallback,
+        "pythonPerFrameCallback": pythonPerFrameCallback,
+        "pythonPostJobCallback": pythonPostJobCallback,
+    }
+    for key, callback in callbacks.items():
+        if callback:
+            options[key] = str(callback)
 
     # Format the job string from options
     job_args = list()
