@@ -248,7 +248,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             with maintained_selection():
                 cmds.select(instance.data["proxy"])
                 extract_alembic(**kwargs)
-        raise RuntimeError("FAIL")
         representation = {
             "name": "proxy",
             "ext": "abc",
