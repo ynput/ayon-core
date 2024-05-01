@@ -227,6 +227,7 @@ def extract_alembic(
         "eulerFilter": eulerFilter,
         "noNormals": noNormals,
         "preRoll": preRoll,
+        "root": root,
         "renderableOnly": renderableOnly,
         "uvWrite": uvWrite,
         "uvsOnly": uvsOnly,
