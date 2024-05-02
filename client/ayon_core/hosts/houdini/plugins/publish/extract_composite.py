@@ -7,7 +7,8 @@ from ayon_core.hosts.houdini.api.lib import render_rop, splitext
 import hou
 
 
-class ExtractComposite(publish.Extractor):
+class ExtractComposite(publish.Extractor,
+                       publish.ColormanagedPyblishPluginMixin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Composite (Image Sequence)"
@@ -45,8 +46,14 @@ class ExtractComposite(publish.Extractor):
             "frameEnd": instance.data["frameEndHandle"],
         }
 
-        from pprint import pformat
-
-        self.log.info(pformat(representation))
+        if ext.lower() == "exr":
+            # Inject colorspace with 'scene_linear' as that's the
+            # default Houdini working colorspace and all extracted
+            # OpenEXR images should be in that colorspace.
+            # https://www.sidefx.com/docs/houdini/render/linear.html#image-formats
+            self.set_representation_colorspace(
+                representation, instance.context,
+                colorspace="scene_linear"
+            )
 
         instance.data["representations"].append(representation)
