@@ -1,4 +1,5 @@
 import os
+import traceback
 
 import ayon_api
 from ayon_core.pipeline import (
@@ -62,27 +63,47 @@ def _save_repository_workfile():
 
 
 def run_tests():
-    test_create()
-    test_publish()
-    test_load()
+    try:
+        test_create()
+        test_publish()
+        test_load()
+    except Exception as e:
+        traceback.print_exc()
+        raise(e)
     print("Testing was successfull!")
 
 
 def run_tests_on_repository_workfile():
-    _save_repository_workfile()
-    run_tests()
+    try:
+        _save_repository_workfile()
+        run_tests()
+    except Exception as e:
+        traceback.print_exc()
+        raise(e)
 
 
 def test_create_on_repository_workfile():
-    _save_repository_workfile()
-    test_create()
+    try:
+        _save_repository_workfile()
+        test_create()
+    except Exception as e:
+        traceback.print_exc()
+        raise(e)
 
 
 def test_publish_on_repository_workfile():
-    _save_repository_workfile()
-    test_publish()
+    try:
+        _save_repository_workfile()
+        test_publish()
+    except Exception as e:
+        traceback.print_exc()
+        raise(e)
 
 
 def test_load_on_repository_workfile():
-    _save_repository_workfile()
-    test_load()
+    try:
+        _save_repository_workfile()
+        test_publish()
+    except Exception as e:
+        traceback.print_exc()
+        raise(e)
