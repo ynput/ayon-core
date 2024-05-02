@@ -110,6 +110,26 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
             ]
         }
 
+    def launch_application(
+        self, app_name, project_name, folder_path, task_name
+    ):
+        """Launch application.
+
+        Args:
+            app_name (str): Full application name e.g. 'maya/2024'.
+            project_name (str): Project name.
+            folder_path (str): Folder path.
+            task_name (str): Task name.
+
+        """
+        app_manager = self.get_applications_manager()
+        return app_manager.launch(
+            app_name,
+            project_name=project_name,
+            folder_path=folder_path,
+            task_name=task_name,
+        )
+
     # --- CLI ---
     def cli(self, addon_click_group):
         main_group = click_wrap.group(
@@ -133,6 +153,17 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
                 help="Environment group (e.g. \"farm\")",
                 default=None
             )
+        )
+        (
+            main_group.command(
+                self._cli_launch_applications,
+                name="launch",
+                help="Launch application"
+            )
+            .option("--app", required=True, help="Application name")
+            .option("--project", required=True, help="Project name")
+            .option("--folder", required=True, help="Folder path")
+            .option("--task", required=True, help="Task name")
         )
         # Convert main command to click object and add it to parent group
         addon_click_group.add_command(
@@ -171,3 +202,15 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
 
         with open(output_json_path, "w") as file_stream:
             json.dump(env, file_stream, indent=4)
+
+    def _cli_launch_applications(self, project, folder, task, app):
+        """Launch application.
+
+        Args:
+            project (str): Project name.
+            folder (str): Folder path.
+            task (str): Task name.
+            app (str): Full application name e.g. 'maya/2024'.
+
+        """
+        self.launch_application(app, project, folder, task)
