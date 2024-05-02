@@ -1,17 +1,16 @@
 import os
 import re
 import traceback
-from datetime import datetime
-import shutil
 
 import nuke
 
-from pyblish import util
+from pyblish import util, api
 from qtpy import QtWidgets
 
 from ayon_core import resources
 from ayon_core.pipeline import registered_host
 from ayon_core.tools.utils import show_message_dialog
+from ayon_core.pipeline.create import CreateContext
 
 
 def set_context_favorites(favorites=None):
@@ -219,7 +218,16 @@ def _submit_headless_farm(node):
         node (Node): The node for which the farm submission is being made.
     """
 
-    context = util.collect()
+    host = registered_host()
+    create_context = CreateContext(host)
+    context = api.Context()
+    context.data["create_context"] = create_context
+    # Used in pyblish plugin to determine which instance to publish.
+    context.data["node_name"] = node.name()
+    # Used in pyblish plugins to determine whether to run or not.
+    context.data["headless_farm"] = True
+
+    context = util.publish(context)
 
     success, error_report = create_error_report(context)
 
@@ -228,94 +236,3 @@ def _submit_headless_farm(node):
             "Collection Errors", error_report, level="critical"
         )
         return
-
-    # Find instance for node and workfile.
-    instance = None
-    instance_workfile = None
-    for _instance in context:
-        if _instance.data["family"] == "workfile":
-            instance_workfile = _instance
-            _instance.data["active"] = False
-            continue
-
-        instance_node = _instance.data["transientData"]["node"]
-        if node.name() == instance_node.name():
-            instance = _instance
-        else:
-            _instance.data["active"] = False
-
-    if instance is None:
-        show_message_dialog(
-            "Collection Error",
-            "Could not find the instance from the node.",
-            level="critical"
-        )
-        return
-
-    # Enable for farm publishing.
-    instance.data["farm"] = True
-
-    # Clear the families as we only want the main family, ei. no review etc.
-    instance.data["families"] = []
-
-    # Use the workfile instead of published.
-    publish_attributes = instance.data["publish_attributes"]
-    publish_attributes["NukeSubmitDeadline"]["use_published_workfile"] = False
-
-    # Disable version validation.
-    instance.data.pop("latestVersion")
-    instance_workfile.data.pop("latestVersion")
-
-    # Validate
-    util.validate(context)
-
-    success, error_report = create_error_report(context)
-
-    if not success:
-        show_message_dialog(
-            "Validation Errors", error_report, level="critical"
-        )
-        return
-
-    # Extraction.
-    util.extract(context)
-
-    success, error_report = create_error_report(context)
-
-    if not success:
-        show_message_dialog(
-            "Extraction Errors", error_report, level="critical"
-        )
-        return
-
-    # Copy the workfile to a timestamped copy.
-    host = registered_host()
-    current_datetime = datetime.now()
-    formatted_timestamp = current_datetime.strftime("%Y%m%d%H%M%S")
-    base, ext = os.path.splitext(host.current_file())
-
-    directory = os.path.join(os.path.dirname(base), "farm_submissions")
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    filename = "{}_{}{}".format(
-        os.path.basename(base), formatted_timestamp, ext
-    )
-    path = os.path.join(directory, filename).replace("\\", "/")
-    context.data["currentFile"] = path
-    shutil.copy(host.current_file(), path)
-
-    # Continue to submission.
-    util.integrate(context)
-
-    success, error_report = create_error_report(context)
-
-    if not success:
-        show_message_dialog(
-            "Extraction Errors", error_report, level="critical"
-        )
-        return
-
-    show_message_dialog(
-        "Submission Successful", "Submission to the farm was successful."
-    )
