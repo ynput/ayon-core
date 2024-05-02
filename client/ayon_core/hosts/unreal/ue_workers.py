@@ -303,8 +303,11 @@ class UEProjectGenerationWorker(UEWorker):
             "install",
             "--ignore-installed",
             pyside_version,
-            "--prefix", site_packages_prefix,
+
         ]
+
+        if platform.system().lower() == "windows":
+            pyside_cmd += ["--target", site_packages_prefix]
 
         print(f"--- Installing {pyside_version} ...")
         print(" ".join(pyside_cmd))
