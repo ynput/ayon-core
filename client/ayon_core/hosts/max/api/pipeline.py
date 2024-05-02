@@ -63,6 +63,8 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         rt.callbacks.addScript(rt.Name('postWorkspaceChange'),
                                self._deferred_menu_creation)
+        rt.NodeEventCallback(
+            nameChanged=lib.update_modifier_node_names)
 
     def workfile_has_unsaved_changes(self):
         return rt.getSaveRequired()
