@@ -107,7 +107,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
         "matchmove",
     }
 
-    representations = ["ma", "abc", "fbx", "mb"]
+    representations = {"ma", "abc", "fbx", "mb"}
 
     label = "Reference"
     order = -10
@@ -269,7 +269,7 @@ class MayaUSDReferenceLoader(ReferenceLoader):
 
     label = "Reference Maya USD"
     product_types = {"usd"}
-    representations = ["usd"]
+    representations = {"usd"}
     extensions = {"usd", "usda", "usdc"}
 
     options = ReferenceLoader.options + [

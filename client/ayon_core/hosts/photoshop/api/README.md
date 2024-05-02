@@ -207,7 +207,7 @@ class ImageLoader(load.LoaderPlugin):
     """
 
     families = ["image"]
-    representations = ["*"]
+    representations = {"*"}
 
     def load(self, context, name=None, namespace=None, data=None):
         path = self.filepath_from_context(context)

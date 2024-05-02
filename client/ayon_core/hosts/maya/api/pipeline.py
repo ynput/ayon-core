@@ -30,9 +30,11 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_inventory_action_path,
     register_creator_plugin_path,
+    register_workfile_build_plugin_path,
     deregister_loader_plugin_path,
     deregister_inventory_action_path,
     deregister_creator_plugin_path,
+    deregister_workfile_build_plugin_path,
     AYON_CONTAINER_ID,
     AVALON_CONTAINER_ID,
 )
@@ -47,7 +49,6 @@ from ayon_core.hosts.maya import MAYA_ROOT_DIR
 from ayon_core.hosts.maya.lib import create_workspace_mel
 
 from . import menu, lib
-from .workfile_template_builder import MayaPlaceholderLoadPlugin
 from .workio import (
     open_file,
     save_file,
@@ -64,8 +65,12 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
+WORKFILE_BUILD_PATH = os.path.join(PLUGINS_DIR, "workfile_build")
 
 AVALON_CONTAINERS = ":AVALON_CONTAINERS"
+
+# Track whether the workfile tool is about to save
+_about_to_save = False
 
 
 class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
@@ -90,7 +95,7 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
-        self.log.info(PUBLISH_PATH)
+        register_workfile_build_plugin_path(WORKFILE_BUILD_PATH)
 
         self.log.info("Installing callbacks ... ")
         register_event_callback("init", on_init)
@@ -144,11 +149,6 @@ class MayaHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def get_containers(self):
         return ls()
-
-    def get_workfile_build_placeholder_plugins(self):
-        return [
-            MayaPlaceholderLoadPlugin
-        ]
 
     @contextlib.contextmanager
     def maintained_selection(self):
@@ -335,6 +335,7 @@ def uninstall():
     deregister_loader_plugin_path(LOAD_PATH)
     deregister_creator_plugin_path(CREATE_PATH)
     deregister_inventory_action_path(INVENTORY_PATH)
+    deregister_workfile_build_plugin_path(WORKFILE_BUILD_PATH)
 
     menu.uninstall()
 
@@ -577,9 +578,14 @@ def on_save():
     _remove_workfile_lock()
 
     # Generate ids of the current context on nodes in the scene
-    nodes = lib.get_id_required_nodes(referenced_nodes=False)
+    nodes = lib.get_id_required_nodes(referenced_nodes=False,
+                                      existing_ids=False)
     for node, new_id in lib.generate_ids(nodes):
         lib.set_id(node, new_id, overwrite=False)
+
+    # We are now starting the actual save directly
+    global _about_to_save
+    _about_to_save = False
 
 
 def on_open():
@@ -646,9 +652,10 @@ def on_task_changed():
             "Can't set project for new context because path does not exist: {}"
         ).format(workdir))
 
-    with lib.suspended_refresh():
-        lib.set_context_settings()
-        lib.update_content_on_context_change()
+    global _about_to_save
+    if not lib.IS_HEADLESS and _about_to_save:
+        # Let's prompt the user to update the context settings or not
+        lib.prompt_reset_context()
 
 
 def before_workfile_open():
@@ -663,6 +670,9 @@ def before_workfile_save(event):
     workdir_path = event["workdir_path"]
     if workdir_path:
         create_workspace_mel(workdir_path, project_name)
+
+    global _about_to_save
+    _about_to_save = True
 
 
 def workfile_save_before_xgen(event):

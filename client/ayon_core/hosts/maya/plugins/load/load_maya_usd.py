@@ -17,7 +17,7 @@ class MayaUsdLoader(load.LoaderPlugin):
     """Read USD data in a Maya USD Proxy"""
 
     product_types = {"model", "usd", "pointcache", "animation"}
-    representations = ["usd", "usda", "usdc", "usdz", "abc"]
+    representations = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Maya Proxy"
     order = -1

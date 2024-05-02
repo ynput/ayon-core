@@ -54,7 +54,7 @@ class ImageLoader(load.LoaderPlugin):
         "online",
     }
     label = "Load Image (COP2)"
-    representations = ["*"]
+    representations = {"*"}
     order = -10
 
     icon = "code-fork"

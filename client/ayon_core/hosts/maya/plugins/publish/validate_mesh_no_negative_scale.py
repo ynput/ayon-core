@@ -16,7 +16,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateMeshNoNegativeScale(pyblish.api.Validator,
+class ValidateMeshNoNegativeScale(pyblish.api.InstancePlugin,
                                   OptionalPyblishPluginMixin):
     """Ensure that meshes don't have a negative scale.
 

@@ -1524,18 +1524,28 @@ class WorkfileSettings(object):
 
         filter_knobs = [
             "viewerProcess",
-            "wipe_position"
+            "wipe_position",
+            "monitorOutOutputTransform"
         ]
 
+        display, viewer = get_viewer_config_from_string(
+            viewer_dict["viewerProcess"]
+        )
+        viewer_process = create_viewer_profile_string(
+            viewer, display, path_like=False
+        )
+        display, viewer = get_viewer_config_from_string(
+            viewer_dict["output_transform"]
+        )
+        output_transform = create_viewer_profile_string(
+            viewer, display, path_like=False
+        )
         erased_viewers = []
         for v in nuke.allNodes(filter="Viewer"):
             # set viewProcess to preset from settings
-            v["viewerProcess"].setValue(
-                str(viewer_dict["viewerProcess"])
-            )
+            v["viewerProcess"].setValue(viewer_process)
 
-            if str(viewer_dict["viewerProcess"]) \
-                    not in v["viewerProcess"].value():
+            if viewer_process not in v["viewerProcess"].value():
                 copy_inputs = v.dependencies()
                 copy_knobs = {k: v[k].value() for k in v.knobs()
                               if k not in filter_knobs}
@@ -1553,11 +1563,11 @@ class WorkfileSettings(object):
 
                 # set copied knobs
                 for k, v in copy_knobs.items():
-                    print(k, v)
                     nv[k].setValue(v)
 
                 # set viewerProcess
-                nv["viewerProcess"].setValue(str(viewer_dict["viewerProcess"]))
+                nv["viewerProcess"].setValue(viewer_process)
+                nv["monitorOutOutputTransform"].setValue(output_transform)
 
         if erased_viewers:
             log.warning(
@@ -1576,7 +1586,6 @@ class WorkfileSettings(object):
             host_name="nuke"
         )
 
-        viewer_process_settings = imageio_host["viewer"]["viewerProcess"]
         workfile_settings = imageio_host["workfile"]
         color_management = workfile_settings["color_management"]
         native_ocio_config = workfile_settings["native_ocio_config"]
@@ -1603,29 +1612,6 @@ class WorkfileSettings(object):
                     residual_path
                 ))
 
-        # get monitor lut from settings respecting Nuke version differences
-        monitor_lut = workfile_settings["thumbnail_space"]
-        monitor_lut_data = self._get_monitor_settings(
-            viewer_process_settings, monitor_lut
-        )
-        monitor_lut_data["workingSpaceLUT"] = (
-            workfile_settings["working_space"]
-        )
-
-        # then set the rest
-        for knob, value_ in monitor_lut_data.items():
-            # skip unfilled ocio config path
-            # it will be dict in value
-            if isinstance(value_, dict):
-                continue
-            # skip empty values
-            if not value_:
-                continue
-            if self._root_node[knob].value() not in value_:
-                self._root_node[knob].setValue(str(value_))
-                log.debug("nuke.root()['{}'] changed to: {}".format(
-                    knob, value_))
-
         # set ocio config path
         if config_data:
             config_path = config_data["path"].replace("\\", "/")
@@ -1639,6 +1625,31 @@ class WorkfileSettings(object):
             # if there's no mismatch between environment and settings
             if correct_settings:
                 self._set_ocio_config_path_to_workfile(config_data)
+
+        # get monitor lut from settings respecting Nuke version differences
+        monitor_lut_data = self._get_monitor_settings(
+            workfile_settings["monitor_out_lut"],
+            workfile_settings["monitor_lut"]
+        )
+        monitor_lut_data.update({
+            "workingSpaceLUT": workfile_settings["working_space"],
+            "int8Lut": workfile_settings["int_8_lut"],
+            "int16Lut": workfile_settings["int_16_lut"],
+            "logLut": workfile_settings["log_lut"],
+            "floatLut": workfile_settings["float_lut"]
+        })
+
+        # then set the rest
+        for knob, value_ in monitor_lut_data.items():
+            # skip unfilled ocio config path
+            # it will be dict in value
+            if isinstance(value_, dict):
+                continue
+            # skip empty values
+            if not value_:
+                continue
+            self._root_node[knob].setValue(str(value_))
+            log.debug("nuke.root()['{}'] changed to: {}".format(knob, value_))
 
     def _get_monitor_settings(self, viewer_lut, monitor_lut):
         """ Get monitor settings from viewer and monitor lut
@@ -2656,11 +2667,11 @@ class NukeDirmap(HostDirmap):
 
 
 class DirmapCache:
-    """Caching class to get settings and sync_module easily and only once."""
+    """Caching class to get settings and sitesync easily and only once."""
     _project_name = None
     _project_settings = None
-    _sync_module_discovered = False
-    _sync_module = None
+    _sitesync_addon_discovered = False
+    _sitesync_addon = None
     _mapping = None
 
     @classmethod
@@ -2676,11 +2687,11 @@ class DirmapCache:
         return cls._project_settings
 
     @classmethod
-    def sync_module(cls):
-        if not cls._sync_module_discovered:
-            cls._sync_module_discovered = True
-            cls._sync_module = AddonsManager().get("sync_server")
-        return cls._sync_module
+    def sitesync_addon(cls):
+        if not cls._sitesync_addon_discovered:
+            cls._sitesync_addon_discovered = True
+            cls._sitesync_addon = AddonsManager().get("sitesync")
+        return cls._sitesync_addon
 
     @classmethod
     def mapping(cls):
@@ -2702,7 +2713,7 @@ def dirmap_file_name_filter(file_name):
         "nuke",
         DirmapCache.project_name(),
         DirmapCache.project_settings(),
-        DirmapCache.sync_module(),
+        DirmapCache.sitesync_addon(),
     )
     if not DirmapCache.mapping():
         DirmapCache.set_mapping(dirmap_processor.get_mappings())
