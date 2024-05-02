@@ -2,7 +2,7 @@ import os
 import json
 
 from ayon_core.pipeline import publish
-from ayon_core.hosts.maya.api.lib import extract_alembic
+from ayon_core.hosts.maya.api.alembic import extract_alembic
 
 from maya import cmds
 
