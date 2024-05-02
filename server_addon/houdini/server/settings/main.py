@@ -3,7 +3,10 @@ from .general import (
     GeneralSettingsModel,
     DEFAULT_GENERAL_SETTINGS
 )
-from .imageio import HoudiniImageIOModel
+from .imageio import (
+    HoudiniImageIOModel,
+    DEFAULT_IMAGEIO_SETTINGS
+)
 from .shelves import ShelvesModel
 from .create import (
     CreatePluginsModel,
@@ -40,6 +43,7 @@ class HoudiniSettings(BaseSettingsModel):
 
 DEFAULT_VALUES = {
     "general": DEFAULT_GENERAL_SETTINGS,
+    "imageio": DEFAULT_IMAGEIO_SETTINGS,
     "shelves": [],
     "create": DEFAULT_HOUDINI_CREATE_SETTINGS,
     "publish": DEFAULT_HOUDINI_PUBLISH_SETTINGS
