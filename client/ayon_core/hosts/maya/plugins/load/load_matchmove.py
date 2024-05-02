@@ -9,7 +9,7 @@ class MatchmoveLoader(load.LoaderPlugin):
     """
 
     product_types = {"matchmove"}
-    representations = ["py", "mel"]
+    representations = {"py", "mel"}
     defaults = ["Camera", "Object", "Mocap"]
 
     label = "Run matchmove script"

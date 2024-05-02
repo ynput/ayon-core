@@ -13,7 +13,7 @@ class FusionLoadFBXMesh(load.LoaderPlugin):
     """Load FBX mesh into Fusion"""
 
     product_types = {"*"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {
         "3ds",
         "amc",

@@ -19,7 +19,7 @@ class AlembicModelLoader(load.LoaderPlugin):
     """
 
     product_types = {"model", "pointcache", "animation"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"abc"}
 
     label = "Load Alembic"

@@ -27,6 +27,10 @@ from .local_settings import (
     get_openpype_username,
 )
 from .ayon_connection import initialize_ayon_connection
+from .cache import (
+    CacheItem,
+    NestedCacheItem,
+)
 from .events import (
     emit_event,
     register_event_callback
@@ -120,22 +124,6 @@ from .transcoding import (
     get_rescaled_command_arguments,
 )
 
-from .applications import (
-    ApplicationLaunchFailed,
-    ApplictionExecutableNotFound,
-    ApplicationNotFound,
-    ApplicationManager,
-
-    PreLaunchHook,
-    PostLaunchHook,
-
-    EnvironmentPrepData,
-    prepare_app_environments,
-    prepare_context_environments,
-    get_app_environments_for_context,
-    apply_project_environments_value
-)
-
 from .plugin_tools import (
     prepare_template_data,
     source_hash,
@@ -172,6 +160,9 @@ __all__ = [
     "get_openpype_username",
 
     "initialize_ayon_connection",
+
+    "CacheItem",
+    "NestedCacheItem",
 
     "emit_event",
     "register_event_callback",
@@ -230,18 +221,6 @@ __all__ = [
     "convert_ffprobe_fps_value",
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
-
-    "ApplicationLaunchFailed",
-    "ApplictionExecutableNotFound",
-    "ApplicationNotFound",
-    "ApplicationManager",
-    "PreLaunchHook",
-    "PostLaunchHook",
-    "EnvironmentPrepData",
-    "prepare_app_environments",
-    "prepare_context_environments",
-    "get_app_environments_for_context",
-    "apply_project_environments_value",
 
     "compile_list_of_regexes",
 

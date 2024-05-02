@@ -6,13 +6,11 @@ from copy import deepcopy
 
 import attr
 import ayon_api
-import pyblish.api
 import clique
 
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
-    Anatomy,
 )
 from ayon_core.lib import Logger
 from ayon_core.pipeline.publish import KnownPublishError
@@ -137,7 +135,7 @@ def get_transferable_representations(instance):
         list of dicts: List of transferable representations.
 
     """
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
     to_transfer = []
 
     for representation in instance.data.get("representations", []):
@@ -166,7 +164,6 @@ def get_transferable_representations(instance):
 
 def create_skeleton_instance(
         instance, families_transfer=None, instance_transfer=None):
-    # type: (pyblish.api.Instance, list, dict) -> dict
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -191,7 +188,7 @@ def create_skeleton_instance(
 
     context = instance.context
     data = instance.data.copy()
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     # get time related data from instance (or context)
     time_data = get_time_data_from_instance_or_context(instance)
@@ -228,6 +225,7 @@ def create_skeleton_instance(
     instance_skeleton_data = {
         "productType": product_type,
         "productName": data["productName"],
+        "task": data["task"],
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
@@ -620,14 +618,31 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         aov_patterns = aov_filter
 
         preview = match_aov_pattern(app, aov_patterns, render_file_name)
-        # toggle preview on if multipart is on
-        if instance.data.get("multipartExr"):
-            log.debug("Adding preview tag because its multipartExr")
-            preview = True
 
         new_instance = deepcopy(skeleton)
         new_instance["productName"] = product_name
         new_instance["productGroup"] = group_name
+
+        # toggle preview on if multipart is on
+        # Because we cant query the multipartExr data member of each AOV we'll
+        # need to have hardcoded rule of excluding any renders with
+        # "cryptomatte" in the file name from being a multipart EXR. This issue
+        # happens with Redshift that forces Cryptomatte renders to be separate
+        # files even when the rest of the AOVs are merged into a single EXR.
+        # There might be an edge case where the main instance has cryptomatte
+        # in the name even though it's a multipart EXR.
+        if instance.data.get("renderer") == "redshift":
+            if (
+                instance.data.get("multipartExr") and
+                "cryptomatte" not in render_file_name.lower()
+            ):
+                log.debug("Adding preview tag because it's multipartExr")
+                preview = True
+            else:
+                new_instance["multipartExr"] = False
+        elif instance.data.get("multipartExr"):
+            log.debug("Adding preview tag because its multipartExr")
+            preview = True
 
         # explicitly disable review by user
         preview = preview and not do_not_add_review
@@ -751,7 +766,6 @@ def get_resources(project_name, version_entity, extension=None):
 
 
 def create_skeleton_instance_cache(instance):
-    # type: (pyblish.api.Instance, list, dict) -> dict
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -771,7 +785,7 @@ def create_skeleton_instance_cache(instance):
 
     context = instance.context
     data = instance.data.copy()
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     # get time related data from instance (or context)
     time_data = get_time_data_from_instance_or_context(instance)
@@ -1005,7 +1019,7 @@ def copy_extend_frames(instance, representation):
     start = instance.data.get("frameStart")
     end = instance.data.get("frameEnd")
     project_name = instance.context.data["project"]
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     folder_entity = ayon_api.get_folder_by_path(
         project_name, instance.data.get("folderPath")

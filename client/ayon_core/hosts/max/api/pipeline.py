@@ -63,6 +63,8 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         rt.callbacks.addScript(rt.Name('postWorkspaceChange'),
                                self._deferred_menu_creation)
+        rt.NodeEventCallback(
+            nameChanged=lib.update_modifier_node_names)
 
     def workfile_has_unsaved_changes(self):
         return rt.getSaveRequired()
@@ -240,10 +242,10 @@ def get_previous_loaded_object(container: str):
         node_list(list): list of nodes which are previously loaded
     """
     node_list = []
-    sel_list = rt.getProperty(container.modifiers[0].openPypeData, "sel_list")
-    for obj in rt.Objects:
-        if str(obj) in sel_list:
-            node_list.append(obj)
+    node_transform_monitor_list = rt.getProperty(
+        container.modifiers[0].openPypeData, "all_handles")
+    for node_transform_monitor in node_transform_monitor_list:
+        node_list.append(node_transform_monitor.node)
     return node_list
 
 
