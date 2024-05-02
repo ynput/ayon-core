@@ -170,6 +170,7 @@ MS_TYCACHE_ATTRIB = """attributes "AYONTyCacheData"
         listbox export_node "Export Nodes" items:#()
         button button_add "Add to Exports"
         button button_del "Delete from Exports"
+        button button_refresh "Refresh"
         listbox tyflow_node "TyFlow Export Operators" items:#()
 
         on button_add pressed do
