@@ -243,7 +243,7 @@ class ValidatePluginPathAttributesModel(BaseSettingsModel):
     and the node attribute is <b>abc_file</b>
     """
 
-    enabled: bool = True
+    enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     attribute: list[ValidatePluginPathAttributesAttrModel] = SettingsField(
