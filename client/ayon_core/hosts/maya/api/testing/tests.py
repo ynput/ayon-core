@@ -119,7 +119,9 @@ def recursive_validate(valid_action_names):
     """ Recursively validate until until it is either successfull or there are
     no more approved actions to run in which case its failing.
     """
-    context = pyblish.util.collect()
+    context = pyblish.api.Context()
+    context.data["create_context"] = CreateContext(registered_host())
+    context = pyblish.util.collect(context)
     pyblish.util.validate(context)
 
     success = True
