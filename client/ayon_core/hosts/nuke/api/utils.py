@@ -236,3 +236,7 @@ def _submit_headless_farm(node):
             "Collection Errors", error_report, level="critical"
         )
         return
+
+    show_message_dialog(
+        "Submission Successful", "Submission to the farm was successful."
+    )
