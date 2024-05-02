@@ -5,7 +5,7 @@ import copy
 from maya import cmds
 
 import pyblish.api
-from ayon_core.hosts.maya.api.lib import extract_alembic
+from ayon_core.hosts.maya.api.alembic import extract_alembic
 from ayon_core.pipeline import publish
 
 
