@@ -254,6 +254,9 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
             placeholder.scene_identifier, parent=True, fullPath=True
         )
         for node in set(nodes_to_parent):
+            if cmds.lockNode(node, lock=True, query=True):
+                continue
+
             cmds.reorder(node, front=True)
             cmds.reorder(node, relative=placeholder.data["index"])
             cmds.xform(node, matrix=placeholder_form, ws=True)
