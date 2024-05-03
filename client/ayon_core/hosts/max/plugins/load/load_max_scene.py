@@ -117,7 +117,7 @@ class MaxSceneLoader(load.LoaderPlugin):
         )
         for max_obj, obj_name in zip(max_objects, max_object_names):
             max_obj.name = f"{namespace}:{obj_name}"
-            max_container.append(rt.getNodeByName(max_obj.name))
+            max_container.append(max_obj)
         return containerise(
             name, max_container, context,
             namespace, loader=self.__class__.__name__)
@@ -158,11 +158,11 @@ class MaxSceneLoader(load.LoaderPlugin):
                                      current_max_object_names):
             max_obj.name = f"{namespace}:{obj_name}"
             max_objects.append(max_obj)
-            max_transform = f"{max_obj.name}.transform"
+            max_transform = f"{max_obj}.transform"
             if max_transform in transform_data.keys():
                 max_obj.pos = transform_data[max_transform] or 0
                 max_obj.scale = transform_data[
-                    f"{max_obj.name}.scale"] or 0
+                    f"{max_obj}.scale"] or 0
 
         update_custom_attribute_data(node, max_objects)
         lib.imprint(container["instance_node"], {
