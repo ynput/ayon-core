@@ -77,3 +77,14 @@ class ExtractUSD(publish.Extractor):
         instance.data.setdefault("representations", []).append(representation)
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, representation)
+
+
+class ExtractModelUSD(ExtractUSD):
+    """Extract model as USD."""
+
+    label = "Extract USD (Model)"
+    hosts = ["blender"]
+    families = ["model"]
+
+    # Driven by settings
+    optional = True
