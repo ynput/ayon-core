@@ -1175,6 +1175,7 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "ValidateRenderSettings": {
         "enabled": True,
+        "active": True,
         "optional": False,
         "arnold_render_attributes": [],
         "vray_render_attributes": [],
