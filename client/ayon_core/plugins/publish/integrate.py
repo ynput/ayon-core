@@ -42,7 +42,7 @@ def prepare_changes(old_entity, new_entity):
 
     Returns:
         dict[str, Any]: Changes that have new entity.
-        
+
     """
     changes = {}
     for key in set(new_entity.keys()):
@@ -121,6 +121,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "setdress",
                 "layout",
                 "ass",
+                "assProxy",
                 "vdbcache",
                 "scene",
                 "vrayproxy",
