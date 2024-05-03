@@ -310,8 +310,9 @@ class RendererAttributesModel(BaseSettingsModel):
 
 
 class ValidateRenderSettingsModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="ValidateRenderSettings")
+    enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     arnold_render_attributes: list[RendererAttributesModel] = SettingsField(
         default_factory=list, title="Arnold Render Attributes")
     vray_render_attributes: list[RendererAttributesModel] = SettingsField(
