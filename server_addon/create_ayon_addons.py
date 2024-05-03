@@ -5,7 +5,7 @@ import shutil
 import argparse
 import zipfile
 import types
-import importlib
+import importlib.machinery
 import platform
 import collections
 from pathlib import Path
@@ -245,12 +245,8 @@ def create_addon_package(
     keep_source: bool,
 ):
     src_package_py = addon_dir / "package.py"
-    package = None
-    if src_package_py.exists():
-        package = import_filepath(src_package_py)
-        addon_version = package.version
-    else:
-        addon_version = get_addon_version(addon_dir)
+    package = import_filepath(src_package_py)
+    addon_version = package.version
 
     addon_output_dir = output_dir / addon_dir.name / addon_version
     if addon_output_dir.exists():
@@ -259,18 +255,7 @@ def create_addon_package(
 
     # Copy server content
     dst_package_py = addon_output_dir / "package.py"
-    if package is not None:
-        shutil.copy(src_package_py, dst_package_py)
-    else:
-        addon_name = addon_dir.name
-        if addon_name == "royal_render":
-            addon_name = "royalrender"
-        package_py_content = PACKAGE_PY_TEMPLATE.format(
-            addon_name=addon_name, addon_version=addon_version
-        )
-
-        with open(dst_package_py, "w+") as pkg_py:
-            pkg_py.write(package_py_content)
+    shutil.copy(src_package_py, dst_package_py)
 
     server_dir = addon_dir / "server"
     shutil.copytree(
