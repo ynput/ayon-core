@@ -16,9 +16,13 @@ class ValidateMeshIsStatic(pyblish.api.InstancePlugin,
     """Validate mesh is static.
 
     It checks if output node is time dependent.
+    this avoids getting different output from ROP node when extracted
+    from a different frame than the first frame.
+    (Might be overly restrictive though)
     """
 
-    families = ["staticMesh"]
+    families = ["staticMesh",
+                "model"]
     hosts = ["houdini"]
     label = "Validate Mesh is Static"
     order = ValidateContentsOrder + 0.1

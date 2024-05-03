@@ -15,7 +15,8 @@ class CollectOutputSOPPath(pyblish.api.InstancePlugin):
         "usd",
         "usdrender",
         "redshiftproxy",
-        "staticMesh"
+        "staticMesh",
+        "model"
     ]
 
     hosts = ["houdini"]
