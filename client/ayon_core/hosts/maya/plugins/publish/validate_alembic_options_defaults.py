@@ -1,3 +1,4 @@
+import inspect
 import pyblish.api
 
 from ayon_core.pipeline import OptionalPyblishPluginMixin
@@ -39,11 +40,11 @@ class ValidateAlembicDefaultsPointcache(
         attributes = self._get_publish_attributes(instance)
 
         msg = (
-            "Alembic Extract setting \"{}\" is not the default value:"
-            "\nCurrent: {}"
-            "\nDefault Value: {}\n"
+            "Alembic extract setting \"{}\" is not the default value:"
+            "\n- Current: {}"
+            "\n- Default: {}\n"
         )
-        errors = []
+        invalid = False
         for key, value in attributes.items():
             default_value = settings[key]
 
@@ -54,10 +55,32 @@ class ValidateAlembicDefaultsPointcache(
                 default_value = sorted(default_value)
 
             if value != default_value:
-                errors.append(msg.format(key, value, default_value))
+                self.log.error(
+                    msg.format(key, value, default_value)
+                )
+                invalid = True
 
-        if errors:
-            raise PublishValidationError("\n".join(errors))
+        if invalid:
+            raise PublishValidationError(
+                "Detected alembic options that differ from the default value.",
+                description=self.get_description()
+            )
+
+    @staticmethod
+    def get_description():
+        return inspect.cleandoc(
+            """### Alembic Extract settings differ from defaults
+            
+            The alembic export options differ from the project default values. 
+            
+            If this is intentional you can disable this validation by 
+            disabling **Validate Alembic Options Default**.
+            
+            If not you may use the "Repair" action to revert all the options to
+            their default values.
+            
+            """
+        )
 
     @classmethod
     def repair(cls, instance):
