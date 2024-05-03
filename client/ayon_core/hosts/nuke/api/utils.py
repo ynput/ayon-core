@@ -4,7 +4,8 @@ import traceback
 
 import nuke
 
-from pyblish import util, api
+import pyblish.util
+import pyblish.api
 from qtpy import QtWidgets
 
 from ayon_core import resources
@@ -220,14 +221,14 @@ def _submit_headless_farm(node):
 
     host = registered_host()
     create_context = CreateContext(host)
-    context = api.Context()
+    context = pyblish.api.Context()
     context.data["create_context"] = create_context
     # Used in pyblish plugin to determine which instance to publish.
     context.data["node_name"] = node.name()
     # Used in pyblish plugins to determine whether to run or not.
     context.data["headless_farm"] = True
 
-    context = util.publish(context)
+    context = pyblish.util.publish(context)
 
     success, error_report = create_error_report(context)
 
