@@ -50,7 +50,7 @@ class CreateHDA(plugin.HoudiniCreator):
 
         min_num_inputs = pre_create_data.get("min_num_inputs",
                                              self.min_num_inputs)
-        max_num_inputs = pre_create_data.get("min_num_inputs",
+        max_num_inputs = pre_create_data.get("max_num_inputs",
                                              self.max_num_inputs)
 
         if self.selected_nodes:
