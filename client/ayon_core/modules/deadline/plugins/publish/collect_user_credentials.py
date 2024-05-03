@@ -25,6 +25,7 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
 
     targets = ["local"]
     hosts = ["aftereffects",
+             "blender",
              "fusion",
              "harmony",
              "nuke",
