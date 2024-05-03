@@ -29,8 +29,7 @@ class CacheModelLoader(plugin.AssetLoader):
     product_types = {"model", "pointcache", "animation", "usd"}
     representations = {"abc", "usd"}
 
-    # TODO: Should USD loader be a separate loader instead?
-    label = "Load Alembic/USD"
+    label = "Load Cache"
     icon = "code-fork"
     color = "orange"
 
