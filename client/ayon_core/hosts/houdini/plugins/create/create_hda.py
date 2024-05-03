@@ -38,8 +38,20 @@ class CreateHDA(plugin.HoudiniCreator):
         return product_name.lower() in existing_product_names_low
 
     def create_instance_node(
-        self, folder_path, node_name, parent, node_type="geometry"
+        self,
+        folder_path,
+        node_name,
+        parent,
+        node_type="geometry",
+        pre_create_data=None
     ):
+        if pre_create_data is None:
+            pre_create_data = {}
+
+        min_num_inputs = pre_create_data.get("min_num_inputs",
+                                             self.min_num_inputs)
+        max_num_inputs = pre_create_data.get("min_num_inputs",
+                                             self.max_num_inputs)
 
         if self.selected_nodes:
             # if we have `use selection` enabled, and we have some
@@ -75,8 +87,8 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_node = to_hda.createDigitalAsset(
                 name=node_name,
                 hda_file_name="$HIP/{}.hda".format(node_name),
-                min_num_inputs=self.min_num_inputs,
-                max_num_inputs=self.max_num_inputs,
+                min_num_inputs=min_num_inputs,
+                max_num_inputs=max_num_inputs,
                 ignore_external_references=True
             )
             hda_node.layoutChildren()
@@ -98,15 +110,10 @@ class CreateHDA(plugin.HoudiniCreator):
     def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
 
-        self.min_num_inputs = pre_create_data["min_num_inputs"]
-        self.max_num_inputs = pre_create_data["max_num_inputs"]
-
-        instance = super(CreateHDA, self).create(
+        return super(CreateHDA, self).create(
             product_name,
             instance_data,
             pre_create_data)
-
-        return instance
 
     def get_network_categories(self):
         return [
