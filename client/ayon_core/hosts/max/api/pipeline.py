@@ -221,6 +221,8 @@ def before_workfile_save(event):
     workdir_path = event["workdir_path"]
     if workdir_path:
         create_workspace_mxp(workdir_path, project_name)
+        mxp_filepath = os.path.join(workdir_path, mxp_filepath)
+        rt.pathConfig.load(mxp_filepath)
 
 
 def load_custom_attribute_data():
