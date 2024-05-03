@@ -14,10 +14,7 @@ def create_workspace_mxp(workdir, project_name, project_settings=None):
     if not project_settings:
         project_settings = get_project_settings(project_name)
     max_script = project_settings["max"].get("mxp_workspace")
-    directory_index = max_script.find("[Directories]")
-    max_script = "{}ProjectFolder={}{}".format(
-        max_script[:directory_index], workdir, max_script[directory_index:])
-    print(max_script)
+    # TODO: add ProjectFolder={workdir} into the max_script
 
     # Skip if mxp script in settings is empty
     if not max_script:
