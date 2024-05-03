@@ -69,7 +69,7 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    label = "Render Settings"
+    label = "Validate Render Settings"
     hosts = ["maya"]
     families = ["renderlayer"]
     actions = [RepairAction]
