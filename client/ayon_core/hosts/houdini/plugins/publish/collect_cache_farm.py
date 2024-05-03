@@ -10,7 +10,7 @@ class CollectDataforCache(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.04
     families = ["ass", "pointcache",
                 "mantraifd", "redshiftproxy",
-                "vdbcache"]
+                "vdbcache", "model"]
     hosts = ["houdini"]
     targets = ["local", "remote"]
     label = "Collect Data for Cache"
@@ -42,10 +42,7 @@ class CollectDataforCache(pyblish.api.InstancePlugin):
         cache_files = {"_": instance.data["files"]}
         # Convert instance family to pointcache if it is bgeo or abc
         # because ???
-        for family in instance.data["families"]:
-            if family == "bgeo" or "abc":
-                instance.data["productType"] = "pointcache"
-                break
+        self.log.debug(instance.data["families"])
         instance.data.update({
             "plugin": "Houdini",
             "publish": True
