@@ -46,6 +46,9 @@ class MaxSettings(BaseSettingsModel):
         default_factory=UnitScaleSettings,
         title="Set Unit Scale"
     )
+    mxp_workspace: str = SettingsField(
+        title="Max mxp Workspace", widget="textarea"
+    )
     imageio: ImageIOSettings = SettingsField(
         default_factory=ImageIOSettings,
         title="Color Management (ImageIO)"
@@ -67,11 +70,40 @@ class MaxSettings(BaseSettingsModel):
         title="Publish Plugins")
 
 
+DEFAULT_MXP_WORKSPACE_SETTINGS = "\n".join((
+    '[Directories]',
+    'Animations= ./sceneassets/animations',
+    'Archives=./archives',
+    'AutoBackup=./autoback',
+    'BitmapProxies=./proxies',
+    'Fluid Simulations=./SimCache',
+    'Images=./sceneassets/images',
+    'MaxStart=./',
+    'Previews=./previews',
+    'RenderAssets=./sceneassets/renderassets',
+    'Scenes=./',
+    'Sounds=./sceneassets/sounds',
+    '[XReferenceDirs]',
+    'Dir1=./',
+    '[BitmapDirs]',
+    'Dir1=C:/Program Files/Autodesk/3ds Max 2023/Maps',
+    'Dir2=C:/Program Files/Autodesk/3ds Max 2023/Maps/glare',
+    'Dir3=C:/Program Files/Autodesk/3ds Max 2023/Maps/adskMtl',
+    'Dir4=C:/Program Files/Autodesk/3ds Max 2023/Maps/Noise',
+    'Dir5=C:/Program Files/Autodesk/3ds Max 2023/Maps/mental_mill',
+    'Dir6=C:/Program Files/Autodesk/3ds Max 2023/Maps/fx',
+    'Dir7=C:/Program Files/Autodesk/3ds Max 2023/Maps/Particle Flow Presets',
+    '',
+))
+
+
+
 DEFAULT_VALUES = {
     "unit_scale_settings": {
         "enabled": True,
         "scene_unit_scale": "Centimeters"
     },
+    "mxp_workspace": DEFAULT_MXP_WORKSPACE_SETTINGS,
     "RenderSettings": DEFAULT_RENDER_SETTINGS,
     "CreateReview": DEFAULT_CREATE_REVIEW_SETTINGS,
     "PointCloud": {
