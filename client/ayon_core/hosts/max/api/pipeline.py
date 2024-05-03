@@ -196,7 +196,10 @@ def _set_project():
             pass
         else:
             raise
-    # TODO: set the Project Directory Create Filter
+    if rt.pathConfig.getCurrentProjectFolder() != workdir:
+        dst_filepath = os.path.join(workdir, "workspace.mxp")
+        rt.pathConfig.load(dst_filepath)
+        rt.pathConfig.doSetProjectFolderSteps()
     rt.pathConfig.setCurrentProjectFolder(workdir)
 
 

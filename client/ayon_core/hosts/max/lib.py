@@ -15,7 +15,11 @@ def create_workspace_mxp(workdir, project_name, project_settings=None):
         project_settings = get_project_settings(project_name)
     max_script = project_settings["max"].get("mxp_workspace")
     # TODO: add ProjectFolder={workdir} into the max_script
-
+    edited_script = "\n".join((
+        '[Directories]',
+        f'ProjectFolder={workdir}'
+    ))
+    max_script = max_script.replace("[Directories]", edited_script)
     # Skip if mxp script in settings is empty
     if not max_script:
         log = Logger.get_logger("create_workspace_mxp")
