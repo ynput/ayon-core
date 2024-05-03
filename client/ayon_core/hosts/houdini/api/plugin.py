@@ -189,7 +189,12 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             folder_path = instance_data["folderPath"]
 
             instance_node = self.create_instance_node(
-                folder_path, product_name, "/out", node_type)
+                folder_path,
+                product_name,
+                "/out",
+                node_type,
+                pre_create_data
+            )
 
             self.customize_node_look(instance_node)
 
