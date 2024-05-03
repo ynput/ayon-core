@@ -9,6 +9,7 @@ import json
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 import pyblish.api
 from ayon_core.pipeline import (
+    get_current_project_name,
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
@@ -19,6 +20,7 @@ from ayon_core.hosts.max.api.menu import AYONMenu
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.plugin import MS_CUSTOM_ATTRIB
 from ayon_core.hosts.max import MAX_HOST_DIR
+from ayon_core.hosts.max.lib import create_workspace_mxp
 
 from pymxs import runtime as rt  # noqa
 
@@ -53,6 +55,7 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         self.menu = AYONMenu()
 
         register_event_callback("taskChanged", on_task_changed)
+        register_event_callback("workfile.save.before", before_workfile_save)
 
         self._has_been_setup = True
 
@@ -196,11 +199,14 @@ def _set_project():
             pass
         else:
             raise
-    if rt.pathConfig.getCurrentProjectFolder() != workdir:
-        dst_filepath = os.path.join(workdir, "workspace.mxp")
-        rt.pathConfig.load(dst_filepath)
-        rt.pathConfig.doSetProjectFolderSteps()
-    rt.pathConfig.setCurrentProjectFolder(workdir)
+
+    dst_filepath = os.path.join(workdir, "workspace.mxp")
+    rt.pathConfig.load(dst_filepath)
+    has_project = (
+        rt.pathConfig.doProjectSetupStepsUsingDirectory(workdir)
+    )
+    if not has_project:
+        rt.pathConfig.setCurrentProjectFolder(workdir)
 
 
 def on_task_changed():
@@ -208,6 +214,13 @@ def on_task_changed():
     if os.path.exists(workdir):
         log.info("Updating 3dsMax workspace for task change to %s", workdir)
         rt.pathConfig.setCurrentProjectFolder(workdir)
+
+
+def before_workfile_save(event):
+    project_name = get_current_project_name()
+    workdir_path = event["workdir_path"]
+    if workdir_path:
+        create_workspace_mxp(workdir_path, project_name)
 
 
 def load_custom_attribute_data():
