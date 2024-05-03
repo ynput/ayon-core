@@ -39,12 +39,7 @@ class ValidateAlembicDefaultsPointcache(
         settings = self._get_settings(instance.context)
         attributes = self._get_publish_attributes(instance)
 
-        msg = (
-            "Alembic extract setting \"{}\" is not the default value:"
-            "\n- Current: {}"
-            "\n- Default: {}\n"
-        )
-        invalid = False
+        invalid = {}
         for key, value in attributes.items():
             default_value = settings[key]
 
@@ -55,14 +50,17 @@ class ValidateAlembicDefaultsPointcache(
                 default_value = sorted(default_value)
 
             if value != default_value:
-                self.log.error(
-                    msg.format(key, value, default_value)
-                )
-                invalid = True
+                invalid[key] = value, default_value
 
         if invalid:
+            non_defaults = "\n".join(
+                f"- {key}: {value} \t(default: {default_value})"
+                for key, (value, default_value) in invalid.items()
+            )
+
             raise PublishValidationError(
-                "Detected alembic options that differ from the default value.",
+                "Alembic extract options differ from default values:\n"
+                f"{non_defaults}",
                 description=self.get_description()
             )
 
