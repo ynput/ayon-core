@@ -41,6 +41,17 @@ class ValidateAlembicDefaultsPointcache(
 
         invalid = {}
         for key, value in attributes.items():
+            if key not in settings:
+                # This may occur if attributes have changed over time and an
+                # existing instance has older legacy attributes that do not
+                # match the current settings definition.
+                self.log.warning(
+                    "Publish attribute %s not found in Alembic Export "
+                    "default settings. Ignoring validation for attribute.",
+                    key
+                )
+                continue
+
             default_value = settings[key]
 
             # Lists are best to compared sorted since we cant rely on the order
