@@ -1987,12 +1987,16 @@ class CreateContext:
                     "Folder '{}' was not found".format(folder_path)
                 )
 
-        task_name = None
         if task_entity is None:
             task_name = self.get_current_task_name()
-            task_entity = ayon_api.get_task_by_name(
-                project_name, folder_entity["id"], task_name
-            )
+            if task_name:
+                task_entity = ayon_api.get_task_by_name(
+                    project_name, folder_entity["id"], task_name
+                )
+
+        task_name = None
+        if task_entity:
+            task_name = task_entity["name"]
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -2022,6 +2026,7 @@ class CreateContext:
             "productType": creator.product_type,
             "variant": variant
         }
+        print("Create instance data", instance_data)
         return creator.create(
             product_name,
             instance_data,
