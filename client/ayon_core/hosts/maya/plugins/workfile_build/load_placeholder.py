@@ -10,7 +10,8 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
 from ayon_core.hosts.maya.api.lib import (
     read,
     imprint,
-    get_reference_node
+    get_reference_node,
+    get_highest_in_hierarchy
 )
 from ayon_core.hosts.maya.api.workfile_template_builder import PLACEHOLDER_SET
 
@@ -242,6 +243,12 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
 
             elif not cmds.sets(root, q=True):
                 return
+
+        # Some containers like GPU cache does not contain a reference node and
+        # all the nodes created are part of the container set, but the GPU
+        # cache cannot be reparented but its parent group can, so we ensure to
+        # grab top-most parent.
+        nodes_to_parent = get_highest_in_hierarchy(nodes_to_parent)
 
         # Move loaded nodes to correct index in outliner hierarchy
         placeholder_form = cmds.xform(
