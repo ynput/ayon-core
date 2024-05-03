@@ -1151,7 +1151,6 @@ def _remove_old_knobs(node):
         "OpenpypeDataGroup", "OpenpypeDataGroup_End", "deadlinePriority",
         "deadlineChunkSize", "deadlineConcurrentTasks", "Deadline"
     ]
-    print(node.name())
 
     # remove all old knobs
     for knob in node.allKnobs():
