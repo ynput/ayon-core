@@ -116,12 +116,20 @@ class CreateHDA(plugin.HoudiniCreator):
             pre_create_data)
 
     def get_network_categories(self):
+        # Houdini allows creating sub-network nodes inside
+        # these categories.
+        # Therefore this plugin can work in these categories.
         return [
-            category for name, category in hou.nodeTypeCategories().items()
-            if name in {
-                "Chop", "Cop2", "Dop", "Driver", "Lop",
-                "Object", "Shop", "Sop", "Top", "Vop"
-            }
+            hou.chopNodeTypeCategory(),
+            hou.cop2NodeTypeCategory(),
+            hou.dopNodeTypeCategory(),
+            hou.ropNodeTypeCategory(),
+            hou.lopNodeTypeCategory(),
+            hou.objNodeTypeCategory(),
+            hou.shopNodeTypeCategory(),
+            hou.sopNodeTypeCategory(),
+            hou.topNodeTypeCategory(),
+            hou.vopNodeTypeCategory()
         ]
 
     def get_pre_create_attr_defs(self):
