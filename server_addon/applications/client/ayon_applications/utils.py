@@ -281,13 +281,15 @@ def prepare_app_environments(
         app.environment
     ]
 
-    folder_entity = data.get("folder_entity")
+    entity = data.get("task_entity")
+    if not entity:
+        entity = data.get("folder_entity")
     # Add tools environments
     groups_by_name = {}
     tool_by_group_name = collections.defaultdict(dict)
-    if folder_entity:
+    if entity:
         # Make sure each tool group can be added only once
-        for key in folder_entity["attrib"].get("tools") or []:
+        for key in entity["attrib"].get("tools") or []:
             tool = app.manager.tools.get(key)
             if not tool or not tool.is_valid_for_app(app):
                 continue
