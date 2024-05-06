@@ -334,10 +334,10 @@ def parse_colorspace_from_filepath(
         pattern = "|".join(
             # Allow to match spaces also as underscores because the
             # integrator replaces spaces with underscores in filenames
-            re.escape(colorspace) for colorspace in
+            re.escape(colorspace)
             # Sort by longest first so the regex matches longer matches
             # over smaller matches, e.g. matching 'Output - sRGB' over 'sRGB'
-            sorted(colorspaces, key=len, reverse=True)
+            for colorspace in sorted(colorspaces, key=len, reverse=True)
         )
         return re.compile(pattern)
 
@@ -529,11 +529,12 @@ def convert_colorspace_enumerator_item(
     """Convert colorspace enumerator item to dictionary
 
     Args:
-        colorspace_item (str): colorspace and family in couple
-        config_items (dict[str,dict]): colorspace data
+        colorspace_enum_item (str): Colorspace and family in couple.
+        config_items (dict[str,dict]): Colorspace data.
 
     Returns:
         dict: colorspace data
+
     """
     if "::" not in colorspace_enum_item:
         return None
@@ -1103,13 +1104,13 @@ def get_imageio_file_rules(project_name, host_name, project_settings=None):
     """Get ImageIO File rules from project settings
 
     Args:
-        project_name (str): project name
-        host_name (str): host name
-        project_settings (dict, optional): project settings.
-                                           Defaults to None.
+        project_name (str): Project name.
+        host_name (str): Host name.
+        project_settings (Optional[dict]): Project settings.
 
     Returns:
         list[dict[str, Any]]: file rules data
+
     """
     project_settings = project_settings or get_project_settings(project_name)
 
@@ -1151,7 +1152,7 @@ def get_remapped_colorspace_to_native(
     """Return native colorspace name.
 
     Args:
-        ocio_colorspace_name (str | None): ocio colorspace name
+        ocio_colorspace_name (str | None): OCIO colorspace name.
         host_name (str): Host name.
         imageio_host_settings (dict[str, Any]): ImageIO host settings.
 
@@ -1199,12 +1200,12 @@ def _get_imageio_settings(project_settings, host_name):
     """Get ImageIO settings for global and host
 
     Args:
-        project_settings (dict): project settings.
-                                 Defaults to None.
-        host_name (str): host name
+        project_settings (dict[str, Any]): Project settings.
+        host_name (str): Host name.
 
     Returns:
-        tuple[dict, dict]: image io settings for global and host
+        tuple[dict, dict]: Image io settings for global and host.
+
     """
     # get image io from global and host_name
     imageio_global = project_settings["core"]["imageio"]
@@ -1266,17 +1267,12 @@ def get_colorspace_settings_from_publish_context(context_data):
 
 
 def set_colorspace_data_to_representation(
-    representation, context_data,
+    representation,
+    context_data,
     colorspace=None,
     log=None
 ):
     """Sets colorspace data to representation.
-
-    Args:
-        representation (dict): publishing representation
-        context_data (publish.Context.data): publishing context data
-        colorspace (str, optional): colorspace name. Defaults to None.
-        log (logging.Logger, optional): logger instance. Defaults to None.
 
     Example:
         ```
@@ -1291,6 +1287,12 @@ def set_colorspace_data_to_representation(
             }
         }
         ```
+
+    Args:
+        representation (dict): publishing representation
+        context_data (publish.Context.data): publishing context data
+        colorspace (Optional[str]): Colorspace name.
+        log (Optional[logging.Logger]): logger instance.
 
     """
     log = log or Logger.get_logger(__name__)
@@ -1355,9 +1357,9 @@ def get_display_view_colorspace_name(config_path, display, view):
         view (str): view name e.g. "sRGB"
 
     Returns:
-        view color space name (str) e.g. "Output - sRGB"
-    """
+        str: View color space name. e.g. "Output - sRGB"
 
+    """
     if not compatibility_check():
         # python environment is not compatible with PyOpenColorIO
         # needs to be run in subprocess
@@ -1381,8 +1383,8 @@ def _get_display_view_colorspace_subprocess(config_path, display, view):
 
     Returns:
         view color space name (str) e.g. "Output - sRGB"
-    """
 
+    """
     with _make_temp_json_file() as tmp_json_path:
         # Prepare subprocess arguments
         args = [
