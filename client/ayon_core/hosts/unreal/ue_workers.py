@@ -260,11 +260,11 @@ class UEProjectGenerationWorker(UEWorker):
                 self.failed.emit(msg, return_code)
                 raise RuntimeError(msg)
 
-        # ensure we have PySide2 installed in engine
+        # ensure we have PySide2/6 installed in engine
 
         self.progress.emit(0)
         self.stage_begin.emit(
-            (f"Checking PySide2 installation... {stage_count} "
+            (f"Checking Qt bindings installation... {stage_count} "
              f" out of {stage_count}"))
         python_path = None
         if platform.system().lower() == "windows":
@@ -287,11 +287,30 @@ class UEProjectGenerationWorker(UEWorker):
             msg = f"Unreal Python not found at {python_path}"
             self.failed.emit(msg, 1)
             raise RuntimeError(msg)
-        pyside_cmd = [python_path.as_posix(),
-                      "-m",
-                      "pip",
-                      "install",
-                      "pyside2"]
+
+        pyside_version = "PySide2"
+        ue_version = self.ue_version.split(".")
+        if int(ue_version[0]) == 5 and int(ue_version[1]) >= 4:
+            # Use PySide6 6.6.3 because 6.7.0 had a bug
+            #   - 'QPushButton' can't be added to 'QBoxLayout'
+            pyside_version = "PySide6==6.6.3"
+
+        site_packages_prefix = python_path.parent.as_posix()
+
+        pyside_cmd = [
+            python_path.as_posix(),
+            "-m", "pip",
+            "install",
+            "--ignore-installed",
+            pyside_version,
+
+        ]
+
+        if platform.system().lower() == "windows":
+            pyside_cmd += ["--target", site_packages_prefix]
+
+        print(f"--- Installing {pyside_version} ...")
+        print(" ".join(pyside_cmd))
 
         pyside_install = subprocess.Popen(pyside_cmd,
                                           stdout=subprocess.PIPE,
@@ -306,8 +325,8 @@ class UEProjectGenerationWorker(UEWorker):
         return_code = pyside_install.wait()
 
         if return_code and return_code != 0:
-            msg = ("Failed to create the project! "
-                   "The installation of PySide2 has failed!")
+            msg = (f"Failed to create the project! {return_code} "
+                   f"The installation of {pyside_version} has failed!: {pyside_install}")
             self.failed.emit(msg, return_code)
             raise RuntimeError(msg)
 

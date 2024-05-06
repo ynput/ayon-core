@@ -225,6 +225,7 @@ def create_skeleton_instance(
     instance_skeleton_data = {
         "productType": product_type,
         "productName": data["productName"],
+        "task": data["task"],
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
