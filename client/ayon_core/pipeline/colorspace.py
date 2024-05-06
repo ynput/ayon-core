@@ -23,6 +23,7 @@ from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
+from .context_tools import get_current_context, get_current_host_name
 
 log = Logger.get_logger(__name__)
 
@@ -1402,3 +1403,37 @@ def get_display_view_colorspace_subprocess(config_path, display, view):
         # return default view colorspace name
         with open(tmp_json_path, "r") as f:
             return json.load(f)
+
+
+# --- Current context functions ---
+def get_current_context_imageio_config_preset(
+    anatomy=None,
+    project_settings=None,
+    template_data=None,
+    env=None,
+):
+    """Get ImageIO config preset for current context.
+
+    Args:
+        anatomy (Optional[Anatomy]): Current project anatomy.
+        project_settings (Optional[dict[str, Any]]): Current project settings.
+        template_data (Optional[dict[str, Any]]): Prepared template data
+            for current context.
+        env (Optional[dict[str, str]]): Custom environment variable values.
+
+    Returns:
+        dict: ImageIO config preset.
+
+    """
+    context = get_current_context()
+    host_name = get_current_host_name()
+    return get_imageio_config_preset(
+        context["project_name"],
+        context["folder_path"],
+        context["task_name"],
+        host_name,
+        anatomy=anatomy,
+        project_settings=project_settings,
+        template_data=template_data,
+        env=env,
+    )
