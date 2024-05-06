@@ -126,42 +126,48 @@ def get_ocio_config_script_path():
 
 
 def get_colorspace_name_from_filepath(
-    filepath, host_name, project_name,
-    config_data=None, file_rules=None,
+    filepath,
+    host_name,
+    project_name,
+    config_data,
+    file_rules=None,
     project_settings=None,
     validate=True
 ):
     """Get colorspace name from filepath
 
     Args:
-        filepath (str): path string, file rule pattern is tested on it
-        host_name (str): host name
-        project_name (str): project name
-        config_data (Optional[dict]): config path and template in dict.
-                                      Defaults to None.
-        file_rules (Optional[dict]): file rule data from settings.
-                                     Defaults to None.
-        project_settings (Optional[dict]): project settings. Defaults to None.
+        filepath (str): Path string, file rule pattern is tested on it.
+        host_name (str): Host name.
+        project_name (str): Project name.
+        config_data (dict): Config path and template in dict.
+        file_rules (Optional[dict]): File rule data from settings.
+        project_settings (Optional[dict]): Project settings.
         validate (Optional[bool]): should resulting colorspace be validated
-                                with config file? Defaults to True.
+            with config file? Defaults to True.
 
     Returns:
-        str: name of colorspace
-    """
-    project_settings, config_data, file_rules = _get_context_settings(
-        host_name, project_name,
-        config_data=config_data, file_rules=file_rules,
-        project_settings=project_settings
-    )
+        Union[str, None]: name of colorspace
 
+    """
     if not config_data:
         # in case global or host color management is not enabled
         return None
 
+    if file_rules is None:
+        if project_settings is None:
+            project_settings = get_project_settings(project_name)
+        file_rules = get_imageio_file_rules(
+            project_name, host_name, project_settings
+        )
+
     # use ImageIO file rules
     colorspace_name = get_imageio_file_rules_colorspace_from_filepath(
-        filepath, host_name, project_name,
-        config_data=config_data, file_rules=file_rules,
+        filepath,
+        host_name,
+        project_name,
+        config_data=config_data,
+        file_rules=file_rules,
         project_settings=project_settings
     )
 
@@ -187,7 +193,8 @@ def get_colorspace_name_from_filepath(
     # validate matching colorspace with config
     if validate:
         validate_imageio_colorspace_in_config(
-            config_data["path"], colorspace_name)
+            config_data["path"], colorspace_name
+        )
 
     return colorspace_name
 
@@ -226,8 +233,11 @@ def _get_context_settings(
 
 
 def get_imageio_file_rules_colorspace_from_filepath(
-    filepath, host_name, project_name,
-    config_data=None, file_rules=None,
+    filepath,
+    host_name,
+    project_name,
+    config_data,
+    file_rules=None,
     project_settings=None
 ):
     """Get colorspace name from filepath
@@ -235,27 +245,27 @@ def get_imageio_file_rules_colorspace_from_filepath(
     ImageIO Settings file rules are tested for matching rule.
 
     Args:
-        filepath (str): path string, file rule pattern is tested on it
-        host_name (str): host name
-        project_name (str): project name
-        config_data (Optional[dict]): config path and template in dict.
-                                      Defaults to None.
-        file_rules (Optional[dict]): file rule data from settings.
-                                     Defaults to None.
-        project_settings (Optional[dict]): project settings. Defaults to None.
+        filepath (str): Path string, file rule pattern is tested on it.
+        host_name (str): Host name.
+        project_name (str): Project name.
+        config_data (dict): Config path and template in dict.
+        file_rules (Optional[dict]): File rule data from settings.
+        project_settings (Optional[dict]): Project settings.
 
     Returns:
-        str: name of colorspace
-    """
-    project_settings, config_data, file_rules = _get_context_settings(
-        host_name, project_name,
-        config_data=config_data, file_rules=file_rules,
-        project_settings=project_settings
-    )
+        Union[str, None]: Name of colorspace.
 
+    """
     if not config_data:
         # in case global or host color management is not enabled
         return None
+
+    if file_rules is None:
+        if project_settings is None:
+            project_settings = get_project_settings(project_name)
+        file_rules = get_imageio_file_rules(
+            project_name, host_name, project_settings
+        )
 
     # match file rule from path
     colorspace_name = None
