@@ -113,13 +113,12 @@ def get_ocio_config_script_path():
 
     Returns:
         str: path string
+
     """
-    return os.path.normpath(
-        os.path.join(
-            AYON_CORE_ROOT,
-            "scripts",
-            "ocio_wrapper.py"
-        )
+    return os.path.join(
+        os.path.normpath(AYON_CORE_ROOT),
+        "scripts",
+        "ocio_wrapper.py"
     )
 
 
