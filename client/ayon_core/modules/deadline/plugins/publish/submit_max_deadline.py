@@ -187,11 +187,13 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
                 payload_data, project_settings)
             job_infos, plugin_infos = payload
             for job_info, plugin_info in zip(job_infos, plugin_infos):
-                self.submit(self.assemble_payload(job_info, plugin_info))
+                self.submit(self.assemble_payload(job_info, plugin_info),
+                            instance.data["deadline"]["auth"])
         else:
             payload = self._use_published_name(payload_data, project_settings)
             job_info, plugin_info = payload
-            self.submit(self.assemble_payload(job_info, plugin_info))
+            self.submit(self.assemble_payload(job_info, plugin_info),
+                        instance.data["deadline"]["auth"])
 
     def _use_published_name(self, data, project_settings):
         # Not all hosts can import these modules.
