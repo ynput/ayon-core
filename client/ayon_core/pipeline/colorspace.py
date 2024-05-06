@@ -1364,15 +1364,16 @@ def get_display_view_colorspace_name(config_path, display, view):
     if not compatibility_check():
         # python environment is not compatible with PyOpenColorIO
         # needs to be run in subprocess
-        return get_display_view_colorspace_subprocess(config_path,
-                                                      display, view)
+        return _get_display_view_colorspace_subprocess(
+            config_path, display, view
+        )
 
     from ayon_core.scripts.ocio_wrapper import _get_display_view_colorspace_name  # noqa
 
     return _get_display_view_colorspace_name(config_path, display, view)
 
 
-def get_display_view_colorspace_subprocess(config_path, display, view):
+def _get_display_view_colorspace_subprocess(config_path, display, view):
     """Returns the colorspace attribute of the (display, view) pair
         via subprocess.
 
