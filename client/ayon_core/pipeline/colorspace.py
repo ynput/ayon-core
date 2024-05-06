@@ -509,16 +509,15 @@ def get_ocio_config_colorspaces(config_path):
         if not compatibility_check():
             # python environment is not compatible with PyOpenColorIO
             # needs to be run in subprocess
-            CachedData.ocio_config_colorspaces[config_path] = \
-                _get_wrapped_with_subprocess(
-                    "config", "get_colorspace", in_path=config_path
+            config_colorspaces = _get_wrapped_with_subprocess(
+                "config", "get_colorspace", in_path=config_path
             )
         else:
             # TODO: refactor this so it is not imported but part of this file
             from ayon_core.scripts.ocio_wrapper import _get_colorspace_data
 
-            CachedData.ocio_config_colorspaces[config_path] = \
-                _get_colorspace_data(config_path)
+            config_colorspaces = _get_colorspace_data(config_path)
+        CachedData.ocio_config_colorspaces[config_path] = config_colorspaces
 
     return CachedData.ocio_config_colorspaces[config_path]
 
@@ -1160,16 +1159,15 @@ def get_remapped_colorspace_to_native(
         Union[str, None]: native colorspace name defined in remapping or None
     """
 
-    CachedData.remapping.setdefault(host_name, {})
-    if CachedData.remapping[host_name].get("to_native") is None:
+    host_mapping = CachedData.remapping.setdefault(host_name, {})
+    if "to_native" not in host_mapping:
         remapping_rules = imageio_host_settings["remapping"]["rules"]
-        CachedData.remapping[host_name]["to_native"] = {
+        host_mapping["to_native"] = {
             rule["ocio_name"]: rule["host_native_name"]
             for rule in remapping_rules
         }
 
-    return CachedData.remapping[host_name]["to_native"].get(
-        ocio_colorspace_name)
+    return host_mapping["to_native"].get(ocio_colorspace_name)
 
 
 def get_remapped_colorspace_from_native(
@@ -1184,18 +1182,17 @@ def get_remapped_colorspace_from_native(
 
     Returns:
         Union[str, None]: Ocio colorspace name defined in remapping or None.
-    """
 
-    CachedData.remapping.setdefault(host_name, {})
-    if CachedData.remapping[host_name].get("from_native") is None:
+    """
+    host_mapping = CachedData.remapping.setdefault(host_name, {})
+    if "from_native" not in host_mapping:
         remapping_rules = imageio_host_settings["remapping"]["rules"]
-        CachedData.remapping[host_name]["from_native"] = {
+        host_mapping["from_native"] = {
             rule["host_native_name"]: rule["ocio_name"]
             for rule in remapping_rules
         }
 
-    return CachedData.remapping[host_name]["from_native"].get(
-        host_native_colorspace_name)
+    return host_mapping["from_native"].get(host_native_colorspace_name)
 
 
 def _get_imageio_settings(project_settings, host_name):
