@@ -63,7 +63,6 @@ def get_available_versions(node):
     ]):
         return []
 
-    id_only = ["id"]
     folder_entity = get_folder_by_path(
         project_name,
         folder_path,
