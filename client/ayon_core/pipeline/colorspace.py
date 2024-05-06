@@ -1097,9 +1097,12 @@ def _get_host_config_data(templates, template_data):
 
     """
     for template in templates:
-        formatted_path = StringTemplate.format_strict_template(
+        formatted_path = StringTemplate.format_template(
             template, template_data
         )
+        if not formatted_path.solved:
+            continue
+
         path = os.path.abspath(formatted_path)
         if os.path.exists(path):
             return {
