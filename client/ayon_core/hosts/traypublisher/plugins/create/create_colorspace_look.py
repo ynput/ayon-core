@@ -156,14 +156,9 @@ This creator publishes color space look file (LUT).
         ]
 
     def apply_settings(self, project_settings):
-        host = self.create_context.host
-        host_name = host.name
-        project_name = host.get_current_project_name()
-        config_data = colorspace.get_imageio_config(
-            project_name, host_name,
+        config_data = colorspace.get_current_context_imageio_config_preset(
             project_settings=project_settings
         )
-
         if not config_data:
             self.enabled = False
             return
