@@ -1069,7 +1069,7 @@ def get_imageio_config_preset(
             log,
         )
     else:
-        config_data = _get_config_data(
+        config_data = _get_host_config_data(
             host_ocio_config["filepath"], template_data, env
         )
 
@@ -1082,7 +1082,7 @@ def get_imageio_config_preset(
     return config_data
 
 
-def _get_config_data(path_list, anatomy_data, env=None):
+def _get_host_config_data(path_list, anatomy_data, env=None):
     """Return first existing path in path list.
 
     If template is used in path inputs,
