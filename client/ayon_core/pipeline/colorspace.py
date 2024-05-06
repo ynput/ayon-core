@@ -735,6 +735,7 @@ def get_views_data_subprocess(config_path):
     )
 
 
+@deprecated("get_imageio_config_preset")
 def get_imageio_config(
     project_name,
     host_name,
