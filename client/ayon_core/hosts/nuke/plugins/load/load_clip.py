@@ -9,7 +9,8 @@ from ayon_core.pipeline import (
     get_representation_path,
 )
 from ayon_core.pipeline.colorspace import (
-    get_imageio_file_rules_colorspace_from_filepath
+    get_imageio_file_rules_colorspace_from_filepath,
+    get_current_context_imageio_config_preset,
 )
 from ayon_core.hosts.nuke.api.lib import (
     get_imageio_input_colorspace,
@@ -547,9 +548,10 @@ class LoadClip(plugin.NukeLoader):
                 f"Colorspace from representation colorspaceData: {colorspace}"
             )
 
+        config_data = get_current_context_imageio_config_preset()
         # check if any filerules are not applicable
         new_parsed_colorspace = get_imageio_file_rules_colorspace_from_filepath( # noqa
-            filepath, "nuke", project_name
+            filepath, "nuke", project_name, config_data=config_data
         )
         self.log.debug(f"Colorspace new filerules: {new_parsed_colorspace}")
 
