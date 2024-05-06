@@ -278,8 +278,7 @@ def parse_container(container):
         value = parm.eval()
 
         # test if value is json encoded dict
-        if isinstance(value, six.string_types) and \
-                value.startswith(JSON_PREFIX):
+        if isinstance(value, str) and value.startswith(JSON_PREFIX):
             try:
                 value = json.loads(value[len(JSON_PREFIX):])
             except json.JSONDecodeError:
