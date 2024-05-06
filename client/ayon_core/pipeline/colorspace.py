@@ -1328,12 +1328,15 @@ def set_colorspace_data_to_representation(
         filename = filename[0]
 
     # get matching colorspace from rules
-    colorspace = colorspace or get_imageio_colorspace_from_filepath(
-        filename, host_name, project_name,
-        config_data=config_data,
-        file_rules=file_rules,
-        project_settings=project_settings
-    )
+    if colorspace is None:
+        colorspace = get_imageio_file_rules_colorspace_from_filepath(
+            filename,
+            host_name,
+            project_name,
+            config_data=config_data,
+            file_rules=file_rules,
+            project_settings=project_settings
+        )
 
     # infuse data to representation
     if colorspace:
