@@ -88,9 +88,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
     hosts = ["fusion", "max", "maya", "nuke", "houdini",
              "celaction", "aftereffects", "harmony", "blender"]
 
-    families = ["render.farm", "render.frames_farm",
-                "prerender.farm", "prerender.frames_farm",
-                "renderlayer", "imagesequence",
+    families = ["render", "render.farm", "render.frames_farm",
+                "prerender", "prerender.farm", "prerender.frames_farm",
+                "renderlayer", "imagesequence", "image",
                 "vrayscene", "maxrender",
                 "arnold_rop", "mantra_rop",
                 "karma_rop", "vray_rop",
@@ -224,9 +224,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
 
         instance_settings = self.get_attr_values_from_data(instance.data)
         initial_status = instance_settings.get("publishJobState", "Active")
-        # TODO: Remove this backwards compatibility of `suspend_publish`
-        if instance.data.get("suspend_publish"):
-            initial_status = "Suspended"
 
         args = [
             "--headless",
@@ -313,7 +310,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         deadline_publish_job_id = response.json()["_id"]
 
         return deadline_publish_job_id
-
 
     def process(self, instance):
         # type: (pyblish.api.Instance) -> None
