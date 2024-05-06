@@ -77,11 +77,6 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
                 label="Use GPU"
             ),
             BoolDef(
-                "suspend_publish",
-                default=False,
-                label="Suspend publish"
-            ),
-            BoolDef(
                 "workfile_dependency",
                 default=cls.workfile_dependency,
                 label="Workfile Dependency"
@@ -99,10 +94,6 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
             return
         instance.data["attributeValues"] = self.get_attr_values_from_data(
             instance.data)
-
-        # add suspend_publish attributeValue to instance data
-        instance.data["suspend_publish"] = instance.data["attributeValues"][
-            "suspend_publish"]
 
         families = instance.data["families"]
 
