@@ -1070,7 +1070,7 @@ def get_imageio_config_preset(
         )
     else:
         config_data = _get_host_config_data(
-            host_ocio_config["filepath"], template_data, env
+            host_ocio_config["filepath"], template_data
         )
 
     if not config_data:
