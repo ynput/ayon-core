@@ -281,28 +281,23 @@ def prepare_app_environments(
         app.environment
     ]
 
-    entity = data.get("task_entity")
-    if not entity:
-        entity = data.get("folder_entity")
+    task_entity = data.get("task_entity")
+    folder_entity = data.get("folder_entity")
     # Add tools environments
     groups_by_name = {}
     tool_by_group_name = collections.defaultdict(dict)
-    if entity:
-        # Make sure each tool group can be added only once
-        for key in entity["attrib"].get("tools") or []:
-            tool = app.manager.tools.get(key)
-            if not tool or not tool.is_valid_for_app(app):
-                continue
-            groups_by_name[tool.group.name] = tool.group
-            tool_by_group_name[tool.group.name][tool.name] = tool
-
-        for group_name in sorted(groups_by_name.keys()):
-            group = groups_by_name[group_name]
-            environments.append(group.environment)
-            for tool_name in sorted(tool_by_group_name[group_name].keys()):
-                tool = tool_by_group_name[group_name][tool_name]
-                environments.append(tool.environment)
-                app_and_tool_labels.append(tool.full_name)
+    if task_entity:
+        groups_by_name, environments, app_and_tool_labels = (
+            get_tool_group_enviornment_by_entities(app, task_entity, groups_by_name,
+                                                   tool_by_group_name, environments,
+                                                    app_and_tool_labels)
+        )
+    elif folder_entity:
+        groups_by_name, environments, app_and_tool_labels = (
+            get_tool_group_enviornment_by_entities(app, folder_entity, groups_by_name,
+                                                   tool_by_group_name, environments,
+                                                   app_and_tool_labels)
+        )
 
     log.debug(
         "Will add environments for apps and tools: {}".format(
@@ -354,6 +349,37 @@ def prepare_app_environments(
     data["env"].update(final_env)
     for key in keys_to_remove:
         data["env"].pop(key, None)
+
+
+def get_tool_group_enviornment_by_entities(app, entity, groups_by_name,
+                                           tool_by_group_name, environments,
+                                           app_and_tool_labels):
+    """Function to get tool group environment by entities
+
+    Args:
+        app (dict): application
+        entity (dict): entity
+        groups_by_name (dict): group by name
+        tool_by_group_name (dict): tools by group name
+        environments (list): enviornments
+        app_and_tool_labels (list): full name of the application
+    """
+    # Make sure each tool group can be added only once
+    for key in entity["attrib"].get("tools") or []:
+        tool = app.manager.tools.get(key)
+        if not tool or not tool.is_valid_for_app(app):
+            continue
+        groups_by_name[tool.group.name] = tool.group
+        tool_by_group_name[tool.group.name][tool.name] = tool
+
+    for group_name in sorted(groups_by_name.keys()):
+        group = groups_by_name[group_name]
+        environments.append(group.environment)
+        for tool_name in sorted(tool_by_group_name[group_name].keys()):
+            tool = tool_by_group_name[group_name][tool_name]
+            environments.append(tool.environment)
+            app_and_tool_labels.append(tool.full_name)
+    return groups_by_name, environments, app_and_tool_labels
 
 
 def apply_project_environments_value(
