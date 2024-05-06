@@ -45,9 +45,12 @@ class ValidateReviewColorspace(pyblish.api.InstancePlugin,
                                        category="houdini")
         apply_plugin_settings_automatically(cls, settings, logger=cls.log)
 
+        # workfile settings added in '0.2.13'
+        color_settings = project_settings["houdini"]["imageio"].get(
+            "workfile", {}
+        )
         # Add review color settings
-        color_settings = project_settings["houdini"]["imageio"]["workfile"]
-        if color_settings["enabled"]:
+        if color_settings.get("enabled"):
             cls.review_color_space = color_settings.get("review_color_space")
 
 

@@ -5,7 +5,7 @@ import shutil
 import argparse
 import zipfile
 import types
-import importlib
+import importlib.machinery
 import platform
 import collections
 from pathlib import Path
