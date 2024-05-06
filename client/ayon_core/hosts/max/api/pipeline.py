@@ -217,14 +217,12 @@ def on_task_changed():
 def on_before_open():
     project_name = get_current_project_name()
     workdir_path = os.getenv("AYON_WORKDIR")
-    if os.path.exists(workdir_path):
+    if not os.path.exists(workdir_path):
         create_workspace_mxp(workdir_path, project_name)
-        if rt.pathConfig.getCurrentProjectFolder() != workdir_path:
-            mxp_filepath = os.path.join(workdir_path, "workspace.mxp")
-            if os.path.exists(mxp_filepath):
-                rt.pathConfig.load(mxp_filepath)
-                rt.pathConfig.doProjectSetupStepsUsingDirectory(workdir_path)
-            rt.pathConfig.setCurrentProjectFolder(workdir_path)
+        mxp_filepath = os.path.join(workdir_path, "workspace.mxp")
+        rt.pathConfig.load(mxp_filepath)
+        rt.pathConfig.doProjectSetupStepsUsingDirectory(workdir_path)
+        rt.pathConfig.setCurrentProjectFolder(workdir_path)
 
 
 def load_custom_attribute_data():
