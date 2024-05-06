@@ -1150,9 +1150,7 @@ def set_background_images(node, images):
             node.destroyUserData("backgroundimages", must_exist=False)
 
 
-def set_node_thumbnail(node,
-                       image_path,
-                       rect=None):
+def set_node_thumbnail(node, image_path, rect=None):
     """Set hou.NetworkImage attached to node.
 
     If an existing connected image is found it assumes that is the existing

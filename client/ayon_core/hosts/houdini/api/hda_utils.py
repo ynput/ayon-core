@@ -64,24 +64,26 @@ def get_available_versions(node):
         return []
 
     id_only = ["id"]
-    folder_entity = get_folder_by_path(project_name,
-                                       folder_path,
-                                       fields=id_only)
+    folder_entity = get_folder_by_path(
+        project_name,
+        folder_path,
+        fields={"id"})
     if not folder_entity:
         return []
     product_entity = get_product_by_name(
         project_name,
         product_name=product_name,
         folder_id=folder_entity["id"],
-        fields=id_only)
+        fields={"id"})
     if not product_entity:
         return []
 
     # TODO: Support hero versions
-    versions = get_versions(project_name=project_name,
-                            product_ids=[product_entity["id"]],
-                            fields=["version"],
-                            hero=False)
+    versions = get_versions(
+        project_name,
+        product_ids={product_entity["id"]},
+        fields={"version"},
+        hero=False)
     version_names = [version["version"] for version in versions]
     version_names.reverse()
     return version_names
@@ -145,40 +147,46 @@ def _get_thumbnail(project_name, version_id, thumbnail_dir):
 
 def set_representation(node, repre_id):
     file_parm = node.parm("file")
-    if repre_id:
-        project_name = node.evalParm("project_name") or \
-                       get_current_project_name()
-
-        if is_valid_uuid(repre_id):
-            repre_entity = get_representation_by_id(project_name, repre_id)
-        else:
-            # Ignore invalid representation ids silently
-            repre_entity = None
-
-        if repre_entity:
-            context = get_representation_context(project_name, repre_entity)
-            update_info(node, context)
-            path = get_representation_path_from_context(context)
-            # Load fails on UNC paths with backslashes and also
-            # fails to resolve @sourcename var with backslashed
-            # paths correctly. So we force forward slashes
-            path = path.replace("\\", "/")
-            with _unlocked_parm(file_parm):
-                file_parm.set(path)
-
-            if node.evalParm("show_thumbnail"):
-                # Update thumbnail
-                # TODO: Cache thumbnail path as well
-                version_id = repre_entity["versionId"]
-                thumbnail_dir = node.evalParm("thumbnail_cache_dir")
-                thumbnail_path = _get_thumbnail(project_name, version_id,
-                                                thumbnail_dir)
-                set_node_thumbnail(node, thumbnail_path)
-    else:
+    if not repre_id:
         # Clear filepath and thumbnail
         with _unlocked_parm(file_parm):
             file_parm.set("")
         set_node_thumbnail(node, None)
+        return
+
+    project_name = (
+        node.evalParm("project_name")
+        or get_current_project_name()
+    )
+
+    # Ignore invalid representation ids silently
+    # TODO remove - added for backwards compatibility with OpenPype scenes
+    if not is_valid_uuid(repre_id):
+        return
+
+    repre_entity = get_representation_by_id(project_name, repre_id)
+    if not repre_entity:
+        return
+
+    context = get_representation_context(project_name, repre_entity)
+    update_info(node, context)
+    path = get_representation_path_from_context(context)
+    # Load fails on UNC paths with backslashes and also
+    # fails to resolve @sourcename var with backslashed
+    # paths correctly. So we force forward slashes
+    path = path.replace("\\", "/")
+    with _unlocked_parm(file_parm):
+        file_parm.set(path)
+
+    if node.evalParm("show_thumbnail"):
+        # Update thumbnail
+        # TODO: Cache thumbnail path as well
+        version_id = repre_entity["versionId"]
+        thumbnail_dir = node.evalParm("thumbnail_cache_dir")
+        thumbnail_path = _get_thumbnail(
+            project_name, version_id, thumbnail_dir
+        )
+        set_node_thumbnail(node, thumbnail_path)
 
 
 def set_node_thumbnail(node, thumbnail):
