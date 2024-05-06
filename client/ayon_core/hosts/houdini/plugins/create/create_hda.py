@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating publishable Houdini Digital Assets."""
 import ayon_api
-
+import getpass
 from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import NumberDef
+from ayon_core.lib import NumberDef, BoolDef
 import hou
+from ayon_core.resources import get_ayon_icon_filepath
 
 
 class CreateHDA(plugin.HoudiniCreator):
@@ -19,6 +20,7 @@ class CreateHDA(plugin.HoudiniCreator):
 
     min_num_inputs = 0
     max_num_inputs = 0
+    max_num_outputs = 1
 
     def _check_existing(self, folder_path, product_name):
         # type: (str, str) -> bool
@@ -52,7 +54,8 @@ class CreateHDA(plugin.HoudiniCreator):
                                              self.min_num_inputs)
         max_num_inputs = pre_create_data.get("max_num_inputs",
                                              self.max_num_inputs)
-
+        max_num_outputs = pre_create_data.get("max_num_outputs",
+                                             self.max_num_outputs)
         if self.selected_nodes:
             # if we have `use selection` enabled, and we have some
             # selected nodes ...
@@ -87,8 +90,6 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_node = to_hda.createDigitalAsset(
                 name=node_name,
                 hda_file_name="$HIP/{}.hda".format(node_name),
-                min_num_inputs=min_num_inputs,
-                max_num_inputs=max_num_inputs,
                 ignore_external_references=True
             )
             hda_node.layoutChildren()
@@ -105,6 +106,24 @@ class CreateHDA(plugin.HoudiniCreator):
         # be incremented.
         hda_node.setName(node_name, unique_name=True)
         self.customize_node_look(hda_node)
+
+        # Set Custom settings.
+        hda_def = hda_node.type().definition()
+        hda_def.setMinNumInputs(min_num_inputs)
+        hda_def.setMaxNumInputs(max_num_inputs)
+        hda_def.setMaxNumOutputs(max_num_outputs)
+
+        if pre_create_data.get("use_ayon_icon"):
+            hda_def.setIcon(get_ayon_icon_filepath())
+
+        if pre_create_data.get("set_user"):
+            hda_def.setUserInfo(getpass.getuser())
+
+        if pre_create_data.get("use_project"):
+            tool_name = hou.shelves.defaultToolName(
+                hda_def.nodeTypeCategory().name(), hda_def.nodeTypeName())
+            hou.shelves.tool(tool_name).setToolLocations((self.project_name,))
+
         return hda_node
 
     def create(self, product_name, instance_data, pre_create_data):
@@ -142,5 +161,21 @@ class CreateHDA(plugin.HoudiniCreator):
             NumberDef("max_num_inputs",
                       label="Maximum Inputs",
                       default=self.max_num_inputs,
-                      decimals=0)
+                      decimals=0),
+            NumberDef("max_num_outputs",
+                      label="Maximum Outputs",
+                      default=self.max_num_outputs,
+                      decimals=0),
+            BoolDef("use_ayon_icon",
+                    tooltip="Use Ayon icon for the digital asset.",
+                    default=True,
+                    label="Use AYON Icon"),
+            BoolDef("set_user",
+                    tooltip="Set current user as the author of the HDA",
+                    default=True,
+                    label="Set Current User"),
+            BoolDef("use_project",
+                    tooltip="Use project name as tab submenu path",
+                    default=True,
+                    label="Use Project as menu entry"),
         ]
