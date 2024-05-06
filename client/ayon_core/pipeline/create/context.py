@@ -1988,15 +1988,11 @@ class CreateContext:
                 )
 
         if task_entity is None:
-            task_name = self.get_current_task_name()
-            if task_name:
+            current_task_name = self.get_current_task_name()
+            if current_task_name:
                 task_entity = ayon_api.get_task_by_name(
-                    project_name, folder_entity["id"], task_name
+                    project_name, folder_entity["id"], current_task_name
                 )
-
-        task_name = None
-        if task_entity:
-            task_name = task_entity["name"]
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -2022,11 +2018,10 @@ class CreateContext:
 
         instance_data = {
             "folderPath": folder_entity["path"],
-            "task": task_name,
+            "task": task_entity["name"] if task_entity else None,
             "productType": creator.product_type,
             "variant": variant
         }
-        print("Create instance data", instance_data)
         return creator.create(
             product_name,
             instance_data,
