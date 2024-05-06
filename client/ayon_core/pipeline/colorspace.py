@@ -210,28 +210,6 @@ def get_colorspace_from_filepath(*args, **kwargs):
     return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
 
 
-def _get_context_settings(
-    host_name, project_name,
-    config_data=None, file_rules=None,
-    project_settings=None
-):
-    project_settings = project_settings or get_project_settings(
-        project_name
-    )
-
-    config_data = config_data or get_imageio_config(
-        project_name, host_name, project_settings)
-
-    # in case host color management is not enabled
-    if not config_data:
-        return (None, None, None)
-
-    file_rules = file_rules or get_imageio_file_rules(
-        project_name, host_name, project_settings)
-
-    return project_settings, config_data, file_rules
-
-
 def get_imageio_file_rules_colorspace_from_filepath(
     filepath,
     host_name,
