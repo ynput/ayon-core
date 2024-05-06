@@ -100,11 +100,20 @@ class ValidateAlembicDefaultsPointcache(
         )
 
         # Set the settings values on the create context then save to workfile.
-        attributes = cls._get_publish_attributes(instance)
         settings = cls._get_settings(instance.context)
-        create_publish_attributes = create_instance.data["publish_attributes"]
+        attributes = cls._get_publish_attributes(create_instance)
         for key in attributes:
-            create_publish_attributes[cls.plugin_name][key] = settings[key]
+            if key not in settings:
+                # This may occur if attributes have changed over time and an
+                # existing instance has older legacy attributes that do not
+                # match the current settings definition.
+                cls.log.warning(
+                    "Publish attribute %s not found in Alembic Export "
+                    "default settings. Ignoring repair for attribute.",
+                    key
+                )
+                continue
+            attributes[key] = settings[key]
 
         create_context.save_changes()
 
