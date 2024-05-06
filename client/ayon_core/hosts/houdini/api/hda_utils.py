@@ -48,7 +48,7 @@ def get_available_versions(node):
     """Return the versions list for node.
 
     Args:
-        node (hou.Node): Node to query selected products's versions for.
+        node (hou.Node): Node to query selected products' versions for.
 
     Returns:
         List[int]: Version numbers for the product
