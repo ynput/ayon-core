@@ -1236,27 +1236,41 @@ def get_colorspace_settings_from_publish_context(context_data):
 
     Returns:
         tuple | bool: config, file rules or None
+
     """
     if "imageioSettings" in context_data and context_data["imageioSettings"]:
         return context_data["imageioSettings"]
 
     project_name = context_data["projectName"]
+    folder_path = context_data["folderPath"]
+    task_name = context_data["task"]
     host_name = context_data["hostName"]
-    anatomy_data = context_data["anatomyData"]
-    project_settings_ = context_data["project_settings"]
+    anatomy = context_data["anatomy"]
+    template_data = context_data["anatomyData"]
+    project_settings = context_data["project_settings"]
+    folder_id = None
+    folder_entity = context_data.get("folderEntity")
+    if folder_entity:
+        folder_id = folder_entity["id"]
 
-    config_data = get_imageio_config(
-        project_name, host_name,
-        project_settings=project_settings_,
-        anatomy_data=anatomy_data
+    config_data = get_imageio_config_preset(
+        project_name,
+        folder_path,
+        task_name,
+        host_name,
+        anatomy=anatomy,
+        project_settings=project_settings,
+        template_data=template_data,
+        folder_id=folder_id,
     )
 
     # caching invalid state, so it's not recalculated all the time
     file_rules = None
     if config_data:
         file_rules = get_imageio_file_rules(
-            project_name, host_name,
-            project_settings=project_settings_
+            project_name,
+            host_name,
+            project_settings=project_settings
         )
 
     # caching settings for future instance processing
