@@ -17,7 +17,7 @@ class LinkAsGroup(load.LoaderPlugin):
     """Copy the published file to be pasted at the desired location"""
 
     product_types = {"workfile", "nukenodes"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"nk"}
 
     label = "Load Precomp"
