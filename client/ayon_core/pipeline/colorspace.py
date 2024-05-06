@@ -1082,39 +1082,30 @@ def get_imageio_config_preset(
     return config_data
 
 
-def _get_host_config_data(path_list, anatomy_data, env=None):
+def _get_host_config_data(templates, template_data):
     """Return first existing path in path list.
 
-    If template is used in path inputs,
-    then it is formatted by anatomy data
-    and environment variables
+    Use template data to fill possible formatting in paths.
 
     Args:
-        path_list (list[str]): list of abs paths
-        anatomy_data (dict): formatting data
-        env (Optional[dict]): Environment variables.
+        templates (list[str]): List of templates to config paths.
+        template_data (dict): Template data used to format templates.
 
     Returns:
-        dict: config data
+        Union[dict, None]: Config data or 'None' if templates are empty
+            or any path exists.
+
     """
-    formatting_data = deepcopy(anatomy_data)
-
-    environment_vars = env or dict(**os.environ)
-
-    # format the path for potential env vars
-    formatting_data.update(environment_vars)
-
-    # first try host config paths
-    for path_ in path_list:
-        formatted_path = _format_path(path_, formatting_data)
-
-        if not os.path.exists(formatted_path):
-            continue
-
-        return {
-            "path": os.path.normpath(formatted_path),
-            "template": path_
-        }
+    for template in templates:
+        formatted_path = StringTemplate.format_strict_template(
+            template, template_data
+        )
+        path = os.path.abspath(formatted_path)
+        if os.path.exists(path):
+            return {
+                "path": os.path.normpath(path),
+                "template": template
+            }
 
 
 def _format_path(template_path, formatting_data):
