@@ -24,7 +24,7 @@ class FbxModelLoader(plugin.AssetLoader):
     """
 
     product_types = {"model", "rig"}
-    representations = ["fbx"]
+    representations = {"fbx"}
 
     label = "Load FBX"
     icon = "code-fork"

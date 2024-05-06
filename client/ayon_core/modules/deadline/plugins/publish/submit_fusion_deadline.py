@@ -9,10 +9,7 @@ import pyblish.api
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
-from ayon_core.lib import (
-    BoolDef,
-    NumberDef,
-)
+from ayon_core.lib import NumberDef
 
 
 class FusionSubmitDeadline(
@@ -64,11 +61,6 @@ class FusionSubmitDeadline(
                 decimals=0,
                 minimum=1,
                 maximum=10
-            ),
-            BoolDef(
-                "suspend_publish",
-                default=False,
-                label="Suspend publish"
             )
         ]
 
@@ -79,10 +71,6 @@ class FusionSubmitDeadline(
 
         attribute_values = self.get_attr_values_from_data(
             instance.data)
-
-        # add suspend_publish attributeValue to instance data
-        instance.data["suspend_publish"] = attribute_values[
-            "suspend_publish"]
 
         context = instance.context
 
@@ -103,17 +91,17 @@ class FusionSubmitDeadline(
 
         # Collect all saver instances in context that are to be rendered
         saver_instances = []
-        for instance in context:
-            if instance.data["productType"] != "render":
+        for inst in context:
+            if inst.data["productType"] != "render":
                 # Allow only saver family instances
                 continue
 
-            if not instance.data.get("publish", True):
+            if not inst.data.get("publish", True):
                 # Skip inactive instances
                 continue
 
-            self.log.debug(instance.data["name"])
-            saver_instances.append(instance)
+            self.log.debug(inst.data["name"])
+            saver_instances.append(inst)
 
         if not saver_instances:
             raise RuntimeError("No instances found for Deadline submission")
