@@ -87,28 +87,25 @@ def deprecated(new_destination):
 def _make_temp_json_file():
     """Wrapping function for json temp file
     """
+    temporary_json_file = None
     try:
         # Store dumped json to temporary file
-        temporary_json_file = tempfile.NamedTemporaryFile(
+        with tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", delete=False
-        )
-        temporary_json_file.close()
-        temporary_json_filepath = temporary_json_file.name.replace(
-            "\\", "/"
-        )
+        ) as tmpfile:
+            temporary_json_filepath = tmpfile.name.replace("\\", "/")
 
         yield temporary_json_filepath
 
-    except IOError as _error:
+    except IOError as exc:
         raise IOError(
-            "Unable to create temp json file: {}".format(
-                _error
-            )
+            "Unable to create temp json file: {}".format(exc)
         )
 
     finally:
         # Remove the temporary json
-        os.remove(temporary_json_filepath)
+        if temporary_json_file is not None:
+            os.remove(temporary_json_filepath)
 
 
 def get_ocio_config_script_path():
