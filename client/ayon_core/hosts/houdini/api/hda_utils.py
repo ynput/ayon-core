@@ -319,10 +319,9 @@ def get_representation_id(
                               "Make sure to set a valid version number.")
         return
 
-    id_only = ["id"]
     folder_entity = get_folder_by_path(project_name,
                                        folder_path=folder_path,
-                                       fields=id_only)
+                                       fields={"id"})
     if not folder_entity:
         # This may be due to the project not existing - so let's validate
         # that first
@@ -336,7 +335,7 @@ def get_representation_id(
         project_name,
         product_name=product_name,
         folder_id=folder_entity["id"],
-        fields=id_only)
+        fields={"id"})
     if not product_entity:
         load_message_parm.set(f"Product not found: '{product_name}'")
         return
@@ -344,7 +343,7 @@ def get_representation_id(
         project_name,
         version,
         product_id=product_entity["id"],
-        fields=id_only)
+        fields={"id"})
     if not version_entity:
         load_message_parm.set(f"Version not found: '{version}'")
         return
@@ -352,7 +351,7 @@ def get_representation_id(
         project_name,
         representation_name,
         version_id=version_entity["id"],
-        fields=id_only)
+        fields={"id"})
     if not representation_entity:
         load_message_parm.set(
             f"Representation not found: '{representation_name}'.")
