@@ -783,8 +783,8 @@ def get_imageio_config(
             get_current_context_template_data)
         anatomy_data = get_current_context_template_data()
 
-    task_name = anatomy_data["task"]["name"]
-    folder_path = anatomy_data["folder"]["path"]
+    task_name = anatomy_data.get("task", {}).get("name")
+    folder_path = anatomy_data.get("folder", {}).get("path")
     return get_imageio_config_preset(
         project_name,
         folder_path,
@@ -1029,13 +1029,17 @@ def get_imageio_config_preset(
         if not project_entity:
             project_entity = ayon_api.get_project(project_name)
 
-        folder_entity = ayon_api.get_folder_by_path(
-            project_name, folder_path
-        )
-        folder_id = folder_entity["id"]
-        task_entity = ayon_api.get_task_by_name(
-            project_name, folder_id, task_name
-        )
+        folder_entity = task_entity = folder_id = None
+        if folder_path:
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            folder_id = folder_entity["id"]
+
+        if folder_id and task_name:
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_id, task_name
+            )
         template_data = get_template_data(
             project_entity,
             folder_entity,
