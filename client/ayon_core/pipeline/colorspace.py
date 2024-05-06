@@ -1108,24 +1108,6 @@ def _get_host_config_data(templates, template_data):
             }
 
 
-def _format_path(template_path, formatting_data):
-    """Single template path formatting.
-
-    Args:
-        template_path (str): template string
-        formatting_data (dict): data to be used for
-                                template formatting
-
-    Returns:
-        str: absolute formatted path
-    """
-    # format path for anatomy keys
-    formatted_path = StringTemplate(template_path).format(
-        formatting_data)
-
-    return os.path.abspath(formatted_path)
-
-
 def get_imageio_file_rules(project_name, host_name, project_settings=None):
     """Get ImageIO File rules from project settings
 
