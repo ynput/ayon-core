@@ -1,16 +1,20 @@
+import copy
 import os.path
+import subprocess
+
 import opentimelineio
 
 import pyblish.api
 
+from ayon_core.lib import filter_profiles, get_ffmpeg_tool_args, run_subprocess
 from ayon_core.pipeline import publish
 
 
-class ExtractEditorialPackage(publish.Extractor):
+class ExtractEditorialPckgConversion(publish.Extractor):
     """Replaces movie paths in otio file with publish rootless
 
-    Prepares movie resources for integration.
-    TODO introduce conversion to .mp4
+    Prepares movie resources for integration (adds them to `transfers`).
+    Converts .mov files according to output definition.
     """
 
     label = "Extract Editorial Package"
@@ -35,13 +39,22 @@ class ExtractEditorialPackage(publish.Extractor):
 
         instance.data["representations"].append(editorial_pckg_repre)
 
-        publish_path = self._get_published_path(instance)
-        publish_folder = os.path.dirname(publish_path)
-        publish_resource_folder = os.path.join(publish_folder, "resources")
-
+        publish_resource_folder = self._get_publish_resource_folder(instance)
         resource_paths = editorial_pckg_data["resource_paths"]
         transfers = self._get_transfers(resource_paths,
                                         publish_resource_folder)
+
+        project_settings = instance.context.data["project_settings"]
+        profiles = (project_settings["traypublisher"]
+                                    ["publish"]
+                                    ["ExtractEditorialPckgConversion"]
+                                    .get("profiles"))
+        output_def = None
+        if profiles:
+            output_def = self._get_output_definition(instance, profiles)
+        if output_def:
+            transfers = self._convert_resources(output_def, transfers)
+
         if not "transfers" in instance.data:
             instance.data["transfers"] = []
         instance.data["transfers"] = transfers
@@ -57,6 +70,36 @@ class ExtractEditorialPackage(publish.Extractor):
         self.log.info("Added Editorial Package representation: {}".format(
             editorial_pckg_repre))
 
+    def _get_publish_resource_folder(self, instance):
+        """Calculates publish folder and create it."""
+        publish_path = self._get_published_path(instance)
+        publish_folder = os.path.dirname(publish_path)
+        publish_resource_folder = os.path.join(publish_folder, "resources")
+
+        if not os.path.exists(publish_resource_folder):
+            os.makedirs(publish_resource_folder, exist_ok=True)
+        return publish_resource_folder
+
+    def _get_output_definition(self, instance, profiles):
+        """Return appropriate profile by context information."""
+        product_type = instance.data["productType"]
+        product_name = instance.data["productName"]
+        task_entity = instance.data["taskEntity"] or {}
+        task_name = task_entity.get("name")
+        task_type = task_entity.get("taskType")
+        filtering_criteria = {
+            "product_types": product_type,
+            "product_names": product_name,
+            "task_names": task_name,
+            "task_types": task_type,
+        }
+        profile = filter_profiles(
+            profiles,
+            filtering_criteria,
+            logger=self.log
+        )
+        return profile
+
     def _get_resource_path_mapping(self, instance, transfers):
         """Returns dict of {source_mov_path: rootless_published_path}."""
         replace_paths = {}
@@ -68,7 +111,7 @@ class ExtractEditorialPackage(publish.Extractor):
         return replace_paths
 
     def _get_transfers(self, resource_paths, publish_resource_folder):
-        """Returns list of tuples (source, destination) movie paths."""
+        """Returns list of tuples (source, destination) with movie paths."""
         transfers = []
         for res_path in resource_paths:
             res_basename = os.path.basename(res_path)
@@ -77,7 +120,7 @@ class ExtractEditorialPackage(publish.Extractor):
         return transfers
 
     def _replace_target_urls(self, otio_data, replace_paths):
-        """Replace original movie paths with published rootles ones."""
+        """Replace original movie paths with published rootless ones."""
         for track in otio_data.tracks:
             for clip in track:
                 # Check if the clip has a media reference
@@ -120,3 +163,93 @@ class ExtractEditorialPackage(publish.Extractor):
         template = anatomy.get_template_item("publish", "default", "path")
         template_filled = template.format_strict(template_data)
         return os.path.normpath(template_filled)
+
+    def _convert_resources(self, output_def, transfers):
+        """Converts all resource files to configured format."""
+        outputs = output_def["outputs"]
+        if not outputs:
+            self.log.warning("No output configured in "
+               "ayon+settings://traypublisher/publish/ExtractEditorialPckgConversion/profiles/0/outputs")  # noqa
+            return transfers
+
+        final_transfers = []
+        # most likely only single output is expected
+        for output in outputs:
+            out_extension = output["ext"]
+            out_def_ffmpeg_args = output["ffmpeg_args"]
+            ffmpeg_input_args = [
+                value.strip()
+                for value in out_def_ffmpeg_args["input"]
+                if value.strip()
+            ]
+            ffmpeg_video_filters = [
+                value.strip()
+                for value in out_def_ffmpeg_args["video_filters"]
+                if value.strip()
+            ]
+            ffmpeg_audio_filters = [
+                value.strip()
+                for value in out_def_ffmpeg_args["audio_filters"]
+                if value.strip()
+            ]
+            ffmpeg_output_args = [
+                value.strip()
+                for value in out_def_ffmpeg_args["output"]
+                if value.strip()
+            ]
+            ffmpeg_input_args = self._split_ffmpeg_args(ffmpeg_input_args)
+
+            generic_args = [
+                subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg"))
+            ]
+            generic_args.extend(ffmpeg_input_args)
+            if ffmpeg_video_filters:
+                generic_args.append("-filter:v")
+                generic_args.append(
+                    "\"{}\"".format(",".join(ffmpeg_video_filters)))
+
+            if ffmpeg_audio_filters:
+                generic_args.append("-filter:a")
+                generic_args.append(
+                    "\"{}\"".format(",".join(ffmpeg_audio_filters)))
+
+            for source, destination in transfers:
+                base_name = os.path.basename(destination)
+                file_name, ext = os.path.splitext(base_name)
+                dest_path = os.path.join(os.path.dirname(destination),
+                                         f"{file_name}.{out_extension}")
+                final_transfers.append((source, dest_path))
+
+                all_args = copy.deepcopy(generic_args)
+                all_args.append(f"-i {source}")
+                all_args.extend(ffmpeg_output_args)  # order matters
+                all_args.append(f"{dest_path}")
+                subprcs_cmd = " ".join(all_args)
+
+                # run subprocess
+                self.log.debug("Executing: {}".format(subprcs_cmd))
+                run_subprocess(subprcs_cmd, shell=True, logger=self.log)
+        return final_transfers
+
+    def _split_ffmpeg_args(self, in_args):
+        """Makes sure all entered arguments are separated in individual items.
+
+        Split each argument string with " -" to identify if string contains
+        one or more arguments.
+        """
+        splitted_args = []
+        for arg in in_args:
+            sub_args = arg.split(" -")
+            if len(sub_args) == 1:
+                if arg and arg not in splitted_args:
+                    splitted_args.append(arg)
+                continue
+
+            for idx, arg in enumerate(sub_args):
+                if idx != 0:
+                    arg = "-" + arg
+
+                if arg and arg not in splitted_args:
+                    splitted_args.append(arg)
+        return splitted_args
+
