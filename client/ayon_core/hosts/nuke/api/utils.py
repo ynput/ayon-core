@@ -174,25 +174,8 @@ def create_error_report(context):
         success = False
 
         err = result["error"]
-        formatted_traceback = "".join(
-            traceback.format_exception(
-                type(err),
-                err,
-                err.__traceback__
-            )
-        )
-        fname = result["plugin"].__module__
-        if 'File "<string>", line' in formatted_traceback:
-            _, lineno, func, msg = err.traceback
-            fname = os.path.abspath(fname)
-            formatted_traceback = formatted_traceback.replace(
-                'File "<string>", line',
-                'File "{0}", line'.format(fname)
-            )
-
-        err = result["error"]
         error_message += "\n"
-        error_message += formatted_traceback
+        error_message += err.formatted_traceback
 
     return success, error_message
 
