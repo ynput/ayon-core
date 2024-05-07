@@ -35,7 +35,10 @@ class ImageCreator(Creator):
         create_empty_group = False
 
         stub = api.stub()  # only after PS is up
-        top_level_selected_items = stub.get_selected_layers()
+        try:
+            top_level_selected_items = stub.get_selected_layers()
+        except ValueError:
+            raise CreatorError("Cannot group locked Background layer!")
         if pre_create_data.get("use_selection"):
             only_single_item_selected = len(top_level_selected_items) == 1
             if (
@@ -51,10 +54,8 @@ class ImageCreator(Creator):
                 groups_to_create.append(group)
         else:
             stub.select_layers(stub.get_layers())
-            try:
-                group = stub.group_selected_layers(product_name_from_ui)
-            except:  # noqa E722
-                raise CreatorError("Cannot group locked Background layer!")
+            group = stub.group_selected_layers(product_name_from_ui)
+
             groups_to_create.append(group)
 
         # create empty group if nothing selected
