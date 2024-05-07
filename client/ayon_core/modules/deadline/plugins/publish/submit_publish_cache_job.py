@@ -5,10 +5,10 @@ import json
 import re
 from copy import deepcopy
 
-import requests
 import ayon_api
 import pyblish.api
 
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -209,7 +209,9 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
         self.log.debug("Submitting Deadline publish job ...")
 
         url = "{}/api/jobs".format(self.deadline_url)
-        response = requests.post(url, json=payload, timeout=10)
+        auth = instance.data["deadline"]["auth"]
+        response = requests_post(url, json=payload, timeout=10,
+                                 auth=auth)
         if not response.ok:
             raise Exception(response.text)
 
@@ -341,11 +343,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
 
         deadline_publish_job_id = None
         if submission_type == "deadline":
-            # get default deadline webservice url from deadline module
-            self.deadline_url = instance.context.data["defaultDeadline"]
-            # if custom one is set in instance, use that
-            if instance.data.get("deadlineUrl"):
-                self.deadline_url = instance.data.get("deadlineUrl")
+            self.deadline_url = instance.data["deadline"]["url"]
             assert self.deadline_url, "Requires Deadline Webservice URL"
 
             deadline_publish_job_id = \
@@ -353,7 +351,9 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
 
             # Inject deadline url to instances.
             for inst in instances:
-                inst["deadlineUrl"] = self.deadline_url
+                if "deadline" not in inst:
+                    inst["deadline"] = {}
+                inst["deadline"] = instance.data["deadline"]
 
         # publish job file
         publish_job = {
