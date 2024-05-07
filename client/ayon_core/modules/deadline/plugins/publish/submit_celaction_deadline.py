@@ -2,8 +2,9 @@ import os
 import re
 import json
 import getpass
-import requests
 import pyblish.api
+
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 
 
 class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
@@ -30,11 +31,7 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
 
         context = instance.context
 
-        # get default deadline webservice url from deadline module
-        deadline_url = instance.context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            deadline_url = instance.data.get("deadlineUrl")
+        deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
 
         self.deadline_url = "{}/api/jobs".format(deadline_url)
@@ -197,7 +194,8 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
         self.log.debug("__ expectedFiles: `{}`".format(
             instance.data["expectedFiles"]))
 
-        response = requests.post(self.deadline_url, json=payload)
+        response = requests_post(self.deadline_url, json=payload,
+                                 auth=instance.data["deadline"]["require_authentication"])
 
         if not response.ok:
             self.log.error(
