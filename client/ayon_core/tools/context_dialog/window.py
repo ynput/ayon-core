@@ -343,7 +343,7 @@ class ContextDialogController:
 
     def store_output(self):
         if not self._output_path:
-            return
+            return self.get_selected_context()
 
         dirpath = os.path.dirname(self._output_path)
         os.makedirs(dirpath, exist_ok=True)
@@ -791,3 +791,15 @@ def main(
     window.show()
     app.exec_()
     controller.store_output()
+
+
+def show(
+    strict=True
+):
+    controller = ContextDialogController()
+    controller.set_strict(strict)
+    window = ContextDialog(controller=controller)
+    window.show()
+    window.exec_()
+
+    return controller.store_output()
