@@ -15,9 +15,6 @@ class CollectHeadlessFarm(pyblish.api.ContextPlugin):
         for instance in context:
             if instance.data["family"] == "workfile":
                 instance.data["active"] = False
-
-                # Disable version validation.
-                instance.data.pop("latestVersion")
                 continue
 
             # Filter out all other instances.
