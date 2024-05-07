@@ -4,7 +4,7 @@ import ayon_api
 import getpass
 from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import NumberDef, BoolDef
+from ayon_core.lib import BoolDef
 import hou
 from ayon_core.resources import get_ayon_icon_filepath
 
@@ -17,10 +17,6 @@ class CreateHDA(plugin.HoudiniCreator):
     product_type = "hda"
     icon = "gears"
     maintain_selection = False
-
-    min_num_inputs = 0
-    max_num_inputs = 0
-    max_num_outputs = 1
 
     def _check_existing(self, folder_path, product_name):
         # type: (str, str) -> bool
@@ -50,12 +46,6 @@ class CreateHDA(plugin.HoudiniCreator):
         if pre_create_data is None:
             pre_create_data = {}
 
-        min_num_inputs = pre_create_data.get("min_num_inputs",
-                                             self.min_num_inputs)
-        max_num_inputs = pre_create_data.get("max_num_inputs",
-                                             self.max_num_inputs)
-        max_num_outputs = pre_create_data.get("max_num_outputs",
-                                             self.max_num_outputs)
         if self.selected_nodes:
             # if we have `use selection` enabled, and we have some
             # selected nodes ...
@@ -109,9 +99,6 @@ class CreateHDA(plugin.HoudiniCreator):
 
         # Set Custom settings.
         hda_def = hda_node.type().definition()
-        hda_def.setMinNumInputs(min_num_inputs)
-        hda_def.setMaxNumInputs(max_num_inputs)
-        hda_def.setMaxNumOutputs(max_num_outputs)
 
         if pre_create_data.get("use_ayon_icon"):
             hda_def.setIcon(get_ayon_icon_filepath())
@@ -153,18 +140,6 @@ class CreateHDA(plugin.HoudiniCreator):
     def get_pre_create_attr_defs(self):
         attrs = super(CreateHDA, self).get_pre_create_attr_defs()
         return attrs + [
-            NumberDef("min_num_inputs",
-                      label="Minimum Inputs",
-                      default=self.min_num_inputs,
-                      decimals=0),
-            NumberDef("max_num_inputs",
-                      label="Maximum Inputs",
-                      default=self.max_num_inputs,
-                      decimals=0),
-            NumberDef("max_num_outputs",
-                      label="Maximum Outputs",
-                      default=self.max_num_outputs,
-                      decimals=0),
             BoolDef("use_ayon_icon",
                     tooltip="Use Ayon icon for the digital asset.",
                     default=True,
