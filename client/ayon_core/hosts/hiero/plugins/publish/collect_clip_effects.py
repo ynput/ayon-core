@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 import pyblish.api
 
@@ -11,6 +12,7 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
     families = ["clip"]
 
     effect_categories = []
+    effect_tracks = []
 
     def process(self, instance):
         product_type = "effect"
@@ -73,6 +75,7 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
 
         product_name_split.insert(0, "effect")
 
+        # Categorize effects by class.
         effect_categories = {
             x["name"]: x["effect_classes"] for x in self.effect_categories
         }
@@ -96,6 +99,22 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
 
             effects_categorized[category_by_effect[found_cls]][key] = value
 
+        # Categorize effects by track name.
+        effects_by_track = defaultdict(dict)
+        for key, value in effects.items():
+            if key == "assignTo":
+                continue
+
+            effects_by_track[value["track"]][key] = value
+
+        for data in self.effect_tracks:
+            for track_name, track_effects in effects_by_track.items():
+                if re.match(data["track_regex"], track_name) is None:
+                    continue
+
+                effects_categorized[data["name"]] = track_effects
+
+        # Ensure required `assignTo` data member exists.
         categories = list(effects_categorized.keys())
         for category in categories:
             if not effects_categorized[category]:

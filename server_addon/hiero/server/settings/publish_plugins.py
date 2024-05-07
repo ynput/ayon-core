@@ -27,9 +27,19 @@ class CollectClipEffectsDefModel(BaseSettingsModel):
         return normalize_name(value)
 
 
+class CollectClipEffectsTracksModel(BaseSettingsModel):
+    _layout = "expanded"
+    name: str = SettingsField("", title="Name")
+    track_regex: str = SettingsField("", title="Track Regex")
+
+
 class CollectClipEffectsModel(BaseSettingsModel):
     effect_categories: list[CollectClipEffectsDefModel] = SettingsField(
         default_factory=list, title="Effect Categories"
+    )
+
+    effect_tracks: list[CollectClipEffectsTracksModel] = SettingsField(
+        default_factory=list, title="Effect Tracks"
     )
 
     @validator("effect_categories")
@@ -79,6 +89,7 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
         ]
     },
     "CollectClipEffectsModel": {
-        "effect_categories": []
+        "effect_categories": [],
+        "effect_tracks": []
     }
 }
