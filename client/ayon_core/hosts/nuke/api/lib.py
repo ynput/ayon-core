@@ -1155,13 +1155,9 @@ def create_write_node(
         node (obj): group node with avalon data as Knobs
     '''
     # Ensure name does not contain any invalid characters.
-    special_characters = set("!@#$%^&*()=[]{}|\\;',.<>/?~+-")
-    found_special_characters = []
-
-    # Check each character in the node name
-    for char in name:
-        if char in special_characters:
-            found_special_characters.append(char)
+    special_chars = re.escape("!@#$%^&*()=[]{}|\\;',.<>/?~+-")
+    special_chars_regex = re.compile(f"[{special_chars}]")
+    found_special_characters = list(special_chars_regex.findall(name))
 
     msg = (
         f"Special characters found in name \"{name}\": "
