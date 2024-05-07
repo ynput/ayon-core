@@ -23,7 +23,6 @@ from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
-from .context_tools import get_current_context, get_current_host_name
 
 log = Logger.get_logger(__name__)
 
@@ -765,8 +764,7 @@ def get_imageio_config(
 
     """
     if not anatomy_data:
-        from ayon_core.pipeline.context_tools import (
-            get_current_context_template_data)
+        from .context_tools import get_current_context_template_data
         anatomy_data = get_current_context_template_data()
 
     task_name = anatomy_data.get("task", {}).get("name")
@@ -1425,6 +1423,8 @@ def get_current_context_imageio_config_preset(
         dict: ImageIO config preset.
 
     """
+    from .context_tools import get_current_context, get_current_host_name
+
     context = get_current_context()
     host_name = get_current_host_name()
     return get_imageio_config_preset(
