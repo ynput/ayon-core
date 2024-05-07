@@ -22,7 +22,8 @@ def unit_scale_enum():
 
 
 class MxpWorkspaceSettings(BaseSettingsModel):
-    enabled: bool = SettingsField(False, title="Enabled")
+    enabled_project_creation: bool = SettingsField(
+        False, title="Enable Project Creation")
     mxp_workspace_script: str = SettingsField(
         title="Max mxp Workspace", widget="textarea"
     )
@@ -112,7 +113,7 @@ DEFAULT_VALUES = {
         "scene_unit_scale": "Centimeters"
     },
     "mxp_workspace": {
-        "enabled": False,
+        "enabled_project_creation": False,
         "mxp_workspace_script": DEFAULT_MXP_WORKSPACE_SETTINGS
     },
     "RenderSettings": DEFAULT_RENDER_SETTINGS,
