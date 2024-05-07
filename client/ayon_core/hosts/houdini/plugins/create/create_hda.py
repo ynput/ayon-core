@@ -142,11 +142,11 @@ class CreateHDA(plugin.HoudiniCreator):
         return attrs + [
             BoolDef("use_ayon_icon",
                     tooltip="Use Ayon icon for the digital asset.",
-                    default=True,
+                    default=False,
                     label="Use AYON Icon"),
             BoolDef("set_user",
                     tooltip="Set current user as the author of the HDA",
-                    default=True,
+                    default=False,
                     label="Set Current User"),
             BoolDef("use_project",
                     tooltip="Use project name as tab submenu path",
