@@ -4,7 +4,8 @@ import pyblish.api
 class CollectHeadlessFarm(pyblish.api.ContextPlugin):
     """Setup instances for headless farm submission."""
 
-    order = pyblish.api.CollectorOrder + 0.4999
+    # Needs to be after CollectFromCreateContext
+    order = pyblish.api.CollectorOrder - 0.4
     label = "Collect Headless Farm"
     hosts = ["nuke"]
 
@@ -23,12 +24,24 @@ class CollectHeadlessFarm(pyblish.api.ContextPlugin):
                 instance.data["active"] = False
                 continue
 
-            # Enable for farm publishing.
-            instance.data["farm"] = True
+            instance.data["families"].append("headless_farm")
 
-            # Clear the families as we only want the main family, ei. no review
-            # etc.
-            instance.data["families"] = ["headless_farm"]
 
-            # Use the workfile instead of published.
-            instance.data["use_published_workfile"] = False
+class SetupHeadlessFarm(pyblish.api.InstancePlugin):
+    """Setup instance for headless farm submission."""
+
+    order = pyblish.api.CollectorOrder + 0.4999
+    label = "Setup Headless Farm"
+    hosts = ["nuke"]
+    families = ["headless_farm"]
+
+    def process(self, instance):
+        # Enable for farm publishing.
+        instance.data["farm"] = True
+
+        # Clear the families as we only want the main family, ei. no review
+        # etc.
+        instance.data["families"] = ["headless_farm"]
+
+        # Use the workfile instead of published.
+        instance.data["use_published_workfile"] = False
