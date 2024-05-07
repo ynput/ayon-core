@@ -1299,7 +1299,7 @@ def is_visible(node,
             override_enabled = cmds.getAttr('{}.overrideEnabled'.format(node))
             override_visibility = cmds.getAttr('{}.overrideVisibility'.format(
                 node))
-            if override_enabled and override_visibility:
+            if override_enabled and not override_visibility:
                 return False
 
     if parentHidden:
@@ -4212,3 +4212,23 @@ def create_rig_animation_instance(
             variant=namespace,
             pre_create_data={"use_selection": True}
         )
+
+
+def get_node_index_under_parent(node: str) -> int:
+    """Return the index of a DAG node under its parent.
+
+    Arguments:
+        node (str): A DAG Node path.
+
+    Returns:
+        int: The DAG node's index under its parents or world
+
+    """
+    node = cmds.ls(node, long=True)[0]  # enforce long names
+    parent = node.rsplit("|", 1)[0]
+    if not parent:
+        return cmds.ls(assemblies=True, long=True).index(node)
+    else:
+        return cmds.listRelatives(parent,
+                                  children=True,
+                                  fullPath=True).index(node)
