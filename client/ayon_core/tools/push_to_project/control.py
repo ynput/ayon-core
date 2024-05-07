@@ -169,14 +169,11 @@ class PushToContextController:
         return self._integrate_model.get_item_status(item_id)
 
     # Processing methods
-    def submit(self, wait=True, context_only=False):
+    def submit(self, wait=True):
         if not self._submission_enabled:
             return
 
         if self._process_thread is not None:
-            return
-
-        if context_only:
             return
 
         item_id = self._integrate_model.create_process_item(
