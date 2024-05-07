@@ -145,7 +145,6 @@ class CreateHDA(plugin.HoudiniCreator):
             hou.ropNodeTypeCategory(),
             hou.lopNodeTypeCategory(),
             hou.objNodeTypeCategory(),
-            hou.shopNodeTypeCategory(),
             hou.sopNodeTypeCategory(),
             hou.topNodeTypeCategory(),
             hou.vopNodeTypeCategory()
