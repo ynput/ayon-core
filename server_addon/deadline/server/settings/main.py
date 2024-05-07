@@ -15,12 +15,6 @@ from .publish_plugins import (
 )
 
 
-class ServerListSubmodel(BaseSettingsModel):
-    _layout = "compact"
-    name: str = SettingsField(title="Name")
-    value: str = SettingsField(title="Value")
-
-
 async def defined_deadline_ws_name_enum_resolver(
     addon: "BaseServerAddon",
     settings_variant: str = "production",
@@ -32,25 +26,40 @@ async def defined_deadline_ws_name_enum_resolver(
 
     settings = await addon.get_studio_settings(variant=settings_variant)
 
-    ws_urls = []
+    ws_server_name = []
     for deadline_url_item in settings.deadline_urls:
-        ws_urls.append(deadline_url_item.name)
+        ws_server_name.append(deadline_url_item.name)
 
-    return ws_urls
+    return ws_server_name
+
+class ServerItemSubmodel(BaseSettingsModel):
+    """Connection info about configured DL servers."""
+    _layout = "compact"
+    name: str = SettingsField(title="Name")
+    value: str = SettingsField(title="Url")
+    require_authentication: bool = SettingsField(
+        False,
+        title="Require authentication")
+    ssl: bool = SettingsField(False,
+                              title="SSL")
 
 
 class DeadlineSettings(BaseSettingsModel):
-    deadline_urls: list[ServerListSubmodel] = SettingsField(
+    # configured DL servers
+    deadline_urls: list[ServerItemSubmodel] = SettingsField(
         default_factory=list,
-        title="System Deadline Webservice URLs",
+        title="System Deadline Webservice Info",
         scope=["studio"],
     )
+
+    # name(key) of selected server for project
     deadline_server: str = SettingsField(
-        title="Project deadline server",
+        title="Project Deadline server name",
         section="---",
         scope=["project"],
         enum_resolver=defined_deadline_ws_name_enum_resolver
     )
+
     publish: PublishPluginsModel = SettingsField(
         default_factory=PublishPluginsModel,
         title="Publish Plugins",
@@ -62,11 +71,14 @@ class DeadlineSettings(BaseSettingsModel):
         return value
 
 
+
 DEFAULT_VALUES = {
     "deadline_urls": [
         {
             "name": "default",
-            "value": "http://127.0.0.1:8082"
+            "value": "http://127.0.0.1:8082",
+            "require_authentication": False,
+            "ssl": False
         }
     ],
     "deadline_server": "default",
