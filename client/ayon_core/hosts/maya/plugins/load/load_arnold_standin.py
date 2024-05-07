@@ -12,6 +12,7 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace,
     get_attribute_input,
     maintained_selection,
+    get_fps_for_current_context
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
 from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
@@ -29,7 +30,13 @@ class ArnoldStandinLoader(load.LoaderPlugin):
     """Load as Arnold standin"""
 
     product_types = {
-        "ass", "animation", "model", "proxyAbc", "pointcache", "usd"
+        "ass",
+        "assProxy",
+        "animation",
+        "model",
+        "proxyAbc",
+        "pointcache",
+        "usd"
     }
     representations = {"ass", "abc", "usda", "usdc", "usd"}
 
@@ -95,8 +102,10 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
 
-            fps = float(version_attributes.get("fps")) or 25
-            cmds.setAttr(standin_shape + ".abcFPS", fps)
+            fps = (
+                version_attributes.get("fps") or get_fps_for_current_context()
+            )
+            cmds.setAttr(standin_shape + ".abcFPS", float(fps))
 
         nodes = [root, standin, standin_shape]
         if operator is not None:
@@ -128,6 +137,18 @@ class ArnoldStandinLoader(load.LoaderPlugin):
         proxy_path = "/".join([os.path.dirname(path), proxy_basename])
         return proxy_basename, proxy_path
 
+    def _update_operators(self, string_replace_operator, proxy_basename, path):
+        cmds.setAttr(
+            string_replace_operator + ".match",
+            proxy_basename.split(".")[0],
+            type="string"
+        )
+        cmds.setAttr(
+            string_replace_operator + ".replace",
+            os.path.basename(path).split(".")[0],
+            type="string"
+        )
+
     def _setup_proxy(self, shape, path, namespace):
         proxy_basename, proxy_path = self._get_proxy_path(path)
 
@@ -150,16 +171,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             "*.(@node=='{}')".format(node_type),
             type="string"
         )
-        cmds.setAttr(
-            string_replace_operator + ".match",
-            proxy_basename,
-            type="string"
-        )
-        cmds.setAttr(
-            string_replace_operator + ".replace",
-            os.path.basename(path),
-            type="string"
-        )
+        self._update_operators(string_replace_operator, proxy_basename, path)
 
         cmds.connectAttr(
             string_replace_operator + ".out",
@@ -194,18 +206,9 @@ class ArnoldStandinLoader(load.LoaderPlugin):
         path = get_representation_path(repre_entity)
         proxy_basename, proxy_path = self._get_proxy_path(path)
 
-        # Whether there is proxy or so, we still update the string operator.
+        # Whether there is proxy or not, we still update the string operator.
         # If no proxy exists, the string operator won't replace anything.
-        cmds.setAttr(
-            string_replace_operator + ".match",
-            proxy_basename,
-            type="string"
-        )
-        cmds.setAttr(
-            string_replace_operator + ".replace",
-            os.path.basename(path),
-            type="string"
-        )
+        self._update_operators(string_replace_operator, proxy_basename, path)
 
         dso_path = path
         if os.path.exists(proxy_path):
