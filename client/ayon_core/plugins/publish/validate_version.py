@@ -1,8 +1,10 @@
 import pyblish.api
-from ayon_core.pipeline.publish import PublishValidationError
+from ayon_core.pipeline.publish import (
+    PublishValidationError, OptionalPyblishPluginMixin
+)
 
 
-class ValidateVersion(pyblish.api.InstancePlugin):
+class ValidateVersion(pyblish.api.InstancePlugin, OptionalPyblishPluginMixin):
     """Validate instance version.
 
     AYON does not allow overwriting previously published versions.
@@ -18,6 +20,9 @@ class ValidateVersion(pyblish.api.InstancePlugin):
     active = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         version = instance.data.get("version")
         latest_version = instance.data.get("latestVersion")
 

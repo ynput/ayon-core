@@ -28,9 +28,7 @@ class CollectHeadlessFarm(pyblish.api.ContextPlugin):
 
             # Clear the families as we only want the main family, ei. no review
             # etc.
-            instance.data["families"] = []
+            instance.data["families"] = ["headless_farm"]
 
             # Use the workfile instead of published.
-            settings = instance.data["publish_attributes"]
-            settings = settings["NukeSubmitDeadline"]
-            settings["use_published_workfile"] = False
+            instance.data["use_published_workfile"] = False
