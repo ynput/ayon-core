@@ -21,6 +21,13 @@ def unit_scale_enum():
     ]
 
 
+class MxpWorkspaceSettings(BaseSettingsModel):
+    enabled: bool = SettingsField(False, title="Enabled")
+    mxp_workspace_script: str = SettingsField(
+        title="Max mxp Workspace", widget="textarea"
+    )
+
+
 class UnitScaleSettings(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
     scene_unit_scale: str = SettingsField(
@@ -46,8 +53,9 @@ class MaxSettings(BaseSettingsModel):
         default_factory=UnitScaleSettings,
         title="Set Unit Scale"
     )
-    mxp_workspace: str = SettingsField(
-        title="Max mxp Workspace", widget="textarea"
+    mxp_workspace: MxpWorkspaceSettings = SettingsField(
+        default_factory=MxpWorkspaceSettings,
+        title="Max Workspace"
     )
     imageio: ImageIOSettings = SettingsField(
         default_factory=ImageIOSettings,
@@ -103,7 +111,10 @@ DEFAULT_VALUES = {
         "enabled": True,
         "scene_unit_scale": "Centimeters"
     },
-    "mxp_workspace": DEFAULT_MXP_WORKSPACE_SETTINGS,
+    "mxp_workspace": {
+        "enabled": False,
+        "mxp_workspace_script": DEFAULT_MXP_WORKSPACE_SETTINGS
+    },
     "RenderSettings": DEFAULT_RENDER_SETTINGS,
     "CreateReview": DEFAULT_CREATE_REVIEW_SETTINGS,
     "PointCloud": {
