@@ -9,10 +9,10 @@ class CollectHeadlessFarm(pyblish.api.ContextPlugin):
     hosts = ["nuke"]
 
     def process(self, context):
-        for instance in context:
-            if not instance.context.data.get("headless_farm", False):
-                continue
+        if not context.data.get("headless_farm", False):
+            return
 
+        for instance in context:
             if instance.data["family"] == "workfile":
                 instance.data["active"] = False
 
