@@ -13,6 +13,7 @@ class ExtractHeadlessFarm(pyblish.api.InstancePlugin):
     order = pyblish.api.ExtractorOrder + 0.499
     label = "Extract Headless Farm"
     hosts = ["nuke"]
+    families = ["headless_farm"]
 
     def process(self, instance):
         if not instance.context.data.get("headless_farm", False):
