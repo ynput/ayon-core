@@ -34,6 +34,3 @@ class CollectHeadlessFarm(pyblish.api.ContextPlugin):
             settings = instance.data["publish_attributes"]
             settings = settings["NukeSubmitDeadline"]
             settings["use_published_workfile"] = False
-
-            # Disable version validation.
-            instance.data.pop("latestVersion")
