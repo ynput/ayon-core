@@ -164,6 +164,7 @@ def on_new():
     if rt.checkForSave():
         rt.resetMaxFile(rt.Name("noPrompt"))
         rt.clearUndoBuffer()
+        rt.redrawViews()
 
 
 def containerise(name: str, nodes: list, context,
