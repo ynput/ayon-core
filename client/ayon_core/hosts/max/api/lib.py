@@ -6,9 +6,12 @@ import json
 from typing import Any, Dict, Union
 
 import six
+import ayon_api
 
 from ayon_core.pipeline import (
     get_current_project_name,
+    get_current_folder_path,
+    get_current_task_name,
     colorspace
 )
 from ayon_core.settings import get_project_settings
