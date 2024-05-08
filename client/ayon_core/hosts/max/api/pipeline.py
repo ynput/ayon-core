@@ -161,8 +161,9 @@ def ls() -> list:
 
 def on_new():
     lib.set_context_setting()
-    rt.resetMaxFile(rt.Name("noPrompt"))
-    rt.clearUndoBuffer()
+    if rt.checkForSave():
+        rt.resetMaxFile(rt.Name("noPrompt"))
+        rt.clearUndoBuffer()
 
 
 def containerise(name: str, nodes: list, context,
