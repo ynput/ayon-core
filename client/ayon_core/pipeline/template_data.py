@@ -74,7 +74,7 @@ def get_folder_template_data(folder_entity, project_name):
                       project
 
     Required document fields:
-        Folder: 'path' -> Plan to require: 'folderType'
+        Folder: 'path', 'folderType'
 
     Args:
         folder_entity (Dict[str, Any]): Folder entity.
@@ -101,6 +101,10 @@ def get_folder_template_data(folder_entity, project_name):
     return {
         "folder": {
             "name": folder_name,
+            "path": path,
+            "type": folder_entity["folderType"],
+            "parents": hierarchy,
+            "parent": parent_name,
         },
         "asset": folder_name,
         "hierarchy": hierarchy,
