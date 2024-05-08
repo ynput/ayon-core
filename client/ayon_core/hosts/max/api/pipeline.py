@@ -52,8 +52,7 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         self._has_been_setup = True
 
-        rt.callbacks.addScript(rt.Name('systemPostNew'),
-                               on_post_open)
+        rt.callbacks.addScript(rt.Name('systemPostNew'), on_new)
 
         rt.callbacks.addScript(rt.Name('filePostOpen'),
                                lib.check_colorspace)
@@ -160,7 +159,7 @@ def ls() -> list:
         yield lib.read(container)
 
 
-def on_post_open():
+def on_new():
     lib.set_context_setting()
     rt.resetMaxFile(rt.Name("noPrompt"))
     rt.clearUndoBuffer()
