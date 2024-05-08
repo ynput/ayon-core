@@ -52,11 +52,8 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         self._has_been_setup = True
 
-        def context_setting():
-            return lib.set_context_setting()
-
         rt.callbacks.addScript(rt.Name('systemPostNew'),
-                               context_setting)
+                               on_post_open)
 
         rt.callbacks.addScript(rt.Name('filePostOpen'),
                                lib.check_colorspace)
@@ -161,6 +158,12 @@ def ls() -> list:
 
     for container in sorted(containers, key=attrgetter("name")):
         yield lib.read(container)
+
+
+def on_post_open():
+    lib.set_context_setting()
+    rt.resetMaxFile(rt.Name("noPrompt"))
+    rt.clearUndoBuffer()
 
 
 def containerise(name: str, nodes: list, context,
