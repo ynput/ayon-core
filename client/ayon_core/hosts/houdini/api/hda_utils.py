@@ -415,7 +415,7 @@ def keep_background_images_linked(node, old_name):
 
 
 def get_products_menu_items(node):
-    """get products menu items
+    """Return products menu items
 
     It gets a list of available products of the specified product types
       within the specified folder path with in the specified project.
