@@ -441,15 +441,12 @@ def get_products_menu_items(node):
         product_types=[my_product_type]
     )
 
-    items = list(map(lambda p: p["name"], products))
+    items = []
+    for product in products:
+        items.append(product["name"])
+        items.append(product["name"])
 
-    result = []
-
-    for i in items:
-        result.append(i)
-        result.append(i)
-
-    return(result)
+    return(items)
 
 
 def select_folder_path(node):
