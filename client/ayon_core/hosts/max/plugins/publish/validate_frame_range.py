@@ -12,8 +12,7 @@ from ayon_core.pipeline.publish import (
 )
 from ayon_core.hosts.max.api.lib import (
     get_frame_range,
-    set_timeline,
-    reset_frame_range_tyflow
+    set_timeline
 )
 
 

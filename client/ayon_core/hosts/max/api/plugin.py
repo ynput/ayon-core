@@ -300,7 +300,7 @@ class MaxCreatorBase(object):
             instance
         """
         if not isinstance(node, str):
-            raise CreatorError(f"Instance node is not at the string value.")
+            raise CreatorError("Instance node is not at the string value.")
 
         node = rt.Container(name=node)
         attrs = rt.Execute(MS_CUSTOM_ATTRIB)
@@ -327,7 +327,7 @@ class MaxTyFlowDataCreatorBase(MaxCreatorBase):
             instance
         """
         if not isinstance(node, str):
-            raise CreatorError(f"Instance node is not at the string value.")
+            raise CreatorError("Instance node is not at the string value.")
         node = rt.Container(name=node)
         attrs = rt.Execute(MS_TYCACHE_ATTRIB)
         modifier = rt.EmptyModifier()
