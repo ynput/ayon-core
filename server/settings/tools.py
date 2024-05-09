@@ -403,6 +403,17 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "tasks": [],
                 "template": "SK_{folder[name]}{variant}"
+            },
+            {
+                "product_types": [
+                    "hda"
+                ],
+                "hosts": [
+                    "houdini"
+                ],
+                "task_types": [],
+                "tasks": [],
+                "template": "{folder[label]}_{variant}"
             }
         ]
     },
