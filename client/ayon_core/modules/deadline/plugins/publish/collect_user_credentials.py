@@ -68,17 +68,23 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
                 break
 
         if not deadline_server_name:
-            raise ValueError(f"Collected {collected_deadline_url} doesn't " 
-                              "match any site configured in Studio Settings")
+            raise ValueError(
+                f"Collected {collected_deadline_url} doesn't match any site "
+                "configured in Studio Settings"
+            )
+
+        require_authentication = deadline_info.get(
+            "require_authentication", False
+        )
 
         instance.data["deadline"]["require_authentication"] = (
-            deadline_info["require_authentication"]
+            require_authentication
         )
         instance.data["deadline"]["auth"] = None
 
-        if not deadline_info["require_authentication"]:
+        if not require_authentication:
             return
-        # TODO import 'get_addon_site_settings' when available 
+        # TODO import 'get_addon_site_settings' when available
         #   in public 'ayon_api'
         local_settings = get_server_api_connection().get_addon_site_settings(
             DeadlineModule.name, __version__)
