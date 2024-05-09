@@ -11,7 +11,6 @@ import warnings
 import json
 import ast
 import secrets
-import shutil
 import hiero
 
 from qtpy import QtWidgets, QtCore
@@ -35,9 +34,6 @@ from .constants import (
     OPENPYPE_TAG_NAME,
     DEFAULT_SEQUENCE_NAME,
     DEFAULT_BIN_NAME
-)
-from ayon_core.pipeline.colorspace import (
-    get_imageio_config
 )
 
 
@@ -105,9 +101,9 @@ def flatten(list_):
 
 
 def get_current_project(remove_untitled=False):
-    projects = flatten(hiero.core.projects())
+    projects = hiero.core.projects()
     if not remove_untitled:
-        return next(iter(projects))
+        return projects[0]
 
     # if remove_untitled
     for proj in projects:
@@ -1050,18 +1046,68 @@ def _set_hrox_project_knobs(doc, **knobs):
 
 
 def apply_colorspace_project():
-    project_name = get_current_project_name()
-    # get path the the active projects
-    project = get_current_project(remove_untitled=True)
-    current_file = project.path()
+    """Apply colorspaces from settings.
 
-    # close the active project
-    project.close()
-
+    Due to not being able to set the project settings through the Python API,
+    we need to do use some dubious code to find the widgets and set them. It is
+    possible to set the project settings without traversing through the widgets
+    but it involves reading the hrox files from disk with XML, so no in-memory
+    support. See https://community.foundry.com/discuss/topic/137771/change-a-project-s-default-color-transform-with-python  # noqa
+    for more details.
+    """
     # get presets for hiero
+    project_name = get_current_project_name()
     imageio = get_project_settings(project_name)["hiero"]["imageio"]
     presets = imageio.get("workfile")
 
+    # Open Project Settings UI.
+    for act in hiero.ui.registeredActions():
+        if act.objectName() == "foundry.project.settings":
+            act.trigger()
+
+    # Find widgets from their sibling label.
+    labels = {
+        "Working Space:": "workingSpace",
+        "Viewer:": "viewerLut",
+        "Thumbnails:": "thumbnailLut",
+        "Monitor Out:": "monitorOutLut",
+        "8 Bit Files:": "eightBitLut",
+        "16 Bit Files:": "sixteenBitLut",
+        "Log Files:": "logLut",
+        "Floating Point Files:": "floatLut"
+    }
+    widgets = {x: None for x in labels.values()}
+
+    def _recursive_children(widget, labels, widgets):
+        children = widget.children()
+        for count, child in enumerate(children):
+            if isinstance(child, QtWidgets.QLabel):
+                if child.text() in labels.keys():
+                    widgets[labels[child.text()]] = children[count + 1]
+            _recursive_children(child, labels, widgets)
+
+    app = QtWidgets.QApplication.instance()
+    title = "Project Settings"
+    for widget in app.topLevelWidgets():
+        if isinstance(widget, QtWidgets.QMainWindow):
+            if widget.windowTitle() != title:
+                continue
+            _recursive_children(widget, labels, widgets)
+            widget.close()
+
+    msg = "Setting value \"{}\" is not a valid option for \"{}\""
+    for key, widget in widgets.items():
+        options = [widget.itemText(i) for i in range(widget.count())]
+        setting_value = presets[key]
+        assert setting_value in options, msg.format(setting_value, key)
+        widget.setCurrentText(presets[key])
+
+    # This code block is for setting up project colorspaces for files on disk.
+    # Due to not having Python API access to set the project settings, the
+    # Foundry recommended way is to modify the hrox files on disk with XML. See
+    # this forum thread for more details;
+    # https://community.foundry.com/discuss/topic/137771/change-a-project-s-default-color-transform-with-python  # noqa
+    '''
     # backward compatibility layer
     # TODO: remove this after some time
     config_data = get_imageio_config(
@@ -1073,6 +1119,13 @@ def apply_colorspace_project():
         presets.update({
             "ocioConfigName": "custom"
         })
+
+    # get path the the active projects
+    project = get_current_project()
+    current_file = project.path()
+
+    msg = "The project needs to be saved to disk to apply colorspace settings."
+    assert current_file, msg
 
     # save the workfile as subversion "comment:_colorspaceChange"
     split_current_file = os.path.splitext(current_file)
@@ -1116,6 +1169,7 @@ def apply_colorspace_project():
 
     # open the file as current project
     hiero.core.openProject(copy_current_file)
+    '''
 
 
 def apply_colorspace_clips():
@@ -1125,10 +1179,8 @@ def apply_colorspace_clips():
 
     # get presets for hiero
     imageio = get_project_settings(project_name)["hiero"]["imageio"]
-    from pprint import pprint
 
     presets = imageio.get("regexInputs", {}).get("inputs", {})
-    pprint(presets)
     for clip in clips:
         clip_media_source_path = clip.mediaSource().firstpath()
         clip_name = clip.name()
