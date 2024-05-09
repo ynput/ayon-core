@@ -18,6 +18,7 @@ class OverviewWidget(QtWidgets.QFrame):
     instance_context_changed = QtCore.Signal()
     create_requested = QtCore.Signal()
     convert_requested = QtCore.Signal()
+    publish_tab_requested = QtCore.Signal()
 
     anim_end_value = 200
     anim_duration = 200
@@ -113,8 +114,14 @@ class OverviewWidget(QtWidgets.QFrame):
         product_list_view.selection_changed.connect(
             self._on_product_change
         )
+        product_list_view.double_clicked.connect(
+            self.publish_tab_requested
+        )
         product_view_cards.selection_changed.connect(
             self._on_product_change
+        )
+        product_view_cards.double_clicked.connect(
+            self.publish_tab_requested
         )
         # Active instances changed
         product_list_view.active_changed.connect(
