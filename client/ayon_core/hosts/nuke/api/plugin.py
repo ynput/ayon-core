@@ -834,7 +834,7 @@ class ExporterReviewMov(ExporterReview):
         self.log.info("Nodes exported...")
         return path
 
-    def generate_mov(self, farm=False, **kwargs):
+    def generate_mov(self, farm=False, delete=True, **kwargs):
         # colorspace data
         colorspace = None
         # get colorspace settings
@@ -987,8 +987,13 @@ class ExporterReviewMov(ExporterReview):
             self.render(write_node.name())
 
         # ---------- generate representation data
+        tags = ["review", "need_thumbnail"]
+
+        if delete:
+            tags.append("delete")
+
         self.get_representation_data(
-            tags=["review", "need_thumbnail", "delete"] + add_tags,
+            tags=tags + add_tags,
             custom_tags=add_custom_tags,
             range=True,
             colorspace=colorspace
