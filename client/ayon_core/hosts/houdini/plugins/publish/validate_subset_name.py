@@ -25,7 +25,7 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
 
     """
 
-    families = ["staticMesh"]
+    families = ["staticMesh", "hda"]
     hosts = ["houdini"]
     label = "Validate Product Name"
     order = ValidateContentsOrder + 0.1
