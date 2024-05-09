@@ -110,6 +110,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     This is required to be able use custom checkbox on custom place.
     """
     active_changed = QtCore.Signal(str, bool)
+    double_clicked = QtCore.Signal()
 
     def __init__(self, instance, parent):
         super(InstanceListItemWidget, self).__init__(parent)
@@ -148,6 +149,12 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         self._has_valid_context = None
 
         self._set_valid_property(instance.has_valid_context)
+
+    def mouseDoubleClickEvent(self, event):
+        widget = self.childAt(event.pos())
+        super(InstanceListItemWidget, self).mouseDoubleClickEvent(event)
+        if widget is not self._active_checkbox:
+            self.double_clicked.emit()
 
     def _set_valid_property(self, valid):
         if self._has_valid_context == valid:
@@ -209,6 +216,8 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
 class ListContextWidget(QtWidgets.QFrame):
     """Context (or global attributes) widget."""
+    double_clicked = QtCore.Signal()
+
     def __init__(self, parent):
         super(ListContextWidget, self).__init__(parent)
 
@@ -224,6 +233,10 @@ class ListContextWidget(QtWidgets.QFrame):
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         self.label_widget = label_widget
+
+    def mouseDoubleClickEvent(self, event):
+        super(ListContextWidget, self).mouseDoubleClickEvent(event)
+        self.double_clicked.emit()
 
 
 class InstanceListGroupWidget(QtWidgets.QFrame):
@@ -317,6 +330,7 @@ class InstanceListGroupWidget(QtWidgets.QFrame):
 class InstanceTreeView(QtWidgets.QTreeView):
     """View showing instances and their groups."""
     toggle_requested = QtCore.Signal(int)
+    double_clicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         super(InstanceTreeView, self).__init__(*args, **kwargs)
@@ -425,6 +439,9 @@ class InstanceListView(AbstractInstanceView):
 
     This is public access to and from list view.
     """
+
+    double_clicked = QtCore.Signal()
+
     def __init__(self, controller, parent):
         super(InstanceListView, self).__init__(parent)
 
@@ -454,6 +471,7 @@ class InstanceListView(AbstractInstanceView):
         instance_view.collapsed.connect(self._on_collapse)
         instance_view.expanded.connect(self._on_expand)
         instance_view.toggle_requested.connect(self._on_toggle_request)
+        instance_view.double_clicked.connect(self.double_clicked)
 
         self._group_items = {}
         self._group_widgets = {}
@@ -687,6 +705,7 @@ class InstanceListView(AbstractInstanceView):
                         self._active_toggle_enabled
                     )
                     widget.active_changed.connect(self._on_active_changed)
+                    widget.double_clicked.connect(self.double_clicked)
                     self._instance_view.setIndexWidget(proxy_index, widget)
                     self._widgets_by_id[instance.id] = widget
 
@@ -717,6 +736,7 @@ class InstanceListView(AbstractInstanceView):
         )
         proxy_index = self._proxy_model.mapFromSource(index)
         widget = ListContextWidget(self._instance_view)
+        widget.double_clicked.connect(self.double_clicked)
         self._instance_view.setIndexWidget(proxy_index, widget)
 
         self._context_widget = widget
