@@ -39,7 +39,7 @@ class CoreAddon(BaseServerAddon):
         )
         base_value = {
             "type": "builtin_path",
-            "product": "",
+            "product_name": "",
             "host_names": [],
             "task_names": [],
             "task_types": [],
