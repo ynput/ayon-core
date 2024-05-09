@@ -150,7 +150,9 @@ class CreateHDA(plugin.HoudiniCreator):
                     default=False,
                     label="Set Current User"),
             BoolDef("use_project",
-                    tooltip="Use project name as tab submenu path",
+                    tooltip="Use project name as tab submenu path.\n"
+                            "The location in TAB Menu will be\n"
+                            "'AYON/project_name/your_HDA_name'",
                     default=True,
                     label="Use Project as menu entry"),
         ]
