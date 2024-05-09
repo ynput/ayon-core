@@ -26,6 +26,13 @@ class CollectFrameDataFromAssetEntity(pyblish.api.InstancePlugin):
         ):
             if key not in instance.data:
                 missing_keys.append(key)
+
+        # Skip the logic if all keys are already collected.
+        # NOTE: In editorial is not 'folderEntity' filled, so it would crash
+        #   even if we don't need it.
+        if not missing_keys:
+            return
+
         keys_set = []
         folder_attributes = instance.data["folderEntity"]["attrib"]
         for key in missing_keys:
