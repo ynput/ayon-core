@@ -58,7 +58,7 @@ def _ocio_config_profile_types():
     return [
         {"value": "builtin_path", "label": "AYON built-in OCIO config"},
         {"value": "custom_path", "label": "Path to OCIO config"},
-        {"value": "product", "label": "Published product"},
+        {"value": "product_name", "label": "Published product"},
     ]
 
 
