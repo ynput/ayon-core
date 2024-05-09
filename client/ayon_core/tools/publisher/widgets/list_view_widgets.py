@@ -110,6 +110,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     This is required to be able use custom checkbox on custom place.
     """
     active_changed = QtCore.Signal(str, bool)
+    double_clicked = QtCore.Signal()
 
     def __init__(self, instance, parent):
         super(InstanceListItemWidget, self).__init__(parent)
@@ -148,6 +149,12 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         self._has_valid_context = None
 
         self._set_valid_property(instance.has_valid_context)
+
+    def mouseDoubleClickEvent(self, event):
+        widget = self.childAt(event.pos())
+        super(InstanceListItemWidget, self).mouseDoubleClickEvent(event)
+        if widget is not self._active_checkbox:
+            self.double_clicked.emit()
 
     def _set_valid_property(self, valid):
         if self._has_valid_context == valid:
@@ -209,6 +216,8 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
 class ListContextWidget(QtWidgets.QFrame):
     """Context (or global attributes) widget."""
+    double_clicked = QtCore.Signal()
+
     def __init__(self, parent):
         super(ListContextWidget, self).__init__(parent)
 
@@ -224,6 +233,10 @@ class ListContextWidget(QtWidgets.QFrame):
         label_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         self.label_widget = label_widget
+
+    def mouseDoubleClickEvent(self, event):
+        super(ListContextWidget, self).mouseDoubleClickEvent(event)
+        self.double_clicked.emit()
 
 
 class InstanceListGroupWidget(QtWidgets.QFrame):
@@ -392,15 +405,12 @@ class InstanceTreeView(QtWidgets.QTreeView):
         return True
 
     def mousePressEvent(self, event):
-        handled = self._mouse_press(event)
-        if handled:
-            super(InstanceTreeView, self).mousePressEvent(event)
+        self._mouse_press(event)
+        super(InstanceTreeView, self).mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        handled = self._mouse_press(event)
-        if handled:
-            self.double_clicked.emit()
-            super(InstanceTreeView, self).mouseDoubleClickEvent(event)
+        self._mouse_press(event)
+        super(InstanceTreeView, self).mouseDoubleClickEvent(event)
 
     def _mouse_release(self, event, pressed_index):
         if event.button() != QtCore.Qt.LeftButton:
@@ -697,6 +707,7 @@ class InstanceListView(AbstractInstanceView):
                         self._active_toggle_enabled
                     )
                     widget.active_changed.connect(self._on_active_changed)
+                    widget.double_clicked.connect(self.double_clicked)
                     self._instance_view.setIndexWidget(proxy_index, widget)
                     self._widgets_by_id[instance.id] = widget
 
@@ -727,6 +738,7 @@ class InstanceListView(AbstractInstanceView):
         )
         proxy_index = self._proxy_model.mapFromSource(index)
         widget = ListContextWidget(self._instance_view)
+        widget.double_clicked.connect(self.double_clicked)
         self._instance_view.setIndexWidget(proxy_index, widget)
 
         self._context_widget = widget
