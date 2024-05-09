@@ -77,6 +77,7 @@ def _ocio_built_in_paths():
 
 
 class CoreImageIOConfigProfilesModel(BaseSettingsModel):
+    _layout = "expanded"
     host_names: list[str] = SettingsField(
         default_factory=list,
         title="Host names"
