@@ -131,7 +131,7 @@ class HdaLoader(load.LoaderPlugin):
             node_type, node_name = "topnet", "TOPS"
         # TODO: Create a dedicated parent node based on Vop Node vex context.
         elif hda_def.nodeTypeCategory() == hou.vopNodeTypeCategory():
-            parent_node, node_type, node_name = self._get_dedicated_parent_for_vop(parent_node, hda_def)
+            node_type, node_name = "matnet", "MATSandVOPS"
 
         node = parent_node.node(node_name)
         if not node:
@@ -139,37 +139,3 @@ class HdaLoader(load.LoaderPlugin):
 
         node.moveToGoodPosition()
         return node
-
-    def _get_dedicated_parent_for_vop(self, parent_node, hda_def):
-        """create_dedicated_parent_for_vop
-
-        VOPs are a little special because they can exist
-        in different contexts.
-        e.g.
-            - Material Network
-            - SOPs > VOP nodes
-            - Chop > VOP nodes
-            - Cop2 > VOP nodes
-
-        Get the vex context of the HDA and return
-        dedicated node_type and node_name.
-
-        It creates intermediate nodes if needed.
-        """
-        vex_context = hou.vexContextForNodeTypeCategory(hda_def.nodeTypeCategory())
-
-        if vex_context:
-            new_parent = parent_node.node("VOPS")
-            if not new_parent:
-                new_parent = parent_node.createNode("vopnet", "VOPS")
-                new_parent.moveToGoodPosition()
-
-            if vex_context.name() == "Cop2":
-                return new_parent, "cop2filter", "COP_VOP"
-            elif vex_context.name() == "Chop":
-                return new_parent, "chop", "CHOP_VOP"
-            elif vex_context.name() == "Sop":
-                return new_parent, "sop", "SOP_VOP"
-
-        # Fall to material net if no vex context found
-        return parent_node, "matnet", "MATS"
