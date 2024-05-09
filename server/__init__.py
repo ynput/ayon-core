@@ -46,10 +46,13 @@ class CoreAddon(BaseServerAddon):
             "custom_path": "",
             "builtin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio"
         }
-        if first_filepath not in (
+        if first_filepath in (
             "{BUILTIN_OCIO_ROOT}/aces_1.2/config.oci",
             "{BUILTIN_OCIO_ROOT}/nuke-default/config.ocio",
         ):
+            base_value["type"] = "builtin_path"
+            base_value["builtin_path"] = first_filepath
+        else:
             base_value["type"] = "custom_path"
             base_value["custom_path"] = first_filepath
 
