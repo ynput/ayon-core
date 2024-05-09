@@ -49,6 +49,10 @@ def requests_post(*args, **kwargs):
     if 'verify' not in kwargs:
         kwargs['verify'] = False if os.getenv("OPENPYPE_DONT_VERIFY_SSL",
                                               True) else True  # noqa
+
+    auth = kwargs.get("auth")
+    if auth:
+        kwargs["auth"] = tuple(auth)  # explicit cast to tuple
     # add 10sec timeout before bailing out
     kwargs['timeout'] = 10
     return requests.post(*args, **kwargs)
@@ -70,6 +74,9 @@ def requests_get(*args, **kwargs):
     if 'verify' not in kwargs:
         kwargs['verify'] = False if os.getenv("OPENPYPE_DONT_VERIFY_SSL",
                                               True) else True  # noqa
+    auth = kwargs.get("auth")
+    if auth:
+        kwargs["auth"] = tuple(auth)
     # add 10sec timeout before bailing out
     kwargs['timeout'] = 10
     return requests.get(*args, **kwargs)
@@ -434,9 +441,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
         """Plugin entry point."""
         self._instance = instance
         context = instance.context
-        self._deadline_url = context.data.get("defaultDeadline")
-        self._deadline_url = instance.data.get(
-            "deadlineUrl", self._deadline_url)
+        self._deadline_url = instance.data["deadline"]["url"]
 
         assert self._deadline_url, "Requires Deadline Webservice URL"
 
@@ -460,7 +465,8 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
         self.plugin_info = self.get_plugin_info()
         self.aux_files = self.get_aux_files()
 
-        job_id = self.process_submission()
+        auth = instance.data["deadline"]["auth"]
+        job_id = self.process_submission(auth)
         self.log.info("Submitted job to Deadline: {}.".format(job_id))
 
         # TODO: Find a way that's more generic and not render type specific
@@ -473,10 +479,10 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
                 job_info=render_job_info,
                 plugin_info=render_plugin_info
             )
-            render_job_id = self.submit(payload)
+            render_job_id = self.submit(payload, auth)
             self.log.info("Render job id: %s", render_job_id)
 
-    def process_submission(self):
+    def process_submission(self, auth=None):
         """Process data for submission.
 
         This takes Deadline JobInfo, PluginInfo, AuxFile, creates payload
@@ -487,7 +493,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
 
         """
         payload = self.assemble_payload()
-        return self.submit(payload)
+        return self.submit(payload, auth)
 
     @abstractmethod
     def get_job_info(self):
@@ -577,7 +583,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
             "AuxFiles": aux_files or self.aux_files
         }
 
-    def submit(self, payload):
+    def submit(self, payload, auth):
         """Submit payload to Deadline API end-point.
 
         This takes payload in the form of JSON file and POST it to
@@ -585,6 +591,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
 
         Args:
             payload (dict): dict to become json in deadline submission.
+            auth (tuple): (username, password)
 
         Returns:
             str: resulting Deadline job id.
@@ -594,7 +601,8 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
 
         """
         url = "{}/api/jobs".format(self._deadline_url)
-        response = requests_post(url, json=payload)
+        response = requests_post(url, json=payload,
+                                 auth=auth)
         if not response.ok:
             self.log.error("Submission failed!")
             self.log.error(response.status_code)

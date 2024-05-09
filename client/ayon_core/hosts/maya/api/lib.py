@@ -70,37 +70,6 @@ DEFAULT_MATRIX = [1.0, 0.0, 0.0, 0.0,
                   0.0, 0.0, 1.0, 0.0,
                   0.0, 0.0, 0.0, 1.0]
 
-# The maya alembic export types
-_alembic_options = {
-    "startFrame": float,
-    "endFrame": float,
-    "frameRange": str,  # "start end"; overrides startFrame & endFrame
-    "eulerFilter": bool,
-    "frameRelativeSample": float,
-    "noNormals": bool,
-    "renderableOnly": bool,
-    "step": float,
-    "stripNamespaces": bool,
-    "uvWrite": bool,
-    "wholeFrameGeo": bool,
-    "worldSpace": bool,
-    "writeVisibility": bool,
-    "writeColorSets": bool,
-    "writeFaceSets": bool,
-    "writeCreases": bool,  # Maya 2015 Ext1+
-    "writeUVSets": bool,   # Maya 2017+
-    "dataFormat": str,
-    "root": (list, tuple),
-    "attr": (list, tuple),
-    "attrPrefix": (list, tuple),
-    "userAttr": (list, tuple),
-    "melPerFrameCallback": str,
-    "melPostJobCallback": str,
-    "pythonPerFrameCallback": str,
-    "pythonPostJobCallback": str,
-    "selection": bool
-}
-
 INT_FPS = {15, 24, 25, 30, 48, 50, 60, 44100, 48000}
 FLOAT_FPS = {23.98, 23.976, 29.97, 47.952, 59.94}
 
@@ -1330,7 +1299,7 @@ def is_visible(node,
             override_enabled = cmds.getAttr('{}.overrideEnabled'.format(node))
             override_visibility = cmds.getAttr('{}.overrideVisibility'.format(
                 node))
-            if override_enabled and override_visibility:
+            if override_enabled and not override_visibility:
                 return False
 
     if parentHidden:
@@ -1345,178 +1314,6 @@ def is_visible(node,
                 return False
 
     return True
-
-
-def extract_alembic(file,
-                    startFrame=None,
-                    endFrame=None,
-                    selection=True,
-                    uvWrite=True,
-                    eulerFilter=True,
-                    dataFormat="ogawa",
-                    verbose=False,
-                    **kwargs):
-    """Extract a single Alembic Cache.
-
-    This extracts an Alembic cache using the `-selection` flag to minimize
-    the extracted content to solely what was Collected into the instance.
-
-    Arguments:
-
-        startFrame (float): Start frame of output. Ignored if `frameRange`
-            provided.
-
-        endFrame (float): End frame of output. Ignored if `frameRange`
-            provided.
-
-        frameRange (tuple or str): Two-tuple with start and end frame or a
-            string formatted as: "startFrame endFrame". This argument
-            overrides `startFrame` and `endFrame` arguments.
-
-        dataFormat (str): The data format to use for the cache,
-                          defaults to "ogawa"
-
-        verbose (bool): When on, outputs frame number information to the
-            Script Editor or output window during extraction.
-
-        noNormals (bool): When on, normal data from the original polygon
-            objects is not included in the exported Alembic cache file.
-
-        renderableOnly (bool): When on, any non-renderable nodes or hierarchy,
-            such as hidden objects, are not included in the Alembic file.
-            Defaults to False.
-
-        stripNamespaces (bool): When on, any namespaces associated with the
-            exported objects are removed from the Alembic file. For example, an
-            object with the namespace taco:foo:bar appears as bar in the
-            Alembic file.
-
-        uvWrite (bool): When on, UV data from polygon meshes and subdivision
-            objects are written to the Alembic file. Only the current UV map is
-            included.
-
-        worldSpace (bool): When on, the top node in the node hierarchy is
-            stored as world space. By default, these nodes are stored as local
-            space. Defaults to False.
-
-        eulerFilter (bool): When on, X, Y, and Z rotation data is filtered with
-            an Euler filter. Euler filtering helps resolve irregularities in
-            rotations especially if X, Y, and Z rotations exceed 360 degrees.
-            Defaults to True.
-
-    """
-
-    # Ensure alembic exporter is loaded
-    cmds.loadPlugin('AbcExport', quiet=True)
-
-    # Alembic Exporter requires forward slashes
-    file = file.replace('\\', '/')
-
-    # Pass the start and end frame on as `frameRange` so that it
-    # never conflicts with that argument
-    if "frameRange" not in kwargs:
-        # Fallback to maya timeline if no start or end frame provided.
-        if startFrame is None:
-            startFrame = cmds.playbackOptions(query=True,
-                                              animationStartTime=True)
-        if endFrame is None:
-            endFrame = cmds.playbackOptions(query=True,
-                                            animationEndTime=True)
-
-        # Ensure valid types are converted to frame range
-        assert isinstance(startFrame, _alembic_options["startFrame"])
-        assert isinstance(endFrame, _alembic_options["endFrame"])
-        kwargs["frameRange"] = "{0} {1}".format(startFrame, endFrame)
-    else:
-        # Allow conversion from tuple for `frameRange`
-        frame_range = kwargs["frameRange"]
-        if isinstance(frame_range, (list, tuple)):
-            assert len(frame_range) == 2
-            kwargs["frameRange"] = "{0} {1}".format(frame_range[0],
-                                                    frame_range[1])
-
-    # Assemble options
-    options = {
-        "selection": selection,
-        "uvWrite": uvWrite,
-        "eulerFilter": eulerFilter,
-        "dataFormat": dataFormat
-    }
-    options.update(kwargs)
-
-    # Validate options
-    for key, value in options.copy().items():
-
-        # Discard unknown options
-        if key not in _alembic_options:
-            log.warning("extract_alembic() does not support option '%s'. "
-                        "Flag will be ignored..", key)
-            options.pop(key)
-            continue
-
-        # Validate value type
-        valid_types = _alembic_options[key]
-        if not isinstance(value, valid_types):
-            raise TypeError("Alembic option unsupported type: "
-                            "{0} (expected {1})".format(value, valid_types))
-
-        # Ignore empty values, like an empty string, since they mess up how
-        # job arguments are built
-        if isinstance(value, (list, tuple)):
-            value = [x for x in value if x.strip()]
-
-            # Ignore option completely if no values remaining
-            if not value:
-                options.pop(key)
-                continue
-
-            options[key] = value
-
-    # The `writeCreases` argument was changed to `autoSubd` in Maya 2018+
-    maya_version = int(cmds.about(version=True))
-    if maya_version >= 2018:
-        options['autoSubd'] = options.pop('writeCreases', False)
-
-    # Format the job string from options
-    job_args = list()
-    for key, value in options.items():
-        if isinstance(value, (list, tuple)):
-            for entry in value:
-                job_args.append("-{} {}".format(key, entry))
-        elif isinstance(value, bool):
-            # Add only when state is set to True
-            if value:
-                job_args.append("-{0}".format(key))
-        else:
-            job_args.append("-{0} {1}".format(key, value))
-
-    job_str = " ".join(job_args)
-    job_str += ' -file "%s"' % file
-
-    # Ensure output directory exists
-    parent_dir = os.path.dirname(file)
-    if not os.path.exists(parent_dir):
-        os.makedirs(parent_dir)
-
-    if verbose:
-        log.debug("Preparing Alembic export with options: %s",
-                  json.dumps(options, indent=4))
-        log.debug("Extracting Alembic with job arguments: %s", job_str)
-
-    # Perform extraction
-    print("Alembic Job Arguments : {}".format(job_str))
-
-    # Disable the parallel evaluation temporarily to ensure no buggy
-    # exports are made. (PLN-31)
-    # TODO: Make sure this actually fixes the issues
-    with evaluation("off"):
-        cmds.AbcExport(j=job_str, verbose=verbose)
-
-    if verbose:
-        log.debug("Extracted Alembic to: %s", file)
-
-    return file
-
 
 # region ID
 def get_id_required_nodes(referenced_nodes=False,
@@ -2520,7 +2317,16 @@ def set_scene_fps(fps, update=True):
     """
 
     fps_mapping = {
+        '2': '2fps',
+        '3': '3fps',
+        '4': '4fps',
+        '5': '5fps',
+        '6': '6fps',
+        '8': '8fps',
+        '10': '10fps',
+        '12': '12fps',
         '15': 'game',
+        '16': '16fps',
         '24': 'film',
         '25': 'pal',
         '30': 'ntsc',
@@ -2612,21 +2418,24 @@ def get_fps_for_current_context():
     Returns:
         Union[int, float]: FPS value.
     """
-
-    project_name = get_current_project_name()
-    folder_path = get_current_folder_path()
-    folder_entity = ayon_api.get_folder_by_path(
-        project_name, folder_path, fields={"attrib.fps"}
-    ) or {}
-    fps = folder_entity.get("attrib", {}).get("fps")
+    task_entity = get_current_task_entity(fields={"attrib"})
+    fps = task_entity.get("attrib", {}).get("fps")
     if not fps:
-        project_entity = ayon_api.get_project(
-            project_name, fields=["attrib.fps"]
+        project_name = get_current_project_name()
+        folder_path = get_current_folder_path()
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields={"attrib.fps"}
         ) or {}
-        fps = project_entity.get("attrib", {}).get("fps")
 
+        fps = folder_entity.get("attrib", {}).get("fps")
         if not fps:
-            fps = 25
+            project_entity = ayon_api.get_project(
+                project_name, fields=["attrib.fps"]
+            ) or {}
+            fps = project_entity.get("attrib", {}).get("fps")
+
+            if not fps:
+                fps = 25
 
     return convert_to_maya_fps(fps)
 
@@ -4403,3 +4212,23 @@ def create_rig_animation_instance(
             variant=namespace,
             pre_create_data={"use_selection": True}
         )
+
+
+def get_node_index_under_parent(node: str) -> int:
+    """Return the index of a DAG node under its parent.
+
+    Arguments:
+        node (str): A DAG Node path.
+
+    Returns:
+        int: The DAG node's index under its parents or world
+
+    """
+    node = cmds.ls(node, long=True)[0]  # enforce long names
+    parent = node.rsplit("|", 1)[0]
+    if not parent:
+        return cmds.ls(assemblies=True, long=True).index(node)
+    else:
+        return cmds.listRelatives(parent,
+                                  children=True,
+                                  fullPath=True).index(node)
