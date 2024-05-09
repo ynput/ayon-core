@@ -47,7 +47,7 @@ class CoreAddon(BaseServerAddon):
             "builtin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio"
         }
         if first_filepath in (
-            "{BUILTIN_OCIO_ROOT}/aces_1.2/config.oci",
+            "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
             "{BUILTIN_OCIO_ROOT}/nuke-default/config.ocio",
         ):
             base_value["type"] = "builtin_path"
