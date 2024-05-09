@@ -72,7 +72,7 @@ class ValidateDeadlinePools(OptionalPyblishPluginMixin,
                                                       auth=auth,
                                                       log=self.log)
             # some DL return "none" as a pool name
-            if not "none" in pools:
+            if "none" not in pools:
                 pools.append("none")
             self.log.info("Available pools: {}".format(pools))
             self.pools_per_url[deadline_url] = pools
