@@ -10,7 +10,6 @@ from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 from ayon_core.lib import (
     is_in_tests,
-    BoolDef,
     TextDef,
     NumberDef
 )
@@ -90,11 +89,6 @@ class HoudiniSubmitDeadline(
     @classmethod
     def get_attribute_defs(cls):
         return [
-            BoolDef(
-                "suspend_publish",
-                default=False,
-                label="Suspend publish"
-            ),
             NumberDef(
                 "priority",
                 label="Priority",
