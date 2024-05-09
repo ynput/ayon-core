@@ -6,7 +6,6 @@ from ayon_core.lib import (
     BoolDef,
     NumberDef,
 )
-from ayon_core.pipeline import CreatedInstance
 
 
 def _get_animation_attr_defs(cls):
