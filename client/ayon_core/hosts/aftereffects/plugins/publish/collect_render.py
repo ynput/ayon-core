@@ -24,7 +24,7 @@ class AERenderInstance(RenderInstance):
 
 class CollectAERender(publish.AbstractCollectRender):
 
-    order = pyblish.api.CollectorOrder + 0.405
+    order = pyblish.api.CollectorOrder + 0.100
     label = "Collect After Effects Render Layers"
     hosts = ["aftereffects"]
 
@@ -145,6 +145,7 @@ class CollectAERender(publish.AbstractCollectRender):
                 if "review" in instance.families:
                     # to skip ExtractReview locally
                     instance.families.remove("review")
+                instance.deadline = inst.data.get("deadline")
 
             instances.append(instance)
 
