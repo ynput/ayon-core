@@ -24,7 +24,6 @@ class EditorialPackageCreator(TrayPublishCreator):
     # Position batch creator after simple creators
     order = 120
 
-
     def get_icon(self):
         return "fa.folder"
 
