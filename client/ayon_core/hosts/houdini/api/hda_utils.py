@@ -471,7 +471,6 @@ def select_folder_path(node):
     from ayon_core.tools.utils.host_tools import get_tool_by_name
     from ayon_core.hosts.houdini.api.lib import get_main_window
 
-
     main_window = get_main_window()
     publisher_window = get_tool_by_name( tool_name="publisher", parent=main_window)
 
