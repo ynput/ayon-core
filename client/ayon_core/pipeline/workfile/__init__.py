@@ -21,6 +21,15 @@ from .utils import (
 from .build_workfile import BuildWorkfile
 
 
+from .workfile_template_builder import (
+    discover_workfile_build_plugins,
+    register_workfile_build_plugin,
+    deregister_workfile_build_plugin,
+    register_workfile_build_plugin_path,
+    deregister_workfile_build_plugin_path,
+)
+
+
 __all__ = (
     "get_workfile_template_key_from_context",
     "get_workfile_template_key",
@@ -39,4 +48,10 @@ __all__ = (
     "should_open_workfiles_tool_on_launch",
 
     "BuildWorkfile",
+
+    "discover_workfile_build_plugins",
+    "register_workfile_build_plugin",
+    "deregister_workfile_build_plugin",
+    "register_workfile_build_plugin_path",
+    "deregister_workfile_build_plugin_path",
 )
