@@ -55,7 +55,6 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         self.menu = AYONMenu()
 
         register_event_callback("taskChanged", on_task_changed)
-        register_event_callback("workfile.open.before", on_before_open)
         self._has_been_setup = True
 
         def context_setting():
@@ -190,18 +189,12 @@ def containerise(name: str, nodes: list, context,
 
 def _set_project():
     workdir = os.getenv("AYON_WORKDIR")
-
-    try:
-        os.makedirs(workdir)
-    except OSError as e:
-        # An already existing working directory is fine.
-        if e.errno == errno.EEXIST:
-            pass
-        else:
-            raise
-
-    mxp_filepath = os.path.join(workdir, "workspace.mxp")
-    if os.path.exists(mxp_filepath):
+    os.makedirs(workdir, exist_ok=True)
+    log.info("Updating 3dsMax workspace for task change to %s", workdir)
+    rt.pathConfig.setCurrentProjectFolder(workdir)
+    project_name = get_current_project_name()
+    mxp_filepath = create_workspace_mxp(workdir, project_name)
+    if mxp_filepath:
         rt.pathConfig.load(mxp_filepath)
         rt.pathConfig.doProjectSetupStepsUsingDirectory(workdir)
     rt.pathConfig.setCurrentProjectFolder(workdir)
@@ -211,19 +204,7 @@ def on_task_changed():
     workdir = os.getenv("AYON_WORKDIR")
     if os.path.exists(workdir):
         log.info("Updating 3dsMax workspace for task change to %s", workdir)
-        rt.pathConfig.setCurrentProjectFolder(workdir)
-
-
-def on_before_open():
-    project_name = get_current_project_name()
-    workdir_path = os.getenv("AYON_WORKDIR")
-    if os.path.exists(workdir_path):
-        create_workspace_mxp(workdir_path, project_name)
-        mxp_filepath = os.path.join(workdir_path, "workspace.mxp")
-        if os.path.exists(mxp_filepath):
-            rt.pathConfig.load(mxp_filepath)
-            rt.pathConfig.doProjectSetupStepsUsingDirectory(workdir_path)
-        rt.pathConfig.setCurrentProjectFolder(workdir_path)
+        _set_project()
 
 
 def load_custom_attribute_data():

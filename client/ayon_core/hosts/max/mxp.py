@@ -3,7 +3,7 @@ from ayon_core.settings import get_project_settings
 from ayon_core.lib import Logger
 
 
-def create_workspace_mxp(workdir, project_name, project_settings=None):
+def create_workspace_mxp(workdir, project_name):
     dst_filepath = os.path.join(workdir, "workspace.mxp")
     if os.path.exists(dst_filepath):
         return
@@ -11,8 +11,7 @@ def create_workspace_mxp(workdir, project_name, project_settings=None):
     if not os.path.exists(workdir):
         os.makedirs(workdir)
 
-    if not project_settings:
-        project_settings = get_project_settings(project_name)
+    project_settings = get_project_settings(project_name)
     log = Logger.get_logger("create_workspace_mxp")
     mxp_workspace = project_settings["max"].get("mxp_workspace")
     # Ensure the hook would not cause possible error
@@ -28,11 +27,7 @@ def create_workspace_mxp(workdir, project_name, project_settings=None):
             log.debug("File 'workspace.mxp' not created. Settings value is empty.")
             return
 
-        edited_script = "\n".join((
-            '[Directories]',
-            f'ProjectFolder={workdir}'
-        ))
-        max_script = max_script.replace("[Directories]", edited_script)
-
         with open(dst_filepath, "w") as mxp_file:
             mxp_file.write(max_script)
+
+        return dst_filepath
