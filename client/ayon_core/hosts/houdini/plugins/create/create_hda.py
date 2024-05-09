@@ -109,7 +109,8 @@ class CreateHDA(plugin.HoudiniCreator):
         if pre_create_data.get("use_project"):
             tool_name = hou.shelves.defaultToolName(
                 hda_def.nodeTypeCategory().name(), hda_def.nodeTypeName())
-            hou.shelves.tool(tool_name).setToolLocations((self.project_name,))
+            hou.shelves.tool(tool_name).setToolLocations(
+                ("AYON/{}".format(self.project_name),))
 
         return hda_node
 
