@@ -873,7 +873,7 @@ def _get_global_config_data(
     product_entities_by_name = {
         product_entity["name"]: product_entity
         for product_entity in ayon_api.get_products(
-        project_name,
+            project_name,
             folder_ids={folder_id},
             product_name_regex=product_name,
             fields={"id", "name"}
