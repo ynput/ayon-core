@@ -429,17 +429,16 @@ def get_products_menu_items(node):
     folder_path = node.evalParm("folder_path")
     my_product_type = node.evalParm("representation_name")
 
-    id_only = ["id"]
     folder_entity = ayon_api.get_folder_by_path(project_name,
                                                 folder_path,
-                                                fields=id_only)
-    my_folder_id = folder_entity["id"]
+                                                fields={"id"})
+    if not folder_entity:
+        return []
 
     products = ayon_api.get_products(
         project_name,
-        folder_ids = [my_folder_id],
-        product_types = [my_product_type]
-
+        folder_ids=[folder_entity["id"]],
+        product_types=[my_product_type]
     )
 
     items = list(map(lambda p: p["name"], products))
