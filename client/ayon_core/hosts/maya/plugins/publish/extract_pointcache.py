@@ -6,6 +6,7 @@ from maya import cmds
 from ayon_core.pipeline import publish
 from ayon_core.hosts.maya.api.alembic import extract_alembic
 from ayon_core.hosts.maya.api.lib import (
+    get_all_children,
     suspended_refresh,
     maintained_selection,
     iter_visible_nodes_in_range
@@ -40,7 +41,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
     # From settings
     attr = []
     attrPrefix = []
-    autoSubd = False
     bake_attributes = []
     bake_attribute_prefixes = []
     dataFormat = "ogawa"
@@ -63,6 +63,7 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
     wholeFrameGeo = False
     worldSpace = True
     writeColorSets = False
+    writeCreases = False
     writeFaceSets = False
     writeNormals = True
     writeUVSets = False
@@ -173,14 +174,8 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             "writeVisibility": attribute_values.get(
                 "writeVisibility", self.writeVisibility
             ),
-            "autoSubd": attribute_values.get(
-                "autoSubd", self.autoSubd
-            ),
             "uvsOnly": attribute_values.get(
                 "uvsOnly", self.uvsOnly
-            ),
-            "writeNormals": attribute_values.get(
-                "writeNormals", self.writeNormals
             ),
             "melPerFrameCallback": attribute_values.get(
                 "melPerFrameCallback", self.melPerFrameCallback
@@ -193,7 +188,12 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             ),
             "pythonPostJobCallback": attribute_values.get(
                 "pythonPostJobCallback", self.pythonPostJobCallback
-            )
+            ),
+            # Note that this converts `writeNormals` to `noNormals` for the
+            # `AbcExport` equivalent in `extract_alembic`
+            "noNormals": not attribute_values.get(
+                "writeNormals", self.writeNormals
+            ),
         }
 
         if instance.data.get("visibleOnly", False):
@@ -249,7 +249,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             with maintained_selection():
                 cmds.select(instance.data["proxy"])
                 extract_alembic(**kwargs)
-
         representation = {
             "name": "proxy",
             "ext": "abc",
@@ -268,20 +267,6 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
             return []
 
         override_defs = OrderedDict({
-            "autoSubd": BoolDef(
-                "autoSubd",
-                label="Auto Subd",
-                default=cls.autoSubd,
-                tooltip=(
-                    "If this flag is present and the mesh has crease edges, "
-                    "crease vertices or holes, the mesh (OPolyMesh) would now "
-                    "be written out as an OSubD and crease info will be stored"
-                    " in the Alembic  file. Otherwise, creases info won't be "
-                    "preserved in Alembic file unless a custom Boolean "
-                    "attribute SubDivisionMesh has been added to mesh node and"
-                    " its value is true."
-                )
-            ),
             "eulerFilter": BoolDef(
                 "eulerFilter",
                 label="Euler Filter",
@@ -353,6 +338,13 @@ class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
                 label="Write Color Sets",
                 default=cls.writeColorSets,
                 tooltip="Write vertex colors with the geometry."
+            ),
+            "writeCreases": BoolDef(
+                "writeCreases",
+                label="Write Creases",
+                default=cls.writeCreases,
+                tooltip="Write the geometry's edge and vertex crease "
+                        "information."
             ),
             "writeFaceSets": BoolDef(
                 "writeFaceSets",
@@ -527,9 +519,7 @@ class ExtractAnimation(ExtractAlembic):
         roots = cmds.sets(out_set, query=True) or []
 
         # Include all descendants
-        nodes = roots
-        nodes += cmds.listRelatives(
-            roots, allDescendents=True, fullPath=True
-        ) or []
+        nodes = roots.copy()
+        nodes.extend(get_all_children(roots, ignore_intermediate_objects=True))
 
         return nodes, roots
