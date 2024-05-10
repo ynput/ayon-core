@@ -16,7 +16,7 @@ class ValidateAnimatedReferenceRig(pyblish.api.InstancePlugin,
     hosts = ["maya"]
     families = ["animation.fbx"]
     label = "Animated Reference Rig"
-    accepted_controllers = ["transform", "locator"]
+    accepted_controllers = ["transform", "locator", "joint"]
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
     optional = False
 
