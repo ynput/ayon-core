@@ -6,7 +6,7 @@ import opentimelineio
 
 import pyblish.api
 
-from ayon_core.lib import filter_profiles, get_ffmpeg_tool_args, run_subprocess
+from ayon_core.lib import  get_ffmpeg_tool_args, run_subprocess
 from ayon_core.pipeline import publish
 
 
@@ -80,26 +80,6 @@ class ExtractEditorialPckgConversion(publish.Extractor):
         if not os.path.exists(publish_resource_folder):
             os.makedirs(publish_resource_folder, exist_ok=True)
         return publish_resource_folder
-
-    def _get_output_definition(self, instance, profiles):
-        """Return appropriate profile by context information."""
-        product_type = instance.data["productType"]
-        product_name = instance.data["productName"]
-        task_entity = instance.data["taskEntity"] or {}
-        task_name = task_entity.get("name")
-        task_type = task_entity.get("taskType")
-        filtering_criteria = {
-            "product_types": product_type,
-            "product_names": product_name,
-            "task_names": task_name,
-            "task_types": task_type,
-        }
-        profile = filter_profiles(
-            profiles,
-            filtering_criteria,
-            logger=self.log
-        )
-        return profile
 
     def _get_resource_path_mapping(self, instance, transfers):
         """Returns dict of {source_mov_path: rootless_published_path}."""
