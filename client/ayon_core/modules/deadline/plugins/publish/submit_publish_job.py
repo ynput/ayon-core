@@ -467,8 +467,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
 
         # Inject deadline url to instances to query DL for job id for overrides
         for inst in instances:
-            if not "deadline" in inst:
-                inst["deadline"] = {}
             inst["deadline"] = instance.data["deadline"]
 
         # publish job file
