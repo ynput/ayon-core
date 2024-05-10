@@ -30,7 +30,7 @@ class CollectClipEffectsDefModel(BaseSettingsModel):
 class CollectClipEffectsTracksModel(BaseSettingsModel):
     _layout = "expanded"
     name: str = SettingsField("", title="Name")
-    track_regex: str = SettingsField("", title="Track Regex")
+    track_names: list[str] = SettingsField("", title="Track Names")
 
 
 class CollectClipEffectsModel(BaseSettingsModel):
