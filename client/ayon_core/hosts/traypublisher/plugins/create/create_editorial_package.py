@@ -38,7 +38,6 @@ class EditorialPackageCreator(TrayPublishCreator):
                             ["ExtractEditorialPckgConversion"]
                             ["conversion_enabled"]
         )
-        print(project_settings)
 
     def get_icon(self):
         return "fa.folder"
