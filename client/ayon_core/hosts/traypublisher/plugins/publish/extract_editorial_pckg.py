@@ -111,9 +111,11 @@ class ExtractEditorialPckgConversion(publish.Extractor):
                     if not target_url:
                         continue
                     file_name = os.path.basename(target_url)
-                    replace_value = replace_paths.get(file_name)
-                    if replace_value:
-                        clip.media_reference.target_url = replace_value
+                    replace_path = replace_paths.get(file_name)
+                    if replace_path:
+                        clip.media_reference.target_url = replace_path
+                        if clip.name == file_name:
+                            clip.name = os.path.basename(replace_path)
 
         return otio_data
 
