@@ -100,19 +100,21 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
             effects_categorized[category_by_effect[found_cls]][key] = value
 
         # Categorize effects by track name.
-        effects_by_track = defaultdict(dict)
-        for key, value in effects.items():
-            if key == "assignTo":
-                continue
-
-            effects_by_track[value["track"]][key] = value
-
-        for data in self.effect_tracks:
-            for track_name, track_effects in effects_by_track.items():
-                if re.match(data["track_regex"], track_name) is None:
+        track_names_by_category = {
+            x["name"]: x["track_names"] for x in self.effect_tracks
+        }
+        for category, track_names in track_names_by_category.items():
+            for key, value in effects.items():
+                if key == "assignTo":
                     continue
 
-                effects_categorized[data["name"]] = track_effects
+                if value["track"] not in track_names:
+                    continue
+
+                if category in effects_categorized:
+                    effects_categorized[category][key] = value
+                else:
+                    effects_categorized[category] = {key: value}
 
         # Ensure required `assignTo` data member exists.
         categories = list(effects_categorized.keys())
