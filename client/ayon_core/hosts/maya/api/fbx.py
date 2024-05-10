@@ -102,6 +102,7 @@ class FBXExtractor:
             "constraints": False,
             "lights": True,
             "embeddedTextures": False,
+            "includeChildren": True,
             "inputConnections": True,
             "upAxis": "y",
             "triangulate": False,
