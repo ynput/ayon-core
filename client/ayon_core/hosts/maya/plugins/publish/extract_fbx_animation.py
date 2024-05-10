@@ -36,7 +36,6 @@ class ExtractFBXAnimation(publish.Extractor):
         out_members = instance.data.get("animated_skeleton", [])
         # Export
         instance.data["constraints"] = True
-        instance.data["bakeResampleAnimation"] = False
         instance.data["skeletonDefinitions"] = True
         instance.data["referencedAssetsContent"] = True
         fbx_exporter.set_options_from_instance(instance)
