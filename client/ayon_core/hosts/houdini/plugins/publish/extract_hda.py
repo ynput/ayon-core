@@ -32,7 +32,7 @@ class ExtractHDA(publish.Extractor):
             tool_name = hou.shelves.defaultToolName(
                 hda_def.nodeTypeCategory().name(), hda_def.nodeTypeName())
             hou.shelves.tool(tool_name).setToolLocations(
-                ("AYON/{}".format(self.project_name),))
+                ("AYON/{}".format(instance.context.data["projectName"]),))
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
