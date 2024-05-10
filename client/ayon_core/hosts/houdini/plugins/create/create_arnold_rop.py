@@ -73,8 +73,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
-    @staticmethod
-    def update_node_parameters(node, creator_attributes):
+    def update_node_parameters(self, node, creator_attributes):
         """update node parameters according to creator attributes.
 
         Implementation of `HoudiniCreator.update_node_parameters`.
@@ -102,8 +101,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
             "farm": creator_attributes.get("farm")
         })
 
-    @staticmethod
-    def read_node_data(node):
+    def read_node_data(self, node):
         """Read node data from node parameters.
 
         Implementation of `HoudiniCreator.read_node_data`.

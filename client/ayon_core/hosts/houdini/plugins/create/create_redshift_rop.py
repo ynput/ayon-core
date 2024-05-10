@@ -111,8 +111,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
         return super(CreateRedshiftROP, self).remove_instances(instances)
 
-    @staticmethod
-    def update_node_parameters(node, creator_attributes):
+    def update_node_parameters(self, node, creator_attributes):
         """update node parameters according to creator attributes.
 
         Implementation of `HoudiniCreator.update_node_parameters`.
@@ -143,8 +142,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
         node.setParms(parms)
 
-    @staticmethod
-    def read_node_data(node):
+    def read_node_data(self, node):
         """Read node data from node parameters.
 
         Implementation of `HoudiniCreator.read_node_data`.

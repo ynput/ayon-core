@@ -370,8 +370,7 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
         for key, value in settings.items():
             setattr(self, key, value)
 
-    @staticmethod
-    def update_node_parameters(node, creator_attributes):
+    def update_node_parameters(self, node, creator_attributes):
         """Update node parameters according to creator attributes.
 
         This method is used in `HoudiniCreator.update_instances`
@@ -391,8 +390,7 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
         pass
 
-    @staticmethod
-    def read_node_data(node):
+    def read_node_data(self, node):
         """Read node data from node parameters.
 
         This method is used in `HoudiniCreator.collect_instances`
