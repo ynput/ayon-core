@@ -1,6 +1,8 @@
 import os
 import traceback
 
+import pyblish.api
+
 import ayon_api
 from ayon_core.pipeline import (
     get_current_project_name,
@@ -9,6 +11,7 @@ from ayon_core.pipeline import (
     get_current_host_name,
     registered_host
 )
+from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.workfile import (
     get_last_workfile_with_version, get_workfile_template_key
 )
@@ -60,6 +63,78 @@ def _save_repository_workfile():
     host = registered_host()
     host.open_file(os.path.join(os.path.dirname(__file__), "tests.ma"))
     host.save_file(workfile_path)
+
+
+def recursive_validate(valid_action_names):
+    """ Recursively validate until until it is either successfull or there are
+    no more approved actions to run in which case its failing.
+    """
+    context = pyblish.api.Context()
+    context.data["create_context"] = CreateContext(registered_host())
+    context = pyblish.util.collect(context)
+    pyblish.util.validate(context)
+
+    success = True
+    actions_executed = []
+    action_errors = []
+    for result in context.data["results"]:
+        if result["success"]:
+            continue
+
+        success = False
+
+        for action in result["plugin"].actions:
+            if action.__name__ not in valid_action_names:
+                continue
+            actions_executed.append(action)
+            try:
+                action().process(context, result["plugin"])
+            except Exception:
+                action_errors.append(traceback.format_exc())
+
+    if action_errors:
+        context.data["action_errors"] = action_errors
+        return False, context
+
+    if not success and not actions_executed:
+        return False, context
+
+    if success:
+        return True, context
+
+    return recursive_validate(valid_action_names)
+
+
+def create_error_report(context):
+    error_message = ""
+    for result in context.data["results"]:
+        if result["success"]:
+            continue
+
+        err = result["error"]
+        formatted_traceback = "".join(
+            traceback.format_exception(
+                type(err),
+                err,
+                err.__traceback__
+            )
+        )
+        fname = result["plugin"].__module__
+        if 'File "<string>", line' in formatted_traceback:
+            _, lineno, func, msg = err.traceback
+            fname = os.path.abspath(fname)
+            formatted_traceback = formatted_traceback.replace(
+                'File "<string>", line',
+                'File "{0}", line'.format(fname)
+            )
+
+        err = result["error"]
+        error_message += "\n"
+        error_message += formatted_traceback
+
+    error_message += "\n".join(context.data.get("action_errors", []))
+
+    return error_message
 
 
 def run_tests():
