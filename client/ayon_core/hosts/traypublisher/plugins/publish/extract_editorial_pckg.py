@@ -201,9 +201,9 @@ class ExtractEditorialPckgConversion(publish.Extractor):
             final_transfers.append((source, dest_path))
 
             all_args = copy.deepcopy(generic_args)
-            all_args.append(f"-i {source}")
+            all_args.append(f"-i \"{source}\"")
             all_args.extend(ffmpeg_output_args)  # order matters
-            all_args.append(f"{dest_path}")
+            all_args.append(f"\"{dest_path}\"")
             subprcs_cmd = " ".join(all_args)
 
             # run subprocess
@@ -232,4 +232,3 @@ class ExtractEditorialPckgConversion(publish.Extractor):
                 if arg and arg not in splitted_args:
                     splitted_args.append(arg)
         return splitted_args
-
