@@ -48,7 +48,7 @@ class ValidateEditorialPackage(pyblish.api.InstancePlugin):
 
         if missing_files:
             raise PublishValidationError(
-                "Otio file contains missing files `{missing_files}`.\n\n"
+                f"Otio file contains missing files `{missing_files}`.\n\n"
                 f"Please add them to `{folder_path}` and republish.")
 
         instance.data["editorial_pckg"]["otio_data"] = otio_data
@@ -67,5 +67,3 @@ class ValidateEditorialPackage(pyblish.api.InstancePlugin):
                         target_urls.append(target_url)
 
         return target_urls
-
-
