@@ -258,6 +258,9 @@ class PublisherWindow(QtWidgets.QDialog):
         overview_widget.convert_requested.connect(
             self._on_convert_requested
         )
+        overview_widget.publish_tab_requested.connect(
+            self._go_to_publish_tab
+        )
 
         save_btn.clicked.connect(self._on_save_clicked)
         reset_btn.clicked.connect(self._on_reset_clicked)
