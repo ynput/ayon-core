@@ -147,69 +147,66 @@ class ExtractEditorialPckgConversion(publish.Extractor):
 
     def _convert_resources(self, output_def, transfers):
         """Converts all resource files to configured format."""
-        outputs = output_def["outputs"]
-        if not outputs:
-            self.log.warning("No output configured in "
-               "ayon+settings://traypublisher/publish/ExtractEditorialPckgConversion/profiles/0/outputs")  # noqa
+        out_extension = output_def["ext"]
+        if not out_extension:
+            self.log.warning("No output extension configured in "
+               "ayon+settings://traypublisher/publish/ExtractEditorialPckgConversion")  # noqa
             return transfers
 
         final_transfers = []
-        # most likely only single output is expected
-        for output in outputs:
-            out_extension = output["ext"]
-            out_def_ffmpeg_args = output["ffmpeg_args"]
-            ffmpeg_input_args = [
-                value.strip()
-                for value in out_def_ffmpeg_args["input"]
-                if value.strip()
-            ]
-            ffmpeg_video_filters = [
-                value.strip()
-                for value in out_def_ffmpeg_args["video_filters"]
-                if value.strip()
-            ]
-            ffmpeg_audio_filters = [
-                value.strip()
-                for value in out_def_ffmpeg_args["audio_filters"]
-                if value.strip()
-            ]
-            ffmpeg_output_args = [
-                value.strip()
-                for value in out_def_ffmpeg_args["output"]
-                if value.strip()
-            ]
-            ffmpeg_input_args = self._split_ffmpeg_args(ffmpeg_input_args)
+        out_def_ffmpeg_args = output_def["ffmpeg_args"]
+        ffmpeg_input_args = [
+            value.strip()
+            for value in out_def_ffmpeg_args["input"]
+            if value.strip()
+        ]
+        ffmpeg_video_filters = [
+            value.strip()
+            for value in out_def_ffmpeg_args["video_filters"]
+            if value.strip()
+        ]
+        ffmpeg_audio_filters = [
+            value.strip()
+            for value in out_def_ffmpeg_args["audio_filters"]
+            if value.strip()
+        ]
+        ffmpeg_output_args = [
+            value.strip()
+            for value in out_def_ffmpeg_args["output"]
+            if value.strip()
+        ]
+        ffmpeg_input_args = self._split_ffmpeg_args(ffmpeg_input_args)
 
-            generic_args = [
-                subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg"))
-            ]
-            generic_args.extend(ffmpeg_input_args)
-            if ffmpeg_video_filters:
-                generic_args.append("-filter:v")
-                generic_args.append(
-                    "\"{}\"".format(",".join(ffmpeg_video_filters)))
+        generic_args = [
+            subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg"))
+        ]
+        generic_args.extend(ffmpeg_input_args)
+        if ffmpeg_video_filters:
+            generic_args.append("-filter:v")
+            generic_args.append(
+                "\"{}\"".format(",".join(ffmpeg_video_filters)))
 
-            if ffmpeg_audio_filters:
-                generic_args.append("-filter:a")
-                generic_args.append(
-                    "\"{}\"".format(",".join(ffmpeg_audio_filters)))
+        if ffmpeg_audio_filters:
+            generic_args.append("-filter:a")
+            generic_args.append(
+                "\"{}\"".format(",".join(ffmpeg_audio_filters)))
 
-            for source, destination in transfers:
-                base_name = os.path.basename(destination)
-                file_name, ext = os.path.splitext(base_name)
-                dest_path = os.path.join(os.path.dirname(destination),
-                                         f"{file_name}.{out_extension}")
-                final_transfers.append((source, dest_path))
+        for source, destination in transfers:
+            base_name = os.path.basename(destination)
+            file_name, ext = os.path.splitext(base_name)
+            dest_path = os.path.join(os.path.dirname(destination),
+                                     f"{file_name}.{out_extension}")
+            final_transfers.append((source, dest_path))
 
-                all_args = copy.deepcopy(generic_args)
-                all_args.append(f"-i {source}")
-                all_args.extend(ffmpeg_output_args)  # order matters
-                all_args.append(f"{dest_path}")
-                subprcs_cmd = " ".join(all_args)
+            all_args = copy.deepcopy(generic_args)
+            all_args.append(f"-i {source}")
+            all_args.extend(ffmpeg_output_args)  # order matters
+            all_args.append(f"{dest_path}")
+            subprcs_cmd = " ".join(all_args)
 
-                # run subprocess
-                self.log.debug("Executing: {}".format(subprcs_cmd))
-                run_subprocess(subprcs_cmd, shell=True, logger=self.log)
+            # run subprocess
+            self.log.debug("Executing: {}".format(subprcs_cmd))
+            run_subprocess(subprcs_cmd, shell=True, logger=self.log)
         return final_transfers
 
     def _split_ffmpeg_args(self, in_args):
