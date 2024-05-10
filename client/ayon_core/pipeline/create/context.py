@@ -1987,12 +1987,12 @@ class CreateContext:
                     "Folder '{}' was not found".format(folder_path)
                 )
 
-        task_name = None
         if task_entity is None:
-            task_name = self.get_current_task_name()
-            task_entity = ayon_api.get_task_by_name(
-                project_name, folder_entity["id"], task_name
-            )
+            current_task_name = self.get_current_task_name()
+            if current_task_name:
+                task_entity = ayon_api.get_task_by_name(
+                    project_name, folder_entity["id"], current_task_name
+                )
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -2018,7 +2018,7 @@ class CreateContext:
 
         instance_data = {
             "folderPath": folder_entity["path"],
-            "task": task_name,
+            "task": task_entity["name"] if task_entity else None,
             "productType": creator.product_type,
             "variant": variant
         }
@@ -2053,7 +2053,7 @@ class CreateContext:
             exc_info = sys.exc_info()
             self.log.warning(error_message.format(identifier, exc_info[1]))
 
-        except:
+        except:  # noqa: E722
             add_traceback = True
             exc_info = sys.exc_info()
             self.log.warning(
@@ -2163,7 +2163,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2197,7 +2197,7 @@ class CreateContext:
             try:
                 convertor.find_instances()
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor.identifier, sys.exc_info()
@@ -2373,7 +2373,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2440,7 +2440,7 @@ class CreateContext:
                     error_message.format(identifier, exc_info[1])
                 )
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2546,7 +2546,7 @@ class CreateContext:
             try:
                 self.run_convertor(convertor_identifier)
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor_identifier, sys.exc_info()
