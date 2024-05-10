@@ -41,9 +41,7 @@ class ExtractEditorialPckgFFmpegModel(BaseSettingsModel):
 
 
 class ExtractEditorialPckgOutputDefModel(BaseSettingsModel):
-    """Set extension and ffmpeg arguments. See `ExtractReview` for example."""
     _layout = "expanded"
-    name: str = SettingsField("", title="Name")
     ext: str = SettingsField("", title="Output extension")
 
     ffmpeg_args: ExtractEditorialPckgFFmpegModel = SettingsField(
@@ -52,40 +50,13 @@ class ExtractEditorialPckgOutputDefModel(BaseSettingsModel):
     )
 
 
-class ExtractEditorialPckgProfileModel(BaseSettingsModel):
-    product_types: list[str] = SettingsField(
-        default_factory=list,
-        title="Product types"
-    )
-    task_types: list[str] = SettingsField(
-        default_factory=list,
-        title="Task types",
-        enum_resolver=task_types_enum
-    )
-    task_names: list[str] = SettingsField(
-        default_factory=list,
-        title="Task names"
-    )
-    product_names: list[str] = SettingsField(
-        default_factory=list,
-        title="Product names"
-    )
-    outputs: list[ExtractEditorialPckgOutputDefModel] = SettingsField(
-        default_factory=list,
-        title="Output Definitions",
-    )
-
-    @validator("outputs")
-    def validate_unique_outputs(cls, value):
-        ensure_unique_names(value)
-        return value
-
-
 class ExtractEditorialPckgConversionModel(BaseSettingsModel):
-    """Conversion of input movie files into expected format."""
-    enabled: bool = SettingsField(True)
-    profiles: list[ExtractEditorialPckgProfileModel] = SettingsField(
-        default_factory=list, title="Profiles"
+    """Set output definition if resource files should be converted."""
+    conversion_enabled: bool = SettingsField(True,
+                                             title="Conversion enabled")
+    output: ExtractEditorialPckgOutputDefModel = SettingsField(
+        default_factory=ExtractEditorialPckgOutputDefModel,
+        title="Output Definitions",
     )
 
 
@@ -128,8 +99,7 @@ DEFAULT_PUBLISH_PLUGINS = {
         "active": True
     },
     "ExtractEditorialPckgConversion": {
-        "enabled": True,
-        "optional": True,
+        "optional": False,
         "active": True
     }
 }
