@@ -4,7 +4,12 @@ from ayon_core.pipeline import (
     CreatedInstance,
 )
 
-from ayon_core.lib.attribute_definitions import FileDef
+from ayon_core.lib.attribute_definitions import (
+    FileDef,
+    BoolDef,
+    TextDef,
+    HiddenDef
+)
 from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
 
 
@@ -24,6 +29,16 @@ class EditorialPackageCreator(TrayPublishCreator):
     # Position batch creator after simple creators
     order = 120
 
+    conversion_enabled = False
+
+    def apply_settings(self, project_settings):
+        self.conversion_enabled = (
+            project_settings["traypublisher"]
+                            ["publish"]
+                            ["ExtractEditorialPckgConversion"]
+                            ["conversion_enabled"]
+        )
+        print(project_settings)
 
     def get_icon(self):
         return "fa.folder"
@@ -34,8 +49,9 @@ class EditorialPackageCreator(TrayPublishCreator):
             return
 
         instance_data["creator_attributes"] = {
-            "path": (Path(folder_path["directory"]) /
-                     Path(folder_path["filenames"][0])).as_posix()
+            "folder_path": (Path(folder_path["directory"]) /
+                            Path(folder_path["filenames"][0])).as_posix(),
+            "conversion_enabled": pre_create_data["conversion_enabled"]
         }
 
         # Create new instance
@@ -53,7 +69,23 @@ class EditorialPackageCreator(TrayPublishCreator):
                 extensions=[],
                 allow_sequences=False,
                 label="Folder path"
-            )
+            ),
+            BoolDef("conversion_enabled",
+                    tooltip="Convert to output defined in Settings.",
+                    default=self.conversion_enabled,
+                    label="Convert resources"),
+        ]
+
+    def get_instance_attr_defs(self):
+        return [
+            TextDef(
+                "folder_path",
+                label="Folder path",
+                disabled=True
+            ),
+            BoolDef("conversion_enabled",
+                    tooltip="Convert to output defined in Settings.",
+                    label="Convert resources"),
         ]
 
     def get_detail_description(self):
