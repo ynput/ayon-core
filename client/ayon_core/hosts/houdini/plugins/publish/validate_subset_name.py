@@ -67,7 +67,13 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
             instance.context.data["hostName"],
             instance.data["productType"],
             variant=instance.data["variant"],
-            dynamic_data={"asset": folder_entity["name"]}
+            dynamic_data={
+                "asset": folder_entity["name"],
+                "folder": {
+                            "label": folder_entity["label"],
+                            "name": folder_entity["name"]
+                            }
+                }
         )
 
         if instance.data.get("productName") != product_name:
