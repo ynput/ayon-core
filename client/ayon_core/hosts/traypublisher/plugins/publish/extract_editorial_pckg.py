@@ -45,14 +45,15 @@ class ExtractEditorialPckgConversion(publish.Extractor):
                                         publish_resource_folder)
 
         project_settings = instance.context.data["project_settings"]
-        profiles = (project_settings["traypublisher"]
-                                    ["publish"]
-                                    ["ExtractEditorialPckgConversion"]
-                                    .get("profiles"))
-        output_def = None
-        if profiles:
-            output_def = self._get_output_definition(instance, profiles)
-        if output_def:
+        output_def = (project_settings["traypublisher"]
+                                      ["publish"]
+                                      ["ExtractEditorialPckgConversion"]
+                                      ["output"])
+
+        conversion_enabled = (instance.data["creator_attributes"]
+                                           ["conversion_enabled"])
+
+        if conversion_enabled and output_def["ext"]:
             transfers = self._convert_resources(output_def, transfers)
 
         if not "transfers" in instance.data:
