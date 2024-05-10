@@ -27,7 +27,7 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin):
     families = ["editorial_pckg"]
 
     def process(self, instance):
-        folder_path = instance.data["creator_attributes"].get("path")
+        folder_path = instance.data["creator_attributes"]["folder_path"]
         if not folder_path or not os.path.exists(folder_path):
             self.log.info((
                 "Instance doesn't contain collected existing folder path."
