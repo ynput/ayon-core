@@ -100,6 +100,21 @@ DEFAULT_PUBLISH_PLUGINS = {
     },
     "ExtractEditorialPckgConversion": {
         "optional": False,
-        "active": True
+        "conversion_enabled": True,
+        "output": {
+            "ext": "",
+            "ffmpeg_args": {
+              "video_filters": [],
+              "audio_filters": [],
+              "input": [
+                "-apply_trc gamma22"
+              ],
+              "output": [
+                "-pix_fmt yuv420p",
+                "-crf 18",
+                "-intra"
+              ]
+            }
+        }
     }
 }
