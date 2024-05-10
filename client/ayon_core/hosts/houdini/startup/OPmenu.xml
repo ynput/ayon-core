@@ -432,6 +432,21 @@ examples.load_token(kwargs['selectedtoken'], kwargs['node'], shift=kwargs['shift
         <subMenu id="opmenu.vhda_options_create">
                 <scriptItem id="opmenu.vhda_create">
                 </scriptItem>
+                <scriptItem id="opmenu.vhda_create_ayon">
+                    <label>Create New (AYON)...</label>
+                    <context>
+                    </context>
+                    <scriptCode>
+<![CDATA[
+from ayon_core.hosts.houdini.api.creator_node_shelves import create_interactive
+
+node = kwargs["node"]
+if node not in hou.selectedNodes():
+    node.setSelected(True)
+create_interactive("io.openpype.creators.houdini.hda", **kwargs)
+]]>
+                     </scriptCode>
+                </scriptItem>
                 <separatorItem/>
                 <scriptItem id="opmenu.vhda_prefcreate">
                 </scriptItem>
