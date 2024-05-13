@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-from contextlib import nullcontext
 
 import pyblish.api
 from ayon_core.hosts.maya.api import lib
@@ -60,6 +59,9 @@ class ExtractObj(publish.Extractor):
             self.obj_options["materials"] = 0
 
         # Export
+        # format options for the exporter
+        options = ';'.join(
+            f"{key}={val}" for key, val in self.obj_options.items())
         with lib.no_display_layers(instance):
             with lib.displaySmoothness(members,
                                        divisionsU=0,
@@ -67,16 +69,14 @@ class ExtractObj(publish.Extractor):
                                        pointsWire=4,
                                        pointsShaded=1,
                                        polygonObject=1):
-                with lib.shader(members,
-                                shadingEngine="initialShadingGroup") if strip_shader else nullcontext():  # noqa: E501
-                    with lib.maintained_selection():
-                        cmds.select(members, noExpand=True)
-                        cmds.file(path,
-                                  exportSelected=True,
-                                  type='OBJexport',
-                                  op=';'.join(f"{key}={val}" for key, val in self.obj_options.items()),  # noqa: E501
-                                  preserveReferences=True,
-                                  force=True)
+                with lib.maintained_selection():
+                    cmds.select(members, noExpand=True)
+                    cmds.file(path,
+                              exportSelected=True,
+                              type='OBJexport',
+                              op=options,
+                              preserveReferences=True,
+                              force=True)
 
         if "representation" not in instance.data:
             instance.data["representation"] = []
