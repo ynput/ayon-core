@@ -26,7 +26,8 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
 
     def process(self, instance):
         context = instance.context
-        container = rt.GetNodeByName(instance.data["instance_node"])
+        container_name = instance.data["instance_node"]
+        container = rt.GetNodeByName(container_name)
         tyc_product_names = [
             name for name
             in container.modifiers[0].AYONTyCacheData.tyc_exports
@@ -42,8 +43,8 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
             prod_name = re.sub(r"\s+", "_", tyc_product_name)
             export_mode = instance.data["tyc_exportMode"]
             tyc_instance.data.update({
-                "name": f"{product_type_name}{prod_name}",
-                "label": f"{product_type_name}{prod_name}",
+                "name": f"{container_name}_{prod_name}",
+                "label": f"{container_name}_{prod_name}",
                 "family": export_mode,
                 "families": [export_mode],
                 "productName": prod_name,
