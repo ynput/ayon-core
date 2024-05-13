@@ -71,7 +71,6 @@ class ExtractModel(publish.Extractor,
                           long=True)
 
         strip_shader = instance.data.get("strip_shaders", True)
-        self.log.debug("Stripping shaders: %s" % strip_shader)
 
         with lib.no_display_layers(instance):
             with lib.displaySmoothness(members,
