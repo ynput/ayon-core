@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import datetime
 import platform
@@ -23,6 +24,18 @@ def get_ayon_launcher_version():
     with open(version_filepath, "r") as stream:
         exec(stream.read(), content)
     return content["__version__"]
+
+
+def is_in_ayon_launcher_process():
+    """Determine if current process is running from AYON launcher.
+
+    Returns:
+        bool: True if running from AYON launcher.
+
+    """
+    ayon_executable_path = os.path.normpath(os.environ["AYON_EXECUTABLE"])
+    executable_path = os.path.normpath(sys.executable)
+    return ayon_executable_path == executable_path
 
 
 def is_running_from_build():
