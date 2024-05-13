@@ -44,23 +44,6 @@ class CollectLocalRenderInstancesModel(BaseSettingsModel):
     )
 
 
-class CollectFilesForCleaningUpModel(BaseSettingsModel):
-    enabled: bool = SettingsField(title="Enabled")
-    optional: bool = SettingsField(title="Optional")
-    active: bool = SettingsField(title="Active")
-    intermediate_exported_render: bool = SettingsField(
-        title="Include Intermediate Exported Render Files",
-        description="Include intermediate exported render scenes for cleanup"
-                    " (.idf, .ass, .usd, .rs) for render instances.",
-    )
-    families: list[str] = SettingsField(
-        default_factory=list,
-        title="Product Types",
-        description="Find a list of all stock product types in "
-                    "[Houdini admin docs](https://ayon.ynput.io/docs/addon_houdini_admin#stock-product-types)."  # noqa: E501
-    )
-
-
 class ValidateWorkfilePathsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -89,6 +72,10 @@ class PublishPluginsModel(BaseSettingsModel):
     CollectChunkSize: CollectChunkSizeModel = SettingsField(
         default_factory=CollectChunkSizeModel,
         title="Collect Chunk Size."
+    )
+    CollectLocalRenderInstances: CollectLocalRenderInstancesModel = SettingsField(
+        default_factory=CollectLocalRenderInstancesModel,
+        title="Collect Local Render Instances."
     )
     ValidateContainers: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -122,6 +109,15 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "chunk_size": 999999
+    },
+    "CollectLocalRenderInstances": {
+        "use_deadline_aov_filter": False,
+        "aov_filter" : {
+            "host_name": "houdini",
+            "value": [
+                ".*([Bb]eauty).*"
+            ]
+        }
     },
     "ValidateContainers": {
         "enabled": True,
