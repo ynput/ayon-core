@@ -32,7 +32,6 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
             name for name
             in container.modifiers[0].AYONTyCacheData.tyc_exports
         ]
-        product_type_name = instance.data["productType"]
         attr_values = self.get_attr_values_from_data(instance.data)
         for tyc_product_name in tyc_product_names:
             self.log.debug(f"Creating instance for operator:{tyc_product_name}")
