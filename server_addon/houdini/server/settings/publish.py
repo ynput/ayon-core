@@ -44,6 +44,43 @@ class CollectLocalRenderInstancesModel(BaseSettingsModel):
     )
 
 
+def product_types_enum():
+    return [
+        {"value": "camera", "label": "Camera (Abc)"},
+        {"value": "pointcache", "label": "PointCache (Abc)/PointCache (Bgeo)"},
+        {"value": "review", "label": "Review"},
+        {"value": "staticMesh", "label": "Static Mesh (FBX)"},
+        {"value": "usd", "label": "USD (experimental)"},
+        {"value": "vdbcache", "label": "VDB Cache"},
+        {"value": "imagesequence", "label": "Composite (Image Sequence)"},
+        {"value": "ass", "label": "Arnold ASS"},
+        {"value": "arnold_rop", "label": "Arnold ROP"},
+        {"value": "mantraifd", "label": "Mantra IFD"},
+        {"value": "mantra_rop", "label": "Mantra ROP"},
+        {"value": "redshiftproxy", "label": "Redshift Proxy"},
+        {"value": "redshift_rop", "label": "Redshift ROP"},
+        {"value": "karma_rop", "label": "Karma ROP"},
+        {"value": "vray_rop", "label": "VRay ROP"},
+    ]
+
+
+class CollectFilesForCleaningUpModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    intermediate_exported_render: bool = SettingsField(
+        title="Include Intermediate Exported Render Files",
+        description="Include intermediate exported render scenes for cleanup"
+                    " (.idf, .ass, .usd, .rs) for render instances.",
+    )
+    families: list[str] = SettingsField(
+        default_factory=list,
+        enum_resolver=product_types_enum,
+        conditionalEnum=True,
+        title="Product Types"
+    )
+
+
 class ValidateWorkfilePathsModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -72,6 +109,10 @@ class PublishPluginsModel(BaseSettingsModel):
     CollectChunkSize: CollectChunkSizeModel = SettingsField(
         default_factory=CollectChunkSizeModel,
         title="Collect Chunk Size."
+    )
+    CollectFilesForCleaningUp:CollectFilesForCleaningUpModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Collect Files For Cleaning Up."
     )
     CollectLocalRenderInstances: CollectLocalRenderInstancesModel = SettingsField(
         default_factory=CollectLocalRenderInstancesModel,
@@ -109,6 +150,13 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "chunk_size": 999999
+    },
+    "CollectFilesForCleaningUp": {
+        "enabled": False,
+        "optional": True,
+        "active": True,
+        "intermediate_exported_render": False,
+        "families" : []
     },
     "CollectLocalRenderInstances": {
         "use_deadline_aov_filter": False,
