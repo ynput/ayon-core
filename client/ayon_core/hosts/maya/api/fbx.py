@@ -59,6 +59,7 @@ class FBXExtractor:
             "constraints": bool,
             "lights": bool,
             "embeddedTextures": bool,
+            "includeChildren": bool,
             "inputConnections": bool,
             "upAxis": str,  # x, y or z,
             "triangulate": bool,
