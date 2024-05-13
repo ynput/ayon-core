@@ -104,14 +104,11 @@ class WebServerTool:
             again. In that case, use existing running webserver.
             Check here is easier than capturing exception from thread.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = True
-        try:
-            sock.bind((host_name, port))
-            result = False
-        except:
-            print("Port is in use")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as con:
+            result = con.connect_ex((host_name, port)) == 0
 
+        if result:
+            print(f"Port {port} is already in use")
         return result
 
     def call(self, func):
