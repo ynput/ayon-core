@@ -42,11 +42,9 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
         default_prefix = evalParmNoFrame(rop, "RS_outputFileNamePrefix")
         beauty_suffix = rop.evalParm("RS_outputBeautyAOVSuffix")
-        # Store whether we are splitting the render job (export + render)
-        split_render = bool(rop.parm("RS_archive_enable").eval())
-        instance.data["splitRender"] = split_render
+
         export_products = []
-        if split_render:
+        if instance.data["splitRender"]:
             export_prefix = evalParmNoFrame(
                 rop, "RS_archive_file", pad_character="0"
             )
@@ -63,8 +61,11 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
         full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
         if full_exr_mode:
             # Ignore beauty suffix if full mode is enabled
-            # As this is what the rop does. 
+            # As this is what the rop does.
             beauty_suffix = ""
+
+        # Assume it's a multipartExr Render.
+        multipartExr = True
 
         # Default beauty/main layer AOV
         beauty_product = self.get_render_product_name(
@@ -75,7 +76,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             beauty_suffix: self.generate_expected_files(instance,
                                                         beauty_product)
         }
-        
+
         aovs_rop = rop.parm("RS_aovGetFromNode").evalAsNode()
         if aovs_rop:
             rop = aovs_rop
@@ -98,12 +99,20 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
             if rop.parm(f"RS_aovID_{i}").evalAsString() == "CRYPTOMATTE" or \
                   not full_exr_mode:
-                
+
                 aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
                 render_products.append(aov_product)
 
                 files_by_aov[aov_suffix] = self.generate_expected_files(instance,
                                                                         aov_product)    # noqa
+
+                # Set to False as soon as we have a separated aov.
+                multipartExr = False
+
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = multipartExr
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)
