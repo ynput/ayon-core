@@ -44,12 +44,9 @@ class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
         default_prefix = evalParmNoFrame(rop, "vm_picture")
         render_products = []
 
-        # Store whether we are splitting the render job (export + render)
-        split_render = bool(rop.parm("soho_outputmode").eval())
-        instance.data["splitRender"] = split_render
         export_prefix = None
         export_products = []
-        if split_render:
+        if instance.data["splitRender"]:
             export_prefix = evalParmNoFrame(
                 rop, "soho_diskfile", pad_character="0"
             )
@@ -74,6 +71,11 @@ class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
                                                    beauty_product)
         }
 
+        # Assume it's a multipartExr Render.
+        multipartExr = True
+
+        # TODO: This logic doesn't take into considerations
+        #       cryptomatte defined in 'Images > Cryptomatte'
         aov_numbers = rop.evalParm("vm_numaux")
         if aov_numbers > 0:
             # get the filenames of the AOVs
@@ -92,6 +94,14 @@ class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
                         render_products.append(aov_product)
 
                         files_by_aov[var] = self.generate_expected_files(instance, aov_product)     # noqa
+
+                        # Set to False as soon as we have a separated aov.
+                        multipartExr = False
+
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = multipartExr
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)
