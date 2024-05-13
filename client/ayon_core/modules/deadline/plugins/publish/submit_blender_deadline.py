@@ -174,7 +174,8 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         instance.data["toBeRenderedOn"] = "deadline"
 
         payload = self.assemble_payload()
-        return self.submit(payload)
+        return self.submit(payload,
+                           auth=instance.data["deadline"]["auth"])
 
     def from_published_scene(self):
         """

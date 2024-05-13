@@ -42,7 +42,7 @@ def prepare_changes(old_entity, new_entity):
 
     Returns:
         dict[str, Any]: Changes that have new entity.
-        
+
     """
     changes = {}
     for key in set(new_entity.keys()):
@@ -121,6 +121,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "setdress",
                 "layout",
                 "ass",
+                "assProxy",
                 "vdbcache",
                 "scene",
                 "vrayproxy",
@@ -167,7 +168,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "uasset",
                 "blendScene",
                 "yeticacheUE",
-                "tycache"
+                "tycache",
+                "csv_ingest_file",
+                "render.local.hou"
                 ]
 
     default_template_name = "publish"
@@ -358,7 +361,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Compute the resource file infos once (files belonging to the
         # version instance instead of an individual representation) so
-        # we can re-use those file infos per representation
+        # we can reuse those file infos per representation
         resource_file_infos = self.get_files_info(
             resource_destinations, anatomy
         )

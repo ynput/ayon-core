@@ -10,7 +10,6 @@ from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 from ayon_core.lib import (
     is_in_tests,
-    BoolDef,
     TextDef,
     NumberDef
 )
@@ -86,15 +85,10 @@ class HoudiniSubmitDeadline(
     priority = 50
     chunk_size = 1
     group = ""
-    
+
     @classmethod
     def get_attribute_defs(cls):
         return [
-            BoolDef(
-                "suspend_publish",
-                default=False,
-                label="Suspend publish"
-            ),
             NumberDef(
                 "priority",
                 label="Priority",
@@ -194,7 +188,7 @@ class HoudiniSubmitDeadline(
 
         job_info.Pool = instance.data.get("primaryPool")
         job_info.SecondaryPool = instance.data.get("secondaryPool")
-        
+
         if split_render_job and is_export_job:
             job_info.Priority = attribute_values.get(
                 "export_priority", self.export_priority
@@ -315,6 +309,11 @@ class HoudiniSubmitDeadline(
         return attr.asdict(plugin_info)
 
     def process(self, instance):
+        if not instance.data["farm"]:
+            self.log.debug("Render on farm is disabled. "
+                           "Skipping deadline submission.")
+            return
+
         super(HoudiniSubmitDeadline, self).process(instance)
 
         # TODO: Avoid the need for this logic here, needed for submit publish
