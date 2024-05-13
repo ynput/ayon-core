@@ -20,6 +20,15 @@ class ExtractObj(publish.Extractor):
     label = "Extract OBJ"
     families = ["model"]
 
+    # OBJ export options
+    obj_options = {
+        "groups": 1,
+        "ptgroups": 1,
+        "materials": 1,
+        "smoothing": 1,
+        "normals": 1,
+    }
+
     def process(self, instance):
 
         # Define output path
@@ -47,6 +56,8 @@ class ExtractObj(publish.Extractor):
             cmds.loadPlugin('objExport')
 
         strip_shader = instance.data.get("strip_shaders", True)
+        if strip_shader:
+            self.obj_options["materials"] = 0
 
         # Export
         with lib.no_display_layers(instance):
@@ -57,12 +68,13 @@ class ExtractObj(publish.Extractor):
                                        pointsShaded=1,
                                        polygonObject=1):
                 with lib.shader(members,
-                                shadingEngine="initialShadingGroup") if strip_shader else nullcontext():  # noqa: E501:
+                                shadingEngine="initialShadingGroup") if strip_shader else nullcontext():  # noqa: E501
                     with lib.maintained_selection():
                         cmds.select(members, noExpand=True)
                         cmds.file(path,
                                   exportSelected=True,
                                   type='OBJexport',
+                                  op=';'.join(f"{key}={val}" for key, val in self.obj_options.items()),  # noqa: E501
                                   preserveReferences=True,
                                   force=True)
 
