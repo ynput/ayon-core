@@ -27,6 +27,10 @@ from .local_settings import (
     get_openpype_username,
 )
 from .ayon_connection import initialize_ayon_connection
+from .cache import (
+    CacheItem,
+    NestedCacheItem,
+)
 from .events import (
     emit_event,
     register_event_callback
@@ -135,6 +139,7 @@ from .path_tools import (
 )
 
 from .ayon_info import (
+    is_in_ayon_launcher_process,
     is_running_from_build,
     is_using_ayon_console,
     is_staging_enabled,
@@ -156,6 +161,9 @@ __all__ = [
     "get_openpype_username",
 
     "initialize_ayon_connection",
+
+    "CacheItem",
+    "NestedCacheItem",
 
     "emit_event",
     "register_event_callback",
@@ -241,6 +249,7 @@ __all__ = [
 
     "Logger",
 
+    "is_in_ayon_launcher_process",
     "is_running_from_build",
     "is_using_ayon_console",
     "is_staging_enabled",
