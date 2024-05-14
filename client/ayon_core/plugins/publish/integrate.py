@@ -170,7 +170,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "yeticacheUE",
                 "tycache",
                 "csv_ingest_file",
-                "editorial_pckg"
+                "editorial_pckg",
+                "render.local.hou",
                 ]
 
     default_template_name = "publish"
@@ -361,7 +362,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Compute the resource file infos once (files belonging to the
         # version instance instead of an individual representation) so
-        # we can re-use those file infos per representation
+        # we can reuse those file infos per representation
         resource_file_infos = self.get_files_info(
             resource_destinations, anatomy
         )
