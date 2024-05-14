@@ -170,7 +170,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "yeticacheUE",
                 "tycache",
                 "csv_ingest_file",
-                "render.local.hou"
+                "editorial_pckg",
+                "render.local.hou",
                 ]
 
     default_template_name = "publish"
