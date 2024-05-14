@@ -169,6 +169,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
     settings_name = None
     add_publish_button = False
 
+    settings_category = "houdini"
+
     def create(self, product_name, instance_data, pre_create_data):
         try:
             self.selected_nodes = []
