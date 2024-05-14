@@ -1,10 +1,6 @@
-from pydantic import validator
-
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    task_types_enum,
-    ensure_unique_names
 )
 
 
