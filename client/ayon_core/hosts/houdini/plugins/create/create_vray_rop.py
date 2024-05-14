@@ -16,17 +16,21 @@ class CreateVrayROP(plugin.HoudiniCreator):
     icon = "magic"
     ext = "exr"
 
-    # Default to split export and render jobs
-    export_job = True
+    # Default render target
+    render_target = "farm_split"
 
     def create(self, product_name, instance_data, pre_create_data):
+        # Transfer settings from pre create to instance
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+        for key in ["render_target", "review"]:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "vray_renderer"})
         # Add chunk size attribute
         instance_data["chunkSize"] = 10
-        # Submit for job publishing
-        instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateVrayROP, self).create(
             product_name,
@@ -55,7 +59,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
             "SettingsEXR_bits_per_channel": "16"   # half precision
         }
 
-        if pre_create_data.get("export_job"):
+        if pre_create_data.get("render_target") == "farm_split":
             scene_filepath = \
                 "{export_dir}{product_name}/{product_name}.$F4.vrscene".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/vrscene/"),
@@ -143,20 +147,41 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
         return super(CreateVrayROP, self).remove_instances(instances)
 
+    def get_instance_attr_defs(self):
+        """get instance attribute definitions.
+
+        Attributes defined in this method are exposed in
+            publish tab in the publisher UI.
+        """
+
+
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+            "farm_split": "Farm Rendering - Split export & render jobs",
+        }
+
+        return [
+            BoolDef("review",
+                    label="Review",
+                    tooltip="Mark as reviewable",
+                    default=True),
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target)
+        ]
+
     def get_pre_create_attr_defs(self):
-        attrs = super(CreateVrayROP, self).get_pre_create_attr_defs()
         image_format_enum = [
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
 
-        return attrs + [
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
-            BoolDef("export_job",
-                    label="Split export and render jobs",
-                    default=self.export_job),
+        attrs = super(CreateVrayROP, self).get_pre_create_attr_defs()
+
+        attrs += [
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
@@ -172,3 +197,4 @@ class CreateVrayROP(plugin.HoudiniCreator):
                             "if enabled",
                     default=False)
         ]
+        return attrs + self.get_instance_attr_defs()
