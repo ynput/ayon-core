@@ -22,8 +22,7 @@ class ValidateEditorialPackage(pyblish.api.InstancePlugin):
     def process(self, instance):
         editorial_pckg_data = instance.data.get("editorial_pckg")
         if not editorial_pckg_data:
-            raise PublishValidationError(
-                f"Editorial package not collected")
+            raise PublishValidationError("Editorial package not collected")
 
         folder_path = editorial_pckg_data["folder_path"]
 
