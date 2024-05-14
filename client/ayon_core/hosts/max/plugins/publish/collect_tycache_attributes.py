@@ -46,7 +46,7 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
                 "label": f"{container_name}_{prod_name}",
                 "family": export_mode,
                 "families": [export_mode],
-                "productName": f"{prod_name}",
+                "productName": f"{container_name}_{prod_name}",
                 # get the name of operator for the export
                 "operatorName": tyc_product_name,
                 "exportMode": (
