@@ -1,8 +1,11 @@
+from pathlib import Path
+
 from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
 
+from ayon_core.hosts.resolve.api import lib
 
 
 class LoadEditorialPackage(load.LoaderPlugin):
@@ -19,11 +22,25 @@ class LoadEditorialPackage(load.LoaderPlugin):
 
     label = "Load as Timeline"
     order = -10
-    icon = "code-fork"
+    icon = "ei.align-left"
     color = "orange"
 
     def load(self, context, name, namespace, data):
-        # load clip to timeline and get main variables
         files = get_representation_path(context["representation"])
 
-        print("Loading editorial package: ", files)
+        search_folder_path = Path(files).parent / "resources"
+
+        project = lib.get_current_project()
+        media_pool = project.GetMediaPool()
+        import_options = {
+            "timelineName": "Editorial Package Timeline",
+            "importSourceClips": True,
+            "sourceClipsPath": search_folder_path.as_posix(),
+        }
+
+        timeline = media_pool.ImportTimelineFromFile(files, import_options)
+        print("Timeline imported: ", timeline)
+
+    def update(self, container, context):
+        # TODO: implement update method in future
+        pass
