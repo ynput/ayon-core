@@ -17,17 +17,21 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
     ext = "exr"
     multi_layered_mode = "No Multi-Layered EXR File"
 
-    # Default to split export and render jobs
-    split_render = True
+    # Default render target
+    render_target = "farm_split"
 
     def create(self, product_name, instance_data, pre_create_data):
+        # Transfer settings from pre create to instance
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+        for key in ["render_target", "review"]:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "Redshift_ROP"})
         # Add chunk size attribute
         instance_data["chunkSize"] = 10
-        # Submit for job publishing
-        instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateRedshiftROP, self).create(
             product_name,
@@ -99,7 +103,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         rs_filepath = f"{export_dir}{product_name}/{product_name}.$F4.rs"
         parms["RS_archive_file"] = rs_filepath
 
-        if pre_create_data.get("split_render", self.split_render):
+        if pre_create_data.get("render_target") == "farm_split":
             parms["RS_archive_enable"] = 1
 
         instance_node.setParms(parms)
@@ -118,24 +122,44 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
         return super(CreateRedshiftROP, self).remove_instances(instances)
 
+    def get_instance_attr_defs(self):
+        """get instance attribute definitions.
+
+        Attributes defined in this method are exposed in
+            publish tab in the publisher UI.
+        """
+
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+            "farm_split": "Farm Rendering - Split export & render jobs",
+        }
+
+        return [
+            BoolDef("review",
+                    label="Review",
+                    tooltip="Mark as reviewable",
+                    default=True),
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target)
+        ]
+
     def get_pre_create_attr_defs(self):
-        attrs = super(CreateRedshiftROP, self).get_pre_create_attr_defs()
+
         image_format_enum = [
             "exr", "tif", "jpg", "png",
         ]
+
         multi_layered_mode = [
             "No Multi-Layered EXR File",
             "Full Multi-Layered EXR File"
         ]
 
-
-        return attrs + [
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
-            BoolDef("split_render",
-                    label="Split export and render jobs",
-                    default=self.split_render),
+        attrs = super(CreateRedshiftROP, self).get_pre_create_attr_defs()
+        attrs += [
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
@@ -143,5 +167,6 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             EnumDef("multi_layered_mode",
                     multi_layered_mode,
                     default=self.multi_layered_mode,
-                    label="Multi-Layered EXR")
+                    label="Multi-Layered EXR"),
         ]
+        return attrs + self.get_instance_attr_defs()

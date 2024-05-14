@@ -55,6 +55,12 @@ class CollectKarmaROPRenderProducts(pyblish.api.InstancePlugin):
                                                    beauty_product)
         }
 
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        # By default karma render is a multipart Exr.
+        instance.data["multipartExr"] = True
+
         filenames = list(render_products)
         instance.data["files"] = filenames
         instance.data["renderProducts"] = colorspace.ARenderProduct()

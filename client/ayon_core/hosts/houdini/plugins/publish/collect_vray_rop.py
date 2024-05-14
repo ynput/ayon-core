@@ -45,12 +45,9 @@ class CollectVrayROPRenderProducts(pyblish.api.InstancePlugin):
         render_products = []
         # TODO: add render elements if render element
 
-        # Store whether we are splitting the render job in an export + render
-        split_render = rop.parm("render_export_mode").eval() == "2"
-        instance.data["splitRender"] = split_render
         export_prefix = None
         export_products = []
-        if split_render:
+        if instance.data["splitRender"]:
             export_prefix = evalParmNoFrame(
                 rop, "render_export_filepath", pad_character="0"
             )
@@ -70,6 +67,9 @@ class CollectVrayROPRenderProducts(pyblish.api.InstancePlugin):
             "": self.generate_expected_files(instance,
                                                       beauty_product)}
 
+        # Assume it's a multipartExr Render.
+        multipartExr = True
+
         if instance.data.get("RenderElement", True):
             render_element = self.get_render_element_name(rop, default_prefix)
             if render_element:
@@ -77,7 +77,13 @@ class CollectVrayROPRenderProducts(pyblish.api.InstancePlugin):
                     render_products.append(renderpass)
                     files_by_aov[aov] = self.generate_expected_files(
                         instance, renderpass)
+                    # Set to False as soon as we have a separated aov.
+                    multipartExr = False
 
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = multipartExr
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)
