@@ -8,7 +8,6 @@ from ayon_core.lib.attribute_definitions import (
     FileDef,
     BoolDef,
     TextDef,
-    HiddenDef
 )
 from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
 
