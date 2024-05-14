@@ -26,10 +26,14 @@ class CoreAddon(BaseServerAddon):
     def _convert_imagio_configs_0_3_1(self, overrides):
         """Imageio config settings did change to profiles since 0.3.1. ."""
         imageio_overrides = overrides.get("imageio") or {}
-        if "ocio_config" not in imageio_overrides:
+        if (
+            "ocio_config" not in imageio_overrides
+            or "filepath" not in imageio_overrides["ocio_config"]
+        ):
             return
 
         ocio_config = imageio_overrides.pop("ocio_config")
+
         filepath = ocio_config["filepath"]
         if not filepath:
             return
