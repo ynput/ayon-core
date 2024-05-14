@@ -69,7 +69,7 @@ class TyCacheLoader(load.LoaderPlugin):
 class TySplineCacheLoader(TyCacheLoader):
     """TyCache(Spline) Loader."""
 
-    families = {"tyspline"}
+    product_types = {"tyspline"}
     representations = {"tyc"}
     order = -8
     icon = "code-fork"
