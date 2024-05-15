@@ -22,7 +22,7 @@ def cleanup_openpype_qt_widgets():
 
 def start_plugin():
     from ayon_core.pipeline import install_host
-    from ayon_core.hosts.substancepainter.api import SubstanceHost
+    from ayon_substancepainter.api import SubstanceHost
     install_host(SubstanceHost())
 
 

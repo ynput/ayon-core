@@ -5,7 +5,7 @@ import ayon_api
 
 from ayon_core.pipeline import CreatedInstance, AutoCreator
 
-from ayon_core.hosts.substancepainter.api.pipeline import (
+from ayon_substancepainter.api.pipeline import (
     set_instances,
     set_instance,
     get_instances
