@@ -153,7 +153,7 @@ def _get_config_version_data(config_path, output_path):
     type=click.Path(exists=True))
 @click.option(
     "--filepath",
-    equired=True,
+    required=True,
     help="Path to file to get colorspace from.",
     type=click.Path())
 @click.option(
