@@ -38,10 +38,9 @@ class ServerItemSubmodel(BaseSettingsModel):
     name: str = SettingsField(title="Name")
     value: str = SettingsField(title="Url")
     require_authentication: bool = SettingsField(
-        False,
-        title="Require authentication")
-    ssl: bool = SettingsField(False,
-                              title="SSL")
+        False, title="Require authentication")
+    not_verify_ssl: bool = SettingsField(
+        False, title="Don't verify SSL")
 
 
 class DeadlineSettings(BaseSettingsModel):
@@ -78,7 +77,7 @@ DEFAULT_VALUES = {
             "name": "default",
             "value": "http://127.0.0.1:8082",
             "require_authentication": False,
-            "ssl": False
+            "not_verify_ssl": False
         }
     ],
     "deadline_server": "default",
