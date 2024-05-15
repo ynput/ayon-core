@@ -442,8 +442,6 @@ class MaxCacheCreator(Creator, MaxTyFlowDataCreatorBase):
                                " found in tyCache Editor.")
         instance_node = self.create_instance_node(product_name)
         instance_data["instance_node"] = instance_node.name
-        instance_data["tyc_exportMode"] = pre_create_data.get(
-            "tyc_exportMode")
         instance = CreatedInstance(
             self.product_type,
             product_name,
@@ -509,11 +507,3 @@ class MaxCacheCreator(Creator, MaxTyFlowDataCreatorBase):
                 rt.Delete(instance_node)
 
             self._remove_instance_from_context(instance)
-
-    def get_pre_create_attr_defs(self):
-        return [
-            EnumDef("tyc_exportMode",
-                    items=["tycache", "tyspline"],
-                    default="tycache",
-                    label="TyCache Export Mode")
-        ]
