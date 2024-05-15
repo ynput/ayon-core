@@ -1294,6 +1294,176 @@ def _get_display_view_colorspace_subprocess(config_path, display, view):
             return json.load(f)
 
 
+# --- Implementation of logic using 'PyOpenColorIO' ---
+def _get_ocio_config(config_path):
+    """Helper function to create OCIO config object.
+
+    Args:
+        config_path (str): Path to config.
+
+    Returns:
+        PyOpenColorIO.Config: OCIO config for the confing path.
+
+    """
+    import PyOpenColorIO
+
+    config_path = os.path.abspath(config_path)
+
+    if not os.path.isfile(config_path):
+        raise IOError("Input path should be `config.ocio` file")
+
+    return PyOpenColorIO.Config.CreateFromFile(config_path)
+
+
+def _get_config_file_rules_colorspace_from_filepath(config_path, filepath):
+    """Return found colorspace data found in v2 file rules.
+
+    Args:
+        config_path (str): path string leading to config.ocio
+        filepath (str): path string leading to v2 file rules
+
+    Raises:
+        IOError: Input config does not exist.
+
+    Returns:
+        dict: aggregated available colorspaces
+
+    """
+    config = _get_ocio_config(config_path)
+
+    # TODO: use `parseColorSpaceFromString` instead if ocio v1
+    return config.getColorSpaceFromFilepath(str(filepath))
+
+
+def _get_config_version_data(config_path):
+    """Return major and minor version info.
+
+    Args:
+        config_path (str): path string leading to config.ocio
+
+    Raises:
+        IOError: Input config does not exist.
+
+    Returns:
+        dict: minor and major keys with values
+
+    """
+    config = _get_ocio_config(config_path)
+
+    return {
+        "major": config.getMajorVersion(),
+        "minor": config.getMinorVersion()
+    }
+
+
+def _get_display_view_colorspace_name(config_path, display, view):
+    """Returns the colorspace attribute of the (display, view) pair.
+
+    Args:
+        config_path (str): path string leading to config.ocio
+        display (str): display name e.g. "ACES"
+        view (str): view name e.g. "sRGB"
+
+    Raises:
+        IOError: Input config does not exist.
+
+    Returns:
+        str: view color space name e.g. "Output - sRGB"
+
+    """
+    config = _get_ocio_config(config_path)
+    return config.getDisplayViewColorSpaceName(display, view)
+
+
+def _get_ocio_config_colorspaces(config_path):
+    """Return all found colorspace data.
+
+    Args:
+        config_path (str): path string leading to config.ocio
+
+    Raises:
+        IOError: Input config does not exist.
+
+    Returns:
+        dict: aggregated available colorspaces
+
+    """
+    config = _get_ocio_config(config_path)
+
+    colorspace_data = {
+        "roles": {},
+        "colorspaces": {
+            color.getName(): {
+                "family": color.getFamily(),
+                "categories": list(color.getCategories()),
+                "aliases": list(color.getAliases()),
+                "equalitygroup": color.getEqualityGroup(),
+            }
+            for color in config.getColorSpaces()
+        },
+        "displays_views": {
+            f"{view} ({display})": {
+                "display": display,
+                "view": view
+
+            }
+            for display in config.getDisplays()
+            for view in config.getViews(display)
+        },
+        "looks": {}
+    }
+
+    # add looks
+    looks = config.getLooks()
+    if looks:
+        colorspace_data["looks"] = {
+            look.getName(): {"process_space": look.getProcessSpace()}
+            for look in looks
+        }
+
+    # add roles
+    roles = config.getRoles()
+    if roles:
+        colorspace_data["roles"] = {
+            role: {"colorspace": colorspace}
+            for (role, colorspace) in roles
+        }
+
+    return colorspace_data
+
+
+def _get_ocio_config_views(config_path):
+    """Return all found viewer data.
+
+    Args:
+        config_path (str): path string leading to config.ocio
+
+    Raises:
+        IOError: Input config does not exist.
+
+    Returns:
+        dict: aggregated available viewers
+
+    """
+    config = _get_ocio_config(config_path)
+
+    output = {}
+    for display in config.getDisplays():
+        for view in config.getViews(display):
+            colorspace = config.getDisplayViewColorSpaceName(display, view)
+            # Special token. See https://opencolorio.readthedocs.io/en/latest/guides/authoring/authoring.html#shared-views # noqa
+            if colorspace == "<USE_DISPLAY_NAME>":
+                colorspace = display
+
+            output[f"{display}/{view}"] = {
+                "display": display,
+                "view": view,
+                "colorspace": colorspace
+            }
+
+    return output
+
+
 # --- Current context functions ---
 def get_current_context_imageio_config_preset(
     anatomy=None,
