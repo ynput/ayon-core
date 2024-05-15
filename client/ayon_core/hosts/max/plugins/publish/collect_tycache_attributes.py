@@ -3,6 +3,7 @@ import re
 import copy
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
+from ayon_core.hosts.max.api.lib import get_tyflow_export_operators
 from pymxs import runtime as rt
 
 
@@ -40,21 +41,22 @@ class CollectTyFlowData(pyblish.api.InstancePlugin,
             tyc_instance.data.update(copy.deepcopy(dict(instance.data)))
             # Replace all runs of whitespace with underscore
             prod_name = re.sub(r"\s+", "_", tyc_product_name)
-            export_mode = instance.data["tyc_exportMode"]
+            operator = next((node for node in get_tyflow_export_operators()
+                             if node.name == tyc_product_name), None)   # noqa
+            product_type = "tycache" if operator.exportMode == 2 else "tyspline"
             tyc_instance.data.update({
                 "name": f"{container_name}_{prod_name}",
                 "label": f"{container_name}_{prod_name}",
-                "family": export_mode,
-                "families": [export_mode],
+                "family": product_type,
+                "families": [product_type],
                 "productName": f"{container_name}_{prod_name}",
                 # get the name of operator for the export
-                "operatorName": tyc_product_name,
-                "exportMode": (
-                    2 if instance.data["tyc_exportMode"] == "tycache" else 6),
+                "operator": operator,
+                "exportMode": operator.exportMode,
                 "material_cache": attr_values.get("material"),
-                "productType": export_mode,
+                "productType": product_type,
                 "creator_identifier": (
-                    f"io.openpype.creators.max.{export_mode}"),
+                    f"io.openpype.creators.max.{product_type}"),
                 "publish_attributes": {
                     "ValidateTyCacheFrameRange": {
                         "active": attr_values.get("has_frame_range_validator")}
