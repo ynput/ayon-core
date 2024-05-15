@@ -163,6 +163,8 @@ class ValidateTyFlowTySplineData(ValidateTyFlowData):
                         "Skipping checking spline path nodes "
                         f"as this instance exports in {family} format")
                     return invalid
+            # check against the spline path node if
+            # the export mode is tyspline
             if not rt.hasProperty(node_sub_anim, "splinePathsNode"):
                 invalid.append(
                     f"{node_sub_anim.name} has no tycache spline nodes.")
