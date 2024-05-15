@@ -268,26 +268,50 @@ DEFAULT_VALUES = {
     },
     "studio_name": "",
     "studio_code": "",
-    "environments": '{\n"STUDIO_SW": {\n        "darwin": "/mnt/REPO_SW",\n        "linux": "/mnt/REPO_SW",\n        "windows": "P:/REPO_SW"\n    }\n}',
+    "environments": json.dumps(
+        {
+            "STUDIO_SW": {
+                "darwin": "/mnt/REPO_SW",
+                "linux": "/mnt/REPO_SW",
+                "windows": "P:/REPO_SW"
+            }
+        },
+        indent=4
+    ),
     "tools": DEFAULT_TOOLS_VALUES,
-    "version_start_category": {"profiles": []},
+    "version_start_category": {
+        "profiles": []
+    },
     "publish": DEFAULT_PUBLISH_VALUES,
     "project_folder_structure": json.dumps(
         {
             "__project_root__": {
                 "prod": {},
                 "resources": {
-                    "footage": {"plates": {}, "offline": {}},
+                    "footage": {
+                        "plates": {},
+                        "offline": {}
+                    },
                     "audio": {},
-                    "art_dept": {},
+                    "art_dept": {}
                 },
                 "editorial": {},
-                "assets": {"characters": {}, "locations": {}},
-                "shots": {},
+                "assets": {
+                    "characters": {},
+                    "locations": {}
+                },
+                "shots": {}
             }
         },
-        indent=4,
+        indent=4
     ),
-    "project_plugins": {"windows": [], "darwin": [], "linux": []},
-    "project_environments": "{}",
+    "project_plugins": {
+        "windows": [],
+        "darwin": [],
+        "linux": []
+    },
+    "project_environments": json.dumps(
+        {},
+        indent=4
+    )
 }
