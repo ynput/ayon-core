@@ -1,6 +1,6 @@
-"""Ease the OpenPype on-boarding process by loading the plug-in on first run"""
+"""Ease the AYON on-boarding process by loading the plug-in on first run"""
 
-OPENPYPE_PLUGIN_NAME = "openpype_plugin"
+OPENPYPE_PLUGIN_NAME = "ayon_plugin"
 
 
 def start_plugin():

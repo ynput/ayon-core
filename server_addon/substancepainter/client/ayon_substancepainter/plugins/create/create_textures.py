@@ -28,6 +28,7 @@ class CreateTextures(Creator):
     icon = "picture-o"
 
     default_variant = "Main"
+    settings_category = "substancepainter"
 
     def create(self, product_name, instance_data, pre_create_data):
 

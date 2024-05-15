@@ -31,7 +31,7 @@ from ayon_substancepainter import SUBSTANCE_HOST_DIR
 
 from . import lib
 
-log = logging.getLogger("ayon_core.hosts.substance")
+log = logging.getLogger("ayon_substancepainter")
 
 PLUGINS_DIR = os.path.join(SUBSTANCE_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

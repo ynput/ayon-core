@@ -22,6 +22,7 @@ class CreateWorkfile(AutoCreator):
     icon = "document"
 
     default_variant = "Main"
+    settings_category = "substancepainter"
 
     def create(self):
 
