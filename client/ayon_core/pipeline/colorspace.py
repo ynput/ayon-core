@@ -18,11 +18,10 @@ from ayon_core.lib import (
     run_ayon_launcher_process,
     Logger,
 )
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
-from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
-
 
 log = Logger.get_logger(__name__)
 
@@ -281,26 +280,50 @@ def get_config_file_rules_colorspace_from_filepath(config_path, filepath):
 
     Returns:
         Union[str, None]: matching colorspace name
+
     """
-    if not has_compatible_ocio_package():
-        # python environment is not compatible with PyOpenColorIO
-        # needs to be run in subprocess
+    if has_compatible_ocio_package():
+        result_data = _get_config_file_rules_colorspace_from_filepath(
+            config_path, filepath
+        )
+    else:
         result_data = _get_wrapped_with_subprocess(
-            "colorspace", "get_config_file_rules_colorspace_from_filepath",
+            "colorspace",
+            "get_config_file_rules_colorspace_from_filepath",
             config_path=config_path,
             filepath=filepath
         )
-        if result_data:
-            return result_data[0]
-
-    # TODO: refactor this so it is not imported but part of this file
-    from ayon_core.scripts.ocio_wrapper import _get_config_file_rules_colorspace_from_filepath  # noqa: E501
-
-    result_data = _get_config_file_rules_colorspace_from_filepath(
-        config_path, filepath)
 
     if result_data:
         return result_data[0]
+    return None
+
+
+def get_config_version_data(config_path):
+    """Return major and minor version info.
+
+    Args:
+        config_path (str): path string leading to config.ocio
+
+    Raises:
+        IOError: Input config does not exist.
+
+    Returns:
+        dict: minor and major keys with values
+
+    """
+    if config_path not in CachedData.config_version_data:
+        if has_compatible_ocio_package():
+            version_data = _get_config_version_data(config_path)
+        else:
+            version_data = _get_wrapped_with_subprocess(
+                "config",
+                "get_config_version_data",
+                config_path=config_path
+            )
+        CachedData.config_version_data[config_path] = version_data
+
+    return deepcopy(CachedData.config_version_data[config_path])
 
 
 def parse_colorspace_from_filepath(
@@ -394,6 +417,7 @@ def validate_imageio_colorspace_in_config(config_path, colorspace_name):
 
     Returns:
         bool: True if exists
+
     """
     colorspaces = get_ocio_config_colorspaces(config_path)["colorspaces"]
     if colorspace_name not in colorspaces:
@@ -405,9 +429,7 @@ def validate_imageio_colorspace_in_config(config_path, colorspace_name):
 
 
 def _get_wrapped_with_subprocess(command_group, command, **kwargs):
-    """Get data via subprocess
-
-    Wrapper for Python 2 hosts.
+    """Get data via subprocess.
 
     Args:
         command_group (str): command group name
@@ -420,14 +442,16 @@ def _get_wrapped_with_subprocess(command_group, command, **kwargs):
     with _make_temp_json_file() as tmp_json_path:
         # Prepare subprocess arguments
         args = [
-            "run", get_ocio_config_script_path(),
-            command_group, command
+            "run",
+            get_ocio_config_script_path(),
+            command_group,
+            command
         ]
 
-        for key_, value_ in kwargs.items():
-            args.extend(("--{}".format(key_), value_))
+        for key, value in kwargs.items():
+            args.extend(("--{}".format(key), value))
 
-        args.append("--out_path")
+        args.append("--output_path")
         args.append(tmp_json_path)
 
         log.info("Executing: {}".format(" ".join(args)))
@@ -435,39 +459,23 @@ def _get_wrapped_with_subprocess(command_group, command, **kwargs):
         run_ayon_launcher_process(*args, logger=log)
 
         # return all colorspaces
-        with open(tmp_json_path, "r") as f_:
-            return json.load(f_)
+        with open(tmp_json_path, "r") as stream:
+            return json.load(stream)
 
 
-# TODO: this should be part of ocio_wrapper.py
 def compatibility_check_config_version(config_path, major=1, minor=None):
     """Making sure PyOpenColorIO config version is compatible"""
 
-    if not CachedData.config_version_data.get(config_path):
-        if has_compatible_ocio_package():
-            # TODO: refactor this so it is not imported but part of this file
-            from ayon_core.scripts.ocio_wrapper import _get_version_data
-
-            CachedData.config_version_data[config_path] = \
-                _get_version_data(config_path)
-
-        else:
-            # python environment is not compatible with PyOpenColorIO
-            # needs to be run in subprocess
-            CachedData.config_version_data[config_path] = \
-                _get_wrapped_with_subprocess(
-                    "config", "get_version", config_path=config_path
-            )
+    version_data = get_config_version_data(config_path)
 
     # check major version
-    if CachedData.config_version_data[config_path]["major"] != major:
+    if version_data["major"] != major:
         return False
 
     # check minor version
-    if minor and CachedData.config_version_data[config_path]["minor"] != minor:
+    if minor is not None and version_data["minor"] != minor:
         return False
 
-    # compatible
     return True
 
 
@@ -482,22 +490,20 @@ def get_ocio_config_colorspaces(config_path):
 
     Returns:
         dict: colorspace and family in couple
-    """
-    if not CachedData.ocio_config_colorspaces.get(config_path):
-        if not has_compatible_ocio_package():
-            # python environment is not compatible with PyOpenColorIO
-            # needs to be run in subprocess
-            config_colorspaces = _get_wrapped_with_subprocess(
-                "config", "get_colorspace", in_path=config_path
-            )
-        else:
-            # TODO: refactor this so it is not imported but part of this file
-            from ayon_core.scripts.ocio_wrapper import _get_colorspace_data
 
-            config_colorspaces = _get_colorspace_data(config_path)
+    """
+    if config_path not in CachedData.ocio_config_colorspaces:
+        if has_compatible_ocio_package():
+            config_colorspaces = _get_ocio_config_colorspaces(config_path)
+        else:
+            config_colorspaces = _get_wrapped_with_subprocess(
+                "config",
+                "get_ocio_config_colorspaces",
+                config_path=config_path
+            )
         CachedData.ocio_config_colorspaces[config_path] = config_colorspaces
 
-    return CachedData.ocio_config_colorspaces[config_path]
+    return deepcopy(CachedData.ocio_config_colorspaces[config_path])
 
 
 def convert_colorspace_enumerator_item(
@@ -571,16 +577,18 @@ def get_colorspaces_enumerator_items(
     Families can be used for building menu and submenus in gui.
 
     Args:
-        config_items (dict[str,dict]): colorspace data coming from
-            `get_ocio_config_colorspaces` function
-        include_aliases (bool): include aliases in result
-        include_looks (bool): include looks in result
-        include_roles (bool): include roles in result
+        config_items (dict[str,dict]): Colorspace data coming from
+            `get_ocio_config_colorspaces` function.
+        include_aliases (Optional[bool]): Include aliases in result.
+        include_looks (Optional[bool]): Include looks in result.
+        include_roles (Optional[bool]): Include roles in result.
+        include_display_views (Optional[bool]): Include display views
+            in result.
 
     Returns:
-        list[tuple[str,str]]: colorspace and family in couple
+        list[tuple[str, str]]: Colorspace and family in couples.
+
     """
-    labeled_colorspaces = []
     aliases = set()
     colorspaces = set()
     looks = set()
@@ -590,64 +598,74 @@ def get_colorspaces_enumerator_items(
         if items_type == "colorspaces":
             for color_name, color_data in colorspace_items.items():
                 if color_data.get("aliases"):
-                    aliases.update([
+                    aliases.update({
                         (
                             "aliases::{}".format(alias_name),
                             "[alias] {} ({})".format(alias_name, color_name)
                         )
                         for alias_name in color_data["aliases"]
-                    ])
+                    })
                 colorspaces.add((
                     "{}::{}".format(items_type, color_name),
                     "[colorspace] {}".format(color_name)
                 ))
 
         elif items_type == "looks":
-            looks.update([
+            looks.update({
                 (
                     "{}::{}".format(items_type, name),
                     "[look] {} ({})".format(name, role_data["process_space"])
                 )
                 for name, role_data in colorspace_items.items()
-            ])
+            })
 
         elif items_type == "displays_views":
-            display_views.update([
+            display_views.update({
                 (
                     "{}::{}".format(items_type, name),
                     "[view (display)] {}".format(name)
                 )
                 for name, _ in colorspace_items.items()
-            ])
+            })
 
         elif items_type == "roles":
-            roles.update([
+            roles.update({
                 (
                     "{}::{}".format(items_type, name),
                     "[role] {} ({})".format(name, role_data["colorspace"])
                 )
                 for name, role_data in colorspace_items.items()
-            ])
+            })
 
-    if roles and include_roles:
-        roles = sorted(roles, key=lambda x: x[0])
-        labeled_colorspaces.extend(roles)
+    def _sort_key_getter(item):
+        """Use colorspace for sorting."""
+        return item[0]
 
-    # add colorspaces as second so it is not first in menu
-    colorspaces = sorted(colorspaces, key=lambda x: x[0])
-    labeled_colorspaces.extend(colorspaces)
+    labeled_colorspaces = []
+    if include_roles:
+        labeled_colorspaces.extend(
+            sorted(roles, key=_sort_key_getter)
+        )
 
-    if aliases and include_aliases:
-        aliases = sorted(aliases, key=lambda x: x[0])
-        labeled_colorspaces.extend(aliases)
+    # Add colorspaces after roles, so it is not first in menu
+    labeled_colorspaces.extend(
+        sorted(colorspaces, key=_sort_key_getter)
+    )
 
-    if looks and include_looks:
-        looks = sorted(looks, key=lambda x: x[0])
-        labeled_colorspaces.extend(looks)
+    if include_aliases:
+        labeled_colorspaces.extend(
+            sorted(aliases, key=_sort_key_getter)
+        )
 
-    if display_views and include_display_views:
-        display_views = sorted(display_views, key=lambda x: x[0])
-        labeled_colorspaces.extend(display_views)
+    if include_looks:
+        labeled_colorspaces.extend(
+            sorted(looks, key=_sort_key_getter)
+        )
+
+    if include_display_views:
+        labeled_colorspaces.extend(
+            sorted(display_views, key=_sort_key_getter)
+        )
 
     return labeled_colorspaces
 
@@ -663,18 +681,16 @@ def get_ocio_config_views(config_path):
 
     Returns:
         dict: `display/viewer` and viewer data
+
     """
-    if not has_compatible_ocio_package():
-        # python environment is not compatible with PyOpenColorIO
-        # needs to be run in subprocess
-        return _get_wrapped_with_subprocess(
-            "config", "get_views", in_path=config_path
-        )
+    if has_compatible_ocio_package():
+        return _get_ocio_config_views(config_path)
 
-    # TODO: refactor this so it is not imported but part of this file
-    from ayon_core.scripts.ocio_wrapper import _get_views_data
-
-    return _get_views_data(config_path)
+    return _get_wrapped_with_subprocess(
+        "config",
+        "get_ocio_config_views",
+        config_path=config_path
+    )
 
 
 def _get_global_config_data(
@@ -1255,48 +1271,17 @@ def get_display_view_colorspace_name(config_path, display, view):
         str: View color space name. e.g. "Output - sRGB"
 
     """
-    if not has_compatible_ocio_package():
-        # python environment is not compatible with PyOpenColorIO
-        # needs to be run in subprocess
-        return _get_display_view_colorspace_subprocess(
+    if has_compatible_ocio_package():
+        return _get_display_view_colorspace_name(
             config_path, display, view
         )
-
-    from ayon_core.scripts.ocio_wrapper import _get_display_view_colorspace_name  # noqa
-
-    return _get_display_view_colorspace_name(config_path, display, view)
-
-
-def _get_display_view_colorspace_subprocess(config_path, display, view):
-    """Returns the colorspace attribute of the (display, view) pair
-        via subprocess.
-
-    Args:
-        config_path (str): path string leading to config.ocio
-        display (str): display name e.g. "ACES"
-        view (str): view name e.g. "sRGB"
-
-    Returns:
-        view color space name (str) e.g. "Output - sRGB"
-
-    """
-    with _make_temp_json_file() as tmp_json_path:
-        # Prepare subprocess arguments
-        args = [
-            "run", get_ocio_config_script_path(),
-            "config", "get_display_view_colorspace_name",
-            "--in_path", config_path,
-            "--out_path", tmp_json_path,
-            "--display", display,
-            "--view", view
-        ]
-        log.debug("Executing: {}".format(" ".join(args)))
-
-        run_ayon_launcher_process(*args, logger=log)
-
-        # return default view colorspace name
-        with open(tmp_json_path, "r") as f:
-            return json.load(f)
+    return _get_wrapped_with_subprocess(
+        "config",
+        "get_display_view_colorspace_name",
+        config_path=config_path,
+        display=display,
+        view=view
+    )
 
 
 # --- Implementation of logic using 'PyOpenColorIO' ---
@@ -1531,7 +1516,8 @@ def get_colorspace_from_filepath(*args, **kwargs):
 def get_colorspace_data_subprocess(config_path):
     """[Deprecated] Get colorspace data via subprocess
 
-    Wrapper for Python 2 hosts.
+    Deprecated:
+        Deprecated since OpenPype. Use `_get_wrapped_with_subprocess` instead.
 
     Args:
         config_path (str): path leading to config.ocio file
@@ -1540,7 +1526,9 @@ def get_colorspace_data_subprocess(config_path):
         dict: colorspace and family in couple
     """
     return _get_wrapped_with_subprocess(
-        "config", "get_colorspace", in_path=config_path
+        "config",
+        "get_ocio_config_colorspaces",
+        config_path=config_path
     )
 
 
@@ -1548,30 +1536,20 @@ def get_colorspace_data_subprocess(config_path):
 def get_views_data_subprocess(config_path):
     """[Deprecated] Get viewers data via subprocess
 
-    Wrapper for Python 2 hosts.
+    Deprecated:
+        Deprecated since OpenPype. Use `_get_wrapped_with_subprocess` instead.
 
     Args:
         config_path (str): path leading to config.ocio file
 
     Returns:
         dict: `display/viewer` and viewer data
+
     """
     return _get_wrapped_with_subprocess(
-        "config", "get_views", in_path=config_path
-    )
-
-
-@deprecated("_get_wrapped_with_subprocess")
-def get_data_subprocess(config_path, data_type):
-    """[Deprecated] Get data via subprocess
-
-    Wrapper for Python 2 hosts.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-    """
-    return _get_wrapped_with_subprocess(
-        "config", data_type, in_path=config_path,
+        "config",
+        "get_ocio_config_views",
+        config_path=config_path
     )
 
 
