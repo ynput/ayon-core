@@ -195,17 +195,6 @@ def get_colorspace_name_from_filepath(
     return colorspace_name
 
 
-# TODO: remove this in future - backward compatibility
-@deprecated("get_imageio_file_rules_colorspace_from_filepath")
-def get_imageio_colorspace_from_filepath(*args, **kwargs):
-    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
-
-# TODO: remove this in future - backward compatibility
-@deprecated("get_imageio_file_rules_colorspace_from_filepath")
-def get_colorspace_from_filepath(*args, **kwargs):
-    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
-
-
 def get_imageio_file_rules_colorspace_from_filepath(
     filepath,
     host_name,
@@ -392,21 +381,6 @@ def validate_imageio_colorspace_in_config(config_path, colorspace_name):
                 colorspace_name, config_path)
         )
     return True
-
-
-# TODO: remove this in future - backward compatibility
-@deprecated("_get_wrapped_with_subprocess")
-def get_data_subprocess(config_path, data_type):
-    """[Deprecated] Get data via subprocess
-
-    Wrapper for Python 2 hosts.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-    """
-    return _get_wrapped_with_subprocess(
-        "config", data_type, in_path=config_path,
-    )
 
 
 def _get_wrapped_with_subprocess(command_group, command, **kwargs):
@@ -673,24 +647,6 @@ def get_colorspaces_enumerator_items(
     return labeled_colorspaces
 
 
-# TODO: remove this in future - backward compatibility
-@deprecated("_get_wrapped_with_subprocess")
-def get_colorspace_data_subprocess(config_path):
-    """[Deprecated] Get colorspace data via subprocess
-
-    Wrapper for Python 2 hosts.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-
-    Returns:
-        dict: colorspace and family in couple
-    """
-    return _get_wrapped_with_subprocess(
-        "config", "get_colorspace", in_path=config_path
-    )
-
-
 def get_ocio_config_views(config_path):
     """Get all viewer data
 
@@ -714,71 +670,6 @@ def get_ocio_config_views(config_path):
     from ayon_core.scripts.ocio_wrapper import _get_views_data
 
     return _get_views_data(config_path)
-
-
-# TODO: remove this in future - backward compatibility
-@deprecated("_get_wrapped_with_subprocess")
-def get_views_data_subprocess(config_path):
-    """[Deprecated] Get viewers data via subprocess
-
-    Wrapper for Python 2 hosts.
-
-    Args:
-        config_path (str): path leading to config.ocio file
-
-    Returns:
-        dict: `display/viewer` and viewer data
-    """
-    return _get_wrapped_with_subprocess(
-        "config", "get_views", in_path=config_path
-    )
-
-
-@deprecated("get_imageio_config_preset")
-def get_imageio_config(
-    project_name,
-    host_name,
-    project_settings=None,
-    anatomy_data=None,
-    anatomy=None,
-    env=None
-):
-    """Returns config data from settings
-
-    Config path is formatted in `path` key
-    and original settings input is saved into `template` key.
-
-    Deprecated:
-        Deprecated since '0.3.1' . Use `get_imageio_config_preset` instead.
-
-    Args:
-        project_name (str): project name
-        host_name (str): host name
-        project_settings (Optional[dict]): Project settings.
-        anatomy_data (Optional[dict]): anatomy formatting data.
-        anatomy (Optional[Anatomy]): Anatomy object.
-        env (Optional[dict]): Environment variables.
-
-    Returns:
-        dict: config path data or empty dict
-
-    """
-    if not anatomy_data:
-        from .context_tools import get_current_context_template_data
-        anatomy_data = get_current_context_template_data()
-
-    task_name = anatomy_data.get("task", {}).get("name")
-    folder_path = anatomy_data.get("folder", {}).get("path")
-    return get_imageio_config_preset(
-        project_name,
-        folder_path,
-        task_name,
-        host_name,
-        anatomy=anatomy,
-        project_settings=project_settings,
-        template_data=anatomy_data,
-        env=env,
-    )
 
 
 def _get_global_config_data(
@@ -1435,5 +1326,111 @@ def get_current_context_imageio_config_preset(
         anatomy=anatomy,
         project_settings=project_settings,
         template_data=template_data,
+        env=env,
+    )
+
+
+# --- Deprecated functions ---
+@deprecated("get_imageio_file_rules_colorspace_from_filepath")
+def get_imageio_colorspace_from_filepath(*args, **kwargs):
+    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
+
+
+@deprecated("get_imageio_file_rules_colorspace_from_filepath")
+def get_colorspace_from_filepath(*args, **kwargs):
+    return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
+
+
+@deprecated("_get_wrapped_with_subprocess")
+def get_colorspace_data_subprocess(config_path):
+    """[Deprecated] Get colorspace data via subprocess
+
+    Wrapper for Python 2 hosts.
+
+    Args:
+        config_path (str): path leading to config.ocio file
+
+    Returns:
+        dict: colorspace and family in couple
+    """
+    return _get_wrapped_with_subprocess(
+        "config", "get_colorspace", in_path=config_path
+    )
+
+
+@deprecated("_get_wrapped_with_subprocess")
+def get_views_data_subprocess(config_path):
+    """[Deprecated] Get viewers data via subprocess
+
+    Wrapper for Python 2 hosts.
+
+    Args:
+        config_path (str): path leading to config.ocio file
+
+    Returns:
+        dict: `display/viewer` and viewer data
+    """
+    return _get_wrapped_with_subprocess(
+        "config", "get_views", in_path=config_path
+    )
+
+
+@deprecated("_get_wrapped_with_subprocess")
+def get_data_subprocess(config_path, data_type):
+    """[Deprecated] Get data via subprocess
+
+    Wrapper for Python 2 hosts.
+
+    Args:
+        config_path (str): path leading to config.ocio file
+    """
+    return _get_wrapped_with_subprocess(
+        "config", data_type, in_path=config_path,
+    )
+
+
+@deprecated("get_imageio_config_preset")
+def get_imageio_config(
+    project_name,
+    host_name,
+    project_settings=None,
+    anatomy_data=None,
+    anatomy=None,
+    env=None
+):
+    """Returns config data from settings
+
+    Config path is formatted in `path` key
+    and original settings input is saved into `template` key.
+
+    Deprecated:
+        Deprecated since '0.3.1' . Use `get_imageio_config_preset` instead.
+
+    Args:
+        project_name (str): project name
+        host_name (str): host name
+        project_settings (Optional[dict]): Project settings.
+        anatomy_data (Optional[dict]): anatomy formatting data.
+        anatomy (Optional[Anatomy]): Anatomy object.
+        env (Optional[dict]): Environment variables.
+
+    Returns:
+        dict: config path data or empty dict
+
+    """
+    if not anatomy_data:
+        from .context_tools import get_current_context_template_data
+        anatomy_data = get_current_context_template_data()
+
+    task_name = anatomy_data.get("task", {}).get("name")
+    folder_path = anatomy_data.get("folder", {}).get("path")
+    return get_imageio_config_preset(
+        project_name,
+        folder_path,
+        task_name,
+        host_name,
+        anatomy=anatomy,
+        project_settings=project_settings,
+        template_data=anatomy_data,
         env=env,
     )
