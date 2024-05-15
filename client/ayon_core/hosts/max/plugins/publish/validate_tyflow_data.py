@@ -160,8 +160,8 @@ class ValidateTyFlowTySplineData(ValidateTyFlowData):
                 if instance.data["exportMode"] == 2:
                     family = instance.data["productType"]
                     self.log.debug(
-                        "Skipping to check tycache spline"
-                        f" nodes for {family} instance")
+                        "Skipping checking spline path nodes "
+                        f"as this instance exports in {family} format")
                     return invalid
             if not rt.hasProperty(node_sub_anim, "splinePathsNode"):
                 invalid.append(
