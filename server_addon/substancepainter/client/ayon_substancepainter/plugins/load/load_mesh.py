@@ -5,7 +5,7 @@ from ayon_core.pipeline import (
     get_representation_path,
 )
 from ayon_core.pipeline.load import LoadError
-from ayon_core.hosts.substancepainter.api.pipeline import (
+from ayon_substancepainter.api.pipeline import (
     imprint_container,
     set_container_metadata,
     remove_container_metadata
