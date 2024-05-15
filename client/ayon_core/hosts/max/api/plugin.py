@@ -5,7 +5,7 @@ from abc import ABCMeta
 import six
 from pymxs import runtime as rt
 
-from ayon_core.lib import BoolDef, EnumDef
+from ayon_core.lib import BoolDef
 from ayon_core.pipeline import (
     CreatedInstance,
     Creator,
