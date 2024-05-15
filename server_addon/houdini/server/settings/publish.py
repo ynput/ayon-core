@@ -1,4 +1,7 @@
-from ayon_server.settings import BaseSettingsModel, SettingsField
+from ayon_server.settings import (
+    BaseSettingsModel,
+    SettingsField
+)
 
 
 # Publish Plugins
@@ -18,6 +21,27 @@ class CollectChunkSizeModel(BaseSettingsModel):
     optional: bool = SettingsField(title="Optional")
     chunk_size: int = SettingsField(
         title="Frames Per Task")
+
+
+class AOVFilterSubmodel(BaseSettingsModel):
+    """You should use the same host name you are using for Houdini."""
+    host_name: str = SettingsField("", title="Houdini Host name")
+    value: list[str] = SettingsField(
+        default_factory=list,
+        title="AOV regex"
+    )
+
+class CollectLocalRenderInstancesModel(BaseSettingsModel):
+
+    use_deadline_aov_filter: bool = SettingsField(
+        False,
+        title="Use Deadline AOV Filter"
+    )
+
+    aov_filter: AOVFilterSubmodel = SettingsField(
+        default_factory=AOVFilterSubmodel,
+        title="Reviewable products filter"
+    )
 
 
 class ValidateWorkfilePathsModel(BaseSettingsModel):
@@ -48,6 +72,10 @@ class PublishPluginsModel(BaseSettingsModel):
     CollectChunkSize: CollectChunkSizeModel = SettingsField(
         default_factory=CollectChunkSizeModel,
         title="Collect Chunk Size."
+    )
+    CollectLocalRenderInstances: CollectLocalRenderInstancesModel = SettingsField(
+        default_factory=CollectLocalRenderInstancesModel,
+        title="Collect Local Render Instances."
     )
     ValidateContainers: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -81,6 +109,15 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "enabled": True,
         "optional": True,
         "chunk_size": 999999
+    },
+    "CollectLocalRenderInstances": {
+        "use_deadline_aov_filter": False,
+        "aov_filter" : {
+            "host_name": "houdini",
+            "value": [
+                ".*([Bb]eauty).*"
+            ]
+        }
     },
     "ValidateContainers": {
         "enabled": True,
