@@ -424,8 +424,12 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         self.log.debug("__ expectedFiles: `{}`".format(
             instance.data["expectedFiles"]))
         auth = instance.data["deadline"]["auth"]
-        response = requests_post(self.deadline_url, json=payload, timeout=10,
-                                 auth=auth)
+        verify = instance.data["deadline"]["verify"]
+        response = requests_post(self.deadline_url,
+                                 json=payload,
+                                 timeout=10,
+                                 auth=auth,
+                                 verify=verify)
 
         if not response.ok:
             raise Exception(response.text)
