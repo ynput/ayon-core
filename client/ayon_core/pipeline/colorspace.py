@@ -107,6 +107,27 @@ def _make_temp_json_file():
             os.remove(temporary_json_filepath)
 
 
+def has_compatible_ocio_package():
+    """Current process has available compatible 'PyOpenColorIO'.
+
+    Returns:
+        bool: True if compatible package is available.
+
+    """
+    if CachedData.has_compatible_ocio_package is not None:
+        return CachedData.has_compatible_ocio_package
+
+    try:
+        import PyOpenColorIO  # noqa: F401
+        # TODO validate 'PyOpenColorIO' version
+        CachedData.has_compatible_ocio_package = True
+    except ImportError:
+        CachedData.has_compatible_ocio_package = False
+
+    # compatible
+    return CachedData.has_compatible_ocio_package
+
+
 def get_ocio_config_script_path():
     """Get path to ocio wrapper script
 
@@ -261,7 +282,7 @@ def get_config_file_rules_colorspace_from_filepath(config_path, filepath):
     Returns:
         Union[str, None]: matching colorspace name
     """
-    if not compatibility_check():
+    if not has_compatible_ocio_package():
         # python environment is not compatible with PyOpenColorIO
         # needs to be run in subprocess
         result_data = _get_wrapped_with_subprocess(
@@ -419,27 +440,11 @@ def _get_wrapped_with_subprocess(command_group, command, **kwargs):
 
 
 # TODO: this should be part of ocio_wrapper.py
-def compatibility_check():
-    """Making sure PyOpenColorIO is importable"""
-    if CachedData.has_compatible_ocio_package is not None:
-        return CachedData.has_compatible_ocio_package
-
-    try:
-        import PyOpenColorIO  # noqa: F401
-        CachedData.has_compatible_ocio_package = True
-    except ImportError:
-        CachedData.has_compatible_ocio_package = False
-
-    # compatible
-    return CachedData.has_compatible_ocio_package
-
-
-# TODO: this should be part of ocio_wrapper.py
 def compatibility_check_config_version(config_path, major=1, minor=None):
     """Making sure PyOpenColorIO config version is compatible"""
 
     if not CachedData.config_version_data.get(config_path):
-        if compatibility_check():
+        if has_compatible_ocio_package():
             # TODO: refactor this so it is not imported but part of this file
             from ayon_core.scripts.ocio_wrapper import _get_version_data
 
@@ -479,7 +484,7 @@ def get_ocio_config_colorspaces(config_path):
         dict: colorspace and family in couple
     """
     if not CachedData.ocio_config_colorspaces.get(config_path):
-        if not compatibility_check():
+        if not has_compatible_ocio_package():
             # python environment is not compatible with PyOpenColorIO
             # needs to be run in subprocess
             config_colorspaces = _get_wrapped_with_subprocess(
@@ -659,7 +664,7 @@ def get_ocio_config_views(config_path):
     Returns:
         dict: `display/viewer` and viewer data
     """
-    if not compatibility_check():
+    if not has_compatible_ocio_package():
         # python environment is not compatible with PyOpenColorIO
         # needs to be run in subprocess
         return _get_wrapped_with_subprocess(
@@ -1250,7 +1255,7 @@ def get_display_view_colorspace_name(config_path, display, view):
         str: View color space name. e.g. "Output - sRGB"
 
     """
-    if not compatibility_check():
+    if not has_compatible_ocio_package():
         # python environment is not compatible with PyOpenColorIO
         # needs to be run in subprocess
         return _get_display_view_colorspace_subprocess(
@@ -1501,6 +1506,17 @@ def get_current_context_imageio_config_preset(
 
 
 # --- Deprecated functions ---
+@deprecated("has_compatible_ocio_package")
+def compatibility_check():
+    """Making sure PyOpenColorIO is importable
+
+    Deprecated:
+        Deprecated since '0.3.2'. Use `has_compatible_ocio_package` instead.
+    """
+
+    return has_compatible_ocio_package()
+
+
 @deprecated("get_imageio_file_rules_colorspace_from_filepath")
 def get_imageio_colorspace_from_filepath(*args, **kwargs):
     return get_imageio_file_rules_colorspace_from_filepath(*args, **kwargs)
