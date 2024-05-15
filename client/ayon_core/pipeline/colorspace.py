@@ -36,10 +36,6 @@ class CachedData:
     }
 
 
-class DeprecatedWarning(DeprecationWarning):
-    pass
-
-
 def deprecated(new_destination):
     """Mark functions as deprecated.
 
@@ -64,13 +60,13 @@ def deprecated(new_destination):
 
         @functools.wraps(decorated_func)
         def wrapper(*args, **kwargs):
-            warnings.simplefilter("always", DeprecatedWarning)
+            warnings.simplefilter("always", DeprecationWarning)
             warnings.warn(
                 (
                     "Call to deprecated function '{}'"
                     "\nFunction was moved or removed.{}"
                 ).format(decorated_func.__name__, warning_message),
-                category=DeprecatedWarning,
+                category=DeprecationWarning,
                 stacklevel=4
             )
             return decorated_func(*args, **kwargs)
