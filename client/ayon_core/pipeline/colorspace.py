@@ -642,7 +642,15 @@ def get_colorspaces_enumerator_items(
             })
 
     def _sort_key_getter(item):
-        """Use colorspace for sorting."""
+        """Use colorspace for sorting.
+
+        Args:
+            item (tuple[str, str]): Item with colorspace and label.
+
+        Returns:
+            str: Colorspace.
+
+        """
         return item[0]
 
     labeled_colorspaces = []
