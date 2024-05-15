@@ -56,8 +56,6 @@ class ExtractEditorialPckgConversion(publish.Extractor):
         if conversion_enabled and output_def["ext"]:
             transfers = self._convert_resources(output_def, transfers)
 
-        if not "transfers" in instance.data:
-            instance.data["transfers"] = []
         instance.data["transfers"] = transfers
 
         source_to_rootless = self._get_resource_path_mapping(instance,
