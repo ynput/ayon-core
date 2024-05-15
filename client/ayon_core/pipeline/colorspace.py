@@ -116,13 +116,21 @@ def has_compatible_ocio_package():
     if CachedData.has_compatible_ocio_package is not None:
         return CachedData.has_compatible_ocio_package
 
+    is_compatible = False
     try:
-        import PyOpenColorIO  # noqa: F401
-        # TODO validate 'PyOpenColorIO' version
-        CachedData.has_compatible_ocio_package = True
-    except ImportError:
-        CachedData.has_compatible_ocio_package = False
+        import PyOpenColorIO
 
+        # Check if PyOpenColorIO is compatible
+        # - version 2.0.0 or higher is required
+        # NOTE version 1 does not have '__version__' attribute
+        if hasattr(PyOpenColorIO, "__version__"):
+            version_parts = PyOpenColorIO.__version__.split(".")
+            major = int(version_parts[0])
+            is_compatible = (major, ) >= (2, )
+    except ImportError:
+        pass
+
+    CachedData.has_compatible_ocio_package = is_compatible
     # compatible
     return CachedData.has_compatible_ocio_package
 
