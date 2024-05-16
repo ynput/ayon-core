@@ -17,6 +17,4 @@ class PreCopyMxp(PreLaunchHook):
             self.log.warning("BUG: Workdir is not filled.")
             return
 
-        create_workspace_mxp(
-            workdir, project_entity["name"]
-        )
+        create_workspace_mxp(workdir, project_entity["name"])
