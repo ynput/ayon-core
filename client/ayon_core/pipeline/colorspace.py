@@ -292,7 +292,6 @@ def get_config_file_rules_colorspace_from_filepath(config_path, filepath):
         )
     else:
         result_data = _get_wrapped_with_subprocess(
-            "colorspace",
             "get_config_file_rules_colorspace_from_filepath",
             config_path=config_path,
             filepath=filepath
@@ -321,7 +320,6 @@ def get_config_version_data(config_path):
             version_data = _get_config_version_data(config_path)
         else:
             version_data = _get_wrapped_with_subprocess(
-                "config",
                 "get_config_version_data",
                 config_path=config_path
             )
@@ -432,11 +430,10 @@ def validate_imageio_colorspace_in_config(config_path, colorspace_name):
     return True
 
 
-def _get_wrapped_with_subprocess(command_group, command, **kwargs):
+def _get_wrapped_with_subprocess(command, **kwargs):
     """Get data via subprocess.
 
     Args:
-        command_group (str): command group name
         command (str): command name
         **kwargs: command arguments
 
@@ -448,7 +445,6 @@ def _get_wrapped_with_subprocess(command_group, command, **kwargs):
         args = [
             "run",
             get_ocio_config_script_path(),
-            command_group,
             command
         ]
 
@@ -501,7 +497,6 @@ def get_ocio_config_colorspaces(config_path):
             config_colorspaces = _get_ocio_config_colorspaces(config_path)
         else:
             config_colorspaces = _get_wrapped_with_subprocess(
-                "config",
                 "get_ocio_config_colorspaces",
                 config_path=config_path
             )
@@ -699,7 +694,6 @@ def get_ocio_config_views(config_path):
         return _get_ocio_config_views(config_path)
 
     return _get_wrapped_with_subprocess(
-        "config",
         "get_ocio_config_views",
         config_path=config_path
     )
@@ -1288,7 +1282,6 @@ def get_display_view_colorspace_name(config_path, display, view):
             config_path, display, view
         )
     return _get_wrapped_with_subprocess(
-        "config",
         "get_display_view_colorspace_name",
         config_path=config_path,
         display=display,
@@ -1538,7 +1531,6 @@ def get_colorspace_data_subprocess(config_path):
         dict: colorspace and family in couple
     """
     return _get_wrapped_with_subprocess(
-        "config",
         "get_ocio_config_colorspaces",
         config_path=config_path
     )
@@ -1559,7 +1551,6 @@ def get_views_data_subprocess(config_path):
 
     """
     return _get_wrapped_with_subprocess(
-        "config",
         "get_ocio_config_views",
         config_path=config_path
     )
