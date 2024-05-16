@@ -95,7 +95,7 @@ class CreateWorkfile(plugin.HoudiniCreatorBase, AutoCreator):
         # write workfile information to context container.
         op_ctx = hou.node(CONTEXT_CONTAINER)
         if not op_ctx:
-            op_ctx = self.create_context_node()
+            op_ctx = self.host.create_context_node()
 
         workfile_data = {"workfile": current_instance.data_to_store()}
         imprint(op_ctx, workfile_data)
