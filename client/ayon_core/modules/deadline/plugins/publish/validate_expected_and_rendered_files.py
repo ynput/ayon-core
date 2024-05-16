@@ -149,7 +149,7 @@ class ValidateExpectedFiles(pyblish.api.InstancePlugin):
         """
         # no frames in file name at all, eg 'renderCompositingMain.withLut.mov'
         if not frame_placeholder:
-            return set([file_name_template])
+            return {file_name_template}
 
         real_expected_rendered = set()
         src_padding_exp = "%0{}d".format(len(frame_placeholder))
@@ -199,16 +199,16 @@ class ValidateExpectedFiles(pyblish.api.InstancePlugin):
             (dict): Job info from Deadline
 
         """
-        # get default deadline webservice url from deadline module
-        deadline_url = instance.context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            deadline_url = instance.data.get("deadlineUrl")
+        deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
 
         url = "{}/api/jobs?JobID={}".format(deadline_url, job_id)
         try:
-            response = requests_get(url)
+            kwargs = {}
+            auth = instance.data["deadline"]["auth"]
+            if auth:
+                kwargs["auth"] = auth
+            response = requests_get(url, **kwargs)
         except requests.exceptions.ConnectionError:
             self.log.error("Deadline is not accessible at "
                            "{}".format(deadline_url))

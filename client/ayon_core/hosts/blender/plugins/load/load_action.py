@@ -24,8 +24,8 @@ class BlendActionLoader(plugin.AssetLoader):
         moment.
     """
 
-    families = ["action"]
-    representations = ["blend"]
+    product_types = {"action"}
+    representations = {"blend"}
 
     label = "Link Action"
     icon = "code-fork"
@@ -44,8 +44,8 @@ class BlendActionLoader(plugin.AssetLoader):
         """
 
         libpath = self.filepath_from_context(context)
-        folder_name = context["asset"]["name"]
-        product_name = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
         lib_container = plugin.prepare_scene_name(folder_name, product_name)
         container_name = plugin.prepare_scene_name(
             folder_name, product_name, namespace
@@ -126,18 +126,18 @@ class BlendActionLoader(plugin.AssetLoader):
         Warning:
             No nested collections are supported at the moment!
         """
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         collection = bpy.data.collections.get(
             container["objectName"]
         )
 
-        libpath = Path(get_representation_path(repre_doc))
+        libpath = Path(get_representation_path(repre_entity))
         extension = libpath.suffix.lower()
 
         logger.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(repre_doc, indent=2),
+            pformat(repre_entity, indent=2),
         )
 
         assert collection, (
@@ -241,7 +241,7 @@ class BlendActionLoader(plugin.AssetLoader):
         # Save the list of objects in the metadata container
         collection_metadata["objects"] = objects_list
         collection_metadata["libpath"] = str(libpath)
-        collection_metadata["representation"] = str(repre_doc["_id"])
+        collection_metadata["representation"] = repre_entity["id"]
 
         bpy.ops.object.select_all(action='DESELECT')
 

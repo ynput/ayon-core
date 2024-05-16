@@ -1,5 +1,3 @@
-import os
-
 import maya.cmds as cmds
 
 from ayon_core.hosts.maya.api.pipeline import containerise
@@ -15,8 +13,8 @@ from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 class GpuCacheLoader(load.LoaderPlugin):
     """Load Alembic as gpuCache"""
 
-    families = ["model", "animation", "proxyAbc", "pointcache"]
-    representations = ["abc", "gpu_cache"]
+    product_types = {"model", "animation", "proxyAbc", "pointcache"}
+    representations = {"abc", "gpu_cache"}
 
     label = "Load Gpu Cache"
     order = -5
@@ -24,11 +22,10 @@ class GpuCacheLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -75,8 +72,8 @@ class GpuCacheLoader(load.LoaderPlugin):
             loader=self.__class__.__name__)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
 
         # Update the cache
         members = cmds.sets(container['objectName'], query=True)
@@ -88,7 +85,7 @@ class GpuCacheLoader(load.LoaderPlugin):
             cmds.setAttr(cache + ".cacheFileName", path, type="string")
 
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def switch(self, container, context):

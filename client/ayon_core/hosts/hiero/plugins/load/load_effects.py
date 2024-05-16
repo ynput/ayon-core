@@ -2,15 +2,10 @@ import json
 from collections import OrderedDict
 import six
 
-from ayon_core.client import (
-    get_version_by_id
-)
-
 from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     load,
     get_representation_path,
-    get_current_project_name
 )
 from ayon_core.hosts.hiero import api as phiero
 from ayon_core.lib import Logger
@@ -19,8 +14,8 @@ from ayon_core.lib import Logger
 class LoadEffects(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
-    families = ["effect"]
-    representations = ["*"]
+    product_types = {"effect"}
+    representations = {"*"}
     extension = {"json"}
 
     label = "Load Effects"
@@ -37,7 +32,7 @@ class LoadEffects(load.LoaderPlugin):
         Arguments:
             context (dict): context of version
             name (str): name of the version
-            namespace (str): asset name
+            namespace (str): Folder name.
             data (dict): compulsory attribute > not used
 
         Returns:
@@ -48,10 +43,10 @@ class LoadEffects(load.LoaderPlugin):
             active_sequence, "Loaded_{}".format(name))
 
         # get main variables
-        namespace = namespace or context["asset"]["name"]
+        namespace = namespace or context["folder"]["name"]
         object_name = "{}_{}".format(name, namespace)
-        clip_in = context["asset"]["data"]["clipIn"]
-        clip_out = context["asset"]["data"]["clipOut"]
+        clip_in = context["folder"]["attrib"]["clipIn"]
+        clip_out = context["folder"]["attrib"]["clipOut"]
 
         data_imprint = {
             "objectName": object_name,
@@ -160,19 +155,19 @@ class LoadEffects(load.LoaderPlugin):
     def update(self, container, context):
         """ Updating previously loaded effects
         """
-        version_doc = context["version"]
-        repre_doc = context["representation"]
+        version_entity = context["version"]
+        repre_entity = context["representation"]
         active_track = container["_item"]
-        file = get_representation_path(repre_doc).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         # get main variables
         name = container['name']
         namespace = container['namespace']
 
         # get timeline in out data
-        version_data = version_doc["data"]
-        clip_in = version_data["clipIn"]
-        clip_out = version_data["clipOut"]
+        version_attributes = version_entity["attrib"]
+        clip_in = version_attributes["clipIn"]
+        clip_out = version_attributes["clipOut"]
 
         object_name = "{}_{}".format(name, namespace)
 
@@ -197,7 +192,7 @@ class LoadEffects(load.LoaderPlugin):
         data_imprint = {
             "objectName": object_name,
             "name": name,
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "children_names": []
         }
 
@@ -298,7 +293,7 @@ class LoadEffects(load.LoaderPlugin):
                 "name": str(name),
                 "namespace": str(namespace),
                 "loader": str(loader),
-                "representation": str(context["representation"]["_id"]),
+                "representation": context["representation"]["id"],
             }
         }
 

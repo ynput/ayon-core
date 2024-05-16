@@ -87,9 +87,9 @@ def transfer_non_default_values(src, dest, ignore=None):
 class CameraLoader(load.LoaderPlugin):
     """Load camera from an Alembic file"""
 
-    families = ["camera"]
+    product_types = {"camera"}
     label = "Load Camera (abc)"
-    representations = ["abc"]
+    representations = {"abc"}
     order = -10
 
     icon = "code-fork"
@@ -104,13 +104,13 @@ class CameraLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create a archive node
         node = self.create_and_connect(obj, "alembicarchive", node_name)
 
-        # TODO: add FPS of project / asset
+        # TODO: add FPS of project / folder
         node.setParms({"fileName": file_path, "channelRef": True})
 
         # Apply some magic
@@ -122,7 +122,7 @@ class CameraLoader(load.LoaderPlugin):
 
         camera = get_camera_from_container(node)
         self._match_maya_render_mask(camera)
-        set_camera_resolution(camera, asset_doc=context["asset"])
+        set_camera_resolution(camera, folder_entity=context["folder"])
         self[:] = nodes
 
         return pipeline.containerise(node_name,
@@ -133,16 +133,16 @@ class CameraLoader(load.LoaderPlugin):
                                      suffix="")
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         node = container["node"]
 
         # Update the file path
-        file_path = get_representation_path(repre_doc)
+        file_path = get_representation_path(repre_entity)
         file_path = file_path.replace("\\", "/")
 
         # Update attributes
         node.setParms({"fileName": file_path,
-                       "representation": str(repre_doc["_id"])})
+                       "representation": repre_entity["id"]})
 
         # Store the cam temporarily next to the Alembic Archive
         # so that we can preserve parm values the user set on it
@@ -166,6 +166,9 @@ class CameraLoader(load.LoaderPlugin):
         set_camera_resolution(new_camera)
 
         temp_camera.destroy()
+
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
 
@@ -195,7 +198,6 @@ class CameraLoader(load.LoaderPlugin):
     def _match_maya_render_mask(self, camera):
         """Workaround to match Maya render mask in Houdini"""
 
-        # print("Setting match maya render mask ")
         parm = camera.parm("aperture")
         expression = parm.expression()
         expression = expression.replace("return ", "aperture = ")

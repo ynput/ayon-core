@@ -37,7 +37,7 @@ class ValidateResolution(pyblish.api.InstancePlugin,
 
     @classmethod
     def get_invalid_resolution(cls, instance):
-        width, height, pixelAspect = cls.get_db_resolution(instance)
+        width, height, pixelAspect = cls.get_folder_resolution(instance)
         current_renderer = instance.data["renderer"]
         layer = instance.data["renderlayer"]
         invalid = False
@@ -68,7 +68,7 @@ class ValidateResolution(pyblish.api.InstancePlugin,
         if current_width != width or current_height != height:
             cls.log.error(
                 "Render resolution {}x{} does not match "
-                "asset resolution {}x{}".format(
+                "folder resolution {}x{}".format(
                     current_width, current_height,
                     width, height
                 ))
@@ -76,29 +76,19 @@ class ValidateResolution(pyblish.api.InstancePlugin,
         if current_pixelAspect != pixelAspect:
             cls.log.error(
                 "Render pixel aspect {} does not match "
-                "asset pixel aspect {}".format(
+                "folder pixel aspect {}".format(
                     current_pixelAspect, pixelAspect
                 ))
             invalid = True
         return invalid
 
     @classmethod
-    def get_db_resolution(cls, instance):
-        asset_doc = instance.data["assetEntity"]
-        project_doc = instance.context.data["projectEntity"]
-        for data in [asset_doc["data"], project_doc["data"]]:
-            if (
-                "resolutionWidth" in data and
-                "resolutionHeight" in data and
-                "pixelAspect" in data
-            ):
-                width = data["resolutionWidth"]
-                height = data["resolutionHeight"]
-                pixelAspect = data["pixelAspect"]
-                return int(width), int(height), float(pixelAspect)
-
-        # Defaults if not found in asset document or project document
-        return 1920, 1080, 1.0
+    def get_folder_resolution(cls, instance):
+        task_attributes = instance.data["taskEntity"]["attrib"]
+        width = task_attributes["resolutionWidth"]
+        height = task_attributes["resolutionHeight"]
+        pixel_aspect = task_attributes["pixelAspect"]
+        return int(width), int(height), float(pixel_aspect)
 
     @classmethod
     def repair(cls, instance):

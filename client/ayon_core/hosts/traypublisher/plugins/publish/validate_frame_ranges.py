@@ -16,11 +16,13 @@ class ValidateFrameRange(OptionalPyblishPluginMixin,
     label = "Validate Frame Range"
     hosts = ["traypublisher"]
     families = ["render", "plate"]
+    targets = ["local"]
+
     order = ValidateContentsOrder
 
     optional = True
     # published data might be sequence (.mov, .mp4) in that counting files
-    # doesnt make sense
+    # doesn't make sense
     check_extensions = ["exr", "dpx", "jpg", "jpeg", "png", "tiff", "tga",
                         "gif", "svg"]
     skip_timelines_check = []  # skip for specific task names (regex)
@@ -31,9 +33,9 @@ class ValidateFrameRange(OptionalPyblishPluginMixin,
             return
 
         # editorial would fail since they might not be in database yet
-        new_asset_publishing = instance.data.get("newAssetPublishing")
-        if new_asset_publishing:
-            self.log.debug("Instance is creating new asset. Skipping.")
+        new_folder_publishing = instance.data.get("newAssetPublishing")
+        if new_folder_publishing:
+            self.log.debug("Instance is creating new folder. Skipping.")
             return
 
         if (self.skip_timelines_check and
@@ -41,12 +43,11 @@ class ValidateFrameRange(OptionalPyblishPluginMixin,
                 for pattern in self.skip_timelines_check)):
             self.log.info("Skipping for {} task".format(instance.data["task"]))
 
-        asset_doc = instance.data["assetEntity"]
-        asset_data = asset_doc["data"]
-        frame_start = asset_data["frameStart"]
-        frame_end = asset_data["frameEnd"]
-        handle_start = asset_data["handleStart"]
-        handle_end = asset_data["handleEnd"]
+        folder_attributes = instance.data["folderEntity"]["attrib"]
+        frame_start = folder_attributes["frameStart"]
+        frame_end = folder_attributes["frameEnd"]
+        handle_start = folder_attributes["handleStart"]
+        handle_end = folder_attributes["handleEnd"]
         duration = (frame_end - frame_start + 1) + handle_start + handle_end
 
         repres = instance.data.get("representations")
@@ -68,7 +69,7 @@ class ValidateFrameRange(OptionalPyblishPluginMixin,
 
         msg = (
             "Frame duration from DB:'{}' doesn't match number of files:'{}'"
-            " Please change frame range for Asset or limit no. of files"
+            " Please change frame range for Folder or limit no. of files"
         ). format(int(duration), frames)
 
         formatting_data = {"duration": duration,

@@ -4,6 +4,7 @@ from maya import mel
 import os
 
 import qargparse
+from ayon_api import get_representation_by_id
 
 from ayon_core.pipeline import (
     load,
@@ -13,14 +14,13 @@ from ayon_core.hosts.maya.api.lib import (
     maintained_selection
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.client import get_representation_by_id
 
 
 class MultiverseUsdOverLoader(load.LoaderPlugin):
     """Reference file"""
 
-    families = ["mvUsdOverride"]
-    representations = ["usda", "usd", "udsz"]
+    product_types = {"mvUsdOverride"}
+    representations = {"usda", "usd", "udsz"}
 
     label = "Load Usd Override into Compound"
     order = -10
@@ -89,13 +89,13 @@ class MultiverseUsdOverLoader(load.LoaderPlugin):
         assert mvShape, "Missing mv source"
 
         project_name = context["project"]["name"]
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         prev_representation_id = cmds.getAttr("{}.representation".format(node))
         prev_representation = get_representation_by_id(project_name,
                                                        prev_representation_id)
-        prev_path = os.path.normpath(prev_representation["data"]["path"])
+        prev_path = os.path.normpath(prev_representation["attrib"]["path"])
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
 
         for shape in shapes:
             asset_paths = multiverse.GetUsdCompoundAssetPaths(shape)
@@ -108,7 +108,7 @@ class MultiverseUsdOverLoader(load.LoaderPlugin):
             multiverse.SetUsdCompoundAssetPaths(shape, asset_paths)
 
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
         mel.eval('refreshEditorTemplates;')
 

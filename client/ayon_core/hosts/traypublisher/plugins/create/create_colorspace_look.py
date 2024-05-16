@@ -5,8 +5,8 @@ This creator is used to publish colorspace look files thanks to
 production type `ociolook`. All files are published as representation.
 """
 from pathlib import Path
+import ayon_api
 
-from ayon_core.client import get_asset_by_name
 from ayon_core.lib.attribute_definitions import (
     FileDef, EnumDef, TextDef, UISeparatorDef
 )
@@ -54,14 +54,21 @@ This creator publishes color space look file (LUT).
             # this should never happen
             raise CreatorError("Missing files from representation")
 
-        asset_name = instance_data["folderPath"]
-        asset_doc = get_asset_by_name(
-            self.project_name, asset_name)
+        folder_path = instance_data["folderPath"]
+        task_name = instance_data["task"]
+        folder_entity = ayon_api.get_folder_by_path(
+            self.project_name, folder_path)
+
+        task_entity = None
+        if task_name:
+            task_entity = ayon_api.get_task_by_name(
+                self.project_name, folder_entity["id"], task_name
+            )
 
         product_name = self.get_product_name(
             project_name=self.project_name,
-            asset_doc=asset_doc,
-            task_name=instance_data["task"] or "Not set",
+            folder_entity=folder_entity,
+            task_entity=task_entity,
             variant=instance_data["variant"],
         )
 
@@ -149,14 +156,9 @@ This creator publishes color space look file (LUT).
         ]
 
     def apply_settings(self, project_settings):
-        host = self.create_context.host
-        host_name = host.name
-        project_name = host.get_current_project_name()
-        config_data = colorspace.get_imageio_config(
-            project_name, host_name,
+        config_data = colorspace.get_current_context_imageio_config_preset(
             project_settings=project_settings
         )
-
         if not config_data:
             self.enabled = False
             return

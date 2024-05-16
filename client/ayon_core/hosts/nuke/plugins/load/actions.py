@@ -4,6 +4,7 @@
 
 from ayon_core.lib import Logger
 from ayon_core.pipeline import load
+from ayon_core.hosts.nuke.api import lib
 
 log = Logger.get_logger(__name__)
 
@@ -11,12 +12,14 @@ log = Logger.get_logger(__name__)
 class SetFrameRangeLoader(load.LoaderPlugin):
     """Set frame range excluding pre- and post-handles"""
 
-    families = ["animation",
-                "camera",
-                "write",
-                "yeticache",
-                "pointcache"]
-    representations = ["*"]
+    product_types = {
+        "animation",
+        "camera",
+        "write",
+        "yeticache",
+        "pointcache",
+    }
+    representations = {"*"}
     extensions = {"*"}
 
     label = "Set frame range"
@@ -25,14 +28,11 @@ class SetFrameRangeLoader(load.LoaderPlugin):
     color = "white"
 
     def load(self, context, name, namespace, data):
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
 
-        from ayon_core.hosts.nuke.api import lib
-
-        version = context['version']
-        version_data = version.get("data", {})
-
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        start = version_attributes.get("frameStart")
+        end = version_attributes.get("frameEnd")
 
         log.info("start: {}, end: {}".format(start, end))
         if start is None or end is None:
@@ -46,12 +46,14 @@ class SetFrameRangeLoader(load.LoaderPlugin):
 class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     """Set frame range including pre- and post-handles"""
 
-    families = ["animation",
-                "camera",
-                "write",
-                "yeticache",
-                "pointcache"]
-    representations = ["*"]
+    product_types = {
+        "animation",
+        "camera",
+        "write",
+        "yeticache",
+        "pointcache",
+    }
+    representations = {"*"}
 
     label = "Set frame range (with handles)"
     order = 12
@@ -59,14 +61,9 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
     color = "white"
 
     def load(self, context, name, namespace, data):
-
-        from ayon_core.hosts.nuke.api import lib
-
-        version = context['version']
-        version_data = version.get("data", {})
-
-        start = version_data.get("frameStart", None)
-        end = version_data.get("frameEnd", None)
+        version_attributes = context["version"]["attrib"]
+        start = version_attributes.get("frameStart")
+        end = version_attributes.get("frameEnd")
 
         if start is None or end is None:
             print("Skipping setting frame range because start or "
@@ -74,7 +71,7 @@ class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
             return
 
         # Include handles
-        start -= version_data.get("handleStart", 0)
-        end += version_data.get("handleEnd", 0)
+        start -= version_attributes.get("handleStart", 0)
+        end += version_attributes.get("handleEnd", 0)
 
         lib.update_frame_range(start, end)

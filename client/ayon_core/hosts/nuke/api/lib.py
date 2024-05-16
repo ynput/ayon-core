@@ -12,14 +12,7 @@ from collections import OrderedDict
 
 import nuke
 from qtpy import QtCore, QtWidgets
-
-from ayon_core.client import (
-    get_project,
-    get_asset_by_name,
-    get_versions,
-    get_last_versions,
-    get_representations,
-)
+import ayon_api
 
 from ayon_core.host import HostDirmap
 from ayon_core.tools.utils import host_tools
@@ -40,18 +33,19 @@ from ayon_core.settings import (
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline import (
-    discover_legacy_creator_plugins,
     Anatomy,
     get_current_host_name,
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
 )
 from ayon_core.pipeline.context_tools import (
-    get_custom_workfile_template_from_session
+    get_current_context_custom_workfile_template
 )
-from ayon_core.pipeline.colorspace import get_imageio_config
+from ayon_core.pipeline.colorspace import (
+    get_current_context_imageio_config_preset
+)
 from ayon_core.pipeline.workfile import BuildWorkfile
 from . import gizmo_menu
 from .constants import ASSIST
@@ -128,7 +122,7 @@ class Context:
     workfiles_tool_timer = None
 
     # Seems unused
-    _project_doc = None
+    _project_entity = None
 
 
 def get_main_window():
@@ -397,7 +391,13 @@ def imprint(node, data, tab=None):
 
     """
     for knob in create_knobs(data, tab):
-        node.addKnob(knob)
+        # If knob name exists we set the value. Technically there could be
+        # multiple knobs with the same name, but the intent is not to have
+        # duplicated knobs so we do not account for that.
+        if knob.name() in node.knobs().keys():
+            node[knob.name()].setValue(knob.value())
+        else:
+            node.addKnob(knob)
 
 
 @deprecated
@@ -822,7 +822,7 @@ def on_script_load():
 
 def check_inventory_versions():
     """
-    Actual version idetifier of Loaded containers
+    Actual version identifier of Loaded containers
 
     Any time this function is run it will check all nodes and filter only
     Loader nodes for its version. It will get all versions from database
@@ -852,60 +852,62 @@ def check_inventory_versions():
 
     project_name = get_current_project_name()
     # Find representations based on found containers
-    repre_docs = get_representations(
+    repre_entities = ayon_api.get_representations(
         project_name,
         representation_ids=repre_ids,
-        fields=["_id", "parent"]
+        fields={"id", "versionId"}
     )
     # Store representations by id and collect version ids
-    repre_docs_by_id = {}
+    repre_entities_by_id = {}
     version_ids = set()
-    for repre_doc in repre_docs:
+    for repre_entity in repre_entities:
         # Use stringed representation id to match value in containers
-        repre_id = str(repre_doc["_id"])
-        repre_docs_by_id[repre_id] = repre_doc
-        version_ids.add(repre_doc["parent"])
+        repre_id = repre_entity["id"]
+        repre_entities_by_id[repre_id] = repre_entity
+        version_ids.add(repre_entity["versionId"])
 
-    version_docs = get_versions(
-        project_name, version_ids, fields=["_id", "name", "parent"]
+    version_entities = ayon_api.get_versions(
+        project_name,
+        version_ids=version_ids,
+        fields={"id", "version", "productId"},
     )
     # Store versions by id and collect product ids
-    version_docs_by_id = {}
+    version_entities_by_id = {}
     product_ids = set()
-    for version_doc in version_docs:
-        version_docs_by_id[version_doc["_id"]] = version_doc
-        product_ids.add(version_doc["parent"])
+    for version_entity in version_entities:
+        version_entities_by_id[version_entity["id"]] = version_entity
+        product_ids.add(version_entity["productId"])
 
     # Query last versions based on product ids
-    last_versions_by_product_id = get_last_versions(
-        project_name, subset_ids=product_ids, fields=["_id", "parent"]
+    last_versions_by_product_id = ayon_api.get_last_versions(
+        project_name, product_ids=product_ids, fields={"id", "productId"}
     )
 
     # Loop through collected container nodes and their representation ids
     for item in node_with_repre_id:
         # Some python versions of nuke can't unfold tuple in for loop
         node, repre_id = item
-        repre_doc = repre_docs_by_id.get(repre_id)
+        repre_entity = repre_entities_by_id.get(repre_id)
         # Failsafe for not finding the representation.
-        if not repre_doc:
+        if not repre_entity:
             log.warning((
                 "Could not find the representation on node \"{}\""
             ).format(node.name()))
             continue
 
-        version_id = repre_doc["parent"]
-        version_doc = version_docs_by_id.get(version_id)
-        if not version_doc:
+        version_id = repre_entity["versionId"]
+        version_entity = version_entities_by_id.get(version_id)
+        if not version_entity:
             log.warning((
                 "Could not find the version on node \"{}\""
             ).format(node.name()))
             continue
 
         # Get last version based on product id
-        product_id = version_doc["parent"]
+        product_id = version_entity["productId"]
         last_version = last_versions_by_product_id[product_id]
         # Check if last version is same as current version
-        if last_version["_id"] == version_doc["_id"]:
+        if last_version["id"] == version_entity["id"]:
             color_value = "0x4ecd25ff"
         else:
             color_value = "0xd84f20ff"
@@ -927,7 +929,7 @@ def writes_version_sync():
 
     for each in nuke.allNodes(filter="Write"):
         # check if the node is avalon tracked
-        if _NODE_TAB_NAME not in each.knobs():
+        if NODE_TAB_NAME not in each.knobs():
             continue
 
         avalon_knob_data = read_avalon_data(each)
@@ -988,28 +990,20 @@ def format_anatomy(data):
 
     project_name = get_current_project_name()
     anatomy = Anatomy(project_name)
-    log.debug("__ anatomy.templates: {}".format(anatomy.templates))
 
-    padding = None
-    if "frame_padding" in anatomy.templates.keys():
-        padding = int(anatomy.templates["frame_padding"])
-    elif "render" in anatomy.templates.keys():
-        padding = int(
-            anatomy.templates["render"].get(
-                "frame_padding"
-            )
-        )
+    frame_padding = anatomy.templates_obj.frame_padding
 
-    version = data.get("version", None)
-    if not version:
+    version = data.get("version")
+    if version is None:
         file = script_name()
         data["version"] = get_version_from_path(file)
 
-    asset_name = data["folderPath"]
+    folder_path = data["folderPath"]
     task_name = data["task"]
     host_name = get_current_host_name()
+
     context_data = get_template_data_with_names(
-        project_name, asset_name, task_name, host_name
+        project_name, folder_path, task_name, host_name
     )
     data.update(context_data)
     data.update({
@@ -1019,7 +1013,7 @@ def format_anatomy(data):
             "name": data["productName"],
             "type": data["productType"],
         },
-        "frame": "#" * padding,
+        "frame": "#" * frame_padding,
     })
     return anatomy.format(data)
 
@@ -1177,7 +1171,9 @@ def create_write_node(
     anatomy_filled = format_anatomy(data)
 
     # build file path to workfiles
-    fdir = str(anatomy_filled["work"]["folder"]).replace("\\", "/")
+    fdir = str(
+        anatomy_filled["work"]["default"]["directory"]
+    ).replace("\\", "/")
     data["work"] = fdir
     fpath = StringTemplate(data["fpath_template"]).format_strict(data)
 
@@ -1453,17 +1449,19 @@ class WorkfileSettings(object):
     """
 
     def __init__(self, root_node=None, nodes=None, **kwargs):
-        project_doc = kwargs.get("project")
-        if project_doc is None:
+        project_entity = kwargs.get("project")
+        if project_entity is None:
             project_name = get_current_project_name()
-            project_doc = get_project(project_name)
+            project_entity = ayon_api.get_project(project_name)
         else:
-            project_name = project_doc["name"]
+            project_name = project_entity["name"]
 
-        Context._project_doc = project_doc
+        Context._project_entity = project_entity
         self._project_name = project_name
-        self._asset = get_current_asset_name()
-        self._asset_entity = get_asset_by_name(project_name, self._asset)
+        self._folder_path = get_current_folder_path()
+        self._folder_entity = ayon_api.get_folder_by_path(
+            project_name, self._folder_path
+        )
         self._root_node = root_node or nuke.root()
         self._nodes = self.get_nodes(nodes=nodes)
 
@@ -1499,18 +1497,28 @@ class WorkfileSettings(object):
 
         filter_knobs = [
             "viewerProcess",
-            "wipe_position"
+            "wipe_position",
+            "monitorOutOutputTransform"
         ]
 
+        display, viewer = get_viewer_config_from_string(
+            viewer_dict["viewerProcess"]
+        )
+        viewer_process = create_viewer_profile_string(
+            viewer, display, path_like=False
+        )
+        display, viewer = get_viewer_config_from_string(
+            viewer_dict["output_transform"]
+        )
+        output_transform = create_viewer_profile_string(
+            viewer, display, path_like=False
+        )
         erased_viewers = []
         for v in nuke.allNodes(filter="Viewer"):
             # set viewProcess to preset from settings
-            v["viewerProcess"].setValue(
-                str(viewer_dict["viewerProcess"])
-            )
+            v["viewerProcess"].setValue(viewer_process)
 
-            if str(viewer_dict["viewerProcess"]) \
-                    not in v["viewerProcess"].value():
+            if viewer_process not in v["viewerProcess"].value():
                 copy_inputs = v.dependencies()
                 copy_knobs = {k: v[k].value() for k in v.knobs()
                               if k not in filter_knobs}
@@ -1528,11 +1536,11 @@ class WorkfileSettings(object):
 
                 # set copied knobs
                 for k, v in copy_knobs.items():
-                    print(k, v)
                     nv[k].setValue(v)
 
                 # set viewerProcess
-                nv["viewerProcess"].setValue(str(viewer_dict["viewerProcess"]))
+                nv["viewerProcess"].setValue(viewer_process)
+                nv["monitorOutOutputTransform"].setValue(output_transform)
 
         if erased_viewers:
             log.warning(
@@ -1546,12 +1554,8 @@ class WorkfileSettings(object):
             imageio_host (dict): host colorspace configurations
 
         '''
-        config_data = get_imageio_config(
-            project_name=get_current_project_name(),
-            host_name="nuke"
-        )
+        config_data = get_current_context_imageio_config_preset()
 
-        viewer_process_settings = imageio_host["viewer"]["viewerProcess"]
         workfile_settings = imageio_host["workfile"]
         color_management = workfile_settings["color_management"]
         native_ocio_config = workfile_settings["native_ocio_config"]
@@ -1578,29 +1582,6 @@ class WorkfileSettings(object):
                     residual_path
                 ))
 
-        # get monitor lut from settings respecting Nuke version differences
-        monitor_lut = workfile_settings["thumbnail_space"]
-        monitor_lut_data = self._get_monitor_settings(
-            viewer_process_settings, monitor_lut
-        )
-        monitor_lut_data["workingSpaceLUT"] = (
-            workfile_settings["working_space"]
-        )
-
-        # then set the rest
-        for knob, value_ in monitor_lut_data.items():
-            # skip unfilled ocio config path
-            # it will be dict in value
-            if isinstance(value_, dict):
-                continue
-            # skip empty values
-            if not value_:
-                continue
-            if self._root_node[knob].value() not in value_:
-                self._root_node[knob].setValue(str(value_))
-                log.debug("nuke.root()['{}'] changed to: {}".format(
-                    knob, value_))
-
         # set ocio config path
         if config_data:
             config_path = config_data["path"].replace("\\", "/")
@@ -1614,6 +1595,31 @@ class WorkfileSettings(object):
             # if there's no mismatch between environment and settings
             if correct_settings:
                 self._set_ocio_config_path_to_workfile(config_data)
+
+        # get monitor lut from settings respecting Nuke version differences
+        monitor_lut_data = self._get_monitor_settings(
+            workfile_settings["monitor_out_lut"],
+            workfile_settings["monitor_lut"]
+        )
+        monitor_lut_data.update({
+            "workingSpaceLUT": workfile_settings["working_space"],
+            "int8Lut": workfile_settings["int_8_lut"],
+            "int16Lut": workfile_settings["int_16_lut"],
+            "logLut": workfile_settings["log_lut"],
+            "floatLut": workfile_settings["float_lut"]
+        })
+
+        # then set the rest
+        for knob, value_ in monitor_lut_data.items():
+            # skip unfilled ocio config path
+            # it will be dict in value
+            if isinstance(value_, dict):
+                continue
+            # skip empty values
+            if not value_:
+                continue
+            self._root_node[knob].setValue(str(value_))
+            log.debug("nuke.root()['{}'] changed to: {}".format(knob, value_))
 
     def _get_monitor_settings(self, viewer_lut, monitor_lut):
         """ Get monitor settings from viewer and monitor lut
@@ -1957,39 +1963,43 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
             self.set_reads_colorspace(read_clrs_inputs)
 
     def reset_frame_range_handles(self):
-        """Set frame range to current asset"""
+        """Set frame range to current folder."""
 
-        if "data" not in self._asset_entity:
-            msg = "Asset {} don't have set any 'data'".format(self._asset)
+        if "attrib" not in self._folder_entity:
+            msg = "Folder {} don't have set any 'attrib'".format(
+                self._folder_path
+            )
             log.warning(msg)
             nuke.message(msg)
             return
 
-        asset_data = self._asset_entity["data"]
+        folder_attributes = self._folder_entity["attrib"]
 
         missing_cols = []
         check_cols = ["fps", "frameStart", "frameEnd",
                       "handleStart", "handleEnd"]
 
         for col in check_cols:
-            if col not in asset_data:
+            if col not in folder_attributes:
                 missing_cols.append(col)
 
         if len(missing_cols) > 0:
             missing = ", ".join(missing_cols)
-            msg = "'{}' are not set for asset '{}'!".format(
-                missing, self._asset)
+            msg = "'{}' are not set for folder '{}'!".format(
+                missing, self._folder_path)
             log.warning(msg)
             nuke.message(msg)
             return
 
         # get handles values
-        handle_start = asset_data["handleStart"]
-        handle_end = asset_data["handleEnd"]
+        handle_start = folder_attributes["handleStart"]
+        handle_end = folder_attributes["handleEnd"]
+        frame_start = folder_attributes["frameStart"]
+        frame_end = folder_attributes["frameEnd"]
 
-        fps = float(asset_data["fps"])
-        frame_start_handle = int(asset_data["frameStart"]) - handle_start
-        frame_end_handle = int(asset_data["frameEnd"]) + handle_end
+        fps = float(folder_attributes["fps"])
+        frame_start_handle = frame_start - handle_start
+        frame_end_handle = frame_end + handle_end
 
         self._root_node["lock_range"].setValue(False)
         self._root_node["fps"].setValue(fps)
@@ -2000,10 +2010,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         # update node graph so knobs are updated
         update_node_graph()
 
-        frame_range = '{0}-{1}'.format(
-            int(asset_data["frameStart"]),
-            int(asset_data["frameEnd"])
-        )
+        frame_range = '{0}-{1}'.format(frame_start, frame_end)
 
         for node in nuke.allNodes(filter="Viewer"):
             node['frame_range'].setValue(frame_range)
@@ -2030,18 +2037,12 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         """Set resolution to project resolution."""
         log.info("Resetting resolution")
         project_name = get_current_project_name()
-        asset_data = self._asset_entity["data"]
+        folder_attributes = self._folder_entity["attrib"]
 
         format_data = {
-            "width": int(asset_data.get(
-                'resolutionWidth',
-                asset_data.get('resolution_width'))),
-            "height": int(asset_data.get(
-                'resolutionHeight',
-                asset_data.get('resolution_height'))),
-            "pixel_aspect": asset_data.get(
-                'pixelAspect',
-                asset_data.get('pixel_aspect', 1)),
+            "width": folder_attributes["resolutionWidth"],
+            "height": folder_attributes["resolutionHeight"],
+            "pixel_aspect": folder_attributes["pixelAspect"],
             "name": project_name
         }
 
@@ -2108,7 +2109,11 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         from .utils import set_context_favorites
 
         work_dir = os.getenv("AYON_WORKDIR")
-        asset = get_current_asset_name()
+        # TODO validate functionality
+        # - does expect the structure is '{root}/{project}/{folder}'
+        # - this used asset name expecting it is unique in project
+        folder_path = get_current_folder_path()
+        folder_name = folder_path.split("/")[-1]
         favorite_items = OrderedDict()
 
         # project
@@ -2120,13 +2125,13 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         # add to favorites
         favorite_items.update({"Project dir": project_dir.replace("\\", "/")})
 
-        # asset
-        asset_root = os.path.normpath(work_dir.split(
-            asset)[0])
-        # add asset name
-        asset_dir = os.path.join(asset_root, asset) + "/"
+        # folder
+        folder_root = os.path.normpath(work_dir.split(
+            folder_name)[0])
+        # add folder name
+        folder_dir = os.path.join(folder_root, folder_name) + "/"
         # add to favorites
-        favorite_items.update({"Shot dir": asset_dir.replace("\\", "/")})
+        favorite_items.update({"Shot dir": folder_dir.replace("\\", "/")})
 
         # workdir
         favorite_items.update({"Work dir": work_dir.replace("\\", "/")})
@@ -2392,7 +2397,7 @@ def launch_workfiles_app():
 
     Context.workfiles_launched = True
 
-    # get all imortant settings
+    # get all important settings
     open_at_start = env_value_to_bool(
         env_key="AYON_WORKFILE_TOOL_ON_START",
         default=None)
@@ -2463,7 +2468,7 @@ def process_workfile_builder():
     # generate first version in file not existing and feature is enabled
     if create_fv_on and not os.path.exists(last_workfile_path):
         # get custom template path if any
-        custom_template_path = get_custom_workfile_template_from_session(
+        custom_template_path = get_current_context_custom_workfile_template(
             project_settings=project_settings
         )
 
@@ -2632,11 +2637,11 @@ class NukeDirmap(HostDirmap):
 
 
 class DirmapCache:
-    """Caching class to get settings and sync_module easily and only once."""
+    """Caching class to get settings and sitesync easily and only once."""
     _project_name = None
     _project_settings = None
-    _sync_module_discovered = False
-    _sync_module = None
+    _sitesync_addon_discovered = False
+    _sitesync_addon = None
     _mapping = None
 
     @classmethod
@@ -2652,11 +2657,11 @@ class DirmapCache:
         return cls._project_settings
 
     @classmethod
-    def sync_module(cls):
-        if not cls._sync_module_discovered:
-            cls._sync_module_discovered = True
-            cls._sync_module = AddonsManager().get("sync_server")
-        return cls._sync_module
+    def sitesync_addon(cls):
+        if not cls._sitesync_addon_discovered:
+            cls._sitesync_addon_discovered = True
+            cls._sitesync_addon = AddonsManager().get("sitesync")
+        return cls._sitesync_addon
 
     @classmethod
     def mapping(cls):
@@ -2678,7 +2683,7 @@ def dirmap_file_name_filter(file_name):
         "nuke",
         DirmapCache.project_name(),
         DirmapCache.project_settings(),
-        DirmapCache.sync_module(),
+        DirmapCache.sitesync_addon(),
     )
     if not DirmapCache.mapping():
         DirmapCache.set_mapping(dirmap_processor.get_mappings())

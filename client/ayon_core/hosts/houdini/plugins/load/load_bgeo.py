@@ -13,10 +13,10 @@ class BgeoLoader(load.LoaderPlugin):
     """Load bgeo files to Houdini."""
 
     label = "Load bgeo"
-    families = ["model", "pointcache", "bgeo"]
-    representations = [
+    product_types = {"model", "pointcache", "bgeo"}
+    representations = {
         "bgeo", "bgeosc", "bgeogz",
-        "bgeo.sc", "bgeo.gz", "bgeo.lzma", "bgeo.bz2"]
+        "bgeo.sc", "bgeo.gz", "bgeo.lzma", "bgeo.bz2"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -29,7 +29,7 @@ class BgeoLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create a new geo node
@@ -83,7 +83,7 @@ class BgeoLoader(load.LoaderPlugin):
         return filename
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         node = container["node"]
         try:
             file_node = next(
@@ -94,13 +94,13 @@ class BgeoLoader(load.LoaderPlugin):
             return
 
         # Update the file path
-        file_path = get_representation_path(repre_doc)
-        file_path = self.format_path(file_path, repre_doc)
+        file_path = get_representation_path(repre_entity)
+        file_path = self.format_path(file_path, repre_entity)
 
         file_node.setParms({"file": file_path})
 
         # Update attribute
-        node.setParms({"representation": str(repre_doc["_id"])})
+        node.setParms({"representation": repre_entity["id"]})
 
     def remove(self, container):
 

@@ -16,7 +16,7 @@ class CreateShotClip(phiero.Creator):
 
     gui_tracks = [track.name()
                   for track in phiero.get_current_sequence().videoTracks()]
-    gui_name = "Pype publish attributes creator"
+    gui_name = "AYON publish attributes creator"
     gui_info = "Define sequential rename and fill hierarchy data."
     gui_inputs = {
         "renameHierarchy": {
@@ -137,7 +137,7 @@ class CreateShotClip(phiero.Creator):
                     "value": ["<track_name>", "main", "bg", "fg", "bg",
                               "animatic"],
                     "type": "QComboBox",
-                    "label": "pRODUCT Name",
+                    "label": "Product Name",
                     "target": "ui",
                     "toolTip": "chose product name pattern, if <track_name> is selected, name of track layer will be used",  # noqa
                     "order": 0},
@@ -159,14 +159,14 @@ class CreateShotClip(phiero.Creator):
                     "type": "QCheckBox",
                     "label": "Include audio",
                     "target": "tag",
-                    "toolTip": "Process productS with corresponding audio",  # noqa
+                    "toolTip": "Process products with corresponding audio",  # noqa
                     "order": 3},
                 "sourceResolution": {
                     "value": False,
                     "type": "QCheckBox",
                     "label": "Source resolution",
                     "target": "tag",
-                    "toolTip": "Is resloution taken from timeline or source?",  # noqa
+                    "toolTip": "Is resolution taken from timeline or source?",  # noqa
                     "order": 4},
             }
         },
@@ -211,7 +211,7 @@ class CreateShotClip(phiero.Creator):
         presets = deepcopy(self.presets)
         gui_inputs = deepcopy(self.gui_inputs)
 
-        # get key pares from presets and match it on ui inputs
+        # get key pairs from presets and match it on ui inputs
         for k, v in gui_inputs.items():
             if v["type"] in ("dict", "section"):
                 # nested dictionary (only one level allowed

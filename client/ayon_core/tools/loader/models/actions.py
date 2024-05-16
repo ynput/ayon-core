@@ -1,29 +1,23 @@
 import sys
 import traceback
 import inspect
-import copy
 import collections
 import uuid
 
-from ayon_core.client import (
-    get_project,
-    get_assets,
-    get_subsets,
-    get_versions,
-    get_representations,
-)
+import ayon_api
+
+from ayon_core.lib import NestedCacheItem
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
-    SubsetLoaderPlugin,
+    ProductLoaderPlugin,
     filter_repre_contexts_by_loader,
     get_loader_identifier,
     load_with_repre_context,
-    load_with_subset_context,
-    load_with_subset_contexts,
+    load_with_product_context,
+    load_with_product_contexts,
     LoadError,
     IncompatibleLoaderError,
 )
-from ayon_core.tools.ayon_utils.models import NestedCacheItem
 from ayon_core.tools.loader.abstract import ActionItem
 
 ACTIONS_MODEL_SENDER = "actions.model"
@@ -33,14 +27,10 @@ NOT_SET = object()
 class LoaderActionsModel:
     """Model for loader actions.
 
-    This is probably only part of models that requires to use codebase from
-    'ayon_core.client' because of backwards compatibility with loaders logic
-    which are expecting mongo documents.
-
     TODOs:
         Deprecate 'qargparse' usage in loaders and implement conversion
             of 'ActionItem' to data (and 'from_data').
-        Use controller to get entities (documents) -> possible only when
+        Use controller to get entities -> possible only when
             loaders are able to handle AYON vs. OpenPype logic.
         Add missing site sync logic, and if possible remove it from loaders.
         Implement loader actions to replace load plugins.
@@ -317,7 +307,7 @@ class LoaderActionsModel:
                 we want to show loaders for?
 
         Returns:
-            tuple[list[SubsetLoaderPlugin], list[LoaderPlugin]]: Discovered
+            tuple[list[ProductLoaderPlugin], list[LoaderPlugin]]: Discovered
                 loader plugins.
         """
 
@@ -342,7 +332,7 @@ class LoaderActionsModel:
 
             identifier = get_loader_identifier(loader_cls)
             loaders_by_identifier[identifier] = loader_cls
-            if issubclass(loader_cls, SubsetLoaderPlugin):
+            if issubclass(loader_cls, ProductLoaderPlugin):
                 product_loaders.append(loader_cls)
             else:
                 repre_loaders.append(loader_cls)
@@ -368,48 +358,15 @@ class LoaderActionsModel:
 
         return action_item.order, action_item.label
 
-    def _get_version_docs(self, project_name, version_ids):
-        """Get version documents for given version ids.
-
-        This function also handles hero versions and copies data from
-        source version to it.
-
-        Todos:
-            Remove this function when this is completely rewritten to
-                use AYON calls.
-        """
-
-        version_docs = list(get_versions(
-            project_name, version_ids=version_ids, hero=True
-        ))
-        hero_versions_by_src_id = collections.defaultdict(list)
-        src_hero_version = set()
-        for version_doc in version_docs:
-            if version_doc["type"] != "hero":
-                continue
-            version_id = ""
-            src_hero_version.add(version_id)
-            hero_versions_by_src_id[version_id].append(version_doc)
-
-        src_versions = []
-        if src_hero_version:
-            src_versions = get_versions(project_name, version_ids=version_ids)
-        for src_version in src_versions:
-            src_version_id = src_version["_id"]
-            for hero_version in hero_versions_by_src_id[src_version_id]:
-                hero_version["data"] = copy.deepcopy(src_version["data"])
-
-        return version_docs
-
     def _contexts_for_versions(self, project_name, version_ids):
         """Get contexts for given version ids.
 
-        Prepare version contexts for 'SubsetLoaderPlugin' and representation
+        Prepare version contexts for 'ProductLoaderPlugin' and representation
         contexts for 'LoaderPlugin' for all children representations of
         given versions.
 
         This method is very similar to '_contexts_for_representations' but the
-        queries of documents are called in a different order.
+        queries of entities are called in a different order.
 
         Args:
             project_name (str): Project name.
@@ -426,55 +383,59 @@ class LoaderActionsModel:
         if not project_name and not version_ids:
             return version_context_by_id, repre_context_by_id
 
-        version_docs = self._get_version_docs(project_name, version_ids)
-        version_docs_by_id = {}
-        version_docs_by_product_id = collections.defaultdict(list)
-        for version_doc in version_docs:
-            version_id = version_doc["_id"]
-            product_id = version_doc["parent"]
-            version_docs_by_id[version_id] = version_doc
-            version_docs_by_product_id[product_id].append(version_doc)
+        version_entities = ayon_api.get_versions(
+            project_name, version_ids=version_ids
+        )
+        version_entities_by_id = {}
+        version_entities_by_product_id = collections.defaultdict(list)
+        for version_entity in version_entities:
+            version_id = version_entity["id"]
+            product_id = version_entity["productId"]
+            version_entities_by_id[version_id] = version_entity
+            version_entities_by_product_id[product_id].append(version_entity)
 
-        _product_ids = set(version_docs_by_product_id.keys())
-        _product_docs = get_subsets(project_name, subset_ids=_product_ids)
-        product_docs_by_id = {p["_id"]: p for p in _product_docs}
+        _product_ids = set(version_entities_by_product_id.keys())
+        _product_entities = ayon_api.get_products(
+            project_name, product_ids=_product_ids
+        )
+        product_entities_by_id = {p["id"]: p for p in _product_entities}
 
-        _folder_ids = {p["parent"] for p in product_docs_by_id.values()}
-        _folder_docs = get_assets(project_name, asset_ids=_folder_ids)
-        folder_docs_by_id = {f["_id"]: f for f in _folder_docs}
+        _folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
+        _folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=_folder_ids
+        )
+        folder_entities_by_id = {f["id"]: f for f in _folder_entities}
 
-        project_doc = get_project(project_name)
-        project_doc["code"] = project_doc["data"]["code"]
+        project_entity = ayon_api.get_project(project_name)
 
-        for version_doc in version_docs:
-            version_id = version_doc["_id"]
-            product_id = version_doc["parent"]
-            product_doc = product_docs_by_id[product_id]
-            folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+        for version_id, version_entity in version_entities_by_id.items():
+            product_id = version_entity["productId"]
+            product_entity = product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
+            folder_entity = folder_entities_by_id[folder_id]
             version_context_by_id[version_id] = {
-                "project": project_doc,
-                "asset": folder_doc,
-                "subset": product_doc,
-                "version": version_doc,
+                "project": project_entity,
+                "folder": folder_entity,
+                "product": product_entity,
+                "version": version_entity,
             }
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, version_ids=version_ids)
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
-            version_doc = version_docs_by_id[version_id]
-            product_id = version_doc["parent"]
-            product_doc = product_docs_by_id[product_id]
-            folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            version_entity = version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
+            product_entity = product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
+            folder_entity = folder_entities_by_id[folder_id]
 
-            repre_context_by_id[repre_doc["_id"]] = {
-                "project": project_doc,
-                "asset": folder_doc,
-                "subset": product_doc,
-                "version": version_doc,
-                "representation": repre_doc,
+            repre_context_by_id[repre_entity["id"]] = {
+                "project": project_entity,
+                "folder": folder_entity,
+                "product": product_entity,
+                "version": version_entity,
+                "representation": repre_entity,
             }
 
         return version_context_by_id, repre_context_by_id
@@ -482,12 +443,12 @@ class LoaderActionsModel:
     def _contexts_for_representations(self, project_name, repre_ids):
         """Get contexts for given representation ids.
 
-        Prepare version contexts for 'SubsetLoaderPlugin' and representation
+        Prepare version contexts for 'ProductLoaderPlugin' and representation
         contexts for 'LoaderPlugin' for all children representations of
         given versions.
 
         This method is very similar to '_contexts_for_versions' but the
-        queries of documents are called in a different order.
+        queries of entities are called in a different order.
 
         Args:
             project_name (str): Project name.
@@ -503,53 +464,58 @@ class LoaderActionsModel:
         if not project_name and not repre_ids:
             return product_context_by_id, repre_context_by_id
 
-        repre_docs = list(get_representations(
+        repre_entities = list(ayon_api.get_representations(
             project_name, representation_ids=repre_ids
         ))
-        version_ids = {r["parent"] for r in repre_docs}
-        version_docs = self._get_version_docs(project_name, version_ids)
-        version_docs_by_id = {
-            v["_id"]: v for v in version_docs
+        version_ids = {r["versionId"] for r in repre_entities}
+        version_entities = ayon_api.get_versions(
+            project_name, version_ids=version_ids
+        )
+        version_entities_by_id = {
+            v["id"]: v for v in version_entities
         }
 
-        product_ids = {v["parent"] for v in version_docs_by_id.values()}
-        product_docs = get_subsets(project_name, subset_ids=product_ids)
-        product_docs_by_id = {
-            p["_id"]: p for p in product_docs
+        product_ids = {v["productId"] for v in version_entities_by_id.values()}
+        product_entities = ayon_api.get_products(
+            project_name, product_ids=product_ids
+        )
+        product_entities_by_id = {
+            p["id"]: p for p in product_entities
         }
 
-        folder_ids = {p["parent"] for p in product_docs_by_id.values()}
-        folder_docs = get_assets(project_name, asset_ids=folder_ids)
-        folder_docs_by_id = {
-            f["_id"]: f for f in folder_docs
+        folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
+        folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
+        folder_entities_by_id = {
+            f["id"]: f for f in folder_entities
         }
 
-        project_doc = get_project(project_name)
-        project_doc["code"] = project_doc["data"]["code"]
+        project_entity = ayon_api.get_project(project_name)
 
-        for product_id, product_doc in product_docs_by_id.items():
-            folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+        for product_id, product_entity in product_entities_by_id.items():
+            folder_id = product_entity["folderId"]
+            folder_entity = folder_entities_by_id[folder_id]
             product_context_by_id[product_id] = {
-                "project": project_doc,
-                "asset": folder_doc,
-                "subset": product_doc,
+                "project": project_entity,
+                "folder": folder_entity,
+                "product": product_entity,
             }
 
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
-            version_doc = version_docs_by_id[version_id]
-            product_id = version_doc["parent"]
-            product_doc = product_docs_by_id[product_id]
-            folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            version_entity = version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
+            product_entity = product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
+            folder_entity = folder_entities_by_id[folder_id]
 
-            repre_context_by_id[repre_doc["_id"]] = {
-                "project": project_doc,
-                "asset": folder_doc,
-                "subset": product_doc,
-                "version": version_doc,
-                "representation": repre_doc,
+            repre_context_by_id[repre_entity["id"]] = {
+                "project": project_entity,
+                "folder": folder_entity,
+                "product": product_entity,
+                "version": version_entity,
+                "representation": repre_entity,
             }
         return product_context_by_id, repre_context_by_id
 
@@ -594,10 +560,10 @@ class LoaderActionsModel:
                 repre_product_ids = set()
                 repre_folder_ids = set()
                 for repre_context in filtered_repre_contexts:
-                    repre_ids.add(repre_context["representation"]["_id"])
-                    repre_product_ids.add(repre_context["subset"]["_id"])
-                    repre_version_ids.add(repre_context["version"]["_id"])
-                    repre_folder_ids.add(repre_context["asset"]["_id"])
+                    repre_ids.add(repre_context["representation"]["id"])
+                    repre_product_ids.add(repre_context["product"]["id"])
+                    repre_version_ids.add(repre_context["version"]["id"])
+                    repre_folder_ids.add(repre_context["folder"]["id"])
 
                 item = self._create_loader_action_item(
                     loader,
@@ -611,13 +577,13 @@ class LoaderActionsModel:
                 )
                 action_items.append(item)
 
-        # Subset Loaders.
+        # Product Loaders.
         version_ids = set(version_context_by_id.keys())
         product_folder_ids = set()
         product_ids = set()
         for product_context in version_context_by_id.values():
-            product_ids.add(product_context["subset"]["_id"])
-            product_folder_ids.add(product_context["asset"]["_id"])
+            product_ids.add(product_context["product"]["id"])
+            product_folder_ids.add(product_context["folder"]["id"])
 
         version_contexts = list(version_context_by_id.values())
         for loader in product_loaders:
@@ -643,44 +609,49 @@ class LoaderActionsModel:
     ):
         """Trigger version loader.
 
-        This triggers 'load' method of 'SubsetLoaderPlugin' for given version
+        This triggers 'load' method of 'ProductLoaderPlugin' for given version
         ids.
 
         Note:
-            Even when the plugin is 'SubsetLoaderPlugin' it actually expects
+            Even when the plugin is 'ProductLoaderPlugin' it actually expects
                 versions and should be named 'VersionLoaderPlugin'. Because it
                 is planned to refactor load system and introduce
                 'LoaderAction' plugins it is not relevant to change it
                 anymore.
 
         Args:
-            loader (SubsetLoaderPlugin): Loader plugin to use.
+            loader (ProductLoaderPlugin): Loader plugin to use.
             options (dict): Option values for loader.
             project_name (str): Project name.
             version_ids (Iterable[str]): Version ids.
         """
 
-        project_doc = get_project(project_name)
-        project_doc["code"] = project_doc["data"]["code"]
+        project_entity = ayon_api.get_project(project_name)
 
-        version_docs = self._get_version_docs(project_name, version_ids)
-        product_ids = {v["parent"] for v in version_docs}
-        product_docs = get_subsets(project_name, subset_ids=product_ids)
-        product_docs_by_id = {f["_id"]: f for f in product_docs}
-        folder_ids = {p["parent"] for p in product_docs_by_id.values()}
-        folder_docs = get_assets(project_name, asset_ids=folder_ids)
-        folder_docs_by_id = {f["_id"]: f for f in folder_docs}
+        version_entities = list(ayon_api.get_versions(
+            project_name, version_ids=version_ids
+        ))
+        product_ids = {v["productId"] for v in version_entities}
+        product_entities = ayon_api.get_products(
+            project_name, product_ids=product_ids
+        )
+        product_entities_by_id = {p["id"]: p for p in product_entities}
+        folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
+        folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
+        folder_entities_by_id = {f["id"]: f for f in folder_entities}
         product_contexts = []
-        for version_doc in version_docs:
-            product_id = version_doc["parent"]
-            product_doc = product_docs_by_id[product_id]
-            folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+        for version_entity in version_entities:
+            product_id = version_entity["productId"]
+            product_entity = product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
+            folder_entity = folder_entities_by_id[folder_id]
             product_contexts.append({
-                "project": project_doc,
-                "asset": folder_doc,
-                "subset": product_doc,
-                "version": version_doc,
+                "project": project_entity,
+                "folder": folder_entity,
+                "product": product_entity,
+                "version": version_entity,
             })
 
         return self._load_products_by_loader(
@@ -698,7 +669,7 @@ class LoaderActionsModel:
 
         This triggers 'load' method of 'LoaderPlugin' for given representation
             ids. For that are prepared contexts for each representation, with
-            all parent documents.
+            all parent entities.
 
         Args:
             loader (LoaderPlugin): Loader plugin to use.
@@ -707,34 +678,41 @@ class LoaderActionsModel:
             representation_ids (Iterable[str]): Representation ids.
         """
 
-        project_doc = get_project(project_name)
-        project_doc["code"] = project_doc["data"]["code"]
-        repre_docs = list(get_representations(
+        project_entity = ayon_api.get_project(project_name)
+        repre_entities = list(ayon_api.get_representations(
             project_name, representation_ids=representation_ids
         ))
-        version_ids = {r["parent"] for r in repre_docs}
-        version_docs = self._get_version_docs(project_name, version_ids)
-        version_docs_by_id = {v["_id"]: v for v in version_docs}
-        product_ids = {v["parent"] for v in version_docs_by_id.values()}
-        product_docs = get_subsets(project_name, subset_ids=product_ids)
-        product_docs_by_id = {p["_id"]: p for p in product_docs}
-        folder_ids = {p["parent"] for p in product_docs_by_id.values()}
-        folder_docs = get_assets(project_name, asset_ids=folder_ids)
-        folder_docs_by_id = {f["_id"]: f for f in folder_docs}
+        version_ids = {r["versionId"] for r in repre_entities}
+        version_entities = ayon_api.get_versions(
+            project_name, version_ids=version_ids
+        )
+        version_entities_by_id = {v["id"]: v for v in version_entities}
+        product_ids = {
+            v["productId"] for v in version_entities_by_id.values()
+        }
+        product_entities = ayon_api.get_products(
+            project_name, product_ids=product_ids
+        )
+        product_entities_by_id = {p["id"]: p for p in product_entities}
+        folder_ids = {p["folderId"] for p in product_entities_by_id.values()}
+        folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
+        folder_entities_by_id = {f["id"]: f for f in folder_entities}
         repre_contexts = []
-        for repre_doc in repre_docs:
-            version_id = repre_doc["parent"]
-            version_doc = version_docs_by_id[version_id]
-            product_id = version_doc["parent"]
-            product_doc = product_docs_by_id[product_id]
-            folder_id = product_doc["parent"]
-            folder_doc = folder_docs_by_id[folder_id]
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            version_entity = version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
+            product_entity = product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
+            folder_entity = folder_entities_by_id[folder_id]
             repre_contexts.append({
-                "project": project_doc,
-                "asset": folder_doc,
-                "subset": product_doc,
-                "version": version_doc,
-                "representation": repre_doc,
+                "project": project_entity,
+                "folder": folder_entity,
+                "product": product_entity,
+                "version": version_entity,
+                "representation": repre_entity,
             })
 
         return self._load_representations_by_loader(
@@ -747,18 +725,17 @@ class LoaderActionsModel:
         Args:
             loader (LoaderPlugin): Loader plugin to use.
             repre_contexts (list[dict]): Full info about selected
-                representations, containing repre, version, subset, asset and
-                project documents.
+                representations, containing repre, version, product, folder
+                and project entities.
             options (dict): Data from options.
         """
 
         error_info = []
         for repre_context in repre_contexts:
-            version_doc = repre_context["version"]
-            if version_doc["type"] == "hero_version":
-                version_name = "Hero"
-            else:
-                version_name = version_doc.get("name")
+            version_entity = repre_context["version"]
+            version = version_entity["version"]
+            if version < 0:
+                version = "Hero"
             try:
                 load_with_repre_context(
                     loader,
@@ -772,8 +749,8 @@ class LoaderActionsModel:
                     "Incompatible Loader",
                     None,
                     repre_context["representation"]["name"],
-                    repre_context["subset"]["name"],
-                    version_name
+                    repre_context["product"]["name"],
+                    version
                 ))
 
             except Exception as exc:
@@ -788,20 +765,20 @@ class LoaderActionsModel:
                     str(exc),
                     formatted_traceback,
                     repre_context["representation"]["name"],
-                    repre_context["subset"]["name"],
-                    version_name
+                    repre_context["product"]["name"],
+                    version
                 ))
         return error_info
 
     def _load_products_by_loader(self, loader, version_contexts, options):
-        """Triggers load with SubsetLoader type of loaders.
+        """Triggers load with ProductLoader type of loaders.
 
         Warning:
-            Plugin is named 'SubsetLoader' but version is passed to context
+            Plugin is named 'ProductLoader' but version is passed to context
                 too.
 
         Args:
-            loader (SubsetLoder): Loader used to load.
+            loader (ProductLoader): Loader used to load.
             version_contexts (list[dict[str, Any]]): For context for each
                 version.
             options (dict[str, Any]): Options for loader that user could fill.
@@ -811,10 +788,10 @@ class LoaderActionsModel:
         if loader.is_multiple_contexts_compatible:
             product_names = []
             for context in version_contexts:
-                product_name = context.get("subset", {}).get("name") or "N/A"
+                product_name = context.get("product", {}).get("name") or "N/A"
                 product_names.append(product_name)
             try:
-                load_with_subset_contexts(
+                load_with_product_contexts(
                     loader,
                     version_contexts,
                     options=options
@@ -837,10 +814,10 @@ class LoaderActionsModel:
         else:
             for version_context in version_contexts:
                 product_name = (
-                    version_context.get("subset", {}).get("name") or "N/A"
+                    version_context.get("product", {}).get("name") or "N/A"
                 )
                 try:
-                    load_with_subset_context(
+                    load_with_product_context(
                         loader,
                         version_context,
                         options=options

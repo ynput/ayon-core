@@ -9,12 +9,12 @@ from ayon_core.hosts.houdini.api import lib
 class USDSublayerLoader(load.LoaderPlugin):
     """Sublayer USD file in Solaris"""
 
-    families = [
+    product_types = {
         "usd",
         "usdCamera",
-    ]
+    }
     label = "Sublayer USD"
-    representations = ["usd", "usda", "usdlc", "usdnc", "abc"]
+    representations = {"usd", "usda", "usdlc", "usdnc", "abc"}
     order = 1
 
     icon = "code-fork"
@@ -34,7 +34,7 @@ class USDSublayerLoader(load.LoaderPlugin):
         stage = hou.node("/stage")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create USD reference
@@ -49,7 +49,7 @@ class USDSublayerLoader(load.LoaderPlugin):
             "name": node_name,
             "namespace": namespace,
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
         }
 
         # todo: add folder="Avalon"
@@ -58,18 +58,18 @@ class USDSublayerLoader(load.LoaderPlugin):
         return container
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         node = container["node"]
 
         # Update the file path
-        file_path = get_representation_path(repre_doc)
+        file_path = get_representation_path(repre_entity)
         file_path = file_path.replace("\\", "/")
 
         # Update attributes
         node.setParms(
             {
                 "filepath1": file_path,
-                "representation": str(repre_doc["_id"]),
+                "representation": repre_entity["id"],
             }
         )
 

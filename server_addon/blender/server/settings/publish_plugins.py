@@ -66,7 +66,7 @@ class ExtractPlayblastModel(BaseSettingsModel):
         return validate_json_dict(value)
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class PublishPluginsModel(BaseSettingsModel):
     ValidateCameraZeroKeyframe: ValidatePluginModel = SettingsField(
         default_factory=ValidatePluginModel,
         title="Validate Camera Zero Keyframe",
@@ -88,6 +88,10 @@ class PublishPuginsModel(BaseSettingsModel):
     ValidateMeshNoNegativeScale: ValidatePluginModel = SettingsField(
         default_factory=ValidatePluginModel,
         title="Validate Mesh No Negative Scale"
+    )
+    ValidateModelMeshUvMap1: ValidatePluginModel = SettingsField(
+        default_factory=ValidatePluginModel,
+        title="Validate Model Mesh Has UV map named map1"
     )
     ValidateTransformZero: ValidatePluginModel = SettingsField(
         default_factory=ValidatePluginModel,
@@ -179,6 +183,11 @@ DEFAULT_BLENDER_PUBLISH_SETTINGS = {
     "ValidateMeshNoNegativeScale": {
         "enabled": True,
         "optional": False,
+        "active": True
+    },
+    "ValidateModelMeshUvMap1": {
+        "enabled": False,
+        "optional": True,
         "active": True
     },
     "ValidateTransformZero": {

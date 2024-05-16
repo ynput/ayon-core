@@ -3,7 +3,7 @@ from pymxs import runtime as rt
 from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_project_name
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 
 from ayon_core.hosts.max.api.lib import (
     set_render_frame_range,
@@ -57,14 +57,14 @@ class RenderSettings(object):
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         # hard-coded, should be customized in the setting
-        context = get_current_project_asset()
+        folder_attributes = get_current_folder_entity()["attrib"]
 
         # get project resolution
-        width = context["data"].get("resolutionWidth")
-        height = context["data"].get("resolutionHeight")
+        width = folder_attributes.get("resolutionWidth")
+        height = folder_attributes.get("resolutionHeight")
         # Set Frame Range
-        frame_start = context["data"].get("frame_start")
-        frame_end = context["data"].get("frame_end")
+        frame_start = folder_attributes.get("frame_start")
+        frame_end = folder_attributes.get("frame_end")
         set_render_frame_range(frame_start, frame_end)
         # get the production render
         renderer_class = get_current_renderer()

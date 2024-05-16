@@ -16,6 +16,7 @@ class ValidateExistingVersion(
     order = ValidateContentsOrder
 
     hosts = ["traypublisher"]
+    targets = ["local"]
 
     actions = [RepairAction]
 
@@ -40,7 +41,7 @@ class ValidateExistingVersion(
 
         formatting_data = {
             "product_name": product_name,
-            "asset_name": instance.data["folderPath"],
+            "folder_path": instance.data["folderPath"],
             "version": version
         }
         raise PublishXmlValidationError(

@@ -2,8 +2,6 @@
 """Tools to work with FBX."""
 import logging
 
-from pyblish.api import Instance
-
 from maya import cmds  # noqa
 import maya.mel as mel  # noqa
 from ayon_core.hosts.maya.api.lib import maintained_selection
@@ -49,7 +47,7 @@ class FBXExtractor:
             "smoothMesh": bool,
             "instances": bool,
             # "referencedContainersContent": bool, # deprecated in Maya 2016+
-            "bakeComplexAnimation": int,
+            "bakeComplexAnimation": bool,
             "bakeComplexStart": int,
             "bakeComplexEnd": int,
             "bakeComplexStep": int,
@@ -61,6 +59,7 @@ class FBXExtractor:
             "constraints": bool,
             "lights": bool,
             "embeddedTextures": bool,
+            "includeChildren": bool,
             "inputConnections": bool,
             "upAxis": str,  # x, y or z,
             "triangulate": bool,
@@ -104,6 +103,7 @@ class FBXExtractor:
             "constraints": False,
             "lights": True,
             "embeddedTextures": False,
+            "includeChildren": True,
             "inputConnections": True,
             "upAxis": "y",
             "triangulate": False,
@@ -146,7 +146,6 @@ class FBXExtractor:
         return options
 
     def set_options_from_instance(self, instance):
-        # type: (Instance) -> None
         """Sets FBX export options from data in the instance.
 
         Args:

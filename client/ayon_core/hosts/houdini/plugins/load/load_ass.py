@@ -11,9 +11,9 @@ from ayon_core.hosts.houdini.api import pipeline
 class AssLoader(load.LoaderPlugin):
     """Load .ass with Arnold Procedural"""
 
-    families = ["ass"]
+    product_types = {"ass"}
     label = "Load Arnold Procedural"
-    representations = ["ass"]
+    representations = {"ass"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -25,7 +25,7 @@ class AssLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create a new geo node
@@ -50,12 +50,12 @@ class AssLoader(load.LoaderPlugin):
 
     def update(self, container, context):
         # Update the file path
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         procedural = container["node"]
-        procedural.setParms({"ar_filename": self.format_path(repre_doc)})
+        procedural.setParms({"ar_filename": self.format_path(repre_entity)})
 
         # Update attribute
-        procedural.setParms({"representation": str(repre_doc["_id"])})
+        procedural.setParms({"representation": repre_entity["id"]})
 
     def remove(self, container):
         node = container["node"]

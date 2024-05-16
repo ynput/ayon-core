@@ -2,6 +2,8 @@
 """Load camera from FBX."""
 from pathlib import Path
 
+import ayon_api
+
 import unreal
 from unreal import (
     EditorAssetLibrary,
@@ -9,10 +11,10 @@ from unreal import (
     EditorLevelUtils,
     LevelSequenceEditorBlueprintLibrary as LevelSequenceLib,
 )
-from ayon_core.client import get_asset_by_name
 from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
+    get_representation_path,
 )
 from ayon_core.hosts.unreal.api import plugin
 from ayon_core.hosts.unreal.api.pipeline import (
@@ -26,9 +28,9 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class CameraLoader(plugin.Loader):
     """Load Unreal StaticMesh from FBX"""
 
-    families = ["camera"]
+    product_types = {"camera"}
     label = "Load Camera"
-    representations = ["fbx"]
+    representations = {"fbx"}
     icon = "cube"
     color = "orange"
 
@@ -83,24 +85,33 @@ class CameraLoader(plugin.Loader):
         """
 
         # Create directory for asset and Ayon container
-        hierarchy = context.get('asset').get('data').get('parents')
+        folder_entity = context["folder"]
+        folder_attributes = folder_entity["attrib"]
+        folder_path = folder_entity["path"]
+        hierarchy_parts = folder_path.split("/")
+        # Remove empty string
+        hierarchy_parts.pop(0)
+        # Pop folder name
+        folder_name = hierarchy_parts.pop(-1)
+
         root = "/Game/Ayon"
         hierarchy_dir = root
         hierarchy_dir_list = []
-        for h in hierarchy:
+        for h in hierarchy_parts:
             hierarchy_dir = f"{hierarchy_dir}/{h}"
             hierarchy_dir_list.append(hierarchy_dir)
-        asset = context.get('asset').get('name')
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
+        asset_name = f"{folder_name}_{name}" if folder_name else name
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
 
         # Create a unique name for the camera directory
         unique_number = 1
-        if EditorAssetLibrary.does_directory_exist(f"{hierarchy_dir}/{asset}"):
+        if EditorAssetLibrary.does_directory_exist(
+            f"{hierarchy_dir}/{folder_name}"
+        ):
             asset_content = EditorAssetLibrary.list_assets(
-                f"{root}/{asset}", recursive=False, include_folder=True
+                f"{root}/{folder_name}", recursive=False, include_folder=True
             )
 
             # Get highest number to make a unique name
@@ -113,7 +124,7 @@ class CameraLoader(plugin.Loader):
             unique_number = f_numbers[-1] + 1 if f_numbers else 1
 
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{hierarchy_dir}/{asset}/{name}_{unique_number:02d}", suffix="")
+            f"{hierarchy_dir}/{folder_name}/{name}_{unique_number:02d}", suffix="")
 
         container_name += suffix
 
@@ -122,14 +133,18 @@ class CameraLoader(plugin.Loader):
         # Create map for the shot, and create hierarchy of map. If the maps
         # already exist, we will use them.
         h_dir = hierarchy_dir_list[0]
-        h_asset = hierarchy[0]
+        h_asset = hierarchy_dir[0]
         master_level = f"{h_dir}/{h_asset}_map.{h_asset}_map"
         if not EditorAssetLibrary.does_asset_exist(master_level):
             EditorLevelLibrary.new_level(f"{h_dir}/{h_asset}_map")
 
-        level = f"{asset_dir}/{asset}_map_camera.{asset}_map_camera"
+        level = (
+            f"{asset_dir}/{folder_name}_map_camera.{folder_name}_map_camera"
+        )
         if not EditorAssetLibrary.does_asset_exist(level):
-            EditorLevelLibrary.new_level(f"{asset_dir}/{asset}_map_camera")
+            EditorLevelLibrary.new_level(
+                f"{asset_dir}/{folder_name}_map_camera"
+            )
 
             EditorLevelLibrary.load_level(master_level)
             EditorLevelUtils.add_level_to_world(
@@ -144,7 +159,7 @@ class CameraLoader(plugin.Loader):
         # they don't exist.
         frame_ranges = []
         sequences = []
-        for (h_dir, h) in zip(hierarchy_dir_list, hierarchy):
+        for (h_dir, h) in zip(hierarchy_dir_list, hierarchy_parts):
             root_content = EditorAssetLibrary.list_assets(
                 h_dir, recursive=False, include_folder=False)
 
@@ -170,7 +185,7 @@ class CameraLoader(plugin.Loader):
         EditorAssetLibrary.make_directory(asset_dir)
 
         cam_seq = tools.create_asset(
-            asset_name=f"{asset}_camera",
+            asset_name=f"{folder_name}_camera",
             package_path=asset_dir,
             asset_class=unreal.LevelSequence,
             factory=unreal.LevelSequenceFactoryNew()
@@ -184,16 +199,17 @@ class CameraLoader(plugin.Loader):
                 frame_ranges[i + 1][0], frame_ranges[i + 1][1],
                 [level])
 
-        project_name = get_current_project_name()
-        data = get_asset_by_name(project_name, asset)["data"]
+        clip_in = folder_attributes.get("clipIn")
+        clip_out = folder_attributes.get("clipOut")
+
         cam_seq.set_display_rate(
-            unreal.FrameRate(data.get("fps"), 1.0))
-        cam_seq.set_playback_start(data.get('clipIn'))
-        cam_seq.set_playback_end(data.get('clipOut') + 1)
+            unreal.FrameRate(folder_attributes.get("fps"), 1.0))
+        cam_seq.set_playback_start(clip_in)
+        cam_seq.set_playback_end(clip_out + 1)
         set_sequence_hierarchy(
             sequences[-1], cam_seq,
             frame_ranges[-1][1],
-            data.get('clipIn'), data.get('clipOut'),
+            clip_in, clip_out,
             [level])
 
         settings = unreal.MovieSceneUserImportFBXSettings()
@@ -215,9 +231,7 @@ class CameraLoader(plugin.Loader):
         for possessable in cam_seq.get_possessables():
             for tracks in possessable.get_tracks():
                 for section in tracks.get_sections():
-                    section.set_range(
-                        data.get('clipIn'),
-                        data.get('clipOut') + 1)
+                    section.set_range(clip_in, clip_out + 1)
                     for channel in section.get_all_channels():
                         for key in channel.get_keys():
                             old_time = key.get_time().get_editor_property(
@@ -225,7 +239,7 @@ class CameraLoader(plugin.Loader):
                             old_time_value = old_time.get_editor_property(
                                 'value')
                             new_time = old_time_value + (
-                                data.get('clipIn') - data.get('frameStart')
+                                clip_in - folder_attributes.get('frameStart')
                             )
                             key.set_time(unreal.FrameNumber(value=new_time))
 
@@ -233,17 +247,21 @@ class CameraLoader(plugin.Loader):
         create_container(
             container=container_name, path=asset_dir)
 
+        product_type = context["product"]["productType"]
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["_id"],
-            "parent": context["representation"]["parent"],
-            "family": context["representation"]["context"]["family"]
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_name,
+            "family": product_type,
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -379,28 +397,33 @@ class CameraLoader(plugin.Loader):
 
         sub_scene.set_sequence(new_sequence)
 
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
+        repre_path = get_representation_path(repre_entity)
         self._import_camera(
             EditorLevelLibrary.get_editor_world(),
             new_sequence,
             new_sequence.get_bindings(),
             settings,
-            str(repre_doc["data"]["path"])
+            repre_path
         )
 
         # Set range of all sections
         # Changing the range of the section is not enough. We need to change
         # the frame of all the keys in the section.
         project_name = get_current_project_name()
-        asset = container.get('asset')
-        data = get_asset_by_name(project_name, asset)["data"]
+        folder_path = container.get("folder_path")
+        if folder_path is None:
+            folder_path = container.get("asset")
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        folder_attributes = folder_entity["attrib"]
 
+        clip_in = folder_attributes["clipIn"]
+        clip_out = folder_attributes["clipOut"]
+        frame_start = folder_attributes["frameStart"]
         for possessable in new_sequence.get_possessables():
             for tracks in possessable.get_tracks():
                 for section in tracks.get_sections():
-                    section.set_range(
-                        data.get('clipIn'),
-                        data.get('clipOut') + 1)
+                    section.set_range(clip_in, clip_out + 1)
                     for channel in section.get_all_channels():
                         for key in channel.get_keys():
                             old_time = key.get_time().get_editor_property(
@@ -408,13 +431,13 @@ class CameraLoader(plugin.Loader):
                             old_time_value = old_time.get_editor_property(
                                 'value')
                             new_time = old_time_value + (
-                                data.get('clipIn') - data.get('frameStart')
+                                clip_in - frame_start
                             )
                             key.set_time(unreal.FrameNumber(value=new_time))
 
         data = {
-            "representation": str(repre_doc["_id"]),
-            "parent": str(repre_doc["parent"])
+            "representation": repre_entity["id"],
+            "parent": repre_entity["versionId"],
         }
         imprint(f"{asset_dir}/{container.get('container_name')}", data)
 

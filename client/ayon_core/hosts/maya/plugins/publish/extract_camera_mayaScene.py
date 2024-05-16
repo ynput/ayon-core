@@ -299,4 +299,10 @@ def transfer_image_planes(source_cameras, target_cameras,
 
 def _attach_image_plane(camera, image_plane):
     cmds.imagePlane(image_plane, edit=True, detach=True)
+
+    # Attaching to a camera resets it to identity size, so we counter that
+    size_x = cmds.getAttr(f"{image_plane}.sizeX")
+    size_y = cmds.getAttr(f"{image_plane}.sizeY")
     cmds.imagePlane(image_plane, edit=True, camera=camera)
+    cmds.setAttr(f"{image_plane}.sizeX", size_x)
+    cmds.setAttr(f"{image_plane}.sizeY", size_y)

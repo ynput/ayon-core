@@ -1,11 +1,15 @@
 import pyblish.api
 from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder, PublishValidationError, RepairAction
+    ValidateContentsOrder,
+    PublishValidationError,
+    RepairAction,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
+class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin,
+                                    OptionalPyblishPluginMixin):
     """Validate Arnold Scene Source Cbid.
 
     It is required for the proxy and content nodes to share the same cbid.
@@ -13,9 +17,17 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
 
     order = ValidateContentsOrder
     hosts = ["maya"]
-    families = ["ass"]
+    families = ["assProxy"]
     label = "Validate Arnold Scene Source CBID"
     actions = [RepairAction]
+    optional = False
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Disable plug-in if cbId workflow is disabled
+        if not project_settings["maya"].get("use_cbid_workflow", True):
+            cls.enabled = False
+            return
 
     @staticmethod
     def _get_nodes_by_name(nodes):
@@ -28,15 +40,11 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
 
     @classmethod
     def get_invalid_couples(cls, instance):
-        content_nodes_by_name = cls._get_nodes_by_name(
-            instance.data["contentMembers"]
-        )
-        proxy_nodes_by_name = cls._get_nodes_by_name(
-            instance.data.get("proxy", [])
-        )
+        nodes_by_name = cls._get_nodes_by_name(instance.data["members"])
+        proxy_nodes_by_name = cls._get_nodes_by_name(instance.data["proxy"])
 
         invalid_couples = []
-        for content_name, content_node in content_nodes_by_name.items():
+        for content_name, content_node in nodes_by_name.items():
             proxy_node = proxy_nodes_by_name.get(content_name, None)
 
             if not proxy_node:
@@ -55,8 +63,10 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin):
         return invalid_couples
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         # Proxy validation.
-        if not instance.data.get("proxy", []):
+        if not instance.data["proxy"]:
             return
 
         # Validate for proxy nodes sharing the same cbId as content nodes.

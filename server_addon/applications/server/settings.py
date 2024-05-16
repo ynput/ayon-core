@@ -188,6 +188,10 @@ class ApplicationsSettings(BaseSettingsModel):
         default_factory=AppGroupWithPython, title="Wrap")
     openrv: AppGroup = SettingsField(
         default_factory=AppGroupWithPython, title="OpenRV")
+    zbrush: AppGroup = SettingsField(
+        default_factory=AppGroupWithPython, title="Zbrush")
+    equalizer: AppGroup = SettingsField(
+        default_factory=AppGroupWithPython, title="3DEqualizer")
     additional_apps: list[AdditionalAppGroup] = SettingsField(
         default_factory=list, title="Additional Applications")
 

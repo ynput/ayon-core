@@ -2,27 +2,24 @@ import os
 import logging
 import sys
 import copy
-import datetime
 
 import clique
 import six
 import pyblish.api
-
-from ayon_core.client.operations import (
-    OperationsSession,
-    new_subset_document,
-    new_version_doc,
-    new_representation_doc,
-    prepare_subset_update_data,
-    prepare_version_update_data,
-    prepare_representation_update_data,
-)
-
-from ayon_core.client import (
-    get_representations,
-    get_subset_by_name,
+from ayon_api import (
+    get_attributes_for_type,
+    get_product_by_name,
     get_version_by_name,
+    get_representations,
 )
+from ayon_api.operations import (
+    OperationsSession,
+    new_product_entity,
+    new_version_entity,
+    new_representation_entity,
+)
+from ayon_api.utils import create_entity_id
+
 from ayon_core.lib import source_hash
 from ayon_core.lib.file_transaction import (
     FileTransaction,
@@ -34,6 +31,36 @@ from ayon_core.pipeline.publish import (
 )
 
 log = logging.getLogger(__name__)
+
+
+def prepare_changes(old_entity, new_entity):
+    """Prepare changes for entity update.
+
+    Args:
+        old_entity: Existing entity.
+        new_entity: New entity.
+
+    Returns:
+        dict[str, Any]: Changes that have new entity.
+
+    """
+    changes = {}
+    for key in set(new_entity.keys()):
+        if key == "attrib":
+            continue
+
+        if key in new_entity and new_entity[key] != old_entity.get(key):
+            changes[key] = new_entity[key]
+            continue
+
+    attrib_changes = {}
+    if "attrib" in new_entity:
+        for key, value in new_entity["attrib"].items():
+            if value != old_entity["attrib"].get(key):
+                attrib_changes[key] = value
+    if attrib_changes:
+        changes["attrib"] = attrib_changes
+    return changes
 
 
 def get_instance_families(instance):
@@ -81,67 +108,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
     label = "Integrate Asset"
     order = pyblish.api.IntegratorOrder
-    families = ["workfile",
-                "pointcache",
-                "pointcloud",
-                "proxyAbc",
-                "camera",
-                "animation",
-                "model",
-                "maxScene",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "ass",
-                "vdbcache",
-                "scene",
-                "vrayproxy",
-                "vrayscene_layer",
-                "render",
-                "prerender",
-                "imagesequence",
-                "review",
-                "rendersetup",
-                "rig",
-                "plate",
-                "look",
-                "ociolook",
-                "audio",
-                "yetiRig",
-                "yeticache",
-                "nukenodes",
-                "gizmo",
-                "source",
-                "matchmove",
-                "image",
-                "assembly",
-                "fbx",
-                "gltf",
-                "textures",
-                "action",
-                "harmony.template",
-                "harmony.palette",
-                "editorial",
-                "background",
-                "camerarig",
-                "redshiftproxy",
-                "effect",
-                "xgen",
-                "hda",
-                "usd",
-                "staticMesh",
-                "skeletalMesh",
-                "mvLook",
-                "mvUsd",
-                "mvUsdComposition",
-                "mvUsdOverride",
-                "online",
-                "uasset",
-                "blendScene",
-                "yeticacheUE",
-                "tycache"
-                ]
 
     default_template_name = "publish"
 
@@ -164,7 +130,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     ]
 
     def process(self, instance):
-
         # Instance should be integrated on a farm
         if instance.data.get("farm"):
             self.log.debug(
@@ -256,23 +221,22 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         template_name = self.get_template_name(instance)
 
         op_session = OperationsSession()
-        subset = self.prepare_subset(
+        product_entity = self.prepare_product(
             instance, op_session, project_name
         )
-        version = self.prepare_version(
-            instance, op_session, subset, project_name
+        version_entity = self.prepare_version(
+            instance, op_session, product_entity, project_name
         )
-        instance.data["versionEntity"] = version
+        instance.data["versionEntity"] = version_entity
 
         anatomy = instance.context.data["anatomy"]
 
         # Get existing representations (if any)
         existing_repres_by_name = {
-            repre_doc["name"].lower(): repre_doc
-            for repre_doc in get_representations(
+            repre_entity["name"].lower(): repre_entity
+            for repre_entity in get_representations(
                 project_name,
-                version_ids=[version["_id"]],
-                fields=["_id", "name"]
+                version_ids=[version_entity["id"]]
             )
         }
 
@@ -284,7 +248,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 repre,
                 template_name,
                 existing_repres_by_name,
-                version,
+                version_entity,
                 instance_stagingdir,
                 instance)
 
@@ -312,7 +276,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 resource_destinations.add(os.path.abspath(dst))
 
         # Bulk write to the database
-        # We write the subset and version to the database before the File
+        # We write the product and version to the database before the File
         # Transaction to reduce the chances of another publish trying to
         # publish to the same version number since that chance can greatly
         # increase if the file transaction takes a long time.
@@ -320,7 +284,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         self.log.info((
             "Product '{}' version {} written to database.."
-        ).format(subset["name"], version["name"]))
+        ).format(product_entity["name"], version_entity["version"]))
 
         # Process all file transfers of all integrations now
         self.log.debug("Integrating source files to destination ...")
@@ -331,58 +295,46 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             "Transferred files: {}".format(file_transactions.transferred))
         self.log.debug("Retrieving Representation Site Sync information ...")
 
-        # Get the accessible sites for Site Sync
-        addons_manager = instance.context.data["ayonAddonsManager"]
-        sync_server_addon = addons_manager.get("sync_server")
-        if sync_server_addon is None:
-            sites = [{
-                "name": "studio",
-                "created_dt": datetime.datetime.now()
-            }]
-        else:
-            sites = sync_server_addon.compute_resource_sync_sites(
-                project_name=instance.data["projectEntity"]["name"]
-            )
-        self.log.debug("Sync Server Sites: {}".format(sites))
-
         # Compute the resource file infos once (files belonging to the
         # version instance instead of an individual representation) so
-        # we can re-use those file infos per representation
-        resource_file_infos = self.get_files_info(resource_destinations,
-                                                  sites=sites,
-                                                  anatomy=anatomy)
+        # we can reuse those file infos per representation
+        resource_file_infos = self.get_files_info(
+            resource_destinations, anatomy
+        )
 
         # Finalize the representations now the published files are integrated
         # Get 'files' info for representations and its attached resources
         new_repre_names_low = set()
         for prepared in prepared_representations:
-            repre_doc = prepared["representation"]
-            repre_update_data = prepared["repre_doc_update_data"]
+            repre_entity = prepared["representation"]
+            repre_update_data = prepared["repre_update_data"]
             transfers = prepared["transfers"]
             destinations = [dst for src, dst in transfers]
-            repre_doc["files"] = self.get_files_info(
-                destinations, sites=sites, anatomy=anatomy
+            repre_files = self.get_files_info(
+                destinations, anatomy
             )
-
             # Add the version resource file infos to each representation
-            repre_doc["files"] += resource_file_infos
+            repre_files += resource_file_infos
+            repre_entity["files"] = repre_files
 
             # Set up representation for writing to the database. Since
             # we *might* be overwriting an existing entry if the version
             # already existed we'll use ReplaceOnce with `upsert=True`
             if repre_update_data is None:
                 op_session.create_entity(
-                    project_name, repre_doc["type"], repre_doc
+                    project_name, "representation", repre_entity
                 )
             else:
+                # Add files to update data
+                repre_update_data["files"] = repre_files
                 op_session.update_entity(
                     project_name,
-                    repre_doc["type"],
-                    repre_doc["_id"],
+                    "representation",
+                    repre_entity["id"],
                     repre_update_data
                 )
 
-            new_repre_names_low.add(repre_doc["name"].lower())
+            new_repre_names_low.add(repre_entity["name"].lower())
 
         # Delete any existing representations that didn't get any new data
         # if the instance is not set to append mode
@@ -392,7 +344,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                     # We add the exact representation name because `name` is
                     # lowercase for name matching only and not in the database
                     op_session.delete_entity(
-                        project_name, "representation", existing_repres["_id"]
+                        project_name, "representation", existing_repres["id"]
                     )
 
         self.log.debug("{}".format(op_session.to_data()))
@@ -401,7 +353,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Backwards compatibility used in hero integration.
         # todo: can we avoid the need to store this?
         instance.data["published_representations"] = {
-            p["representation"]["_id"]: p for p in prepared_representations
+            p["representation"]["id"]: p
+            for p in prepared_representations
         }
 
         self.log.info(
@@ -412,108 +365,130 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             )
         )
 
-    def prepare_subset(self, instance, op_session, project_name):
-        asset_doc = instance.data["assetEntity"]
+    def prepare_product(self, instance, op_session, project_name):
+        folder_entity = instance.data["folderEntity"]
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
         self.log.debug("Product: {}".format(product_name))
 
-        # Get existing subset if it exists
-        existing_subset_doc = get_subset_by_name(
-            project_name, product_name, asset_doc["_id"]
+        # Get existing product if it exists
+        existing_product_entity = get_product_by_name(
+            project_name, product_name, folder_entity["id"]
         )
 
-        # Define subset data
+        # Define product data
         data = {
             "families": get_instance_families(instance)
         }
+        attribibutes = {}
 
-        subset_group = instance.data.get("subsetGroup")
-        if subset_group:
-            data["subsetGroup"] = subset_group
-        elif existing_subset_doc:
-            # Preserve previous subset group if new version does not set it
-            if "subsetGroup" in existing_subset_doc.get("data", {}):
-                subset_group = existing_subset_doc["data"]["subsetGroup"]
-                data["subsetGroup"] = subset_group
+        product_group = instance.data.get("productGroup")
+        if product_group:
+            attribibutes["productGroup"] = product_group
+        elif existing_product_entity:
+            # Preserve previous product group if new version does not set it
+            product_group = existing_product_entity.get("attrib", {}).get(
+                "productGroup"
+            )
+            if product_group is not None:
+                attribibutes["productGroup"] = product_group
 
-        subset_id = None
-        if existing_subset_doc:
-            subset_id = existing_subset_doc["_id"]
-        subset_doc = new_subset_document(
-            product_name, product_type, asset_doc["_id"], data, subset_id
+        product_id = None
+        if existing_product_entity:
+            product_id = existing_product_entity["id"]
+
+        product_entity = new_product_entity(
+            product_name,
+            product_type,
+            folder_entity["id"],
+            data=data,
+            attribs=attribibutes,
+            entity_id=product_id
         )
 
-        if existing_subset_doc is None:
-            # Create a new subset
+        if existing_product_entity is None:
+            # Create a new product
             self.log.info(
                 "Product '%s' not found, creating ..." % product_name
             )
             op_session.create_entity(
-                project_name, subset_doc["type"], subset_doc
+                project_name, "product", product_entity
             )
 
         else:
-            # Update existing subset data with new data and set in database.
-            # We also change the found subset in-place so we don't need to
-            # re-query the subset afterwards
-            subset_doc["data"].update(data)
-            update_data = prepare_subset_update_data(
-                existing_subset_doc, subset_doc
+            # Update existing product data with new data and set in database.
+            # We also change the found product in-place so we don't need to
+            # re-query the product afterwards
+            update_data = prepare_changes(
+                existing_product_entity, product_entity
             )
             op_session.update_entity(
                 project_name,
-                subset_doc["type"],
-                subset_doc["_id"],
+                "product",
+                product_entity["id"],
                 update_data
             )
 
         self.log.debug("Prepared product: {}".format(product_name))
-        return subset_doc
+        return product_entity
 
-    def prepare_version(self, instance, op_session, subset_doc, project_name):
+    def prepare_version(
+        self, instance, op_session, product_entity, project_name
+    ):
         version_number = instance.data["version"]
+        task_id = None
+        task_entity = instance.data.get("taskEntity")
+        if task_entity:
+            task_id = task_entity["id"]
 
         existing_version = get_version_by_name(
             project_name,
             version_number,
-            subset_doc["_id"],
-            fields=["_id"]
+            product_entity["id"]
         )
         version_id = None
         if existing_version:
-            version_id = existing_version["_id"]
+            version_id = existing_version["id"]
 
-        version_data = self.create_version_data(instance)
-        version_doc = new_version_doc(
+        all_version_data = self.create_version_data(instance)
+        version_data = {}
+        version_attributes = {}
+        attr_defs = self._get_attributes_for_type(instance.context, "version")
+        for key, value in all_version_data.items():
+            if key in attr_defs:
+                version_attributes[key] = value
+            else:
+                version_data[key] = value
+
+        version_entity = new_version_entity(
             version_number,
-            subset_doc["_id"],
-            version_data,
-            version_id
+            product_entity["id"],
+            task_id=task_id,
+            data=version_data,
+            attribs=version_attributes,
+            entity_id=version_id,
         )
 
         if existing_version:
             self.log.debug("Updating existing version ...")
-            update_data = prepare_version_update_data(
-                existing_version, version_doc
-            )
+            update_data = prepare_changes(existing_version, version_entity)
             op_session.update_entity(
                 project_name,
-                version_doc["type"],
-                version_doc["_id"],
+                "version",
+                version_entity["id"],
                 update_data
             )
         else:
             self.log.debug("Creating new version ...")
             op_session.create_entity(
-                project_name, version_doc["type"], version_doc
+                project_name, "version", version_entity
             )
 
         self.log.debug(
-            "Prepared version: v{0:03d}".format(version_doc["name"])
+            "Prepared version: v{0:03d}".format(version_entity["version"])
         )
 
-        return version_doc
+        return version_entity
 
     def _validate_repre_files(self, files, is_sequence_representation):
         """Validate representation files before transfer preparation.
@@ -552,13 +527,15 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 ", ".join([str(rem) for rem in remainders])
             ))
 
-    def prepare_representation(self, repre,
-                               template_name,
-                               existing_repres_by_name,
-                               version,
-                               instance_stagingdir,
-                               instance):
-
+    def prepare_representation(
+        self,
+        repre,
+        template_name,
+        existing_repres_by_name,
+        version_entity,
+        instance_stagingdir,
+        instance
+    ):
         # pre-flight validations
         if repre["ext"].startswith("."):
             raise KnownPublishError((
@@ -581,7 +558,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         template_data["ext"] = repre["ext"]
 
         # allow overwriting existing version
-        template_data["version"] = version["name"]
+        template_data["version"] = version_entity["version"]
 
         # add template data for colorspaceData
         if repre.get("colorspaceData"):
@@ -627,8 +604,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         self.log.debug("Anatomy template name: {}".format(template_name))
         anatomy = instance.context.data["anatomy"]
-        publish_template_category = anatomy.templates[template_name]
-        template = os.path.normpath(publish_template_category["path"])
+        publish_template = anatomy.get_template_item("publish", template_name)
+        path_template_obj = publish_template["path"]
+        template = path_template_obj.template.replace("\\", "/")
 
         is_udim = bool(repre.get("udim"))
 
@@ -660,7 +638,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # - template_data (Dict[str, Any]): source data used to fill template
         #   - to add required data to 'repre_context' not used for
         #       formatting
-        path_template_obj = anatomy.templates_obj[template_name]["path"]
 
         # Treat template with 'orignalBasename' in special way
         if "{originalBasename}" in template:
@@ -715,9 +692,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             if not is_udim:
                 # Change padding for frames if template has defined higher
                 #   padding.
-                template_padding = int(
-                    publish_template_category["frame_padding"]
-                )
+                template_padding = anatomy.templates_obj.frame_padding
                 if template_padding > destination_padding:
                     destination_padding = template_padding
 
@@ -803,7 +778,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # todo: Are we sure the assumption each representation
         #       ends up in the same folder is valid?
         if not instance.data.get("publishDir"):
-            template_obj = anatomy.templates_obj[template_name]["folder"]
+            template_obj = publish_template["directory"]
             template_filled = template_obj.format_strict(template_data)
             instance.data["publishDir"] = template_filled
 
@@ -823,7 +798,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         existing = existing_repres_by_name.get(repre["name"].lower())
         repre_id = None
         if existing:
-            repre_id = existing["_id"]
+            repre_id = existing["id"]
 
         # Store first transferred destination as published path data
         # - used primarily for reviews that are integrated to custom modules
@@ -835,25 +810,37 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # todo: `repre` is not the actual `representation` entity
         #       we should simplify/clarify difference between data above
         #       and the actual representation entity for the database
-        data = repre.get("data", {})
-        data.update({"path": published_path, "template": template})
+        attr_defs = self._get_attributes_for_type(
+            instance.context, "representation"
+        )
+        attributes = {"path": published_path, "template": template}
+        data = {"context": repre_context}
+        for key, value in repre.get("data", {}).items():
+            if key in attr_defs:
+                attributes[key] = value
+            else:
+                data[key] = value
 
         # add colorspace data if any exists on representation
         if repre.get("colorspaceData"):
             data["colorspaceData"] = repre["colorspaceData"]
 
-        repre_doc = new_representation_doc(
-            repre["name"], version["_id"], repre_context, data, repre_id
+        repre_doc = new_representation_entity(
+            repre["name"],
+            version_entity["id"],
+            # files are filled afterwards
+            [],
+            data=data,
+            attribs=attributes,
+            entity_id=repre_id
         )
         update_data = None
         if repre_id is not None:
-            update_data = prepare_representation_update_data(
-                existing, repre_doc
-            )
+            update_data = prepare_changes(existing, repre_doc)
 
         return {
             "representation": repre_doc,
-            "repre_doc_update_data": update_data,
+            "repre_update_data": update_data,
             "anatomy_data": template_data,
             "transfers": transfers,
             # todo: avoid the need for 'published_files' used by Integrate Hero
@@ -950,13 +937,13 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
              '{root}/MyProject1/Assets...'
 
         Args:
-            anatomy: anatomy part from instance
-            path: path (absolute)
-        Returns:
-            path: modified path if possible, or unmodified path
-            + warning logged
-        """
+            anatomy (Anatomy): Project anatomy.
+            path (str): Absolute path.
 
+        Returns:
+            str: Path where root path is replaced by formatting string.
+
+        """
         success, rootless_path = anatomy.find_root_template_from_path(path)
         if success:
             path = rootless_path
@@ -967,43 +954,41 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             ).format(path))
         return path
 
-    def get_files_info(self, destinations, sites, anatomy):
+    def get_files_info(self, filepaths, anatomy):
         """Prepare 'files' info portion for representations.
 
         Arguments:
-            destinations (list): List of transferred file destinations
-            sites (list): array of published locations
-            anatomy: anatomy part from instance
-        Returns:
-            output_resources: array of dictionaries to be added to 'files' key
-            in representation
-        """
+            filepaths (Iterable[str]): List of transferred file paths.
+            anatomy (Anatomy): Project anatomy.
 
+        Returns:
+            list[dict[str, Any]]: Representation 'files' information.
+
+        """
         file_infos = []
-        for file_path in destinations:
-            file_info = self.prepare_file_info(file_path, anatomy, sites=sites)
+        for filepath in filepaths:
+            file_info = self.prepare_file_info(filepath, anatomy)
             file_infos.append(file_info)
         return file_infos
 
-    def prepare_file_info(self, path, anatomy, sites):
+    def prepare_file_info(self, path, anatomy):
         """ Prepare information for one file (asset or resource)
 
         Arguments:
-            path: destination url of published file
-            anatomy: anatomy part from instance
-            sites: array of published locations,
-                [ {'name':'studio', 'created_dt':date} by default
-                keys expected ['studio', 'site1', 'gdrive1']
+            path (str): Destination url of published file.
+            anatomy (Anatomy): Project anatomy part from instance.
 
         Returns:
-            dict: file info dictionary
-        """
+            dict[str, Any]: Representation file info dictionary.
 
+        """
         return {
+            "id": create_entity_id(),
+            "name": os.path.basename(path),
             "path": self.get_rootless_path(anatomy, path),
             "size": os.path.getsize(path),
             "hash": source_hash(path),
-            "sites": sites
+            "hash_type": "op3",
         }
 
     def _validate_path_in_project_roots(self, anatomy, file_path):
@@ -1012,10 +997,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         Used to check that published path belongs to project, eg. we are not
         trying to publish to local only folder.
         Args:
-            anatomy (Anatomy)
-            file_path (str)
-        Raises
-            (KnownPublishError)
+            anatomy (Anatomy): Project anatomy.
+            file_path (str): Filepath.
+
+        Raises:
+            KnownPublishError: When failed to find root for the path.
         """
         path = self.get_rootless_path(anatomy, file_path)
         if not path:
@@ -1023,3 +1009,21 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 "Destination path '{}' ".format(file_path) +
                 "must be in project dir"
             ))
+
+    def _get_attributes_for_type(self, context, entity_type):
+        return self._get_attributes_by_type(context)[entity_type]
+
+    def _get_attributes_by_type(self, context):
+        attributes = context.data.get("ayonAttributes")
+        if attributes is None:
+            attributes = {}
+            for key in (
+                "project",
+                "folder",
+                "product",
+                "version",
+                "representation",
+            ):
+                attributes[key] = get_attributes_for_type(key)
+            context.data["ayonAttributes"] = attributes
+        return attributes

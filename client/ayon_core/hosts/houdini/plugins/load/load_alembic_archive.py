@@ -9,9 +9,10 @@ from ayon_core.hosts.houdini.api import pipeline
 class AbcArchiveLoader(load.LoaderPlugin):
     """Load Alembic as full geometry network hierarchy """
 
-    families = ["model", "animation", "pointcache", "gpuCache"]
+    product_types = {"model", "animation", "pointcache", "gpuCache"}
     label = "Load Alembic as Archive"
-    representations = ["abc"]
+    representations = {"*"}
+    extensions = {"abc"}
     order = -5
     icon = "code-fork"
     color = "orange"
@@ -29,14 +30,14 @@ class AbcArchiveLoader(load.LoaderPlugin):
         obj = hou.node("/obj")
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         # Create an Alembic archive node
         node = obj.createNode("alembicarchive", node_name=node_name)
         node.moveToGoodPosition()
 
-        # TODO: add FPS of project / asset
+        # TODO: add FPS of project / folder
         node.setParms({"fileName": file_path,
                        "channelRef": True})
 
@@ -56,16 +57,16 @@ class AbcArchiveLoader(load.LoaderPlugin):
                                      suffix="")
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         node = container["node"]
 
         # Update the file path
-        file_path = get_representation_path(repre_doc)
+        file_path = get_representation_path(repre_entity)
         file_path = file_path.replace("\\", "/")
 
         # Update attributes
         node.setParms({"fileName": file_path,
-                       "representation": str(repre_doc["_id"])})
+                       "representation": repre_entity["id"]})
 
         # Rebuild
         node.parm("buildHierarchy").pressButton()

@@ -1,12 +1,8 @@
 import nuke
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api.lib import maintained_selection
@@ -22,8 +18,8 @@ class AlembicModelLoader(load.LoaderPlugin):
     This will load alembic model or anim into script.
     """
 
-    families = ["model", "pointcache", "animation"]
-    representations = ["*"]
+    product_types = {"model", "pointcache", "animation"}
+    representations = {"*"}
     extensions = {"abc"}
 
     label = "Load Alembic"
@@ -33,27 +29,26 @@ class AlembicModelLoader(load.LoaderPlugin):
 
     def load(self, context, name, namespace, data):
         # get main variables
-        version = context['version']
-        version_data = version.get("data", {})
-        vname = version.get("name", None)
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
-        fps = version_data.get("fps") or nuke.root()["fps"].getValue()
-        namespace = namespace or context['asset']['name']
+        project_name = context["project"]["name"]
+        version_entity = context["version"]
+
+        version_attributes = version_entity["attrib"]
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
+        fps = version_attributes.get("fps") or nuke.root()["fps"].getValue()
+
+        namespace = namespace or context["folder"]["name"]
         object_name = "{}_{}".format(name, namespace)
 
         # prepare data for imprinting
-        # add additional metadata from the version to imprint to Avalon knob
-        add_keys = ["source", "author", "fps"]
-
         data_imprint = {
             "frameStart": first,
             "frameEnd": last,
-            "version": vname
+            "version": version_entity["version"]
         }
-
-        for k in add_keys:
-            data_imprint.update({k: version_data[k]})
+        # add attributes from the version to imprint to metadata knob
+        for k in ["source", "fps"]:
+            data_imprint[k] = version_attributes[k]
 
         # getting file path
         file = self.filepath_from_context(context).replace("\\", "/")
@@ -86,7 +81,7 @@ class AlembicModelLoader(load.LoaderPlugin):
             model_node.setXYpos(xpos, ypos)
 
         # color node by correct color by actual version
-        self.node_version_color(version, model_node)
+        self.node_version_color(project_name, version_entity, model_node)
 
         return containerise(
             node=model_node,
@@ -113,35 +108,33 @@ class AlembicModelLoader(load.LoaderPlugin):
             None
         """
         # Get version from io
-        version_doc = context["version"]
-        repre_doc = context["representation"]
+        project_name = context["project"]["name"]
+        version_entity = context["version"]
+        repre_entity = context["representation"]
 
         # get corresponding node
         model_node = container["node"]
 
         # get main variables
-        version_data = version_doc.get("data", {})
-        vname = version_doc.get("name", None)
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
-        fps = version_data.get("fps") or nuke.root()["fps"].getValue()
+        version_attributes = version_entity["attrib"]
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
+        fps = version_attributes.get("fps") or nuke.root()["fps"].getValue()
 
         # prepare data for imprinting
-        # add additional metadata from the version to imprint to Avalon knob
-        add_keys = ["source", "author", "fps"]
-
         data_imprint = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "frameStart": first,
             "frameEnd": last,
-            "version": vname
+            "version": version_entity["version"]
         }
 
-        for k in add_keys:
-            data_imprint.update({k: version_data[k]})
+        # add additional metadata from the version to imprint to Avalon knob
+        for k in ["source", "fps"]:
+            data_imprint[k] = version_attributes[k]
 
         # getting file path
-        file = get_representation_path(repre_doc).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
         with maintained_selection():
             model_node['selected'].setValue(True)
@@ -181,22 +174,23 @@ class AlembicModelLoader(load.LoaderPlugin):
                 d.setInput(index, model_node)
 
         # color node by correct color by actual version
-        self.node_version_color(version_doc, model_node)
+        self.node_version_color(project_name, version_entity, model_node)
 
-        self.log.info("updated to version: {}".format(version_doc.get("name")))
+        self.log.info(
+            "updated to version: {}".format(version_entity["version"])
+        )
 
         return update_container(model_node, data_imprint)
 
-    def node_version_color(self, version, node):
+    def node_version_color(self, project_name, version_entity, node):
         """ Coloring a node by correct color by actual version"""
 
-        project_name = get_current_project_name()
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version["parent"], fields=["_id"]
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
 
         # change color of node
-        if version["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = self.node_color
         else:
             color_value = "0xd88467ff"

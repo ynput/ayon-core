@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """Create Unreal Skeletal Mesh data to be extracted as FBX."""
 import os
-from contextlib import contextmanager
 
 from maya import cmds  # noqa
 
 from ayon_core.pipeline import publish
+from ayon_core.hosts.maya.api.alembic import extract_alembic
 from ayon_core.hosts.maya.api.lib import (
-    extract_alembic,
     suspended_refresh,
     maintained_selection
 )

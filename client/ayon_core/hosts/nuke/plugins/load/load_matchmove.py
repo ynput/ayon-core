@@ -7,8 +7,8 @@ class MatchmoveLoader(load.LoaderPlugin):
     This will run matchmove script to create track in script.
     """
 
-    families = ["matchmove"]
-    representations = ["*"]
+    product_types = {"matchmove"}
+    representations = {"*"}
     extensions = {"py"}
 
     defaults = ["Camera", "Object"]

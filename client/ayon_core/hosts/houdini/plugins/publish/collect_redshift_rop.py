@@ -42,11 +42,9 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
         default_prefix = evalParmNoFrame(rop, "RS_outputFileNamePrefix")
         beauty_suffix = rop.evalParm("RS_outputBeautyAOVSuffix")
-        # Store whether we are splitting the render job (export + render)
-        split_render = bool(rop.parm("RS_archive_enable").eval())
-        instance.data["splitRender"] = split_render
+
         export_products = []
-        if split_render:
+        if instance.data["splitRender"]:
             export_prefix = evalParmNoFrame(
                 rop, "RS_archive_file", pad_character="0"
             )
@@ -60,20 +58,33 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             instance.data["ifdFile"] = beauty_export_product
             instance.data["exportFiles"] = list(export_products)
 
-        # Default beauty AOV
+        full_exr_mode = (rop.evalParm("RS_outputMultilayerMode") == "2")
+        if full_exr_mode:
+            # Ignore beauty suffix if full mode is enabled
+            # As this is what the rop does.
+            beauty_suffix = ""
+
+        # Assume it's a multipartExr Render.
+        multipartExr = True
+
+        # Default beauty/main layer AOV
         beauty_product = self.get_render_product_name(
             prefix=default_prefix, suffix=beauty_suffix
         )
         render_products = [beauty_product]
         files_by_aov = {
-            "_": self.generate_expected_files(instance,
-                                              beauty_product)}
-        
+            beauty_suffix: self.generate_expected_files(instance,
+                                                        beauty_product)
+        }
+
         aovs_rop = rop.parm("RS_aovGetFromNode").evalAsNode()
         if aovs_rop:
             rop = aovs_rop
 
-        num_aovs = rop.evalParm("RS_aov")
+        num_aovs = 0
+        if not rop.evalParm('RS_aovAllAOVsDisabled'):
+            num_aovs = rop.evalParm("RS_aov")
+
         for index in range(num_aovs):
             i = index + 1
 
@@ -86,11 +97,22 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
             if not aov_prefix:
                 aov_prefix = default_prefix
 
-            aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
-            render_products.append(aov_product)
+            if rop.parm(f"RS_aovID_{i}").evalAsString() == "CRYPTOMATTE" or \
+                  not full_exr_mode:
 
-            files_by_aov[aov_suffix] = self.generate_expected_files(instance,
-                                                                    aov_product)    # noqa
+                aov_product = self.get_render_product_name(aov_prefix, aov_suffix)
+                render_products.append(aov_product)
+
+                files_by_aov[aov_suffix] = self.generate_expected_files(instance,
+                                                                        aov_product)    # noqa
+
+                # Set to False as soon as we have a separated aov.
+                multipartExr = False
+
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = multipartExr
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)
@@ -118,7 +140,7 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
 
         # When AOV is explicitly defined in prefix we just swap it out
         # directly with the AOV suffix to embed it.
-        # Note: ${AOV} seems to be evaluated in the parameter as %AOV%
+        # Note: '$AOV' seems to be evaluated in the parameter as '%AOV%'
         has_aov_in_prefix = "%AOV%" in prefix
         if has_aov_in_prefix:
             # It seems that when some special separator characters are present

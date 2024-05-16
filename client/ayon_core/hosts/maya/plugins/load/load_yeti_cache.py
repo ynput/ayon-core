@@ -12,6 +12,7 @@ from ayon_core.pipeline import (
     get_representation_path
 )
 from ayon_core.hosts.maya.api import lib
+from ayon_core.hosts.maya.api.yeti import create_yeti_variable
 from ayon_core.hosts.maya.api.pipeline import containerise
 from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
@@ -23,7 +24,18 @@ SKIP_UPDATE_ATTRS = {
     "viewportDensity",
     "viewportWidth",
     "viewportLength",
+    "renderDensity",
+    "renderWidth",
+    "renderLength",
+    "increaseRenderBounds"
 }
+
+SKIP_ATTR_MESSAGE = (
+    "Skipping updating %s.%s to %s because it "
+    "is considered a local overridable attribute. "
+    "Either set manually or the load the cache "
+    "anew."
+)
 
 
 def set_attribute(node, attr, value):
@@ -36,8 +48,8 @@ def set_attribute(node, attr, value):
 class YetiCacheLoader(load.LoaderPlugin):
     """Load Yeti Cache with one or more Yeti nodes"""
 
-    families = ["yeticache", "yetiRig"]
-    representations = ["fur"]
+    product_types = {"yeticache", "yetiRig"}
+    representations = {"fur"}
 
     label = "Load Yeti Cache"
     order = -9
@@ -56,15 +68,12 @@ class YetiCacheLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "yeticache"
+        product_type = context["product"]["productType"]
 
         # Build namespace
-        asset = context["asset"]
+        folder_name = context["folder"]["name"]
         if namespace is None:
-            namespace = self.create_namespace(asset["name"])
+            namespace = self.create_namespace(folder_name)
 
         # Ensure Yeti is loaded
         if not cmds.pluginInfo("pgYetiMaya", query=True, loaded=True):
@@ -123,11 +132,11 @@ class YetiCacheLoader(load.LoaderPlugin):
         cmds.namespace(removeNamespace=namespace, deleteNamespaceContent=True)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         namespace = container["namespace"]
         container_node = container["objectName"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
         settings = self.read_settings(path)
 
         # Collect scene information of asset
@@ -212,26 +221,48 @@ class YetiCacheLoader(load.LoaderPlugin):
 
                     for attr, value in node_settings["attrs"].items():
                         if attr in SKIP_UPDATE_ATTRS:
+                            self.log.info(
+                                SKIP_ATTR_MESSAGE, yeti_node, attr, value
+                            )
                             continue
                         set_attribute(attr, value, yeti_node)
 
+                    # Set up user defined attributes
+                    user_variables = node_settings.get("user_variables", {})
+                    for attr, value in user_variables.items():
+                        was_value_set = create_yeti_variable(
+                            yeti_shape_node=yeti_node,
+                            attr_name=attr,
+                            value=value,
+                            # We do not want to update the
+                            # value if it already exists so
+                            # that any local overrides that
+                            # may have been applied still
+                            # persist
+                            force_value=False
+                        )
+                        if not was_value_set:
+                            self.log.info(
+                                SKIP_ATTR_MESSAGE, yeti_node, attr, value
+                            )
+
         cmds.setAttr("{}.representation".format(container_node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      typ="string")
 
     def switch(self, container, context):
         self.update(container, context)
 
     # helper functions
-    def create_namespace(self, asset):
+    def create_namespace(self, folder_name):
         """Create a unique namespace
         Args:
             asset (dict): asset information
 
         """
 
-        asset_name = "{}_".format(asset)
-        prefix = "_" if asset_name[0].isdigit()else ""
+        asset_name = "{}_".format(folder_name)
+        prefix = "_" if asset_name[0].isdigit() else ""
         namespace = lib.unique_namespace(
             asset_name,
             prefix=prefix,
@@ -334,6 +365,13 @@ class YetiCacheLoader(load.LoaderPlugin):
         # Apply attributes to pgYetiMaya node
         for attr, value in attributes.items():
             set_attribute(attr, value, yeti_node)
+
+        # Set up user defined attributes
+        user_variables = node_settings.get("user_variables", {})
+        for attr, value in user_variables.items():
+            create_yeti_variable(yeti_shape_node=yeti_node,
+                                 attr_name=attr,
+                                 value=value)
 
         # Connect to the time node
         cmds.connectAttr("time1.outTime", "%s.currentTime" % yeti_node)

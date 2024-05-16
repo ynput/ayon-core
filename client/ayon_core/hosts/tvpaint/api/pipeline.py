@@ -4,10 +4,9 @@ import tempfile
 import logging
 
 import requests
-
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_asset_by_name
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 from ayon_core.hosts.tvpaint import TVPAINT_ROOT_DIR
 from ayon_core.settings import get_current_project_settings
@@ -93,10 +92,10 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         return self.get_current_context().get("project_name")
 
-    def get_current_asset_name(self):
+    def get_current_folder_path(self):
         """
         Returns:
-            Union[str, None]: Current asset name.
+            Union[str, None]: Current folder path.
         """
 
         return self.get_current_context().get("folder_path")
@@ -183,13 +182,13 @@ class TVPaintHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         log.info("Setting up project...")
         global_context = get_global_context()
         project_name = global_context.get("project_name")
-        asset_name = global_context.get("aset_name")
-        if not project_name or not asset_name:
+        folder_path = global_context.get("folder_path")
+        if not project_name or not folder_path:
             return
 
-        asset_doc = get_asset_by_name(project_name, asset_name)
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
 
-        set_context_settings(project_name, asset_doc)
+        set_context_settings(project_name, folder_entity)
 
     def application_exit(self):
         """Logic related to TimerManager.
@@ -234,7 +233,7 @@ def containerise(
         "name": name,
         "namespace": namespace,
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"])
+        "representation": context["representation"]["id"]
     }
     if current_containers is None:
         current_containers = get_containers()
@@ -466,17 +465,24 @@ def get_containers():
     return output
 
 
-def set_context_settings(project_name, asset_doc):
-    """Set workfile settings by asset document data.
+def set_context_settings(project_name, folder_entity):
+    """Set workfile settings by folder entity attributes.
 
     Change fps, resolution and frame start/end.
+
+    Args:
+        project_name (str): Project name.
+        folder_entity (dict[str, Any]): Folder entity.
+
     """
 
-    width_key = "resolutionWidth"
-    height_key = "resolutionHeight"
+    if not folder_entity:
+        return
 
-    width = asset_doc["data"].get(width_key)
-    height = asset_doc["data"].get(height_key)
+    folder_attributes = folder_entity["attrib"]
+
+    width = folder_attributes.get("resolutionWidth")
+    height = folder_attributes.get("resolutionHeight")
     if width is None or height is None:
         print("Resolution was not found!")
     else:
@@ -484,7 +490,7 @@ def set_context_settings(project_name, asset_doc):
             "tv_resizepage {} {} 0".format(width, height)
         )
 
-    framerate = asset_doc["data"].get("fps")
+    framerate = folder_attributes.get("fps")
 
     if framerate is not None:
         execute_george(
@@ -493,15 +499,15 @@ def set_context_settings(project_name, asset_doc):
     else:
         print("Framerate was not found!")
 
-    frame_start = asset_doc["data"].get("frameStart")
-    frame_end = asset_doc["data"].get("frameEnd")
+    frame_start = folder_attributes.get("frameStart")
+    frame_end = folder_attributes.get("frameEnd")
 
     if frame_start is None or frame_end is None:
         print("Frame range was not found!")
         return
 
-    handle_start = asset_doc["data"].get("handleStart")
-    handle_end = asset_doc["data"].get("handleEnd")
+    handle_start = folder_attributes.get("handleStart")
+    handle_end = folder_attributes.get("handleEnd")
 
     # Always start from 0 Mark In and set only Mark Out
     mark_in = 0

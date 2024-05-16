@@ -17,8 +17,8 @@ from ayon_core.pipeline import get_representation_path, load
 class PointCloudLoader(load.LoaderPlugin):
     """Point Cloud Loader."""
 
-    families = ["pointcloud"]
-    representations = ["prt"]
+    product_types = {"pointcloud"}
+    representations = {"prt"}
     order = -8
     icon = "code-fork"
     color = "green"
@@ -45,8 +45,8 @@ class PointCloudLoader(load.LoaderPlugin):
         """update the container"""
         from pymxs import runtime as rt
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node = rt.GetNodeByName(container["instance_node"])
         node_list = get_previous_loaded_object(node)
         update_custom_attribute_data(
@@ -56,7 +56,7 @@ class PointCloudLoader(load.LoaderPlugin):
             for prt in rt.Selection:
                 prt.filename = path
         lib.imprint(container["instance_node"], {
-            "representation": str(repre_doc["_id"])
+            "representation": repre_entity["id"]
         })
 
     def switch(self, container, context):

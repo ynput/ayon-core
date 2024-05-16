@@ -6,13 +6,13 @@ from ayon_core.pipeline import load
 from ayon_core.pipeline.load import LoadError
 
 
-class PushToLibraryProject(load.SubsetLoaderPlugin):
+class PushToLibraryProject(load.ProductLoaderPlugin):
     """Export selected versions to folder structure from Template"""
 
     is_multiple_contexts_compatible = True
 
-    representations = ["*"]
-    families = ["*"]
+    representations = {"*"}
+    product_types = {"*"}
 
     label = "Push to Library project"
     order = 35
@@ -40,10 +40,8 @@ class PushToLibraryProject(load.SubsetLoaderPlugin):
             "main.py"
         )
 
-        project_doc = context["project"]
-        version_doc = context["version"]
-        project_name = project_doc["name"]
-        version_id = str(version_doc["_id"])
+        project_name = context["project"]["name"]
+        version_id = context["version"]["id"]
 
         args = get_ayon_launcher_args(
             "run",

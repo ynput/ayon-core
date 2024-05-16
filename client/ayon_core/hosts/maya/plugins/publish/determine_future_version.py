@@ -5,7 +5,7 @@ class DetermineFutureVersion(pyblish.api.InstancePlugin):
     """
     This will determine version of product if we want render to be attached to.
     """
-    label = "Determine Subset Version"
+    label = "Determine Product Version"
     order = pyblish.api.IntegratorOrder
     hosts = ["maya"]
     families = ["renderlayer"]

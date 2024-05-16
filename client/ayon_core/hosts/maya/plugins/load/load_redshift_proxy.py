@@ -22,8 +22,8 @@ from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 class RedshiftProxyLoader(load.LoaderPlugin):
     """Load Redshift proxy"""
 
-    families = ["redshiftproxy"]
-    representations = ["rs"]
+    product_types = {"redshiftproxy"}
+    representations = {"rs"}
 
     label = "Import Redshift Proxy"
     order = -10
@@ -32,15 +32,12 @@ class RedshiftProxyLoader(load.LoaderPlugin):
 
     def load(self, context, name=None, namespace=None, options=None):
         """Plugin entry point."""
-        try:
-            product_type = context["representation"]["context"]["family"]
-        except ValueError:
-            product_type = "redshiftproxy"
+        product_type = context["product"]["productType"]
 
-        asset_name = context['asset']["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset_name + "_",
-            prefix="_" if asset_name[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -83,8 +80,8 @@ class RedshiftProxyLoader(load.LoaderPlugin):
         members = cmds.sets(node, query=True) or []
         rs_meshes = cmds.ls(members, type="RedshiftProxyMesh")
         assert rs_meshes, "Cannot find RedshiftProxyMesh in container"
-        repre_doc = context["representation"]
-        filename = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        filename = get_representation_path(repre_entity)
 
         for rs_mesh in rs_meshes:
             cmds.setAttr("{}.fileName".format(rs_mesh),
@@ -93,7 +90,7 @@ class RedshiftProxyLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def remove(self, container):

@@ -1,7 +1,7 @@
 import os
 import shutil
 from ayon_core.settings import get_project_settings
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 from ayon_core.pipeline.workfile import (
     get_custom_workfile_template,
     get_custom_workfile_template_by_string_context
@@ -54,21 +54,22 @@ class CopyTemplateWorkfile(PreLaunchHook):
         self.log.info("Last workfile does not exist.")
 
         project_name = self.data["project_name"]
-        asset_name = self.data["folder_path"]
+        folder_path = self.data["folder_path"]
         task_name = self.data["task_name"]
         host_name = self.application.host_name
 
         project_settings = get_project_settings(project_name)
 
-        project_doc = self.data.get("project_doc")
-        asset_doc = self.data.get("asset_doc")
+        project_entity = self.data.get("project_entity")
+        folder_entity = self.data.get("folder_entity")
+        task_entity = self.data.get("task_entity")
         anatomy = self.data.get("anatomy")
-        if project_doc and asset_doc:
+        if project_entity and folder_entity and task_entity:
             self.log.debug("Started filtering of custom template paths.")
             template_path = get_custom_workfile_template(
-                project_doc,
-                asset_doc,
-                task_name,
+                project_entity,
+                folder_entity,
+                task_entity,
                 host_name,
                 anatomy,
                 project_settings
@@ -81,7 +82,7 @@ class CopyTemplateWorkfile(PreLaunchHook):
             ))
             template_path = get_custom_workfile_template_by_string_context(
                 project_name,
-                asset_name,
+                folder_path,
                 task_name,
                 host_name,
                 anatomy,

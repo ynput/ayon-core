@@ -80,6 +80,10 @@ class RenderInstance(object):
     anatomyData = attr.ib(default=None)
     outputDir = attr.ib(default=None)
     context = attr.ib(default=None)
+    deadline = attr.ib(default=None)
+
+    # The source instance the data of this render instance should merge into
+    source_instance = attr.ib(default=None, type=pyblish.api.Instance)
 
     @frameStart.validator
     def check_frame_start(self, _, value):
@@ -212,10 +216,12 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
 
             # add additional data
             data = self.add_additional_data(data)
-            render_instance_dict = attr.asdict(render_instance)
 
-            instance = context.create_instance(render_instance.name)
-            instance.data["label"] = render_instance.label
+            instance = render_instance.source_instance
+            if instance is None:
+                instance = context.create_instance(render_instance.name)
+
+            render_instance_dict = attr.asdict(render_instance)
             instance.data.update(render_instance_dict)
             instance.data.update(data)
 
