@@ -921,10 +921,7 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Animated Reference Rig",
     )
-    ValidateAnimationContent: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Animation Content",
-    )
+
     ValidateOutRelatedNodeIds: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Animation Out Set Related Node Ids",
@@ -1443,11 +1440,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ValidateRigControllers": {
-        "enabled": False,
-        "optional": True,
-        "active": True
-    },
-    "ValidateAnimatedReferenceRig": {
         "enabled": False,
         "optional": True,
         "active": True
