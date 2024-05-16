@@ -778,6 +778,7 @@ class ExporterReviewMov(ExporterReview):
         # deal with now lut defined in viewer lut
         self.viewer_lut_raw = klass.viewer_lut_raw
         self.write_colorspace = instance.data["colorspace"]
+        self.color_channels = instance.data["color_channels"]
 
         self.name = name or "baked"
         self.ext = ext or "mov"
@@ -947,6 +948,8 @@ class ExporterReviewMov(ExporterReview):
         self.log.debug("Path: {}".format(self.path))
         write_node["file"].setValue(str(self.path))
         write_node["file_type"].setValue(str(self.ext))
+        write_node["channels"].setValue(str(self.color_channels))
+
         # Knobs `meta_codec` and `mov64_codec` are not available on centos.
         # TODO shouldn't this come from settings on outputs?
         try:
