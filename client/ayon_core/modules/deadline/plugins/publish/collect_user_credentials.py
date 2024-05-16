@@ -12,7 +12,7 @@ Provides:
 """
 import pyblish.api
 
-from ayon_api import get_addon_site_settings
+from ayon_api import get_server_api_connection
 from ayon_core.modules.deadline.deadline_module import DeadlineModule
 from ayon_core.modules.deadline import __version__
 
@@ -81,8 +81,9 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
 
         if not deadline_info["require_authentication"]:
             return
-
-        local_settings = get_addon_site_settings(
+        # TODO import 'get_addon_site_settings' when available 
+        #   in public 'ayon_api'
+        local_settings = get_server_api_connection().get_addon_site_settings(
             DeadlineModule.name, __version__)
         local_settings = local_settings["local_settings"]
         for server_info in local_settings:
