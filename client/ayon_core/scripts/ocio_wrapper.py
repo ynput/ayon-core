@@ -33,27 +33,7 @@ def main():
     pass  # noqa: WPS100
 
 
-@main.group()
-def config():
-    """Config related commands group
-
-    Example of use:
-    > pyton.exe ./ocio_wrapper.py config <command> *args
-    """
-    pass  # noqa: WPS100
-
-
-@main.group()
-def colorspace():
-    """Colorspace related commands group
-
-    Example of use:
-    > pyton.exe ./ocio_wrapper.py config <command> *args
-    """
-    pass  # noqa: WPS100
-
-
-@config.command(
+@main.command(
     name="get_ocio_config_colorspaces",
     help="return all colorspaces from config file")
 @click.option(
@@ -83,7 +63,7 @@ def _get_ocio_config_colorspaces(config_path, output_path):
     )
 
 
-@config.command(
+@main.command(
     name="get_ocio_config_views",
     help="All viewers from config file")
 @click.option(
@@ -113,7 +93,7 @@ def _get_ocio_config_views(config_path, output_path):
     )
 
 
-@config.command(
+@main.command(
     name="get_config_version_data",
     help="Get major and minor version from config file")
 @click.option(
@@ -143,7 +123,7 @@ def _get_config_version_data(config_path, output_path):
     )
 
 
-@colorspace.command(
+@main.command(
     name="get_config_file_rules_colorspace_from_filepath",
     help="Colorspace file rules from filepath")
 @click.option(
@@ -182,7 +162,7 @@ def _get_config_file_rules_colorspace_from_filepath(
     )
 
 
-@config.command(
+@main.command(
     name="get_display_view_colorspace_name",
     help=(
         "Default view colorspace name for the given display and view"
