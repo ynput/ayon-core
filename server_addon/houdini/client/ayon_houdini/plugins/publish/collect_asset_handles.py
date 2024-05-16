@@ -32,6 +32,8 @@ class CollectAssetHandles(pyblish.api.InstancePlugin,
     label = "Collect Folder Handles"
     use_asset_handles = True
 
+    settings_category = "houdini"
+
     def process(self, instance):
         # Only process instances without already existing handles data
         # but that do have frameStartHandle and frameEndHandle defined

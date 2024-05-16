@@ -32,6 +32,7 @@ class ValidateSubsetName(pyblish.api.InstancePlugin,
     actions = [FixProductNameAction, SelectInvalidAction]
 
     optional = True
+    settings_category = "houdini"
 
     def process(self, instance):
 
