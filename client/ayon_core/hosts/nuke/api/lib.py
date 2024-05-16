@@ -43,7 +43,9 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.context_tools import (
     get_current_context_custom_workfile_template
 )
-from ayon_core.pipeline.colorspace import get_imageio_config
+from ayon_core.pipeline.colorspace import (
+    get_current_context_imageio_config_preset
+)
 from ayon_core.pipeline.workfile import BuildWorkfile
 from . import gizmo_menu
 from .constants import ASSIST
@@ -1552,10 +1554,7 @@ class WorkfileSettings(object):
             imageio_host (dict): host colorspace configurations
 
         '''
-        config_data = get_imageio_config(
-            project_name=get_current_project_name(),
-            host_name="nuke"
-        )
+        config_data = get_current_context_imageio_config_preset()
 
         workfile_settings = imageio_host["workfile"]
         color_management = workfile_settings["color_management"]
