@@ -55,7 +55,6 @@ class LinkAsGroup(load.LoaderPlugin):
             "handleStart",
             "handleEnd",
             "source",
-            "author",
             "fps"
         ]:
             data_imprint[k] = version_attributes[k]
@@ -131,7 +130,6 @@ class LinkAsGroup(load.LoaderPlugin):
             "colorspace": version_attributes.get("colorSpace"),
             "source": version_attributes.get("source"),
             "fps": version_attributes.get("fps"),
-            "author": version_attributes.get("author")
         }
 
         # Update the imprinted representation

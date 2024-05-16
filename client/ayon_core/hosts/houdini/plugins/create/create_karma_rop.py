@@ -11,15 +11,23 @@ class CreateKarmaROP(plugin.HoudiniCreator):
     product_type = "karma_rop"
     icon = "magic"
 
+    # Default render target
+    render_target = "farm"
+
     def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
+        # Transfer settings from pre create to instance
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+
+        for key in ["render_target", "review"]:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "karma"})
         # Add chunk size attribute
         instance_data["chunkSize"] = 10
-        # Submit for job publishing
-        instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateKarmaROP, self).create(
             product_name,
@@ -86,18 +94,40 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
-    def get_pre_create_attr_defs(self):
-        attrs = super(CreateKarmaROP, self).get_pre_create_attr_defs()
+    def get_instance_attr_defs(self):
+        """get instance attribute definitions.
 
+        Attributes defined in this method are exposed in
+            publish tab in the publisher UI.
+        """
+
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+        }
+
+        return [
+            BoolDef("review",
+                    label="Review",
+                    tooltip="Mark as reviewable",
+                    default=True),
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target)
+        ]
+
+
+    def get_pre_create_attr_defs(self):
         image_format_enum = [
             "bmp", "cin", "exr", "jpg", "pic", "pic.gz", "png",
             "rad", "rat", "rta", "sgi", "tga", "tif",
         ]
 
-        return attrs + [
-            BoolDef("farm",
-                    label="Submitting to Farm",
-                    default=True),
+        attrs = super(CreateKarmaROP, self).get_pre_create_attr_defs()
+
+        attrs += [
             EnumDef("image_format",
                     image_format_enum,
                     default="exr",
@@ -112,5 +142,6 @@ class CreateKarmaROP(plugin.HoudiniCreator):
                       decimals=0),
             BoolDef("cam_res",
                     label="Camera Resolution",
-                    default=False)
+                    default=False),
         ]
+        return attrs + self.get_instance_attr_defs()
