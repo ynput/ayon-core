@@ -24,6 +24,8 @@ class ValidateMeshIsStatic(pyblish.api.InstancePlugin,
     order = ValidateContentsOrder + 0.1
     actions = [SelectInvalidAction]
 
+    settings_category = "houdini"
+
     def process(self, instance):
 
         invalid = self.get_invalid(instance)

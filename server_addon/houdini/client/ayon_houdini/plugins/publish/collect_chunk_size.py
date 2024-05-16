@@ -16,6 +16,8 @@ class CollectChunkSize(pyblish.api.InstancePlugin,
     label = "Collect Chunk Size"
     chunk_size = 999999
 
+    settings_category = "houdini"
+
     def process(self, instance):
         # need to get the chunk size info from the setting
         attr_values = self.get_attr_values_from_data(instance.data)

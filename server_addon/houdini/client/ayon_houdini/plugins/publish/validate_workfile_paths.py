@@ -22,6 +22,8 @@ class ValidateWorkfilePaths(
     node_types = ["file", "alembic"]
     prohibited_vars = ["$HIP", "$JOB"]
 
+    settings_category = "houdini"
+
     def process(self, instance):
         if not self.is_active(instance.data):
             return

@@ -27,6 +27,8 @@ class ValidateInstanceInContextHoudini(pyblish.api.InstancePlugin,
     hosts = ["houdini"]
     actions = [SelectROPAction, RepairAction]
 
+    settings_category = "houdini"
+
     def process(self, instance):
         if not self.is_active(instance.data):
             return
