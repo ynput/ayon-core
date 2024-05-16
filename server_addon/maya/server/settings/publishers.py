@@ -1448,8 +1448,8 @@ DEFAULT_PUBLISH_SETTINGS = {
         "active": True
     },
     "ValidateAnimatedReferenceRig": {
-        "enabled": True,
-        "optional": False,
+        "enabled": False,
+        "optional": True,
         "active": True
     },
     "ValidateAnimationContent": {

@@ -18,7 +18,7 @@ class ValidateAnimatedReferenceRig(pyblish.api.InstancePlugin,
     label = "Animated Reference Rig"
     accepted_controllers = ["transform", "locator"]
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
-    optional = False
+    optional = True
 
     def process(self, instance):
         if not self.is_active(instance.data):
