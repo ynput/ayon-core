@@ -369,12 +369,8 @@ def reset_colorspace():
     """
     if int(get_max_version()) < 2024:
         return
-    project_name = get_current_project_name()
-    colorspace_mgr = rt.ColorPipelineMgr
-    project_settings = get_project_settings(project_name)
 
-    max_config_data = colorspace.get_imageio_config(
-        project_name, "max", project_settings)
+    max_config_data = colorspace.get_current_context_imageio_config_preset()
     if max_config_data:
         ocio_config_path = max_config_data["path"]
         colorspace_mgr = rt.ColorPipelineMgr
@@ -389,10 +385,7 @@ def check_colorspace():
                  "because Max main window can't be found.")
     if int(get_max_version()) >= 2024:
         color_mgr = rt.ColorPipelineMgr
-        project_name = get_current_project_name()
-        project_settings = get_project_settings(project_name)
-        max_config_data = colorspace.get_imageio_config(
-            project_name, "max", project_settings)
+        max_config_data = colorspace.get_current_context_imageio_config_preset()
         if max_config_data and color_mgr.Mode != rt.Name("OCIO_Custom"):
             if not is_headless():
                 from ayon_core.tools.utils import SimplePopup
