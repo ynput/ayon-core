@@ -1416,7 +1416,6 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                         is_value_overridden = value != attr_def.default
                 else:
                     widget.set_value(values, True)
-                    is_value_overridden = False
                     for value in values:
                         is_value_overridden = value != attr_def.default
                         if is_value_overridden:
@@ -1630,9 +1629,6 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 self._attr_def_id_to_instances[attr_def.id] = instances
                 self._attr_def_id_to_plugin_name[attr_def.id] = plugin_name
 
-                if label_widget is None:
-                    continue
-
                 if multivalue:
                     widget.set_value(values, multivalue)
                     is_value_overridden = False
@@ -1644,7 +1640,10 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     widget.set_value(values[0])
                     is_value_overridden = values[0] != attr_def.default
 
-                set_label_overriden_style(label_widget, is_value_overridden)
+                if label_widget is not None:
+                    set_label_overriden_style(
+                        label_widget, is_value_overridden
+                    )
 
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
