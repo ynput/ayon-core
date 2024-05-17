@@ -76,6 +76,14 @@ def parse_icon_def(
             continue
 
 
+def set_label_overriden_style(label_widget, is_overriden):
+    set_style_property(
+        label_widget,
+        "overridden",
+        str(int(is_overriden))
+    )
+
+
 class PublishPixmapLabel(PixmapLabel):
     def _get_pix_size(self):
         size = self.fontMetrics().height()
@@ -1399,19 +1407,19 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         row = 0
         for attr_def, attr_instances, values in result:
             widget = create_widget_for_attr_def(attr_def, content_widget)
-            is_default = True
+            is_value_overridden = False
             if attr_def.is_value_def:
                 if len(values) == 1:
                     value = values[0]
                     if value is not None:
                         widget.set_value(values[0])
-                        is_default = value == attr_def.default
+                        is_value_overridden = value != attr_def.default
                 else:
                     widget.set_value(values, True)
-                    is_default = True
+                    is_value_overridden = False
                     for value in values:
-                        is_default = value == attr_def.default
-                        if not is_default:
+                        is_value_overridden = value != attr_def.default
+                        if is_value_overridden:
                             break
             widget.value_changed.connect(self._input_value_changed)
             self._attr_def_id_to_instances[attr_def.id] = attr_instances
@@ -1440,10 +1448,8 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                         QtCore.Qt.AlignRight
                         | QtCore.Qt.AlignVCenter
                     )
-                if is_default:
-                    label_widget.setStyleSheet("")
-                else:
-                    label_widget.setStyleSheet("color: #4287f5")
+
+                set_label_overriden_style(label_widget, is_value_overridden)
                 content_layout.addWidget(
                     label_widget, row, 0, 1, expand_cols
                 )
@@ -1467,11 +1473,8 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         # Update the styling of the associated label if is default or override
         label_widget = self._attr_def_id_to_label.get(attr_id)
         if label_widget:
-            is_default = value == attr_def.default
-            if is_default:
-                label_widget.setStyleSheet("")
-            else:
-                label_widget.setStyleSheet("color: #4287f5")
+            # Change style for overridden value
+            set_label_overriden_style(label_widget, value != attr_def.default)
 
         for instance in instances:
             creator_attributes = instance["creator_attributes"]
@@ -1632,18 +1635,16 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 if multivalue:
                     widget.set_value(values, multivalue)
-                    is_default = True
+                    is_value_overridden = False
                     for value in values:
-                        is_default = value == attr_def.default
-                        if not is_default:
+                        is_value_overridden = value != attr_def.default
+                        if not is_value_overridden:
                             break
                 else:
                     widget.set_value(values[0])
-                    is_default = values[0] == attr_def.default
-                if is_default:
-                    label_widget.setStyleSheet("")
-                else:
-                    label_widget.setStyleSheet("color: #4287f5")
+                    is_value_overridden = values[0] != attr_def.default
+
+                set_label_overriden_style(label_widget, is_value_overridden)
 
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
@@ -1658,11 +1659,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         # Update the styling of the associated label if is default or override
         label_widget = self._attr_def_id_to_label.get(attr_id)
         if label_widget:
-            is_default = value == attr_def.default
-            if is_default:
-                label_widget.setStyleSheet("")
-            else:
-                label_widget.setStyleSheet("color: #4287f5")
+            set_label_overriden_style(label_widget, value != attr_def.default)
 
         for instance in instances:
             plugin_val = instance.publish_attributes[plugin_name]
