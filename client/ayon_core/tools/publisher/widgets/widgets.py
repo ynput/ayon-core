@@ -1578,6 +1578,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     widget.setVisible(False)
                     hidden_widget = True
 
+                label_widget = None
                 if not hidden_widget:
                     expand_cols = 2
                     if attr_def.is_value_def and attr_def.is_label_horizontal:
@@ -1598,7 +1599,6 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                                 QtCore.Qt.AlignRight
                                 | QtCore.Qt.AlignVCenter
                             )
-                            label_widget
 
                         attr_def_layout.addWidget(
                             label_widget, row, 0, 1, expand_cols
@@ -1626,6 +1626,9 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 self._attr_def_id_to_attr_def[attr_def.id] = attr_def
                 self._attr_def_id_to_instances[attr_def.id] = instances
                 self._attr_def_id_to_plugin_name[attr_def.id] = plugin_name
+
+                if label_widget is None:
+                    continue
 
                 if multivalue:
                     widget.set_value(values, multivalue)
