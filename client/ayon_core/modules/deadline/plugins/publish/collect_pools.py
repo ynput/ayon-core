@@ -26,27 +26,32 @@ class CollectDeadlinePools(pyblish.api.InstancePlugin,
 
     order = pyblish.api.CollectorOrder + 0.420
     label = "Collect Deadline Pools"
-    hosts = ["aftereffects",
-             "fusion",
-             "harmony"
-             "nuke",
-             "maya",
-             "max",
-             "houdini"]
+    hosts = [
+        "aftereffects",
+        "fusion",
+        "harmony",
+        "maya",
+        "max",
+        "houdini",
+        "nuke",
+    ]
 
-    families = ["render",
-                "rendering",
-                "render.farm",
-                "renderFarm",
-                "renderlayer",
-                "maxrender",
-                "usdrender",
-                "redshift_rop",
-                "arnold_rop",
-                "mantra_rop",
-                "karma_rop",
-                "vray_rop",
-                "publish.hou"]
+    families = [
+        "render",
+        "prerender",
+        "rendering",
+        "render.farm",
+        "renderFarm",
+        "renderlayer",
+        "maxrender",
+        "usdrender",
+        "redshift_rop",
+        "arnold_rop",
+        "mantra_rop",
+        "karma_rop",
+        "vray_rop",
+        "publish.hou",
+    ]
 
     primary_pool = None
     secondary_pool = None
