@@ -115,6 +115,7 @@ class CollectFusionRender(
                 if "review" in instance.families:
                     # to skip ExtractReview locally
                     instance.families.remove("review")
+                instance.deadline = inst.data.get("deadline")
 
             instances.append(instance)
 
