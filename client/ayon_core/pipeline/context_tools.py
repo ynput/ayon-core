@@ -459,36 +459,6 @@ def is_representation_from_latest(representation):
     )
 
 
-def get_template_data_from_session(session=None, settings=None):
-    """Template data for template fill from session keys.
-
-    Args:
-        session (Union[Dict[str, str], None]): The Session to use. If not
-            provided use the currently active global Session.
-        settings (Optional[Dict[str, Any]]): Prepared studio or project
-            settings.
-
-    Returns:
-        Dict[str, Any]: All available data from session.
-    """
-
-    if session is not None:
-        project_name = session["AYON_PROJECT_NAME"]
-        folder_path = session["AYON_FOLDER_PATH"]
-        task_name = session["AYON_TASK_NAME"]
-        host_name = session["AYON_HOST_NAME"]
-    else:
-        context = get_current_context()
-        project_name = context["project_name"]
-        folder_path = context["folder_path"]
-        task_name = context["task_name"]
-        host_name = get_current_host_name()
-
-    return get_template_data_with_names(
-        project_name, folder_path, task_name, host_name, settings
-    )
-
-
 def get_current_context_template_data(settings=None):
     """Prepare template data for current context.
 
