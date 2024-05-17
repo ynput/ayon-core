@@ -7,7 +7,8 @@ from ayon_core.hosts.houdini.api import lib
 class CollectDataforCache(pyblish.api.InstancePlugin):
     """Collect data for caching to Deadline."""
 
-    order = pyblish.api.CollectorOrder + 0.04
+    # Run after Collect Frames
+    order = pyblish.api.CollectorOrder + 0.11
     families = ["ass", "pointcache",
                 "mantraifd", "redshiftproxy",
                 "vdbcache"]
