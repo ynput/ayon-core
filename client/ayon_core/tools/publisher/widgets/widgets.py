@@ -1407,19 +1407,13 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         row = 0
         for attr_def, attr_instances, values in result:
             widget = create_widget_for_attr_def(attr_def, content_widget)
-            is_value_overridden = False
             if attr_def.is_value_def:
                 if len(values) == 1:
                     value = values[0]
                     if value is not None:
                         widget.set_value(values[0])
-                        is_value_overridden = value != attr_def.default
                 else:
                     widget.set_value(values, True)
-                    for value in values:
-                        is_value_overridden = value != attr_def.default
-                        if is_value_overridden:
-                            break
             widget.value_changed.connect(self._input_value_changed)
             self._attr_def_id_to_instances[attr_def.id] = attr_instances
             self._attr_def_id_to_attr_def[attr_def.id] = attr_def
@@ -1448,6 +1442,11 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                         | QtCore.Qt.AlignVCenter
                     )
 
+                is_value_overridden = False
+                for value in values:
+                    if value != attr_def.default:
+                        is_value_overridden = True
+                        break
                 set_label_overriden_style(label_widget, is_value_overridden)
                 content_layout.addWidget(
                     label_widget, row, 0, 1, expand_cols
@@ -1631,16 +1630,16 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 if multivalue:
                     widget.set_value(values, multivalue)
-                    is_value_overridden = False
-                    for value in values:
-                        is_value_overridden = value != attr_def.default
-                        if not is_value_overridden:
-                            break
                 else:
                     widget.set_value(values[0])
-                    is_value_overridden = values[0] != attr_def.default
 
                 if label_widget is not None:
+                    is_value_overridden = False
+                    for value in values:
+                        if value != attr_def.default:
+                            is_value_overridden = True
+                            break
+
                     set_label_overriden_style(
                         label_widget, is_value_overridden
                     )
