@@ -52,6 +52,7 @@ class SelectionTypes:
 class BaseGroupWidget(QtWidgets.QWidget):
     selected = QtCore.Signal(str, str, str)
     removed_selected = QtCore.Signal()
+    double_clicked = QtCore.Signal()
 
     def __init__(self, group_name, parent):
         super(BaseGroupWidget, self).__init__(parent)
@@ -192,6 +193,7 @@ class ConvertorItemsGroupWidget(BaseGroupWidget):
                 else:
                     widget = ConvertorItemCardWidget(item, self)
                     widget.selected.connect(self._on_widget_selection)
+                    widget.double_clicked(self.double_clicked)
                     self._widgets_by_id[item.id] = widget
                     self._content_layout.insertWidget(widget_idx, widget)
                 widget_idx += 1
@@ -254,6 +256,7 @@ class InstanceGroupWidget(BaseGroupWidget):
                     )
                     widget.selected.connect(self._on_widget_selection)
                     widget.active_changed.connect(self._on_active_changed)
+                    widget.double_clicked.connect(self.double_clicked)
                     self._widgets_by_id[instance.id] = widget
                     self._content_layout.insertWidget(widget_idx, widget)
                 widget_idx += 1
@@ -271,6 +274,7 @@ class CardWidget(BaseClickableFrame):
     # Group identifier of card
     # - this must be set because if send when mouse is released with card id
     _group_identifier = None
+    double_clicked = QtCore.Signal()
 
     def __init__(self, parent):
         super(CardWidget, self).__init__(parent)
@@ -278,6 +282,11 @@ class CardWidget(BaseClickableFrame):
 
         self._selected = False
         self._id = None
+
+    def mouseDoubleClickEvent(self, event):
+        super(CardWidget, self).mouseDoubleClickEvent(event)
+        if self._is_valid_double_click(event):
+            self.double_clicked.emit()
 
     @property
     def id(self):
@@ -311,6 +320,9 @@ class CardWidget(BaseClickableFrame):
             selection_type = SelectionTypes.extend
 
         self.selected.emit(self._id, self._group_identifier, selection_type)
+
+    def _is_valid_double_click(self, event):
+        return True
 
 
 class ContextCardWidget(CardWidget):
@@ -527,12 +539,23 @@ class InstanceCardWidget(CardWidget):
     def _on_expend_clicked(self):
         self._set_expanded()
 
+    def _is_valid_double_click(self, event):
+        widget = self.childAt(event.pos())
+        if (
+            widget is self._active_checkbox
+            or widget is self._expand_btn
+        ):
+            return False
+        return True
+
 
 class InstanceCardView(AbstractInstanceView):
     """Publish access to card view.
 
     Wrapper of all widgets in card view.
     """
+
+    double_clicked = QtCore.Signal()
 
     def __init__(self, controller, parent):
         super(InstanceCardView, self).__init__(parent)
@@ -715,6 +738,7 @@ class InstanceCardView(AbstractInstanceView):
                 )
                 group_widget.active_changed.connect(self._on_active_changed)
                 group_widget.selected.connect(self._on_widget_selection)
+                group_widget.double_clicked.connect(self.double_clicked)
                 self._content_layout.insertWidget(widget_idx, group_widget)
                 self._widgets_by_group[group_name] = group_widget
 
@@ -755,6 +779,7 @@ class InstanceCardView(AbstractInstanceView):
 
         widget = ContextCardWidget(self._content_widget)
         widget.selected.connect(self._on_widget_selection)
+        widget.double_clicked.connect(self.double_clicked)
 
         self._context_widget = widget
 
@@ -778,6 +803,7 @@ class InstanceCardView(AbstractInstanceView):
                 CONVERTOR_ITEM_GROUP, self._content_widget
             )
             group_widget.selected.connect(self._on_widget_selection)
+            group_widget.double_clicked.connect(self.double_clicked)
             self._content_layout.insertWidget(1, group_widget)
             self._convertor_items_group = group_widget
 
