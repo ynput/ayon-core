@@ -19,7 +19,7 @@ class LoadEffects(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
     product_types = {"effect"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"json"}
 
     label = "Load Effects - nodes"
@@ -69,7 +69,6 @@ class LoadEffects(load.LoaderPlugin):
             "handleStart",
             "handleEnd",
             "source",
-            "author",
             "fps"
         ]:
             data_imprint[k] = version_attributes[k]
@@ -189,7 +188,6 @@ class LoadEffects(load.LoaderPlugin):
             "handleStart",
             "handleEnd",
             "source",
-            "author",
             "fps",
         ]:
             data_imprint[k] = version_attributes[k]

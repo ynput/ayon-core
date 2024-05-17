@@ -7,7 +7,7 @@ from maya import cmds
 import ayon_api
 
 from ayon_core.pipeline import get_current_project_name
-import ayon_core.hosts.maya.lib as maya_lib
+import ayon_core.hosts.maya.api.lib as maya_lib
 from . import lib
 from .alembic import get_alembic_ids_cache
 
@@ -51,7 +51,7 @@ def assign_vrayproxy_shaders(vrayproxy, assignments):
             index += 1
 
 
-def vrayproxy_assign_look(vrayproxy, product_name="lookDefault"):
+def vrayproxy_assign_look(vrayproxy, product_name="lookMain"):
     # type: (str, str) -> None
     """Assign look to vray proxy.
 

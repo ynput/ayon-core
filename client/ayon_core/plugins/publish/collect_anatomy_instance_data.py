@@ -33,6 +33,7 @@ import collections
 import pyblish.api
 import ayon_api
 
+from ayon_core.pipeline.template_data import get_folder_template_data
 from ayon_core.pipeline.version_start import get_versioning_start
 
 
@@ -383,24 +384,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         # - 'folder', 'hierarchy', 'parent', 'folder'
         folder_entity = instance.data.get("folderEntity")
         if folder_entity:
-            folder_name = folder_entity["name"]
-            folder_path = folder_entity["path"]
-            hierarchy_parts = folder_path.split("/")
-            hierarchy_parts.pop(0)
-            hierarchy_parts.pop(-1)
-            parent_name = project_entity["name"]
-            if hierarchy_parts:
-                parent_name = hierarchy_parts[-1]
-
-            hierarchy = "/".join(hierarchy_parts)
-            anatomy_data.update({
-                "asset": folder_name,
-                "hierarchy": hierarchy,
-                "parent": parent_name,
-                "folder": {
-                    "name": folder_name,
-                },
-            })
+            folder_data = get_folder_template_data(
+                folder_entity,
+                project_entity["name"]
+            )
+            anatomy_data.update(folder_data)
             return
 
         if instance.data.get("newAssetPublishing"):
@@ -418,6 +406,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 "parent": parent_name,
                 "folder": {
                     "name": folder_name,
+                    "path": instance.data["folderPath"],
+                    # TODO get folder type from hierarchy
+                    #   Using 'Shot' is current default behavior of editorial
+                    #   (or 'newAssetPublishing') publishing.
+                    "type": "Shot",
                 },
             })
 
@@ -465,7 +458,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             current_data = hierarchy_context.get(project_name, {})
             for key in folder_path.split("/"):
                 if key:
-                    current_data = current_data.get("childs", {}).get(key, {})
+                    current_data = (
+                        current_data
+                        .get("children", {})
+                        .get(key, {})
+                    )
             tasks_info = current_data.get("tasks", {})
 
         task_info = tasks_info.get(task_name, {})
@@ -529,5 +526,5 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 return item[folder_name].get("tasks") or {}
 
             for subitem in item.values():
-                hierarchy_queue.extend(subitem.get("childs") or [])
+                hierarchy_queue.extend(subitem.get("children") or [])
         return {}

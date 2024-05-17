@@ -24,7 +24,7 @@ class LoadGizmoInputProcess(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
     product_types = {"gizmo"}
-    representations = ["*"]
+    representations = {"*"}
     extensions = {"nk"}
 
     label = "Load Gizmo - Input Process"
@@ -73,7 +73,6 @@ class LoadGizmoInputProcess(load.LoaderPlugin):
             "handleStart",
             "handleEnd",
             "source",
-            "author",
             "fps"
         ]:
             data_imprint[k] = version_attributes[k]
@@ -145,7 +144,6 @@ class LoadGizmoInputProcess(load.LoaderPlugin):
             "handleStart",
             "handleEnd",
             "source",
-            "author",
             "fps"
         ]:
             data_imprint[k] = version_attributes[k]

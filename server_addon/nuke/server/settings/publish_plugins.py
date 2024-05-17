@@ -125,6 +125,7 @@ class ReformatNodesConfigModel(BaseSettingsModel):
 
 class IntermediateOutputModel(BaseSettingsModel):
     name: str = SettingsField(title="Output name")
+    publish: bool = SettingsField(title="Publish")
     filter: BakingStreamFilterModel = SettingsField(
         title="Filter", default_factory=BakingStreamFilterModel)
     read_raw: bool = SettingsField(
@@ -219,7 +220,7 @@ class IncrementScriptVersionModel(BaseSettingsModel):
     active: bool = SettingsField(title="Active")
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class PublishPluginsModel(BaseSettingsModel):
     CollectInstanceData: CollectInstanceDataModel = SettingsField(
         title="Collect Instance Version",
         default_factory=CollectInstanceDataModel,
@@ -346,6 +347,7 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
         "outputs": [
             {
                 "name": "baking",
+                "publish": False,
                 "filter": {
                     "task_types": [],
                     "product_types": [],
@@ -401,6 +403,7 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
         "outputs": [
             {
                 "name": "baking",
+                "publish": False,
                 "filter": {
                     "task_types": [],
                     "product_types": [],

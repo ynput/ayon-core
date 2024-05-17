@@ -101,14 +101,14 @@ def apply_transition(otio_track, otio_item, track):
         if transition_type == "dissolve":
             transition_func = getattr(
                 hiero.core.Transition,
-                'create{kind}DissolveTransition'.format(kind=kind)
+                "create{kind}DissolveTransition".format(kind=kind)
             )
 
             transition = transition_func(
                 item_in,
                 item_out,
                 otio_item.in_offset.value,
-                otio_item.out_offset.value
+                otio_item.out_offset.value,
             )
 
         elif transition_type == "fade_in":
@@ -116,20 +116,14 @@ def apply_transition(otio_track, otio_item, track):
                 hiero.core.Transition,
                 'create{kind}FadeInTransition'.format(kind=kind)
             )
-            transition = transition_func(
-                item_out,
-                otio_item.out_offset.value
-            )
+            transition = transition_func(item_out, otio_item.out_offset.value)
 
         elif transition_type == "fade_out":
             transition_func = getattr(
                 hiero.core.Transition,
-                'create{kind}FadeOutTransition'.format(kind=kind)
+                "create{kind}FadeOutTransition".format(kind=kind)
             )
-            transition = transition_func(
-                item_in,
-                otio_item.in_offset.value
-            )
+            transition = transition_func(item_in, otio_item.in_offset.value)
 
         else:
             # Unknown transition
@@ -138,11 +132,10 @@ def apply_transition(otio_track, otio_item, track):
         # Apply transition to track
         track.addTransition(transition)
 
-    except Exception, e:
+    except Exception as e:
         sys.stderr.write(
             'Unable to apply transition "{t}": "{e}"\n'.format(
-                t=otio_item,
-                e=e
+                t=otio_item, e=e
             )
         )
 
@@ -153,18 +146,14 @@ def prep_url(url_in):
     if url.startswith("file://localhost/"):
         return url.replace("file://localhost/", "")
 
-    url = '{url}'.format(
-        sep=url.startswith(os.sep) and "" or os.sep,
-        url=url.startswith(os.sep) and url[1:] or url
-    )
+    if url.startswith(os.sep):
+        url = url[1:]
 
     return url
 
 
 def create_offline_mediasource(otio_clip, path=None):
-    hiero_rate = hiero.core.TimeBase(
-        otio_clip.source_range.start_time.rate
-    )
+    hiero_rate = hiero.core.TimeBase(otio_clip.source_range.start_time.rate)
 
     if isinstance(otio_clip.media_reference, otio.schema.ExternalReference):
         source_range = otio_clip.available_range()
@@ -180,7 +169,7 @@ def create_offline_mediasource(otio_clip, path=None):
         source_range.start_time.value,
         source_range.duration.value,
         hiero_rate,
-        source_range.start_time.value
+        source_range.start_time.value,
     )
 
     return media
@@ -203,7 +192,7 @@ marker_color_map = {
     "MAGENTA": "Magenta",
     "BLACK": "Blue",
     "WHITE": "Green",
-    "MINT": "Cyan"
+    "MINT": "Cyan",
 }
 
 
@@ -254,12 +243,6 @@ def add_markers(otio_item, hiero_item, tagsbin):
         if _tag is None:
             _tag = hiero.core.Tag(marker_color_map[marker.color])
 
-        start = marker.marked_range.start_time.value
-        end = (
-            marker.marked_range.start_time.value +
-            marker.marked_range.duration.value
-        )
-
         tag = hiero_item.addTag(_tag)
         tag.setName(marker.name or marker_color_map[marker_color])
 
@@ -275,12 +258,12 @@ def create_track(otio_track, tracknum, track_kind):
     # Create a Track
     if otio_track.kind == otio.schema.TrackKind.Video:
         track = hiero.core.VideoTrack(
-            otio_track.name or 'Video{n}'.format(n=tracknum)
+            otio_track.name or "Video{n}".format(n=tracknum)
         )
 
     else:
         track = hiero.core.AudioTrack(
-            otio_track.name or 'Audio{n}'.format(n=tracknum)
+            otio_track.name or "Audio{n}".format(n=tracknum)
         )
 
     return track
@@ -315,34 +298,25 @@ def create_trackitem(playhead, track, otio_clip, clip, tagsbin):
     for effect in otio_clip.effects:
         if isinstance(effect, otio.schema.LinearTimeWarp):
             trackitem.setPlaybackSpeed(
-                trackitem.playbackSpeed() *
-                effect.time_scalar
+                trackitem.playbackSpeed() * effect.time_scalar
             )
 
     # If reverse playback speed swap source in and out
     if trackitem.playbackSpeed() < 0:
         source_out = source_range.start_time.value
         source_in = (
-            source_range.start_time.value +
-            source_range.duration.value
+            source_range.start_time.value + source_range.duration.value
         ) - 1
         timeline_in = playhead + source_out
-        timeline_out = (
-            timeline_in +
-            source_range.duration.value
-        ) - 1
+        timeline_out = (timeline_in + source_range.duration.value) - 1
     else:
         # Normal playback speed
         source_in = source_range.start_time.value
         source_out = (
-            source_range.start_time.value +
-            source_range.duration.value
+            source_range.start_time.value + source_range.duration.value
         ) - 1
         timeline_in = playhead
-        timeline_out = (
-            timeline_in +
-            source_range.duration.value
-        ) - 1
+        timeline_out = (timeline_in + source_range.duration.value) - 1
 
     # Set source and timeline in/out points
     trackitem.setSourceIn(source_in)
@@ -357,7 +331,8 @@ def create_trackitem(playhead, track, otio_clip, clip, tagsbin):
 
 
 def build_sequence(
-        otio_timeline, project=None, sequence=None, track_kind=None):
+    otio_timeline, project=None, sequence=None, track_kind=None
+):
 
     if project is None:
         if sequence:
@@ -414,8 +389,7 @@ def build_sequence(
             if isinstance(otio_clip, otio.schema.Stack):
                 bar = hiero.ui.mainWindow().statusBar()
                 bar.showMessage(
-                    "Nested sequences are created separately.",
-                    timeout=3000
+                    "Nested sequences are created separately.", timeout=3000
                 )
                 build_sequence(otio_clip, project, otio_track.kind)
 
@@ -428,11 +402,7 @@ def build_sequence(
 
                 # Create TrackItem
                 trackitem = create_trackitem(
-                    playhead,
-                    track,
-                    otio_clip,
-                    clip,
-                    tagsbin
+                    playhead, track, otio_clip, clip, tagsbin
                 )
 
                 # Add trackitem to track

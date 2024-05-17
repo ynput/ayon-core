@@ -5,11 +5,11 @@ import json
 import re
 from copy import deepcopy
 
-import requests
 import clique
 import ayon_api
 import pyblish.api
 
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -88,9 +88,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
     hosts = ["fusion", "max", "maya", "nuke", "houdini",
              "celaction", "aftereffects", "harmony", "blender"]
 
-    families = ["render.farm", "render.frames_farm",
-                "prerender.farm", "prerender.frames_farm",
-                "renderlayer", "imagesequence",
+    families = ["render", "render.farm", "render.frames_farm",
+                "prerender", "prerender.farm", "prerender.frames_farm",
+                "renderlayer", "imagesequence", "image",
                 "vrayscene", "maxrender",
                 "arnold_rop", "mantra_rop",
                 "karma_rop", "vray_rop",
@@ -130,7 +130,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         "FTRACK_SERVER",
         "AYON_APP_NAME",
         "AYON_USERNAME",
-        "OPENPYPE_SG_USER",
+        "AYON_SG_USERNAME",
         "KITSU_LOGIN",
         "KITSU_PWD"
     ]
@@ -210,6 +210,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "AYON_RENDER_JOB": "0",
             "AYON_REMOTE_PUBLISH": "0",
             "AYON_BUNDLE_NAME": os.environ["AYON_BUNDLE_NAME"],
+            "AYON_DEFAULT_SETTINGS_VARIANT": (
+                os.environ["AYON_DEFAULT_SETTINGS_VARIANT"]
+            ),
         }
 
         # add environments from self.environ_keys
@@ -221,9 +224,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
 
         instance_settings = self.get_attr_values_from_data(instance.data)
         initial_status = instance_settings.get("publishJobState", "Active")
-        # TODO: Remove this backwards compatibility of `suspend_publish`
-        if instance.data.get("suspend_publish"):
-            initial_status = "Suspended"
 
         args = [
             "--headless",
@@ -303,14 +303,15 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         self.log.debug("Submitting Deadline publish job ...")
 
         url = "{}/api/jobs".format(self.deadline_url)
-        response = requests.post(url, json=payload, timeout=10)
+        auth = instance.data["deadline"]["auth"]
+        response = requests_post(url, json=payload, timeout=10,
+                                 auth=auth)
         if not response.ok:
             raise Exception(response.text)
 
         deadline_publish_job_id = response.json()["_id"]
 
         return deadline_publish_job_id
-
 
     def process(self, instance):
         # type: (pyblish.api.Instance) -> None
@@ -458,18 +459,15 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             }
 
         # get default deadline webservice url from deadline module
-        self.deadline_url = instance.context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            self.deadline_url = instance.data.get("deadlineUrl")
+        self.deadline_url = instance.data["deadline"]["url"]
         assert self.deadline_url, "Requires Deadline Webservice URL"
 
         deadline_publish_job_id = \
             self._submit_deadline_post_job(instance, render_job, instances)
 
-        # Inject deadline url to instances.
+        # Inject deadline url to instances to query DL for job id for overrides
         for inst in instances:
-            inst["deadlineUrl"] = self.deadline_url
+            inst["deadline"] = instance.data["deadline"]
 
         # publish job file
         publish_job = {
