@@ -59,7 +59,7 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     )
 
 
-class ValidateContainersProfile(BaseSettingsModel):
+class ValidateOutdatedContainersProfile(BaseSettingsModel):
     _layout = "expanded"
     # Filtering
     host_names: list[str] = SettingsField(
@@ -72,7 +72,7 @@ class ValidateContainersProfile(BaseSettingsModel):
     active: bool = SettingsField(True, title="Active")
 
 
-class ValidateContainersModel(BaseSettingsModel):
+class ValidateOutdatedContainersModel(BaseSettingsModel):
     """Validate if Publishing intent was selected.
 
     It is possible to disable validation for specific publishing context
@@ -80,7 +80,7 @@ class ValidateContainersModel(BaseSettingsModel):
     """
 
     _isGroup = True
-    plugin_state_profiles: list[ValidateContainersProfile] = SettingsField(
+    plugin_state_profiles: list[ValidateOutdatedContainersProfile] = SettingsField(
         default_factory=list,
         title="Plugin enable state profiles",
     )
@@ -797,8 +797,8 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidateBaseModel,
         title="Validate Version"
     )
-    ValidateContainers: ValidateContainersModel = SettingsField(
-        default_factory=ValidateContainersModel,
+    ValidateOutdatedContainers: ValidateOutdatedContainersModel = SettingsField(
+        default_factory=ValidateOutdatedContainersModel,
         title="Validate Containers"
     )
     ValidateIntent: ValidateIntentModel = SettingsField(
@@ -886,7 +886,7 @@ DEFAULT_PUBLISH_VALUES = {
         "optional": False,
         "active": True
     },
-    "ValidateContainers": {
+    "ValidateOutdatedContainers": {
         "plugin_state_profiles": [
             {
                 # Default host names are based on original
