@@ -45,11 +45,6 @@ DEFAULT_HARMONY_SETTING = {
             "optional": True,
             "active": True
         },
-        "ValidateContainers": {
-            "enabled": True,
-            "optional": True,
-            "active": True
-        },
         "ValidateSceneSettings": {
             "enabled": True,
             "optional": True,
