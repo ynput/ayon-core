@@ -17,7 +17,7 @@ class CollectFrames(pyblish.api.InstancePlugin):
     label = "Collect Frames"
     families = ["vdbcache", "imagesequence", "ass",
                 "mantraifd", "redshiftproxy", "review",
-                "pointcache"]
+                "pointcache", "rop"]
 
     def process(self, instance):
 
