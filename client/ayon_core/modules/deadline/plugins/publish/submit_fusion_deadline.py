@@ -242,7 +242,8 @@ class FusionSubmitDeadline(
         # E.g. http://192.168.0.1:8082/api/jobs
         url = "{}/api/jobs".format(deadline_url)
         auth = instance.data["deadline"]["auth"]
-        response = requests_post(url, json=payload, auth=auth)
+        verify = instance.data["deadline"]["verify"]
+        response = requests_post(url, json=payload, auth=auth, verify=verify)
         if not response.ok:
             raise Exception(response.text)
 
