@@ -59,6 +59,32 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     )
 
 
+class ValidateContainersProfile(BaseSettingsModel):
+    _layout = "expanded"
+    # Filtering
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+    # Profile values
+    enabled: bool = SettingsField(True)
+    optional: bool = SettingsField(True)
+    active: bool = SettingsField(True)
+
+
+class ValidateContainersModel(BaseSettingsModel):
+    """Validate if Publishing intent was selected.
+
+    It is possible to disable validation for specific publishing context
+    with profiles.
+    """
+
+    _isGroup = True
+    profiles: list[ValidateContainersProfile] = SettingsField(
+        default_factory=list
+    )
+
+
 class ValidateIntentProfile(BaseSettingsModel):
     _layout = "expanded"
     hosts: list[str] = SettingsField(default_factory=list, title="Host names")
@@ -770,6 +796,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidateBaseModel,
         title="Validate Version"
     )
+    ValidateContainers: ValidateContainersModel = SettingsField(
+        default_factory=ValidateContainersModel,
+        title="Validate Containers"
+    )
     ValidateIntent: ValidateIntentModel = SettingsField(
         default_factory=ValidateIntentModel,
         title="Validate Intent"
@@ -854,6 +884,25 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "optional": False,
         "active": True
+    },
+    "ValidateContainers": {
+        "profiles": [
+            {
+                # Default host names are based on original
+                #   filter of ValidateContainer pyblish plugin
+                "host_names": [
+                    "maya",
+                    "houdini",
+                    "nuke",
+                    "harmony",
+                    "photoshop",
+                    "aftereffects"
+                ],
+                "enabled": True,
+                "optional": True,
+                "active": True
+            }
+        ]
     },
     "ValidateIntent": {
         "enabled": False,
