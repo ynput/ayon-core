@@ -1,6 +1,6 @@
 """Ease the AYON on-boarding process by loading the plug-in on first run"""
 
-OPENPYPE_PLUGIN_NAME = "ayon_plugin"
+AYON_PLUGIN_NAME = "ayon_plugin"
 
 
 def start_plugin():
@@ -19,9 +19,9 @@ def start_plugin():
         # later than this startup script, we check whether its menu initialized
         is_before_plugins_menu = PLUGINS_MENU is None
 
-        settings = get_settings(OPENPYPE_PLUGIN_NAME)
+        settings = get_settings(AYON_PLUGIN_NAME)
         if settings.value(LAUNCH_AT_START_KEY, None) is None:
-            print("Initializing OpenPype plug-in on first run...")
+            print("Initializing AYON plug-in on first run...")
             if is_before_plugins_menu:
                 print("- running before 'painter_plugins_ui'")
                 # Delay the launch to the painter_plugins_ui initialization
@@ -29,11 +29,11 @@ def start_plugin():
             else:
                 # Launch now
                 print("- running after 'painter_plugins_ui'")
-                plugin_manager(OPENPYPE_PLUGIN_NAME)(True)
+                plugin_manager(AYON_PLUGIN_NAME)(True)
 
                 # Set the checked state in the menu to avoid confusion
                 action = next(action for action in PLUGINS_MENU._menu.actions()
-                              if action.text() == OPENPYPE_PLUGIN_NAME)
+                              if action.text() == AYON_PLUGIN_NAME)
                 if action is not None:
                     action.blockSignals(True)
                     action.setChecked(True)
