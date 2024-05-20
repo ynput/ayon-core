@@ -231,10 +231,6 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=OptionalPluginModel,
         section="Validators"
     )
-    ValidateContainers: OptionalPluginModel = SettingsField(
-        title="Validate Containers",
-        default_factory=OptionalPluginModel
-    )
     ValidateKnobs: ValidateKnobsModel = SettingsField(
         title="Validate Knobs",
         default_factory=ValidateKnobsModel
@@ -296,11 +292,6 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
         ]
     },
     "ValidateCorrectAssetContext": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateContainers": {
         "enabled": True,
         "optional": True,
         "active": True
