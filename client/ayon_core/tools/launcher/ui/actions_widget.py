@@ -359,7 +359,8 @@ class ActionsWidget(QtWidgets.QWidget):
     def _on_model_refresh(self):
         self._proxy_model.sort(0)
         # Force repaint all items
-        self._view.update()
+        viewport = self._view.viewport()
+        viewport.update()
 
     def _on_animation(self):
         time_now = time.time()
