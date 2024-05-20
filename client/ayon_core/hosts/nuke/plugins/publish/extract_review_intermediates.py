@@ -136,7 +136,6 @@ class ExtractReviewIntermediates(publish.Extractor):
                     self, instance, o_name, o_data["extension"],
                     multiple_presets)
 
-                o_data["add_custom_tags"].append("intermediate")
                 delete = not o_data.get("publish", False)
 
                 if instance.data.get("farm"):
