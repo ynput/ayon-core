@@ -81,7 +81,8 @@ class ValidateContainersModel(BaseSettingsModel):
 
     _isGroup = True
     plugin_state_profiles: list[ValidateContainersProfile] = SettingsField(
-        default_factory=list
+        default_factory=list,
+        title="Plugin enable state profiles",
     )
 
 
