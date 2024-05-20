@@ -45,9 +45,15 @@ class ValidateContainers(
             return
 
         # Disable if no profile is found for the current host
+        profiles = (
+            settings
+            ["core"]
+            ["publish"]
+            ["ValidateContainers"]
+            ["plugin_state_profiles"]
+        )
         profile = filter_profiles(
-            settings["core"]["publish"]["ValidateContainers"]["profiles"],
-            {"host_names": get_current_host_name()}
+            profiles, {"host_names": get_current_host_name()}
         )
         if not profile:
             cls.enabled = False

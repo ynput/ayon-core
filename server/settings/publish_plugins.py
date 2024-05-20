@@ -80,7 +80,7 @@ class ValidateContainersModel(BaseSettingsModel):
     """
 
     _isGroup = True
-    profiles: list[ValidateContainersProfile] = SettingsField(
+    plugin_state_profiles: list[ValidateContainersProfile] = SettingsField(
         default_factory=list
     )
 
@@ -886,7 +886,7 @@ DEFAULT_PUBLISH_VALUES = {
         "active": True
     },
     "ValidateContainers": {
-        "profiles": [
+        "plugin_state_profiles": [
             {
                 # Default host names are based on original
                 #   filter of ValidateContainer pyblish plugin
