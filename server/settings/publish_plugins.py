@@ -67,9 +67,9 @@ class ValidateContainersProfile(BaseSettingsModel):
         title="Host names"
     )
     # Profile values
-    enabled: bool = SettingsField(True)
-    optional: bool = SettingsField(True)
-    active: bool = SettingsField(True)
+    enabled: bool = SettingsField(True, title="Enabled")
+    optional: bool = SettingsField(True, title="Optional")
+    active: bool = SettingsField(True, title="Active")
 
 
 class ValidateContainersModel(BaseSettingsModel):
