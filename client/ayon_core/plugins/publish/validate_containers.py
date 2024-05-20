@@ -23,7 +23,7 @@ class ShowInventory(pyblish.api.Action):
         host_tools.show_scene_inventory()
 
 
-class ValidateContainers(
+class ValidateOutdatedContainers(
     OptionalPyblishPluginMixin,
     pyblish.api.ContextPlugin
 ):
@@ -49,7 +49,7 @@ class ValidateContainers(
             settings
             ["core"]
             ["publish"]
-            ["ValidateContainers"]
+            ["ValidateOutdatedContainers"]
             ["plugin_state_profiles"]
         )
         profile = filter_profiles(
