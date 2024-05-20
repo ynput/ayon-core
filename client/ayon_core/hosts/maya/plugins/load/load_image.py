@@ -8,7 +8,7 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.load.utils import get_representation_path_from_context
 from ayon_core.pipeline.colorspace import (
     get_imageio_file_rules_colorspace_from_filepath,
-    get_imageio_config,
+    get_current_context_imageio_config_preset,
     get_imageio_file_rules
 )
 from ayon_core.settings import get_project_settings
@@ -270,8 +270,7 @@ class FileNodeLoader(load.LoaderPlugin):
         host_name = get_current_host_name()
         project_settings = get_project_settings(project_name)
 
-        config_data = get_imageio_config(
-            project_name, host_name,
+        config_data = get_current_context_imageio_config_preset(
             project_settings=project_settings
         )
 

@@ -71,7 +71,6 @@ class LoadGizmo(load.LoaderPlugin):
             "handleStart",
             "handleEnd",
             "source",
-            "author",
             "fps"
         ]:
             data_imprint[k] = version_attributes[k]
@@ -139,7 +138,6 @@ class LoadGizmo(load.LoaderPlugin):
             "handleStart",
             "handleEnd",
             "source",
-            "author",
             "fps"
         ]:
             data_imprint[k] = version_attributes[k]
