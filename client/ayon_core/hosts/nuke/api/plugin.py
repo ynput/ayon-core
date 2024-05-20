@@ -837,7 +837,8 @@ class ExporterReviewMov(ExporterReview):
 
     def generate_mov(self, farm=False, delete=True, **kwargs):
         # colorspace data
-        colorspace = None
+        colorspace = self.write_colorspace
+
         # get colorspace settings
         # get colorspace data from context
         config_data, _ = get_colorspace_settings_from_publish_context(
