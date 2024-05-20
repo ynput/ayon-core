@@ -64,6 +64,7 @@ class CreateRuntimeInstance(Creator):
         files = pre_create_data["files"]
         representations = [create_representation_data(files)]
         instance_data["representations"] = representations
+        instance_data["families"] = ["dynamic"]
 
         # We ingest it as a different product type then the creator's generic
         # ingest product type. For example, we specify `pointcache`
@@ -88,9 +89,6 @@ class CreateRuntimeInstance(Creator):
     def remove_instances(self, instances):
         for instance in instances:
             self._remove_instance_from_context(instance)
-
-    # def get_publish_families(self):
-    #     return [self.product_type]
 
     def _get_product_name_dynamic(
         self,
