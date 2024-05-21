@@ -1,7 +1,7 @@
 from collections import deque
 
 import pyblish.api
-
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import registered_host
 
 
@@ -80,7 +80,7 @@ def iter_upstream(node):
             collected.update(ancestors)
 
 
-class CollectUpstreamInputs(pyblish.api.InstancePlugin):
+class CollectUpstreamInputs(plugin.HoudiniInstancePlugin):
     """Collect source input containers used for this publish.
 
     This will include `inputs` data of which loaded publishes were used in the

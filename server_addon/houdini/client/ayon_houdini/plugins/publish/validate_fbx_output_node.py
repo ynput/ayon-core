@@ -5,11 +5,12 @@ from ayon_houdini.api.action import (
     SelectInvalidAction,
     SelectROPAction,
 )
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import get_obj_node_output
 import hou
 
 
-class ValidateFBXOutputNode(pyblish.api.InstancePlugin):
+class ValidateFBXOutputNode(plugin.HoudiniInstancePlugin):
     """Validate the instance Output Node.
 
     This will ensure:

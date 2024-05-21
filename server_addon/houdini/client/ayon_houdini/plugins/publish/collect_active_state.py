@@ -1,8 +1,9 @@
 import pyblish.api
+from ayon_houdini.api import plugin
 import hou
 
 
-class CollectInstanceActiveState(pyblish.api.InstancePlugin):
+class CollectInstanceActiveState(plugin.HoudiniInstancePlugin):
     """Collect default active state for instance from its node bypass state.
 
     This is done at the very end of the CollectorOrder so that any required

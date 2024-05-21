@@ -2,14 +2,13 @@ import os
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
 from ayon_houdini.api.lib import render_rop
-from ayon_houdini.api import lib
+from ayon_houdini.api import lib, plugin
 
 import hou
 
 
-class ExtractBGEO(publish.Extractor):
+class ExtractBGEO(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract BGEO"

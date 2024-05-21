@@ -5,6 +5,7 @@ import pyblish.api
 import hou
 
 from ayon_core.pipeline import PublishXmlValidationError
+from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectInvalidAction
 
 
@@ -60,7 +61,7 @@ def get_geometry_at_frame(sop_node, frame, force=True):
         return sop_node.geometryAtFrame(frame)
 
 
-class ValidateVDBOutputNode(pyblish.api.InstancePlugin):
+class ValidateVDBOutputNode(plugin.HoudiniInstancePlugin):
     """Validate that the node connected to the output node is of type VDB.
 
     All primitives of the output geometry must be VDBs, no other primitive

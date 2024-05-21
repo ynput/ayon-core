@@ -1,8 +1,9 @@
+from ayon_houdini.api import plugin
 import pyblish.api
 import hou
 
 
-class CollectWorksceneFPS(pyblish.api.ContextPlugin):
+class CollectWorksceneFPS(plugin.HoudiniContextPlugin):
     """Get the FPS of the work scene."""
 
     label = "Workscene FPS"

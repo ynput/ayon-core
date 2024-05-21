@@ -2,9 +2,10 @@ import os
 import pyblish.api
 import hou
 from ayon_houdini.api import lib
+from ayon_houdini.api import plugin
 
 
-class CollectDataforCache(pyblish.api.InstancePlugin):
+class CollectDataforCache(plugin.HoudiniInstancePlugin):
     """Collect data for caching to Deadline."""
 
     # Run after Collect Frames

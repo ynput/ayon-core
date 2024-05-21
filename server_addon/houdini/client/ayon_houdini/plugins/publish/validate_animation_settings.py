@@ -1,11 +1,11 @@
 import pyblish.api
 
 from ayon_core.pipeline.publish import PublishValidationError
-from ayon_houdini.api import lib
+from ayon_houdini.api import lib, plugin
 import hou
 
 
-class ValidateAnimationSettings(pyblish.api.InstancePlugin):
+class ValidateAnimationSettings(plugin.HoudiniInstancePlugin):
     """Validate if the unexpanded string contains the frame ('$F') token
 
     This validator will only check the output parameter of the node if

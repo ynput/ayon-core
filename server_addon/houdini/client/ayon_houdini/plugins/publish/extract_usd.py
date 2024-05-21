@@ -3,12 +3,12 @@ import os
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
 import hou
 
-class ExtractUSD(publish.Extractor):
+class ExtractUSD(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract USD"

@@ -3,13 +3,13 @@
 
 import os
 import pyblish.api
-from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
 import hou
 
 
-class ExtractFBX(publish.Extractor):
+class ExtractFBX(plugin.HoudiniInstancePlugin):
 
     label = "Extract FBX"
     families = ["fbx"]

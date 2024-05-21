@@ -14,10 +14,11 @@ from ayon_core.pipeline import (
     CreatedInstance,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
-    load,
+    load
 )
 from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
+import pyblish.api
 
 
 class Creator(LegacyCreator):
@@ -353,5 +354,17 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
 class HoudiniLoader(load.LoaderPlugin):
     """Base class for most of the Houdini load plugins."""
+
+    settings_category = "houdini"
+
+
+class HoudiniInstancePlugin(pyblish.api.InstancePlugin):
+    """Base class for most of the Houdini instance publish plugins."""
+
+    settings_category = "houdini"
+
+
+class HoudiniContextPlugin(pyblish.api.ContextPlugin):
+    """Base class for most of the Houdini context publish plugins."""
 
     settings_category = "houdini"

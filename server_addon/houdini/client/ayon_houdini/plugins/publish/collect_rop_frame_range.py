@@ -2,10 +2,10 @@
 """Collector plugin for frames data on ROP instances."""
 import hou  # noqa
 import pyblish.api
-from ayon_houdini.api import lib
+from ayon_houdini.api import lib, plugin
 
 
-class CollectRopFrameRange(pyblish.api.InstancePlugin):
+class CollectRopFrameRange(plugin.HoudiniInstancePlugin):
     """Collect all frames which would be saved from the ROP nodes"""
 
     hosts = ["houdini"]

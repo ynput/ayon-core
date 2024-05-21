@@ -1,7 +1,8 @@
 import pyblish.api
+from ayon_houdini.api import plugin
 
 
-class CollectFarmInstances(pyblish.api.InstancePlugin):
+class CollectFarmInstances(plugin.HoudiniInstancePlugin):
     """Collect instances for farm render."""
 
     order = pyblish.api.CollectorOrder

@@ -1,9 +1,9 @@
 import os
 
 import pyblish.api
+from ayon_houdini.api import plugin
 
-
-class CollectWorkfile(pyblish.api.InstancePlugin):
+class CollectWorkfile(plugin.HoudiniInstancePlugin):
     """Inject workfile representation into instance"""
 
     order = pyblish.api.CollectorOrder - 0.01

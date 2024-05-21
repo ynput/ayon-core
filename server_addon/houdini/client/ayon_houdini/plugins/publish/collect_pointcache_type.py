@@ -4,9 +4,9 @@ This will add additional family to pointcache instance based on
 the creator_identifier parameter.
 """
 import pyblish.api
+from ayon_houdini.api import plugin
 
-
-class CollectPointcacheType(pyblish.api.InstancePlugin):
+class CollectPointcacheType(plugin.HoudiniInstancePlugin):
     """Collect data type for pointcache instance."""
 
     order = pyblish.api.CollectorOrder

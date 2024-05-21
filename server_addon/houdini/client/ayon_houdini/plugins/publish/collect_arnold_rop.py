@@ -4,12 +4,12 @@ import re
 import hou
 import pyblish.api
 
-from ayon_houdini.api import colorspace
+from ayon_houdini.api import colorspace, plugin
 from ayon_houdini.api.lib import (
     evalParmNoFrame, get_color_management_preferences)
 
 
-class CollectArnoldROPRenderProducts(pyblish.api.InstancePlugin):
+class CollectArnoldROPRenderProducts(plugin.HoudiniInstancePlugin):
     """Collect Arnold ROP Render Products
 
     Collects the instance.data["files"] for the render products.

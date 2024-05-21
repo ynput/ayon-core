@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 import hou
 
 
-class ValidateHoudiniNotApprenticeLicense(pyblish.api.InstancePlugin):
+class ValidateHoudiniNotApprenticeLicense(plugin.HoudiniInstancePlugin):
     """Validate the Houdini instance runs a non Apprentice license.
 
     USD ROPs:

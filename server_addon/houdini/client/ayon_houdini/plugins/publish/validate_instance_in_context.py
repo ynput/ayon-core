@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Validate if instance asset is the same as context asset."""
 
-import pyblish.api
+from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectROPAction
 from ayon_core.pipeline.publish import (
     RepairAction,
@@ -11,7 +11,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateInstanceInContextHoudini(pyblish.api.InstancePlugin,
+class ValidateInstanceInContextHoudini(plugin.HoudiniInstancePlugin,
                                        OptionalPyblishPluginMixin):
     """Validator to check if instance asset match context asset.
 

@@ -6,9 +6,10 @@ from ayon_core.pipeline.publish import (
     get_plugin_settings,
     apply_plugin_settings_automatically
 )
+from ayon_houdini.api import plugin
 
 
-class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
+class CollectLocalRenderInstances(plugin.HoudiniInstancePlugin):
     """Collect instances for local render.
 
     Agnostic Local Render Collector.

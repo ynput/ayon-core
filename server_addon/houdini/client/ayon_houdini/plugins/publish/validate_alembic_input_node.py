@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 import hou
 
 
-class ValidateAlembicInputNode(pyblish.api.InstancePlugin):
+class ValidateAlembicInputNode(plugin.HoudiniInstancePlugin):
     """Validate that the node connected to the output is correct.
 
     The connected node cannot be of the following types for Alembic:

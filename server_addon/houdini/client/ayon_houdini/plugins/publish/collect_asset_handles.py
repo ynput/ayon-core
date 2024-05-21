@@ -4,9 +4,10 @@ import hou  # noqa
 import pyblish.api
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import AYONPyblishPluginMixin
+from ayon_houdini.api import plugin
 
 
-class CollectAssetHandles(pyblish.api.InstancePlugin,
+class CollectAssetHandles(plugin.HoudiniInstancePlugin,
                           AYONPyblishPluginMixin):
     """Apply folder handles.
 

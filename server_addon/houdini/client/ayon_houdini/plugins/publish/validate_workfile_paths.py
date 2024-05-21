@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 import hou
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
@@ -9,7 +10,7 @@ from ayon_core.pipeline.publish import RepairAction
 
 
 class ValidateWorkfilePaths(
-        pyblish.api.InstancePlugin, OptionalPyblishPluginMixin):
+        plugin.HoudiniInstancePlugin, OptionalPyblishPluginMixin):
     """Validate workfile paths so they are absolute."""
 
     order = pyblish.api.ValidatorOrder

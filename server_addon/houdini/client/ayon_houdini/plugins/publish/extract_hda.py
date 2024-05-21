@@ -2,11 +2,11 @@
 import os
 from pprint import pformat
 import pyblish.api
-from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 import hou
 
 
-class ExtractHDA(publish.Extractor):
+class ExtractHDA(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract HDA"

@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 
 
-class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
+class ValidateUSDOutputNode(plugin.HoudiniInstancePlugin):
     """Validate the instance USD LOPs Output Node.
 
     This will ensure:

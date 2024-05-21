@@ -2,12 +2,12 @@ import os
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 
 import hou
 
 
-class ExtractMantraIFD(publish.Extractor):
+class ExtractMantraIFD(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Mantra ifd"
