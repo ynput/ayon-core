@@ -332,7 +332,7 @@ class ActionsModel:
         selection = self._prepare_selection(project_name, folder_id, task_id)
         output = []
         action_items = self._get_action_items(project_name)
-        for identifier, action in self._get_action_objects().items():
+        for identifier, action in sorted(self._get_action_objects().items()):
             if not action.is_compatible(selection):
                 continue
 
