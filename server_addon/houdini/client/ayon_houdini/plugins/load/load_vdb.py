@@ -1,14 +1,14 @@
 import os
 import re
 
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
+from ayon_core.pipeline import get_representation_path
+from ayon_houdini.api import (
+    pipeline,
+    plugin
 )
-from ayon_houdini.api import pipeline
 
 
-class VdbLoader(load.LoaderPlugin):
+class VdbLoader(plugin.HoudiniLoader):
     """Load VDB"""
 
     product_types = {"vdbcache"}

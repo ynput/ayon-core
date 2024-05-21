@@ -14,6 +14,7 @@ from ayon_core.pipeline import (
     CreatedInstance,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
+    load,
 )
 from ayon_core.lib import BoolDef
 from .lib import imprint, read, lsattr, add_self_publish_button
@@ -349,3 +350,8 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
         for key, value in settings.items():
             setattr(self, key, value)
+
+class HoudiniLoader(load.LoaderPlugin):
+    """Base class for most of the Houdini load plugins."""
+
+    settings_category = "houdini"

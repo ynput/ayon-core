@@ -3,10 +3,10 @@ import platform
 import subprocess
 
 from ayon_core.lib.vendor_bin_utils import find_executable
-from ayon_core.pipeline import load
+from ayon_houdini.api import plugin
 
 
-class ShowInUsdview(load.LoaderPlugin):
+class ShowInUsdview(plugin.HoudiniLoader):
     """Open USD file in usdview"""
 
     label = "Show in usdview"

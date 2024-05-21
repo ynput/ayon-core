@@ -1,12 +1,12 @@
 import os
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
+from ayon_core.pipeline import get_representation_path
+from ayon_houdini.api import (
+    pipeline,
+    plugin
 )
-from ayon_houdini.api import pipeline
 
 
-class AbcLoader(load.LoaderPlugin):
+class AbcLoader(plugin.HoudiniLoader):
     """Load Alembic"""
 
     product_types = {"model", "animation", "pointcache", "gpuCache"}
