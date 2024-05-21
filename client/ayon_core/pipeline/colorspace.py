@@ -920,7 +920,7 @@ def get_imageio_config_preset(
     project_entity = None
     if anatomy is None:
         project_entity = ayon_api.get_project(project_name)
-        anatomy = Anatomy(project_name, project_entity)
+        anatomy = Anatomy(project_name, project_entity=project_entity)
 
     if env is None:
         env = dict(os.environ.items())
