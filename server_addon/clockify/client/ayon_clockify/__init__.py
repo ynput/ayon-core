@@ -1,5 +1,5 @@
-from .clockify_module import ClockifyModule
+from .addon import ClockifyAddon
 
 __all__ = (
-    "ClockifyModule",
+    "ClockifyAddon",
 )
