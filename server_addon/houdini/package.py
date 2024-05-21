@@ -2,6 +2,8 @@ name = "houdini"
 title = "Houdini"
 version = "0.3.0"
 
+app_host_name = "houdini"
+
 client_dir = "ayon_houdini"
 
 ayon_required_addons = {
