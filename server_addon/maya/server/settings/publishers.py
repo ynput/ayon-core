@@ -634,10 +634,6 @@ class PublishersModel(BaseSettingsModel):
         title="Validate Instance In Context",
         section="Validators"
     )
-    ValidateContainers: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Containers"
-    )
     ValidateFrameRange: ValidateFrameRangeModel = SettingsField(
         default_factory=ValidateFrameRangeModel,
         title="Validate Frame Range"
@@ -1055,11 +1051,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False
     },
     "ValidateInstanceInContext": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateContainers": {
         "enabled": True,
         "optional": True,
         "active": True
