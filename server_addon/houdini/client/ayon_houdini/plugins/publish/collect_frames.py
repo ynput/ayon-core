@@ -5,10 +5,10 @@ import re
 
 import hou  # noqa
 import pyblish.api
-from ayon_houdini.api import lib
+from ayon_houdini.api import lib, plugin
 
 
-class CollectFrames(pyblish.api.InstancePlugin):
+class CollectFrames(plugin.HoudiniInstancePlugin):
     """Collect all frames which would be saved from the ROP nodes"""
 
     # This specific order value is used so that

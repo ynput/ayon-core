@@ -9,11 +9,12 @@ from ayon_houdini.api.lib import (
     get_color_management_preferences
 )
 from ayon_houdini.api import (
-    colorspace
+    colorspace,
+    plugin
 )
 
 
-class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
+class CollectMantraROPRenderProducts(plugin.HoudiniInstancePlugin):
     """Collect Mantra Render Products
 
     Collects the instance.data["files"] for the render products.

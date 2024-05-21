@@ -2,13 +2,13 @@ import os
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
 import hou
 
 
-class ExtractAss(publish.Extractor):
+class ExtractAss(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Extract Ass"

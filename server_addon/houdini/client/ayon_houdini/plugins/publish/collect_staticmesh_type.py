@@ -2,9 +2,10 @@
 """Collector for staticMesh types. """
 
 import pyblish.api
+from ayon_houdini.api import plugin
 
 
-class CollectStaticMeshType(pyblish.api.InstancePlugin):
+class CollectStaticMeshType(plugin.HoudiniInstancePlugin):
     """Collect data type for fbx instance."""
 
     hosts = ["houdini"]

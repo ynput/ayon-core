@@ -1,4 +1,5 @@
 import pyblish.api
+from ayon_houdini.api import plugin
 
 from ayon_core.lib import version_up
 from ayon_core.pipeline import registered_host
@@ -6,7 +7,7 @@ from ayon_core.pipeline.publish import get_errored_plugins_from_context
 from ayon_core.pipeline.publish import KnownPublishError
 
 
-class IncrementCurrentFile(pyblish.api.ContextPlugin):
+class IncrementCurrentFile(plugin.HoudiniContextPlugin):
     """Increment the current file.
 
     Saves the current scene with an increased version number.

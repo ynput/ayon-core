@@ -2,11 +2,12 @@
 import pyblish.api
 
 import hou
+from ayon_houdini.api import plugin
 from ayon_core.pipeline.publish import RepairContextAction
 from ayon_core.pipeline import PublishValidationError
 
 
-class ValidateRemotePublishEnabled(pyblish.api.ContextPlugin):
+class ValidateRemotePublishEnabled(plugin.HoudiniContextPlugin):
     """Validate the remote publish node is *not* bypassed."""
 
     order = pyblish.api.ValidatorOrder - 0.39

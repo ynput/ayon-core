@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
+from ayon_houdini.api import plugin
 import hou
 
-class ValidateAlembicROPFaceSets(pyblish.api.InstancePlugin):
+class ValidateAlembicROPFaceSets(plugin.HoudiniInstancePlugin):
     """Validate Face Sets are disabled for extraction to pointcache.
 
     When groups are saved as Face Sets with the Alembic these show up

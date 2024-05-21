@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """Validator plugin for Houdini Camera ROP settings."""
 import pyblish.api
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 
 
-class ValidateCameraROP(pyblish.api.InstancePlugin):
+class ValidateCameraROP(plugin.HoudiniInstancePlugin):
     """Validate Camera ROP settings."""
 
     order = pyblish.api.ValidatorOrder

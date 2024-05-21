@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 
 import hou
 
-class ValidateBypassed(pyblish.api.InstancePlugin):
+class ValidateBypassed(plugin.HoudiniInstancePlugin):
     """Validate all primitives build hierarchy from attribute when enabled.
 
     The name of the attribute must exist on the prims and have the same name

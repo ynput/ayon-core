@@ -1,7 +1,8 @@
 import pyblish.api
+from ayon_houdini.api import plugin
 
 
-class CollectReviewableInstances(pyblish.api.InstancePlugin):
+class CollectReviewableInstances(plugin.HoudiniInstancePlugin):
     """Collect Reviewable Instances.
 
     Basically, all instances of the specified families

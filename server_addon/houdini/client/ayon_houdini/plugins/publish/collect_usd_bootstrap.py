@@ -1,10 +1,10 @@
 import pyblish.api
 import ayon_api
-
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import usdlib, KnownPublishError
 
 
-class CollectUsdBootstrap(pyblish.api.InstancePlugin):
+class CollectUsdBootstrap(plugin.HoudiniInstancePlugin):
     """Collect special Asset/Shot bootstrap instances if those are needed.
 
     Some specific products are intended to be part of the default structure

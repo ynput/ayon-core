@@ -2,13 +2,13 @@
 import os
 import pyblish.api
 
-from ayon_houdini.api import lib
+from ayon_houdini.api import lib, plugin
 from ayon_core.pipeline import PublishValidationError
 
 import hou
 
 
-class ValidateFileExtension(pyblish.api.InstancePlugin):
+class ValidateFileExtension(plugin.HoudiniInstancePlugin):
     """Validate the output file extension fits the output family.
 
     File extensions:

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import hou
 import pyblish.api
-
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 
 
-class ValidateCopOutputNode(pyblish.api.InstancePlugin):
+class ValidateCopOutputNode(plugin.HoudiniInstancePlugin):
     """Validate the instance COP Output Node.
 
     This will ensure:

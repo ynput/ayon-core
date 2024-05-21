@@ -1,9 +1,10 @@
 import pyblish.api
+from ayon_houdini.api import plugin
 
 from ayon_core.pipeline import registered_host
 
 
-class SaveCurrentScene(pyblish.api.ContextPlugin):
+class SaveCurrentScene(plugin.HoudiniContextPlugin):
     """Save current scene"""
 
     label = "Save current file"

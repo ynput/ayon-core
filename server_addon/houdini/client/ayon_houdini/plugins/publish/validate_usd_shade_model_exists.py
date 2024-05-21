@@ -2,7 +2,7 @@
 import re
 
 import ayon_api
-import pyblish.api
+from ayon_houdini.api import plugin
 
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
@@ -11,7 +11,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
+class ValidateUSDShadeModelExists(plugin.HoudiniInstancePlugin):
     """Validate the Instance has no current cooking errors."""
 
     order = ValidateContentsOrder

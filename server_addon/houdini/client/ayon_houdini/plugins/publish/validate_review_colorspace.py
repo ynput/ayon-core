@@ -9,6 +9,7 @@ from ayon_core.pipeline.publish import (
     get_plugin_settings,
     apply_plugin_settings_automatically
 )
+from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectROPAction
 
 import os
@@ -20,7 +21,7 @@ class ResetViewSpaceAction(RepairAction):
     icon = "mdi.monitor"
 
 
-class ValidateReviewColorspace(pyblish.api.InstancePlugin,
+class ValidateReviewColorspace(plugin.HoudiniInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validate Review Colorspace parameters.
 

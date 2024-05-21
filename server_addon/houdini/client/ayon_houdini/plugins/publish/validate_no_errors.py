@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 import hou
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 
 
@@ -26,7 +27,7 @@ def get_errors(node):
     return node.errors()
 
 
-class ValidateNoErrors(pyblish.api.InstancePlugin):
+class ValidateNoErrors(plugin.HoudiniInstancePlugin):
     """Validate the Instance has no current cooking errors."""
 
     order = pyblish.api.ValidatorOrder

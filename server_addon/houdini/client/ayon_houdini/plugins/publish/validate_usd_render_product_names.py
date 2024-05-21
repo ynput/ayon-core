@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
 import pyblish.api
-
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 
 
-class ValidateUSDRenderProductNames(pyblish.api.InstancePlugin):
+class ValidateUSDRenderProductNames(plugin.HoudiniInstancePlugin):
     """Validate USD Render Product names are correctly set absolute paths."""
 
     order = pyblish.api.ValidatorOrder

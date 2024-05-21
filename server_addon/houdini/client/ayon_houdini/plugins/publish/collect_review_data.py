@@ -1,8 +1,9 @@
 import hou
 import pyblish.api
+from ayon_houdini.api import plugin
 
 
-class CollectHoudiniReviewData(pyblish.api.InstancePlugin):
+class CollectHoudiniReviewData(plugin.HoudiniInstancePlugin):
     """Collect Review Data."""
 
     label = "Collect Review Data"

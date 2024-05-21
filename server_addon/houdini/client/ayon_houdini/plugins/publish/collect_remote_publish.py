@@ -2,10 +2,10 @@ import pyblish.api
 
 import hou
 from ayon_core.pipeline.publish import RepairAction
-from ayon_houdini.api import lib
+from ayon_houdini.api import lib, plugin
 
 
-class CollectRemotePublishSettings(pyblish.api.ContextPlugin):
+class CollectRemotePublishSettings(plugin.HoudiniContextPlugin):
     """Collect custom settings of the Remote Publish node."""
 
     order = pyblish.api.CollectorOrder
