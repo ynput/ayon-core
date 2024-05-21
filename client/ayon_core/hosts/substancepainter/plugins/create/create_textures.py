@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating textures."""
-
 from ayon_core.pipeline import CreatedInstance, Creator, CreatorError
 from ayon_core.lib import (
     EnumDef,
@@ -18,6 +17,7 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
 from ayon_core.hosts.substancepainter.api.lib import get_export_presets
 
 import substance_painter.project
+import substance_painter as sp
 
 
 class CreateTextures(Creator):
@@ -42,10 +42,20 @@ class CreateTextures(Creator):
             "exportFileFormat",
             "exportSize",
             "exportPadding",
-            "exportDilationDistance"
+            "exportDilationDistance",
+            "useCustomExportPreset",
+            "exportChannel"
         ]:
             if key in pre_create_data:
                 creator_attributes[key] = pre_create_data[key]
+        #TODO: add the layer stack option
+        if sp.application.version_info()[0] >= 10 or (
+            pre_create_data.get("use_selection")):
+                stack = sp.textureset.get_active_stack()
+
+                instance_data["selected_node_id"] = [
+                    node_number.uid() for node_number in
+                    sp.layerstack.get_selected_nodes(stack)]
 
         instance = self.create_instance_in_context(product_name,
                                                    instance_data)
@@ -88,8 +98,25 @@ class CreateTextures(Creator):
         return instance
 
     def get_instance_attr_defs(self):
-
+        layer_stack_channel_enum = ["BaseColor", "Metallic", "Roughness",
+                                    "Normal", "Height", "Specular",
+                                    "SpecularEdgeColor", "Emissive", "Opacity",
+                                    "Displacement", "Glossiness", "Anisotropylevel",
+                                    "AO", "Anisotropyangle", "Transmissive",
+                                    "Reflection", "Diffuse", "Ior",
+                                    "Specularlevel", "BlendingMask", "Translucency",
+                                    "Scattering", "ScatterColor", "SheenOpacity",
+                                    "SheenRoughness", "SheenColor", "CoatOpacity",
+                                    "CoatColor", "CoatRoughness", "CoatSpecularLevel",
+                                    "CoatNormal"]
         return [
+            EnumDef("exportChannel",
+                    items=layer_stack_channel_enum,
+                    multiselection=True,
+                    default=None,
+                    label="Export Channel(s)",
+                    tooltip="Choose the channel which you "
+                            "want to solely export"),
             EnumDef("exportPresetUrl",
                     items=get_export_presets(),
                     label="Output Template"),
@@ -149,7 +176,6 @@ class CreateTextures(Creator):
                     },
                     default=None,
                     label="Size"),
-
             EnumDef("exportPadding",
                     items={
                         "passthrough": "No padding (passthrough)",
@@ -172,4 +198,7 @@ class CreateTextures(Creator):
 
     def get_pre_create_attr_defs(self):
         # Use same attributes as for instance attributes
-        return self.get_instance_attr_defs()
+        return [
+            BoolDef("use_selection", label="Use selection",
+                     tooltip="Select Layer Stack(s) for exporting")
+        ] + self.get_instance_attr_defs()

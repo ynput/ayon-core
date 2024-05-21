@@ -1,6 +1,6 @@
 import substance_painter.export
-
 from ayon_core.pipeline import KnownPublishError, publish
+from ayon_core.hosts.substancepainter.api.lib import supsend_publish_layer_stack
 
 
 class ExtractTextures(publish.Extractor,
@@ -25,19 +25,24 @@ class ExtractTextures(publish.Extractor,
     def process(self, instance):
 
         config = instance.data["exportConfig"]
-        result = substance_painter.export.export_project_textures(config)
+        creator_attrs = instance.data["creator_attributes"]
+        export_channel = creator_attrs.get("exportChannel", [])
+        node_ids = instance.data.get("selected_node_id", [])
 
-        if result.status != substance_painter.export.ExportStatus.Success:
-            raise KnownPublishError(
-                "Failed to export texture set: {}".format(result.message)
-            )
+        with supsend_publish_layer_stack(node_ids, export_channel):
+            result = substance_painter.export.export_project_textures(config)
 
-        # Log what files we generated
-        for (texture_set_name, stack_name), maps in result.textures.items():
-            # Log our texture outputs
-            self.log.info(f"Exported stack: {texture_set_name} {stack_name}")
-            for texture_map in maps:
-                self.log.info(f"Exported texture: {texture_map}")
+            if result.status != substance_painter.export.ExportStatus.Success:
+                raise KnownPublishError(
+                    "Failed to export texture set: {}".format(result.message)
+                )
+
+            # Log what files we generated
+            for (texture_set_name, stack_name), maps in result.textures.items():
+                # Log our texture outputs
+                self.log.info(f"Exported stack: {texture_set_name} {stack_name}")
+                for texture_map in maps:
+                    self.log.info(f"Exported texture: {texture_map}")
 
         # We'll insert the color space data for each image instance that we
         # added into this texture set. The collector couldn't do so because
