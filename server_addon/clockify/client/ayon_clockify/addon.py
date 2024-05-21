@@ -2,12 +2,12 @@ import os
 import threading
 import time
 
-from ayon_core.modules import AYONAddon, ITrayModule, IPluginPaths
+from ayon_core.addon import AYONAddon, ITrayAddon, IPluginPaths
 
 from .constants import CLOCKIFY_FTRACK_USER_PATH, CLOCKIFY_FTRACK_SERVER_PATH
 
 
-class ClockifyModule(AYONAddon, ITrayModule, IPluginPaths):
+class ClockifyAddon(AYONAddon, ITrayAddon, IPluginPaths):
     name = "clockify"
 
     def initialize(self, studio_settings):
@@ -31,7 +31,7 @@ class ClockifyModule(AYONAddon, ITrayModule, IPluginPaths):
         # TimersManager attributes
         # - set `timers_manager_connector` only in `tray_init`
         self.timers_manager_connector = None
-        self._timers_manager_module = None
+        self._timer_manager_addon = None
 
     @property
     def clockify_api(self):
@@ -87,7 +87,7 @@ class ClockifyModule(AYONAddon, ITrayModule, IPluginPaths):
         return {"actions": [actions_path]}
 
     def get_ftrack_event_handler_paths(self):
-        """Function for Ftrack module to add ftrack event handler paths."""
+        """Function for ftrack addon to add ftrack event handler paths."""
         return {
             "user": [CLOCKIFY_FTRACK_USER_PATH],
             "server": [CLOCKIFY_FTRACK_SERVER_PATH],
@@ -206,19 +206,19 @@ class ClockifyModule(AYONAddon, ITrayModule, IPluginPaths):
         self.action_stop_timer.setVisible(self.bool_timer_run)
 
     # --- TimersManager connection methods ---
-    def register_timers_manager(self, timer_manager_module):
+    def register_timers_manager(self, timer_manager_addon):
         """Store TimersManager for future use."""
-        self._timers_manager_module = timer_manager_module
+        self._timer_manager_addon = timer_manager_addon
 
     def timer_started(self, data):
         """Tell TimersManager that timer started."""
-        if self._timers_manager_module is not None:
-            self._timers_manager_module.timer_started(self.id, data)
+        if self._timer_manager_addon is not None:
+            self._timer_manager_addon.timer_started(self.id, data)
 
     def timer_stopped(self):
         """Tell TimersManager that timer stopped."""
-        if self._timers_manager_module is not None:
-            self._timers_manager_module.timer_stopped(self.id)
+        if self._timer_manager_addon is not None:
+            self._timer_manager_addon.timer_stopped(self.id)
 
     def stop_timer(self):
         """Called from TimersManager to stop timer."""
