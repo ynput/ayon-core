@@ -174,7 +174,7 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
     settings_name = None
     add_publish_button = False
 
-    settings_category = "houdini"
+    settings_category = SETTINGS_CATEGORY
 
     def create(self, product_name, instance_data, pre_create_data):
         try:
