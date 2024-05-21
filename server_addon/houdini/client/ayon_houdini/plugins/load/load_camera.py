@@ -1,9 +1,8 @@
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
+from ayon_core.pipeline import get_representation_path
+from ayon_houdini.api import (
+    pipeline,
+    plugin
 )
-from ayon_houdini.api import pipeline
-
 from ayon_houdini.api.lib import (
     set_camera_resolution,
     get_camera_from_container
@@ -84,7 +83,7 @@ def transfer_non_default_values(src, dest, ignore=None):
         dest_parm.setFromParm(parm)
 
 
-class CameraLoader(load.LoaderPlugin):
+class CameraLoader(plugin.HoudiniLoader):
     """Load camera from an Alembic file"""
 
     product_types = {"camera"}

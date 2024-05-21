@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
+from ayon_core.pipeline import get_representation_path
+from ayon_houdini.api import (
+    pipeline,
+    plugin
 )
-from ayon_houdini.api import pipeline
 
 
-class HdaLoader(load.LoaderPlugin):
+class HdaLoader(plugin.HoudiniLoader):
     """Load Houdini Digital Asset file."""
 
     product_types = {"hda"}

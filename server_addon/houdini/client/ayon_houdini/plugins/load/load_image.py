@@ -2,11 +2,14 @@ import os
 import re
 
 from ayon_core.pipeline import (
-    load,
     get_representation_path,
     AVALON_CONTAINER_ID,
 )
-from ayon_houdini.api import lib, pipeline
+from ayon_houdini.api import (
+    pipeline,
+    plugin,
+    lib
+)
 
 import hou
 
@@ -42,7 +45,7 @@ def get_image_avalon_container():
     return image_container
 
 
-class ImageLoader(load.LoaderPlugin):
+class ImageLoader(plugin.HoudiniLoader):
     """Load images into COP2"""
 
     product_types = {
