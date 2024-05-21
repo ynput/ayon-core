@@ -18,14 +18,6 @@ class ValidateAudioPlugin(BaseSettingsModel):
     active: bool = SettingsField(True, title="Active")
 
 
-class ValidateContainersPlugin(BaseSettingsModel):
-    """Check if loaded container is scene are latest versions."""
-    _isGroup = True
-    enabled: bool = True
-    optional: bool = SettingsField(False, title="Optional")
-    active: bool = SettingsField(True, title="Active")
-
-
 class ValidateSceneSettingsPlugin(BaseSettingsModel):
     """Validate if FrameStart, FrameEnd and Resolution match shot data in DB.
        Use regular expressions to limit validations only on particular asset
@@ -61,11 +53,6 @@ class HarmonyPublishPlugins(BaseSettingsModel):
     ValidateAudio: ValidateAudioPlugin = SettingsField(
         title="Validate Audio",
         default_factory=ValidateAudioPlugin,
-    )
-
-    ValidateContainers: ValidateContainersPlugin = SettingsField(
-        title="Validate Containers",
-        default_factory=ValidateContainersPlugin,
     )
 
     ValidateSceneSettings: ValidateSceneSettingsPlugin = SettingsField(
