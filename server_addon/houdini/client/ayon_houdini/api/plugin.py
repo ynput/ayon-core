@@ -21,6 +21,9 @@ from .lib import imprint, read, lsattr, add_self_publish_button
 import pyblish.api
 
 
+SETTINGS_CATEGORY = "houdini"
+
+
 class Creator(LegacyCreator):
     """Creator plugin to create instances in Houdini
 
@@ -356,16 +359,16 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 class HoudiniLoader(load.LoaderPlugin):
     """Base class for most of the Houdini load plugins."""
 
-    settings_category = "houdini"
+    settings_category = SETTINGS_CATEGORY
 
 
 class HoudiniInstancePlugin(pyblish.api.InstancePlugin):
     """Base class for most of the Houdini instance publish plugins."""
 
-    settings_category = "houdini"
+    settings_category = SETTINGS_CATEGORY
 
 
 class HoudiniContextPlugin(pyblish.api.ContextPlugin):
     """Base class for most of the Houdini context publish plugins."""
 
-    settings_category = "houdini"
+    settings_category = SETTINGS_CATEGORY
