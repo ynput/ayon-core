@@ -352,6 +352,7 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
         for key, value in settings.items():
             setattr(self, key, value)
 
+
 class HoudiniLoader(load.LoaderPlugin):
     """Base class for most of the Houdini load plugins."""
 
