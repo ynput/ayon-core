@@ -72,6 +72,3 @@ class ExtractRender(publish.Extractor):
             raise RuntimeError("Failed to complete render extraction. "
                                "Missing output files: {}".format(
                                    missing_frames))
-
-        # Skip integrating original render instance
-        instance.data["integrate"] = False
