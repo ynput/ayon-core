@@ -1,6 +1,6 @@
 import substance_painter.export
 from ayon_core.pipeline import KnownPublishError, publish
-from ayon_core.hosts.substancepainter.api.lib import supsend_publish_layer_stack
+from ayon_core.hosts.substancepainter.api.lib import set_layer_stack_opacity
 
 
 class ExtractTextures(publish.Extractor,
@@ -29,7 +29,7 @@ class ExtractTextures(publish.Extractor,
         export_channel = creator_attrs.get("exportChannel", [])
         node_ids = instance.data.get("selected_node_id", [])
 
-        with supsend_publish_layer_stack(node_ids, export_channel):
+        with set_layer_stack_opacity(node_ids, export_channel):
             result = substance_painter.export.export_project_textures(config)
 
             if result.status != substance_painter.export.ExportStatus.Success:
