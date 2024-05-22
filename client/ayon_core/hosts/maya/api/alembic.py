@@ -22,7 +22,6 @@ ALEMBIC_ARGS = {
     "melPostJobCallback": str,
     "noNormals": bool,
     "preRoll": bool,
-    "preRollStartFrame": int,
     "pythonPerFrameCallback": str,
     "pythonPostJobCallback": str,
     "renderableOnly": bool,
@@ -54,15 +53,22 @@ def extract_alembic(
     endFrame=None,
     eulerFilter=True,
     frameRange="",
+    melPerFrameCallback=None,
+    melPostJobCallback=None,
     noNormals=False,
     preRoll=False,
     preRollStartFrame=0,
+    pythonPerFrameCallback=None,
+    pythonPostJobCallback=None,
     renderableOnly=False,
     root=None,
     selection=True,
     startFrame=None,
     step=1.0,
     stripNamespaces=True,
+    userAttr=None,
+    userAttrPrefix=None,
+    uvsOnly=False,
     uvWrite=True,
     verbose=False,
     wholeFrameGeo=False,
@@ -102,6 +108,11 @@ def extract_alembic(
             string formatted as: "startFrame endFrame". This argument
             overrides `startFrame` and `endFrame` arguments.
 
+        melPerFrameCallback (Optional[str]): MEL callback run per frame.
+
+        melPostJobCallback (Optional[str]): MEL callback after last frame is
+            written.
+
         noNormals (bool): When on, normal data from the original polygon
             objects is not included in the exported Alembic cache file.
 
@@ -112,6 +123,11 @@ def extract_alembic(
             evaluation at.  This is used to set the starting frame for time
             dependent translations and can be used to evaluate run-up that
             isn't actually translated. Defaults to 0.
+
+        pythonPerFrameCallback (Optional[str]): Python callback run per frame.
+
+        pythonPostJobCallback (Optional[str]): Python callback after last frame
+            is written.
 
         renderableOnly (bool): When on, any non-renderable nodes or hierarchy,
             such as hidden objects, are not included in the Alembic file.
@@ -136,6 +152,15 @@ def extract_alembic(
             exported objects are removed from the Alembic file. For example, an
             object with the namespace taco:foo:bar appears as bar in the
             Alembic file.
+
+        userAttr (list of str, optional): A specific user defined attribute to
+            write out. Defaults to [].
+
+        userAttrPrefix (list of str, optional): Prefix filter for determining
+            which user defined attributes to write out. Defaults to [].
+
+        uvsOnly (bool): When on, only uv data for PolyMesh and SubD shapes
+            will be written to the Alembic file.
 
         uvWrite (bool): When on, UV data from polygon meshes and subdivision
             objects are written to the Alembic file. Only the current UV map is
@@ -183,6 +208,8 @@ def extract_alembic(
     # Ensure list arguments are valid.
     attr = attr or []
     attrPrefix = attrPrefix or []
+    userAttr = userAttr or []
+    userAttrPrefix = userAttrPrefix or []
     root = root or []
 
     # Pass the start and end frame on as `frameRange` so that it
@@ -213,8 +240,10 @@ def extract_alembic(
         "eulerFilter": eulerFilter,
         "noNormals": noNormals,
         "preRoll": preRoll,
+        "root": root,
         "renderableOnly": renderableOnly,
         "uvWrite": uvWrite,
+        "uvsOnly": uvsOnly,
         "writeColorSets": writeColorSets,
         "writeFaceSets": writeFaceSets,
         "wholeFrameGeo": wholeFrameGeo,
@@ -226,9 +255,10 @@ def extract_alembic(
         "step": step,
         "attr": attr,
         "attrPrefix": attrPrefix,
+        "userAttr": userAttr,
+        "userAttrPrefix": userAttrPrefix,
         "stripNamespaces": stripNamespaces,
-        "verbose": verbose,
-        "preRollStartFrame": preRollStartFrame
+        "verbose": verbose
     }
 
     # Validate options
@@ -264,6 +294,17 @@ def extract_alembic(
     if maya_version >= 2018:
         options['autoSubd'] = options.pop('writeCreases', False)
 
+    # Only add callbacks if they are set so that we're not passing `None`
+    callbacks = {
+        "melPerFrameCallback": melPerFrameCallback,
+        "melPostJobCallback": melPostJobCallback,
+        "pythonPerFrameCallback": pythonPerFrameCallback,
+        "pythonPostJobCallback": pythonPostJobCallback,
+    }
+    for key, callback in callbacks.items():
+        if callback:
+            options[key] = str(callback)
+
     # Format the job string from options
     job_args = list()
     for key, value in options.items():
@@ -297,7 +338,11 @@ def extract_alembic(
     # exports are made. (PLN-31)
     # TODO: Make sure this actually fixes the issues
     with evaluation("off"):
-        cmds.AbcExport(j=job_str, verbose=verbose)
+        cmds.AbcExport(
+            j=job_str,
+            verbose=verbose,
+            preRollStartFrame=preRollStartFrame
+        )
 
     if verbose:
         log.debug("Extracted Alembic to: %s", file)
