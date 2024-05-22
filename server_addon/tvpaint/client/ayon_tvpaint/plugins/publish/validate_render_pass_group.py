@@ -13,6 +13,8 @@ class ValidateLayersGroup(pyblish.api.InstancePlugin):
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["renderPass"]
 
+    settings_category = "tvpaint"
+
     def process(self, instance):
         # Prepare layers
         layers_data = instance.context.data["layersData"]

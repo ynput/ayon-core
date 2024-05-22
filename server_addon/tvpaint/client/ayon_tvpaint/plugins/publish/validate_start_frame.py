@@ -27,6 +27,8 @@ class ValidateStartFrame(
     order = pyblish.api.ValidatorOrder
     hosts = ["tvpaint"]
     actions = [RepairStartFrame]
+
+    settings_category = "tvpaint"
     optional = True
 
     def process(self, context):

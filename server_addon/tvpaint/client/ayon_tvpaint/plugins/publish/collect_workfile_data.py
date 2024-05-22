@@ -58,6 +58,8 @@ class CollectWorkfileData(pyblish.api.ContextPlugin):
     hosts = ["tvpaint"]
     actions = [ResetTVPaintWorkfileMetadata]
 
+    settings_category = "tvpaint"
+
     def process(self, context):
         current_project_id = execute_george("tv_projectcurrentid")
         execute_george("tv_projectselect {}".format(current_project_id))

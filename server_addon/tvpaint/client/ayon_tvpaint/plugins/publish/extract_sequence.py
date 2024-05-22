@@ -31,6 +31,8 @@ class ExtractSequence(pyblish.api.InstancePlugin):
     hosts = ["tvpaint"]
     families = ["review", "render"]
 
+    settings_category = "tvpaint"
+
     # Modifiable with settings
     review_bg = [255, 255, 255, 1.0]
 

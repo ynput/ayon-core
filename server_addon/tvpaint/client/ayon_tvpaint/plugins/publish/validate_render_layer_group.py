@@ -12,6 +12,8 @@ class ValidateRenderLayerGroups(pyblish.api.ContextPlugin):
     label = "Validate Render Layers Group"
     order = pyblish.api.ValidatorOrder + 0.1
 
+    settings_category = "tvpaint"
+
     def process(self, context):
         # Prepare layers
         render_layers_by_group_id = collections.defaultdict(list)
