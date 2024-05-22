@@ -9,6 +9,8 @@ class CollectWorkfile(pyblish.api.InstancePlugin):
     hosts = ["tvpaint"]
     families = ["workfile"]
 
+    settings_category = "tvpaint"
+
     def process(self, instance):
         context = instance.context
         current_file = context.data["currentFile"]

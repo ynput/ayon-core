@@ -12,6 +12,8 @@ class ValidateWorkfileProjectName(pyblish.api.ContextPlugin):
     label = "Validate Workfile Project Name"
     order = pyblish.api.ValidatorOrder
 
+    settings_category = "tvpaint"
+
     def process(self, context):
         workfile_context = context.data.get("workfile_context")
         # If workfile context is missing than project is matching to

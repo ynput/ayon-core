@@ -14,6 +14,8 @@ class CollectOutputFrameRange(pyblish.api.InstancePlugin):
     hosts = ["tvpaint"]
     families = ["review", "render"]
 
+    settings_category = "tvpaint"
+
     def process(self, instance):
         folder_entity = instance.data.get("folderEntity")
         if not folder_entity:

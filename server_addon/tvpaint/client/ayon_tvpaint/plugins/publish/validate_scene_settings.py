@@ -16,6 +16,8 @@ class ValidateProjectSettings(
 
     label = "Validate Scene Settings"
     order = pyblish.api.ValidatorOrder
+
+    settings_category = "tvpaint"
     optional = True
 
     def process(self, context):

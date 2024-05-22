@@ -12,6 +12,8 @@ class IncrementWorkfileVersion(pyblish.api.ContextPlugin):
     optional = True
     hosts = ["tvpaint"]
 
+    settings_category = "tvpaint"
+
     def process(self, context):
 
         assert all(result["success"] for result in context.data["results"]), (

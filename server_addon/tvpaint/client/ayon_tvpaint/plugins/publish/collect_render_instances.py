@@ -9,6 +9,7 @@ class CollectRenderInstances(pyblish.api.InstancePlugin):
     hosts = ["tvpaint"]
     families = ["render", "review"]
 
+    settings_category = "tvpaint"
     ignore_render_pass_transparency = False
 
     def process(self, instance):

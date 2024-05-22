@@ -48,6 +48,8 @@ class ValidateAssetName(
     hosts = ["tvpaint"]
     actions = [FixFolderPaths]
 
+    settings_category = "tvpaint"
+
     def process(self, context):
         if not self.is_active(context.data):
             return

@@ -41,6 +41,8 @@ class ValidateMarks(
     optional = True
     actions = [ValidateMarksRepair]
 
+    settings_category = "tvpaint"
+
     @staticmethod
     def get_expected_data(context):
         scene_mark_in = context.data["sceneMarkIn"]

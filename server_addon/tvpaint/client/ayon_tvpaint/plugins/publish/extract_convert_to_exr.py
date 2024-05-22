@@ -23,6 +23,8 @@ class ExtractConvertToEXR(pyblish.api.InstancePlugin):
     hosts = ["tvpaint"]
     families = ["render"]
 
+    settings_category = "tvpaint"
+
     enabled = False
 
     # Replace source PNG files or just add

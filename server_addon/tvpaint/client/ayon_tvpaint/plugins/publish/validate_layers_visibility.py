@@ -10,6 +10,8 @@ class ValidateLayersVisiblity(pyblish.api.InstancePlugin):
     order = pyblish.api.ValidatorOrder
     families = ["review", "render"]
 
+    settings_category = "tvpaint"
+
     def process(self, instance):
         layers = instance.data.get("layers")
         # Instance have empty layers

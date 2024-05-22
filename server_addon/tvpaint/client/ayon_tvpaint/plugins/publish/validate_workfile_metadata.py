@@ -31,6 +31,8 @@ class ValidateWorkfileMetadata(pyblish.api.ContextPlugin):
 
     actions = [ValidateWorkfileMetadataRepair]
 
+    settings_category = "tvpaint"
+
     required_keys = {"project_name", "folder_path", "task_name"}
 
     def process(self, context):
