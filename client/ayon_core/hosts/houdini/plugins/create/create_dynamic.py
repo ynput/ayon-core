@@ -12,6 +12,10 @@ def create_representation_data(files):
     """Create representation data needed for `instance.data['representations']"""
     first_file = files[0]
     folder, filename = os.path.split(first_file)
+
+    # Files should be filename only in representation
+    files = [os.path.basename(filepath) for filepath in files]
+
     ext = os.path.splitext(filename)[-1].strip(".")
     return {
         "name": ext,
