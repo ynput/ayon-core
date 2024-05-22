@@ -23,8 +23,8 @@ class FbxModelLoader(plugin.AssetLoader):
     Stores the imported asset in an empty named after the asset.
     """
 
-    families = ["model", "rig"]
-    representations = ["fbx"]
+    product_types = {"model", "rig"}
+    representations = {"fbx"}
 
     label = "Load FBX"
     icon = "code-fork"
@@ -131,8 +131,8 @@ class FbxModelLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        folder_name = context["asset"]["name"]
-        product_name = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         asset_name = plugin.prepare_scene_name(folder_name, product_name)
         unique_number = plugin.get_unique_number(folder_name, product_name)
@@ -166,11 +166,11 @@ class FbxModelLoader(plugin.AssetLoader):
             "name": name,
             "namespace": namespace or '',
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
             "libpath": libpath,
             "asset_name": asset_name,
-            "parent": str(context["representation"]["parent"]),
-            "productType": context["subset"]["data"]["family"],
+            "parent": context["representation"]["versionId"],
+            "productType": context["product"]["productType"],
             "objectName": group_name
         }
 
@@ -189,16 +189,16 @@ class FbxModelLoader(plugin.AssetLoader):
         Warning:
             No nested collections are supported at the moment!
         """
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         object_name = container["objectName"]
         asset_group = bpy.data.objects.get(object_name)
-        libpath = Path(get_representation_path(repre_doc))
+        libpath = Path(get_representation_path(repre_entity))
         extension = libpath.suffix.lower()
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(repre_doc, indent=2),
+            pformat(repre_entity, indent=2),
         )
 
         assert asset_group, (
@@ -251,7 +251,7 @@ class FbxModelLoader(plugin.AssetLoader):
         asset_group.matrix_basis = mat
 
         metadata["libpath"] = str(libpath)
-        metadata["representation"] = str(repre_doc["_id"])
+        metadata["representation"] = repre_entity["id"]
 
     def exec_remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.

@@ -49,7 +49,7 @@ def prepare_scene_name(
 def get_unique_number(
     folder_name: str, product_name: str
 ) -> str:
-    """Return a unique number based on the asset name."""
+    """Return a unique number based on the folder name."""
     avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
     if not avalon_container:
         return "01"
@@ -143,13 +143,19 @@ def deselect_all():
         if obj.mode != 'OBJECT':
             modes.append((obj, obj.mode))
             bpy.context.view_layer.objects.active = obj
-            bpy.ops.object.mode_set(mode='OBJECT')
+            context_override = create_blender_context(active=obj)
+            with bpy.context.temp_override(**context_override):
+                bpy.ops.object.mode_set(mode='OBJECT')
 
-    bpy.ops.object.select_all(action='DESELECT')
+    context_override = create_blender_context()
+    with bpy.context.temp_override(**context_override):
+        bpy.ops.object.select_all(action='DESELECT')
 
     for p in modes:
         bpy.context.view_layer.objects.active = p[0]
-        bpy.ops.object.mode_set(mode=p[1])
+        context_override = create_blender_context(active=p[0])
+        with bpy.context.temp_override(**context_override):
+            bpy.ops.object.mode_set(mode=p[1])
 
     bpy.context.view_layer.objects.active = active
 
@@ -220,9 +226,9 @@ class BaseCreator(Creator):
         Create new instance and store it.
 
         Args:
-            product_name(str): Subset name of created instance.
-            instance_data(dict): Instance base data.
-            pre_create_data(dict): Data based on pre creation attributes.
+            product_name (str): Product name of created instance.
+            instance_data (dict): Instance base data.
+            pre_create_data (dict): Data based on pre creation attributes.
                 Those may affect how creator works.
         """
         # Get Instance Container or create it if it does not exist
@@ -232,9 +238,9 @@ class BaseCreator(Creator):
             bpy.context.scene.collection.children.link(instances)
 
         # Create asset group
-        asset_name = instance_data["folderPath"].split("/")[-1]
+        folder_name = instance_data["folderPath"].split("/")[-1]
 
-        name = prepare_scene_name(asset_name, product_name)
+        name = prepare_scene_name(folder_name, product_name)
         if self.create_as_asset_group:
             # Create instance as empty
             instance_node = bpy.data.objects.new(name=name, object_data=None)
@@ -312,9 +318,9 @@ class BaseCreator(Creator):
                 "productName" in changes.changed_keys
                 or "folderPath" in changes.changed_keys
             ) and created_instance.product_type != "workfile":
-                asset_name = data["folderPath"].split("/")[-1]
+                folder_name = data["folderPath"].split("/")[-1]
                 name = prepare_scene_name(
-                    asset_name, data["productName"]
+                    folder_name, data["productName"]
                 )
                 node.name = name
 
@@ -346,7 +352,7 @@ class BaseCreator(Creator):
         """Fill instance data with required items.
 
         Args:
-            product_name(str): Subset name of created instance.
+            product_name(str): Product name of created instance.
             instance_data(dict): Instance base data.
             instance_node(bpy.types.ID): Instance node in blender scene.
         """
@@ -465,8 +471,8 @@ class AssetLoader(LoaderPlugin):
         filepath = self.filepath_from_context(context)
         assert Path(filepath).exists(), f"{filepath} doesn't exist."
 
-        folder_name = context["asset"]["name"]
-        product_name = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
         unique_number = get_unique_number(
             folder_name, product_name
         )
@@ -498,8 +504,8 @@ class AssetLoader(LoaderPlugin):
         #         loader=self.__class__.__name__,
         #     )
 
-        # folder_name = context["asset"]["name"]
-        # product_name = context["subset"]["name"]
+        # folder_name = context["folder"]["name"]
+        # product_name = context["product"]["name"]
         # instance_name = prepare_scene_name(
         #     folder_name, product_name, unique_number
         # ) + '_CON'

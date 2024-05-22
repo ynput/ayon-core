@@ -4,12 +4,14 @@ from maya import cmds
 
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
 
-class ValidateVrayProxyMembers(pyblish.api.InstancePlugin):
+class ValidateVrayProxyMembers(pyblish.api.InstancePlugin,
+                               OptionalPyblishPluginMixin):
     """Validate whether the V-Ray Proxy instance has shape members"""
 
     order = pyblish.api.ValidatorOrder
@@ -17,9 +19,11 @@ class ValidateVrayProxyMembers(pyblish.api.InstancePlugin):
     hosts = ['maya']
     families = ['vrayproxy']
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = False
 
     def process(self, instance):
-
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
 
         if invalid:

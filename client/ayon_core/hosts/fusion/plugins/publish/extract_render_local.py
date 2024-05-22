@@ -70,10 +70,10 @@ class FusionRenderLocal(
 
         # Log render status
         self.log.info(
-            "Rendered '{nm}' for asset '{ast}' under the task '{tsk}'".format(
-                nm=instance.data["name"],
-                ast=instance.data["folderPath"],
-                tsk=instance.data["task"],
+            "Rendered '{}' for folder '{}' under the task '{}'".format(
+                instance.data["name"],
+                instance.data["folderPath"],
+                instance.data["task"],
             )
         )
 

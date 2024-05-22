@@ -5,7 +5,7 @@ from ayon_core.hosts.maya.api import (
 from ayon_core.lib import NumberDef
 
 
-class CreateYetiCache(plugin.MayaCreator):
+class CreateUnrealYetiCache(plugin.MayaCreator):
     """Output for procedural plugin nodes of Yeti """
 
     identifier = "io.openpype.creators.maya.unrealyeticache"

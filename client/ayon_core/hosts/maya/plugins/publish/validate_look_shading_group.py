@@ -5,11 +5,13 @@ import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateShadingEngine(pyblish.api.InstancePlugin):
+class ValidateShadingEngine(pyblish.api.InstancePlugin,
+                            OptionalPyblishPluginMixin):
     """Validate all shading engines are named after the surface material.
 
     Shading engines should be named "{surface_shader}SG"
@@ -22,9 +24,12 @@ class ValidateShadingEngine(pyblish.api.InstancePlugin):
     actions = [
         ayon_core.hosts.maya.api.action.SelectInvalidAction, RepairAction
     ]
+    optional = True
 
     # The default connections to check
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
 
         invalid = self.get_invalid(instance)
         if invalid:
@@ -42,10 +47,18 @@ class ValidateShadingEngine(pyblish.api.InstancePlugin):
                 shape, destination=True, type="shadingEngine"
             ) or []
             for shading_engine in shading_engines:
-                name = (
-                    cmds.listConnections(shading_engine + ".surfaceShader")[0]
-                    + "SG"
+                materials = cmds.listConnections(
+                    shading_engine + ".surfaceShader",
+                    source=True, destination=False
                 )
+                if not materials:
+                    cls.log.warning(
+                        "Shading engine '{}' has no material connected to its "
+                        ".surfaceShader attribute.".format(shading_engine))
+                    continue
+
+                material = materials[0]  # there should only ever be one input
+                name = material + "SG"
                 if shading_engine != name:
                     invalid.append(shading_engine)
 

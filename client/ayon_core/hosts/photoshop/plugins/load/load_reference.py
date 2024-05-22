@@ -14,13 +14,13 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
     "Cannot write to closing transport", possible refactor.
     """
 
-    families = ["image", "render"]
-    representations = ["*"]
+    product_types = {"image", "render"}
+    representations = {"*"}
 
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()
         layer_name = get_unique_layer_name(
-            stub.get_layers(), context["asset"]["name"], name
+            stub.get_layers(), context["folder"]["name"], name
         )
         with photoshop.maintained_selection():
             path = self.filepath_from_context(context)
@@ -38,16 +38,13 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
         )
 
     def update(self, container, context):
-        """ Switch asset or change version """
+        """ Switch asset or change version."""
         stub = self.get_stub()
         layer = container.pop("layer")
 
-        asset_doc = context["asset"]
-        subset_doc = context["subset"]
-        repre_doc = context["representation"]
-
-        folder_name = asset_doc["name"]
-        product_name = subset_doc["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        repre_entity = context["representation"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])
@@ -60,14 +57,14 @@ class ReferenceLoader(photoshop.PhotoshopLoader):
         else:  # switching version - keep same name
             layer_name = container["namespace"]
 
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
         with photoshop.maintained_selection():
             stub.replace_smart_object(
                 layer, path, layer_name
             )
 
         stub.imprint(
-            layer.id, {"representation": str(repre_doc["_id"])}
+            layer.id, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):

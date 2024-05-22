@@ -1,20 +1,16 @@
-import copy
-import attr
-import pyblish.api
 import os
-import clique
-from copy import deepcopy
+import copy
 import re
 import warnings
+from copy import deepcopy
+
+import attr
+import ayon_api
+import clique
 
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
-    Anatomy,
-)
-from ayon_core.client import (
-    get_last_version_by_subset_name,
-    get_representations
 )
 from ayon_core.lib import Logger
 from ayon_core.pipeline.publish import KnownPublishError
@@ -78,16 +74,19 @@ def extend_frames(folder_path, product_name, start, end):
     prev_end = None
 
     project_name = get_current_project_name()
-    version = get_last_version_by_subset_name(
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path, fields={"id"}
+    )
+    version_entity = ayon_api.get_last_version_by_product_name(
         project_name,
         product_name,
-        asset_name=folder_path
+        folder_entity["id"]
     )
 
     # Set prev start / end frames for comparison
     if not prev_start and not prev_end:
-        prev_start = version["data"]["frameStart"]
-        prev_end = version["data"]["frameEnd"]
+        prev_start = version_entity["attrib"]["frameStart"]
+        prev_end = version_entity["attrib"]["frameEnd"]
 
     updated_start = min(start, prev_start)
     updated_end = max(end, prev_end)
@@ -136,7 +135,7 @@ def get_transferable_representations(instance):
         list of dicts: List of transferable representations.
 
     """
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
     to_transfer = []
 
     for representation in instance.data.get("representations", []):
@@ -165,7 +164,6 @@ def get_transferable_representations(instance):
 
 def create_skeleton_instance(
         instance, families_transfer=None, instance_transfer=None):
-    # type: (pyblish.api.Instance, list, dict) -> dict
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -190,7 +188,7 @@ def create_skeleton_instance(
 
     context = instance.context
     data = instance.data.copy()
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     # get time related data from instance (or context)
     time_data = get_time_data_from_instance_or_context(instance)
@@ -227,6 +225,7 @@ def create_skeleton_instance(
     instance_skeleton_data = {
         "productType": product_type,
         "productName": data["productName"],
+        "task": data["task"],
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
@@ -619,14 +618,31 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         aov_patterns = aov_filter
 
         preview = match_aov_pattern(app, aov_patterns, render_file_name)
-        # toggle preview on if multipart is on
-        if instance.data.get("multipartExr"):
-            log.debug("Adding preview tag because its multipartExr")
-            preview = True
 
         new_instance = deepcopy(skeleton)
         new_instance["productName"] = product_name
-        new_instance["subsetGroup"] = group_name
+        new_instance["productGroup"] = group_name
+
+        # toggle preview on if multipart is on
+        # Because we cant query the multipartExr data member of each AOV we'll
+        # need to have hardcoded rule of excluding any renders with
+        # "cryptomatte" in the file name from being a multipart EXR. This issue
+        # happens with Redshift that forces Cryptomatte renders to be separate
+        # files even when the rest of the AOVs are merged into a single EXR.
+        # There might be an edge case where the main instance has cryptomatte
+        # in the name even though it's a multipart EXR.
+        if instance.data.get("renderer") == "redshift":
+            if (
+                instance.data.get("multipartExr") and
+                "cryptomatte" not in render_file_name.lower()
+            ):
+                log.debug("Adding preview tag because it's multipartExr")
+                preview = True
+            else:
+                new_instance["multipartExr"] = False
+        elif instance.data.get("multipartExr"):
+            log.debug("Adding preview tag because its multipartExr")
+            preview = True
 
         # explicitly disable review by user
         preview = preview and not do_not_add_review
@@ -692,7 +708,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
     return instances
 
 
-def get_resources(project_name, version, extension=None):
+def get_resources(project_name, version_entity, extension=None):
     """Get the files from the specific version.
 
     This will return all get all files from representation.
@@ -710,7 +726,7 @@ def get_resources(project_name, version, extension=None):
 
     Args:
         project_name (str): Name of the project.
-        version (dict): Version document.
+        version_entity (dict): Version entity.
         extension (str): extension used to filter
             representations.
 
@@ -727,13 +743,14 @@ def get_resources(project_name, version, extension=None):
 
     # there is a `context_filter` argument that won't probably work in
     # final release of AYON. SO we'll rather not use it
-    repre_docs = list(get_representations(
-        project_name, version_ids=[version["_id"]]))
+    repre_entities = list(ayon_api.get_representations(
+        project_name, version_ids={version_entity["id"]}
+    ))
 
     filtered = []
-    for doc in repre_docs:
-        if doc["context"]["ext"] in extensions:
-            filtered.append(doc)
+    for repre_entity in repre_entities:
+        if repre_entity["context"]["ext"] in extensions:
+            filtered.append(repre_entity)
 
     representation = filtered[0]
     directory = get_representation_path(representation)
@@ -749,7 +766,6 @@ def get_resources(project_name, version, extension=None):
 
 
 def create_skeleton_instance_cache(instance):
-    # type: (pyblish.api.Instance, list, dict) -> dict
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -769,7 +785,7 @@ def create_skeleton_instance_cache(instance):
 
     context = instance.context
     data = instance.data.copy()
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     # get time related data from instance (or context)
     time_data = get_time_data_from_instance_or_context(instance)
@@ -1003,20 +1019,24 @@ def copy_extend_frames(instance, representation):
     start = instance.data.get("frameStart")
     end = instance.data.get("frameEnd")
     project_name = instance.context.data["project"]
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
+
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, instance.data.get("folderPath")
+    )
 
     # get latest version of product
     # this will stop if product wasn't published yet
 
-    version = get_last_version_by_subset_name(
+    version_entity = ayon_api.get_last_version_by_product_name(
         project_name,
         instance.data.get("productName"),
-        asset_name=instance.data.get("folderPath")
+        folder_entity["id"]
     )
 
     # get its files based on extension
     product_resources = get_resources(
-        project_name, version, representation.get("ext")
+        project_name, version_entity, representation.get("ext")
     )
     r_col, _ = clique.assemble(product_resources)
 
@@ -1088,8 +1108,8 @@ def attach_instances_to_product(attach_to, instances):
             new_inst["productType"] = attach_instance.get("productType")
             new_inst["family"] = attach_instance.get("family")
             new_inst["append"] = True
-            # don't set subsetGroup if we are attaching
-            new_inst.pop("subsetGroup")
+            # don't set productGroup if we are attaching
+            new_inst.pop("productGroup")
             new_instances.append(new_inst)
     return new_instances
 

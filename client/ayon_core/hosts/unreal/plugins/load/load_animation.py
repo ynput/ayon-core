@@ -8,7 +8,7 @@ from unreal import EditorAssetLibrary
 from unreal import MovieSceneSkeletalAnimationTrack
 from unreal import MovieSceneSkeletalAnimationSection
 
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -20,9 +20,9 @@ from ayon_core.hosts.unreal.api import pipeline as unreal_pipeline
 class AnimationFBXLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from FBX."""
 
-    families = ["animation"]
+    product_types = {"animation"}
     label = "Import FBX Animation"
-    representations = ["fbx"]
+    representations = {"fbx"}
     icon = "cube"
     color = "orange"
 
@@ -53,7 +53,7 @@ class AnimationFBXLoader(plugin.Loader):
         if not actor:
             return None
 
-        asset_doc = get_current_project_asset(fields=["data.fps"])
+        folder_entity = get_current_folder_entity(fields=["attrib.fps"])
 
         task.set_editor_property('filename', path)
         task.set_editor_property('destination_path', asset_dir)
@@ -82,7 +82,7 @@ class AnimationFBXLoader(plugin.Loader):
         task.options.anim_sequence_import_data.set_editor_property(
             'use_default_sample_rate', False)
         task.options.anim_sequence_import_data.set_editor_property(
-            'custom_sample_rate', asset_doc.get("data", {}).get("fps"))
+            'custom_sample_rate', folder_entity.get("attrib", {}).get("fps"))
         task.options.anim_sequence_import_data.set_editor_property(
             'import_custom_attribute', True)
         task.options.anim_sequence_import_data.set_editor_property(
@@ -140,14 +140,17 @@ class AnimationFBXLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and Ayon container
-        hierarchy = context.get('asset').get('data').get('parents')
         root = "/Game/Ayon"
-        asset = context.get('asset').get('name')
+        folder_path = context["folder"]["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
+        product_type = context["product"]["productType"]
+
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/Animations/{asset}/{name}", suffix="")
+            f"{root}/Animations/{folder_name}/{name}", suffix="")
 
         ar = unreal.AssetRegistryHelpers.get_asset_registry()
 
@@ -161,7 +164,7 @@ class AnimationFBXLoader(plugin.Loader):
         hierarchy_dir = root
         for h in hierarchy:
             hierarchy_dir = f"{hierarchy_dir}/{h}"
-        hierarchy_dir = f"{hierarchy_dir}/{asset}"
+        hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
 
         _filter = unreal.ARFilter(
             class_names=["World"],
@@ -226,14 +229,17 @@ class AnimationFBXLoader(plugin.Loader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["_id"],
-            "parent": context["representation"]["parent"],
-            "family": context["representation"]["context"]["family"]
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "folder_path": folder_path,
+            "product_type": product_type,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -247,10 +253,10 @@ class AnimationFBXLoader(plugin.Loader):
         unreal.EditorLevelLibrary.load_level(master_level)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         folder_name = container["asset_name"]
-        source_path = get_representation_path(repre_doc)
-        asset_doc = get_current_project_asset(fields=["data.fps"])
+        source_path = get_representation_path(repre_entity)
+        folder_entity = get_current_folder_entity(fields=["attrib.fps"])
         destination_path = container["namespace"]
 
         task = unreal.AssetImportTask()
@@ -284,7 +290,7 @@ class AnimationFBXLoader(plugin.Loader):
         task.options.anim_sequence_import_data.set_editor_property(
             'use_default_sample_rate', False)
         task.options.anim_sequence_import_data.set_editor_property(
-            'custom_sample_rate', asset_doc.get("data", {}).get("fps"))
+            'custom_sample_rate', folder_entity.get("attrib", {}).get("fps"))
         task.options.anim_sequence_import_data.set_editor_property(
             'import_custom_attribute', True)
         task.options.anim_sequence_import_data.set_editor_property(
@@ -306,8 +312,8 @@ class AnimationFBXLoader(plugin.Loader):
         unreal_pipeline.imprint(
             container_path,
             {
-                "representation": str(repre_doc["_id"]),
-                "parent": str(repre_doc["parent"])
+                "representation": repre_entity["id"],
+                "parent": repre_entity["versionId"],
             })
 
         asset_content = EditorAssetLibrary.list_assets(

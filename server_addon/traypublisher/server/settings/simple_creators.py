@@ -142,6 +142,7 @@ DEFAULT_SIMPLE_CREATORS = [
         "extensions": [
             ".exr",
             ".png",
+            ".dng",
             ".dpx",
             ".jpg",
             ".tiff",
@@ -165,6 +166,7 @@ DEFAULT_SIMPLE_CREATORS = [
         "extensions": [
             ".exr",
             ".png",
+            ".dng",
             ".dpx",
             ".jpg",
             ".jpeg",
@@ -215,6 +217,7 @@ DEFAULT_SIMPLE_CREATORS = [
             ".exr",
             ".jpg",
             ".jpeg",
+            ".dng",
             ".dpx",
             ".bmp",
             ".tif",

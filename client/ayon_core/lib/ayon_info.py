@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import datetime
 import platform
@@ -10,6 +11,12 @@ from .local_settings import get_local_site_id
 
 
 def get_ayon_launcher_version():
+    """Get AYON launcher version.
+
+    Returns:
+        str: Version string.
+
+    """
     version_filepath = os.path.join(os.environ["AYON_ROOT"], "version.py")
     if not os.path.exists(version_filepath):
         return None
@@ -19,18 +26,56 @@ def get_ayon_launcher_version():
     return content["__version__"]
 
 
+def is_in_ayon_launcher_process():
+    """Determine if current process is running from AYON launcher.
+
+    Returns:
+        bool: True if running from AYON launcher.
+
+    """
+    ayon_executable_path = os.path.normpath(os.environ["AYON_EXECUTABLE"])
+    executable_path = os.path.normpath(sys.executable)
+    return ayon_executable_path == executable_path
+
+
 def is_running_from_build():
     """Determine if current process is running from build or code.
 
     Returns:
         bool: True if running from build.
-    """
 
+    """
     executable_path = os.environ["AYON_EXECUTABLE"]
     executable_filename = os.path.basename(executable_path)
     if "python" in executable_filename.lower():
         return False
     return True
+
+
+def is_using_ayon_console():
+    """AYON launcher console executable is used.
+
+    This function make sense only on Windows platform. For other platforms
+    always returns True. True is also returned if process is running from
+    code.
+
+    AYON launcher on windows has 2 executable files. First 'ayon_console.exe'
+    works as 'python.exe' executable, the second 'ayon.exe' works as
+    'pythonw.exe' executable. The difference is way how stdout/stderr is
+    handled (especially when calling subprocess).
+
+    Returns:
+        bool: True if console executable is used.
+
+    """
+    if (
+        platform.system().lower() != "windows"
+        or is_running_from_build()
+    ):
+        return True
+    executable_path = os.environ["AYON_EXECUTABLE"]
+    executable_filename = os.path.basename(executable_path)
+    return "ayon_console" in executable_filename
 
 
 def is_staging_enabled():
@@ -102,8 +147,8 @@ def get_all_current_info():
 def extract_ayon_info_to_file(dirpath, filename=None):
     """Extract all current info to a file.
 
-    It is possible to define only directory path. Filename is concatenated with
-    pype version, workstation site id and timestamp.
+    It is possible to define only directory path. Filename is concatenated
+    with AYON version, workstation site id and timestamp.
 
     Args:
         dirpath (str): Path to directory where file will be stored.

@@ -5,8 +5,8 @@ from ayon_core.pipeline import load
 class CopyFile(load.LoaderPlugin):
     """Copy the published file to be pasted at the desired location"""
 
-    representations = ["*"]
-    families = ["*"]
+    representations = {"*"}
+    product_types = {"*"}
 
     label = "Copy File"
     order = 10

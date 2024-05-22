@@ -5,7 +5,8 @@ import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
@@ -79,7 +80,8 @@ def disconnect(node_a, node_b):
             cmds.disconnectAttr(source, input)
 
 
-class ValidateMeshShaderConnections(pyblish.api.InstancePlugin):
+class ValidateMeshShaderConnections(pyblish.api.InstancePlugin,
+                                    OptionalPyblishPluginMixin):
     """Ensure mesh shading engine connections are valid.
 
     In some scenarios Maya keeps connections to multiple shaders even if just
@@ -96,15 +98,18 @@ class ValidateMeshShaderConnections(pyblish.api.InstancePlugin):
     label = "Mesh Shader Connections"
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                RepairAction]
+    optional = True
 
     def process(self, instance):
         """Process all the nodes in the instance 'objectSet'"""
-
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
 
         if invalid:
-            raise PublishValidationError("Shapes found with invalid shader "
-                               "connections: {0}".format(invalid))
+            raise PublishValidationError(
+                "Shapes found with invalid shader connections: "
+                "{0}".format(invalid))
 
     @staticmethod
     def get_invalid(instance):

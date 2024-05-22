@@ -7,7 +7,6 @@ from ayon_core.hosts.max.api.lib import (
     maintained_selection,
     object_transform_set
 )
-from ayon_core.hosts.max.api.lib import maintained_selection
 from ayon_core.hosts.max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
@@ -20,8 +19,8 @@ from ayon_core.pipeline import get_representation_path, load
 class ObjLoader(load.LoaderPlugin):
     """Obj Loader."""
 
-    families = ["model"]
-    representations = ["obj"]
+    product_types = {"model"}
+    representations = {"obj"}
     order = -9
     icon = "code-fork"
     color = "white"
@@ -50,8 +49,8 @@ class ObjLoader(load.LoaderPlugin):
     def update(self, container, context):
         from pymxs import runtime as rt
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         node = rt.getNodeByName(node_name)
         namespace, _ = get_namespace(node_name)
@@ -68,17 +67,17 @@ class ObjLoader(load.LoaderPlugin):
         selections = rt.GetCurrentSelection()
         for selection in selections:
             selection.name = f"{namespace}:{selection.name}"
-            selection_transform = f"{selection.name}.transform"
+            selection_transform = f"{selection}.transform"
             if selection_transform in transform_data.keys():
                 selection.pos = transform_data[selection_transform] or 0
                 selection.scale = transform_data[
-                    f"{selection.name}.scale"] or 0
+                    f"{selection}.scale"] or 0
         update_custom_attribute_data(node, selections)
         with maintained_selection():
             rt.Select(node)
 
         lib.imprint(node_name, {
-            "representation": str(repre_doc["_id"])
+            "representation": repre_entity["id"]
         })
 
     def switch(self, container, context):

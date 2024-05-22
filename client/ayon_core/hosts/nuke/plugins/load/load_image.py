@@ -1,14 +1,10 @@
 import nuke
 
 import qargparse
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api.lib import (
@@ -27,16 +23,16 @@ from ayon_core.lib.transcoding import (
 class LoadImage(load.LoaderPlugin):
     """Load still image into Nuke"""
 
-    families = [
+    product_types = {
         "render2d",
         "source",
         "plate",
         "render",
         "prerender",
         "review",
-        "image"
-    ]
-    representations = ["*"]
+        "image",
+    }
+    representations = {"*"}
     extensions = set(
         ext.lstrip(".") for ext in IMAGE_EXTENSIONS
     )
@@ -72,40 +68,37 @@ class LoadImage(load.LoaderPlugin):
             "frame_number", int(nuke.root()["first_frame"].getValue())
         )
 
-        version = context['version']
-        version_data = version.get("data", {})
-        repr_id = context["representation"]["_id"]
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        repre_entity = context["representation"]
+        repre_id = repre_entity["id"]
 
-        self.log.info("version_data: {}\n".format(version_data))
         self.log.debug(
-            "Representation id `{}` ".format(repr_id))
+            "Representation id `{}` ".format(repre_id))
 
         last = first = int(frame_number)
 
-        # Fallback to asset name when namespace is None
+        # Fallback to folder name when namespace is None
         if namespace is None:
-            namespace = context['asset']['name']
+            namespace = context["folder"]["name"]
 
         file = self.filepath_from_context(context)
 
         if not file:
-            repr_id = context["representation"]["_id"]
             self.log.warning(
-                "Representation id `{}` is failing to load".format(repr_id))
+                "Representation id `{}` is failing to load".format(repre_id))
             return
 
         file = file.replace("\\", "/")
 
-        representation = context["representation"]
-        repr_cont = representation["context"]
-        frame = repr_cont.get("frame")
+        frame = repre_entity["context"].get("frame")
         if frame:
             padding = len(frame)
             file = file.replace(
                 frame,
                 format(frame_number, "0{}".format(padding)))
 
-        read_name = self._get_node_name(representation)
+        read_name = self._get_node_name(context)
 
         # Create the Loader with the filename path set
         with viewer_update_and_undo_stop():
@@ -118,7 +111,7 @@ class LoadImage(load.LoaderPlugin):
             r["file"].setValue(file)
 
             # Set colorspace defined in version data
-            colorspace = context["version"]["data"].get("colorspace")
+            colorspace = version_entity["attrib"].get("colorSpace")
             if colorspace:
                 r["colorspace"].setValue(str(colorspace))
 
@@ -132,19 +125,16 @@ class LoadImage(load.LoaderPlugin):
             r["origlast"].setValue(last)
             r["last"].setValue(last)
 
-            # add additional metadata from the version to imprint Avalon knob
-            add_keys = ["source", "colorspace", "author", "fps", "version"]
-
+            # add attributes from the version to imprint metadata knob
+            colorspace = version_attributes["colorSpace"]
             data_imprint = {
                 "frameStart": first,
-                "frameEnd": last
+                "frameEnd": last,
+                "version": version_entity["version"],
+                "colorspace": colorspace,
             }
-            for k in add_keys:
-                if k == 'version':
-                    data_imprint.update({k: context["version"]['name']})
-                else:
-                    data_imprint.update(
-                        {k: context["version"]['data'].get(k, str(None))})
+            for k in ["source", "fps"]:
+                data_imprint[k] = version_attributes.get(k, str(None))
 
             r["tile_color"].setValue(int("0x4ecd25ff", 16))
 
@@ -172,17 +162,17 @@ class LoadImage(load.LoaderPlugin):
         assert node.Class() == "Read", "Must be Read"
 
         project_name = context["project"]["name"]
-        version_doc = context["version"]
-        repre_doc = context["representation"]
+        version_entity = context["version"]
+        repre_entity = context["representation"]
 
-        repr_cont = repre_doc["context"]
+        repr_cont = repre_entity["context"]
 
-        file = get_representation_path(repre_doc)
+        file = get_representation_path(repre_entity)
 
         if not file:
-            repr_id = repre_doc["_id"]
+            repre_id = repre_entity["id"]
             self.log.warning(
-                "Representation id `{}` is failing to load".format(repr_id))
+                "Representation id `{}` is failing to load".format(repre_id))
             return
 
         file = file.replace("\\", "/")
@@ -195,11 +185,9 @@ class LoadImage(load.LoaderPlugin):
                 format(frame_number, "0{}".format(padding)))
 
         # Get start frame from version data
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version_doc["parent"], fields=["_id"]
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
-
-        version_data = version_doc.get("data", {})
 
         last = first = int(frame_number)
 
@@ -210,31 +198,29 @@ class LoadImage(load.LoaderPlugin):
         node["origlast"].setValue(last)
         node["last"].setValue(last)
 
-        updated_dict = {}
-        updated_dict.update({
-            "representation": str(repre_doc["_id"]),
+        version_attributes = version_entity["attrib"]
+        updated_dict = {
+            "representation": repre_entity["id"],
             "frameStart": str(first),
             "frameEnd": str(last),
-            "version": str(version_doc.get("name")),
-            "colorspace": version_data.get("colorspace"),
-            "source": version_data.get("source"),
-            "fps": str(version_data.get("fps")),
-            "author": version_data.get("author")
-        })
+            "version": str(version_entity["version"]),
+            "colorspace": version_attributes.get("colorSpace"),
+            "source": version_attributes.get("source"),
+            "fps": str(version_attributes.get("fps")),
+        }
 
         # change color of node
-        if version_doc["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = "0x4ecd25ff"
         else:
             color_value = "0xd84f20ff"
         node["tile_color"].setValue(int(color_value, 16))
 
         # Update the imprinted representation
-        update_container(
-            node,
-            updated_dict
-        )
-        self.log.info("updated to version: {}".format(version_doc.get("name")))
+        update_container(node, updated_dict)
+        self.log.info("updated to version: {}".format(
+            version_entity["version"]
+        ))
 
     def remove(self, container):
         node = container["node"]
@@ -243,15 +229,25 @@ class LoadImage(load.LoaderPlugin):
         with viewer_update_and_undo_stop():
             nuke.delete(node)
 
-    def _get_node_name(self, representation):
+    def _get_node_name(self, context):
+        folder_entity = context["folder"]
+        product_name = context["product"]["name"]
+        repre_entity = context["representation"]
 
-        repre_cont = representation["context"]
+        folder_name = folder_entity["name"]
+        repre_cont = repre_entity["context"]
         name_data = {
-            "asset": repre_cont["asset"],
-            "subset": repre_cont["subset"],
-            "representation": representation["name"],
+            "folder": {
+                "name": folder_name,
+            },
+            "product": {
+                "name": product_name,
+            },
+            "asset": folder_name,
+            "subset": product_name,
+            "representation": repre_entity["name"],
             "ext": repre_cont["representation"],
-            "id": representation["_id"],
+            "id": repre_entity["id"],
             "class_name": self.__class__.__name__
         }
 

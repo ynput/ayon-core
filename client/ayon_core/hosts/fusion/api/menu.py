@@ -10,10 +10,10 @@ from ayon_core.hosts.fusion.scripts import (
     duplicate_with_inputs,
 )
 from ayon_core.hosts.fusion.api.lib import (
-    set_asset_framerange,
-    set_asset_resolution,
+    set_current_context_framerange,
+    set_current_context_resolution,
 )
-from ayon_core.pipeline import get_current_asset_name
+from ayon_core.pipeline import get_current_folder_path
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.tools.utils import get_qt_app
 
@@ -28,9 +28,9 @@ self = sys.modules[__name__]
 self.menu = None
 
 
-class OpenPypeMenu(QtWidgets.QWidget):
+class AYONMenu(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
-        super(OpenPypeMenu, self).__init__(*args, **kwargs)
+        super(AYONMenu, self).__init__(*args, **kwargs)
 
         self.setObjectName(f"{MENU_LABEL}Menu")
 
@@ -49,15 +49,15 @@ class OpenPypeMenu(QtWidgets.QWidget):
         self.render_mode_widget = None
         self.setWindowTitle(MENU_LABEL)
 
-        asset_label = QtWidgets.QLabel("Context", self)
-        asset_label.setStyleSheet(
+        context_label = QtWidgets.QLabel("Context", self)
+        context_label.setStyleSheet(
             """QLabel {
             font-size: 14px;
             font-weight: 600;
             color: #5f9fb8;
         }"""
         )
-        asset_label.setAlignment(QtCore.Qt.AlignHCenter)
+        context_label.setAlignment(QtCore.Qt.AlignHCenter)
 
         workfiles_btn = QtWidgets.QPushButton("Workfiles...", self)
         create_btn = QtWidgets.QPushButton("Create...", self)
@@ -74,7 +74,7 @@ class OpenPypeMenu(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(10, 20, 10, 20)
 
-        layout.addWidget(asset_label)
+        layout.addWidget(context_label)
 
         layout.addSpacing(20)
 
@@ -103,7 +103,7 @@ class OpenPypeMenu(QtWidgets.QWidget):
         self.setLayout(layout)
 
         # Store reference so we can update the label
-        self.asset_label = asset_label
+        self.context_label = context_label
 
         workfiles_btn.clicked.connect(self.on_workfile_clicked)
         create_btn.clicked.connect(self.on_create_clicked)
@@ -125,14 +125,14 @@ class OpenPypeMenu(QtWidgets.QWidget):
         self._pulse = FusionPulse(parent=self)
         self._pulse.start()
 
-        # Detect Fusion events as OpenPype events
+        # Detect Fusion events as AYON events
         self._event_handler = FusionEventHandler(parent=self)
         self._event_handler.start()
 
     def on_task_changed(self):
         # Update current context label
-        label = get_current_asset_name()
-        self.asset_label.setText(label)
+        label = get_current_folder_path()
+        self.context_label.setText(label)
 
     def register_callback(self, name, fn):
         # Create a wrapper callback that we only store
@@ -168,22 +168,22 @@ class OpenPypeMenu(QtWidgets.QWidget):
         duplicate_with_inputs.duplicate_with_input_connections()
 
     def on_set_resolution_clicked(self):
-        set_asset_resolution()
+        set_current_context_resolution()
 
     def on_set_framerange_clicked(self):
-        set_asset_framerange()
+        set_current_context_framerange()
 
 
-def launch_openpype_menu():
+def launch_ayon_menu():
     app = get_qt_app()
 
-    pype_menu = OpenPypeMenu()
+    ayon_menu = AYONMenu()
 
     stylesheet = load_stylesheet()
-    pype_menu.setStyleSheet(stylesheet)
+    ayon_menu.setStyleSheet(stylesheet)
 
-    pype_menu.show()
-    self.menu = pype_menu
+    ayon_menu.show()
+    self.menu = ayon_menu
 
     result = app.exec_()
     print("Shutting down..")

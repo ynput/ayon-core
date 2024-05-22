@@ -4,12 +4,9 @@ import json
 from collections import defaultdict
 
 from qtpy import QtWidgets
+from ayon_api import get_representation_by_name
 
-from ayon_core.client import get_representation_by_name
-from ayon_core.pipeline import (
-    get_current_project_name,
-    get_representation_path,
-)
+from ayon_core.pipeline import get_representation_path
 import ayon_core.hosts.maya.api.plugin
 from ayon_core.hosts.maya.api import lib
 from ayon_core.hosts.maya.api.lib import get_reference_node
@@ -20,8 +17,8 @@ from ayon_core.tools.utils import ScrollMessageBox
 class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
     """Specific loader for lookdev"""
 
-    families = ["look"]
-    representations = ["ma"]
+    product_types = {"look"}
+    representations = {"ma"}
 
     label = "Reference look"
     order = -10
@@ -78,10 +75,10 @@ class LookLoader(ayon_core.hosts.maya.api.plugin.ReferenceLoader):
         shader_nodes = cmds.ls(members, type='shadingEngine')
         nodes = set(self._get_nodes_with_shader(shader_nodes))
 
-        version_doc = context["version"]
-        project_name = get_current_project_name()
+        version_id = context["version"]["id"]
+        project_name = context["project"]["name"]
         json_representation = get_representation_by_name(
-            project_name, "json", version_doc["_id"]
+            project_name, "json", version_id
         )
 
         # Load relationships

@@ -32,7 +32,7 @@ class ValidateDeadlinePublish(pyblish.api.InstancePlugin,
         tree = bpy.context.scene.node_tree
         output_type = "CompositorNodeOutputFile"
         output_node = None
-        # Remove all output nodes that inlcude "AYON" in the name.
+        # Remove all output nodes that include "AYON" in the name.
         # There should be only one.
         for node in tree.nodes:
             if node.bl_idname == output_type and "AYON" in node.name:

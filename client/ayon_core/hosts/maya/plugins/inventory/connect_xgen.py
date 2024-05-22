@@ -2,7 +2,9 @@ from maya import cmds
 import xgenm
 
 from ayon_core.pipeline import (
-    InventoryAction, get_representation_context, get_representation_path
+    InventoryAction,
+    get_repres_contexts,
+    get_representation_path,
 )
 
 
@@ -25,14 +27,19 @@ class ConnectXgen(InventoryAction):
 
         # Categorize containers by product type.
         containers_by_product_type = {}
+        repre_ids = {
+            container["representation"]
+            for container in containers
+        }
+        repre_contexts_by_id = get_repres_contexts(repre_ids)
         for container in containers:
-            product_type = get_representation_context(
-                container["representation"]
-            )["subset"]["data"]["family"]
-            try:
-                containers_by_product_type[product_type].append(container)
-            except KeyError:
-                containers_by_product_type[product_type] = [container]
+            repre_id = container["representation"]
+            repre_context = repre_contexts_by_id[repre_id]
+
+            product_type = repre_context["product"]["productType"]
+
+            containers_by_product_type.setdefault(product_type, [])
+            containers_by_product_type[product_type].append(container)
 
         # Validate to only 1 source container.
         source_containers = containers_by_product_type.get("animation", [])
@@ -51,13 +58,12 @@ class ConnectXgen(InventoryAction):
             return
 
         source_container = source_containers[0]
+        source_repre_id = source_container["representation"]
         source_object = source_container["objectName"]
 
         # Validate source representation is an alembic.
         source_path = get_representation_path(
-            get_representation_context(
-                source_container["representation"]
-            )["representation"]
+            repre_contexts_by_id[source_repre_id]["representation"]
         ).replace("\\", "/")
         message = "Animation container \"{}\" is not an alembic:\n{}".format(
             source_container["namespace"], source_path

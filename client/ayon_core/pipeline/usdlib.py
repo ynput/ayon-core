@@ -2,14 +2,15 @@ import os
 import re
 import logging
 
+import ayon_api
 try:
     from pxr import Usd, UsdGeom, Sdf, Kind
 except ImportError:
     # Allow to fall back on Multiverse 6.3.0+ pxr usd library
     from mvpxr import Usd, UsdGeom, Sdf, Kind
 
-from ayon_core.client import get_project, get_asset_by_name
 from ayon_core.pipeline import Anatomy, get_current_project_name
+from ayon_core.pipeline.template_data import get_template_data
 
 log = logging.getLogger(__name__)
 
@@ -118,7 +119,7 @@ def create_shot(filepath, layers, create_layers=False):
     return filepath
 
 
-def create_model(filename, asset, variant_subsets):
+def create_model(filename, folder_path, variant_product_names):
     """Create a USD Model file.
 
     For each of the variation paths it will payload the path and set its
@@ -127,22 +128,24 @@ def create_model(filename, asset, variant_subsets):
     """
 
     project_name = get_current_project_name()
-    asset_doc = get_asset_by_name(project_name, asset)
-    assert asset_doc, "Asset not found: %s" % asset
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    assert folder_entity, "Folder not found: %s" % folder_path
 
     variants = []
-    for subset in variant_subsets:
+    for product_name in variant_product_names:
         prefix = "usdModel"
-        if subset.startswith(prefix):
+        if product_name.startswith(prefix):
             # Strip off `usdModel_`
-            variant = subset[len(prefix):]
+            variant = product_name[len(prefix):]
         else:
             raise ValueError(
-                "Model subsets must start " "with usdModel: %s" % subset
+                "Model products must start with usdModel: %s" % product_name
             )
 
         path = get_usd_master_path(
-            asset=asset_doc, subset=subset, representation="usd"
+            folder_entity=folder_entity,
+            product_name=product_name,
+            representation="usd"
         )
         variants.append((variant, path))
 
@@ -169,33 +172,37 @@ def create_model(filename, asset, variant_subsets):
     stage.GetRootLayer().Save()
 
 
-def create_shade(filename, asset, variant_subsets):
+def create_shade(filename, folder_path, variant_product_names):
     """Create a master USD shade file for an asset.
 
     For each available model variation this should generate a reference
-    to a `usdShade_{modelVariant}` subset.
+    to a `usdShade_{modelVariant}` product.
 
     """
 
     project_name = get_current_project_name()
-    asset_doc = get_asset_by_name(project_name, asset)
-    assert asset_doc, "Asset not found: %s" % asset
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    assert folder_entity, "Folder not found: %s" % folder_path
 
     variants = []
 
-    for subset in variant_subsets:
+    for product_name in variant_product_names:
         prefix = "usdModel"
-        if subset.startswith(prefix):
+        if product_name.startswith(prefix):
             # Strip off `usdModel_`
-            variant = subset[len(prefix):]
+            variant = product_name[len(prefix):]
         else:
             raise ValueError(
-                "Model subsets must start " "with usdModel: %s" % subset
+                "Model products must start " "with usdModel: %s" % product_name
             )
 
-        shade_subset = re.sub("^usdModel", "usdShade", subset)
+        shade_product_name = re.sub(
+            "^usdModel", "usdShade", product_name
+        )
         path = get_usd_master_path(
-            asset=asset_doc, subset=shade_subset, representation="usd"
+            folder_entity=folder_entity,
+            product_name=shade_product_name,
+            representation="usd"
         )
         variants.append((variant, path))
 
@@ -206,7 +213,7 @@ def create_shade(filename, asset, variant_subsets):
     stage.GetRootLayer().Save()
 
 
-def create_shade_variation(filename, asset, model_variant, shade_variants):
+def create_shade_variation(filename, folder_path, model_variant, shade_variants):
     """Create the master Shade file for a specific model variant.
 
     This should reference all shade variants for the specific model variant.
@@ -214,16 +221,18 @@ def create_shade_variation(filename, asset, model_variant, shade_variants):
     """
 
     project_name = get_current_project_name()
-    asset_doc = get_asset_by_name(project_name, asset)
-    assert asset_doc, "Asset not found: %s" % asset
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    assert folder_entity, "Folder not found: %s" % folder_path
 
     variants = []
     for variant in shade_variants:
-        subset = "usdShade_{model}_{shade}".format(
+        product_name = "usdShade_{model}_{shade}".format(
             model=model_variant, shade=variant
         )
         path = get_usd_master_path(
-            asset=asset_doc, subset=subset, representation="usd"
+            folder_entity=folder_entity,
+            product_name=product_name,
+            representation="usd"
         )
         variants.append((variant, path))
 
@@ -306,55 +315,48 @@ def _create_variants_file(
     return stage
 
 
-def get_usd_master_path(asset, subset, representation):
-    """Get the filepath for a .usd file of a subset.
+def get_usd_master_path(folder_entity, product_name, representation):
+    """Get the filepath for a .usd file of a product.
 
     This will return the path to an unversioned master file generated by
     `usd_master_file.py`.
 
+    Args:
+        folder_entity (Union[str, dict]): Folder entity.
+        product_name (str): Product name.
+        representation (str): Representation name.
     """
 
     project_name = get_current_project_name()
-    anatomy = Anatomy(project_name)
-    project_doc = get_project(
-        project_name,
-        fields=["name", "data.code"]
-    )
+    project_entity = ayon_api.get_project(project_name)
+    anatomy = Anatomy(project_name, project_entity=project_entity)
 
-    if isinstance(asset, dict) and "name" in asset:
-        # Allow explicitly passing asset document
-        asset_doc = asset
-    else:
-        asset_doc = get_asset_by_name(project_name, asset, fields=["name"])
+    template_data = get_template_data(project_entity, folder_entity)
+    template_data.update({
+        "product": {
+            "name": product_name
+        },
+        "subset": product_name,
+        "representation": representation,
+        "version": 0,  # stub version zero
+    })
 
-    template_obj = anatomy.templates_obj["publish"]["path"]
-    path = template_obj.format_strict(
-        {
-            "project": {
-                "name": project_name,
-                "code": project_doc.get("data", {}).get("code")
-            },
-            "folder": {
-                "name": asset_doc["name"],
-            },
-            "asset": asset_doc["name"],
-            "subset": subset,
-            "representation": representation,
-            "version": 0,  # stub version zero
-        }
+    template_obj = anatomy.get_template_item(
+        "publish", "default", "path"
     )
+    path = template_obj.format_strict(template_data)
 
     # Remove the version folder
-    subset_folder = os.path.dirname(os.path.dirname(path))
-    master_folder = os.path.join(subset_folder, "master")
-    fname = "{0}.{1}".format(subset, representation)
+    product_folder = os.path.dirname(os.path.dirname(path))
+    master_folder = os.path.join(product_folder, "master")
+    fname = "{0}.{1}".format(product_name, representation)
 
     return os.path.join(master_folder, fname).replace("\\", "/")
 
 
 def parse_avalon_uri(uri):
-    # URI Pattern: avalon://{asset}/{subset}.{ext}
-    pattern = r"avalon://(?P<asset>[^/.]*)/(?P<subset>[^/]*)\.(?P<ext>.*)"
+    # URI Pattern: avalon://{folder}/{product}.{ext}
+    pattern = r"avalon://(?P<folder>[^/.]*)/(?P<product>[^/]*)\.(?P<ext>.*)"
     if uri.startswith("avalon://"):
         match = re.match(pattern, uri)
         if match:

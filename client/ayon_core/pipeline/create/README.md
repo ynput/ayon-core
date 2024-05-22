@@ -8,7 +8,7 @@ Discovers Creator plugins to be able create new instances and convert existing i
 
 Publish plugins are loaded because they can also define attributes definitions. These are less product type specific To be able define attributes Publish plugin must inherit from `AYONPyblishPluginMixin` and must override `get_attribute_defs` class method which must return list of attribute definitions. Values of publish plugin definitions are stored per plugin name under `publish_attributes`. Also can override `convert_attribute_values` class method which gives ability to modify values on instance before are used in CreatedInstance. Method `convert_attribute_values` can be also used without `get_attribute_defs` to modify values when changing compatibility (remove metadata from instance because are irrelevant).
 
-Possible attribute definitions can be found in `openpype/pipeline/lib/attribute_definitions.py`.
+Possible attribute definitions can be found in `ayon_core/lib/attribute_definitions.py`.
 
 Except creating and removing instances are all changes not automatically propagated to host context (scene/workfile/...) to propagate changes call `save_changes` which trigger update of all instances in context using Creators implementation.
 

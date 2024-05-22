@@ -7,8 +7,8 @@ from ayon_core.hosts.houdini.api.action import SelectInvalidAction
 import hou
 
 
-class DisableUseAssetHandlesAction(RepairAction):
-    label = "Disable use asset handles"
+class DisableUseFolderHandlesAction(RepairAction):
+    label = "Disable use folder handles"
     icon = "mdi.toggle-switch-off"
 
 
@@ -23,7 +23,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin):
     order = pyblish.api.ValidatorOrder - 0.1
     hosts = ["houdini"]
     label = "Validate Frame Range"
-    actions = [DisableUseAssetHandlesAction, SelectInvalidAction]
+    actions = [DisableUseFolderHandlesAction, SelectInvalidAction]
 
     def process(self, instance):
 
@@ -41,11 +41,11 @@ class ValidateFrameRange(pyblish.api.InstancePlugin):
                     "## Invalid Frame Range\n"
                     "The frame range for the instance is invalid because "
                     "the start frame is higher than the end frame.\n\nThis "
-                    "is likely due to asset handles being applied to your "
+                    "is likely due to folder handles being applied to your "
                     "instance or the ROP node's start frame "
                     "is set higher than the end frame.\n\nIf your ROP frame "
-                    "range is correct and you do not want to apply asset "
-                    "handles make sure to disable Use asset handles on the "
+                    "range is correct and you do not want to apply folder "
+                    "handles make sure to disable Use folder handles on the "
                     "publish instance."
                 )
             )
@@ -71,7 +71,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin):
             cls.log.info(
                 "The ROP node render range is set to "
                 "{0[frameStartHandle]} - {0[frameEndHandle]} "
-                "The asset handles applied to the instance are start handle "
+                "The folder handles applied to the instance are start handle "
                 "{0[handleStart]} and end handle {0[handleEnd]}"
                 .format(instance.data)
             )
@@ -84,7 +84,7 @@ class ValidateFrameRange(pyblish.api.InstancePlugin):
             # Already fixed
             return
 
-        # Disable use asset handles
+        # Disable use folder handles
         context = instance.context
         create_context = context.data["create_context"]
         instance_id = instance.data.get("instance_id")
@@ -102,5 +102,5 @@ class ValidateFrameRange(pyblish.api.InstancePlugin):
         created_instance.publish_attributes["CollectAssetHandles"]["use_handles"] = False  # noqa
 
         create_context.save_changes()
-        cls.log.debug("use asset handles is turned off for '{}'"
+        cls.log.debug("use folder handles is turned off for '{}'"
                       .format(instance))

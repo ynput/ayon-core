@@ -2,10 +2,10 @@ import sys
 import time
 import logging
 
+import ayon_api
 from qtpy import QtWidgets, QtCore
 
 from ayon_core import style
-from ayon_core.client import get_last_version_by_subset_id
 from ayon_core.pipeline import get_current_project_name
 from ayon_core.tools.utils.lib import qt_app_context
 from ayon_core.hosts.maya.api.lib import (
@@ -227,9 +227,9 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
             # (since assigning multiple to the same nodes makes no sense)
             assign_look = next(
                 (
-                    subset_doc
-                    for subset_doc in item["looks"]
-                    if subset_doc["name"] in looks
+                    product_entity
+                    for product_entity in item["looks"]
+                    if product_entity["name"] in looks
                 ),
                 None
             )
@@ -240,8 +240,8 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
                 continue
 
             # Get the latest version of this asset's look product
-            version = get_last_version_by_subset_id(
-                project_name, assign_look["_id"], fields=["_id"]
+            version_entity = ayon_api.get_last_version_by_product_id(
+                project_name, assign_look["id"], fields={"id"}
             )
 
             product_name = assign_look["name"]
@@ -283,7 +283,9 @@ class MayaLookAssignerWindow(QtWidgets.QWidget):
 
             # Assign look
             if nodes:
-                assign_look_by_version(nodes, version_id=version["_id"])
+                assign_look_by_version(
+                    nodes, version_id=version_entity["id"]
+                )
 
         end = time.time()
 

@@ -9,7 +9,7 @@ from ayon_server.settings import (
     task_types_enum,
 )
 
-from ayon_server.types import ColorRGB_uint8, ColorRGBA_uint8
+from ayon_server.types import ColorRGBA_uint8
 
 
 class ValidateBaseModel(BaseSettingsModel):
@@ -56,6 +56,33 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     rewrite_version_enable: bool = SettingsField(
         True,
         title="Show 'Rewrite latest version' toggle"
+    )
+
+
+class ValidateOutdatedContainersProfile(BaseSettingsModel):
+    _layout = "expanded"
+    # Filtering
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+    # Profile values
+    enabled: bool = SettingsField(True, title="Enabled")
+    optional: bool = SettingsField(True, title="Optional")
+    active: bool = SettingsField(True, title="Active")
+
+
+class ValidateOutdatedContainersModel(BaseSettingsModel):
+    """Validate if Publishing intent was selected.
+
+    It is possible to disable validation for specific publishing context
+    with profiles.
+    """
+
+    _isGroup = True
+    plugin_state_profiles: list[ValidateOutdatedContainersProfile] = SettingsField(
+        default_factory=list,
+        title="Plugin enable state profiles",
     )
 
 
@@ -221,7 +248,12 @@ class OIIOToolArgumentsModel(BaseSettingsModel):
 
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     _layout = "expanded"
-    name: str = SettingsField("", title="Name")
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Output name (no space)",
+        regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
+    )
     extension: str = SettingsField("", title="Extension")
     transcoding_type: str = SettingsField(
         "colorspace",
@@ -424,7 +456,7 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         title="Scale pixel aspect",
         description=(
             "Rescale input when it's pixel aspect ratio is not 1."
-            " Usefull for anamorph reviews."
+            " Useful for anamorphic reviews."
         )
     )
     bg_color: ColorRGBA_uint8 = SettingsField(
@@ -765,6 +797,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidateBaseModel,
         title="Validate Version"
     )
+    ValidateOutdatedContainers: ValidateOutdatedContainersModel = SettingsField(
+        default_factory=ValidateOutdatedContainersModel,
+        title="Validate Containers"
+    )
     ValidateIntent: ValidateIntentModel = SettingsField(
         default_factory=ValidateIntentModel,
         title="Validate Intent"
@@ -849,6 +885,25 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "optional": False,
         "active": True
+    },
+    "ValidateOutdatedContainers": {
+        "plugin_state_profiles": [
+            {
+                # Default host names are based on original
+                #   filter of ValidateContainer pyblish plugin
+                "host_names": [
+                    "maya",
+                    "houdini",
+                    "nuke",
+                    "harmony",
+                    "photoshop",
+                    "aftereffects"
+                ],
+                "enabled": True,
+                "optional": True,
+                "active": True
+            }
+        ]
     },
     "ValidateIntent": {
         "enabled": False,

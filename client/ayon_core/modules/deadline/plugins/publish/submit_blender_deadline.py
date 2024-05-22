@@ -102,6 +102,8 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
+            "AYON_BUNDLE_NAME",
+            "AYON_DEFAULT_SETTINGS_VARIANT",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
@@ -172,7 +174,9 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         instance.data["toBeRenderedOn"] = "deadline"
 
         payload = self.assemble_payload()
-        return self.submit(payload)
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
+        return self.submit(payload, auth=auth, verify=verify)
 
     def from_published_scene(self):
         """

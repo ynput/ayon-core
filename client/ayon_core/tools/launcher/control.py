@@ -1,7 +1,7 @@
 from ayon_core.lib import Logger
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.settings import get_project_settings
-from ayon_core.tools.ayon_utils.models import ProjectsModel, HierarchyModel
+from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
 
 from .abstract import AbstractLauncherFrontEnd, AbstractLauncherBackend
 from .models import LauncherSelectionModel, ActionsModel

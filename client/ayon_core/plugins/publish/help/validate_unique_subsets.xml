@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
 <error id="main">
-<title>Subset not unique</title>
+<title>Product not unique</title>
 <description>
 ## Clashing product names found
 

@@ -552,7 +552,7 @@ class TrayStarter(QtCore.QObject):
 def main():
     app = get_ayon_qt_app()
 
-    starter = TrayStarter(app)
+    starter = TrayStarter(app)  # noqa F841
 
     if not is_running_from_build() and os.name == "nt":
         import ctypes

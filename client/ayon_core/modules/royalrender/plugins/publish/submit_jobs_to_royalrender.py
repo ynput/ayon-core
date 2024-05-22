@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Submit jobs to RoyalRender."""
 import tempfile
-import platform
 
 import pyblish.api
 from ayon_core.modules.royalrender.api import (

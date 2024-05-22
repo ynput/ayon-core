@@ -14,9 +14,11 @@ from abc import ABCMeta, abstractmethod
 
 import six
 import appdirs
+import ayon_api
+from semver import VersionInfo
 
+from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import Logger, is_dev_mode_enabled
-from ayon_core.client import get_ayon_server_api_connection
 from ayon_core.settings import get_studio_settings
 
 from .interfaces import (
@@ -45,6 +47,11 @@ IGNORED_HOSTS_IN_AYON = {
 }
 IGNORED_MODULES_IN_AYON = set()
 
+# When addon was moved from ayon-core codebase
+# - this is used to log the missing addon
+MOVED_ADDON_MILESTONE_VERSIONS = {
+    "applications": VersionInfo(0, 2, 0),
+}
 
 # Inherit from `object` for Python 2 hosts
 class _ModuleClass(object):
@@ -147,8 +154,7 @@ def load_addons(force=False):
 
 
 def _get_ayon_bundle_data():
-    con = get_ayon_server_api_connection()
-    bundles = con.get_bundles()["bundles"]
+    bundles = ayon_api.get_bundles()["bundles"]
 
     bundle_name = os.getenv("AYON_BUNDLE_NAME")
 
@@ -176,8 +182,7 @@ def _get_ayon_addons_information(bundle_info):
 
     output = []
     bundle_addons = bundle_info["addons"]
-    con = get_ayon_server_api_connection()
-    addons = con.get_addons_info()["addons"]
+    addons = ayon_api.get_addons_info()["addons"]
     for addon in addons:
         name = addon["name"]
         versions = addon.get("versions")
@@ -191,6 +196,45 @@ def _get_ayon_addons_information(bundle_info):
             version["version"] = addon_version
             output.append(version)
     return output
+
+
+def _handle_moved_addons(addon_name, milestone_version, log):
+    """Log message that addon version is not compatible with current core.
+
+    The function can return path to addon client code, but that can happen
+        only if ayon-core is used from code (for development), but still
+        logs a warning.
+
+    Args:
+        addon_name (str): Addon name.
+        milestone_version (str): Milestone addon version.
+        log (logging.Logger): Logger object.
+
+    Returns:
+        Union[str, None]: Addon dir or None.
+    """
+    # Handle addons which were moved out of ayon-core
+    # - Try to fix it by loading it directly from server addons dir in
+    #   ayon-core repository. But that will work only if ayon-core is
+    #   used from code.
+    addon_dir = os.path.join(
+        os.path.dirname(os.path.dirname(AYON_CORE_ROOT)),
+        "server_addon",
+        addon_name,
+        "client",
+    )
+    if not os.path.exists(addon_dir):
+        log.error((
+            "Addon '{}' is not be available."
+            " Please update applications addon to '{}' or higher."
+        ).format(addon_name, milestone_version))
+        return None
+
+    log.warning((
+        "Please update '{}' addon to '{}' or higher."
+        " Using client code from ayon-core repository."
+    ).format(addon_name, milestone_version))
+    return addon_dir
 
 
 def _load_ayon_addons(openpype_modules, modules_key, log):
@@ -250,12 +294,23 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
         use_dev_path = dev_addon_info.get("enabled", False)
 
         addon_dir = None
+        milestone_version = MOVED_ADDON_MILESTONE_VERSIONS.get(addon_name)
         if use_dev_path:
             addon_dir = dev_addon_info["path"]
             if not addon_dir or not os.path.exists(addon_dir):
                 log.warning((
                     "Dev addon {} {} path does not exists. Path \"{}\""
                 ).format(addon_name, addon_version, addon_dir))
+                continue
+
+        elif (
+            milestone_version is not None
+            and VersionInfo.parse(addon_version) < milestone_version
+        ):
+            addon_dir = _handle_moved_addons(
+                addon_name, milestone_version, log
+            )
+            if not addon_dir:
                 continue
 
         elif addons_dir_exists:
@@ -342,9 +397,8 @@ def _load_addons_in_core(
 ):
     # Add current directory at first place
     #   - has small differences in import logic
-    current_dir = os.path.abspath(os.path.dirname(__file__))
-    hosts_dir = os.path.join(os.path.dirname(current_dir), "hosts")
-    modules_dir = os.path.join(os.path.dirname(current_dir), "modules")
+    hosts_dir = os.path.join(AYON_CORE_ROOT, "hosts")
+    modules_dir = os.path.join(AYON_CORE_ROOT, "modules")
 
     ignored_host_names = set(IGNORED_HOSTS_IN_AYON)
     ignored_module_dir_filenames = (
@@ -743,7 +797,7 @@ class AddonsManager:
 
         addon_classes = []
         for module in openpype_modules:
-            # Go through globals in `pype.modules`
+            # Go through globals in `ayon_core.modules`
             for name in dir(module):
                 modules_item = getattr(module, name, None)
                 # Filter globals that are not classes which inherit from
@@ -1077,7 +1131,7 @@ class AddonsManager:
         """Print out report of time spent on addons initialization parts.
 
         Reporting is not automated must be implemented for each initialization
-        part separatelly. Reports must be stored to `_report` attribute.
+        part separately. Reports must be stored to `_report` attribute.
         Print is skipped if `_report` is empty.
 
         Attribute `_report` is dictionary where key is "label" describing
@@ -1269,7 +1323,7 @@ class TrayAddonsManager(AddonsManager):
     def add_doubleclick_callback(self, addon, callback):
         """Register doubleclick callbacks on tray icon.
 
-        Currently there is no way how to determine which is launched. Name of
+        Currently, there is no way how to determine which is launched. Name of
         callback can be defined with `doubleclick_callback` attribute.
 
         Missing feature how to define default callback.

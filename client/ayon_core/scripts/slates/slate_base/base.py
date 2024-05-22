@@ -82,20 +82,6 @@ class BaseObj:
     def main_style(self):
         return load_default_style()
 
-    def height(self):
-        raise NotImplementedError(
-            "Attribute `height` is not implemented for <{}>".format(
-                self.__clas__.__name__
-            )
-        )
-
-    def width(self):
-        raise NotImplementedError(
-            "Attribute `width` is not implemented for <{}>".format(
-                self.__clas__.__name__
-            )
-        )
-
     def collect_data(self):
         return None
 

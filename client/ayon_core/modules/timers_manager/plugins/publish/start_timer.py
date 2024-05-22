@@ -24,14 +24,14 @@ class StartTimer(pyblish.api.ContextPlugin):
             return
 
         project_name = context.data["projectName"]
-        asset_name = context.data.get("folderPath")
+        folder_path = context.data.get("folderPath")
         task_name = context.data.get("task")
-        if not project_name or not asset_name or not task_name:
+        if not project_name or not folder_path or not task_name:
             self.log.info((
                 "Current context does not contain all"
                 " required information to start a timer."
             ))
             return
         timers_manager.start_timer_with_webserver(
-            project_name, asset_name, task_name, self.log
+            project_name, folder_path, task_name, self.log
         )

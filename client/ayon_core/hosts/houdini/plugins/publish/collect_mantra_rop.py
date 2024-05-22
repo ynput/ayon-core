@@ -41,57 +41,67 @@ class CollectMantraROPRenderProducts(pyblish.api.InstancePlugin):
             instance.data["chunkSize"] = chunk_size
             self.log.debug("Chunk Size: %s" % chunk_size)
 
-            default_prefix = evalParmNoFrame(rop, "vm_picture")
-            render_products = []
+        default_prefix = evalParmNoFrame(rop, "vm_picture")
+        render_products = []
 
-            # Store whether we are splitting the render job (export + render)
-            split_render = bool(rop.parm("soho_outputmode").eval())
-            instance.data["splitRender"] = split_render
-            export_prefix = None
-            export_products = []
-            if split_render:
-                export_prefix = evalParmNoFrame(
-                    rop, "soho_diskfile", pad_character="0"
-                )
-                beauty_export_product = self.get_render_product_name(
-                    prefix=export_prefix,
-                    suffix=None)
-                export_products.append(beauty_export_product)
-                self.log.debug(
-                    "Found export product: {}".format(beauty_export_product)
-                )
-                instance.data["ifdFile"] = beauty_export_product
-                instance.data["exportFiles"] = list(export_products)
-
-            # Default beauty AOV
-            beauty_product = self.get_render_product_name(
-                prefix=default_prefix, suffix=None
+        export_prefix = None
+        export_products = []
+        if instance.data["splitRender"]:
+            export_prefix = evalParmNoFrame(
+                rop, "soho_diskfile", pad_character="0"
             )
-            render_products.append(beauty_product)
+            beauty_export_product = self.get_render_product_name(
+                prefix=export_prefix,
+                suffix=None)
+            export_products.append(beauty_export_product)
+            self.log.debug(
+                "Found export product: {}".format(beauty_export_product)
+            )
+            instance.data["ifdFile"] = beauty_export_product
+            instance.data["exportFiles"] = list(export_products)
 
-            files_by_aov = {
-                "beauty": self.generate_expected_files(instance,
-                                                       beauty_product)
-            }
+        # Default beauty AOV
+        beauty_product = self.get_render_product_name(
+            prefix=default_prefix, suffix=None
+        )
+        render_products.append(beauty_product)
 
-            aov_numbers = rop.evalParm("vm_numaux")
-            if aov_numbers > 0:
-                # get the filenames of the AOVs
-                for i in range(1, aov_numbers + 1):
-                    var = rop.evalParm("vm_variable_plane%d" % i)
-                    if var:
-                        aov_name = "vm_filename_plane%d" % i
-                        aov_boolean = "vm_usefile_plane%d" % i
-                        aov_enabled = rop.evalParm(aov_boolean)
-                        has_aov_path = rop.evalParm(aov_name)
-                        if has_aov_path and aov_enabled == 1:
-                            aov_prefix = evalParmNoFrame(rop, aov_name)
-                            aov_product = self.get_render_product_name(
-                                prefix=aov_prefix, suffix=None
-                            )
-                            render_products.append(aov_product)
+        files_by_aov = {
+            "beauty": self.generate_expected_files(instance,
+                                                   beauty_product)
+        }
 
-                            files_by_aov[var] = self.generate_expected_files(instance, aov_product)     # noqa
+        # Assume it's a multipartExr Render.
+        multipartExr = True
+
+        # TODO: This logic doesn't take into considerations
+        #       cryptomatte defined in 'Images > Cryptomatte'
+        aov_numbers = rop.evalParm("vm_numaux")
+        if aov_numbers > 0:
+            # get the filenames of the AOVs
+            for i in range(1, aov_numbers + 1):
+                var = rop.evalParm("vm_variable_plane%d" % i)
+                if var:
+                    aov_name = "vm_filename_plane%d" % i
+                    aov_boolean = "vm_usefile_plane%d" % i
+                    aov_enabled = rop.evalParm(aov_boolean)
+                    has_aov_path = rop.evalParm(aov_name)
+                    if has_aov_path and aov_enabled == 1:
+                        aov_prefix = evalParmNoFrame(rop, aov_name)
+                        aov_product = self.get_render_product_name(
+                            prefix=aov_prefix, suffix=None
+                        )
+                        render_products.append(aov_product)
+
+                        files_by_aov[var] = self.generate_expected_files(instance, aov_product)     # noqa
+
+                        # Set to False as soon as we have a separated aov.
+                        multipartExr = False
+
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = multipartExr
 
         for product in render_products:
             self.log.debug("Found render product: %s" % product)

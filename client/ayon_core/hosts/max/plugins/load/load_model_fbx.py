@@ -17,8 +17,8 @@ from ayon_core.hosts.max.api.lib import maintained_selection
 class FbxModelLoader(load.LoaderPlugin):
     """Fbx Model Loader."""
 
-    families = ["model"]
-    representations = ["fbx"]
+    product_types = {"model"}
+    representations = {"fbx"}
     order = -9
     icon = "code-fork"
     color = "white"
@@ -50,8 +50,8 @@ class FbxModelLoader(load.LoaderPlugin):
     def update(self, container, context):
         from pymxs import runtime as rt
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         node = rt.getNodeByName(node_name)
         if not node:
@@ -76,17 +76,17 @@ class FbxModelLoader(load.LoaderPlugin):
         for fbx_object in current_fbx_objects:
             fbx_object.name = f"{namespace}:{fbx_object.name}"
             fbx_objects.append(fbx_object)
-            fbx_transform = f"{fbx_object.name}.transform"
+            fbx_transform = f"{fbx_object}.transform"
             if fbx_transform in transform_data.keys():
                 fbx_object.pos = transform_data[fbx_transform] or 0
                 fbx_object.scale = transform_data[
-                    f"{fbx_object.name}.scale"] or 0
+                    f"{fbx_object}.scale"] or 0
 
         with maintained_selection():
             rt.Select(node)
         update_custom_attribute_data(node, fbx_objects)
         lib.imprint(container["instance_node"], {
-            "representation": str(repre_doc["_id"])
+            "representation": repre_entity["id"]
         })
 
     def switch(self, container, context):

@@ -17,10 +17,15 @@ class CollectWorkfile(pyblish.api.ContextPlugin):
         """Plugin entry point."""
         product_type = "workfile"
         basename = os.path.basename(context.data["currentFile"])
+        task_entity = context.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         product_name = get_product_name(
             context.data["projectName"],
-            context.data["assetEntity"],
-            context.data["task"],
+            task_name,
+            task_type,
             context.data["hostName"],
             product_type,
             "",

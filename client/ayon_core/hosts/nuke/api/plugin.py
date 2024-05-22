@@ -5,8 +5,7 @@ import sys
 import six
 import random
 import string
-from collections import OrderedDict, defaultdict
-from abc import abstractmethod
+from collections import defaultdict
 
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import (
@@ -14,7 +13,6 @@ from ayon_core.lib import (
     EnumDef
 )
 from ayon_core.pipeline import (
-    LegacyCreator,
     LoaderPlugin,
     CreatorError,
     Creator as NewCreator,
@@ -34,18 +32,13 @@ from ayon_core.lib.transcoding import (
 from .lib import (
     INSTANCE_DATA_KNOB,
     Knobby,
-    check_product_name_exists,
     maintained_selection,
     get_avalon_knob_data,
-    set_avalon_knob_data,
-    add_publish_knob,
-    get_nuke_imageio_settings,
     set_node_knobs_from_settings,
     set_node_data,
     get_node_data,
     get_view_process_node,
     get_viewer_config_from_string,
-    deprecated,
     get_filenames_without_hash,
     link_knobs
 )
@@ -95,7 +88,7 @@ class NukeCreator(NewCreator):
         any node having instance data knob.
 
         Arguments:
-            product_name (str): Subset name
+            product_name (str): Product name
         """
 
         for node in nuke.allNodes(recurseGroups=True):
@@ -785,6 +778,7 @@ class ExporterReviewMov(ExporterReview):
         # deal with now lut defined in viewer lut
         self.viewer_lut_raw = klass.viewer_lut_raw
         self.write_colorspace = instance.data["colorspace"]
+        self.color_channels = instance.data["color_channels"]
 
         self.name = name or "baked"
         self.ext = ext or "mov"
@@ -841,7 +835,7 @@ class ExporterReviewMov(ExporterReview):
         self.log.info("Nodes exported...")
         return path
 
-    def generate_mov(self, farm=False, **kwargs):
+    def generate_mov(self, farm=False, delete=True, **kwargs):
         # colorspace data
         colorspace = None
         # get colorspace settings
@@ -910,8 +904,8 @@ class ExporterReviewMov(ExporterReview):
                 self._connect_to_above_nodes(
                     node, product_name, "Reposition node...   `{}`"
                 )
-            # append reformated tag
-            add_tags.append("reformated")
+            # append reformatted tag
+            add_tags.append("reformatted")
 
         # only create colorspace baking if toggled on
         if bake_viewer_process:
@@ -954,6 +948,8 @@ class ExporterReviewMov(ExporterReview):
         self.log.debug("Path: {}".format(self.path))
         write_node["file"].setValue(str(self.path))
         write_node["file_type"].setValue(str(self.ext))
+        write_node["channels"].setValue(str(self.color_channels))
+
         # Knobs `meta_codec` and `mov64_codec` are not available on centos.
         # TODO shouldn't this come from settings on outputs?
         try:
@@ -994,8 +990,13 @@ class ExporterReviewMov(ExporterReview):
             self.render(write_node.name())
 
         # ---------- generate representation data
+        tags = ["review", "need_thumbnail"]
+
+        if delete:
+            tags.append("delete")
+
         self.get_representation_data(
-            tags=["review", "need_thumbnail", "delete"] + add_tags,
+            tags=tags + add_tags,
             custom_tags=add_custom_tags,
             range=True,
             colorspace=colorspace
@@ -1114,7 +1115,7 @@ def convert_to_valid_instaces():
             transfer_data["active"] = (
                 node["publish"].value())
 
-        # add idetifier
+        # add identifier
         transfer_data["creator_identifier"] = product_type_to_identifier(
             product_type
         )
@@ -1158,7 +1159,6 @@ def _remove_old_knobs(node):
         "OpenpypeDataGroup", "OpenpypeDataGroup_End", "deadlinePriority",
         "deadlineChunkSize", "deadlineConcurrentTasks", "Deadline"
     ]
-    print(node.name())
 
     # remove all old knobs
     for knob in node.allKnobs():

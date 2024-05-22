@@ -4,9 +4,9 @@ import json
 import getpass
 from datetime import datetime
 
-import requests
 import pyblish.api
 
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
@@ -77,11 +77,6 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
                 label="Use GPU"
             ),
             BoolDef(
-                "suspend_publish",
-                default=False,
-                label="Suspend publish"
-            ),
-            BoolDef(
                 "workfile_dependency",
                 default=cls.workfile_dependency,
                 label="Workfile Dependency"
@@ -100,20 +95,12 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         instance.data["attributeValues"] = self.get_attr_values_from_data(
             instance.data)
 
-        # add suspend_publish attributeValue to instance data
-        instance.data["suspend_publish"] = instance.data["attributeValues"][
-            "suspend_publish"]
-
         families = instance.data["families"]
 
         node = instance.data["transientData"]["node"]
         context = instance.context
 
-        # get default deadline webservice url from deadline module
-        deadline_url = instance.context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            deadline_url = instance.data.get("deadlineUrl")
+        deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
 
         self.deadline_url = "{}/api/jobs".format(deadline_url)
@@ -196,6 +183,11 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
     def _get_published_workfile_path(self, context):
         """This method is temporary while the class is not inherited from
         AbstractSubmitDeadline"""
+        anatomy = context.data["anatomy"]
+        # WARNING Hardcoded template name 'default' > may not be used
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "path"
+        )
         for instance in context:
             if (
                 instance.data["productType"] != "workfile"
@@ -216,11 +208,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
             template_data["ext"] = ext
             template_data["comment"] = None
 
-            anatomy = context.data["anatomy"]
-            # WARNING Hardcoded template name 'publish' > may not be used
-            template_obj = anatomy.templates_obj["publish"]["path"]
-
-            template_filled = template_obj.format(template_data)
+            template_filled = publish_template.format(template_data)
             script_path = os.path.normpath(template_filled)
             self.log.info(
                 "Using published scene for render {}".format(
@@ -375,6 +363,8 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         keys = [
             "PYTHONPATH",
             "PATH",
+            "AYON_BUNDLE_NAME",
+            "AYON_DEFAULT_SETTINGS_VARIANT",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
@@ -387,7 +377,6 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
             "TOOL_ENV",
             "FOUNDRY_LICENSE",
             "OPENPYPE_SG_USER",
-            "AYON_BUNDLE_NAME",
         ]
 
         # add allowed keys from preset if any
@@ -434,7 +423,13 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
 
         self.log.debug("__ expectedFiles: `{}`".format(
             instance.data["expectedFiles"]))
-        response = requests.post(self.deadline_url, json=payload, timeout=10)
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
+        response = requests_post(self.deadline_url,
+                                 json=payload,
+                                 timeout=10,
+                                 auth=auth,
+                                 verify=verify)
 
         if not response.ok:
             raise Exception(response.text)

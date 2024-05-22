@@ -3,6 +3,8 @@ import maya.cmds as cmds
 from maya import mel
 import os
 
+from ayon_api import get_representation_by_id
+
 from ayon_core.pipeline import (
     load,
     get_representation_path
@@ -13,15 +15,20 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.client import get_representation_by_id
 
 
 class MultiverseUsdLoader(load.LoaderPlugin):
     """Read USD data in a Multiverse Compound"""
 
-    families = ["model", "usd", "mvUsdComposition", "mvUsdOverride",
-                "pointcache", "animation"]
-    representations = ["usd", "usda", "usdc", "usdz", "abc"]
+    product_types = {
+        "model",
+        "usd",
+        "mvUsdComposition",
+        "mvUsdOverride",
+        "pointcache",
+        "animation",
+    }
+    representations = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Multiverse"
     order = -10
@@ -29,10 +36,10 @@ class MultiverseUsdLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name=None, namespace=None, options=None):
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -71,12 +78,12 @@ class MultiverseUsdLoader(load.LoaderPlugin):
         assert shapes, "Cannot find mvUsdCompoundShape in container"
 
         project_name = context["project"]["name"]
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         prev_representation_id = cmds.getAttr("{}.representation".format(node))
         prev_representation = get_representation_by_id(project_name,
                                                        prev_representation_id)
-        prev_path = os.path.normpath(prev_representation["data"]["path"])
+        prev_path = os.path.normpath(prev_representation["attrib"]["path"])
 
         # Make sure we can load the plugin
         cmds.loadPlugin("MultiverseForMaya", quiet=True)
@@ -96,7 +103,7 @@ class MultiverseUsdLoader(load.LoaderPlugin):
             multiverse.SetUsdCompoundAssetPaths(shape, asset_paths)
 
         cmds.setAttr("{}.representation".format(node),
-                     str(repre_doc["_id"]),
+                     repre_entity["id"],
                      type="string")
         mel.eval('refreshEditorTemplates;')
 

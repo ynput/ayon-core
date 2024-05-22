@@ -1,8 +1,6 @@
 import os
 import pyblish.api
 
-from ayon_core.client import get_asset_name_identifier
-
 
 class CollectCelactionInstances(pyblish.api.ContextPlugin):
     """ Adds the celaction render instances """
@@ -16,24 +14,20 @@ class CollectCelactionInstances(pyblish.api.ContextPlugin):
         staging_dir = os.path.dirname(current_file)
         scene_file = os.path.basename(current_file)
         version = context.data["version"]
-        asset_entity = context.data["assetEntity"]
-        project_entity = context.data["projectEntity"]
 
-        asset_name = get_asset_name_identifier(asset_entity)
+        folder_entity = context.data["folderEntity"]
+
+        folder_attributes = folder_entity["attrib"]
 
         shared_instance_data = {
-            "folderPath": asset_name,
-            "frameStart": asset_entity["data"]["frameStart"],
-            "frameEnd": asset_entity["data"]["frameEnd"],
-            "handleStart": asset_entity["data"]["handleStart"],
-            "handleEnd": asset_entity["data"]["handleEnd"],
-            "fps": asset_entity["data"]["fps"],
-            "resolutionWidth": asset_entity["data"].get(
-                "resolutionWidth",
-                project_entity["data"]["resolutionWidth"]),
-            "resolutionHeight": asset_entity["data"].get(
-                "resolutionHeight",
-                project_entity["data"]["resolutionHeight"]),
+            "folderPath": folder_entity["path"],
+            "frameStart": folder_attributes["frameStart"],
+            "frameEnd": folder_attributes["frameEnd"],
+            "handleStart": folder_attributes["handleStart"],
+            "handleEnd": folder_attributes["handleEnd"],
+            "fps": folder_attributes["fps"],
+            "resolutionWidth": folder_attributes["resolutionWidth"],
+            "resolutionHeight": folder_attributes["resolutionHeight"],
             "pixelAspect": 1,
             "step": 1,
             "version": version
@@ -83,7 +77,7 @@ class CollectCelactionInstances(pyblish.api.ContextPlugin):
         # getting instance state
         instance.data["publish"] = True
 
-        # add assetEntity data into instance
+        # add folderEntity data into instance
         instance.data.update({
             "label": "{} - farm".format(product_name),
             "productType": product_type,

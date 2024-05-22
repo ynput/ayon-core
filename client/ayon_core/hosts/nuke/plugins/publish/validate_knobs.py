@@ -1,3 +1,5 @@
+import json
+
 import nuke
 import six
 import pyblish.api

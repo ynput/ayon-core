@@ -4,14 +4,12 @@ import os
 import json
 import re
 from copy import deepcopy
-import requests
-import clique
 
+import clique
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import (
-    get_last_version_by_subset_name,
-)
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -90,9 +88,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
     hosts = ["fusion", "max", "maya", "nuke", "houdini",
              "celaction", "aftereffects", "harmony", "blender"]
 
-    families = ["render.farm", "render.frames_farm",
-                "prerender.farm", "prerender.frames_farm",
-                "renderlayer", "imagesequence",
+    families = ["render", "render.farm", "render.frames_farm",
+                "prerender", "prerender.farm", "prerender.frames_farm",
+                "renderlayer", "imagesequence", "image",
                 "vrayscene", "maxrender",
                 "arnold_rop", "mantra_rop",
                 "karma_rop", "vray_rop",
@@ -132,7 +130,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         "FTRACK_SERVER",
         "AYON_APP_NAME",
         "AYON_USERNAME",
-        "OPENPYPE_SG_USER",
+        "AYON_SG_USERNAME",
         "KITSU_LOGIN",
         "KITSU_PWD"
     ]
@@ -189,7 +187,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         output_dir = self._get_publish_folder(
             anatomy,
             deepcopy(instance.data["anatomyData"]),
-            instance.data.get("folderPath"),
+            instance.data.get("folderEntity"),
             instances[0]["productName"],
             instance.context,
             instances[0]["productType"],
@@ -212,6 +210,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "AYON_RENDER_JOB": "0",
             "AYON_REMOTE_PUBLISH": "0",
             "AYON_BUNDLE_NAME": os.environ["AYON_BUNDLE_NAME"],
+            "AYON_DEFAULT_SETTINGS_VARIANT": (
+                os.environ["AYON_DEFAULT_SETTINGS_VARIANT"]
+            ),
         }
 
         # add environments from self.environ_keys
@@ -223,9 +224,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
 
         instance_settings = self.get_attr_values_from_data(instance.data)
         initial_status = instance_settings.get("publishJobState", "Active")
-        # TODO: Remove this backwards compatibility of `suspend_publish`
-        if instance.data.get("suspend_publish"):
-            initial_status = "Suspended"
 
         args = [
             "--headless",
@@ -305,14 +303,16 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         self.log.debug("Submitting Deadline publish job ...")
 
         url = "{}/api/jobs".format(self.deadline_url)
-        response = requests.post(url, json=payload, timeout=10)
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
+        response = requests_post(
+            url, json=payload, timeout=10, auth=auth, verify=verify)
         if not response.ok:
             raise Exception(response.text)
 
         deadline_publish_job_id = response.json()["_id"]
 
         return deadline_publish_job_id
-
 
     def process(self, instance):
         # type: (pyblish.api.Instance) -> None
@@ -460,18 +460,15 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             }
 
         # get default deadline webservice url from deadline module
-        self.deadline_url = instance.context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            self.deadline_url = instance.data.get("deadlineUrl")
+        self.deadline_url = instance.data["deadline"]["url"]
         assert self.deadline_url, "Requires Deadline Webservice URL"
 
         deadline_publish_job_id = \
             self._submit_deadline_post_job(instance, render_job, instances)
 
-        # Inject deadline url to instances.
+        # Inject deadline url to instances to query DL for job id for overrides
         for inst in instances:
-            inst["deadlineUrl"] = self.deadline_url
+            inst["deadline"] = instance.data["deadline"]
 
         # publish job file
         publish_job = {
@@ -503,7 +500,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             json.dump(publish_job, f, indent=4, sort_keys=True)
 
     def _get_publish_folder(self, anatomy, template_data,
-                            asset, product_name, context,
+                            folder_entity, product_name, context,
                             product_type, version=None):
         """
             Extracted logic to pre-calculate real publish folder, which is
@@ -517,7 +514,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         Args:
             anatomy (ayon_core.pipeline.anatomy.Anatomy):
             template_data (dict): pre-calculated collected data for process
-            asset (string): asset name
+            folder_entity (dict[str, Any]): Folder entity.
             product_name (string): Product name (actually group name
                 of product)
             product_type (string): for current deadline process it's always
@@ -535,13 +532,16 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         project_name = context.data["projectName"]
         host_name = context.data["hostName"]
         if not version:
-            version = get_last_version_by_subset_name(
-                project_name,
-                product_name,
-                asset_name=asset
-            )
-            if version:
-                version = int(version["name"]) + 1
+            version_entity = None
+            if folder_entity:
+                version_entity = ayon_api.get_last_version_by_product_name(
+                    project_name,
+                    product_name,
+                    folder_entity["id"]
+                )
+
+            if version_entity:
+                version = int(version_entity["version"]) + 1
             else:
                 version = get_versioning_start(
                     project_name,
@@ -572,23 +572,10 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "type": product_type,
         }
 
-        render_templates = anatomy.templates_obj[template_name]
-        if "folder" in render_templates:
-            publish_folder = render_templates["folder"].format_strict(
-                template_data
-            )
-        else:
-            # solve deprecated situation when `folder` key is not underneath
-            # `publish` anatomy
-            self.log.warning((
-                "Deprecation warning: Anatomy does not have set `folder`"
-                " key underneath `publish` (in global of for project `{}`)."
-            ).format(project_name))
-
-            file_path = render_templates["path"].format_strict(template_data)
-            publish_folder = os.path.dirname(file_path)
-
-        return publish_folder
+        render_dir_template = anatomy.get_template_item(
+            "publish", template_name, "directory"
+        )
+        return render_dir_template.format_strict(template_data)
 
     @classmethod
     def get_attribute_defs(cls):

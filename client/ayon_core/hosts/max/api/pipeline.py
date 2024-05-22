@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Pipeline tools for OpenPype Houdini integration."""
+"""Pipeline tools for AYON 3ds max integration."""
 import os
 import logging
 from operator import attrgetter
@@ -14,7 +14,7 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     AYON_CONTAINER_ID,
 )
-from ayon_core.hosts.max.api.menu import OpenPypeMenu
+from ayon_core.hosts.max.api.menu import AYONMenu
 from ayon_core.hosts.max.api import lib
 from ayon_core.hosts.max.api.plugin import MS_CUSTOM_ATTRIB
 from ayon_core.hosts.max import MAX_HOST_DIR
@@ -48,21 +48,19 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_creator_plugin_path(CREATE_PATH)
 
         # self._register_callbacks()
-        self.menu = OpenPypeMenu()
+        self.menu = AYONMenu()
 
         self._has_been_setup = True
 
-        def context_setting():
-            return lib.set_context_setting()
-
-        rt.callbacks.addScript(rt.Name('systemPostNew'),
-                               context_setting)
+        rt.callbacks.addScript(rt.Name('systemPostNew'), on_new)
 
         rt.callbacks.addScript(rt.Name('filePostOpen'),
                                lib.check_colorspace)
 
         rt.callbacks.addScript(rt.Name('postWorkspaceChange'),
                                self._deferred_menu_creation)
+        rt.NodeEventCallback(
+            nameChanged=lib.update_modifier_node_names)
 
     def workfile_has_unsaved_changes(self):
         return rt.getSaveRequired()
@@ -94,7 +92,7 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def _deferred_menu_creation(self):
         self.log.info("Building menu ...")
-        self.menu = OpenPypeMenu()
+        self.menu = AYONMenu()
 
     @staticmethod
     def create_context_node():
@@ -148,7 +146,7 @@ attributes "OpenPypeContext"
 
 
 def ls() -> list:
-    """Get all OpenPype instances."""
+    """Get all AYON containers."""
     objs = rt.objects
     containers = [
         obj for obj in objs
@@ -161,6 +159,14 @@ def ls() -> list:
         yield lib.read(container)
 
 
+def on_new():
+    lib.set_context_setting()
+    if rt.checkForSave():
+        rt.resetMaxFile(rt.Name("noPrompt"))
+        rt.clearUndoBuffer()
+        rt.redrawViews()
+
+
 def containerise(name: str, nodes: list, context,
                  namespace=None, loader=None, suffix="_CON"):
     data = {
@@ -169,7 +175,7 @@ def containerise(name: str, nodes: list, context,
         "name": name,
         "namespace": namespace or "",
         "loader": loader,
-        "representation": context["representation"]["_id"],
+        "representation": context["representation"]["id"],
     }
     container_name = f"{namespace}:{name}{suffix}"
     container = rt.container(name=container_name)
@@ -240,10 +246,10 @@ def get_previous_loaded_object(container: str):
         node_list(list): list of nodes which are previously loaded
     """
     node_list = []
-    sel_list = rt.getProperty(container.modifiers[0].openPypeData, "sel_list")
-    for obj in rt.Objects:
-        if str(obj) in sel_list:
-            node_list.append(obj)
+    node_transform_monitor_list = rt.getProperty(
+        container.modifiers[0].openPypeData, "all_handles")
+    for node_transform_monitor in node_transform_monitor_list:
+        node_list.append(node_transform_monitor.node)
     return node_list
 
 

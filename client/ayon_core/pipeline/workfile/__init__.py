@@ -13,7 +13,21 @@ from .path_resolving import (
     create_workdir_extra_folders,
 )
 
+from .utils import (
+    should_use_last_workfile_on_launch,
+    should_open_workfiles_tool_on_launch,
+)
+
 from .build_workfile import BuildWorkfile
+
+
+from .workfile_template_builder import (
+    discover_workfile_build_plugins,
+    register_workfile_build_plugin,
+    deregister_workfile_build_plugin,
+    register_workfile_build_plugin_path,
+    deregister_workfile_build_plugin_path,
+)
 
 
 __all__ = (
@@ -30,5 +44,14 @@ __all__ = (
 
     "create_workdir_extra_folders",
 
+    "should_use_last_workfile_on_launch",
+    "should_open_workfiles_tool_on_launch",
+
     "BuildWorkfile",
+
+    "discover_workfile_build_plugins",
+    "register_workfile_build_plugin",
+    "deregister_workfile_build_plugin",
+    "register_workfile_build_plugin_path",
+    "deregister_workfile_build_plugin_path",
 )

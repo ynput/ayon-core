@@ -2,14 +2,10 @@ import json
 from collections import OrderedDict
 import nuke
 import six
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api import (
@@ -22,8 +18,8 @@ from ayon_core.hosts.nuke.api import (
 class LoadEffects(load.LoaderPlugin):
     """Loading colorspace soft effect exported from nukestudio"""
 
-    families = ["effect"]
-    representations = ["*"]
+    product_types = {"effect"}
+    representations = {"*"}
     extensions = {"json"}
 
     label = "Load Effects - nodes"
@@ -40,37 +36,42 @@ class LoadEffects(load.LoaderPlugin):
         Arguments:
             context (dict): context of version
             name (str): name of the version
-            namespace (str): asset name
+            namespace (str): namespace name
             data (dict): compulsory attribute > not used
 
         Returns:
             nuke node: containerised nuke node object
         """
         # get main variables
-        version = context['version']
-        version_data = version.get("data", {})
-        vname = version.get("name", None)
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
+        version_entity = context["version"]
+
+        version_attributes = version_entity["attrib"]
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
+        colorspace = version_attributes.get("colorSpace")
+
         workfile_first_frame = int(nuke.root()["first_frame"].getValue())
-        namespace = namespace or context['asset']['name']
-        colorspace = version_data.get("colorspace", None)
+        namespace = namespace or context["folder"]["name"]
         object_name = "{}_{}".format(name, namespace)
 
         # prepare data for imprinting
-        # add additional metadata from the version to imprint to Avalon knob
-        add_keys = ["frameStart", "frameEnd", "handleStart", "handleEnd",
-                    "source", "author", "fps"]
-
         data_imprint = {
             "frameStart": first,
             "frameEnd": last,
-            "version": vname,
+            "version": version_entity["version"],
             "colorspaceInput": colorspace,
         }
 
-        for k in add_keys:
-            data_imprint.update({k: version_data[k]})
+        # add additional metadata from the version to imprint to Avalon knob
+        for k in [
+            "frameStart",
+            "frameEnd",
+            "handleStart",
+            "handleEnd",
+            "source",
+            "fps"
+        ]:
+            data_imprint[k] = version_attributes[k]
 
         # getting file path
         file = self.filepath_from_context(context).replace("\\", "/")
@@ -157,36 +158,39 @@ class LoadEffects(load.LoaderPlugin):
         # get main variables
         # Get version from io
         project_name = context["project"]["name"]
-        version_doc = context["version"]
-        repre_doc = context["representation"]
+        version_entity = context["version"]
+        repre_entity = context["representation"]
 
         # get corresponding node
         GN = container["node"]
 
-        file = get_representation_path(repre_doc).replace("\\", "/")
-        name = container['name']
-        version_data = version_doc.get("data", {})
-        vname = version_doc.get("name", None)
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
-        workfile_first_frame = int(nuke.root()["first_frame"].getValue())
-        namespace = container['namespace']
-        colorspace = version_data.get("colorspace", None)
-        object_name = "{}_{}".format(name, namespace)
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
-        add_keys = ["frameStart", "frameEnd", "handleStart", "handleEnd",
-                    "source", "author", "fps"]
+        version_attributes = version_entity["attrib"]
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
+        colorspace = version_attributes.get("colorSpace")
+
+        workfile_first_frame = int(nuke.root()["first_frame"].getValue())
+        namespace = container["namespace"]
 
         data_imprint = {
-            "representation": str(repre_doc["_id"]),
+            "representation": repre_entity["id"],
             "frameStart": first,
             "frameEnd": last,
-            "version": vname,
+            "version": version_entity["version"],
             "colorspaceInput": colorspace
         }
 
-        for k in add_keys:
-            data_imprint.update({k: version_data[k]})
+        for k in [
+            "frameStart",
+            "frameEnd",
+            "handleStart",
+            "handleEnd",
+            "source",
+            "fps",
+        ]:
+            data_imprint[k] = version_attributes[k]
 
         # Update the imprinted representation
         update_container(
@@ -252,32 +256,34 @@ class LoadEffects(load.LoaderPlugin):
         # try to find parent read node
         self.connect_read_node(GN, namespace, json_f["assignTo"])
 
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version_doc["parent"], fields=["_id"]
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
 
         # change color of node
-        if version_doc["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = "0x3469ffff"
         else:
             color_value = "0xd84f20ff"
 
         GN["tile_color"].setValue(int(color_value, 16))
 
-        self.log.info("updated to version: {}".format(version_doc.get("name")))
+        self.log.info(
+            "updated to version: {}".format(version_entity["version"])
+        )
 
-    def connect_read_node(self, group_node, asset, subset):
+    def connect_read_node(self, group_node, namespace, product_name):
         """
         Finds read node and selects it
 
         Arguments:
-            asset (str): asset name
+            namespace (str): namespace name
 
         Returns:
             nuke node: node is selected
             None: if nothing found
         """
-        search_name = "{0}_{1}".format(asset, subset)
+        search_name = "{0}_{1}".format(namespace, product_name)
 
         node = [
             n for n in nuke.allNodes(filter="Read")

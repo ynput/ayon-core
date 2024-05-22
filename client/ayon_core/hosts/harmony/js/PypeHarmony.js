@@ -34,7 +34,7 @@ PypeHarmony.message = function(message) {
 
 
 /**
- * Set scene setting based on shot/asset settngs.
+ * Set scene setting based on folder settngs.
  * @function
  * @param {obj} settings  Scene settings.
  */

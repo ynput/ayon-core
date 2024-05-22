@@ -4,7 +4,7 @@ import collections
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.ayon_utils.widgets import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon
 
 from .resources import get_options_image_path
 
@@ -359,7 +359,8 @@ class ActionsWidget(QtWidgets.QWidget):
     def _on_model_refresh(self):
         self._proxy_model.sort(0)
         # Force repaint all items
-        self._view.update()
+        viewport = self._view.viewport()
+        viewport.update()
 
     def _on_animation(self):
         time_now = time.time()

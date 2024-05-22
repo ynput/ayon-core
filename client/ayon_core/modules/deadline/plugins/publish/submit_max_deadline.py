@@ -106,12 +106,14 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
+            "AYON_BUNDLE_NAME",
+            "AYON_DEFAULT_SETTINGS_VARIANT",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
             "AYON_WORKDIR",
             "AYON_APP_NAME",
-            "IS_TEST"
+            "IS_TEST",
         ]
 
         environment = {
@@ -179,17 +181,27 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
         self.log.debug("Submitting 3dsMax render..")
         project_settings = instance.context.data["project_settings"]
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
         if instance.data.get("multiCamera"):
             self.log.debug("Submitting jobs for multiple cameras..")
             payload = self._use_published_name_for_multiples(
                 payload_data, project_settings)
             job_infos, plugin_infos = payload
             for job_info, plugin_info in zip(job_infos, plugin_infos):
-                self.submit(self.assemble_payload(job_info, plugin_info))
+                self.submit(
+                    self.assemble_payload(job_info, plugin_info),
+                    auth=auth,
+                    verify=verify
+                )
         else:
             payload = self._use_published_name(payload_data, project_settings)
             job_info, plugin_info = payload
-            self.submit(self.assemble_payload(job_info, plugin_info))
+            self.submit(
+                self.assemble_payload(job_info, plugin_info),
+                auth=auth,
+                verify=verify
+            )
 
     def _use_published_name(self, data, project_settings):
         # Not all hosts can import these modules.

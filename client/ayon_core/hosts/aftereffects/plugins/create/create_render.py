@@ -218,7 +218,13 @@ class RenderCreator(Creator):
         """
 
     def get_dynamic_data(
-        self, project_name, asset_doc, task_name, variant, host_name, instance
+        self,
+        project_name,
+        folder_entity,
+        task_entity,
+        variant,
+        host_name,
+        instance
     ):
         dynamic_data = {}
         if instance is not None:

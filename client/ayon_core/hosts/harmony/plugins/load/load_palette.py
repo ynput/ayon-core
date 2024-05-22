@@ -11,8 +11,8 @@ import ayon_core.hosts.harmony.api as harmony
 class ImportPaletteLoader(load.LoaderPlugin):
     """Import palettes."""
 
-    families = ["palette", "harmony.palette"]
-    representations = ["plt"]
+    product_types = {"palette", "harmony.palette"}
+    representations = {"plt"}
     label = "Import Palette"
 
     def load(self, context, name=None, namespace=None, data=None):
@@ -27,16 +27,15 @@ class ImportPaletteLoader(load.LoaderPlugin):
         )
 
     def load_palette(self, context):
-        subset_doc = context["subset"]
-        repre_doc = context["representation"]
-        product_name = subset_doc["name"]
+        product_name = context["product"]["name"]
+        repre_entity = context["representation"]
         name = product_name.replace("palette", "")
 
         # Overwrite palette on disk.
         scene_path = harmony.send(
             {"function": "scene.currentProjectPath"}
         )["result"]
-        src = get_representation_path(repre_doc)
+        src = get_representation_path(repre_entity)
         dst = os.path.join(
             scene_path,
             "palette-library",
@@ -68,7 +67,7 @@ class ImportPaletteLoader(load.LoaderPlugin):
         self.remove(container)
         name = self.load_palette(context)
 
-        repre_doc = context["representation"]
-        container["representation"] = str(repre_doc["_id"])
+        repre_entity = context["representation"]
+        container["representation"] = repre_entity["id"]
         container["name"] = name
         harmony.imprint(name, container)

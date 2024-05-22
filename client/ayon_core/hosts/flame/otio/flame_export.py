@@ -256,7 +256,7 @@ def create_otio_reference(clip_data, fps=None):
 
     if not otio_ex_ref_item:
         dirname, file_name = os.path.split(path)
-        file_name = utils.get_reformated_filename(file_name, padded=False)
+        file_name = utils.get_reformatted_filename(file_name, padded=False)
         reformated_path = os.path.join(dirname, file_name)
         # in case old OTIO or video file create `ExternalReference`
         otio_ex_ref_item = otio.schema.ExternalReference(

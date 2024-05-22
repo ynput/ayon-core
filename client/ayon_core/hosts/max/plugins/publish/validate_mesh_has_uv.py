@@ -39,6 +39,8 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
         return invalid
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
         if invalid:
             bullet_point_invalid_statement = "\n".join(

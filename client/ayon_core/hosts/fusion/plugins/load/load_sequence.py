@@ -1,7 +1,6 @@
 import contextlib
 
 import ayon_core.pipeline.load as load
-from ayon_core.pipeline.load import get_representation_context
 from ayon_core.hosts.fusion.api import (
     imprint_container,
     get_current_comp,
@@ -130,15 +129,15 @@ def loader_shift(loader, frame, relative=True):
 class FusionLoadSequence(load.LoaderPlugin):
     """Load image sequence into Fusion"""
 
-    families = [
+    product_types = {
         "imagesequence",
         "review",
         "render",
         "plate",
         "image",
         "online",
-    ]
-    representations = ["*"]
+    }
+    representations = {"*"}
     extensions = set(
         ext.lstrip(".") for ext in IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
     )
@@ -149,9 +148,9 @@ class FusionLoadSequence(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-        # Fallback to asset name when namespace is None
+        # Fallback to folder name when namespace is None
         if namespace is None:
-            namespace = context["asset"]["name"]
+            namespace = context["folder"]["name"]
 
         # Use the first file for now
         path = self.filepath_from_context(context)
@@ -224,8 +223,7 @@ class FusionLoadSequence(load.LoaderPlugin):
         assert tool.ID == "Loader", "Must be Loader"
         comp = tool.Comp()
 
-        repre_doc = context["representation"]
-        context = get_representation_context(repre_doc)
+        repre_entity = context["representation"]
         path = self.filepath_from_context(context)
 
         # Get start frame from version data
@@ -256,7 +254,7 @@ class FusionLoadSequence(load.LoaderPlugin):
                 )
 
             # Update the imprinted representation
-            tool.SetData("avalon.representation", str(repre_doc["_id"]))
+            tool.SetData("avalon.representation", repre_entity["id"])
 
     def remove(self, container):
         tool = container["_tool"]
@@ -266,17 +264,17 @@ class FusionLoadSequence(load.LoaderPlugin):
         with comp_lock_and_undo_chunk(comp, "Remove Loader"):
             tool.Delete()
 
-    def _get_start(self, version_doc, tool):
+    def _get_start(self, version_entity, tool):
         """Return real start frame of published files (incl. handles)"""
-        data = version_doc["data"]
+        attributes = version_entity["attrib"]
 
         # Get start frame directly with handle if it's in data
-        start = data.get("frameStartHandle")
+        start = attributes.get("frameStartHandle")
         if start is not None:
             return start
 
         # Get frame start without handles
-        start = data.get("frameStart")
+        start = attributes.get("frameStart")
         if start is None:
             self.log.warning(
                 "Missing start frame for version "
@@ -286,7 +284,7 @@ class FusionLoadSequence(load.LoaderPlugin):
             return 0
 
         # Use `handleStart` if the data is available
-        handle_start = data.get("handleStart")
+        handle_start = attributes.get("handleStart")
         if handle_start:
             start -= handle_start
 

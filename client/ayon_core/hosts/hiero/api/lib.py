@@ -11,16 +11,15 @@ import warnings
 import json
 import ast
 import secrets
-import shutil
 import hiero
 
 from qtpy import QtWidgets, QtCore
+import ayon_api
 try:
     from PySide import QtXml
 except ImportError:
     from PySide2 import QtXml
 
-from ayon_core.client import get_project
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     Anatomy,
@@ -35,9 +34,6 @@ from .constants import (
     OPENPYPE_TAG_NAME,
     DEFAULT_SEQUENCE_NAME,
     DEFAULT_BIN_NAME
-)
-from ayon_core.pipeline.colorspace import (
-    get_imageio_config
 )
 
 
@@ -105,9 +101,9 @@ def flatten(list_):
 
 
 def get_current_project(remove_untitled=False):
-    projects = flatten(hiero.core.projects())
+    projects = hiero.core.projects()
     if not remove_untitled:
-        return next(iter(projects))
+        return projects[0]
 
     # if remove_untitled
     for proj in projects:
@@ -166,7 +162,7 @@ def get_current_track(sequence, name, audio=False):
     Creates new if none is found.
 
     Args:
-        sequence (hiero.core.Sequence): hiero sequene object
+        sequence (hiero.core.Sequence): hiero sequence object
         name (str): name of track we want to return
         audio (bool)[optional]: switch to AudioTrack
 
@@ -248,8 +244,12 @@ def get_track_items(
     # collect all available active sequence track items
     if not return_list:
         sequence = get_current_sequence(name=sequence_name)
-        # get all available tracks from sequence
-        tracks = list(sequence.audioTracks()) + list(sequence.videoTracks())
+        tracks = []
+        if sequence is not None:
+            # get all available tracks from sequence
+            tracks.extend(sequence.audioTracks())
+            tracks.extend(sequence.videoTracks())
+
         # loop all tracks
         for track in tracks:
             if check_locked and track.isLocked():
@@ -588,7 +588,7 @@ def imprint(track_item, data=None):
 
     Examples:
         data = {
-            'asset': 'sq020sh0280',
+            'folderPath': '/shots/sq020sh0280',
             'productType': 'render',
             'productName': 'productMain'
         }
@@ -632,7 +632,9 @@ def sync_avalon_data_to_workfile():
     project_name = get_current_project_name()
 
     anatomy = Anatomy(project_name)
-    work_template = anatomy.templates["work"]["path"]
+    work_template = anatomy.get_template_item(
+        "work", "default", "path"
+    )
     work_root = anatomy.root_value_for_template(work_template)
     active_project_root = (
         os.path.join(work_root, project_name)
@@ -654,17 +656,17 @@ def sync_avalon_data_to_workfile():
         project.setProjectRoot(active_project_root)
 
     # get project data from avalon db
-    project_doc = get_project(project_name)
-    project_data = project_doc["data"]
+    project_entity = ayon_api.get_project(project_name)
+    project_attribs = project_entity["attrib"]
 
-    log.debug("project_data: {}".format(project_data))
+    log.debug("project attributes: {}".format(project_attribs))
 
     # get format and fps property from avalon db on project
-    width = project_data["resolutionWidth"]
-    height = project_data["resolutionHeight"]
-    pixel_aspect = project_data["pixelAspect"]
-    fps = project_data['fps']
-    format_name = project_data['code']
+    width = project_attribs["resolutionWidth"]
+    height = project_attribs["resolutionHeight"]
+    pixel_aspect = project_attribs["pixelAspect"]
+    fps = project_attribs["fps"]
+    format_name = project_entity["code"]
 
     # create new format in hiero project
     format = hiero.core.Format(width, height, pixel_aspect, format_name)
@@ -825,7 +827,7 @@ class PublishAction(QtWidgets.QAction):
 #     root_node = hiero.core.nuke.RootNode()
 #
 #     anatomy = Anatomy(get_current_project_name())
-#     work_template = anatomy.templates["work"]["path"]
+#     work_template = anatomy.get_template_item("work", "default", "path")
 #     root_path = anatomy.root_value_for_template(work_template)
 #
 #     nuke_script.addNode(root_node)
@@ -844,8 +846,8 @@ def create_nuke_workfile_clips(nuke_workfiles, seq=None):
     [{
         'path': 'P:/Jakub_testy_pipeline/test_v01.nk',
         'name': 'test',
-        'handleStart': 15, # added asymetrically to handles
-        'handleEnd': 10, # added asymetrically to handles
+        'handleStart': 15, # added asymmetrically to handles
+        'handleEnd': 10, # added asymmetrically to handles
         "clipIn": 16,
         "frameStart": 991,
         "frameEnd": 1023,
@@ -1044,29 +1046,83 @@ def _set_hrox_project_knobs(doc, **knobs):
 
 
 def apply_colorspace_project():
-    project_name = get_current_project_name()
-    # get path the the active projects
-    project = get_current_project(remove_untitled=True)
-    current_file = project.path()
+    """Apply colorspaces from settings.
 
-    # close the active project
-    project.close()
-
+    Due to not being able to set the project settings through the Python API,
+    we need to do use some dubious code to find the widgets and set them. It is
+    possible to set the project settings without traversing through the widgets
+    but it involves reading the hrox files from disk with XML, so no in-memory
+    support. See https://community.foundry.com/discuss/topic/137771/change-a-project-s-default-color-transform-with-python  # noqa
+    for more details.
+    """
     # get presets for hiero
+    project_name = get_current_project_name()
     imageio = get_project_settings(project_name)["hiero"]["imageio"]
     presets = imageio.get("workfile")
 
+    # Open Project Settings UI.
+    for act in hiero.ui.registeredActions():
+        if act.objectName() == "foundry.project.settings":
+            act.trigger()
+
+    # Find widgets from their sibling label.
+    labels = {
+        "Working Space:": "workingSpace",
+        "Viewer:": "viewerLut",
+        "Thumbnails:": "thumbnailLut",
+        "Monitor Out:": "monitorOutLut",
+        "8 Bit Files:": "eightBitLut",
+        "16 Bit Files:": "sixteenBitLut",
+        "Log Files:": "logLut",
+        "Floating Point Files:": "floatLut"
+    }
+    widgets = {x: None for x in labels.values()}
+
+    def _recursive_children(widget, labels, widgets):
+        children = widget.children()
+        for count, child in enumerate(children):
+            if isinstance(child, QtWidgets.QLabel):
+                if child.text() in labels.keys():
+                    widgets[labels[child.text()]] = children[count + 1]
+            _recursive_children(child, labels, widgets)
+
+    app = QtWidgets.QApplication.instance()
+    title = "Project Settings"
+    for widget in app.topLevelWidgets():
+        if isinstance(widget, QtWidgets.QMainWindow):
+            if widget.windowTitle() != title:
+                continue
+            _recursive_children(widget, labels, widgets)
+            widget.close()
+
+    msg = "Setting value \"{}\" is not a valid option for \"{}\""
+    for key, widget in widgets.items():
+        options = [widget.itemText(i) for i in range(widget.count())]
+        setting_value = presets[key]
+        assert setting_value in options, msg.format(setting_value, key)
+        widget.setCurrentText(presets[key])
+
+    # This code block is for setting up project colorspaces for files on disk.
+    # Due to not having Python API access to set the project settings, the
+    # Foundry recommended way is to modify the hrox files on disk with XML. See
+    # this forum thread for more details;
+    # https://community.foundry.com/discuss/topic/137771/change-a-project-s-default-color-transform-with-python  # noqa
+    '''
     # backward compatibility layer
     # TODO: remove this after some time
-    config_data = get_imageio_config(
-        project_name=get_current_project_name(),
-        host_name="hiero"
-    )
+    config_data = get_current_context_imageio_config_preset()
 
     if config_data:
         presets.update({
             "ocioConfigName": "custom"
         })
+
+    # get path the the active projects
+    project = get_current_project()
+    current_file = project.path()
+
+    msg = "The project needs to be saved to disk to apply colorspace settings."
+    assert current_file, msg
 
     # save the workfile as subversion "comment:_colorspaceChange"
     split_current_file = os.path.splitext(current_file)
@@ -1110,6 +1166,7 @@ def apply_colorspace_project():
 
     # open the file as current project
     hiero.core.openProject(copy_current_file)
+    '''
 
 
 def apply_colorspace_clips():
@@ -1119,10 +1176,8 @@ def apply_colorspace_clips():
 
     # get presets for hiero
     imageio = get_project_settings(project_name)["hiero"]["imageio"]
-    from pprint import pprint
 
     presets = imageio.get("regexInputs", {}).get("inputs", {})
-    pprint(presets)
     for clip in clips:
         clip_media_source_path = clip.mediaSource().firstpath()
         clip_name = clip.name()
@@ -1190,7 +1245,7 @@ def get_sequence_pattern_and_padding(file):
 
     Return:
         string: any matching sequence pattern
-        int: padding of sequnce numbering
+        int: padding of sequence numbering
     """
     foundall = re.findall(
         r"(#+)|(%\d+d)|(?<=[^a-zA-Z0-9])(\d+)(?=\.\w+$)", file)

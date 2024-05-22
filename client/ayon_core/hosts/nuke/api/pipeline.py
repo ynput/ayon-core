@@ -18,10 +18,11 @@ from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
     register_inventory_action_path,
+    register_workfile_build_plugin_path,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
     registered_host,
 )
@@ -30,13 +31,11 @@ from ayon_core.tools.utils import host_tools
 from ayon_core.hosts.nuke import NUKE_ROOT_DIR
 from ayon_core.tools.workfile_template_build import open_template_ui
 
-from .command import viewer_update_and_undo_stop
 from .lib import (
     Context,
     ROOT_DATA_KNOB,
     INSTANCE_DATA_KNOB,
     get_main_window,
-    add_publish_knob,
     WorkfileSettings,
     # TODO: remove this once workfile builder will be removed
     process_workfile_builder,
@@ -54,8 +53,6 @@ from .lib import (
     MENU_LABEL,
 )
 from .workfile_template_builder import (
-    NukePlaceholderLoadPlugin,
-    NukePlaceholderCreatePlugin,
     build_workfile_template,
     create_placeholder,
     update_placeholder,
@@ -78,6 +75,7 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
 INVENTORY_PATH = os.path.join(PLUGINS_DIR, "inventory")
+WORKFILE_BUILD_PATH = os.path.join(PLUGINS_DIR, "workfile_build")
 
 # registering pyblish gui regarding settings in presets
 if os.getenv("PYBLISH_GUI", None):
@@ -107,18 +105,11 @@ class NukeHost(
     def get_workfile_extensions(self):
         return file_extensions()
 
-    def get_workfile_build_placeholder_plugins(self):
-        return [
-            NukePlaceholderLoadPlugin,
-            NukePlaceholderCreatePlugin
-        ]
-
     def get_containers(self):
         return ls()
 
     def install(self):
-        ''' Installing all requarements for Nuke host
-        '''
+        """Installing all requirements for Nuke host"""
 
         pyblish.api.register_host("nuke")
 
@@ -127,8 +118,9 @@ class NukeHost(
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
+        register_workfile_build_plugin_path(WORKFILE_BUILD_PATH)
 
-        # Register Avalon event for workfiles loading.
+        # Register AYON event for workfiles loading.
         register_event_callback("workio.open_file", check_inventory_versions)
         register_event_callback("taskChanged", change_context_label)
 
@@ -180,7 +172,6 @@ def add_nuke_callbacks():
     # set apply all workfile settings on script load and save
     nuke.addOnScriptLoad(WorkfileSettings().set_context_settings)
 
-
     if nuke_settings["dirmap"]["enabled"]:
         log.info("Added Nuke's dir-mapping callback ...")
         # Add dirmap for file paths.
@@ -224,15 +215,15 @@ def _show_workfiles():
 
 def get_context_label():
     return "{0}, {1}".format(
-        get_current_asset_name(),
+        get_current_folder_path(),
         get_current_task_name()
     )
 
 
 def _install_menu():
-    """Install Avalon menu into Nuke's main menu bar."""
+    """Install AYON menu into Nuke's main menu bar."""
 
-    # uninstall original avalon menu
+    # uninstall original AYON menu
     main_window = get_main_window()
     menubar = nuke.menu("Nuke")
     menu = menubar.addMenu(MENU_LABEL)
@@ -432,7 +423,7 @@ def containerise(node,
             ("name", name),
             ("namespace", namespace),
             ("loader", str(loader)),
-            ("representation", context["representation"]["_id"]),
+            ("representation", context["representation"]["id"]),
         ],
 
         **data or dict()

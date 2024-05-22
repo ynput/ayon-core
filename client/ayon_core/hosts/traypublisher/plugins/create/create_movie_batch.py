@@ -1,8 +1,10 @@
 import copy
 import os
 import re
+import collections
 
-from ayon_core.client import get_asset_name_identifier
+import ayon_api
+
 from ayon_core.lib import (
     FileDef,
     BoolDef,
@@ -17,7 +19,7 @@ from ayon_core.pipeline.create import (
 
 from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
 from ayon_core.hosts.traypublisher.batch_parsing import (
-    get_asset_doc_from_file_name
+    get_folder_entity_from_filename
 )
 
 
@@ -53,21 +55,46 @@ class BatchMovieCreator(TrayPublishCreator):
         if not file_paths:
             return
 
+        data_by_folder_id = collections.defaultdict(list)
         for file_info in file_paths:
             instance_data = copy.deepcopy(data)
             file_name = file_info["filenames"][0]
             filepath = os.path.join(file_info["directory"], file_name)
             instance_data["creator_attributes"] = {"filepath": filepath}
 
-            asset_doc, version = get_asset_doc_from_file_name(
-                file_name, self.project_name, self.version_regex)
+            folder_entity, version = get_folder_entity_from_filename(
+                self.project_name, file_name, self.version_regex)
+            data_by_folder_id[folder_entity["id"]].append(
+                (instance_data, folder_entity)
+            )
 
-            product_name, task_name = self._get_product_and_task(
-                asset_doc, data["variant"], self.project_name)
+        all_task_entities = ayon_api.get_tasks(
+            self.project_name, task_ids=set(data_by_folder_id.keys())
+        )
+        task_entity_by_folder_id = collections.defaultdict(dict)
+        for task_entity in all_task_entities:
+            folder_id = task_entity["folderId"]
+            task_name = task_entity["name"].lower()
+            task_entity_by_folder_id[folder_id][task_name] = task_entity
 
-            asset_name = get_asset_name_identifier(asset_doc)
+        for (
+            folder_id, (instance_data, folder_entity)
+        ) in data_by_folder_id.items():
+            task_entities_by_name = task_entity_by_folder_id[folder_id]
+            task_name = None
+            task_entity = None
+            for default_task_name in self.default_tasks:
+                _name = default_task_name.lower()
+                if _name in task_entities_by_name:
+                    task_name = task_entity["name"]
+                    task_entity = task_entities_by_name[_name]
+                    break
 
-            instance_data["folderPath"] = asset_name
+            product_name = self._get_product_name(
+                self.project_name, task_entity, data["variant"]
+            )
+
+            instance_data["folderPath"] = folder_entity["path"]
             instance_data["task"] = task_name
 
             # Create new instance
@@ -75,15 +102,18 @@ class BatchMovieCreator(TrayPublishCreator):
                                            instance_data, self)
             self._store_new_instance(new_instance)
 
-    def _get_product_and_task(self, asset_doc, variant, project_name):
+    def _get_product_name(self, project_name, task_entity, variant):
         """Create product name according to standard template process"""
-        task_name = self._get_task_name(asset_doc)
         host_name = self.create_context.host_name
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
         try:
             product_name = get_product_name(
                 project_name,
-                asset_doc,
                 task_name,
+                task_type,
                 host_name,
                 self.product_type,
                 variant,
@@ -92,34 +122,18 @@ class BatchMovieCreator(TrayPublishCreator):
             # Create instance with fake task
             # - instance will be marked as invalid so it can't be published
             #   but user have ability to change it
-            # NOTE: This expect that there is not task 'Undefined' on asset
-            task_name = "Undefined"
+            # NOTE: This expect that there is not task 'Undefined' on folder
+            dumb_value = "Undefined"
             product_name = get_product_name(
                 project_name,
-                asset_doc,
-                task_name,
+                dumb_value,
+                dumb_value,
                 host_name,
                 self.product_type,
                 variant,
             )
 
-        return product_name, task_name
-
-    def _get_task_name(self, asset_doc):
-        """Get applicable task from 'asset_doc' """
-        available_task_names = {}
-        asset_tasks = asset_doc.get("data", {}).get("tasks") or {}
-        for task_name in asset_tasks.keys():
-            available_task_names[task_name.lower()] = task_name
-
-        task_name = None
-        for _task_name in self.default_tasks:
-            _task_name_low = _task_name.lower()
-            if _task_name_low in available_task_names:
-                task_name = available_task_names[_task_name_low]
-                break
-
-        return task_name
+        return product_name
 
     def get_instance_attr_defs(self):
         return [
@@ -149,8 +163,8 @@ class BatchMovieCreator(TrayPublishCreator):
         ]
 
     def get_detail_description(self):
-        return """# Publish batch of .mov to multiple assets.
+        return """# Publish batch of .mov to multiple folders.
 
-        File names must then contain only asset name, or asset name + version.
+        File names must then contain only folder name, or folder name + version.
         (eg. 'chair.mov', 'chair_v001.mov', not really safe `my_chair_v001.mov`
         """

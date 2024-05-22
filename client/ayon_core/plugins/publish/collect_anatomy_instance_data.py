@@ -1,13 +1,17 @@
 """
 Requires:
-    context     -> anatomyData
+    context     -> projectName
     context     -> projectEntity
-    context     -> assetEntity
+    context     -> anatomyData
     instance    -> folderPath
     instance    -> productName
     instance    -> productType
 
 Optional:
+    context     -> folderEntity
+    context     -> taskEntity
+    instance    -> task
+    instance    -> taskEntity
     instance    -> version
     instance    -> resolutionWidth
     instance    -> resolutionHeight
@@ -15,7 +19,8 @@ Optional:
 
 Provides:
     instance    -> projectEntity
-    instance    -> assetEntity
+    instance    -> folderEntity
+    instance    -> taskEntity
     instance    -> anatomyData
     instance    -> version
     instance    -> latestVersion
@@ -26,13 +31,9 @@ import json
 import collections
 
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import (
-    get_assets,
-    get_subsets,
-    get_last_versions,
-    get_asset_name_identifier,
-)
+from ayon_core.pipeline.template_data import get_folder_template_data
 from ayon_core.pipeline.version_start import get_versioning_start
 
 
@@ -51,73 +52,174 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         self.log.debug("Collecting anatomy data for all instances.")
 
         project_name = context.data["projectName"]
-        self.fill_missing_asset_docs(context, project_name)
+        self.fill_missing_folder_entities(context, project_name)
+        self.fill_missing_task_entities(context, project_name)
         self.fill_latest_versions(context, project_name)
         self.fill_anatomy_data(context)
 
         self.log.debug("Anatomy Data collection finished.")
 
-    def fill_missing_asset_docs(self, context, project_name):
-        self.log.debug("Querying asset documents for instances.")
+    def fill_missing_folder_entities(self, context, project_name):
+        self.log.debug("Querying folder entities for instances.")
 
-        context_asset_doc = context.data.get("assetEntity")
-        context_asset_name = None
-        if context_asset_doc:
-            context_asset_name = get_asset_name_identifier(context_asset_doc)
+        context_folder_entity = context.data.get("folderEntity")
+        context_folder_path = None
+        if context_folder_entity:
+            context_folder_path = context_folder_entity["path"]
 
-        instances_with_missing_asset_doc = collections.defaultdict(list)
+        instances_missing_folder = collections.defaultdict(list)
         for instance in context:
-            instance_asset_doc = instance.data.get("assetEntity")
-            _asset_name = instance.data["folderPath"]
+            instance_folder_entity = instance.data.get("folderEntity")
+            _folder_path = instance.data["folderPath"]
 
-            # There is possibility that assetEntity on instance is already set
-            # which can happen in standalone publisher
-            if instance_asset_doc:
-                instance_asset_name = get_asset_name_identifier(
-                    instance_asset_doc)
-                if instance_asset_name == _asset_name:
+            # There is possibility that folderEntity on instance is set
+            if instance_folder_entity:
+                instance_folder_path = instance_folder_entity["path"]
+                if instance_folder_path == _folder_path:
                     continue
 
-            # Check if asset name is the same as what is in context
-            # - they may be different, e.g. in NukeStudio
-            if context_asset_name and context_asset_name == _asset_name:
-                instance.data["assetEntity"] = context_asset_doc
+            # Check if folder path is the same as what is in context
+            # - they may be different, e.g. during editorial publishing
+            if context_folder_path and context_folder_path == _folder_path:
+                instance.data["folderEntity"] = context_folder_entity
 
             else:
-                instances_with_missing_asset_doc[_asset_name].append(instance)
+                instances_missing_folder[_folder_path].append(
+                    instance
+                )
 
-        if not instances_with_missing_asset_doc:
-            self.log.debug("All instances already had right asset document.")
+        if not instances_missing_folder:
+            self.log.debug("All instances already had right folder entity.")
             return
 
-        asset_names = list(instances_with_missing_asset_doc.keys())
-        self.log.debug("Querying asset documents with names: {}".format(
-            ", ".join(["\"{}\"".format(name) for name in asset_names])
+        folder_paths = list(instances_missing_folder.keys())
+        self.log.debug("Querying folder entities with paths: {}".format(
+            ", ".join(["\"{}\"".format(path) for path in folder_paths])
         ))
 
-        asset_docs = get_assets(project_name, asset_names=asset_names)
-        asset_docs_by_name = {
-            get_asset_name_identifier(asset_doc): asset_doc
-            for asset_doc in asset_docs
+        folder_entities_by_path = {
+            folder_entity["path"]: folder_entity
+            for folder_entity in ayon_api.get_folders(
+                project_name, folder_paths=folder_paths
+            )
         }
 
-        not_found_asset_names = []
-        for asset_name, instances in instances_with_missing_asset_doc.items():
-            asset_doc = asset_docs_by_name.get(asset_name)
-            if not asset_doc:
-                not_found_asset_names.append(asset_name)
+        not_found_folder_paths = []
+        for folder_path, instances in instances_missing_folder.items():
+            folder_entity = folder_entities_by_path.get(folder_path)
+            if not folder_entity:
+                not_found_folder_paths.append(folder_path)
                 continue
 
             for _instance in instances:
-                _instance.data["assetEntity"] = asset_doc
+                _instance.data["folderEntity"] = folder_entity
 
-        if not_found_asset_names:
-            joined_asset_names = ", ".join(
-                ["\"{}\"".format(name) for name in not_found_asset_names]
+        if not_found_folder_paths:
+            joined_folder_paths = ", ".join(
+                ["\"{}\"".format(path) for path in not_found_folder_paths]
             )
             self.log.warning((
-                "Not found asset documents with names \"{}\"."
-            ).format(joined_asset_names))
+                "Not found folder entities with paths \"{}\"."
+            ).format(joined_folder_paths))
+
+    def fill_missing_task_entities(self, context, project_name):
+        self.log.debug("Querying task entities for instances.")
+
+        context_folder_entity = context.data.get("folderEntity")
+        context_folder_id = None
+        if context_folder_entity:
+            context_folder_id = context_folder_entity["id"]
+        context_task_entity = context.data.get("taskEntity")
+        context_task_name = None
+        if context_task_entity:
+            context_task_name = context_task_entity["name"]
+
+        instances_missing_task = {}
+        folder_path_by_id = {}
+        for instance in context:
+            folder_entity = instance.data.get("folderEntity")
+            # Skip if instnace does not have filled folder entity
+            if not folder_entity:
+                continue
+            folder_id = folder_entity["id"]
+            folder_path_by_id[folder_id] = folder_entity["path"]
+
+            task_entity = instance.data.get("taskEntity")
+            _task_name = instance.data.get("task")
+
+            # There is possibility that taskEntity on instance is set
+            if task_entity:
+                task_parent_id = task_entity["folderId"]
+                instance_task_name = task_entity["name"]
+                if (
+                    folder_id == task_parent_id
+                    and instance_task_name == _task_name
+                ):
+                    continue
+
+            # Check if folder path is the same as what is in context
+            # - they may be different, e.g. in NukeStudio
+            if (
+                context_folder_id == folder_id
+                and context_task_name == _task_name
+            ):
+                instance.data["taskEntity"] = context_task_entity
+                continue
+
+            _by_folder_id = instances_missing_task.setdefault(folder_id, {})
+            _by_task_name = _by_folder_id.setdefault(_task_name, [])
+            _by_task_name.append(instance)
+
+        if not instances_missing_task:
+            self.log.debug("All instances already had right task entity.")
+            return
+
+        self.log.debug("Querying task entities")
+
+        all_folder_ids = set(instances_missing_task.keys())
+        all_task_names = set()
+        for per_task in instances_missing_task.values():
+            all_task_names |= set(per_task.keys())
+        all_task_names.discard(None)
+
+        task_entities = []
+        if all_task_names:
+            task_entities = ayon_api.get_tasks(
+                project_name,
+                folder_ids=all_folder_ids,
+                task_names=all_task_names
+            )
+        task_entity_by_ids = {}
+        for task_entity in task_entities:
+            folder_id = task_entity["folderId"]
+            task_name = task_entity["name"]
+            _by_folder_id = task_entity_by_ids.setdefault(folder_id, {})
+            _by_folder_id[task_name] = task_entity
+
+        not_found_task_paths = []
+        for folder_id, by_task in instances_missing_task.items():
+            for task_name, instances in by_task.items():
+                task_entity = (
+                    task_entity_by_ids
+                    .get(folder_id, {})
+                    .get(task_name)
+                )
+                if task_name and not task_entity:
+                    folder_path = folder_path_by_id[folder_id]
+                    not_found_task_paths.append(
+                        "/".join([folder_path, task_name])
+                    )
+
+                for instance in instances:
+                    instance.data["taskEntity"] = task_entity
+
+        if not_found_task_paths:
+            joined_paths = ", ".join(
+                ["\"{}\"".format(path) for path in not_found_task_paths]
+            )
+            self.log.warning((
+                "Not found task entities with paths \"{}\"."
+            ).format(joined_paths))
 
     def fill_latest_versions(self, context, project_name):
         """Try to find latest version for each instance's product name.
@@ -140,13 +242,13 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             latest_version = instance.data.get("latestVersion")
             instance.data["latestVersion"] = latest_version
 
-            # Skip instances without "assetEntity"
-            asset_doc = instance.data.get("assetEntity")
-            if not asset_doc:
+            # Skip instances without "folderEntity"
+            folder_entity = instance.data.get("folderEntity")
+            if not folder_entity:
                 continue
 
             # Store folder ids and product names for queries
-            folder_id = asset_doc["_id"]
+            folder_id = folder_entity["id"]
             product_name = instance.data["productName"]
 
             # Prepare instance hierarchy for faster filling latest versions
@@ -157,37 +259,41 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             hierarchy[folder_id][product_name].append(instance)
             names_by_folder_ids[folder_id].add(product_name)
 
-        subset_docs = []
+        product_entities = []
         if names_by_folder_ids:
-            subset_docs = list(get_subsets(
-                project_name, names_by_asset_ids=names_by_folder_ids
+            product_entities = list(ayon_api.get_products(
+                project_name, names_by_folder_ids=names_by_folder_ids
             ))
 
         product_ids = {
-            subset_doc["_id"]
-            for subset_doc in subset_docs
+            product_entity["id"]
+            for product_entity in product_entities
         }
 
-        last_version_docs_by_product_id = get_last_versions(
-            project_name, product_ids, fields=["name"]
+        last_versions_by_product_id = ayon_api.get_last_versions(
+            project_name, product_ids, fields={"version"}
         )
-        for subset_doc in subset_docs:
-            product_id = subset_doc["_id"]
-            last_version_doc = last_version_docs_by_product_id.get(product_id)
-            if last_version_doc is None:
+        for product_entity in product_entities:
+            product_id = product_entity["id"]
+            last_version_entity = last_versions_by_product_id.get(product_id)
+            if last_version_entity is None:
                 continue
 
-            folder_id = subset_doc["parent"]
-            product_name = subset_doc["name"]
+            last_version = last_version_entity["version"]
+            folder_id = product_entity["folderId"]
+            product_name = product_entity["name"]
             _instances = hierarchy[folder_id][product_name]
             for _instance in _instances:
-                _instance.data["latestVersion"] = last_version_doc["name"]
+                _instance.data["latestVersion"] = last_version
 
     def fill_anatomy_data(self, context):
         self.log.debug("Storing anatomy data to instance data.")
 
-        project_doc = context.data["projectEntity"]
-        project_task_types = project_doc["config"]["tasks"]
+        project_entity = context.data["projectEntity"]
+        task_types_by_name = {
+            task_type["name"]: task_type
+            for task_type in project_entity["taskTypes"]
+        }
 
         for instance in context:
             anatomy_data = copy.deepcopy(context.data["anatomyData"])
@@ -202,8 +308,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 }
             })
 
-            self._fill_asset_data(instance, project_doc, anatomy_data)
-            self._fill_task_data(instance, project_task_types, anatomy_data)
+            self._fill_folder_data(instance, project_entity, anatomy_data)
+            self._fill_task_data(instance, task_types_by_name, anatomy_data)
 
             # Define version
             version_number = None
@@ -258,7 +364,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 anatomy_data["fps"] = float("{:0.2f}".format(float(fps)))
 
             # Store anatomy data
-            instance.data["projectEntity"] = project_doc
+            instance.data["projectEntity"] = project_entity
             instance.data["anatomyData"] = anatomy_data
             instance.data["version"] = version_number
 
@@ -272,47 +378,43 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 json.dumps(anatomy_data, indent=4)
             ))
 
-    def _fill_asset_data(self, instance, project_doc, anatomy_data):
-        # QUESTION should we make sure that all asset data are poped if asset
-        #   data cannot be found?
-        # - 'asset', 'hierarchy', 'parent', 'folder'
-        asset_doc = instance.data.get("assetEntity")
-        if asset_doc:
-            parents = asset_doc["data"].get("parents") or list()
-            parent_name = project_doc["name"]
-            if parents:
-                parent_name = parents[-1]
-
-            hierarchy = "/".join(parents)
-            anatomy_data.update({
-                "asset": asset_doc["name"],
-                "hierarchy": hierarchy,
-                "parent": parent_name,
-                "folder": {
-                    "name": asset_doc["name"],
-                },
-            })
+    def _fill_folder_data(self, instance, project_entity, anatomy_data):
+        # QUESTION should we make sure that all folder data are poped if
+        #   folder data cannot be found?
+        # - 'folder', 'hierarchy', 'parent', 'folder'
+        folder_entity = instance.data.get("folderEntity")
+        if folder_entity:
+            folder_data = get_folder_template_data(
+                folder_entity,
+                project_entity["name"]
+            )
+            anatomy_data.update(folder_data)
             return
 
         if instance.data.get("newAssetPublishing"):
             hierarchy = instance.data["hierarchy"]
             anatomy_data["hierarchy"] = hierarchy
 
-            parent_name = project_doc["name"]
+            parent_name = project_entity["name"]
             if hierarchy:
                 parent_name = hierarchy.split("/")[-1]
 
-            asset_name = instance.data["folderPath"].split("/")[-1]
+            folder_name = instance.data["folderPath"].split("/")[-1]
             anatomy_data.update({
-                "asset": asset_name,
+                "asset": folder_name,
                 "hierarchy": hierarchy,
                 "parent": parent_name,
                 "folder": {
-                    "name": asset_name,
+                    "name": folder_name,
+                    "path": instance.data["folderPath"],
+                    # TODO get folder type from hierarchy
+                    #   Using 'Shot' is current default behavior of editorial
+                    #   (or 'newAssetPublishing') publishing.
+                    "type": "Shot",
                 },
             })
 
-    def _fill_task_data(self, instance, project_task_types, anatomy_data):
+    def _fill_task_data(self, instance, task_types_by_name, anatomy_data):
         # QUESTION should we make sure that all task data are poped if task
         #   data cannot be resolved?
         # - 'task'
@@ -322,10 +424,10 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         if not task_name:
             return
 
-        # Find task data based on asset entity
-        asset_doc = instance.data.get("assetEntity")
-        task_data = self._get_task_data_from_asset(
-            asset_doc, task_name, project_task_types
+        # Find task data based on folder entity
+        task_entity = instance.data.get("taskEntity")
+        task_data = self._get_task_data_from_entity(
+            task_entity, task_types_by_name
         )
         if task_data:
             # Fill task data
@@ -341,30 +443,34 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         if not instance.data.get("newAssetPublishing"):
             return
 
-        # Try to find task data based on hierarchy context and asset name
+        # Try to find task data based on hierarchy context and folder path
         hierarchy_context = instance.context.data.get("hierarchyContext")
-        asset_name = instance.data.get("folderPath")
-        if not hierarchy_context or not asset_name:
+        folder_path = instance.data.get("folderPath")
+        if not hierarchy_context or not folder_path:
             return
 
         project_name = instance.context.data["projectName"]
-        if "/" not in asset_name:
+        if "/" not in folder_path:
             tasks_info = self._find_tasks_info_in_hierarchy(
-                hierarchy_context, asset_name
+                hierarchy_context, folder_path
             )
         else:
             current_data = hierarchy_context.get(project_name, {})
-            for key in asset_name.split("/"):
+            for key in folder_path.split("/"):
                 if key:
-                    current_data = current_data.get("childs", {}).get(key, {})
+                    current_data = (
+                        current_data
+                        .get("children", {})
+                        .get(key, {})
+                    )
             tasks_info = current_data.get("tasks", {})
 
         task_info = tasks_info.get(task_name, {})
         task_type = task_info.get("type")
         task_code = (
-            project_task_types
+            task_types_by_name
             .get(task_type, {})
-            .get("short_name")
+            .get("shortName")
         )
         anatomy_data["task"] = {
             "name": task_name,
@@ -372,43 +478,41 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             "short": task_code
         }
 
-    def _get_task_data_from_asset(
-        self, asset_doc, task_name, project_task_types
+    def _get_task_data_from_entity(
+        self, task_entity, task_types_by_name
     ):
         """
 
         Args:
-            asset_doc (Union[dict[str, Any], None]): Asset document.
-            task_name (Union[str, None]): Task name.
-            project_task_types (dict[str, dict[str, Any]]): Project task
+            task_entity (Union[dict[str, Any], None]): Task entity.
+            task_types_by_name (dict[str, dict[str, Any]]): Project task
                 types.
 
         Returns:
             Union[dict[str, str], None]: Task data or None if not found.
         """
 
-        if not asset_doc or not task_name:
+        if not task_entity:
             return None
 
-        asset_tasks = asset_doc["data"]["tasks"]
-        task_type = asset_tasks.get(task_name, {}).get("type")
+        task_type = task_entity["taskType"]
         task_code = (
-            project_task_types
+            task_types_by_name
             .get(task_type, {})
-            .get("short_name")
+            .get("shortName")
         )
         return {
-            "name": task_name,
+            "name": task_entity["name"],
             "type": task_type,
             "short": task_code
         }
 
-    def _find_tasks_info_in_hierarchy(self, hierarchy_context, asset_name):
+    def _find_tasks_info_in_hierarchy(self, hierarchy_context, folder_name):
         """Find tasks info for an asset in editorial hierarchy.
 
         Args:
             hierarchy_context (dict[str, Any]): Editorial hierarchy context.
-            asset_name (str): Asset name.
+            folder_name (str): Folder name.
 
         Returns:
             dict[str, dict[str, Any]]: Tasks info by name.
@@ -418,9 +522,9 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         hierarchy_queue.append(copy.deepcopy(hierarchy_context))
         while hierarchy_queue:
             item = hierarchy_queue.popleft()
-            if asset_name in item:
-                return item[asset_name].get("tasks") or {}
+            if folder_name in item:
+                return item[folder_name].get("tasks") or {}
 
             for subitem in item.values():
-                hierarchy_queue.extend(subitem.get("childs") or [])
+                hierarchy_queue.extend(subitem.get("children") or [])
         return {}

@@ -15,10 +15,10 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
     As opposed to storing `ayon.create.instance` as id on the node we store
     `pyblish.avalon.usdlayered`.
 
-    Additionally this instance has no need for storing family, asset, product
-    or name on the nodes. Instead all information is retrieved solely from
-    the output filepath, which is an Avalon URI:
-        avalon://{asset}/{product}.{representation}
+    Additionally this instance has no need for storing folder, product type,
+    product name or name on the nodes. Instead all information is retrieved
+    solely from the output filepath, which is an Avalon URI:
+        avalon://{folder}/{product}.{representation}
 
     Each final ROP node is considered a dependency for any of the Configured
     Save Path layers it sets along the way. As such, the instances shown in
@@ -89,7 +89,7 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
 
         # For now group ALL of them into USD Layer product group
         # Allow this product to be grouped into a USD Layer on creation
-        data["subsetGroup"] = "USD Layer"
+        data["productGroup"] = "USD Layer"
 
         instances = list()
         dependencies = []
@@ -142,9 +142,9 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
             self.log.warning("Non Avalon URI Layer Path: %s" % save_path)
             return {}
 
-        # Collect asset + product from URI
-        name = "{product[name]} ({asset})".format(**uri_data)
-        fname = "{asset}_{product[name]}.{ext}".format(**uri_data)
+        # Collect folder + product from URI
+        name = "{product[name]} ({folder[path]})".format(**uri_data)
+        fname = "{folder[path]}_{product[name]}.{ext}".format(**uri_data)
 
         data = dict(uri_data)
         data["usdSavePath"] = save_path

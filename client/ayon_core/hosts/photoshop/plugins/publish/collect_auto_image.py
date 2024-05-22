@@ -1,6 +1,5 @@
 import pyblish.api
 
-from ayon_core.client import get_asset_name_identifier
 from ayon_core.hosts.photoshop import api as photoshop
 from ayon_core.pipeline.create import get_product_name
 
@@ -10,7 +9,6 @@ class CollectAutoImage(pyblish.api.ContextPlugin):
     """
 
     label = "Collect Auto Image"
-    order = pyblish.api.CollectorOrder
     hosts = ["photoshop"]
     order = pyblish.api.CollectorOrder + 0.2
 
@@ -25,10 +23,13 @@ class CollectAutoImage(pyblish.api.ContextPlugin):
 
         project_name = context.data["projectName"]
         proj_settings = context.data["project_settings"]
-        task_name = context.data["task"]
         host_name = context.data["hostName"]
-        asset_doc = context.data["assetEntity"]
-        folder_path = get_asset_name_identifier(asset_doc)
+        folder_entity = context.data["folderEntity"]
+        task_entity = context.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
 
         auto_creator = proj_settings.get(
             "photoshop", {}).get(
@@ -81,15 +82,15 @@ class CollectAutoImage(pyblish.api.ContextPlugin):
 
             product_name = get_product_name(
                 project_name,
-                asset_doc,
                 task_name,
+                task_type,
                 host_name,
                 product_type,
                 variant,
             )
 
             instance = context.create_instance(product_name)
-            instance.data["folderPath"] = folder_path
+            instance.data["folderPath"] = folder_entity["path"]
             instance.data["productType"] = product_type
             instance.data["productName"] = product_name
             instance.data["ids"] = publishable_ids

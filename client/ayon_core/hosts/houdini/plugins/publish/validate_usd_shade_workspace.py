@@ -53,7 +53,7 @@ class ValidateUsdShadeWorkspace(pyblish.api.InstancePlugin):
         # There were some issues with the editable node not having the right
         # configured path. So for now let's assure that is correct to.from
         value = (
-            'avalon://`chs("../asset_name")`/'
+            'avalon://`chs("../folder_path")`/'
             'usdShade`chs("../model_variantname1")`.usd'
         )
         rop_value = rop.parm("lopoutput").rawValue()

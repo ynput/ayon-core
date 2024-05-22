@@ -4,10 +4,15 @@ import pyblish.api
 import types
 from maya import cmds
 
-from ayon_core.pipeline.publish import RepairContextAction
+from ayon_core.pipeline.publish import (
+    RepairContextAction,
+    OptionalPyblishPluginMixin,
+    PublishValidationError
+)
 
 
-class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin):
+class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin,
+                                 OptionalPyblishPluginMixin):
     """Validate whether the V-Ray Render Elements (AOVs) include references.
 
     This will check if there are AOVs pulled from references. If
@@ -21,9 +26,12 @@ class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin):
     hosts = ['maya']
     families = ['renderlayer']
     actions = [RepairContextAction]
+    optional = False
 
     def process(self, instance):
         """Plugin main entry point."""
+        if not self.is_active(instance.data):
+            return
         if instance.data.get("renderer") != "vray":
             # If not V-Ray ignore..
             return
@@ -39,7 +47,7 @@ class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin):
                 self.log.warning((
                     "Referenced AOVs are enabled in Vray "
                     "Render Settings and are detected in scene, but "
-                    "Pype render instance option for referenced AOVs is "
+                    "AYON render instance option for referenced AOVs is "
                     "disabled. Those AOVs will be rendered but not published "
                     "by Pype."
                 ))
@@ -54,7 +62,7 @@ class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin):
                 self.log.error((
                     "'Use referenced' not enabled in Vray Render Settings."
                 ))
-                raise AssertionError("Invalid render settings")
+                raise PublishValidationError("Invalid render settings")
 
     @classmethod
     def repair(cls, context):

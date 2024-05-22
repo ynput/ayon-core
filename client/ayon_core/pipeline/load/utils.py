@@ -1,29 +1,13 @@
 import os
 import platform
-import copy
 import logging
 import inspect
 import collections
 import numbers
 
+import ayon_api
+
 from ayon_core.host import ILoadHost
-from ayon_core.client import (
-    get_project,
-    get_assets,
-    get_asset_by_id,
-    get_subsets,
-    get_subset_by_id,
-    get_versions,
-    get_version_by_id,
-    get_last_version_by_subset_id,
-    get_hero_version_by_subset_id,
-    get_version_by_name,
-    get_last_versions,
-    get_representations,
-    get_representation_by_id,
-    get_representation_by_name,
-    get_representation_parents
-)
 from ayon_core.lib import (
     StringTemplate,
     TemplateUnsolved,
@@ -98,8 +82,8 @@ def get_repres_contexts(representation_ids, project_name=None):
 
     Returns:
         dict: The full representation context by representation id.
-            keys are repre_id, value is dictionary with full documents of
-            asset, subset, version and representation.
+            keys are repre_id, value is dictionary with entities of
+            folder, product, version and representation.
     """
     from ayon_core.pipeline import get_current_project_name
 
@@ -109,91 +93,20 @@ def get_repres_contexts(representation_ids, project_name=None):
     if not project_name:
         project_name = get_current_project_name()
 
-    repre_docs = get_representations(project_name, representation_ids)
-
-    return get_contexts_for_repre_docs(project_name, repre_docs)
-
-
-def get_contexts_for_repre_docs(project_name, repre_docs):
-    contexts = {}
-    if not repre_docs:
-        return contexts
-
-    repre_docs_by_id = {}
-    version_ids = set()
-    for repre_doc in repre_docs:
-        version_ids.add(repre_doc["parent"])
-        repre_docs_by_id[repre_doc["_id"]] = repre_doc
-
-    version_docs = get_versions(
-        project_name, version_ids, hero=True
+    repre_entities = ayon_api.get_representations(
+        project_name, representation_ids
     )
 
-    version_docs_by_id = {}
-    hero_version_docs = []
-    versions_for_hero = set()
-    subset_ids = set()
-    for version_doc in version_docs:
-        if version_doc["type"] == "hero_version":
-            hero_version_docs.append(version_doc)
-            versions_for_hero.add(version_doc["version_id"])
-        version_docs_by_id[version_doc["_id"]] = version_doc
-        subset_ids.add(version_doc["parent"])
-
-    if versions_for_hero:
-        _version_docs = get_versions(project_name, versions_for_hero)
-        _version_data_by_id = {
-            version_doc["_id"]: version_doc["data"]
-            for version_doc in _version_docs
-        }
-
-        for hero_version_doc in hero_version_docs:
-            hero_version_id = hero_version_doc["_id"]
-            version_id = hero_version_doc["version_id"]
-            version_data = copy.deepcopy(_version_data_by_id[version_id])
-            version_docs_by_id[hero_version_id]["data"] = version_data
-
-    subset_docs = get_subsets(project_name, subset_ids)
-    subset_docs_by_id = {}
-    asset_ids = set()
-    for subset_doc in subset_docs:
-        subset_docs_by_id[subset_doc["_id"]] = subset_doc
-        asset_ids.add(subset_doc["parent"])
-
-    asset_docs = get_assets(project_name, asset_ids)
-    asset_docs_by_id = {
-        asset_doc["_id"]: asset_doc
-        for asset_doc in asset_docs
-    }
-
-    project_doc = get_project(project_name)
-
-    for repre_id, repre_doc in repre_docs_by_id.items():
-        version_doc = version_docs_by_id[repre_doc["parent"]]
-        subset_doc = subset_docs_by_id[version_doc["parent"]]
-        asset_doc = asset_docs_by_id[subset_doc["parent"]]
-        context = {
-            "project": {
-                "name": project_doc["name"],
-                "code": project_doc["data"].get("code")
-            },
-            "asset": asset_doc,
-            "subset": subset_doc,
-            "version": version_doc,
-            "representation": repre_doc,
-        }
-        contexts[repre_id] = context
-
-    return contexts
+    return get_representation_contexts(project_name, repre_entities)
 
 
-def get_subset_contexts(subset_ids, project_name=None):
-    """Return parenthood context for subset.
+def get_product_contexts(product_ids, project_name=None):
+    """Return parenthood context for product.
 
-        Provides context on subset granularity - less detail than
+        Provides context on product granularity - less detail than
         'get_repre_contexts'.
     Args:
-        subset_ids (list): The subset ids.
+        product_ids (list): The product ids.
         project_name (Optional[str]): Project name.
     Returns:
         dict: The full representation context by representation id.
@@ -201,86 +114,173 @@ def get_subset_contexts(subset_ids, project_name=None):
     from ayon_core.pipeline import get_current_project_name
 
     contexts = {}
-    if not subset_ids:
+    if not product_ids:
         return contexts
 
     if not project_name:
         project_name = get_current_project_name()
-    subset_docs = get_subsets(project_name, subset_ids)
-    subset_docs_by_id = {}
-    asset_ids = set()
-    for subset_doc in subset_docs:
-        subset_docs_by_id[subset_doc["_id"]] = subset_doc
-        asset_ids.add(subset_doc["parent"])
+    product_entities = ayon_api.get_products(
+        project_name, product_ids=product_ids
+    )
+    product_entities_by_id = {}
+    folder_ids = set()
+    for product_entity in product_entities:
+        product_entities_by_id[product_entity["id"]] = product_entity
+        folder_ids.add(product_entity["folderId"])
 
-    asset_docs = get_assets(project_name, asset_ids)
-    asset_docs_by_id = {
-        asset_doc["_id"]: asset_doc
-        for asset_doc in asset_docs
+    folder_entities_by_id = {
+        folder_entity["id"]: folder_entity
+        for folder_entity in ayon_api.get_folders(
+            project_name, folder_ids=folder_ids
+        )
     }
 
-    project_doc = get_project(project_name)
+    project_entity = ayon_api.get_project(project_name)
 
-    for subset_id, subset_doc in subset_docs_by_id.items():
-        asset_doc = asset_docs_by_id[subset_doc["parent"]]
+    for product_id, product_entity in product_entities_by_id.items():
+        folder_entity = folder_entities_by_id[product_entity["folderId"]]
         context = {
-            "project": {
-                "name": project_doc["name"],
-                "code": project_doc["data"].get("code")
-            },
-            "asset": asset_doc,
-            "subset": subset_doc
+            "project": project_entity,
+            "folder": folder_entity,
+            "product": product_entity
         }
-        contexts[subset_id] = context
+        contexts[product_id] = context
 
     return contexts
 
 
-def get_representation_context(representation):
+def get_representation_contexts(project_name, representation_entities):
+    """Parenthood context for representations.
+
+    Function fills ``None`` if any entity was not found or could
+        not be queried.
+
+    Args:
+        project_name (str): Project name.
+        representation_entities (Iterable[dict[str, Any]]): Representation
+            entities.
+
+    Returns:
+        dict[str, dict[str, Any]]: The full representation context by
+            representation id.
+
+    """
+    repre_entities_by_id = {
+        repre_entity["id"]: repre_entity
+        for repre_entity in representation_entities
+    }
+
+    if not repre_entities_by_id:
+        return {}
+
+    repre_ids = set(repre_entities_by_id)
+
+    parents_by_repre_id = ayon_api.get_representations_parents(
+        project_name, repre_ids
+    )
+    output = {}
+    for repre_id in repre_ids:
+        repre_entity = repre_entities_by_id[repre_id]
+        (
+            version_entity,
+            product_entity,
+            folder_entity,
+            project_entity
+        ) = parents_by_repre_id[repre_id]
+        output[repre_id] = {
+            "project": project_entity,
+            "folder": folder_entity,
+            "product": product_entity,
+            "version": version_entity,
+            "representation": repre_entity,
+        }
+    return output
+
+
+def get_representation_contexts_by_ids(project_name, representation_ids):
+    """Parenthood context for representations found by ids.
+
+    Function fills ``None`` if any entity was not found or could
+        not be queried.
+
+    Args:
+        project_name (str): Project name.
+        representation_ids (Iterable[str]): Representation ids.
+
+    Returns:
+        dict[str, dict[str, Any]]: The full representation context by
+            representation id.
+
+    """
+    repre_ids = set(representation_ids)
+    if not repre_ids:
+        return {}
+
+    # Query representation entities by id
+    repre_entities_by_id = {
+        repre_entity["id"]: repre_entity
+        for repre_entity in ayon_api.get_representations(
+            project_name, repre_ids
+        )
+    }
+    output = get_representation_contexts(
+        project_name, repre_entities_by_id.values()
+    )
+    for repre_id in repre_ids:
+        if repre_id not in output:
+            output[repre_id] = {
+                "project": None,
+                "folder": None,
+                "product": None,
+                "version": None,
+                "representation": None,
+            }
+    return output
+
+
+def get_representation_context(project_name, representation):
     """Return parenthood context for representation.
 
     Args:
-        representation (str or ObjectId or dict): The representation id
-            or full representation as returned by the database.
+        project_name (str): Project name.
+        representation (Union[dict[str, Any], str]): Representation entity
+            or representation id.
 
     Returns:
-        dict: The full representation context.
+        dict[str, dict[str, Any]]: The full representation context.
+
+    Raises:
+        ValueError: When representation is invalid or parents were not found.
+
     """
-    from ayon_core.pipeline import get_current_project_name
-
-    assert representation is not None, "This is a bug"
-
-    project_name = get_current_project_name()
-    if not isinstance(representation, dict):
-        representation = get_representation_by_id(
-            project_name, representation
+    if not representation:
+        raise ValueError(
+            "Invalid argument value {}".format(str(representation))
         )
 
-    if not representation:
-        raise AssertionError("Representation was not found in database")
+    if isinstance(representation, dict):
+        repre_entity = representation
+        repre_id = repre_entity["id"]
+        context = get_representation_contexts(
+            project_name, [repre_entity]
+        )[repre_id]
+    else:
+        repre_id = representation
+        context = get_representation_contexts_by_ids(
+            project_name, {repre_id}
+        )[repre_id]
 
-    version, subset, asset, project = get_representation_parents(
-        project_name, representation
-    )
-    if not version:
-        raise AssertionError("Version was not found in database")
-    if not subset:
-        raise AssertionError("Subset was not found in database")
-    if not asset:
-        raise AssertionError("Asset was not found in database")
-    if not project:
-        raise AssertionError("Project was not found in database")
+    missing_entities = []
+    for key, value in context.items():
+        if value is None:
+            missing_entities.append(key)
 
-    context = {
-        "project": {
-            "name": project["name"],
-            "code": project["data"].get("code", '')
-        },
-        "asset": asset,
-        "subset": subset,
-        "version": version,
-        "representation": representation,
-    }
+    if missing_entities:
+        raise ValueError(
+            "Not able to receive representation parent types: {}".format(
+                ", ".join(missing_entities)
+            )
+        )
 
     return context
 
@@ -293,7 +293,7 @@ def load_with_repre_context(
     if not is_compatible_loader(Loader, repre_context):
         raise IncompatibleLoaderError(
             "Loader {} is incompatible with {}".format(
-                Loader.__name__, repre_context["subset"]["name"]
+                Loader.__name__, repre_context["product"]["name"]
             )
         )
 
@@ -303,13 +303,13 @@ def load_with_repre_context(
 
     assert isinstance(options, dict), "Options must be a dictionary"
 
-    # Fallback to subset when name is None
+    # Fallback to product when name is None
     if name is None:
-        name = repre_context["subset"]["name"]
+        name = repre_context["product"]["name"]
 
     log.info(
         "Running '%s' on '%s'" % (
-            Loader.__name__, repre_context["asset"]["name"]
+            Loader.__name__, repre_context["folder"]["path"]
         )
     )
 
@@ -323,8 +323,8 @@ def load_with_repre_context(
     return loader.load(repre_context, name, namespace, options)
 
 
-def load_with_subset_context(
-    Loader, subset_context, namespace=None, name=None, options=None, **kwargs
+def load_with_product_context(
+    Loader, product_context, namespace=None, name=None, options=None, **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -333,21 +333,21 @@ def load_with_subset_context(
 
     assert isinstance(options, dict), "Options must be a dictionary"
 
-    # Fallback to subset when name is None
+    # Fallback to product when name is None
     if name is None:
-        name = subset_context["subset"]["name"]
+        name = product_context["product"]["name"]
 
     log.info(
         "Running '%s' on '%s'" % (
-            Loader.__name__, subset_context["asset"]["name"]
+            Loader.__name__, product_context["folder"]["path"]
         )
     )
 
-    return Loader().load(subset_context, name, namespace, options)
+    return Loader().load(product_context, name, namespace, options)
 
 
-def load_with_subset_contexts(
-    Loader, subset_contexts, namespace=None, name=None, options=None, **kwargs
+def load_with_product_contexts(
+    Loader, product_contexts, namespace=None, name=None, options=None, **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -356,19 +356,21 @@ def load_with_subset_contexts(
 
     assert isinstance(options, dict), "Options must be a dictionary"
 
-    # Fallback to subset when name is None
-    joined_subset_names = " | ".join(
-        context["subset"]["name"]
-        for context in subset_contexts
+    # Fallback to product when name is None
+    joined_product_names = " | ".join(
+        context["product"]["name"]
+        for context in product_contexts
     )
     if name is None:
-        name = joined_subset_names
+        name = joined_product_names
 
     log.info(
-        "Running '{}' on '{}'".format(Loader.__name__, joined_subset_names)
+        "Running '{}' on '{}'".format(
+            Loader.__name__, joined_product_names
+        )
     )
 
-    return Loader().load(subset_contexts, name, namespace, options)
+    return Loader().load(product_contexts, name, namespace, options)
 
 
 def load_container(
@@ -378,10 +380,10 @@ def load_container(
 
     Args:
         Loader (Loader): The loader class to trigger.
-        representation (str or ObjectId or dict): The representation id
+        representation (str or dict): The representation id
             or full representation as returned by the database.
         namespace (str, Optional): The namespace to assign. Defaults to None.
-        name (str, Optional): The name to assign. Defaults to subset name.
+        name (str, Optional): The name to assign. Defaults to product name.
         options (dict, Optional): Additional options to pass on to the loader.
 
     Returns:
@@ -392,8 +394,11 @@ def load_container(
             the representation.
 
     """
+    from ayon_core.pipeline import get_current_project_name
 
-    context = get_representation_context(representation)
+    context = get_representation_context(
+        get_current_project_name(), representation
+    )
     return load_with_repre_context(
         Loader,
         context,
@@ -459,41 +464,54 @@ def update_container(container, version=-1):
 
     # Compute the different version from 'representation'
     project_name = get_current_project_name()
-    current_representation = get_representation_by_id(
+    current_representation = ayon_api.get_representation_by_id(
         project_name, container["representation"]
     )
 
     assert current_representation is not None, "This is a bug"
 
-    current_version = get_version_by_id(
-        project_name, current_representation["parent"], fields=["parent"]
+    current_version_id = current_representation["versionId"]
+    current_version = ayon_api.get_version_by_id(
+        project_name, current_version_id, fields={"productId"}
     )
-    if version == -1:
-        new_version = get_last_version_by_subset_id(
-            project_name, current_version["parent"], fields=["_id"]
+    if isinstance(version, HeroVersionType):
+        new_version = ayon_api.get_hero_version_by_product_id(
+            project_name, current_version["productId"]
         )
-
-    elif isinstance(version, HeroVersionType):
-        new_version = get_hero_version_by_subset_id(
-            project_name, current_version["parent"], fields=["_id"]
+    elif version == -1:
+        new_version = ayon_api.get_last_version_by_product_id(
+            project_name, current_version["productId"]
         )
 
     else:
-        new_version = get_version_by_name(
-            project_name, version, current_version["parent"], fields=["_id"]
+        new_version = ayon_api.get_version_by_name(
+            project_name, version, current_version["productId"]
         )
-    subset_doc = get_subset_by_id(project_name, current_version["parent"])
-    asset_doc = get_asset_by_id(project_name, subset_doc["parent"])
 
-    assert new_version is not None, "This is a bug"
+    if new_version is None:
+        raise ValueError("Failed to find matching version")
 
-    new_representation = get_representation_by_name(
-        project_name, current_representation["name"], new_version["_id"]
+    product_entity = ayon_api.get_product_by_id(
+        project_name, current_version["productId"]
     )
-    assert new_representation is not None, "Representation wasn't found"
+    folder_entity = ayon_api.get_folder_by_id(
+        project_name, product_entity["folderId"]
+    )
+
+    repre_name = current_representation["name"]
+    new_representation = ayon_api.get_representation_by_name(
+        project_name, repre_name, new_version["id"]
+    )
+    if new_representation is None:
+        raise ValueError(
+            "Representation '{}' wasn't found on requested version".format(
+                repre_name
+            )
+        )
 
     path = get_representation_path(new_representation)
-    assert os.path.exists(path), "Path {} doesn't exist".format(path)
+    if not path or not os.path.exists(path):
+        raise ValueError("Path {} doesn't exist".format(path))
 
     # Run update on the Loader for this container
     Loader = _get_container_loader(container)
@@ -502,14 +520,11 @@ def update_container(container, version=-1):
             "Can't update container because loader '{}' was not found."
             .format(container.get("loader"))
         )
-    project_doc = get_project(project_name)
+    project_entity = ayon_api.get_project(project_name)
     context = {
-        "project": {
-            "name": project_doc["name"],
-            "code": project_doc["data"]["code"],
-        },
-        "asset": asset_doc,
-        "subset": subset_doc,
+        "project": project_entity,
+        "folder": folder_entity,
+        "product": product_entity,
         "version": new_version,
         "representation": new_representation,
     }
@@ -522,7 +537,7 @@ def switch_container(container, representation, loader_plugin=None):
 
     Args:
         container (dict): container information
-        representation (dict): representation data from document
+        representation (dict): representation entity
 
     Returns:
         function call
@@ -549,21 +564,20 @@ def switch_container(container, representation, loader_plugin=None):
 
     # Get the new representation to switch to
     project_name = get_current_project_name()
-    new_representation = get_representation_by_id(
-        project_name, representation["_id"]
-    )
 
-    new_context = get_representation_context(new_representation)
-    if not is_compatible_loader(loader_plugin, new_context):
+    context = get_representation_context(
+        project_name, representation["id"]
+    )
+    if not is_compatible_loader(loader_plugin, context):
         raise IncompatibleLoaderError(
             "Loader {} is incompatible with {}".format(
-                loader_plugin.__name__, new_context["subset"]["name"]
+                loader_plugin.__name__, context["product"]["name"]
             )
         )
 
-    loader = loader_plugin(new_context)
+    loader = loader_plugin(context)
 
-    return loader.switch(container, new_context)
+    return loader.switch(container, context)
 
 
 def get_representation_path_from_context(context):
@@ -571,16 +585,19 @@ def get_representation_path_from_context(context):
     from ayon_core.pipeline import get_current_project_name
 
     representation = context["representation"]
-    project_doc = context.get("project")
+    project_entity = context.get("project")
     root = None
-    if project_doc and project_doc["name"] != get_current_project_name():
-        anatomy = Anatomy(project_doc["name"])
+    if (
+        project_entity
+        and project_entity["name"] != get_current_project_name()
+    ):
+        anatomy = Anatomy(project_entity["name"])
         root = anatomy.roots
 
     return get_representation_path(representation, root)
 
 
-def get_representation_path_with_anatomy(repre_doc, anatomy):
+def get_representation_path_with_anatomy(repre_entity, anatomy):
     """Receive representation path using representation document and anatomy.
 
     Anatomy is used to replace 'root' key in representation file. Ideally
@@ -592,7 +609,7 @@ def get_representation_path_with_anatomy(repre_doc, anatomy):
         imagine the result should also contain paths to possible resources.
 
     Args:
-        repre_doc (Dict[str, Any]): Representation document.
+        repre_entity (Dict[str, Any]): Representation entity.
         anatomy (Anatomy): Project anatomy object.
 
     Returns:
@@ -604,7 +621,7 @@ def get_representation_path_with_anatomy(repre_doc, anatomy):
     """
 
     try:
-        template = repre_doc["data"]["template"]
+        template = repre_entity["attrib"]["template"]
 
     except KeyError:
         raise InvalidRepresentationContext((
@@ -613,7 +630,7 @@ def get_representation_path_with_anatomy(repre_doc, anatomy):
         ))
 
     try:
-        context = repre_doc["context"]
+        context = repre_entity["context"]
         context["root"] = anatomy.roots
         path = StringTemplate.format_strict_template(template, context)
 
@@ -651,7 +668,7 @@ def get_representation_path(representation, root=None):
 
     def path_from_representation():
         try:
-            template = representation["data"]["template"]
+            template = representation["attrib"]["template"]
         except KeyError:
             return None
 
@@ -678,10 +695,10 @@ def get_representation_path(representation, root=None):
         return path
 
     def path_from_data():
-        if "path" not in representation["data"]:
+        if "path" not in representation["attrib"]:
             return None
 
-        path = representation["data"]["path"]
+        path = representation["attrib"]["path"]
         # Force replacing backslashes with forward slashed if not on
         #   windows
         if platform.system().lower() != "windows":
@@ -718,7 +735,7 @@ def get_representation_path(representation, root=None):
 def is_compatible_loader(Loader, context):
     """Return whether a loader is compatible with a context.
 
-    This checks the version's families and the representation for the given
+    This checks the product type and the representation for the given
     Loader.
 
     Returns:
@@ -758,8 +775,12 @@ def filter_repre_contexts_by_loader(repre_contexts, loader):
 
 def loaders_from_representation(loaders, representation):
     """Return all compatible loaders for a representation."""
+    from ayon_core.pipeline import get_current_project_name
 
-    context = get_representation_context(representation)
+    project_name = get_current_project_name()
+    context = get_representation_context(
+        project_name, representation
+    )
     return loaders_from_repre_context(loaders, context)
 
 
@@ -838,55 +859,57 @@ def filter_containers(containers, project_name):
             invalid_containers.extend(containers)
         return output
 
-    repre_docs = get_representations(
+    repre_entities = ayon_api.get_representations(
         project_name,
         representation_ids=repre_ids,
-        fields=["_id", "parent"]
+        fields={"id", "versionId"}
     )
     # Store representations by stringified representation id
-    repre_docs_by_str_id = {}
-    repre_docs_by_version_id = collections.defaultdict(list)
-    for repre_doc in repre_docs:
-        repre_id = str(repre_doc["_id"])
-        version_id = repre_doc["parent"]
-        repre_docs_by_str_id[repre_id] = repre_doc
-        repre_docs_by_version_id[version_id].append(repre_doc)
+    repre_entities_by_id = {}
+    repre_entities_by_version_id = collections.defaultdict(list)
+    for repre_entity in repre_entities:
+        repre_id = repre_entity["id"]
+        version_id = repre_entity["versionId"]
+        repre_entities_by_id[repre_id] = repre_entity
+        repre_entities_by_version_id[version_id].append(repre_entity)
 
-    # Query version docs to get it's subset ids
+    # Query version docs to get it's product ids
     # - also query hero version to be able identify if representation
     #   belongs to existing version
-    version_docs = get_versions(
+    version_entities = ayon_api.get_versions(
         project_name,
-        version_ids=repre_docs_by_version_id.keys(),
+        version_ids=repre_entities_by_version_id.keys(),
         hero=True,
-        fields=["_id", "parent", "type"]
+        fields={"id", "productId", "version"}
     )
     verisons_by_id = {}
-    versions_by_subset_id = collections.defaultdict(list)
+    versions_by_product_id = collections.defaultdict(list)
     hero_version_ids = set()
-    for version_doc in version_docs:
-        version_id = version_doc["_id"]
+    for version_entity in version_entities:
+        version_id = version_entity["id"]
         # Store versions by their ids
-        verisons_by_id[version_id] = version_doc
-        # There's no need to query subsets for hero versions
+        verisons_by_id[version_id] = version_entity
+        # There's no need to query products for hero versions
         #   - they are considered as latest?
-        if version_doc["type"] == "hero_version":
+        if version_entity["version"] < 0:
             hero_version_ids.add(version_id)
             continue
-        subset_id = version_doc["parent"]
-        versions_by_subset_id[subset_id].append(version_doc)
+        product_id = version_entity["productId"]
+        versions_by_product_id[product_id].append(version_entity)
 
-    last_versions = get_last_versions(
+    last_versions = ayon_api.get_last_versions(
         project_name,
-        subset_ids=versions_by_subset_id.keys(),
-        fields=["_id"]
+        versions_by_product_id.keys(),
+        fields={"id"}
     )
     # Figure out which versions are outdated
     outdated_version_ids = set()
-    for subset_id, last_version_doc in last_versions.items():
-        for version_doc in versions_by_subset_id[subset_id]:
-            version_id = version_doc["_id"]
-            if version_id != last_version_doc["_id"]:
+    for product_id, last_version_entity in last_versions.items():
+        for version_entity in versions_by_product_id[product_id]:
+            version_id = version_entity["id"]
+            if version_id in hero_version_ids:
+                continue
+            if version_id != last_version_entity["id"]:
                 outdated_version_ids.add(version_id)
 
     # Based on all collected data figure out which containers are outdated
@@ -898,8 +921,8 @@ def filter_containers(containers, project_name):
             invalid_containers.append(container)
             continue
 
-        repre_doc = repre_docs_by_str_id.get(repre_id)
-        if not repre_doc:
+        repre_entity = repre_entities_by_id.get(repre_id)
+        if not repre_entity:
             log.debug((
                 "Container '{}' has an invalid representation."
                 " It is missing in the database."
@@ -907,7 +930,7 @@ def filter_containers(containers, project_name):
             not_found_containers.append(container)
             continue
 
-        version_id = repre_doc["parent"]
+        version_id = repre_entity["versionId"]
         if version_id in outdated_version_ids:
             outdated_containers.append(container)
 

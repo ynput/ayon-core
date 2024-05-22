@@ -7,7 +7,6 @@ import asyncio
 import functools
 import traceback
 
-
 from wsrpc_aiohttp import (
     WebSocketRoute,
     WebSocketAsync
@@ -61,7 +60,7 @@ def main(*subprocess_args):
             )
         )
 
-    elif os.environ.get("AVALON_PHOTOSHOP_WORKFILES_ON_LAUNCH", True):
+    elif os.environ.get("AVALON_AFTEREFFECTS_WORKFILES_ON_LAUNCH", True):
         save = False
         if os.getenv("WORKFILES_SAVE_AS"):
             save = True
@@ -286,20 +285,21 @@ class AfterEffectsRoute(WebSocketRoute):
 
     # This method calls function on the client side
     # client functions
-    async def set_context(self, project, asset, task):
+    async def set_context(self, project, folder, task):
         """
-            Sets 'project' and 'asset' to envs, eg. setting context
+            Sets 'project', 'folder' and 'task' to envs, eg. setting context
 
             Args:
                 project (str)
-                asset (str)
+                folder (str)
+                task (str)
         """
         log.info("Setting context change")
-        log.info("project {} asset {} ".format(project, asset))
+        log.info("project {} folder {} ".format(project, folder))
         if project:
             os.environ["AYON_PROJECT_NAME"] = project
-        if asset:
-            os.environ["AYON_FOLDER_PATH"] = asset
+        if folder:
+            os.environ["AYON_FOLDER_PATH"] = folder
         if task:
             os.environ["AYON_TASK_NAME"] = task
 

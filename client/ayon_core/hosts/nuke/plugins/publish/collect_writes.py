@@ -153,6 +153,9 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
         # Determine defined file type
         ext = write_node["file_type"].value()
 
+        # determine defined channel type
+        color_channels = write_node["channels"].value()
+
         # get frame range data
         handle_start = instance.context.data["handleStart"]
         handle_end = instance.context.data["handleEnd"]
@@ -172,7 +175,8 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             "path": write_file_path,
             "outputDir": output_dir,
             "ext": ext,
-            "colorspace": colorspace
+            "colorspace": colorspace,
+            "color_channels": color_channels
         })
 
         if product_type == "render":
@@ -193,7 +197,6 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
                 "frameStartHandle": first_frame,
                 "frameEndHandle": last_frame,
             })
-
 
         # TODO temporarily set stagingDir as persistent for backward
         # compatibility. This is mainly focused on `renders`folders which
@@ -268,10 +271,6 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             "stagingDir": output_dir,
             "tags": []
         }
-
-        frame_start_str = self._get_frame_start_str(first_frame, last_frame)
-
-        representation['frameStart'] = frame_start_str
 
         # set slate frame
         collected_frames = self._add_slate_frame_to_collected_frames(

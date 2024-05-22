@@ -40,8 +40,15 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
     def create(self, product_name, instance_data, pre_create_data):
         # Only allow a single render instance to exist
         if self._get_singleton_node():
-            raise CreatorError("A Render instance already exists - only "
-                               "one can be configured.")
+            raise CreatorError(
+                "A Render instance already exists - only one can be "
+                "configured.\n\n"
+                "To render multiple render layers, create extra Render Setup "
+                "Layers via Maya's Render Setup UI.\n"
+                "Then refresh the publisher to detect the new layers for "
+                "rendering.\n\n"
+                "With a render instance present all Render Setup layers in "
+                "your workfile are renderable instances.")
 
         # Apply default project render settings on create
         if self.render_settings.get("apply_render_settings"):

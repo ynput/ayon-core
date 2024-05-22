@@ -22,9 +22,9 @@ from ayon_core.pipeline import get_representation_path, load
 class ModelUSDLoader(load.LoaderPlugin):
     """Loading model with the USD loader."""
 
-    families = ["model"]
+    product_types = {"model"}
     label = "Load Model(USD)"
-    representations = ["usda"]
+    representations = {"usda"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -66,8 +66,8 @@ class ModelUSDLoader(load.LoaderPlugin):
             namespace, loader=self.__class__.__name__)
 
     def update(self, container, context):
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node_name = container["instance_node"]
         node = rt.GetNodeByName(node_name)
         namespace, name = get_namespace(node_name)
@@ -95,11 +95,11 @@ class ModelUSDLoader(load.LoaderPlugin):
         for children in asset.Children:
             children.name = f"{namespace}:{children.name}"
             usd_objects.append(children)
-            children_transform = f"{children.name}.transform"
+            children_transform = f"{children}.transform"
             if children_transform in transform_data.keys():
                 children.pos = transform_data[children_transform] or 0
                 children.scale = transform_data[
-                    f"{children.name}.scale"] or 0
+                    f"{children}.scale"] or 0
 
         asset.name = f"{namespace}:{asset.name}"
         usd_objects.append(asset)
@@ -108,7 +108,7 @@ class ModelUSDLoader(load.LoaderPlugin):
             rt.Select(node)
 
         lib.imprint(node_name, {
-            "representation": str(repre_doc["_id"])
+            "representation": repre_entity["id"]
         })
 
     def switch(self, container, context):

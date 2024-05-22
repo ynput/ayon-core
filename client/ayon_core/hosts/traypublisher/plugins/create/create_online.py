@@ -3,11 +3,12 @@
 
 Online file retain their original name and use it as product name. To
 avoid conflicts, this creator checks if product with this name already
-exists under selected asset.
+exists under selected folder.
 """
 from pathlib import Path
 
-# from ayon_core.client import get_subset_by_name, get_asset_by_name
+# import ayon_api
+
 from ayon_core.lib.attribute_definitions import FileDef, BoolDef
 from ayon_core.pipeline import (
     CreatedInstance,
@@ -52,14 +53,14 @@ class OnlineCreator(TrayPublishCreator):
 
         # disable check for existing product with the same name
         """
-        asset = get_asset_by_name(
-            self.project_name, instance_data["folderPath"], fields=["_id"])
+        folder_entity = ayon_api.get_folder_by_path(
+            self.project_name, instance_data["folderPath"], fields={"id"})
 
-        if get_subset_by_name(
-                self.project_name, origin_basename, asset["_id"],
-                fields=["_id"]):
+        if ayon_api.get_product_by_name(
+                self.project_name, origin_basename, folder_entity["id"],
+                fields={"id"}):
             raise CreatorError(f"product with {origin_basename} already "
-                               "exists in selected asset")
+                               "exists in selected folder")
         """
 
         instance_data["originalBasename"] = origin_basename
@@ -103,8 +104,8 @@ class OnlineCreator(TrayPublishCreator):
     def get_product_name(
         self,
         project_name,
-        asset_doc,
-        task_name,
+        folder_entity,
+        task_entity,
         variant,
         host_name=None,
         instance=None

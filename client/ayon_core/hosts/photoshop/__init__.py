@@ -1,10 +1,12 @@
 from .addon import (
+    PHOTOSHOP_ADDON_ROOT,
     PhotoshopAddon,
-    PHOTOSHOP_HOST_DIR,
+    get_launch_script_path,
 )
 
 
 __all__ = (
+    "PHOTOSHOP_ADDON_ROOT",
     "PhotoshopAddon",
-    "PHOTOSHOP_HOST_DIR",
+    "get_launch_script_path",
 )

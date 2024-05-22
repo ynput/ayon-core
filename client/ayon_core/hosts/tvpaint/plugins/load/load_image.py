@@ -6,8 +6,8 @@ from ayon_core.hosts.tvpaint.api.lib import execute_george_through_file
 class ImportImage(plugin.Loader):
     """Load image or image sequence to TVPaint as new layer."""
 
-    families = ["render", "image", "background", "plate", "review"]
-    representations = ["*"]
+    product_types = {"render", "image", "background", "plate", "review"}
+    representations = {"*"}
 
     label = "Import Image"
     order = 1
@@ -68,10 +68,10 @@ class ImportImage(plugin.Loader):
             load_options_str += (load_option + " ")
 
         # Prepare layer name
-        asset_name = context["asset"]["name"]
+        folder_name = context["folder"]["name"]
         version_name = context["version"]["name"]
         layer_name = "{}_{}_v{:0>3}".format(
-            asset_name,
+            folder_name,
             name,
             version_name
         )

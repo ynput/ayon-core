@@ -16,8 +16,8 @@ from ayon_core.pipeline import get_representation_path, load
 class TyCacheLoader(load.LoaderPlugin):
     """TyCache Loader."""
 
-    families = ["tycache"]
-    representations = ["tyc"]
+    product_types = {"tycache"}
+    representations = {"tyc"}
     order = -8
     icon = "code-fork"
     color = "green"
@@ -43,8 +43,8 @@ class TyCacheLoader(load.LoaderPlugin):
         """update the container"""
         from pymxs import runtime as rt
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node = rt.GetNodeByName(container["instance_node"])
         node_list = get_previous_loaded_object(node)
         update_custom_attribute_data(node, node_list)
@@ -52,7 +52,7 @@ class TyCacheLoader(load.LoaderPlugin):
             for tyc in node_list:
                 tyc.filename = path
         lib.imprint(container["instance_node"], {
-            "representation": str(repre_doc["_id"])
+            "representation": repre_entity["id"]
         })
 
     def switch(self, container, context):

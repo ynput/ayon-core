@@ -2,8 +2,9 @@ import os
 import re
 import json
 import getpass
-import requests
 import pyblish.api
+
+from openpype_modules.deadline.abstract_submit_deadline import requests_post
 
 
 class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
@@ -30,11 +31,7 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
 
         context = instance.context
 
-        # get default deadline webservice url from deadline module
-        deadline_url = instance.context.data["defaultDeadline"]
-        # if custom one is set in instance, use that
-        if instance.data.get("deadlineUrl"):
-            deadline_url = instance.data.get("deadlineUrl")
+        deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
 
         self.deadline_url = "{}/api/jobs".format(deadline_url)
@@ -74,6 +71,10 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
         render_path = os.path.normpath(render_path)
         script_name = os.path.basename(script_path)
 
+        anatomy = instance.context.data["anatomy"]
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "path"
+        )
         for item in instance.context:
             if "workfile" in item.data["productType"]:
                 msg = "Workfile (scene) must be published along"
@@ -84,9 +85,9 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
                 template_data["representation"] = rep
                 template_data["ext"] = rep
                 template_data["comment"] = None
-                anatomy_filled = instance.context.data["anatomy"].format(
-                    template_data)
-                template_filled = anatomy_filled["publish"]["path"]
+                template_filled = publish_template.format_strict(
+                    template_data
+                )
                 script_path = os.path.normpath(template_filled)
 
                 self.log.info(
@@ -192,8 +193,11 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
         self.expected_files(instance, render_path)
         self.log.debug("__ expectedFiles: `{}`".format(
             instance.data["expectedFiles"]))
-
-        response = requests.post(self.deadline_url, json=payload)
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
+        response = requests_post(self.deadline_url, json=payload,
+                                 auth=auth,
+                                 verify=verify)
 
         if not response.ok:
             self.log.error(

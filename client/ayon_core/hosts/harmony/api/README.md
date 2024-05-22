@@ -204,7 +204,7 @@ class CreateComposite(harmony.Creator):
 
     name = "compositeDefault"
     label = "Composite"
-    product_type = "mindbender.template"
+    product_type = "template"
 
     def __init__(self, *args, **kwargs):
         super(CreateComposite, self).__init__(*args, **kwargs)
@@ -221,7 +221,7 @@ class CreateRender(harmony.Creator):
 
     name = "writeDefault"
     label = "Write"
-    product_type = "mindbender.imagesequence"
+    product_type = "render"
     node_type = "WRITE"
 
     def __init__(self, *args, **kwargs):
@@ -304,7 +304,7 @@ class ExtractImage(pyblish.api.InstancePlugin):
     label = "Extract Image Sequence"
     order = pyblish.api.ExtractorOrder
     hosts = ["harmony"]
-    families = ["mindbender.imagesequence"]
+    families = ["render"]
 
     def process(self, instance):
         project_path = harmony.send(
@@ -582,8 +582,16 @@ class ImageSequenceLoader(load.LoaderPlugin):
     """Load images
     Stores the imported asset in a container named after the asset.
     """
-    families = ["mindbender.imagesequence"]
-    representations = ["*"]
+    product_types = {
+        "shot",
+        "render",
+        "image",
+        "plate",
+        "reference",
+        "review",
+    }
+    representations = {"*"}
+    extensions = {"jpeg", "png", "jpg"}
 
     def load(self, context, name=None, namespace=None, data=None):
         files = []
@@ -597,7 +605,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         read_node = harmony.send(
             {
                 "function": copy_files + import_files,
-                "args": ["Top", files, context["version"]["data"]["subset"], 1]
+                "args": ["Top", files, context["product"]["name"], 1]
             }
         )["result"]
 
@@ -614,9 +622,9 @@ class ImageSequenceLoader(load.LoaderPlugin):
     def update(self, container, context):
         node = container.pop("node")
 
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         project_name = get_current_project_name()
-        version = get_version_by_id(project_name, repre_doc["parent"])
+        version = get_version_by_id(project_name, repre_entity["versionId"])
         files = []
         for f in version["data"]["files"]:
             files.append(
@@ -633,7 +641,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )
 
         harmony.imprint(
-            node, {"representation": str(repre_doc["_id"])}
+            node, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):

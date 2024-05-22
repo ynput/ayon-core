@@ -12,8 +12,8 @@ from ayon_core.hosts.fusion.api import (
 class FusionLoadAlembicMesh(load.LoaderPlugin):
     """Load Alembic mesh into Fusion"""
 
-    families = ["pointcache", "model"]
-    representations = ["*"]
+    product_types = {"pointcache", "model"}
+    representations = {"*"}
     extensions = {"abc"}
 
     label = "Load alembic mesh"
@@ -24,9 +24,9 @@ class FusionLoadAlembicMesh(load.LoaderPlugin):
     tool_type = "SurfaceAlembicMesh"
 
     def load(self, context, name, namespace, data):
-        # Fallback to asset name when namespace is None
+        # Fallback to folder name when namespace is None
         if namespace is None:
-            namespace = context['asset']['name']
+            namespace = context["folder"]["name"]
 
         # Create the Loader with the filename path set
         comp = get_current_comp()
@@ -54,14 +54,14 @@ class FusionLoadAlembicMesh(load.LoaderPlugin):
         assert tool.ID == self.tool_type, f"Must be {self.tool_type}"
         comp = tool.Comp()
 
-        repre_doc = context["representation"]
-        path = get_representation_path(repre_doc)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
 
         with comp_lock_and_undo_chunk(comp, "Update tool"):
             tool["Filename"] = path
 
             # Update the imprinted representation
-            tool.SetData("avalon.representation", str(repre_doc["_id"]))
+            tool.SetData("avalon.representation", repre_entity["id"])
 
     def remove(self, container):
         tool = container["_tool"]

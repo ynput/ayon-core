@@ -1,7 +1,6 @@
 import pyblish.api
 import ayon_api
-
-from ayon_core.client.operations import OperationsSession
+from ayon_api.operations import OperationsSession
 
 
 class IntegrateVersionAttributes(pyblish.api.ContextPlugin):
@@ -33,6 +32,8 @@ class IntegrateVersionAttributes(pyblish.api.ContextPlugin):
             version_entity = instance.data.get("versionEntity")
             if not version_entity:
                 continue
+
+            current_attributes = version_entity["attrib"]
             attributes = instance.data.get("versionAttributes")
             if not attributes:
                 self.log.debug((
@@ -45,7 +46,7 @@ class IntegrateVersionAttributes(pyblish.api.ContextPlugin):
             for attr, value in attributes.items():
                 if attr not in available_attributes:
                     skipped_attributes.add(attr)
-                else:
+                elif current_attributes.get(attr) != value:
                     filtered_attributes[attr] = value
 
             if not filtered_attributes:
@@ -56,12 +57,12 @@ class IntegrateVersionAttributes(pyblish.api.ContextPlugin):
                 continue
 
             self.log.debug("Updating attributes on version {} to {}".format(
-                version_entity["_id"], str(filtered_attributes)
+                version_entity["id"], str(filtered_attributes)
             ))
             op_session.update_entity(
                 project_name,
                 "version",
-                version_entity["_id"],
+                version_entity["id"],
                 {"attrib": filtered_attributes}
             )
 

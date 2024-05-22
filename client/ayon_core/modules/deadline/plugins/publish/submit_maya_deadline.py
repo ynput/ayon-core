@@ -207,6 +207,8 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "FTRACK_API_USER",
             "FTRACK_SERVER",
             "OPENPYPE_SG_USER",
+            "AYON_BUNDLE_NAME",
+            "AYON_DEFAULT_SETTINGS_VARIANT",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
@@ -290,7 +292,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
         return plugin_payload
 
-    def process_submission(self):
+    def process_submission(self, auth=None, verify=True):
         from maya import cmds
         instance = self._instance
 
@@ -330,7 +332,10 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         if "vrayscene" in instance.data["families"]:
             self.log.debug("Submitting V-Ray scene render..")
             vray_export_payload = self._get_vray_export_payload(payload_data)
-            export_job = self.submit(vray_export_payload)
+
+            export_job = self.submit(vray_export_payload,
+                                     auth=auth,
+                                     verify=verify)
 
             payload = self._get_vray_render_payload(payload_data)
 
@@ -349,7 +354,9 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         else:
             # Submit main render job
             job_info, plugin_info = payload
-            self.submit(self.assemble_payload(job_info, plugin_info))
+            self.submit(self.assemble_payload(job_info, plugin_info),
+                        auth=auth,
+                        verify=verify)
 
     def _tile_render(self, payload):
         """Submit as tile render per frame with dependent assembly jobs."""
@@ -449,7 +456,8 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         # Submit frame tile jobs
         frame_tile_job_id = {}
         for frame, tile_job_payload in frame_payloads.items():
-            job_id = self.submit(tile_job_payload)
+            job_id = self.submit(tile_job_payload,
+                                 instance.data["deadline"]["auth"])
             frame_tile_job_id[frame] = job_id
 
         # Define assembly payloads
@@ -552,12 +560,18 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         # Submit assembly jobs
         assembly_job_ids = []
         num_assemblies = len(assembly_payloads)
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
         for i, payload in enumerate(assembly_payloads):
             self.log.debug(
                 "submitting assembly job {} of {}".format(i + 1,
                                                           num_assemblies)
             )
-            assembly_job_id = self.submit(payload)
+            assembly_job_id = self.submit(
+                payload,
+                auth=auth,
+                verify=verify
+            )
             assembly_job_ids.append(assembly_job_id)
 
         instance.data["assemblySubmissionJobs"] = assembly_job_ids
@@ -651,7 +665,6 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         return job_info, attr.asdict(plugin_info)
 
     def _get_arnold_render_payload(self, data):
-        from maya import cmds
         # Job Info
         job_info = copy.deepcopy(self.job_info)
         job_info.Name = self._job_info_label("Render")
@@ -856,10 +869,10 @@ def _format_tiles(
     """
     # Math used requires integers for correct output - as such
     # we ensure our inputs are correct.
-    assert type(tiles_x) is int, "tiles_x must be an integer"
-    assert type(tiles_y) is int, "tiles_y must be an integer"
-    assert type(width) is int, "width must be an integer"
-    assert type(height) is int, "height must be an integer"
+    assert isinstance(tiles_x, int), "tiles_x must be an integer"
+    assert isinstance(tiles_y, int), "tiles_y must be an integer"
+    assert isinstance(width, int), "width must be an integer"
+    assert isinstance(height, int), "height must be an integer"
 
     out = {"JobInfo": {}, "PluginInfo": {}}
     cfg = OrderedDict()

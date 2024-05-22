@@ -6,7 +6,8 @@ from ayon_core.hosts.maya.api import lib
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
-    OptionalPyblishPluginMixin
+    OptionalPyblishPluginMixin,
+    PublishValidationError
 )
 
 
@@ -66,7 +67,7 @@ class ValidateMeshSingleUVSet(pyblish.api.InstancePlugin,
             if allowed:
                 self.log.warning(message)
             else:
-                raise ValueError(message)
+                raise PublishValidationError(message)
 
     @classmethod
     def repair(cls, instance):

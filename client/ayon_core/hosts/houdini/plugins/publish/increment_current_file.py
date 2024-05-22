@@ -3,7 +3,6 @@ import pyblish.api
 from ayon_core.lib import version_up
 from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.publish import get_errored_plugins_from_context
-from ayon_core.hosts.houdini.api import HoudiniHost
 from ayon_core.pipeline.publish import KnownPublishError
 
 
@@ -18,11 +17,13 @@ class IncrementCurrentFile(pyblish.api.ContextPlugin):
     order = pyblish.api.IntegratorOrder + 9.0
     hosts = ["houdini"]
     families = ["workfile",
-                "redshift_rop",
-                "arnold_rop",
+                "usdrender",
                 "mantra_rop",
                 "karma_rop",
-                "usdrender",
+                "redshift_rop",
+                "arnold_rop",
+                "vray_rop",
+                "render.local.hou",
                 "publish.hou"]
     optional = True
 
@@ -39,7 +40,7 @@ class IncrementCurrentFile(pyblish.api.ContextPlugin):
             )
 
         # Filename must not have changed since collecting
-        host = registered_host()  # type: HoudiniHost
+        host = registered_host()
         current_file = host.current_file()
         if context.data["currentFile"] != current_file:
             raise KnownPublishError(

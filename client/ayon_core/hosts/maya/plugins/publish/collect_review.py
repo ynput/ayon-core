@@ -1,8 +1,8 @@
 from maya import cmds, mel
 
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_subset_by_name
 from ayon_core.pipeline import KnownPublishError
 from ayon_core.hosts.maya.api import lib
 
@@ -67,7 +67,7 @@ class CollectReview(pyblish.api.InstancePlugin):
 
             reviewable_product = reviewable_products[0]
             self.log.debug(
-                "Subset attached to review: {}".format(reviewable_product)
+                "Product attached to review: {}".format(reviewable_product)
             )
 
             # Find the relevant publishing instance in the current context
@@ -117,16 +117,16 @@ class CollectReview(pyblish.api.InstancePlugin):
 
         else:
             project_name = instance.context.data["projectName"]
-            asset_doc = instance.context.data['assetEntity']
+            folder_entity = instance.context.data["folderEntity"]
             task = instance.context.data["task"]
             legacy_product_name = task + 'Review'
-            subset_doc = get_subset_by_name(
+            product_entity = ayon_api.get_product_by_name(
                 project_name,
                 legacy_product_name,
-                asset_doc["_id"],
-                fields=["_id"]
+                folder_entity["id"],
+                fields={"id"}
             )
-            if subset_doc:
+            if product_entity:
                 self.log.debug("Existing products found, keep legacy name.")
                 instance.data["productName"] = legacy_product_name
 

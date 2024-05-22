@@ -20,8 +20,8 @@ from ayon_core.hosts.blender.api.pipeline import (
 class AudioLoader(plugin.AssetLoader):
     """Load audio in Blender."""
 
-    families = ["audio"]
-    representations = ["wav"]
+    product_types = {"audio"}
+    representations = {"wav"}
 
     label = "Load Audio"
     icon = "volume-up"
@@ -39,8 +39,8 @@ class AudioLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        folder_name = context["asset"]["name"]
-        product_name = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         asset_name = plugin.prepare_scene_name(folder_name, product_name)
         unique_number = plugin.get_unique_number(folder_name, product_name)
@@ -83,11 +83,11 @@ class AudioLoader(plugin.AssetLoader):
             "name": name,
             "namespace": namespace or '',
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
             "libpath": libpath,
             "asset_name": asset_name,
-            "parent": str(context["representation"]["parent"]),
-            "productType": context["subset"]["data"]["family"],
+            "parent": context["representation"]["versionId"],
+            "productType": context["product"]["productType"],
             "objectName": group_name,
             "audio": audio
         }
@@ -105,15 +105,15 @@ class AudioLoader(plugin.AssetLoader):
             representation (openpype:representation-1.0): Representation to
                 update, from `host.ls()`.
         """
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         object_name = container["objectName"]
         asset_group = bpy.data.objects.get(object_name)
-        libpath = Path(get_representation_path(repre_doc))
+        libpath = Path(get_representation_path(repre_entity))
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(repre_doc, indent=2),
+            pformat(repre_entity, indent=2),
         )
 
         assert asset_group, (
@@ -176,8 +176,8 @@ class AudioLoader(plugin.AssetLoader):
         window_manager.windows[-1].screen.areas[0].type = old_type
 
         metadata["libpath"] = str(libpath)
-        metadata["representation"] = str(repre_doc["_id"])
-        metadata["parent"] = str(repre_doc["parent"])
+        metadata["representation"] = repre_entity["id"]
+        metadata["parent"] = repre_entity["versionId"]
         metadata["audio"] = new_audio
 
     def exec_remove(self, container: Dict) -> bool:

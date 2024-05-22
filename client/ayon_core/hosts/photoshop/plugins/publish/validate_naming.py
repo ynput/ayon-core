@@ -11,7 +11,7 @@ from ayon_core.pipeline.publish import (
 
 
 class ValidateNamingRepair(pyblish.api.Action):
-    """Repair the instance asset."""
+    """Repair the instance folder."""
 
     label = "Repair"
     icon = "wrench"
@@ -22,8 +22,11 @@ class ValidateNamingRepair(pyblish.api.Action):
         # Get the errored instances
         failed = []
         for result in context.data["results"]:
-            if (result["error"] is not None and result["instance"] is not None
-                    and result["instance"] not in failed):
+            if (
+                result["error"] is not None
+                and result["instance"] is not None
+                and result["instance"] not in failed
+            ):
                 failed.append(result["instance"])
 
         invalid_chars, replace_char = plugin.get_replace_chars()

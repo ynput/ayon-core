@@ -12,20 +12,25 @@ class FileLoader(api.AfterEffectsLoader):
     """
     label = "Load file"
 
-    families = ["image",
-                "plate",
-                "render",
-                "prerender",
-                "review",
-                "audio"]
-    representations = ["*"]
+    product_types = {
+        "image",
+        "plate",
+        "render",
+        "prerender",
+        "review",
+        "audio",
+    }
+    representations = {"*"}
 
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()
         layers = stub.get_items(comps=True, folders=True, footages=True)
         existing_layers = [layer.name for layer in layers]
         comp_name = get_unique_layer_name(
-            existing_layers, "{}_{}".format(context["asset"]["name"], name))
+            existing_layers, "{}_{}".format(
+                context["folder"]["name"], name
+            )
+        )
 
         import_options = {}
 
@@ -35,7 +40,7 @@ class FileLoader(api.AfterEffectsLoader):
             import_options['sequence'] = True
 
         if not path:
-            repr_id = context["representation"]["_id"]
+            repr_id = context["representation"]["id"]
             self.log.warning(
                 "Representation id `{}` is failing to load".format(repr_id))
             return
@@ -69,12 +74,9 @@ class FileLoader(api.AfterEffectsLoader):
         stub = self.get_stub()
         layer = container.pop("layer")
 
-        asset_doc = context["asset"]
-        subset_doc = context["subset"]
-        repre_doc = context["representation"]
-
-        folder_name = asset_doc["name"]
-        product_name = subset_doc["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        repre_entity = context["representation"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])
@@ -88,11 +90,11 @@ class FileLoader(api.AfterEffectsLoader):
                 "{}_{}".format(folder_name, product_name))
         else:  # switching version - keep same name
             layer_name = container["namespace"]
-        path = get_representation_path(repre_doc)
+        path = get_representation_path(repre_entity)
         # with aftereffects.maintained_selection():  # TODO
         stub.replace_item(layer.id, path, stub.LOADED_ICON + layer_name)
         stub.imprint(
-            layer.id, {"representation": str(repre_doc["_id"]),
+            layer.id, {"representation": repre_entity["id"],
                        "name": product_name,
                        "namespace": layer_name}
         )

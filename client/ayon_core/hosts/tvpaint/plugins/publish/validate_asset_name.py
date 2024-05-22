@@ -9,8 +9,8 @@ from ayon_core.hosts.tvpaint.api.pipeline import (
 )
 
 
-class FixAssetNames(pyblish.api.Action):
-    """Repair the asset names.
+class FixFolderPaths(pyblish.api.Action):
+    """Repair the folder paths.
 
     Change instanace metadata in the workfile.
     """
@@ -20,16 +20,16 @@ class FixAssetNames(pyblish.api.Action):
     on = "failed"
 
     def process(self, context, plugin):
-        context_asset_name = context.data["folderPath"]
+        context_folder_path = context.data["folderPath"]
         old_instance_items = list_instances()
         new_instance_items = []
         for instance_item in old_instance_items:
-            instance_asset_name = instance_item.get("folderPath")
+            instance_folder_path = instance_item.get("folderPath")
             if (
-                instance_asset_name
-                and instance_asset_name != context_asset_name
+                instance_folder_path
+                and instance_folder_path != context_folder_path
             ):
-                instance_item["folderPath"] = context_asset_name
+                instance_item["folderPath"] = context_folder_path
             new_instance_items.append(instance_item)
         write_instances(new_instance_items)
 
@@ -38,23 +38,23 @@ class ValidateAssetName(
     OptionalPyblishPluginMixin,
     pyblish.api.ContextPlugin
 ):
-    """Validate asset name present on instance.
+    """Validate folder path present on instance.
 
-    Asset name on instance should be the same as context's.
+    Folder path on instance should be the same as context's.
     """
 
-    label = "Validate Asset Names"
+    label = "Validate Folder Paths"
     order = pyblish.api.ValidatorOrder
     hosts = ["tvpaint"]
-    actions = [FixAssetNames]
+    actions = [FixFolderPaths]
 
     def process(self, context):
         if not self.is_active(context.data):
             return
-        context_asset_name = context.data["folderPath"]
+        context_folder_path = context.data["folderPath"]
         for instance in context:
-            asset_name = instance.data.get("folderPath")
-            if asset_name and asset_name == context_asset_name:
+            folder_path = instance.data.get("folderPath")
+            if folder_path and folder_path == context_folder_path:
                 continue
 
             instance_label = (
@@ -64,14 +64,14 @@ class ValidateAssetName(
             raise PublishXmlValidationError(
                 self,
                 (
-                    "Different asset name on instance then context's."
-                    " Instance \"{}\" has asset name: \"{}\""
-                    " Context asset name is: \"{}\""
+                    "Different folder path on instance then context's."
+                    " Instance \"{}\" has folder path: \"{}\""
+                    " Context folder path is: \"{}\""
                 ).format(
-                    instance_label, asset_name, context_asset_name
+                    instance_label, folder_path, context_folder_path
                 ),
                 formatting_data={
-                    "expected_asset": context_asset_name,
-                    "found_asset": asset_name
+                    "expected_folder": context_folder_path,
+                    "found_folder": folder_path
                 }
             )

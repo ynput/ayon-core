@@ -44,7 +44,7 @@ from .lib import (
     get_reformated_path
 )
 
-from .menu import launch_pype_menu
+from .menu import launch_ayon_menu
 
 from .plugin import (
     ClipLoader,
@@ -113,7 +113,7 @@ __all__ = [
     "get_reformated_path",
 
     # menu
-    "launch_pype_menu",
+    "launch_ayon_menu",
 
     # plugin
     "ClipLoader",

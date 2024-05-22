@@ -50,7 +50,7 @@ class CreateRender(UnrealAssetCreator):
         # If the option to create a new level sequence is selected,
         # create a new level sequence and a master level.
 
-        root = f"/Game/Ayon/Sequences"
+        root = "/Game/Ayon/Sequences"
 
         # Create a new folder for the sequence in root
         sequence_dir_name = create_folder(root, product_name)
@@ -166,7 +166,7 @@ class CreateRender(UnrealAssetCreator):
                 master_lvl = levels[0].get_asset().get_path_name()
             except IndexError:
                 raise RuntimeError(
-                    f"Could not find the hierarchy for the selected sequence.")
+                    "Could not find the hierarchy for the selected sequence.")
 
             # If the selected asset is the master sequence, we get its data
             # and then we create the instance for the master sequence.

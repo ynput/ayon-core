@@ -18,9 +18,9 @@ import unreal  # noqa
 class SkeletalMeshAlembicLoader(plugin.Loader):
     """Load Unreal SkeletalMesh from Alembic"""
 
-    families = ["pointcache", "skeletalMesh"]
+    product_types = {"pointcache", "skeletalMesh"}
     label = "Import Alembic Skeletal Mesh"
-    representations = ["abc"]
+    representations = {"abc"}
     icon = "cube"
     color = "orange"
 
@@ -73,19 +73,28 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         create_container(container=container_name, path=asset_dir)
 
     def imprint(
-        self, asset, asset_dir, container_name, asset_name, representation
+        self,
+        folder_path,
+        asset_dir,
+        container_name,
+        asset_name,
+        representation,
+        product_type
     ):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": representation["_id"],
-            "parent": representation["parent"],
-            "family": representation["context"]["family"]
+            "representation": representation["id"],
+            "parent": representation["versionId"],
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
         imprint(f"{asset_dir}/{container_name}", data)
 
@@ -105,15 +114,16 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             list(str): list of container content
         """
         # Create directory for asset and ayon container
-        asset = context.get('asset').get('name')
+        folder_path = context["folder"]["path"]
+        folder_name = context["folder"]["name"]
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
-        version = context.get('version')
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        version = context["version"]["version"]
         # Check if version is hero version and use different name
-        if not version.get("name") and version.get('type') == "hero_version":
+        if version < 0:
             name_version = f"{name}_hero"
         else:
-            name_version = f"{name}_v{version.get('name'):03d}"
+            name_version = f"{name}_v{version:03d}"
 
         default_conversion = False
         if options.get("default_conversion"):
@@ -121,7 +131,7 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{self.root}/{asset}/{name_version}", suffix="")
+            f"{self.root}/{folder_name}/{name_version}", suffix="")
 
         container_name += suffix
 
@@ -131,9 +141,15 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
             self.import_and_containerize(path, asset_dir, asset_name,
                                          container_name, default_conversion)
 
+        product_type = context["product"]["productType"]
         self.imprint(
-            asset, asset_dir, container_name, asset_name,
-            context["representation"])
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            context["representation"],
+            product_type
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=True
@@ -145,13 +161,12 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         return asset_content
 
     def update(self, container, context):
-        asset_doc = context["asset"]
-        subset_doc = context["subset"]
-        version_doc = context["version"]
-        repre_doc = context["representation"]
-
-        folder_name = asset_doc["name"]
-        product_name = subset_doc["name"]
+        folder_path = context["folder"]["path"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        product_type = context["product"]["productType"]
+        version = context["version"]["version"]
+        repre_entity = context["representation"]
 
         # Create directory for folder and Ayon container
         suffix = "_CON"
@@ -159,7 +174,6 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         if folder_name:
             asset_name = f"{folder_name}_{product_name}"
         # Check if version is hero version and use different name
-        version = version_doc.get("name", -1)
         if version < 0:
             name_version = f"{product_name}_hero"
         else:
@@ -171,13 +185,19 @@ class SkeletalMeshAlembicLoader(plugin.Loader):
         container_name += suffix
 
         if not unreal.EditorAssetLibrary.does_directory_exist(asset_dir):
-            path = get_representation_path(repre_doc)
+            path = get_representation_path(repre_entity)
 
             self.import_and_containerize(path, asset_dir, asset_name,
                                          container_name)
 
         self.imprint(
-            folder_name, asset_dir, container_name, asset_name, repre_doc)
+            folder_path,
+            asset_dir,
+            container_name,
+            asset_name,
+            repre_entity,
+            product_type,
+        )
 
         asset_content = unreal.EditorAssetLibrary.list_assets(
             asset_dir, recursive=True, include_folder=False

@@ -20,8 +20,8 @@ from ayon_core.hosts.blender.api.pipeline import (
 class BlendLoader(plugin.AssetLoader):
     """Load assets from a .blend file."""
 
-    families = ["model", "rig", "layout", "camera"]
-    representations = ["blend"]
+    product_types = {"model", "rig", "layout", "camera"}
+    representations = {"blend"}
 
     label = "Append Blend"
     icon = "code-fork"
@@ -127,15 +127,15 @@ class BlendLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        folder_name = context["asset"]["name"]
-        product_name = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         try:
-            product_type = context["subset"]["data"]["family"]
+            product_type = context["product"]["productType"]
         except ValueError:
             product_type = "model"
 
-        representation = str(context["representation"]["_id"])
+        representation = context["representation"]["id"]
 
         asset_name = plugin.prepare_scene_name(folder_name, product_name)
         unique_number = plugin.get_unique_number(folder_name, product_name)
@@ -162,11 +162,11 @@ class BlendLoader(plugin.AssetLoader):
             "name": name,
             "namespace": namespace or '',
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
             "libpath": libpath,
             "asset_name": asset_name,
-            "parent": str(context["representation"]["parent"]),
-            "productType": context["subset"]["data"]["family"],
+            "parent": context["representation"]["versionId"],
+            "productType": context["product"]["productType"],
             "objectName": group_name,
             "members": members,
         }
@@ -185,10 +185,10 @@ class BlendLoader(plugin.AssetLoader):
         """
         Update the loaded asset.
         """
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         group_name = container["objectName"]
         asset_group = bpy.data.objects.get(group_name)
-        libpath = Path(get_representation_path(repre_doc)).as_posix()
+        libpath = Path(get_representation_path(repre_entity)).as_posix()
 
         assert asset_group, (
             f"The asset is not loaded: {container['objectName']}"
@@ -227,7 +227,7 @@ class BlendLoader(plugin.AssetLoader):
                     obj.animation_data_create()
                 obj.animation_data.action = actions[obj.name]
 
-        # Restore the old data, but reset memebers, as they don't exist anymore
+        # Restore the old data, but reset members, as they don't exist anymore
         # This avoids a crash, because the memory addresses of those members
         # are not valid anymore
         old_data["members"] = []
@@ -235,8 +235,8 @@ class BlendLoader(plugin.AssetLoader):
 
         new_data = {
             "libpath": libpath,
-            "representation": str(repre_doc["_id"]),
-            "parent": str(repre_doc["parent"]),
+            "representation": repre_entity["id"],
+            "parent": repre_entity["versionId"],
             "members": members,
         }
 

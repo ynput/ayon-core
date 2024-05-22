@@ -16,8 +16,8 @@ class FbxLoader(load.LoaderPlugin):
 
     order = -10
 
-    families = ["*"]
-    representations = ["*"]
+    product_types = {"*"}
+    representations = {"*"}
     extensions = {"fbx"}
 
     def load(self, context, name=None, namespace=None, data=None):
@@ -48,7 +48,7 @@ class FbxLoader(load.LoaderPlugin):
         return containerised_nodes
 
     def update(self, container, context):
-        repre_doc = context["representation"]
+        repre_entity = context["representation"]
         node = container["node"]
         try:
             file_node = next(
@@ -59,13 +59,13 @@ class FbxLoader(load.LoaderPlugin):
             return
 
         # Update the file path from representation
-        file_path = get_representation_path(repre_doc)
+        file_path = get_representation_path(repre_entity)
         file_path = file_path.replace("\\", "/")
 
         file_node.setParms({"file": file_path})
 
         # Update attribute
-        node.setParms({"representation": str(repre_doc["_id"])})
+        node.setParms({"representation": repre_entity["id"]})
 
     def remove(self, container):
 
@@ -79,7 +79,7 @@ class FbxLoader(load.LoaderPlugin):
         """Define node name."""
 
         if not namespace:
-            namespace = context["asset"]["name"]
+            namespace = context["folder"]["name"]
 
         if namespace:
             node_name = "{}_{}".format(namespace, name)
