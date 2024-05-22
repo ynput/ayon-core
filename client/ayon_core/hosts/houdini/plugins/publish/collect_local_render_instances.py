@@ -64,6 +64,8 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
         expectedFiles = next(iter(instance.data["expectedFiles"]), {})
 
         product_type = "render"  # is always render
+        # TODO: Match the value of product_group with the value of
+        #        group_name in farm pyblish functions.
         product_group = get_product_name(
             context.data["projectName"],
             context.data["taskEntity"]["name"],
