@@ -127,6 +127,8 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 "productGroup": product_group,
                 "families": ["render.local.hou", "review"],
                 "instance_node": instance.data["instance_node"],
+                "renderlayer": instance.data["renderlayer"],
+                "aov": aov_name,
                 "representations": [
                     {
                         "stagingDir": staging_dir,
