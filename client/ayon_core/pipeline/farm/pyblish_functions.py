@@ -252,6 +252,9 @@ def create_skeleton_instance(
         "colorspace": data.get("colorspace")
     }
 
+    if data.get("renderlayer"):
+        instance_skeleton_data["renderlayer"] = data["renderlayer"]
+
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
     if instance_version != 1:
