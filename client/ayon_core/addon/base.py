@@ -51,6 +51,7 @@ IGNORED_MODULES_IN_AYON = set()
 # - this is used to log the missing addon
 MOVED_ADDON_MILESTONE_VERSIONS = {
     "applications": VersionInfo(0, 2, 0),
+    "tvpaint": VersionInfo(0, 2, 0),
 }
 
 # Inherit from `object` for Python 2 hosts
