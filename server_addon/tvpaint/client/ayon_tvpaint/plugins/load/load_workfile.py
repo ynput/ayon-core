@@ -10,11 +10,11 @@ from ayon_core.pipeline.workfile import (
     get_last_workfile_with_version,
 )
 from ayon_core.pipeline.template_data import get_template_data_with_names
-from ayon_core.hosts.tvpaint.api import plugin
-from ayon_core.hosts.tvpaint.api.lib import (
+from ayon_tvpaint.api import plugin
+from ayon_tvpaint.api.lib import (
     execute_george_through_file,
 )
-from ayon_core.hosts.tvpaint.api.pipeline import (
+from ayon_tvpaint.api.pipeline import (
     get_current_workfile_context,
 )
 from ayon_core.pipeline.version_start import get_versioning_start

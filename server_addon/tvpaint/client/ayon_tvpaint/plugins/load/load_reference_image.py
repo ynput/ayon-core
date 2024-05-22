@@ -2,12 +2,12 @@ import collections
 
 from ayon_core.lib.attribute_definitions import BoolDef
 from ayon_core.pipeline import registered_host
-from ayon_core.hosts.tvpaint.api import plugin
-from ayon_core.hosts.tvpaint.api.lib import (
+from ayon_tvpaint.api import plugin
+from ayon_tvpaint.api.lib import (
     get_layers_data,
     execute_george_through_file,
 )
-from ayon_core.hosts.tvpaint.api.pipeline import (
+from ayon_tvpaint.api.pipeline import (
     write_workfile_metadata,
     SECTION_NAME_CONTAINERS,
     containerise,

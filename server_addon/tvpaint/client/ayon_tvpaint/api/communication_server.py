@@ -22,7 +22,7 @@ from aiohttp_json_rpc.protocol import (
 from aiohttp_json_rpc.exceptions import RpcError
 
 from ayon_core.lib import emit_event
-from ayon_core.hosts.tvpaint.tvpaint_plugin import get_plugin_files_path
+from ayon_tvpaint.tvpaint_plugin import get_plugin_files_path
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

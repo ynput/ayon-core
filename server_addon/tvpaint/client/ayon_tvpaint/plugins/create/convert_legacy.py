@@ -4,8 +4,8 @@ from ayon_core.pipeline.create.creator_plugins import (
     ProductConvertorPlugin,
     cache_and_get_instances,
 )
-from ayon_core.hosts.tvpaint.api.plugin import SHARED_DATA_KEY
-from ayon_core.hosts.tvpaint.api.lib import get_groups_data
+from ayon_tvpaint.api.plugin import SHARED_DATA_KEY
+from ayon_tvpaint.api.lib import get_groups_data
 
 
 class TVPaintLegacyConverted(ProductConvertorPlugin):
