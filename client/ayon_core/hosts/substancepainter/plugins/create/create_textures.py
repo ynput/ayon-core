@@ -16,8 +16,8 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
 )
 from ayon_core.hosts.substancepainter.api.lib import get_export_presets
 
+import substance_painter
 import substance_painter.project
-import substance_painter as sp
 
 
 class CreateTextures(Creator):
@@ -49,13 +49,12 @@ class CreateTextures(Creator):
             if key in pre_create_data:
                 creator_attributes[key] = pre_create_data[key]
         #TODO: add the layer stack option
-        if sp.application.version_info()[0] >= 10 or (
-            pre_create_data.get("use_selection")):
-                stack = sp.textureset.get_active_stack()
+        if pre_create_data.get("use_selection"):
+            stack = substance_painter.textureset.get_active_stack()
 
-                instance_data["selected_node_id"] = [
-                    node_number.uid() for node_number in
-                    sp.layerstack.get_selected_nodes(stack)]
+            instance_data["selected_node_id"] = [
+                node_number.uid() for node_number in
+                substance_painter.layerstack.get_selected_nodes(stack)]
 
         instance = self.create_instance_in_context(product_name,
                                                    instance_data)
@@ -116,7 +115,9 @@ class CreateTextures(Creator):
                     default=None,
                     label="Export Channel(s)",
                     tooltip="Choose the channel which you "
-                            "want to solely export"),
+                            "want to solely export. The value "
+                            "is 'None' by default which exports "
+                            "all channels"),
             EnumDef("exportPresetUrl",
                     items=get_export_presets(),
                     label="Output Template"),
@@ -198,7 +199,10 @@ class CreateTextures(Creator):
 
     def get_pre_create_attr_defs(self):
         # Use same attributes as for instance attributes
-        return [
-            BoolDef("use_selection", label="Use selection",
-                     tooltip="Select Layer Stack(s) for exporting")
-        ] + self.get_instance_attr_defs()
+        selection_list = []
+        if  substance_painter.application.version_info()[0] >= 10:
+            selection_list = [
+                BoolDef("use_selection", label="Use selection",
+                        tooltip="Select Layer Stack(s) for exporting")
+            ]
+        return selection_list + self.get_instance_attr_defs()
