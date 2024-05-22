@@ -35,6 +35,50 @@ def angular_unit_enum():
     ]
 
 
+def extract_alembic_data_format_enum():
+    return [
+        {"label": "ogawa", "value": "ogawa"},
+        {"label": "HDF", "value": "HDF"}
+    ]
+
+
+def extract_alembic_overrides_enum():
+    return [
+        {"label": "Custom Attributes", "value": "attr"},
+        {"label": "Custom Attributes Prefix", "value": "attrPrefix"},
+        {"label": "Data Format", "value": "dataFormat"},
+        {"label": "Euler Filter", "value": "eulerFilter"},
+        {"label": "Mel Per Frame Callback", "value": "melPerFrameCallback"},
+        {"label": "Mel Post Job Callback", "value": "melPostJobCallback"},
+        {"label": "Pre Roll", "value": "preRoll"},
+        {"label": "Pre Roll Start Frame", "value": "preRollStartFrame"},
+        {
+            "label": "Python Per Frame Callback",
+            "value": "pythonPerFrameCallback"
+        },
+        {
+            "label": "Python Post Job Callback",
+            "value": "pythonPostJobCallback"
+        },
+        {"label": "Renderable Only", "value": "renderableOnly"},
+        {"label": "Strip Namespaces", "value": "stripNamespaces"},
+        {"label": "User Attr", "value": "userAttr"},
+        {"label": "User Attr Prefix", "value": "userAttrPrefix"},
+        {"label": "UV Write", "value": "uvWrite"},
+        {"label": "UVs Only", "value": "uvsOnly"},
+        {"label": "Verbose", "value": "verbose"},
+        {"label": "Visible Only", "value": "visibleOnly"},
+        {"label": "Whole Frame Geo", "value": "wholeFrameGeo"},
+        {"label": "World Space", "value": "worldSpace"},
+        {"label": "Write Color Sets", "value": "writeColorSets"},
+        {"label": "Write Creases", "value": "writeCreases"},
+        {"label": "Write Face Sets", "value": "writeFaceSets"},
+        {"label": "Write Normals", "value": "writeNormals"},
+        {"label": "Write UV Sets", "value": "writeUVSets"},
+        {"label": "Write Visibility", "value": "writeVisibility"}
+    ]
+
+
 class BasicValidateModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
@@ -184,7 +228,7 @@ class ValidateAttributesModel(BaseSettingsModel):
 
         if not success:
             raise BadRequestException(
-                "The attibutes can't be parsed as json object"
+                "The attributes can't be parsed as json object"
             )
         return value
 
@@ -220,7 +264,7 @@ class ValidateUnrealStaticMeshNameModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateUnrealStaticMeshName")
     optional: bool = SettingsField(title="Optional")
     validate_mesh: bool = SettingsField(title="Validate mesh names")
-    validate_collision: bool = SettingsField(title="Validate collison names")
+    validate_collision: bool = SettingsField(title="Validate collision names")
 
 
 class ValidateCycleErrorModel(BaseSettingsModel):
@@ -243,7 +287,7 @@ class ValidatePluginPathAttributesModel(BaseSettingsModel):
     and the node attribute is <b>abc_file</b>
     """
 
-    enabled: bool = True
+    enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     attribute: list[ValidatePluginPathAttributesAttrModel] = SettingsField(
@@ -265,6 +309,9 @@ class RendererAttributesModel(BaseSettingsModel):
 
 
 class ValidateRenderSettingsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     arnold_render_attributes: list[RendererAttributesModel] = SettingsField(
         default_factory=list, title="Arnold Render Attributes")
     vray_render_attributes: list[RendererAttributesModel] = SettingsField(
@@ -299,6 +346,108 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
+    eulerFilter: bool = SettingsField(
+        title="Euler Filter",
+        description="Apply Euler filter while sampling rotations."
+    )
+    renderableOnly: bool = SettingsField(
+        title="Renderable Only",
+        description="Only export renderable visible shapes."
+    )
+    stripNamespaces: bool = SettingsField(
+        title="Strip Namespaces",
+        description=(
+            "Namespaces will be stripped off of the node before being written "
+            "to Alembic."
+        )
+    )
+    uvsOnly: bool = SettingsField(
+        title="UVs Only",
+        description=(
+            "If this flag is present, only uv data for PolyMesh and SubD "
+            "shapes will be written to the Alembic file."
+        )
+    )
+    uvWrite: bool = SettingsField(
+        title="UV Write",
+        description=(
+            "Uv data for PolyMesh and SubD shapes will be written to the "
+            "Alembic file."
+        )
+    )
+    verbose: bool = SettingsField(
+        title="Verbose",
+        description="Prints the current frame that is being evaluated."
+    )
+    visibleOnly: bool = SettingsField(
+        title="Visible Only",
+        description="Only export dag objects visible during frame range."
+    )
+    wholeFrameGeo: bool = SettingsField(
+        title="Whole Frame Geo",
+        description=(
+            "Data for geometry will only be written out on whole frames."
+        )
+    )
+    worldSpace: bool = SettingsField(
+        title="World Space",
+        description="Any root nodes will be stored in world space."
+    )
+    writeColorSets: bool = SettingsField(
+        title="Write Color Sets",
+        description="Write vertex colors with the geometry."
+    )
+    writeCreases: bool = SettingsField(
+        title="Write Creases",
+        description="Write the geometry's edge and vertex crease information."
+    )
+    writeFaceSets: bool = SettingsField(
+        title="Write Face Sets",
+        description="Write face sets with the geometry."
+    )
+    writeNormals: bool = SettingsField(
+        title="Write Normals",
+        description="Write normals with the deforming geometry."
+    )
+    writeUVSets: bool = SettingsField(
+        title="Write UV Sets",
+        description=(
+            "Write all uv sets on MFnMeshes as vector 2 indexed geometry "
+            "parameters with face varying scope."
+        )
+    )
+    writeVisibility: bool = SettingsField(
+        title="Write Visibility",
+        description=(
+            "Visibility state will be stored in the Alembic file. Otherwise "
+            "everything written out is treated as visible."
+        )
+    )
+    preRoll: bool = SettingsField(
+        title="Pre Roll",
+        description=(
+            "When enabled, the pre roll start frame is used to pre roll the "
+            "When enabled, the pre roll start frame is used to being the "
+            "evaluation of the mesh. From the pre roll start frame to the "
+            "alembic start frame, will not be written to disk. This can be "
+            "used for simulation run up."
+        )
+    )
+    preRollStartFrame: int = SettingsField(
+        title="Pre Roll Start Frame",
+        description=(
+            "The frame to start scene evaluation at.  This is used to set the "
+            "starting frame for time dependent translations and can be used to"
+            " evaluate run-up that isn't actually translated.\n"
+            "NOTE: Pre Roll needs to be enabled for this start frame "
+            "to be considered."
+        )
+    )
+    dataFormat: str = SettingsField(
+        enum_resolver=extract_alembic_data_format_enum,
+        title="Data Format",
+        description="The data format to use to write the file."
+    )
     bake_attributes: list[str] = SettingsField(
         default_factory=list, title="Bake Attributes",
         description="List of attributes that will be included in the alembic "
@@ -308,6 +457,73 @@ class ExtractAlembicModel(BaseSettingsModel):
         default_factory=list, title="Bake Attribute Prefixes",
         description="List of attribute prefixes for attributes that will be "
                     "included in the alembic export.",
+    )
+    attr: str = SettingsField(
+        title="Custom Attributes",
+        placeholder="attr1;attr2",
+        description=(
+            "Attributes matching by name will be included in the Alembic "
+            "export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    attrPrefix: str = SettingsField(
+        title="Custom Attributes Prefix",
+        placeholder="prefix1;prefix2",
+        description=(
+            "Attributes starting with these prefixes will be included in the "
+            "Alembic export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    userAttr: str = SettingsField(
+        title="User Attr",
+        placeholder="attr1;attr2",
+        description=(
+            "Attributes matching by name will be included in the Alembic "
+            "export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    userAttrPrefix: str = SettingsField(
+        title="User Attr Prefix",
+        placeholder="prefix1;prefix2",
+        description=(
+            "Attributes starting with these prefixes will be included in the "
+            "Alembic export. Attributes should be separated by semi-colon `;`"
+        )
+    )
+    melPerFrameCallback: str = SettingsField(
+        title="Mel Per Frame Callback",
+        description=(
+            "When each frame (and the static frame) is evaluated the string "
+            "specified is evaluated as a Mel command."
+        )
+    )
+    melPostJobCallback: str = SettingsField(
+        title="Mel Post Job Callback",
+        description=(
+            "When the translation has finished the string specified is "
+            "evaluated as a Mel command."
+        )
+    )
+    pythonPerFrameCallback: str = SettingsField(
+        title="Python Per Frame Callback",
+        description=(
+            "When each frame (and the static frame) is evaluated the string "
+            "specified is evaluated as a python command."
+        )
+    )
+    pythonPostJobCallback: str = SettingsField(
+        title="Python Post Job Callback",
+        description=(
+            "When the translation has finished the string specified is "
+            "evaluated as a python command."
+        )
+    )
+    overrides: list[str] = SettingsField(
+        enum_resolver=extract_alembic_overrides_enum,
+        title="Exposed Overrides",
+        description=(
+            "Expose the attribute in this list to the user when publishing."
+        )
     )
 
 
@@ -392,7 +608,7 @@ class ExtractGPUCacheModel(BaseSettingsModel):
         title="Optimize Animations For Motion Blur"
     )
     writeMaterials: bool = SettingsField(title="Write Materials")
-    useBaseTessellation: bool = SettingsField(title="User Base Tesselation")
+    useBaseTessellation: bool = SettingsField(title="User Based Tessellation")
 
 
 class PublishersModel(BaseSettingsModel):
@@ -417,10 +633,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Instance In Context",
         section="Validators"
-    )
-    ValidateContainers: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Containers"
     )
     ValidateFrameRange: ValidateFrameRangeModel = SettingsField(
         default_factory=ValidateFrameRangeModel,
@@ -668,14 +880,18 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Alembic Visible Node",
     )
+    ValidateAlembicDefaultsPointcache: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Alembic Defaults Pointcache"
+    )
+    ValidateAlembicDefaultsAnimation: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Alembic Defaults Animation"
+    )
     ExtractProxyAlembic: ExtractProxyAlembicModel = SettingsField(
         default_factory=ExtractProxyAlembicModel,
         title="Extract Proxy Alembic",
         section="Model Extractors",
-    )
-    ExtractAlembic: ExtractAlembicModel = SettingsField(
-        default_factory=ExtractAlembicModel,
-        title="Extract Alembic",
     )
     ExtractObj: ExtractObjModel = SettingsField(
         default_factory=ExtractObjModel,
@@ -696,10 +912,6 @@ class PublishersModel(BaseSettingsModel):
     ValidateRigControllers: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Rig Controllers",
-    )
-    ValidateAnimatedReferenceRig: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Animated Reference Rig",
     )
     ValidateAnimationContent: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
@@ -811,6 +1023,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=ExtractModelModel,
         title="Extract Model (Maya Scene)"
     )
+    ExtractAlembic: ExtractAlembicModel = SettingsField(
+        default_factory=ExtractAlembicModel,
+        title="Extract Alembic"
+    )
 
 
 DEFAULT_SUFFIX_NAMING = {
@@ -835,11 +1051,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False
     },
     "ValidateInstanceInContext": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateContainers": {
         "enabled": True,
         "optional": True,
         "active": True
@@ -942,6 +1153,9 @@ DEFAULT_PUBLISH_SETTINGS = {
         ]
     },
     "ValidateRenderSettings": {
+        "enabled": True,
+        "active": True,
+        "optional": False,
         "arnold_render_attributes": [],
         "vray_render_attributes": [],
         "redshift_render_attributes": [],
@@ -1200,16 +1414,6 @@ DEFAULT_PUBLISH_SETTINGS = {
             "proxyAbc"
         ]
     },
-    "ExtractAlembic": {
-        "enabled": True,
-        "families": [
-            "pointcache",
-            "model",
-            "vrayproxy.alembic"
-        ],
-        "bake_attributes": [],
-        "bake_attribute_prefixes": []
-    },
     "ExtractObj": {
         "enabled": False,
         "optional": True,
@@ -1228,11 +1432,6 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateRigControllers": {
         "enabled": False,
         "optional": True,
-        "active": True
-    },
-    "ValidateAnimatedReferenceRig": {
-        "enabled": True,
-        "optional": False,
         "active": True
     },
     "ValidateAnimationContent": {
@@ -1330,6 +1529,16 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": False,
         "validate_shapes": True
     },
+    "ValidateAlembicDefaultsPointcache": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ValidateAlembicDefaultsAnimation": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
     "ExtractPlayblast": DEFAULT_PLAYBLAST_SETTING,
     "ExtractMayaSceneRaw": {
         "enabled": True,
@@ -1371,6 +1580,52 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ExtractModel": {
         "enabled": True,
         "optional": True,
-        "active": True,
+        "active": True
+    },
+    "ExtractAlembic": {
+        "enabled": True,
+        "families": [
+            "pointcache",
+            "model",
+            "vrayproxy.alembic"
+        ],
+        "attr": "",
+        "attrPrefix": "",
+        "bake_attributes": [],
+        "bake_attribute_prefixes": [],
+        "dataFormat": "ogawa",
+        "eulerFilter": False,
+        "melPerFrameCallback": "",
+        "melPostJobCallback": "",
+        "overrides": [
+            "attr",
+            "attrPrefix",
+            "renderableOnly",
+            "visibleOnly",
+            "worldSpace",
+            "writeColorSets",
+            "writeFaceSets",
+            "writeNormals"
+        ],
+        "preRoll": False,
+        "preRollStartFrame": 0,
+        "pythonPerFrameCallback": "",
+        "pythonPostJobCallback": "",
+        "renderableOnly": False,
+        "stripNamespaces": True,
+        "uvsOnly": False,
+        "uvWrite": True,
+        "userAttr": "",
+        "userAttrPrefix": "",
+        "verbose": False,
+        "visibleOnly": False,
+        "wholeFrameGeo": False,
+        "worldSpace": True,
+        "writeColorSets": False,
+        "writeCreases": False,
+        "writeFaceSets": False,
+        "writeNormals": True,
+        "writeUVSets": False,
+        "writeVisibility": False
     }
 }

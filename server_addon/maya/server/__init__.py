@@ -2,13 +2,9 @@
 from ayon_server.addons import BaseServerAddon
 
 from .settings.main import MayaSettings, DEFAULT_MAYA_SETTING
-from .version import __version__
 
 
 class MayaAddon(BaseServerAddon):
-    name = "maya"
-    title = "Maya"
-    version = __version__
     settings_model = MayaSettings
 
     async def get_default_settings(self):
