@@ -543,7 +543,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         ValueError:
 
     """
-    task_name = instance.data['taskEntity']['name']
+    task_name = instance.data["task"]
 
     anatomy = instance.context.data["anatomy"]
     src_product_name = skeleton["productName"]
@@ -577,9 +577,9 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         product_name = get_product_name(
             project_name=instance.context.data["projectName"],
             task_name=task_name,
-            task_type=instance.data['taskEntity']['taskType'],
+            task_type=instance.data["taskEntity"]["taskType"],
             host_name=instance.context.data["hostName"],
-            product_type=skeleton['productType'],
+            product_type=skeleton["productType"],
             dynamic_data=dynamic_data,
             variant=instance.data.get('variant', ''),
             project_settings=instance.context.data.get("project_settings"),
