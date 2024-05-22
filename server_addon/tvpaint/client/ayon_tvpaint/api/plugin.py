@@ -12,7 +12,7 @@ from ayon_core.pipeline.create.creator_plugins import cache_and_get_instances
 from .lib import get_layers_data
 
 
-SHARED_DATA_KEY = "openpype.tvpaint.instances"
+SHARED_DATA_KEY = "ayon.tvpaint.instances"
 
 
 class TVPaintCreatorCommon:
