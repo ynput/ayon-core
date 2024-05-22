@@ -52,11 +52,11 @@ from ayon_core.pipeline.create import (
     CreatedInstance,
     CreatorError,
 )
-from ayon_core.hosts.tvpaint.api.plugin import (
+from ayon_tvpaint.api.plugin import (
     TVPaintCreator,
     TVPaintAutoCreator,
 )
-from ayon_core.hosts.tvpaint.api.lib import (
+from ayon_tvpaint.api.lib import (
     get_layers_data,
     get_groups_data,
     execute_george_through_file,

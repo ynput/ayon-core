@@ -3,7 +3,7 @@ from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin,
 )
-from ayon_core.hosts.tvpaint.api.lib import execute_george
+from ayon_tvpaint.api.lib import execute_george
 
 
 class RepairStartFrame(pyblish.api.Action):

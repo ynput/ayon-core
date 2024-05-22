@@ -256,7 +256,7 @@ class CollectSceneData(BaseCommand):
     name = "collect_scene_data"
 
     def execute(self):
-        from ayon_core.hosts.tvpaint.api.lib import (
+        from ayon_tvpaint.api.lib import (
             get_layers_data,
             get_groups_data,
             get_layers_pre_post_behavior,

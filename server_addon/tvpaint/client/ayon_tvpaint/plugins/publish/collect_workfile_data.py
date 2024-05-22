@@ -4,13 +4,13 @@ import tempfile
 
 import pyblish.api
 
-from ayon_core.hosts.tvpaint.api.lib import (
+from ayon_tvpaint.api.lib import (
     execute_george,
     execute_george_through_file,
     get_layers_data,
     get_groups_data,
 )
-from ayon_core.hosts.tvpaint.api.pipeline import (
+from ayon_tvpaint.api.pipeline import (
     SECTION_NAME_CONTEXT,
     SECTION_NAME_INSTANCES,
     SECTION_NAME_CONTAINERS,

@@ -10,13 +10,13 @@ from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_instance_families,
 )
-from ayon_core.hosts.tvpaint.api.lib import (
+from ayon_tvpaint.api.lib import (
     execute_george,
     execute_george_through_file,
     get_layers_pre_post_behavior,
     get_layers_exposure_frames,
 )
-from ayon_core.hosts.tvpaint.lib import (
+from ayon_tvpaint.lib import (
     calculate_layers_extraction_data,
     get_frame_filename_template,
     fill_reference_frames,

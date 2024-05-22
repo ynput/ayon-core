@@ -37,6 +37,6 @@ class TvpaintPrelaunchHook(PreLaunchHook):
             self.launch_context.launch_args.extend(remainders)
 
     def launch_script_path(self):
-        from ayon_core.hosts.tvpaint import get_launch_script_path
+        from ayon_tvpaint import get_launch_script_path
 
         return get_launch_script_path()

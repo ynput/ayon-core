@@ -1,7 +1,7 @@
 import ayon_api
 
 from ayon_core.pipeline import CreatedInstance
-from ayon_core.hosts.tvpaint.api.plugin import TVPaintAutoCreator
+from ayon_tvpaint.api.plugin import TVPaintAutoCreator
 
 
 class TVPaintReviewCreator(TVPaintAutoCreator):

@@ -1,7 +1,7 @@
 import os
 import tempfile
-from ayon_core.hosts.tvpaint.api import plugin
-from ayon_core.hosts.tvpaint.api.lib import (
+from ayon_tvpaint.api import plugin
+from ayon_tvpaint.api.lib import (
     execute_george_through_file,
 )
 

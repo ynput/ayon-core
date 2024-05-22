@@ -7,8 +7,9 @@ import requests
 import ayon_api
 import pyblish.api
 
+from ayon_tvpaint import TVPAINT_ROOT_DIR
+
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-from ayon_core.hosts.tvpaint import TVPAINT_ROOT_DIR
 from ayon_core.settings import get_current_project_settings
 from ayon_core.lib import register_event_callback
 from ayon_core.pipeline import (
