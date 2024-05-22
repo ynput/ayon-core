@@ -72,3 +72,6 @@ class ExtractRender(publish.Extractor):
             raise RuntimeError("Failed to complete render extraction. "
                                "Missing output files: {}".format(
                                    missing_frames))
+
+        # Remove original render instance
+        instance.context.remove(instance)
