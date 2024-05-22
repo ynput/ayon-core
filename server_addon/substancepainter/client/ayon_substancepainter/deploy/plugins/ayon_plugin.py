@@ -15,7 +15,6 @@ def cleanup_ayon_qt_widgets():
     # Kill AYON Qt widgets
     print("Killing AYON Qt widgets..")
     for widget in QtWidgets.QApplication.topLevelWidgets():
-        print(widget.__module__)
         if widget.__module__.startswith("ayon_substancepainter."):
             print(f"Deleting widget: {widget.__class__.__name__}")
             substance_painter.ui.delete_ui_element(widget)
