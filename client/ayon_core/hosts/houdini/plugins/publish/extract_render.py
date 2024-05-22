@@ -73,5 +73,5 @@ class ExtractRender(publish.Extractor):
                                "Missing output files: {}".format(
                                    missing_frames))
 
-        # Remove original render instance
+        # Skip integrating original render instance
         instance.data["integrate"] = False
