@@ -34,15 +34,6 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
         rop = hou.node(instance.data.get("instance_node"))
         # to align with maya render layers
         instance.data["renderlayer"] = rop.name()
-        """
-        print("-" * 20)
-        print(f"project_name: {instance.context.data['projectName']}")
-        print(f"task_name: {instance.data['taskEntity']['name']}")
-        print(f"task_type: {instance.data['taskEntity']['type']}")
-        print(f"product_type: {instance.data['productType']}")
-        print(f"variant: {instance.data.get('variant')}")
-        print("-" * 20)
-        """
 
         # Collect chunkSize
         chunk_size_parm = rop.parm("chunkSize")
