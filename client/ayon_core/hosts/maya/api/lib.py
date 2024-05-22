@@ -3392,8 +3392,12 @@ def set_colorspace():
 
 
 def version_up_workfile():
+    """Function to increment and save workfile
+    """
     host = registered_host()
     current_file = host.get_current_workfile()
+    if not current_file:
+        return None
     filepath = version_up(current_file)
     host.save_workfile(filepath)
 
