@@ -22,6 +22,7 @@ from maya.api import OpenMaya
 import ayon_api
 
 from ayon_core.settings import get_project_settings
+from ayon_core.lib import version_up
 from ayon_core.pipeline import (
     get_current_project_name,
     get_current_folder_path,
@@ -3388,6 +3389,13 @@ def set_colorspace():
         # set rendering space and view transform
         _colormanage(renderingSpaceName=root_dict["renderSpace"])
         _colormanage(viewTransformName=view_name)
+
+
+def version_up_workfile():
+    host = registered_host()
+    current_file = host.get_current_workfile()
+    filepath = version_up(current_file)
+    host.save_workfile(filepath)
 
 
 @contextlib.contextmanager

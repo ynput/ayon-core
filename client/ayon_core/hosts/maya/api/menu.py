@@ -123,7 +123,10 @@ def install(project_settings):
                 parent=parent_widget
             ),
         )
-
+        cmds.menuItem(
+            "Version Up Workfile",
+            command=lambda *args: lib.version_up_workfile()
+        )
         cmds.menuItem(
             "Set Frame Range",
             command=lambda *args: lib.reset_frame_range()
