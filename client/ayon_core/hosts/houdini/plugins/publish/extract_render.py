@@ -74,4 +74,4 @@ class ExtractRender(publish.Extractor):
                                    missing_frames))
 
         # Remove original render instance
-        instance.context.remove(instance)
+        instance.data["integrate"] = False
