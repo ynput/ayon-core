@@ -11,7 +11,7 @@ class CollectChunkSize(plugin.HoudiniInstancePlugin,
     order = pyblish.api.CollectorOrder + 0.05
     families = ["ass", "pointcache",
                 "vdbcache", "mantraifd",
-                "redshiftproxy"]
+                "redshiftproxy", "model"]
     hosts = ["houdini"]
     targets = ["local", "remote"]
     label = "Collect Chunk Size"

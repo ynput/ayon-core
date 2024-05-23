@@ -15,7 +15,8 @@ class CollectOutputSOPPath(plugin.HoudiniInstancePlugin):
         "usd",
         "usdrender",
         "redshiftproxy",
-        "staticMesh"
+        "staticMesh",
+        "model"
     ]
 
     hosts = ["houdini"]
