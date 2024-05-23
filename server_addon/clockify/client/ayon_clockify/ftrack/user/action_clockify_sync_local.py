@@ -1,25 +1,20 @@
 import json
-from openpype_modules.ftrack.lib import BaseAction, statics_icon
-from openpype_modules.clockify.clockify_api import ClockifyAPI
+from ayon_clockify.clockify_api import ClockifyAPI
+from ayon_ftrack.lib import BaseAction, statics_icon
 
 
 class SyncClockifyLocal(BaseAction):
-    '''Synchronise project names and task types.'''
+    """Synchronise project names and task types."""
 
-    #: Action identifier.
-    identifier = 'clockify.sync.local'
-    #: Action label.
-    label = 'Sync To Clockify (local)'
-    #: Action description.
-    description = 'Synchronise data to Clockify workspace'
-    #: roles that are allowed to register this action
+    identifier = "clockify.sync.local"
+    label = "Sync To Clockify"
+    description = "Synchronise data to Clockify workspace"
     role_list = ["Administrator", "project Manager"]
-    #: icon
     icon = statics_icon("app_icons", "clockify-white.png")
 
     def __init__(self, *args, **kwargs):
         super(SyncClockifyLocal, self).__init__(*args, **kwargs)
-        #: CLockifyApi
+
         self.clockify_api = ClockifyAPI()
 
     def discover(self, session, entities, event):
@@ -56,7 +51,7 @@ class SyncClockifyLocal(BaseAction):
             'user': user,
             'status': 'running',
             'data': json.dumps({
-                'description': 'Sync Ftrack to Clockify'
+                'description': 'Sync ftrack to Clockify'
             })
         })
         session.commit()

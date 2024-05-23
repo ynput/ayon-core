@@ -1,7 +1,8 @@
 import ayon_api
 
+from ayon_clockify.clockify_api import ClockifyAPI
+
 from ayon_core.pipeline import LauncherAction
-from openpype_modules.clockify.clockify_api import ClockifyAPI
 
 
 class ClockifyStart(LauncherAction):

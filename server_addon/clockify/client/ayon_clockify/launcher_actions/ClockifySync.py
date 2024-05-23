@@ -1,6 +1,6 @@
 import ayon_api
 
-from openpype_modules.clockify.clockify_api import ClockifyAPI
+from ayon_clockify.clockify_api import ClockifyAPI
 from ayon_core.pipeline import LauncherAction
 
 
