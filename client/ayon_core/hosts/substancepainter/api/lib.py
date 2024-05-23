@@ -726,29 +726,30 @@ def set_layer_stack_opacity(node_ids, channel_types):
     if not node_ids or not channel_types:
         yield
         return
-    all_selected_nodes = []
-    original_opacity_values = []
+
     stack = substance_painter.textureset.get_active_stack()
     stack_root_layers = (
         substance_painter.layerstack.get_root_layer_nodes(stack)
     )
-
+    all_selected_nodes = []
     for node_id in node_ids:
         node = substance_painter.layerstack.get_node_by_uid(int(node_id))
         all_selected_nodes.append(node)
-    filtered_nodes = {node for node in stack_root_layers
-                      if node not in all_selected_nodes}
-    for node in filtered_nodes:
+    excluded_nodes  = {node for node in stack_root_layers
+                       if node not in all_selected_nodes}
+
+    original_opacity_values = []
+    for node in excluded_nodes:
         for channel in channel_types:
             chan = getattr(substance_painter.textureset.ChannelType, channel)
             original_opacity_values.append((chan, node.get_opacity(chan)))
     try:
-        for node in filtered_nodes:
+        for node in excluded_nodes:
             for channel, _ in original_opacity_values:
                 node.set_opacity(0.0, channel)
         yield
     finally:
-        for node in filtered_nodes:
+        for node in excluded_nodes:
             for channel, opacity in original_opacity_values:
                 node.set_opacity(opacity, channel)
 

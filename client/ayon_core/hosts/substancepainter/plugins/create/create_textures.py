@@ -15,7 +15,8 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
     remove_instance
 )
 from ayon_core.hosts.substancepainter.api.lib import (
-    get_export_presets, get_channel_map_enum
+    get_export_presets,
+    get_channel_map_enum
 )
 
 import substance_painter
@@ -35,8 +36,11 @@ class CreateTextures(Creator):
     def apply_settings(self, project_settings):
         settings = project_settings["substancepainter"].get("create", [])  # noqa
         if settings:
-            self.channel_mapping = settings["CreateTextures"].get(
+            self.channel_mapping = {
+            item["value"]: item["name"]
+            for item in settings["CreateTextures"].get(
                 "channel_mapping", [])
+        }
         else:
             self.channel_mapping = get_channel_map_enum()
 
@@ -108,14 +112,10 @@ class CreateTextures(Creator):
         return instance
 
     def get_instance_attr_defs(self):
-        export_channel_enum = {
-            item["value"]: item["name"]
-            for item in self.channel_mapping
-        }
 
         return [
             EnumDef("exportChannel",
-                    items=export_channel_enum,
+                    items=self.channel_mapping,
                     multiselection=True,
                     default=None,
                     label="Export Channel(s)",
