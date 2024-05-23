@@ -778,6 +778,7 @@ class ExporterReviewMov(ExporterReview):
         # deal with now lut defined in viewer lut
         self.viewer_lut_raw = klass.viewer_lut_raw
         self.write_colorspace = instance.data["colorspace"]
+        self.color_channels = instance.data["color_channels"]
 
         self.name = name or "baked"
         self.ext = ext or "mov"
@@ -834,7 +835,7 @@ class ExporterReviewMov(ExporterReview):
         self.log.info("Nodes exported...")
         return path
 
-    def generate_mov(self, farm=False, **kwargs):
+    def generate_mov(self, farm=False, delete=True, **kwargs):
         # colorspace data
         colorspace = None
         # get colorspace settings
@@ -947,6 +948,8 @@ class ExporterReviewMov(ExporterReview):
         self.log.debug("Path: {}".format(self.path))
         write_node["file"].setValue(str(self.path))
         write_node["file_type"].setValue(str(self.ext))
+        write_node["channels"].setValue(str(self.color_channels))
+
         # Knobs `meta_codec` and `mov64_codec` are not available on centos.
         # TODO shouldn't this come from settings on outputs?
         try:
@@ -987,8 +990,13 @@ class ExporterReviewMov(ExporterReview):
             self.render(write_node.name())
 
         # ---------- generate representation data
+        tags = ["review", "need_thumbnail"]
+
+        if delete:
+            tags.append("delete")
+
         self.get_representation_data(
-            tags=["review", "need_thumbnail", "delete"] + add_tags,
+            tags=tags + add_tags,
             custom_tags=add_custom_tags,
             range=True,
             colorspace=colorspace
