@@ -83,6 +83,23 @@ class ProjectItem:
             }
         self.icon = icon
 
+    @classmethod
+    def from_entity(cls, project_entity):
+        """Creates folder item from entity.
+
+        Args:
+            project_entity (dict[str, Any]): Project entity.
+
+        Returns:
+            ProjectItem: Project item.
+
+        """
+        return cls(
+            project_entity["name"],
+            project_entity["active"],
+            project_entity["library"],
+        )
+
     def to_data(self):
         """Converts folder item to data.
 
@@ -122,7 +139,7 @@ def _get_project_items_from_entitiy(projects):
     """
 
     return [
-        ProjectItem(project["name"], project["active"], project["library"])
+        ProjectItem.from_entity(project)
         for project in projects
     ]
 
