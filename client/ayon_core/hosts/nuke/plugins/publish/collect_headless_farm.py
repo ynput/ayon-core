@@ -9,7 +9,7 @@ class CollectHeadlessFarm(pyblish.api.ContextPlugin):
     """Setup instances for headless farm submission."""
 
     # Needs to be after CollectFromCreateContext
-    order = pyblish.api.CollectorOrder - 0.4
+    order = pyblish.api.CollectorOrder - 0.49
     label = "Collect Headless Farm"
     hosts = ["nuke"]
 
