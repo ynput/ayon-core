@@ -47,7 +47,7 @@ class AlembicModelLoader(load.LoaderPlugin):
             "version": version_entity["version"]
         }
         # add attributes from the version to imprint to metadata knob
-        for k in ["source", "author", "fps"]:
+        for k in ["source", "fps"]:
             data_imprint[k] = version_attributes[k]
 
         # getting file path
@@ -130,7 +130,7 @@ class AlembicModelLoader(load.LoaderPlugin):
         }
 
         # add additional metadata from the version to imprint to Avalon knob
-        for k in ["source", "author", "fps"]:
+        for k in ["source", "fps"]:
             data_imprint[k] = version_attributes[k]
 
         # getting file path

@@ -60,7 +60,7 @@ def main(*subprocess_args):
             )
         )
 
-    elif os.environ.get("AVALON_PHOTOSHOP_WORKFILES_ON_LAUNCH", True):
+    elif os.environ.get("AVALON_AFTEREFFECTS_WORKFILES_ON_LAUNCH", True):
         save = False
         if os.getenv("WORKFILES_SAVE_AS"):
             save = True
