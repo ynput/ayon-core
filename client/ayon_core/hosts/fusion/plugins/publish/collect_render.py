@@ -52,7 +52,7 @@ class CollectFusionRender(
             if product_type not in ["render", "image"]:
                 continue
 
-            task_name = context.data["task"]
+            task_name = inst.data["task"]
             tool = inst.data["transientData"]["tool"]
 
             instance_families = inst.data.get("families", [])
@@ -115,6 +115,7 @@ class CollectFusionRender(
                 if "review" in instance.families:
                     # to skip ExtractReview locally
                     instance.families.remove("review")
+                instance.deadline = inst.data.get("deadline")
 
             instances.append(instance)
 

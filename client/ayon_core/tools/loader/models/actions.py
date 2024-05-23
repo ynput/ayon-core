@@ -6,6 +6,7 @@ import uuid
 
 import ayon_api
 
+from ayon_core.lib import NestedCacheItem
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     ProductLoaderPlugin,
@@ -17,7 +18,6 @@ from ayon_core.pipeline.load import (
     LoadError,
     IncompatibleLoaderError,
 )
-from ayon_core.tools.common_models import NestedCacheItem
 from ayon_core.tools.loader.abstract import ActionItem
 
 ACTIONS_MODEL_SENDER = "actions.model"

@@ -43,7 +43,10 @@ class AbcCameraLoader(plugin.AssetLoader):
     def _process(self, libpath, asset_group, group_name):
         plugin.deselect_all()
 
-        bpy.ops.wm.alembic_import(filepath=libpath)
+        # Force the creation of the transform cache even if the camera
+        # doesn't have an animation. We use the cache to update the camera.
+        bpy.ops.wm.alembic_import(
+            filepath=libpath, always_add_cache_reader=True)
 
         objects = lib.get_selection()
 
@@ -178,12 +181,33 @@ class AbcCameraLoader(plugin.AssetLoader):
             self.log.info("Library already loaded, not updating...")
             return
 
-        mat = asset_group.matrix_basis.copy()
+        for obj in asset_group.children:
+            found = False
+            for constraint in obj.constraints:
+                if constraint.type == "TRANSFORM_CACHE":
+                    constraint.cache_file.filepath = libpath.as_posix()
+                    found = True
+                    break
+            if not found:
+                # This is to keep compatibility with cameras loaded with
+                # the old loader
+                # Create a new constraint for the cache file
+                constraint = obj.constraints.new("TRANSFORM_CACHE")
+                bpy.ops.cachefile.open(filepath=libpath.as_posix())
+                constraint.cache_file = bpy.data.cache_files[-1]
+                constraint.cache_file.scale = 1.0
 
-        self._remove(asset_group)
-        self._process(str(libpath), asset_group, object_name)
+                # This is a workaround to set the object path. Blender doesn't
+                # load the list of object paths until the object is evaluated.
+                # This is a hack to force the object to be evaluated.
+                # The modifier doesn't need to be removed because camera
+                # objects don't have modifiers.
+                obj.modifiers.new(
+                    name='MeshSequenceCache', type='MESH_SEQUENCE_CACHE')
+                bpy.context.evaluated_depsgraph_get()
 
-        asset_group.matrix_basis = mat
+                constraint.object_path = (
+                    constraint.cache_file.object_paths[0].path)
 
         metadata["libpath"] = str(libpath)
         metadata["representation"] = repre_entity["id"]

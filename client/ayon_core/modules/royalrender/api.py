@@ -7,7 +7,7 @@ from ayon_core.lib import Logger, run_subprocess, AYONSettingsRegistry
 from ayon_core.lib.vendor_bin_utils import find_tool_in_custom_paths
 
 from .rr_job import SubmitFile
-from .rr_job import RRjob, SubmitterParameter # noqa F401
+from .rr_job import RRJob, SubmitterParameter # noqa F401
 
 
 class Api:
