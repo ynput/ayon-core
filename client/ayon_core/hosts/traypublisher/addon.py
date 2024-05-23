@@ -1,5 +1,6 @@
 import os
 
+from pathlib import Path
 from ayon_core.lib import get_ayon_launcher_args
 from ayon_core.lib.execute import run_detached_process
 from ayon_core.addon import (
@@ -57,3 +58,62 @@ def launch():
     from ayon_core.tools import traypublisher
 
     traypublisher.main()
+
+
+@cli_main.command()
+@click_wrap.option(
+    "--filepath",
+    help="Full path to CSV file with data",
+    type=str,
+    required=True
+)
+@click_wrap.option(
+    "--project",
+    help="Project name in which the context will be used",
+    type=str,
+    required=True
+)
+@click_wrap.option(
+    "--folder-path",
+    help="Asset name in which the context will be used",
+    type=str,
+    required=True
+)
+@click_wrap.option(
+    "--task",
+    help="Task name under Asset in which the context will be used",
+    type=str,
+    required=False
+)
+@click_wrap.option(
+    "--ignore-validators",
+    help="Option to ignore validators",
+    type=bool,
+    is_flag=True,
+    required=False
+)
+def ingestcsv(
+    filepath,
+    project,
+    folder_path,
+    task,
+    ignore_validators
+):
+    """Ingest CSV file into project.
+
+    This command will ingest CSV file into project. CSV file must be in
+    specific format. See documentation for more information.
+    """
+    from .csv_publish import csvpublish
+
+    # use Path to check if csv_filepath exists
+    if not Path(filepath).exists():
+        raise FileNotFoundError(f"File {filepath} does not exist.")
+
+    csvpublish(
+        filepath,
+        project,
+        folder_path,
+        task,
+        ignore_validators
+    )
