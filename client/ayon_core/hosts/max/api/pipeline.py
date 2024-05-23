@@ -52,17 +52,15 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
         self._has_been_setup = True
 
-        def context_setting():
-            return lib.set_context_setting()
-
-        rt.callbacks.addScript(rt.Name('systemPostNew'),
-                               context_setting)
+        rt.callbacks.addScript(rt.Name('systemPostNew'), on_new)
 
         rt.callbacks.addScript(rt.Name('filePostOpen'),
                                lib.check_colorspace)
 
         rt.callbacks.addScript(rt.Name('postWorkspaceChange'),
                                self._deferred_menu_creation)
+        rt.NodeEventCallback(
+            nameChanged=lib.update_modifier_node_names)
 
     def workfile_has_unsaved_changes(self):
         return rt.getSaveRequired()
@@ -159,6 +157,14 @@ def ls() -> list:
 
     for container in sorted(containers, key=attrgetter("name")):
         yield lib.read(container)
+
+
+def on_new():
+    lib.set_context_setting()
+    if rt.checkForSave():
+        rt.resetMaxFile(rt.Name("noPrompt"))
+        rt.clearUndoBuffer()
+        rt.redrawViews()
 
 
 def containerise(name: str, nodes: list, context,

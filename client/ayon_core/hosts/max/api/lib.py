@@ -6,12 +6,9 @@ import json
 from typing import Any, Dict, Union
 
 import six
-import ayon_api
 
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_current_folder_path,
-    get_current_task_name,
     colorspace
 )
 from ayon_core.settings import get_project_settings
@@ -372,12 +369,8 @@ def reset_colorspace():
     """
     if int(get_max_version()) < 2024:
         return
-    project_name = get_current_project_name()
-    colorspace_mgr = rt.ColorPipelineMgr
-    project_settings = get_project_settings(project_name)
 
-    max_config_data = colorspace.get_imageio_config(
-        project_name, "max", project_settings)
+    max_config_data = colorspace.get_current_context_imageio_config_preset()
     if max_config_data:
         ocio_config_path = max_config_data["path"]
         colorspace_mgr = rt.ColorPipelineMgr
@@ -392,10 +385,7 @@ def check_colorspace():
                  "because Max main window can't be found.")
     if int(get_max_version()) >= 2024:
         color_mgr = rt.ColorPipelineMgr
-        project_name = get_current_project_name()
-        project_settings = get_project_settings(project_name)
-        max_config_data = colorspace.get_imageio_config(
-            project_name, "max", project_settings)
+        max_config_data = colorspace.get_current_context_imageio_config_preset()
         if max_config_data and color_mgr.Mode != rt.Name("OCIO_Custom"):
             if not is_headless():
                 from ayon_core.tools.utils import SimplePopup
@@ -496,9 +486,9 @@ def object_transform_set(container_children):
     """
     transform_set = {}
     for node in container_children:
-        name = f"{node.name}.transform"
+        name = f"{node}.transform"
         transform_set[name] = node.pos
-        name = f"{node.name}.scale"
+        name = f"{node}.scale"
         transform_set[name] = node.scale
     return transform_set
 
@@ -517,6 +507,36 @@ def get_plugins() -> list:
         plugin_info_list.append(plugin_info)
 
     return plugin_info_list
+
+
+def update_modifier_node_names(event, node):
+    """Update the name of the nodes after renaming
+
+    Args:
+        event (pymxs.MXSWrapperBase): Event Name (
+            Mandatory argument for rt.NodeEventCallback)
+        node (list): Event Number (
+            Mandatory argument for rt.NodeEventCallback)
+
+    """
+    containers = [
+        obj
+        for obj in rt.Objects
+        if (
+            rt.ClassOf(obj) == rt.Container
+            and rt.getUserProp(obj, "id") == "pyblish.avalon.instance"
+            and rt.getUserProp(obj, "productType") not in {
+                "workfile", "tyflow"
+            }
+        )
+    ]
+    if not containers:
+        return
+    for container in containers:
+        ayon_data = container.modifiers[0].openPypeData
+        updated_node_names = [str(node.node) for node
+                              in ayon_data.all_handles]
+        rt.setProperty(ayon_data, "sel_list", updated_node_names)
 
 
 @contextlib.contextmanager

@@ -10,6 +10,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 from ayon_core.hosts.maya.api import lib
 from ayon_core.hosts.maya.api.lib_rendersettings import RenderSettings
@@ -37,7 +38,8 @@ def get_redshift_image_format_labels():
     return mel.eval("{0}={0}".format(var))
 
 
-class ValidateRenderSettings(pyblish.api.InstancePlugin):
+class ValidateRenderSettings(pyblish.api.InstancePlugin,
+                             OptionalPyblishPluginMixin):
     """Validates the global render settings
 
     * File Name Prefix must start with: `<Scene>`
@@ -55,7 +57,7 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
     * Frame Padding must be:
         * default: 4
 
-    * Animation must be toggle on, in Render Settings - Common tab:
+    * Animation must be toggled on, in Render Settings - Common tab:
         * vray: Animation on standard of specific
         * arnold: Frame / Animation ext: Any choice without "(Single Frame)"
         * redshift: Animation toggled on
@@ -67,10 +69,11 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
     """
 
     order = ValidateContentsOrder
-    label = "Render Settings"
+    label = "Validate Render Settings"
     hosts = ["maya"]
     families = ["renderlayer"]
     actions = [RepairAction]
+    optional = True
 
     ImagePrefixes = {
         'mentalray': 'defaultRenderGlobals.imageFilePrefix',
@@ -112,6 +115,8 @@ class ValidateRenderSettings(pyblish.api.InstancePlugin):
     DEFAULT_PREFIX = "<Scene>/<RenderLayer>/<RenderLayer>_<RenderPass>"
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
 
         invalid = self.get_invalid(instance)
         if invalid:

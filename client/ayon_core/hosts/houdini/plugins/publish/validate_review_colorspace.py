@@ -45,13 +45,28 @@ class ValidateReviewColorspace(pyblish.api.InstancePlugin,
                                        category="houdini")
         apply_plugin_settings_automatically(cls, settings, logger=cls.log)
 
+        # workfile settings added in '0.2.13'
+        color_settings = project_settings["houdini"]["imageio"].get(
+            "workfile", {}
+        )
         # Add review color settings
-        color_settings = project_settings["houdini"]["imageio"]["workfile"]
-        if color_settings["enabled"]:
+        if color_settings.get("enabled"):
             cls.review_color_space = color_settings.get("review_color_space")
 
 
     def process(self, instance):
+
+        rop_node = hou.node(instance.data["instance_node"])
+
+        # This plugin is triggered when marking render as reviewable.
+        # Therefore, this plugin will run on over wrong instances.
+        # TODO: Don't run this plugin on wrong instances.
+        # This plugin should run only on review product type
+        # with instance node of opengl type.
+        if rop_node.type().name() != "opengl":
+            self.log.debug("Skipping Validation. Rop node {} "
+                           "is not an OpenGl node.".format(rop_node.path()))
+            return
 
         if not self.is_active(instance.data):
             return
@@ -63,7 +78,6 @@ class ValidateReviewColorspace(pyblish.api.InstancePlugin,
             )
             return
 
-        rop_node = hou.node(instance.data["instance_node"])
         if rop_node.evalParm("colorcorrect") != 2:
             # any colorspace settings other than default requires
             # 'Color Correct' parm to be set to 'OpenColorIO'
