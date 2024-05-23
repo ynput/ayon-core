@@ -133,7 +133,7 @@ class LoadImage(load.LoaderPlugin):
                 "version": version_entity["version"],
                 "colorspace": colorspace,
             }
-            for k in ["source", "author", "fps"]:
+            for k in ["source", "fps"]:
                 data_imprint[k] = version_attributes.get(k, str(None))
 
             r["tile_color"].setValue(int("0x4ecd25ff", 16))
@@ -207,7 +207,6 @@ class LoadImage(load.LoaderPlugin):
             "colorspace": version_attributes.get("colorSpace"),
             "source": version_attributes.get("source"),
             "fps": str(version_attributes.get("fps")),
-            "author": version_attributes.get("author")
         }
 
         # change color of node

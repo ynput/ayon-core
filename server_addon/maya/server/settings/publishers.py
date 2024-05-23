@@ -634,10 +634,6 @@ class PublishersModel(BaseSettingsModel):
         title="Validate Instance In Context",
         section="Validators"
     )
-    ValidateContainers: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Containers"
-    )
     ValidateFrameRange: ValidateFrameRangeModel = SettingsField(
         default_factory=ValidateFrameRangeModel,
         title="Validate Frame Range"
@@ -917,10 +913,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Rig Controllers",
     )
-    ValidateAnimatedReferenceRig: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Animated Reference Rig",
-    )
     ValidateAnimationContent: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Animation Content",
@@ -1059,11 +1051,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False
     },
     "ValidateInstanceInContext": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateContainers": {
         "enabled": True,
         "optional": True,
         "active": True
@@ -1445,11 +1432,6 @@ DEFAULT_PUBLISH_SETTINGS = {
     "ValidateRigControllers": {
         "enabled": False,
         "optional": True,
-        "active": True
-    },
-    "ValidateAnimatedReferenceRig": {
-        "enabled": True,
-        "optional": False,
         "active": True
     },
     "ValidateAnimationContent": {
