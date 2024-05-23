@@ -1,11 +1,13 @@
 import os
-
+import re
 from ayon_core.pipeline.create import (
     Creator,
     CreatedInstance,
     get_product_name
 )
 from ayon_api import get_folder_by_path, get_task_by_name
+from ayon_core.hosts.houdini.api import lib
+import hou
 
 
 def create_representation_data(files):
@@ -20,9 +22,73 @@ def create_representation_data(files):
     return {
         "name": ext,
         "ext": ext,
-        "files": files if len(files) > 1 else first_file,
+        "files": files if len(files) > 1 else filename,
         "stagingDir": folder,
     }
+
+
+def create_file_list(match, start_frame, end_frame):
+    """Collect files based on frame range and `regex.match`
+
+    Args:
+        match(re.match): match object
+        start_frame(int): start of the animation
+        end_frame(int): end of the animation
+
+    Returns:
+        list
+
+    """
+
+    # Get the padding length
+    frame = match.group(1)
+    padding = len(frame)
+
+    # Get the parts of the filename surrounding the frame number,
+    # so we can put our own frame numbers in.
+    span = match.span(1)
+    prefix = match.string[: span[0]]
+    suffix = match.string[span[1]:]
+
+    # Generate filenames for all frames
+    result = []
+    for i in range(start_frame, end_frame + 1):
+
+        # Format frame number by the padding amount
+        str_frame = "{number:0{width}d}".format(number=i, width=padding)
+
+        file_name = prefix + str_frame + suffix
+        result.append(file_name)
+
+    return result
+
+
+def eval_files_from_output_path(output_path, start_frame=None, end_frame=None):
+    if start_frame is None:
+        start_frame = hou.frame()
+
+    if end_frame is None:
+        end_frame = start_frame
+
+    output = hou.expandStringAtFrame(output_path, start_frame)
+    _, ext = lib.splitext(
+        output, allowed_multidot_extensions=[
+            ".ass.gz", ".bgeo.sc", ".bgeo.gz",
+            ".bgeo.lzma", ".bgeo.bz2"])
+
+    result = output
+    pattern = r"\w+\.(\d+)" + re.escape(ext)
+    match = re.match(pattern, output)
+
+    if match and start_frame is not None:
+        # Check if frames are bigger than 1 (file collection)
+        # override the result
+        if end_frame - start_frame > 0:
+            result = create_file_list(
+                match, int(start_frame), int(end_frame)
+            )
+
+    return result
 
 
 class CreateRuntimeInstance(Creator):
@@ -64,11 +130,30 @@ class CreateRuntimeInstance(Creator):
         if custom_instance_data:
             instance_data.update(custom_instance_data)
 
-        # TODO: Add support for multiple representations
-        files = pre_create_data["files"]
-        representations = [create_representation_data(files)]
-        instance_data["representations"] = representations
         instance_data["families"] = ["dynamic"]
+
+        # TODO: Add support for multiple representations
+        files = pre_create_data.get("files", [])
+        if files:
+            representations = [create_representation_data(files)]
+
+        output_paths = pre_create_data.get("output_paths", [])
+        if output_paths:
+            representations = []
+            for output_path in output_paths:
+                files = eval_files_from_output_path(
+                    output_path,
+                    instance_data["frameStart"],
+                    instance_data["frameEnd"])
+                if isinstance(files, str):
+                    files = [files]
+                representation = create_representation_data(files)
+                representation["frameStart"] = instance_data["frameStart"]
+                representation["frameEnd"] = instance_data["frameEnd"]
+
+                representations.append(representation)
+
+        instance_data["representations"] = representations
 
         # We ingest it as a different product type then the creator's generic
         # ingest product type. For example, we specify `pointcache`
