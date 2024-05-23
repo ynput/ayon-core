@@ -40,12 +40,9 @@ class CollectArnoldROPRenderProducts(pyblish.api.InstancePlugin):
         default_prefix = evalParmNoFrame(rop, "ar_picture")
         render_products = []
 
-        # Store whether we are splitting the render job (export + render)
-        split_render = bool(rop.parm("ar_ass_export_enable").eval())
-        instance.data["splitRender"] = split_render
         export_prefix = None
         export_products = []
-        if split_render:
+        if instance.data["splitRender"]:
             export_prefix = evalParmNoFrame(
                 rop, "ar_ass_file", pad_character="0"
             )
@@ -68,7 +65,12 @@ class CollectArnoldROPRenderProducts(pyblish.api.InstancePlugin):
             "": self.generate_expected_files(instance, beauty_product)
         }
 
+        # Assume it's a multipartExr Render.
+        multipartExr = True
+
         num_aovs = rop.evalParm("ar_aovs")
+        # TODO: Check the following logic.
+        #       as it always assumes that all AOV are not merged.
         for index in range(1, num_aovs + 1):
             # Skip disabled AOVs
             if not rop.evalParm("ar_enable_aov{}".format(index)):
@@ -84,6 +86,14 @@ class CollectArnoldROPRenderProducts(pyblish.api.InstancePlugin):
             render_products.append(aov_product)
             files_by_aov[label] = self.generate_expected_files(instance,
                                                                aov_product)
+
+            # Set to False as soon as we have a separated aov.
+            multipartExr = False
+
+        # Review Logic expects this key to exist and be True
+        # if render is a multipart Exr.
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = multipartExr
 
         for product in render_products:
             self.log.debug("Found render product: {}".format(product))
