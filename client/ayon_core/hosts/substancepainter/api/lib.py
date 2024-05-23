@@ -681,32 +681,46 @@ def prompt_new_file_with_mesh(mesh_filepath):
     return project_mesh
 
 
-def get_export_preset_by_name(preset_name: str):
-    export_presets= get_export_presets()
-    preset_full_name = export_presets[preset_name]
-    for export_preset in substance_painter.export.list_resource_export_presets():
-        if export_preset.resource_id.name == preset_full_name:
-            return export_preset
+def get_export_presets_by_filtering(export_preset_name, channel_type_names):
+    """Function to get export presets included with specific channels
+    requested by users.
 
+    Args:
+        export_preset_name (str): Name of export preset
+        channel_type_list (list): A list of channel type requested by users
 
-def get_export_preset_with_filtered_maps(export_preset, channel_type_names):
-    filtered_maps = []
-    for output_map in export_preset.list_output_maps():
-        output_filename = output_map.get("fileName")
-        if not output_filename:
-            continue
+    Returns:
+        dict: export preset data
+    """
 
-        if any(
-            channel_type_name in output_filename
-            for channel_type_name in channel_type_names
-        ):
-            filtered_maps.append(output_map)
+    target_maps = []
+
+    export_presets = get_export_presets()
+    export_preset_nice_name = export_presets[export_preset_name]
+    resource_presets = substance_painter.export.list_resource_export_presets()
+    preset = next(
+        (
+            preset for preset in resource_presets
+            if preset.resource_id.name == export_preset_nice_name
+        ), None
+    )
+    if preset is None:
+        return {}
+
+    maps = preset.list_output_maps()
+    for channel_map in maps:
+        for channel_name in channel_type_names:
+            if not channel_map.get("fileName"):
+                continue
+
+            if channel_name in channel_map["fileName"]:
+                target_maps.append(channel_map)
     # Create a new preset
     return {
         "exportPresets": [
             {
-                "name": export_preset.resource_id.name,
-                "maps": filtered_maps
+                "name": export_preset_name,
+                "maps": target_maps
             }
         ],
     }
