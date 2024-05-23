@@ -7,7 +7,7 @@ class ValidateIntermediateDirectoriesChecked(pyblish.api.InstancePlugin):
     """Validate Create Intermediate Directories is enabled on ROP node."""
 
     order = pyblish.api.ValidatorOrder
-    families = ["pointcache", "camera", "vdbcache"]
+    families = ["pointcache", "camera", "vdbcache", "model"]
     hosts = ["houdini"]
     label = "Create Intermediate Directories Checked"
 
