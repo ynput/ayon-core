@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating publishable Houdini Digital Assets."""
 import ayon_api
-import getpass
 from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.lib import BoolDef
+from ayon_core.lib import (
+    get_ayon_username,
+    BoolDef
+)
 import hou
 from ayon_core.resources import get_ayon_icon_filepath
 
@@ -104,7 +106,7 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_def.setIcon(get_ayon_icon_filepath())
 
         if pre_create_data.get("set_user"):
-            hda_def.setUserInfo(getpass.getuser())
+            hda_def.setUserInfo(get_ayon_username())
 
         if pre_create_data.get("use_project"):
             tool_name = hou.shelves.defaultToolName(
