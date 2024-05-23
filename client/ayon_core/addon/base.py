@@ -53,7 +53,9 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "applications": VersionInfo(0, 2, 0),
     "clockify": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
+    "maya": VersionInfo(0, 2, 0),
 }
+
 
 # Inherit from `object` for Python 2 hosts
 class _ModuleClass(object):
@@ -1323,7 +1325,7 @@ class TrayAddonsManager(AddonsManager):
         self.doubleclick_callback = None
 
     def add_doubleclick_callback(self, addon, callback):
-        """Register doubleclick callbacks on tray icon.
+        """Register double-click callbacks on tray icon.
 
         Currently, there is no way how to determine which is launched. Name of
         callback can be defined with `doubleclick_callback` attribute.
