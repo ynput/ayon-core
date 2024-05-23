@@ -131,8 +131,10 @@ class ProjectsModel(object):
     def __init__(self, controller):
         self._projects_cache = CacheItem(default_factory=list)
         self._project_items_by_name = {}
-        self._projects_by_name = {}
         self._project_statuses_cache = NestedCacheItem(
+            levels=1, default_factory=list
+        )
+        self._projects_by_name = NestedCacheItem(
             levels=1, default_factory=list
         )
 
@@ -142,8 +144,8 @@ class ProjectsModel(object):
     def reset(self):
         self._projects_cache.reset()
         self._project_items_by_name = {}
-        self._projects_by_name = {}
         self._project_statuses_cache.reset()
+        self._projects_by_name.reset()
 
     def refresh(self):
         self._refresh_projects_cache()
@@ -164,12 +166,23 @@ class ProjectsModel(object):
         return self._projects_cache.get_data()
 
     def get_project_entity(self, project_name):
-        if project_name not in self._projects_by_name:
+        """Get project entity.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            Union[dict[str, Any], None]: Project entity or None if project
+                was not found by name.
+
+        """
+        project_cache = self._projects_by_name[project_name]
+        if not project_cache.is_valid:
             entity = None
             if project_name:
                 entity = ayon_api.get_project(project_name)
-            self._projects_by_name[project_name] = entity
-        return self._projects_by_name[project_name]
+            project_cache.update_data(entity)
+        return project_cache.get_data()
 
     def get_project_status_items(self, project_name, sender):
         """Get project status items.
