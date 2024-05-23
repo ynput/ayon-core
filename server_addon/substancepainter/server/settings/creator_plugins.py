@@ -24,6 +24,9 @@ DEFAULT_CREATOR_SETTINGS = {
         "channel_mapping": [
             {"name": "Base Color", "value": "BaseColor"},
             {"name": "Metallic", "value": "Metallic"},
+            {"name": "Roughness", "value": "Roughness"},
+            {"name": "Normal", "value": "Normal"},
+            {"name": "Height", "value": "Height"},
             {"name": "Specular Edge Color",
              "value": "SpecularEdgeColor"},
             {"name": "Opacity", "value": "Opacity"},
