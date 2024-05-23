@@ -4,7 +4,7 @@ from ayon_server.settings import BaseSettingsModel, SettingsField
 class ChannelMappingItemModel(BaseSettingsModel):
     _layout = "compact"
     name: str = SettingsField(title="Channel Type")
-    value: str = SettingsField(title="Channel Name")
+    value: str = SettingsField(title="Channel Map")
 
 
 class CreateTextureModel(BaseSettingsModel):
