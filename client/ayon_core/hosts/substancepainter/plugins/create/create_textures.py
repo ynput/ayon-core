@@ -14,7 +14,9 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
     set_instances,
     remove_instance
 )
-from ayon_core.hosts.substancepainter.api.lib import get_export_presets
+from ayon_core.hosts.substancepainter.api.lib import (
+    get_export_presets, get_channel_map_enum
+)
 
 import substance_painter
 import substance_painter.project
@@ -35,6 +37,8 @@ class CreateTextures(Creator):
         if settings:
             self.channel_mapping = settings["CreateTextures"].get(
                 "channel_mapping", [])
+        else:
+            self.channel_mapping = get_channel_map_enum()
 
 
     def create(self, product_name, instance_data, pre_create_data):
@@ -200,10 +204,10 @@ class CreateTextures(Creator):
 
     def get_pre_create_attr_defs(self):
         # Use same attributes as for instance attributes
-        selection_list = []
+        attr_defs = []
         if  substance_painter.application.version_info()[0] >= 10:
-            selection_list = [
+            attr_defs.append(
                 BoolDef("use_selection", label="Use selection",
                         tooltip="Select Layer Stack(s) for exporting")
-            ]
-        return selection_list + self.get_instance_attr_defs()
+            )
+        return attr_defs + self.get_instance_attr_defs()

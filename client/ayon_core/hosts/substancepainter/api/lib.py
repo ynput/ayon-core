@@ -13,6 +13,43 @@ import substance_painter.export
 from qtpy import QtGui, QtWidgets, QtCore
 
 
+def get_channel_map_enum():
+    """Function to get channel map items value.
+    For backward compatibility only. Will be removed after
+    client addon migration
+    """
+    return {
+            "BaseColor": "Base Color",
+            "Metallic": "Metallic",
+            "Roughness": "Roughness",
+            "SpecularEdgeColor": "Specular Edge Color",
+            "Emissive": "Emissive",
+            "Opacity": "Opacity",
+            "Displacement": "Displacement",
+            "Glossiness": "Glossiness",
+            "Anisotropylevel": "Anisotropy Level",
+            "AO": "Ambient Occulsion",
+            "Anisotropyangle": "Anisotropy Angle",
+            "Transmissive": "Transmissive",
+            "Reflection": "Reflection",
+            "Diffuse": "Diffuse",
+            "Ior": "Index of Refraction",
+            "Specularlevel": "Specular Level",
+            "BlendingMask": "Blending Mask",
+            "Translucency": "Translucency",
+            "Scattering": "Scattering",
+            "ScatterColor": "Scatter Color",
+            "SheenOpacity": "Sheen Opacity",
+            "SheenRoughness": "Sheen Roughness",
+            "SheenColor": "Sheen Color",
+            "CoatOpacity": "Coat Opacity",
+            "CoatColor": "Coat Color",
+            "CoatRoughness": "Coat Roughness",
+            "CoatSpecularLevel": "Coat Specular Level",
+            "CoatNormal": "Coat Normal",
+    }
+
+
 def get_export_presets():
     """Return Export Preset resource URLs for all available Export Presets.
 
