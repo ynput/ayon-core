@@ -37,8 +37,10 @@ class ExtractROP(publish.Extractor):
         }
 
         # render rop
-        ropnode = hou.node(instance.data.get("instance_node"))
-        lib.render_rop(ropnode)
+        creator_attribute = instance.data["creator_attributes"]
+        if creator_attribute.get("render_target") == "local":
+            ropnode = hou.node(instance.data.get("instance_node"))
+            lib.render_rop(ropnode)
 
         # add representation
         instance.data.setdefault("representations", []).append(representation)
