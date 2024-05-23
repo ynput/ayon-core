@@ -1027,8 +1027,10 @@ def script_name():
 def add_button_headless_farm_submission(node):
     name = "headlessFarmSubmission"
     label = "Headless Farm Submission"
-    value = "from ayon_core.hosts.nuke.api.utils import submit_headless_farm;"
-    value += "submit_headless_farm(nuke.thisNode())"
+    value = (
+        "from ayon_core.hosts.nuke.api.utils import submit_headless_farm;"
+        "submit_headless_farm(nuke.thisNode())"
+    )
     knob = nuke.PyScript_Knob(name, label, value)
     knob.clearFlag(nuke.STARTLINE)
     node.addKnob(knob)
