@@ -28,9 +28,14 @@ class CreateTextures(Creator):
     icon = "picture-o"
 
     default_variant = "Main"
+    channel_mapping = []
+
+    def apply_settings(self, project_settings):
+        settings = project_settings["substancepainter"].get("create")  # noqa
+        self.channel_mapping = settings["CreateTextures"].get("channel_mapping")
+
 
     def create(self, product_name, instance_data, pre_create_data):
-
         if not substance_painter.project.is_open():
             raise CreatorError("Can't create a Texture Set instance without "
                                "an open project.")
@@ -48,7 +53,7 @@ class CreateTextures(Creator):
         ]:
             if key in pre_create_data:
                 creator_attributes[key] = pre_create_data[key]
-        #TODO: add the layer stack option
+
         if pre_create_data.get("use_selection"):
             stack = substance_painter.textureset.get_active_stack()
 
@@ -97,38 +102,14 @@ class CreateTextures(Creator):
         return instance
 
     def get_instance_attr_defs(self):
+        export_channel_enum = {
+            item["value"]: item["name"]
+            for item in self.channel_mapping
+        }
+
         return [
             EnumDef("exportChannel",
-                    items={
-                        "BaseColor": "Base Color",
-                        "Metallic": "Metallic",
-                        "Roughness": "Roughness",
-                        "SpecularEdgeColor": "Specular Edge Color",
-                        "Emissive": "Emissive",
-                        "Opacity": "Opacity",
-                        "Displacement": "Displacement",
-                        "Glossiness": "Glossiness",
-                        "Anisotropylevel": "Anisotropy Level",
-                        "AO": "Ambient Occulsion",
-                        "Anisotropyangle": "Anisotropy Angle",
-                        "Transmissive": "Transmissive",
-                        "Reflection": "Reflection",
-                        "Diffuse": "Diffuse",
-                        "Ior": "Index of Refraction",
-                        "Specularlevel": "Specular Level",
-                        "BlendingMask": "Blending Mask",
-                        "Translucency": "Translucency",
-                        "Scattering": "Scattering",
-                        "ScatterColor": "Scatter Color",
-                        "SheenOpacity": "Sheen Opacity",
-                        "SheenRoughness": "Sheen Roughness",
-                        "SheenColor": "Sheen Color",
-                        "CoatOpacity": "Coat Opacity",
-                        "CoatColor": "Coat Color",
-                        "CoatRoughness": "Coat Roughness",
-                        "CoatSpecularLevel": "Coat Specular Level",
-                        "CoatNormal": "Coat Normal",
-                    },
+                    items=export_channel_enum,
                     multiselection=True,
                     default=None,
                     label="Export Channel(s)",
