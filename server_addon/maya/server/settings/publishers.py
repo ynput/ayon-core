@@ -46,7 +46,6 @@ def extract_alembic_overrides_enum():
     return [
         {"label": "Custom Attributes", "value": "attr"},
         {"label": "Custom Attributes Prefix", "value": "attrPrefix"},
-        {"label": "Auto Subd", "value": "autoSubd"},
         {"label": "Data Format", "value": "dataFormat"},
         {"label": "Euler Filter", "value": "eulerFilter"},
         {"label": "Mel Per Frame Callback", "value": "melPerFrameCallback"},
@@ -229,7 +228,7 @@ class ValidateAttributesModel(BaseSettingsModel):
 
         if not success:
             raise BadRequestException(
-                "The attibutes can't be parsed as json object"
+                "The attributes can't be parsed as json object"
             )
         return value
 
@@ -265,7 +264,7 @@ class ValidateUnrealStaticMeshNameModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="ValidateUnrealStaticMeshName")
     optional: bool = SettingsField(title="Optional")
     validate_mesh: bool = SettingsField(title="Validate mesh names")
-    validate_collision: bool = SettingsField(title="Validate collison names")
+    validate_collision: bool = SettingsField(title="Validate collision names")
 
 
 class ValidateCycleErrorModel(BaseSettingsModel):
@@ -288,7 +287,7 @@ class ValidatePluginPathAttributesModel(BaseSettingsModel):
     and the node attribute is <b>abc_file</b>
     """
 
-    enabled: bool = True
+    enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     attribute: list[ValidatePluginPathAttributesAttrModel] = SettingsField(
@@ -310,6 +309,9 @@ class RendererAttributesModel(BaseSettingsModel):
 
 
 class ValidateRenderSettingsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
     arnold_render_attributes: list[RendererAttributesModel] = SettingsField(
         default_factory=list, title="Arnold Render Attributes")
     vray_render_attributes: list[RendererAttributesModel] = SettingsField(
@@ -344,17 +346,6 @@ class ExtractAlembicModel(BaseSettingsModel):
     families: list[str] = SettingsField(
         default_factory=list,
         title="Families")
-    autoSubd: bool = SettingsField(
-        title="Auto Subd",
-        description=(
-            "If this flag is present and the mesh has crease edges, crease "
-            "vertices or holes, the mesh (OPolyMesh) would now be written out "
-            "as an OSubD and crease info will be stored in the Alembic  file. "
-            "Otherwise, creases info won't be preserved in Alembic file unless"
-            " a custom Boolean attribute SubDivisionMesh has been added to "
-            "mesh node and its value is true."
-        )
-    )
     eulerFilter: bool = SettingsField(
         title="Euler Filter",
         description="Apply Euler filter while sampling rotations."
@@ -405,6 +396,10 @@ class ExtractAlembicModel(BaseSettingsModel):
     writeColorSets: bool = SettingsField(
         title="Write Color Sets",
         description="Write vertex colors with the geometry."
+    )
+    writeCreases: bool = SettingsField(
+        title="Write Creases",
+        description="Write the geometry's edge and vertex crease information."
     )
     writeFaceSets: bool = SettingsField(
         title="Write Face Sets",
@@ -613,7 +608,7 @@ class ExtractGPUCacheModel(BaseSettingsModel):
         title="Optimize Animations For Motion Blur"
     )
     writeMaterials: bool = SettingsField(title="Write Materials")
-    useBaseTessellation: bool = SettingsField(title="User Base Tesselation")
+    useBaseTessellation: bool = SettingsField(title="User Based Tessellation")
 
 
 class PublishersModel(BaseSettingsModel):
@@ -638,10 +633,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Instance In Context",
         section="Validators"
-    )
-    ValidateContainers: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Containers"
     )
     ValidateFrameRange: ValidateFrameRangeModel = SettingsField(
         default_factory=ValidateFrameRangeModel,
@@ -922,10 +913,6 @@ class PublishersModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Rig Controllers",
     )
-    ValidateAnimatedReferenceRig: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Animated Reference Rig",
-    )
     ValidateAnimationContent: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Animation Content",
@@ -1068,11 +1055,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": True
     },
-    "ValidateContainers": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
     "ValidateFrameRange": {
         "enabled": True,
         "optional": True,
@@ -1171,6 +1153,9 @@ DEFAULT_PUBLISH_SETTINGS = {
         ]
     },
     "ValidateRenderSettings": {
+        "enabled": True,
+        "active": True,
+        "optional": False,
         "arnold_render_attributes": [],
         "vray_render_attributes": [],
         "redshift_render_attributes": [],
@@ -1449,11 +1434,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "optional": True,
         "active": True
     },
-    "ValidateAnimatedReferenceRig": {
-        "enabled": True,
-        "optional": False,
-        "active": True
-    },
     "ValidateAnimationContent": {
         "enabled": True,
         "optional": False,
@@ -1611,7 +1591,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         ],
         "attr": "",
         "attrPrefix": "",
-        "autoSubd": False,
         "bake_attributes": [],
         "bake_attribute_prefixes": [],
         "dataFormat": "ogawa",
@@ -1635,7 +1614,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "renderableOnly": False,
         "stripNamespaces": True,
         "uvsOnly": False,
-        "uvWrite": False,
+        "uvWrite": True,
         "userAttr": "",
         "userAttrPrefix": "",
         "verbose": False,
@@ -1643,6 +1622,7 @@ DEFAULT_PUBLISH_SETTINGS = {
         "wholeFrameGeo": False,
         "worldSpace": True,
         "writeColorSets": False,
+        "writeCreases": False,
         "writeFaceSets": False,
         "writeNormals": True,
         "writeUVSets": False,

@@ -169,7 +169,7 @@ def validate_comp_prefs(comp=None, force_repair=False):
         def _on_repair():
             attributes = dict()
             for key, comp_key, _label in validations:
-                value = folder_value[key]
+                value = folder_attributes[key]
                 comp_key_full = "Comp.FrameFormat.{}".format(comp_key)
                 attributes[comp_key_full] = value
             comp.SetPrefs(attributes)
