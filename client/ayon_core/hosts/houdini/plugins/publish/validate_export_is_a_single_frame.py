@@ -42,7 +42,7 @@ class ValidateSingleFrame(pyblish.api.InstancePlugin,
         frame_end = instance.data.get("frameEndHandle")
 
         # This happens if instance node has no 'trange' parameter.
-        if (frame_start or frame_end) is None:
+        if frame_start is None or frame_end is None:
             cls.log.debug(
                 "No frame data, skipping check.."
             )
