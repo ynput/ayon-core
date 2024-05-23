@@ -37,7 +37,7 @@ class ConnectGeometry(InventoryAction):
             repre_id = container["representation"]
             repre_context = repre_contexts_by_id[repre_id]
 
-            product_type = repre_context["prouct"]["productType"]
+            product_type = repre_context["product"]["productType"]
 
             containers_by_product_type.setdefault(product_type, [])
             containers_by_product_type[product_type].append(container)
