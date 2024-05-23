@@ -144,15 +144,7 @@ class ToolGroupModel(BaseSettingsModel):
 
 
 class ApplicationsSettings(BaseSettingsModel):
-    """Applications settings
-
-    Define applications available to your studio, locations of their
-    executables, and their additional environment variables.
-
-    AYON uses the following definitions to populate the applications list
-    in project anatomy > attributes.
-    So, You'd still need modify your project anatomy settings.
-    """
+    """Applications settings"""
 
     maya: AppGroupWithPython = SettingsField(
         default_factory=AppGroupWithPython, title="Autodesk Maya")
