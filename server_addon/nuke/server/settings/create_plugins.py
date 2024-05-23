@@ -14,8 +14,8 @@ def instance_attributes_enum():
         {"value": "farm_rendering", "label": "Farm rendering"},
         {"value": "use_range_limit", "label": "Use range limit"},
         {
-            "value": "headless_farm_submission",
-            "label": "Headless Farm Submission"
+            "value": "render_on_farm",
+            "label": "Render On Farm"
         }
     ]
 

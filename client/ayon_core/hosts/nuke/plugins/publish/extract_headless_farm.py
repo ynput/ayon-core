@@ -7,16 +7,16 @@ import pyblish.api
 from ayon_core.pipeline import registered_host
 
 
-class ExtractHeadlessFarm(pyblish.api.InstancePlugin):
+class ExtractRenderOnFarm(pyblish.api.InstancePlugin):
     """Copy the workfile to a timestamped copy."""
 
     order = pyblish.api.ExtractorOrder + 0.499
-    label = "Extract Headless Farm"
+    label = "Extract Render On Farm"
     hosts = ["nuke"]
-    families = ["headless_farm"]
+    families = ["render_on_farm"]
 
     def process(self, instance):
-        if not instance.context.data.get("headless_farm", False):
+        if not instance.context.data.get("render_on_farm", False):
             return
 
         host = registered_host()

@@ -5,16 +5,16 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class CollectHeadlessFarm(pyblish.api.ContextPlugin):
-    """Setup instances for headless farm submission."""
+class CollectRenderOnFarm(pyblish.api.ContextPlugin):
+    """Setup instances for render on farm submission."""
 
     # Needs to be after CollectFromCreateContext
     order = pyblish.api.CollectorOrder - 0.49
-    label = "Collect Headless Farm"
+    label = "Collect Render On Farm"
     hosts = ["nuke"]
 
     def process(self, context):
-        if not context.data.get("headless_farm", False):
+        if not context.data.get("render_on_farm", False):
             return
 
         for instance in context:
@@ -28,24 +28,27 @@ class CollectHeadlessFarm(pyblish.api.ContextPlugin):
                 instance.data["active"] = False
                 continue
 
-            instance.data["families"].append("headless_farm")
+            instance.data["families"].append("render_on_farm")
+
+            # Enable for farm publishing.
+            instance.data["farm"] = True
+
+        # Skip workfile version incremental save.
+        instance.context.data["increment_script_version"] = False
 
 
-class SetupHeadlessFarm(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
-    """Setup instance for headless farm submission."""
+class SetupRenderOnFarm(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
+    """Setup instance for render on farm submission."""
 
     order = pyblish.api.CollectorOrder + 0.4999
-    label = "Setup Headless Farm"
+    label = "Setup Render On Farm"
     hosts = ["nuke"]
-    families = ["headless_farm"]
+    families = ["render_on_farm"]
 
     def process(self, instance):
-        # Enable for farm publishing.
-        instance.data["farm"] = True
-
         # Clear the families as we only want the main family, ei. no review
         # etc.
-        instance.data["families"] = ["headless_farm"]
+        instance.data["families"] = ["render_on_farm"]
 
         # Use the workfile instead of published.
         publish_attributes = instance.data["publish_attributes"]
