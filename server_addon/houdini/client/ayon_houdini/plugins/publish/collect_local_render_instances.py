@@ -134,6 +134,6 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 ]
             })
 
-        # Remove original render instance
-        # I can't remove it here as I still need it to trigger the render.
-        # context.remove(instance)
+        # Skip integrating original render instance.
+        # We are not removing it because it's used to trigger the render.
+        instance.data["integrate"] = False
