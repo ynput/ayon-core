@@ -59,6 +59,33 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     )
 
 
+class ValidateOutdatedContainersProfile(BaseSettingsModel):
+    _layout = "expanded"
+    # Filtering
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+    # Profile values
+    enabled: bool = SettingsField(True, title="Enabled")
+    optional: bool = SettingsField(True, title="Optional")
+    active: bool = SettingsField(True, title="Active")
+
+
+class ValidateOutdatedContainersModel(BaseSettingsModel):
+    """Validate if Publishing intent was selected.
+
+    It is possible to disable validation for specific publishing context
+    with profiles.
+    """
+
+    _isGroup = True
+    plugin_state_profiles: list[ValidateOutdatedContainersProfile] = SettingsField(
+        default_factory=list,
+        title="Plugin enable state profiles",
+    )
+
+
 class ValidateIntentProfile(BaseSettingsModel):
     _layout = "expanded"
     hosts: list[str] = SettingsField(default_factory=list, title="Host names")
@@ -770,6 +797,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidateBaseModel,
         title="Validate Version"
     )
+    ValidateOutdatedContainers: ValidateOutdatedContainersModel = SettingsField(
+        default_factory=ValidateOutdatedContainersModel,
+        title="Validate Containers"
+    )
     ValidateIntent: ValidateIntentModel = SettingsField(
         default_factory=ValidateIntentModel,
         title="Validate Intent"
@@ -854,6 +885,25 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "optional": False,
         "active": True
+    },
+    "ValidateOutdatedContainers": {
+        "plugin_state_profiles": [
+            {
+                # Default host names are based on original
+                #   filter of ValidateContainer pyblish plugin
+                "host_names": [
+                    "maya",
+                    "houdini",
+                    "nuke",
+                    "harmony",
+                    "photoshop",
+                    "aftereffects"
+                ],
+                "enabled": True,
+                "optional": True,
+                "active": True
+            }
+        ]
     },
     "ValidateIntent": {
         "enabled": False,

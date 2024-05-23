@@ -118,10 +118,6 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=CollectLocalRenderInstancesModel,
         title="Collect Local Render Instances."
     )
-    ValidateContainers: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
-        title="Validate Latest Containers.",
-        section="Validators")
     ValidateInstanceInContextHoudini: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Instance is in same Context.")
@@ -166,11 +162,6 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
                 ".*([Bb]eauty).*"
             ]
         }
-    },
-    "ValidateContainers": {
-        "enabled": True,
-        "optional": True,
-        "active": True
     },
     "ValidateInstanceInContextHoudini": {
         "enabled": True,
