@@ -723,7 +723,6 @@ class ProjectPushItemProcess:
         dst_project_name = self._item.dst_project_name
         dst_folder_id = self._item.dst_folder_id
         dst_task_name = self._item.dst_task_name
-        dst_task_name_low = dst_task_name.lower()
         new_folder_name = self._item.new_folder_name
         if not dst_folder_id and not new_folder_name:
             self._status.set_failed(
@@ -765,7 +764,7 @@ class ProjectPushItemProcess:
                 dst_project_name, folder_ids=[folder_entity["id"]]
             )
         }
-        task_info = folder_tasks.get(dst_task_name_low)
+        task_info = folder_tasks.get(dst_task_name.lower())
         if not task_info:
             self._status.set_failed(
                 f"Could find task with name \"{dst_task_name}\""
