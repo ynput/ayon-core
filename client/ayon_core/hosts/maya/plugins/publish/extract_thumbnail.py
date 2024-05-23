@@ -73,7 +73,7 @@ class ExtractThumbnail(publish.Extractor):
 
         representation = {
             "name": "thumbnail",
-            "ext": "jpg",
+            "ext": os.path.splitext(thumbnail)[1].lstrip("."),
             "files": thumbnail,
             "stagingDir": dst_staging,
             "thumbnail": True
