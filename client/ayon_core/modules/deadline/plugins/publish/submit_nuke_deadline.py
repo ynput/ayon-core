@@ -115,11 +115,8 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
         render_path = instance.data['path']
         script_path = context.data["currentFile"]
 
-        use_published_workfile = instance.data.get(
-            "use_published_workfile",
-            instance.data["attributeValues"].get(
-                "use_published_workfile", self.use_published_workfile
-            )
+        use_published_workfile = instance.data["attributeValues"].get(
+            "use_published_workfile", self.use_published_workfile
         )
         if use_published_workfile:
             script_path = self._get_published_workfile_path(context)
