@@ -1,5 +1,9 @@
 import pyblish.api
 
+from ayon_core.pipeline.publish import (
+    AYONPyblishPluginMixin
+)
+
 
 class CollectHeadlessFarm(pyblish.api.ContextPlugin):
     """Setup instances for headless farm submission."""
@@ -27,7 +31,7 @@ class CollectHeadlessFarm(pyblish.api.ContextPlugin):
             instance.data["families"].append("headless_farm")
 
 
-class SetupHeadlessFarm(pyblish.api.InstancePlugin):
+class SetupHeadlessFarm(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     """Setup instance for headless farm submission."""
 
     order = pyblish.api.CollectorOrder + 0.4999
@@ -44,5 +48,6 @@ class SetupHeadlessFarm(pyblish.api.InstancePlugin):
         instance.data["families"] = ["headless_farm"]
 
         # Use the workfile instead of published.
-        attribute_values = instance.data.setdefault("attributeValues", {})
-        attribute_values["use_published_workfile"] = False
+        publish_attributes = instance.data["publish_attributes"]
+        plugin_attributes = publish_attributes["NukeSubmitDeadline"]
+        plugin_attributes["use_published_workfile"] = False
