@@ -13,7 +13,7 @@ class IncrementScriptVersion(pyblish.api.ContextPlugin):
     hosts = ['nuke']
 
     def process(self, context):
-        if context.data.get("headless_farm", False):
+        if not context.data.get("increment_script_version", True):
             return
 
         assert all(result["success"] for result in context.data["results"]), (

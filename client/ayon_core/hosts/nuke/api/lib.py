@@ -1024,12 +1024,12 @@ def script_name():
     return nuke.root().knob("name").value()
 
 
-def add_button_headless_farm_submission(node):
-    name = "headlessFarmSubmission"
-    label = "Headless Farm Submission"
+def add_button_render_on_farm(node):
+    name = "renderOnFarm"
+    label = "Render On Farm"
     value = (
-        "from ayon_core.hosts.nuke.api.utils import submit_headless_farm;"
-        "submit_headless_farm(nuke.thisNode())"
+        "from ayon_core.hosts.nuke.api.utils import submit_render_on_farm;"
+        "submit_render_on_farm(nuke.thisNode())"
     )
     knob = nuke.PyScript_Knob(name, label, value)
     knob.clearFlag(nuke.STARTLINE)
@@ -1294,8 +1294,8 @@ def create_write_node(
                 GN.addKnob(link)
 
     # Adding render farm submission button.
-    if data.get("headless_farm_submission", False):
-        add_button_headless_farm_submission(GN)
+    if data.get("render_on_farm", False):
+        add_button_render_on_farm(GN)
 
     # adding write to read button
     add_button_write_to_read(GN)

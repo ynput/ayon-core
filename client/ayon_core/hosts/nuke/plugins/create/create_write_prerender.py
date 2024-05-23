@@ -47,14 +47,16 @@ class CreateWritePrerender(napi.NukeWriteCreator):
 
     def create_instance_node(self, product_name, instance_data):
         settings = self.project_settings["nuke"]["create"]
-        settings = settings["CreateWritePrerender"]["instance_attributes"]
+        settings = settings["CreateWritePrerender"]
 
         # add fpath_template
         write_data = {
             "creator": self.__class__.__name__,
             "productName": product_name,
             "fpath_template": self.temp_rendering_path_template,
-            "headless_farm_submission": "headless_farm_submission" in settings
+            "render_on_farm": (
+                "render_on_farm" in settings["instance_attributes"]
+            )
         }
 
         write_data.update(instance_data)

@@ -1,6 +1,5 @@
 import os
 import re
-import traceback
 
 import nuke
 
@@ -151,48 +150,19 @@ def is_headless():
     return QtWidgets.QApplication.instance() is None
 
 
-def create_error_report(context):
-    """Create an error report based on the given pyblish context.
-
-    This function iterates through the results in the context and formats any
-    errors into a comprehensive error report.
-
-    Args:
-        context (dict): Pyblish context.
-
-    Returns:
-        tuple: A tuple containing a boolean indicating success and a string
-        representing the error message.
-    """
-
-    error_message = ""
-    success = True
-    for result in context.data["results"]:
-        if result["success"]:
-            continue
-
-        success = False
-
-        err = result["error"]
-        error_message += "\n"
-        error_message += err.formatted_traceback
-
-    return success, error_message
-
-
-def submit_headless_farm(node):
+def submit_render_on_farm(node):
     # Ensure code is executed in root context.
     if nuke.root() == nuke.thisNode():
-        _submit_headless_farm(node)
+        _submit_render_on_farm(node)
     else:
         # If not in root context, move to the root context and then execute the
         # code.
         with nuke.root():
-            _submit_headless_farm(node)
+            _submit_render_on_farm(node)
 
 
-def _submit_headless_farm(node):
-    """Headless farm submission
+def _submit_render_on_farm(node):
+    """Render on farm submission
 
     This function prepares the context for farm submission, validates it,
     extracts relevant data, copies the current workfile to a timestamped copy,
@@ -217,15 +187,25 @@ def _submit_headless_farm(node):
     # Used in pyblish plugin to determine which instance to publish.
     context.data["node_name"] = node.name()
     # Used in pyblish plugins to determine whether to run or not.
-    context.data["headless_farm"] = True
+    context.data["render_on_farm"] = True
 
     context = pyblish.util.publish(context)
 
-    success, error_report = create_error_report(context)
+    error_message = ""
+    success = True
+    for result in context.data["results"]:
+        if result["success"]:
+            continue
+
+        success = False
+
+        err = result["error"]
+        error_message += "\n"
+        error_message += err.formatted_traceback
 
     if not success:
         show_message_dialog(
-            "Collection Errors", error_report, level="critical"
+            "Publish Errors", error_message, level="critical"
         )
         return
 
