@@ -46,7 +46,7 @@ def bake_container(container):
 
 
 def main():
-    context = context_dialog.show()
+    context = context_dialog.ask_for_context()
 
     if context is None:
         return
