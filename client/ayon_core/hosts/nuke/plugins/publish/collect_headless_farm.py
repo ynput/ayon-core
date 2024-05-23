@@ -44,4 +44,5 @@ class SetupHeadlessFarm(pyblish.api.InstancePlugin):
         instance.data["families"] = ["headless_farm"]
 
         # Use the workfile instead of published.
-        instance.data["use_published_workfile"] = False
+        attribute_values = instance.data.setdefault("attributeValues", {})
+        attribute_values["use_published_workfile"] = False
