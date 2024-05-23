@@ -31,8 +31,10 @@ class CreateTextures(Creator):
     channel_mapping = []
 
     def apply_settings(self, project_settings):
-        settings = project_settings["substancepainter"].get("create")  # noqa
-        self.channel_mapping = settings["CreateTextures"].get("channel_mapping")
+        settings = project_settings["substancepainter"].get("create", [])  # noqa
+        if settings:
+            self.channel_mapping = settings["CreateTextures"].get(
+                "channel_mapping", [])
 
 
     def create(self, product_name, instance_data, pre_create_data):
