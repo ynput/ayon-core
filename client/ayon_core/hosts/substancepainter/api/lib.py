@@ -681,7 +681,7 @@ def prompt_new_file_with_mesh(mesh_filepath):
     return project_mesh
 
 
-def get_export_preset_by_name(preset_name: str) -> substance_painter.export.Resource:
+def get_export_preset_by_name(preset_name: str):
     export_presets= get_export_presets()
     preset_full_name = export_presets[preset_name]
     for export_preset in substance_painter.export.list_resource_export_presets():
@@ -689,9 +689,7 @@ def get_export_preset_by_name(preset_name: str) -> substance_painter.export.Reso
             return export_preset
 
 
-def get_export_preset_with_filtered_maps(
-        export_preset: substance_painter.export.Resource,
-        channel_type_names: list[str]) -> dict:
+def get_export_preset_with_filtered_maps(export_preset, channel_type_names):
     filtered_maps = []
     for output_map in export_preset.list_output_maps():
         output_filename = output_map.get("fileName")
@@ -752,4 +750,3 @@ def set_layer_stack_opacity(node_ids, channel_types):
         for node in excluded_nodes:
             for channel, opacity in original_opacity_values:
                 node.set_opacity(opacity, channel)
-

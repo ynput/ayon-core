@@ -36,13 +36,8 @@ class CreateTextures(Creator):
     def apply_settings(self, project_settings):
         settings = project_settings["substancepainter"].get("create", [])  # noqa
         if settings:
-            self.channel_mapping = {
-            item["value"]: item["name"]
-            for item in settings["CreateTextures"].get(
+            self.channel_mapping = settings["CreateTextures"].get(
                 "channel_mapping", [])
-        }
-        else:
-            self.channel_mapping = get_channel_map_enum()
 
 
     def create(self, product_name, instance_data, pre_create_data):
@@ -112,10 +107,17 @@ class CreateTextures(Creator):
         return instance
 
     def get_instance_attr_defs(self):
+        if self.channel_mapping:
+            export_channel_enum = {
+                item["value"]: item["name"]
+                for item in self.channel_mapping
+            }
+        else:
+            export_channel_enum = get_channel_map_enum()
 
         return [
             EnumDef("exportChannel",
-                    items=self.channel_mapping,
+                    items=export_channel_enum,
                     multiselection=True,
                     default=None,
                     label="Export Channel(s)",
