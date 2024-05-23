@@ -656,20 +656,18 @@ def get_export_presets_by_filtering(export_preset_name, channel_type_list):
         dict: export preset data
     """
 
-    new_maps = []
-
     export_presets = get_export_presets()
     export_preset_nice_name = export_presets[export_preset_name]
     resource_presets = substance_painter.export.list_resource_export_presets()
-    preset = next(
-        (
-            preset for preset in resource_presets
-            if preset.resource_id.name == export_preset_nice_name
-        ), None
-    )
-    if preset is None:
+    for preset in resource_presets:
+        if preset.resource_id.name == export_preset_nice_name:
+            break
+    else:
+        # No matching preset found
         return {}
+
     maps = preset.list_output_maps()
+    new_maps = []
     for channel_map in maps:
         for n in channel_type_list:
             if not channel_map.get("fileName"):
