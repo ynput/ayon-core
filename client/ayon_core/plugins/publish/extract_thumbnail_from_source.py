@@ -26,7 +26,7 @@ from ayon_core.lib import (
 
 
 class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
-    """Create jpg thumbnail for instance based on 'thumbnailSource'.
+    """Create png thumbnail for instance based on 'thumbnailSource'.
 
     Thumbnail source must be a single image or video filepath.
     """
@@ -61,7 +61,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         dst_staging, dst_filename = os.path.split(dst_filepath)
         new_repre = {
             "name": "thumbnail",
-            "ext": "jpg",
+            "ext": "png",
             "files": dst_filename,
             "stagingDir": dst_staging,
             "thumbnail": True,
@@ -101,7 +101,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
 
         self.log.debug("Thumbnail source: {}".format(thumbnail_source))
         src_basename = os.path.basename(thumbnail_source)
-        dst_filename = os.path.splitext(src_basename)[0] + "_thumb.jpg"
+        dst_filename = os.path.splitext(src_basename)[0] + "_thumb.png"
         full_output_path = os.path.join(dst_staging, dst_filename)
 
         if oiio_supported:

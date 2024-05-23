@@ -21,7 +21,7 @@ from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
 
 
 class ExtractThumbnail(pyblish.api.InstancePlugin):
-    """Create jpg thumbnail from sequence using ffmpeg"""
+    """Create png thumbnail from sequence using ffmpeg"""
 
     label = "Extract Thumbnail"
     order = pyblish.api.ExtractorOrder + 0.49
@@ -197,7 +197,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             self.log.debug("input {}".format(full_input_path))
 
             filename = os.path.splitext(input_file)[0]
-            jpeg_file = filename + "_thumb.jpg"
+            jpeg_file = filename + "_thumb.png"
             full_output_path = os.path.join(dst_staging, jpeg_file)
             colorspace_data = repre.get("colorspaceData")
 
@@ -260,12 +260,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
             new_repre = {
                 "name": repre_name,
-                "ext": "jpg",
+                "ext": "png",
                 "files": jpeg_file,
                 "stagingDir": dst_staging,
                 "thumbnail": True,
                 "tags": new_repre_tags,
-                # If source image is jpg then there can be clash when
+                # If source image is png then there can be clash when
                 # integrating to making the output name explicit.
                 "outputName": "thumbnail"
             }
