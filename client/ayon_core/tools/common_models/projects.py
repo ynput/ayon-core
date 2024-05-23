@@ -163,6 +163,13 @@ class ProjectsModel(object):
         self._projects_by_name.reset()
 
     def refresh(self):
+        """Refresh project items.
+
+        This method will requery list of ProjectItem returned by
+        'get_project_items'.
+
+        To reset all cached items use 'reset' method.
+        """
         self._refresh_projects_cache()
 
     def get_project_items(self, sender):
