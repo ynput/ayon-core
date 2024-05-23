@@ -644,67 +644,57 @@ def prompt_new_file_with_mesh(mesh_filepath):
     return project_mesh
 
 
-def get_export_presets_by_filtering(export_preset_name, channel_type_list):
-    """Function to get export presets included with specific channels
-    requested by users.
+def get_export_preset_by_name(preset_name: str) -> substance_painter.export.Resource:
+    export_presets= get_export_presets()
+    preset_full_name = export_presets[preset_name]
+    for export_preset in substance_painter.export.list_resource_export_presets():
+        if export_preset.resource_id.name == preset_full_name:
+            return export_preset
 
-    Args:
-        export_preset_name (str): Name of export preset
-        channel_type_list (list): A list of channel type requested by users
 
-    Returns:
-        dict: export preset data
-    """
+def get_export_preset_with_filtered_maps(
+        export_preset: substance_painter.export.Resource,
+        channel_type_names: list[str]) -> dict:
+    filtered_maps = []
+    for output_map in export_preset.list_output_maps():
+        output_filename = output_map.get("fileName")
+        if not output_filename:
+            continue
 
-    export_presets = get_export_presets()
-    export_preset_nice_name = export_presets[export_preset_name]
-    resource_presets = substance_painter.export.list_resource_export_presets()
-    for preset in resource_presets:
-        if preset.resource_id.name == export_preset_nice_name:
-            break
-    else:
-        # No matching preset found
-        return {}
-
-    maps = preset.list_output_maps()
-    new_maps = []
-    for channel_map in maps:
-        for n in channel_type_list:
-            if not channel_map.get("fileName"):
-                continue
-
-            if n in channel_map["fileName"]:
-                new_maps.append(channel_map)
+        if any(
+            channel_type_name in output_filename
+            for channel_type_name in channel_type_names
+        ):
+            filtered_maps.append(output_map)
     # Create a new preset
     return {
         "exportPresets": [
             {
-                "name": export_preset_name,
-                "maps": new_maps
+                "name": export_preset.resource_id.name,
+                "maps": filtered_maps
             }
         ],
     }
 
 
 @contextlib.contextmanager
-def set_layer_stack_opacity(node_ids, channel_type):
+def set_layer_stack_opacity(node_ids, channel_types):
     """Function to set the opacity of the layer stack during
     context
     Args:
         node_ids (list): A list of substance painter node ids
-        channel_type (list): A list of channel types
+        channel_types (list): A list of channel types
     """
-
+    # Do nothing
+    if not node_ids or not channel_types:
+        yield
+        return
     all_selected_nodes = []
-    opacity_set_list = []
+    original_opacity_values = []
     stack = substance_painter.textureset.get_active_stack()
     stack_root_layers = (
         substance_painter.layerstack.get_root_layer_nodes(stack)
     )
-    # Do nothing
-    if not node_ids or not channel_type:
-        yield
-        return
 
     for node_id in node_ids:
         node = substance_painter.layerstack.get_node_by_uid(int(node_id))
@@ -712,16 +702,16 @@ def set_layer_stack_opacity(node_ids, channel_type):
     filtered_nodes = {node for node in stack_root_layers
                       if node not in all_selected_nodes}
     for node in filtered_nodes:
-        for channel in channel_type:
+        for channel in channel_types:
             chan = getattr(substance_painter.textureset.ChannelType, channel)
-            opacity_set_list.append((chan, node.get_opacity(chan)))
+            original_opacity_values.append((chan, node.get_opacity(chan)))
     try:
         for node in filtered_nodes:
-            for channel, _ in opacity_set_list:
+            for channel, _ in original_opacity_values:
                 node.set_opacity(0.0, channel)
         yield
     finally:
         for node in filtered_nodes:
-            for channel, opacity in opacity_set_list:
+            for channel, opacity in original_opacity_values:
                 node.set_opacity(opacity, channel)
 
