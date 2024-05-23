@@ -48,7 +48,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
             "frameEnd": last,
             "version": version_entity["version"],
         }
-        for k in ["source", "author", "fps"]:
+        for k in ["source", "fps"]:
             data_imprint[k] = version_attributes[k]
 
         # getting file path
@@ -123,7 +123,7 @@ class AlembicCameraLoader(load.LoaderPlugin):
         }
 
         # add attributes from the version to imprint to metadata knob
-        for k in ["source", "author", "fps"]:
+        for k in ["source", "fps"]:
             data_imprint[k] = version_attributes[k]
 
         # getting file path
