@@ -80,17 +80,21 @@ def get_engine_versions(env=None):
 def get_editor_exe_path(engine_path: Path, engine_version: str) -> Path:
     """Get UE Editor executable path."""
     ue_path = engine_path / "Engine/Binaries"
+
+    ue_name = "UnrealEditor"
+
+    # handle older versions of Unreal Engine
+    if engine_version.split(".")[0] == "4":
+        ue_name = "UE4Editor"
+
     if platform.system().lower() == "windows":
-        if engine_version.split(".")[0] == "4":
-            ue_path /= "Win64/UE4Editor.exe"
-        elif engine_version.split(".")[0] == "5":
-            ue_path /= "Win64/UnrealEditor.exe"
+            ue_path /= f"Win64/{ue_name}.exe"
 
     elif platform.system().lower() == "linux":
-        ue_path /= "Linux/UE4Editor"
+        ue_path /= f"Linux/{ue_name}"
 
     elif platform.system().lower() == "darwin":
-        ue_path /= "Mac/UE4Editor"
+        ue_path /= f"Mac/{ue_name}"
 
     return ue_path
 

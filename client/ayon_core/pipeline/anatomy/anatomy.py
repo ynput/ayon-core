@@ -3,11 +3,16 @@ import re
 import copy
 import platform
 import collections
-import time
 
 import ayon_api
 
-from ayon_core.lib import Logger, get_local_site_id, StringTemplate
+from ayon_core.lib import (
+    Logger,
+    get_local_site_id,
+    StringTemplate,
+    CacheItem,
+    NestedCacheItem,
+)
 from ayon_core.addon import AddonsManager
 
 from .exceptions import RootCombinationError, ProjectNotSet
@@ -397,62 +402,11 @@ class BaseAnatomy(object):
             )
 
 
-class CacheItem:
-    """Helper to cache data.
-
-    Helper does not handle refresh of data and does not mark data as outdated.
-    Who uses the object should check of outdated state on his own will.
-    """
-
-    default_lifetime = 10
-
-    def __init__(self, lifetime=None):
-        self._data = None
-        self._cached = None
-        self._lifetime = lifetime or self.default_lifetime
-
-    @property
-    def data(self):
-        """Cached data/object.
-
-        Returns:
-            Any: Whatever was cached.
-        """
-
-        return self._data
-
-    @property
-    def is_outdated(self):
-        """Item has outdated cache.
-
-        Lifetime of cache item expired or was not yet set.
-
-        Returns:
-            bool: Item is outdated.
-        """
-
-        if self._cached is None:
-            return True
-        return (time.time() - self._cached) > self._lifetime
-
-    def update_data(self, data):
-        """Update cache of data.
-
-        Args:
-            data (Any): Data to cache.
-        """
-
-        self._data = data
-        self._cached = time.time()
-
-
 class Anatomy(BaseAnatomy):
-    _sitesync_addon_cache = CacheItem()
-    _project_cache = collections.defaultdict(CacheItem)
-    _default_site_id_cache = collections.defaultdict(CacheItem)
-    _root_overrides_cache = collections.defaultdict(
-        lambda: collections.defaultdict(CacheItem)
-    )
+    _project_cache = NestedCacheItem(lifetime=10)
+    _sitesync_addon_cache = CacheItem(lifetime=60)
+    _default_site_id_cache = NestedCacheItem(lifetime=60)
+    _root_overrides_cache = NestedCacheItem(2, lifetime=60)
 
     def __init__(
         self, project_name=None, site_name=None, project_entity=None
@@ -477,18 +431,18 @@ class Anatomy(BaseAnatomy):
     @classmethod
     def get_project_entity_from_cache(cls, project_name):
         project_cache = cls._project_cache[project_name]
-        if project_cache.is_outdated:
+        if not project_cache.is_valid:
             project_cache.update_data(ayon_api.get_project(project_name))
-        return copy.deepcopy(project_cache.data)
+        return copy.deepcopy(project_cache.get_data())
 
     @classmethod
     def get_sitesync_addon(cls):
-        if cls._sitesync_addon_cache.is_outdated:
+        if not cls._sitesync_addon_cache.is_valid:
             manager = AddonsManager()
             cls._sitesync_addon_cache.update_data(
                 manager.get_enabled_addon("sitesync")
             )
-        return cls._sitesync_addon_cache.data
+        return cls._sitesync_addon_cache.get_data()
 
     @classmethod
     def _get_studio_roots_overrides(cls, project_name):
@@ -533,14 +487,14 @@ class Anatomy(BaseAnatomy):
         elif not site_name:
             # Use sync server to receive active site name
             project_cache = cls._default_site_id_cache[project_name]
-            if project_cache.is_outdated:
+            if not project_cache.is_valid:
                 project_cache.update_data(
                     sitesync_addon.get_active_site_type(project_name)
                 )
-            site_name = project_cache.data
+            site_name = project_cache.get_data()
 
         site_cache = cls._root_overrides_cache[project_name][site_name]
-        if site_cache.is_outdated:
+        if not site_cache.is_valid:
             if site_name == "studio":
                 # Handle studio root overrides without sync server
                 # - studio root overrides can be done even without sync server
@@ -553,4 +507,4 @@ class Anatomy(BaseAnatomy):
                     project_name, site_name
                 )
             site_cache.update_data(roots_overrides)
-        return site_cache.data
+        return site_cache.get_data()
