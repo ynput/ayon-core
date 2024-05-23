@@ -130,7 +130,6 @@ def _get_project_items_from_entitiy(projects):
 class ProjectsModel(object):
     def __init__(self, controller):
         self._projects_cache = CacheItem(default_factory=list)
-        self._project_items_by_name = {}
         self._project_statuses_cache = NestedCacheItem(
             levels=1, default_factory=list
         )
@@ -143,7 +142,6 @@ class ProjectsModel(object):
 
     def reset(self):
         self._projects_cache.reset()
-        self._project_items_by_name = {}
         self._project_statuses_cache.reset()
         self._projects_by_name.reset()
 
