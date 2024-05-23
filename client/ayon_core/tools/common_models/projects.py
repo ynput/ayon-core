@@ -5,7 +5,7 @@ import ayon_api
 import six
 
 from ayon_core.style import get_default_entity_icon_color
-from ayon_core.lib import CacheItem
+from ayon_core.lib import CacheItem, NestedCacheItem
 
 PROJECTS_MODEL_SENDER = "projects.model"
 
@@ -15,6 +15,49 @@ class AbstractHierarchyController:
     @abstractmethod
     def emit_event(self, topic, data, source):
         pass
+
+
+class StatusItem:
+    """Item representing status of project.
+
+    Args:
+        name (str): Status name ("Not ready").
+        color (str): Status color in hex ("#434a56").
+        short (str): Short status name ("NRD").
+        icon (str): Icon name in MaterialIcons ("fiber_new").
+        state (Literal["not_started", "in_progress", "done", "blocked"]):
+            Status state.
+
+    """
+    def __init__(self, name, color, short, icon, state):
+        self.name = name
+        self.color = color
+        self.short = short
+        self.icon = icon
+        self.state = state
+
+    def to_data(self):
+        return {
+            "name": self.name,
+            "color": self.color,
+            "short": self.short,
+            "icon": self.icon,
+            "state": self.state,
+        }
+
+    @classmethod
+    def from_data(cls, data):
+        return cls(**data)
+
+    @classmethod
+    def from_project_item(cls, status_data):
+        return cls(
+            name=status_data["name"],
+            color=status_data["color"],
+            short=status_data["shortName"],
+            icon=status_data["icon"],
+            state=status_data["state"],
+        )
 
 
 class ProjectItem:
@@ -89,6 +132,9 @@ class ProjectsModel(object):
         self._projects_cache = CacheItem(default_factory=list)
         self._project_items_by_name = {}
         self._projects_by_name = {}
+        self._project_statuses_cache = NestedCacheItem(
+            levels=1, default_factory=list
+        )
 
         self._is_refreshing = False
         self._controller = controller
@@ -97,6 +143,7 @@ class ProjectsModel(object):
         self._projects_cache.reset()
         self._project_items_by_name = {}
         self._projects_by_name = {}
+        self._project_statuses_cache.reset()
 
     def refresh(self):
         self._refresh_projects_cache()
@@ -124,6 +171,34 @@ class ProjectsModel(object):
             self._projects_by_name[project_name] = entity
         return self._projects_by_name[project_name]
 
+    def get_project_status_items(self, project_name, sender):
+        """Get project status items.
+
+        Args:
+            project_name (str): Project name.
+            sender (Union[str, None]): Name of sender who asked for items.
+
+        Returns:
+            list[StatusItem]: Status items for project.
+
+        """
+        statuses_cache = self._project_statuses_cache[project_name]
+        if not statuses_cache.is_valid:
+            with self._project_statuses_refresh_event_manager(
+                sender, project_name
+            ):
+                project_entity = None
+                if project_name:
+                    project_entity = self.get_project_entity(project_name)
+                statuses = []
+                if project_entity:
+                    statuses = [
+                        StatusItem.from_project_item(status)
+                        for status in project_entity["statuses"]
+                    ]
+                statuses_cache.update_data(statuses)
+        return statuses_cache.get_data()
+
     @contextlib.contextmanager
     def _project_refresh_event_manager(self, sender):
         self._is_refreshing = True
@@ -142,6 +217,23 @@ class ProjectsModel(object):
                 PROJECTS_MODEL_SENDER
             )
             self._is_refreshing = False
+
+    @contextlib.contextmanager
+    def _project_statuses_refresh_event_manager(self, sender, project_name):
+        self._controller.emit_event(
+            "projects.statuses.refresh.started",
+            {"sender": sender, "project_name": project_name},
+            PROJECTS_MODEL_SENDER
+        )
+        try:
+            yield
+
+        finally:
+            self._controller.emit_event(
+                "projects.statuses.refresh.finished",
+                {"sender": sender, "project_name": project_name},
+                PROJECTS_MODEL_SENDER
+            )
 
     def _refresh_projects_cache(self, sender=None):
         if self._is_refreshing:
