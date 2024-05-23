@@ -3,7 +3,6 @@
 import inspect
 
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
 
 import hou
 
@@ -26,7 +25,7 @@ class CreateUSDLook(plugin.HoudiniCreator):
         instance = super(CreateUSDLook, self).create(
             product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
