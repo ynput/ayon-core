@@ -343,7 +343,7 @@ class ContextDialogController:
 
     def store_output(self):
         if not self._output_path:
-            return self.get_selected_context()
+            return
 
         dirpath = os.path.dirname(self._output_path)
         os.makedirs(dirpath, exist_ok=True)
