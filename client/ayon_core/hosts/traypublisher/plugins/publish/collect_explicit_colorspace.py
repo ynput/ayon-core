@@ -1,10 +1,7 @@
 import pyblish.api
-from ayon_core.pipeline import (
-    publish,
-    registered_host
-)
 from ayon_core.lib import EnumDef
 from ayon_core.pipeline import colorspace
+from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import KnownPublishError
 
 
@@ -19,9 +16,10 @@ class CollectColorspace(pyblish.api.InstancePlugin,
     families = ["render", "plate", "reference", "image", "online"]
     enabled = False
 
-    colorspace_items = [
+    default_colorspace_items = [
         (None, "Don't override")
     ]
+    colorspace_items = list(default_colorspace_items)
     colorspace_attr_show = False
     config_items = None
 
@@ -69,14 +67,13 @@ class CollectColorspace(pyblish.api.InstancePlugin,
 
     @classmethod
     def apply_settings(cls, project_settings):
-        host = registered_host()
-        host_name = host.name
-        project_name = host.get_current_project_name()
-        config_data = colorspace.get_imageio_config(
-            project_name, host_name,
+        config_data = colorspace.get_current_context_imageio_config_preset(
             project_settings=project_settings
         )
 
+        enabled = False
+        colorspace_items = list(cls.default_colorspace_items)
+        config_items = None
         if config_data:
             filepath = config_data["path"]
             config_items = colorspace.get_ocio_config_colorspaces(filepath)
@@ -85,9 +82,11 @@ class CollectColorspace(pyblish.api.InstancePlugin,
                 include_aliases=True,
                 include_roles=True
             )
-            cls.config_items = config_items
-            cls.colorspace_items.extend(labeled_colorspaces)
-            cls.enabled = True
+            colorspace_items.extend(labeled_colorspaces)
+
+        cls.config_items = config_items
+        cls.colorspace_items = colorspace_items
+        cls.enabled = enabled
 
     @classmethod
     def get_attribute_defs(cls):

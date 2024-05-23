@@ -1110,10 +1110,7 @@ def apply_colorspace_project():
     '''
     # backward compatibility layer
     # TODO: remove this after some time
-    config_data = get_imageio_config(
-        project_name=get_current_project_name(),
-        host_name="hiero"
-    )
+    config_data = get_current_context_imageio_config_preset()
 
     if config_data:
         presets.update({
