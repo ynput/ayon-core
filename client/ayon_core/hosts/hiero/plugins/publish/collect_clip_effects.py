@@ -86,7 +86,6 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
                 category_by_effect[cls] = key
 
         effects_categorized = {k: {} for k in effect_categories.keys()}
-        effects_categorized[""] = {}
         for key, value in effects.items():
             if key == "assignTo":
                 continue
@@ -96,6 +95,9 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
             for cls in category_by_effect.keys():
                 if cls in value["class"]:
                     found_cls = cls
+
+            if not found_cls:
+                continue
 
             effects_categorized[category_by_effect[found_cls]][key] = value
 
@@ -124,6 +126,10 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
                 continue
 
             effects_categorized[category]["assignTo"] = effects["assignTo"]
+
+        # If no effects have been categorized, publish all effects together.
+        if not effects_categorized:
+            effects_categorized[""] = effects
 
         for category, effects in effects_categorized.items():
             product_name = "".join(product_name_split)
