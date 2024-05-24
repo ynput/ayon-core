@@ -22,7 +22,8 @@ from .products_model import (
 from .products_delegates import (
     VersionDelegate,
     LoadedInSceneDelegate,
-    SiteSyncDelegate
+    StatusDelegate,
+    SiteSyncDelegate,
 )
 from .actions_utils import show_actions_menu
 
@@ -89,6 +90,7 @@ class ProductsWidget(QtWidgets.QWidget):
         90,   # Product type
         130,  # Folder label
         60,   # Version
+        100,   # Status
         125,  # Time
         75,   # Author
         75,   # Frames
@@ -129,12 +131,14 @@ class ProductsWidget(QtWidgets.QWidget):
 
         version_delegate = VersionDelegate()
         time_delegate = PrettyTimeDelegate()
+        status_delegate = StatusDelegate()
         in_scene_delegate = LoadedInSceneDelegate()
         sitesync_delegate = SiteSyncDelegate()
 
         for col, delegate in (
             (products_model.version_col, version_delegate),
             (products_model.published_time_col, time_delegate),
+            (products_model.status_col, status_delegate),
             (products_model.in_scene_col, in_scene_delegate),
             (products_model.sitesync_avail_col, sitesync_delegate),
         ):
@@ -172,6 +176,7 @@ class ProductsWidget(QtWidgets.QWidget):
 
         self._version_delegate = version_delegate
         self._time_delegate = time_delegate
+        self._status_delegate = status_delegate
         self._in_scene_delegate = in_scene_delegate
         self._sitesync_delegate = sitesync_delegate
 
