@@ -8,7 +8,8 @@ class CollectHoudiniReviewData(pyblish.api.InstancePlugin):
     label = "Collect Review Data"
     # This specific order value is used so that
     # this plugin runs after CollectRopFrameRange
-    order = pyblish.api.CollectorOrder + 0.1
+    # Also after CollectLocalRenderInstances
+    order = pyblish.api.CollectorOrder + 0.13
     hosts = ["houdini"]
     families = ["review"]
 
@@ -28,7 +29,8 @@ class CollectHoudiniReviewData(pyblish.api.InstancePlugin):
         ropnode_path = instance.data["instance_node"]
         ropnode = hou.node(ropnode_path)
 
-        camera_path = ropnode.parm("camera").eval()
+        # Get camera based on the instance_node type.
+        camera_path = self._get_camera_path(ropnode)
         camera_node = hou.node(camera_path)
         if not camera_node:
             self.log.warning("No valid camera node found on review node: "
@@ -55,3 +57,29 @@ class CollectHoudiniReviewData(pyblish.api.InstancePlugin):
         # Store focal length in `burninDataMembers`
         burnin_members = instance.data.setdefault("burninDataMembers", {})
         burnin_members["focalLength"] = focal_length
+
+    def _get_camera_path(self, ropnode):
+        """Get the camera path associated with the given rop node.
+
+        This function evaluates the camera parameter according to the
+        type of the given rop node.
+
+        Returns:
+            Union[str, None]: Camera path or None.
+
+            This function can return empty string if the camera
+            path is empty i.e. no camera path.
+        """
+
+        if ropnode.type().name() in {
+            "opengl", "karma", "ifd", "arnold"
+        }:
+            return ropnode.parm("camera").eval()
+
+        elif ropnode.type().name() == "Redshift_ROP":
+            return ropnode.parm("RS_renderCamera").eval()
+
+        elif ropnode.type().name() == "vray_renderer":
+            return ropnode.parm("render_camera").eval()
+
+        return None

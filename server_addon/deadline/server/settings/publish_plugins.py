@@ -191,7 +191,6 @@ class NukeSubmitDeadlineModel(BaseSettingsModel):
 
     @validator(
         "limit_groups",
-        "env_allowed_keys",
         "env_search_replace_values")
     def validate_unique_names(cls, value):
         ensure_unique_names(value)

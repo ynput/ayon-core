@@ -92,10 +92,10 @@ class OxAbcLoader(load.LoaderPlugin):
             abc.Parent = container
             abc.name = f"{namespace}:{abc.name}"
             ox_abc_objects.append(abc)
-            ox_transform = f"{abc.name}.transform"
+            ox_transform = f"{abc}.transform"
             if ox_transform in transform_data.keys():
                 abc.pos = transform_data[ox_transform] or 0
-                abc.scale = transform_data[f"{abc.name}.scale"] or 0
+                abc.scale = transform_data[f"{abc}.scale"] or 0
         update_custom_attribute_data(node, ox_abc_objects)
         lib.imprint(
             container["instance_node"],
