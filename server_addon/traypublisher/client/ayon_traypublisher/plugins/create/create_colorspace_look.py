@@ -15,13 +15,13 @@ from ayon_core.pipeline import (
     CreatorError
 )
 from ayon_core.pipeline import colorspace
-from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
+from ayon_traypublisher.api.plugin import TrayPublishCreator
 
 
 class CreateColorspaceLook(TrayPublishCreator):
     """Creates colorspace look files."""
 
-    identifier = "io.openpype.creators.traypublisher.colorspace_look"
+    identifier = "io.ayon.creators.traypublisher.colorspace_look"
     label = "Colorspace Look"
     product_type = "ociolook"
     description = "Publishes color space look file."

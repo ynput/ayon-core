@@ -17,8 +17,8 @@ from ayon_core.pipeline.create import (
     TaskNotSetError,
 )
 
-from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
-from ayon_core.hosts.traypublisher.batch_parsing import (
+from ayon_traypublisher.api.plugin import TrayPublishCreator
+from ayon_traypublisher.batch_parsing import (
     get_folder_entity_from_filename
 )
 
