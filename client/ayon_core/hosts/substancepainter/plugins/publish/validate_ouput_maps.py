@@ -25,16 +25,22 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         config = instance.data["exportConfig"]
-
+        creator_attrs = instance.data["creator_attributes"]
         # Substance Painter API does not allow to query the actual output maps
         # it will generate without actually exporting the files. So we try to
         # generate the smallest size / fastest export as possible
         config = copy.deepcopy(config)
+        if creator_attrs.get("exportChannel", []):
+                for export_preset in config.get("exportPresets", {}):
+                    if not export_preset.get("maps"):
+                        raise PublishValidationError(
+                            "No Texture Map Exported with texture set:{}.".format(
+                                instance.name)
+                        )
         parameters = config["exportParameters"][0]["parameters"]
         parameters["sizeLog2"] = [1, 1]     # output 2x2 images (smallest)
         parameters["paddingAlgorithm"] = "passthrough"  # no dilation (faster)
         parameters["dithering"] = False     # no dithering (faster)
-
         result = substance_painter.export.export_project_textures(config)
         if result.status != substance_painter.export.ExportStatus.Success:
             raise PublishValidationError(
