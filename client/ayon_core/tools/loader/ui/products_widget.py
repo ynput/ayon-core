@@ -128,20 +128,17 @@ class ProductsWidget(QtWidgets.QWidget):
             products_view.setColumnWidth(idx, width)
 
         version_delegate = VersionDelegate()
-        products_view.setItemDelegateForColumn(
-            products_model.version_col, version_delegate)
-
         time_delegate = PrettyTimeDelegate()
-        products_view.setItemDelegateForColumn(
-            products_model.published_time_col, time_delegate)
-
         in_scene_delegate = LoadedInSceneDelegate()
-        products_view.setItemDelegateForColumn(
-            products_model.in_scene_col, in_scene_delegate)
-
         sitesync_delegate = SiteSyncDelegate()
-        products_view.setItemDelegateForColumn(
-            products_model.sitesync_avail_col, sitesync_delegate)
+
+        for col, delegate in (
+            (products_model.version_col, version_delegate),
+            (products_model.published_time_col, time_delegate),
+            (products_model.in_scene_col, in_scene_delegate),
+            (products_model.sitesync_avail_col, sitesync_delegate),
+        ):
+            products_view.setItemDelegateForColumn(col, delegate)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
