@@ -188,10 +188,16 @@ class WorkareaModel:
             if ext not in self._extensions:
                 continue
 
-            modified = os.path.getmtime(filepath)
-            items.append(
-                FileItem(workdir, filename, modified)
+            workfile_info = self._controller.get_workfile_info(
+                folder_id, task_id, filepath
             )
+            modified = os.path.getmtime(filepath)
+            items.append(FileItem(
+                workdir,
+                filename,
+                modified,
+                workfile_info.created_by
+            ))
         return items
 
     def _get_template_key(self, fill_data):
@@ -459,8 +465,10 @@ class WorkfileEntitiesModel:
         self, folder_id, task_id, workfile_info, filepath
     ):
         note = ""
+        created_by = None
         if workfile_info:
             note = workfile_info["attrib"].get("description") or ""
+            created_by = workfile_info.get("createdBy")
 
         filestat = os.stat(filepath)
         return WorkfileInfo(
@@ -470,6 +478,7 @@ class WorkfileEntitiesModel:
             filesize=filestat.st_size,
             creation_time=filestat.st_ctime,
             modification_time=filestat.st_mtime,
+            created_by=created_by,
             note=note
         )
 
@@ -481,7 +490,7 @@ class WorkfileEntitiesModel:
         for workfile_info in ayon_api.get_workfiles_info(
             self._controller.get_current_project_name(),
             task_ids=[task_id],
-            fields=["id", "path", "attrib"],
+            fields=["id", "path", "attrib", "createdBy"],
         ):
             workfile_identifier = self._get_workfile_info_identifier(
                 folder_id, task_id, workfile_info["path"]
@@ -599,7 +608,7 @@ class PublishWorkfilesModel:
         return self._cached_repre_extensions
 
     def _file_item_from_representation(
-        self, repre_entity, project_anatomy, task_name=None
+        self, repre_entity, project_anatomy, author, task_name=None
     ):
         if task_name is not None:
             task_info = repre_entity["context"].get("task")
@@ -634,6 +643,7 @@ class PublishWorkfilesModel:
             dirpath,
             filename,
             created_at.float_timestamp,
+            author,
             repre_entity["id"]
         )
 
@@ -643,9 +653,9 @@ class PublishWorkfilesModel:
         # Get subset docs of folder
         product_entities = ayon_api.get_products(
             project_name,
-            folder_ids=[folder_id],
-            product_types=["workfile"],
-            fields=["id", "name"]
+            folder_ids={folder_id},
+            product_types={"workfile"},
+            fields={"id", "name"}
         )
 
         output = []
@@ -657,25 +667,30 @@ class PublishWorkfilesModel:
         version_entities = ayon_api.get_versions(
             project_name,
             product_ids=product_ids,
-            fields=["id", "productId"]
+            fields={"id", "author"}
         )
-        version_ids = {version["id"] for version in version_entities}
-        if not version_ids:
+        versions_by_id = {version["id"]: version for version in version_entities}
+        if not versions_by_id:
             return output
 
         # Query representations of filtered versions and add filter for
         #   extension
         repre_entities = ayon_api.get_representations(
             project_name,
-            version_ids=version_ids
+            version_ids=set(versions_by_id)
         )
         project_anatomy = self._controller.project_anatomy
 
         # Filter queried representations by task name if task is set
         file_items = []
         for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            version_entity = versions_by_id[version_id]
             file_item = self._file_item_from_representation(
-                repre_entity, project_anatomy, task_name
+                repre_entity,
+                project_anatomy,
+                task_name,
+                version_entity["author"]
             )
             if file_item is not None:
                 file_items.append(file_item)
