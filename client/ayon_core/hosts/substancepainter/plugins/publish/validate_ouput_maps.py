@@ -30,13 +30,27 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
         # it will generate without actually exporting the files. So we try to
         # generate the smallest size / fastest export as possible
         config = copy.deepcopy(config)
-        if creator_attrs.get("exportChannel", []):
-                for export_preset in config.get("exportPresets", {}):
-                    if not export_preset.get("maps"):
-                        raise PublishValidationError(
-                            "No Texture Map Exported with texture set:{}.".format(
-                                instance.name)
-                        )
+        export_channel = creator_attrs.get("exportChannel", [])
+        tmp_export_channel = copy.deepcopy(export_channel)
+        if export_channel:
+            for export_preset in config.get("exportPresets", {}):
+                if not export_preset.get("maps", {}):
+                    raise PublishValidationError(
+                        "No Texture Map Exported with texture set:{}.".format(
+                            instance.name)
+                    )
+                map_names = [channel_map["fileName"] for channel_map
+                                in export_preset["maps"]]
+                for channel in tmp_export_channel:
+                    for map_name in map_names:
+                        if channel in map_name:
+                            tmp_export_channel.remove(channel)
+                if tmp_export_channel:
+                    raise PublishValidationError(
+                        "No Channel(s) {} found in the texture set:{}".format(
+                            tmp_export_channel, instance.name
+                        ))
+
         parameters = config["exportParameters"][0]["parameters"]
         parameters["sizeLog2"] = [1, 1]     # output 2x2 images (smallest)
         parameters["paddingAlgorithm"] = "passthrough"  # no dilation (faster)
