@@ -697,7 +697,10 @@ class PublishWorkfilesModel:
             product_ids=product_ids,
             fields={"id", "author"}
         )
-        versions_by_id = {version["id"]: version for version in version_entities}
+        versions_by_id = {
+            version["id"]: version
+            for version in version_entities
+        }
         if not versions_by_id:
             return output
 
