@@ -153,6 +153,9 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
         # Determine defined file type
         ext = write_node["file_type"].value()
 
+        # determine defined channel type
+        color_channels = write_node["channels"].value()
+
         # get frame range data
         handle_start = instance.context.data["handleStart"]
         handle_end = instance.context.data["handleEnd"]
@@ -172,7 +175,8 @@ class CollectNukeWrites(pyblish.api.InstancePlugin,
             "path": write_file_path,
             "outputDir": output_dir,
             "ext": ext,
-            "colorspace": colorspace
+            "colorspace": colorspace,
+            "color_channels": color_channels
         })
 
         if product_type == "render":
