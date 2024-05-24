@@ -14,7 +14,7 @@ from ayon_core.pipeline import (
     CreatedInstance,
     CreatorError
 )
-from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
+from ayon_traypublisher.api.plugin import TrayPublishCreator
 
 
 class OnlineCreator(TrayPublishCreator):
