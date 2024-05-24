@@ -4,11 +4,11 @@ from copy import deepcopy
 import ayon_api
 import opentimelineio as otio
 
-from ayon_core.hosts.traypublisher.api.plugin import (
+from ayon_traypublisher.api.plugin import (
     TrayPublishCreator,
     HiddenTrayPublishCreator
 )
-from ayon_core.hosts.traypublisher.api.editorial import (
+from ayon_traypublisher.api.editorial import (
     ShotMetadataSolver
 )
 from ayon_core.pipeline import CreatedInstance

@@ -9,7 +9,7 @@ from ayon_core.lib.attribute_definitions import (
     BoolDef,
     TextDef,
 )
-from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
+from ayon_traypublisher.api.plugin import TrayPublishCreator
 
 
 class EditorialPackageCreator(TrayPublishCreator):

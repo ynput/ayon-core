@@ -15,7 +15,7 @@ from ayon_core.pipeline import (
     CreatorError
 )
 from ayon_core.pipeline import colorspace
-from ayon_core.hosts.traypublisher.api.plugin import TrayPublishCreator
+from ayon_traypublisher.api.plugin import TrayPublishCreator
 
 
 class CreateColorspaceLook(TrayPublishCreator):
