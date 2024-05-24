@@ -38,12 +38,12 @@ def install():
     pyblish.register_plugin_path(PUBLISH_PATH)
     register_loader_plugin_path(LOAD_PATH)
     register_creator_plugin_path(CREATE_PATH)
-    log.info("OpenPype Flame plug-ins registered ...")
+    log.info("AYON Flame plug-ins registered ...")
 
     # register callback for switching publishable
     pyblish.register_callback("instanceToggled", on_pyblish_instance_toggled)
 
-    log.info("OpenPype Flame host installed ...")
+    log.info("AYON Flame host installed ...")
 
 
 def uninstall():
@@ -57,7 +57,7 @@ def uninstall():
     # register callback for switching publishable
     pyblish.deregister_callback("instanceToggled", on_pyblish_instance_toggled)
 
-    log.info("OpenPype Flame host uninstalled ...")
+    log.info("AYON Flame host uninstalled ...")
 
 
 def containerise(flame_clip_segment,
@@ -73,7 +73,7 @@ def containerise(flame_clip_segment,
         "name": str(name),
         "namespace": str(namespace),
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     }
 
     if data:
@@ -147,8 +147,8 @@ def imprint(segment, data=None):
     Examples:
         data = {
             'asset': 'sq020sh0280',
-            'family': 'render',
-            'subset': 'subsetMain'
+            'productType': 'render',
+            'productName': 'productMain'
         }
     """
     data = data or {}

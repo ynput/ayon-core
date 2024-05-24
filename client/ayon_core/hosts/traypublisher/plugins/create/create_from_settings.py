@@ -15,7 +15,6 @@ def initialize():
 
     global_variables = globals()
     for item in simple_creators:
-
         dynamic_plugin = SettingsCreator.from_settings(item)
         global_variables[dynamic_plugin.__name__] = dynamic_plugin
 

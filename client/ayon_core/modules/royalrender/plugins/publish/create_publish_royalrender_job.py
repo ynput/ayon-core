@@ -3,7 +3,6 @@
 import os
 import attr
 import json
-import re
 
 import pyblish.api
 
@@ -16,7 +15,7 @@ from ayon_core.pipeline.publish import KnownPublishError
 from ayon_core.pipeline.farm.pyblish_functions import (
     create_skeleton_instance,
     create_instances_for_aov,
-    attach_instances_to_subset,
+    attach_instances_to_product,
     prepare_representations,
     create_metadata_path
 )
@@ -65,7 +64,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
         "FTRACK_SERVER",
         "AYON_APP_NAME",
         "AYON_USERNAME",
-        "OPENPYPE_SG_USER",
+        "AYON_SG_USERNAME",
     ]
     priority = 50
 
@@ -113,9 +112,9 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
             instance_skeleton_data["representations"] += representations
             instances = [instance_skeleton_data]
 
-        # attach instances to subset
+        # attach instances to product
         if instance.data.get("attachTo"):
-            instances = attach_instances_to_subset(
+            instances = attach_instances_to_product(
                 instance.data.get("attachTo"), instances
             )
 
@@ -168,8 +167,8 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         """
         data = instance.data.copy()
-        subset = data["subset"]
-        jobname = "Publish - {subset}".format(subset=subset)
+        product_name = data["productName"]
+        jobname = "Publish - {}".format(product_name)
 
         # Transfer the environment from the original job to this dependent
         # job, so they use the same environment
@@ -198,7 +197,7 @@ class CreatePublishRoyalRenderJob(pyblish.api.InstancePlugin,
 
         priority = self.priority or instance.data.get("priority", 50)
 
-        # rr requires absolut path or all jobs won't show up in rControl
+        # rr requires absolute path or all jobs won't show up in rrControl
         abs_metadata_path = self.anatomy.fill_root(rootless_metadata_path)
 
         # command line set in E01__OpenPype__PublishJob.cfg, here only

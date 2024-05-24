@@ -4,12 +4,11 @@ import json
 import uuid
 import pyblish.api
 
-from ayon_api import slugify_string
+from ayon_api import slugify_string, get_folders, get_tasks
 from ayon_api.entity_hub import EntityHub
 
-from ayon_core.client import get_assets, get_asset_name_identifier
 from ayon_core.pipeline.template_data import (
-    get_asset_template_data,
+    get_folder_template_data,
     get_task_template_data,
 )
 
@@ -35,38 +34,74 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         self._fill_instance_entities(context, project_name)
 
     def _fill_instance_entities(self, context, project_name):
-        instances_by_asset_name = collections.defaultdict(list)
+        instances_by_folder_path = collections.defaultdict(list)
         for instance in context:
             if instance.data.get("publish") is False:
                 continue
 
-            instance_entity = instance.data.get("assetEntity")
+            instance_entity = instance.data.get("folderEntity")
             if instance_entity:
                 continue
 
-            # Skip if instance asset does not match
-            instance_asset_name = instance.data.get("folderPath")
-            instances_by_asset_name[instance_asset_name].append(instance)
+            folder_path = instance.data.get("folderPath")
+            instances_by_folder_path[folder_path].append(instance)
 
-        project_doc = context.data["projectEntity"]
-        asset_docs = get_assets(
-            project_name, asset_names=instances_by_asset_name.keys()
+        project_entity = context.data["projectEntity"]
+        folder_entities = get_folders(
+            project_name, folder_paths=instances_by_folder_path.keys()
         )
-        asset_docs_by_name = {
-            get_asset_name_identifier(asset_doc): asset_doc
-            for asset_doc in asset_docs
+        folder_entities_by_path = {
+            folder_entity["path"]: folder_entity
+            for folder_entity in folder_entities
         }
-        for asset_name, instances in instances_by_asset_name.items():
-            asset_doc = asset_docs_by_name[asset_name]
-            asset_data = get_asset_template_data(asset_doc, project_name)
+        all_task_names = set()
+        folder_ids = set()
+        # Fill folderEntity and prepare data for task entities
+        for folder_path, instances in instances_by_folder_path.items():
+            folder_entity = folder_entities_by_path[folder_path]
+            folder_ids.add(folder_entity["id"])
             for instance in instances:
                 task_name = instance.data.get("task")
-                template_data = get_task_template_data(
-                    project_doc, asset_doc, task_name)
-                template_data.update(copy.deepcopy(asset_data))
+                all_task_names.add(task_name)
+
+        # Query task entities
+        # Discard 'None' task names
+        all_task_names.discard(None)
+        tasks_by_name_by_folder_id = {
+            folder_id: {} for folder_id in folder_ids
+        }
+        task_entities = []
+        if all_task_names:
+            task_entities = get_tasks(
+                project_name,
+                task_names=all_task_names,
+                folder_ids=folder_ids,
+            )
+        for task_entity in task_entities:
+            task_name = task_entity["name"]
+            folder_id = task_entity["folderId"]
+            tasks_by_name_by_folder_id[folder_id][task_name] = task_entity
+
+        for folder_path, instances in instances_by_folder_path.items():
+            folder_entity = folder_entities_by_path[folder_path]
+            folder_id = folder_entity["id"]
+            folder_data = get_folder_template_data(
+                folder_entity, project_name
+            )
+            task_entities_by_name = tasks_by_name_by_folder_id[folder_id]
+            for instance in instances:
+                task_name = instance.data.get("task")
+                task_entity = task_entities_by_name.get(task_name)
+                template_data = {}
+                if task_entity:
+                    template_data = get_task_template_data(
+                        project_entity, task_entity
+                    )
+                template_data.update(copy.deepcopy(folder_data))
 
                 instance.data["anatomyData"].update(template_data)
-                instance.data["assetEntity"] = asset_doc
+                instance.data["folderEntity"] = folder_entity
+                instance.data["taskEntity"] = task_entity
 
     def _create_hierarchy(self, context, project_name):
         hierarchy_context = self._filter_hierarchy(context)
@@ -80,6 +115,10 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
 
         entity_hub = EntityHub(project_name)
         project = entity_hub.project_entity
+        folder_type_name_by_low_name = {
+            folder_type_item["name"].lower(): folder_type_item["name"]
+            for folder_type_item in project.get_folder_types()
+        }
 
         hierarchy_match_queue = collections.deque()
         hierarchy_match_queue.append((project, hierarchy_context))
@@ -132,8 +171,18 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                 # TODO check if existing entity have 'folder' type
                 child_entity = children_by_low_name.get(child_name.lower())
                 if child_entity is None:
+                    folder_type = folder_type_name_by_low_name.get(
+                        child_info["folder_type"].lower()
+                    )
+                    if folder_type is None:
+                        # TODO add validator for folder type validations
+                        self.log.warning((
+                            "Couldn't find folder type '{}'"
+                        ).format(child_info["folder_type"]))
+                        folder_type = "Folder"
+
                     child_entity = entity_hub.add_new_folder(
-                        child_info["entity_type"],
+                        folder_type,
                         parent_id=entity.id,
                         name=child_name
                     )
@@ -157,7 +206,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         Output example:
             {
                 "name": "MyProject",
-                "entity_type": "Project",
+                "entity_type": "project",
                 "attributes": {},
                 "tasks": [],
                 "children": [
@@ -188,12 +237,11 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         # filter only the active publishing instances
         active_folder_paths = set()
         for instance in context:
-            if instance.data.get("publish") is not False:
+            if instance.data.get("publish", True) is not False:
                 active_folder_paths.add(instance.data.get("folderPath"))
 
         active_folder_paths.discard(None)
 
-        self.log.debug("Active folder paths: {}".format(active_folder_paths))
         if not active_folder_paths:
             return None
 
@@ -202,11 +250,11 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
         hierarchy_context = copy.deepcopy(context.data["hierarchyContext"])
         for key, value in hierarchy_context.items():
             project_item = copy.deepcopy(value)
-            project_children_context = project_item.pop("childs", None)
+            project_children_context = project_item.pop("children", None)
             project_item["name"] = key
             project_item["tasks"] = []
             project_item["attributes"] = project_item.pop(
-                "custom_attributes", {}
+                "attributes", {}
             )
             project_item["children"] = []
 
@@ -230,22 +278,23 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                 folder_path = "{}/{}".format(parent_path, folder_name)
                 if (
                     folder_path not in active_folder_paths
-                    and not folder_info.get("childs")
+                    and not folder_info.get("children")
                 ):
                     continue
 
                 item_id = uuid.uuid4().hex
                 new_item = copy.deepcopy(folder_info)
+                new_children_context = new_item.pop("children", None)
+                tasks = new_item.pop("tasks", {})
+
                 new_item["name"] = folder_name
                 new_item["children"] = []
-                new_children_context = new_item.pop("childs", None)
-                tasks = new_item.pop("tasks", {})
                 task_items = []
                 for task_name, task_info in tasks.items():
                     task_info["name"] = task_name
                     task_items.append(task_info)
                 new_item["tasks"] = task_items
-                new_item["attributes"] = new_item.pop("custom_attributes", {})
+                new_item["attributes"] = new_item.pop("attributes", {})
 
                 items_by_id[item_id] = new_item
                 parent_id_by_item_id[item_id] = parent_id

@@ -16,8 +16,8 @@ from ayon_core.hosts.maya.api.pipeline import containerise
 class MayaUsdLoader(load.LoaderPlugin):
     """Read USD data in a Maya USD Proxy"""
 
-    families = ["model", "usd", "pointcache", "animation"]
-    representations = ["usd", "usda", "usdc", "usdz", "abc"]
+    product_types = {"model", "usd", "pointcache", "animation"}
+    representations = {"usd", "usda", "usdc", "usdz", "abc"}
 
     label = "Load USD to Maya Proxy"
     order = -1
@@ -25,10 +25,10 @@ class MayaUsdLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name=None, namespace=None, options=None):
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -69,7 +69,7 @@ class MayaUsdLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
         node = container['objectName']
@@ -78,16 +78,17 @@ class MayaUsdLoader(load.LoaderPlugin):
         members = cmds.sets(node, query=True) or []
         shapes = cmds.ls(members, type="mayaUsdProxyShape")
 
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         for shape in shapes:
             cmds.setAttr("{}.filePath".format(shape), path, type="string")
 
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     repre_entity["id"],
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         # type: (dict) -> None

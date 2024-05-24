@@ -1,24 +1,24 @@
 # -*- coding: utf-8 -*-
-"""Converter for legacy Houdini subsets."""
-from ayon_core.pipeline.create.creator_plugins import SubsetConvertorPlugin
+"""Converter for legacy Houdini products."""
+from ayon_core.pipeline.create.creator_plugins import ProductConvertorPlugin
 from ayon_core.hosts.blender.api.lib import imprint
 
 
-class BlenderLegacyConvertor(SubsetConvertorPlugin):
-    """Find and convert any legacy subsets in the scene.
+class BlenderLegacyConvertor(ProductConvertorPlugin):
+    """Find and convert any legacy products in the scene.
 
-    This Converter will find all legacy subsets in the scene and will
-    transform them to the current system. Since the old subsets doesn't
+    This Converter will find all legacy products in the scene and will
+    transform them to the current system. Since the old products doesn't
     retain any information about their original creators, the only mapping
-    we can do is based on their families.
+    we can do is based on their product types.
 
-    Its limitation is that you can have multiple creators creating subset
-    of the same family and there is no way to handle it. This code should
-    nevertheless cover all creators that came with OpenPype.
+    Its limitation is that you can have multiple creators creating product
+    of the same product type and there is no way to handle it. This code
+    should nevertheless cover all creators that came with OpenPype.
 
     """
     identifier = "io.openpype.creators.blender.legacy"
-    family_to_id = {
+    product_type_to_id = {
         "action": "io.openpype.creators.blender.action",
         "camera": "io.openpype.creators.blender.camera",
         "animation": "io.openpype.creators.blender.animation",
@@ -33,42 +33,42 @@ class BlenderLegacyConvertor(SubsetConvertorPlugin):
 
     def __init__(self, *args, **kwargs):
         super(BlenderLegacyConvertor, self).__init__(*args, **kwargs)
-        self.legacy_subsets = {}
+        self.legacy_instances = {}
 
     def find_instances(self):
-        """Find legacy subsets in the scene.
+        """Find legacy products in the scene.
 
-        Legacy subsets are the ones that doesn't have `creator_identifier`
+        Legacy products are the ones that doesn't have `creator_identifier`
         parameter on them.
 
         This is using cached entries done in
-        :py:meth:`~BaseCreator.cache_subsets()`
+        :py:meth:`~BaseCreator.cache_instance_data()`
 
         """
-        self.legacy_subsets = self.collection_shared_data.get(
-            "blender_cached_legacy_subsets")
-        if not self.legacy_subsets:
+        self.legacy_instances = self.collection_shared_data.get(
+            "blender_cached_legacy_instances")
+        if not self.legacy_instances:
             return
         self.add_convertor_item(
-            "Found {} incompatible subset{}".format(
-                len(self.legacy_subsets),
-                "s" if len(self.legacy_subsets) > 1 else ""
+            "Found {} incompatible product{}".format(
+                len(self.legacy_instances),
+                "s" if len(self.legacy_instances) > 1 else ""
             )
         )
 
     def convert(self):
-        """Convert all legacy subsets to current.
+        """Convert all legacy products to current.
 
         It is enough to add `creator_identifier` and `instance_node`.
 
         """
-        if not self.legacy_subsets:
+        if not self.legacy_instances:
             return
 
-        for family, instance_nodes in self.legacy_subsets.items():
-            if family in self.family_to_id:
+        for product_type, instance_nodes in self.legacy_instances.items():
+            if product_type in self.product_type_to_id:
                 for instance_node in instance_nodes:
-                    creator_identifier = self.family_to_id[family]
+                    creator_identifier = self.product_type_to_id[product_type]
                     self.log.info(
                         "Converting {} to {}".format(instance_node.name,
                                                      creator_identifier)

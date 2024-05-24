@@ -83,7 +83,7 @@ class ExtractMayaSceneRaw(publish.Extractor, AYONPyblishPluginMixin):
         selection = members
         if set(self.add_for_families).intersection(
                 set(instance.data.get("families", []))) or \
-                instance.data.get("family") in self.add_for_families:
+                instance.data.get("productType") in self.add_for_families:
             selection += self._get_loaded_containers(members)
 
         # Perform extraction

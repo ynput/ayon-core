@@ -29,6 +29,10 @@ from ayon_core.pipeline.publish.lib import (
 JSONDecodeError = getattr(json.decoder, "JSONDecodeError", ValueError)
 
 
+# TODO both 'requests_post' and 'requests_get' should not set 'verify' based
+#   on environment variable. This should be done in a more controlled way,
+#   e.g. each deadline url could have checkbox to enabled/disable
+#   ssl verification.
 def requests_post(*args, **kwargs):
     """Wrap request post method.
 

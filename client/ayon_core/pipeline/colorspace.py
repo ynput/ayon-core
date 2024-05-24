@@ -23,7 +23,7 @@ log = Logger.get_logger(__name__)
 
 
 class CachedData:
-    remapping = None
+    remapping = {}
     has_compatible_ocio_package = None
     config_version_data = {}
     ocio_config_colorspaces = {}
@@ -774,8 +774,8 @@ def get_imageio_config(
 
     if not anatomy_data:
         from ayon_core.pipeline.context_tools import (
-            get_template_data_from_session)
-        anatomy_data = get_template_data_from_session()
+            get_current_context_template_data)
+        anatomy_data = get_current_context_template_data()
 
     formatting_data = deepcopy(anatomy_data)
 

@@ -18,7 +18,7 @@ class CreateAnimation(plugin.MayaHiddenCreator):
     identifier = "io.openpype.creators.maya.animation"
     name = "animationDefault"
     label = "Animation"
-    family = "animation"
+    product_type = "animation"
     icon = "male"
 
     write_color_sets = False

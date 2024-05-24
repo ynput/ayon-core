@@ -8,8 +8,8 @@ from ayon_core.tools.utils import host_tools
 from ayon_core.hosts.max.api import lib
 
 
-class OpenPypeMenu(object):
-    """Object representing OpenPype/AYON menu.
+class AYONMenu(object):
+    """Object representing AYON menu.
 
     This is using "hack" to inject itself before "Help" menu of 3dsmax.
     For some reason `postLoadingMenus` event doesn't fire, and main menu
@@ -39,7 +39,7 @@ class OpenPypeMenu(object):
 
         self._counter = 0
         self._timer.stop()
-        self.build_openpype_menu()
+        self._build_ayon_menu()
 
     @staticmethod
     def get_main_widget():
@@ -50,8 +50,8 @@ class OpenPypeMenu(object):
         """Get main Menubar by 3dsmax main window."""
         return list(self.main_widget.findChildren(QtWidgets.QMenuBar))[0]
 
-    def get_or_create_openpype_menu(
-            self, name: str = "&Openpype",
+    def _get_or_create_ayon_menu(
+            self, name: str = "&AYON",
             before: str = "&Help") -> QtWidgets.QAction:
         """Create AYON menu.
 
@@ -73,7 +73,7 @@ class OpenPypeMenu(object):
         help_action = None
         for item in menu_items:
             if name in item.title():
-                # we already have OpenPype menu
+                # we already have AYON menu
                 return item
 
             if before in item.title():
@@ -85,50 +85,50 @@ class OpenPypeMenu(object):
         self.menu = op_menu
         return op_menu
 
-    def build_openpype_menu(self) -> QtWidgets.QAction:
+    def _build_ayon_menu(self) -> QtWidgets.QAction:
         """Build items in AYON menu."""
-        openpype_menu = self.get_or_create_openpype_menu()
-        load_action = QtWidgets.QAction("Load...", openpype_menu)
+        ayon_menu = self._get_or_create_ayon_menu()
+        load_action = QtWidgets.QAction("Load...", ayon_menu)
         load_action.triggered.connect(self.load_callback)
-        openpype_menu.addAction(load_action)
+        ayon_menu.addAction(load_action)
 
-        publish_action = QtWidgets.QAction("Publish...", openpype_menu)
+        publish_action = QtWidgets.QAction("Publish...", ayon_menu)
         publish_action.triggered.connect(self.publish_callback)
-        openpype_menu.addAction(publish_action)
+        ayon_menu.addAction(publish_action)
 
-        manage_action = QtWidgets.QAction("Manage...", openpype_menu)
+        manage_action = QtWidgets.QAction("Manage...", ayon_menu)
         manage_action.triggered.connect(self.manage_callback)
-        openpype_menu.addAction(manage_action)
+        ayon_menu.addAction(manage_action)
 
-        library_action = QtWidgets.QAction("Library...", openpype_menu)
+        library_action = QtWidgets.QAction("Library...", ayon_menu)
         library_action.triggered.connect(self.library_callback)
-        openpype_menu.addAction(library_action)
+        ayon_menu.addAction(library_action)
 
-        openpype_menu.addSeparator()
+        ayon_menu.addSeparator()
 
-        workfiles_action = QtWidgets.QAction("Work Files...", openpype_menu)
+        workfiles_action = QtWidgets.QAction("Work Files...", ayon_menu)
         workfiles_action.triggered.connect(self.workfiles_callback)
-        openpype_menu.addAction(workfiles_action)
+        ayon_menu.addAction(workfiles_action)
 
-        openpype_menu.addSeparator()
+        ayon_menu.addSeparator()
 
-        res_action = QtWidgets.QAction("Set Resolution", openpype_menu)
+        res_action = QtWidgets.QAction("Set Resolution", ayon_menu)
         res_action.triggered.connect(self.resolution_callback)
-        openpype_menu.addAction(res_action)
+        ayon_menu.addAction(res_action)
 
-        frame_action = QtWidgets.QAction("Set Frame Range", openpype_menu)
+        frame_action = QtWidgets.QAction("Set Frame Range", ayon_menu)
         frame_action.triggered.connect(self.frame_range_callback)
-        openpype_menu.addAction(frame_action)
+        ayon_menu.addAction(frame_action)
 
-        colorspace_action = QtWidgets.QAction("Set Colorspace", openpype_menu)
+        colorspace_action = QtWidgets.QAction("Set Colorspace", ayon_menu)
         colorspace_action.triggered.connect(self.colorspace_callback)
-        openpype_menu.addAction(colorspace_action)
+        ayon_menu.addAction(colorspace_action)
 
-        unit_scale_action = QtWidgets.QAction("Set Unit Scale", openpype_menu)
+        unit_scale_action = QtWidgets.QAction("Set Unit Scale", ayon_menu)
         unit_scale_action.triggered.connect(self.unit_scale_callback)
-        openpype_menu.addAction(unit_scale_action)
+        ayon_menu.addAction(unit_scale_action)
 
-        return openpype_menu
+        return ayon_menu
 
     def load_callback(self):
         """Callback to show Loader tool."""

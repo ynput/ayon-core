@@ -3,7 +3,6 @@ from collections import defaultdict
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.client import get_asset_name_identifier
 from ayon_core.tools.utils.models import TreeModel
 from ayon_core.tools.utils.lib import (
     preserve_expanded_rows,
@@ -110,7 +109,7 @@ class AssetOutliner(QtWidgets.QWidget):
                 self.add_items(items)
 
     def get_nodes(self, selection=False):
-        """Find the nodes in the current scene per asset."""
+        """Find the nodes in the current scene per folder."""
 
         items = self.get_selected_items()
 
@@ -119,26 +118,27 @@ class AssetOutliner(QtWidgets.QWidget):
             nodes = cmds.ls(dag=True, long=True)
         else:
             nodes = commands.get_selected_nodes()
-        id_nodes = commands.create_asset_id_hash(nodes)
+        id_nodes = commands.create_folder_id_hash(nodes)
 
-        # Collect the asset item entries per asset
+        # Collect the asset item entries per folder
         # and collect the namespaces we'd like to apply
-        assets = {}
-        asset_namespaces = defaultdict(set)
+        folder_items = {}
+        namespaces_by_folder_path = defaultdict(set)
         for item in items:
-            asset_id = str(item["asset"]["_id"])
-            asset_name = get_asset_name_identifier(item["asset"])
-            asset_namespaces[asset_name].add(item.get("namespace"))
+            folder_entity = item["folder_entity"]
+            folder_id = folder_entity["id"]
+            folder_path = folder_entity["path"]
+            namespaces_by_folder_path[folder_path].add(item.get("namespace"))
 
-            if asset_name in assets:
+            if folder_path in folder_items:
                 continue
 
-            assets[asset_name] = item
-            assets[asset_name]["nodes"] = id_nodes.get(asset_id, [])
+            folder_items[folder_path] = item
+            folder_items[folder_path]["nodes"] = id_nodes.get(folder_id, [])
 
         # Filter nodes to namespace (if only namespaces were selected)
-        for asset_name in assets:
-            namespaces = asset_namespaces[asset_name]
+        for folder_path in folder_items:
+            namespaces = namespaces_by_folder_path[folder_path]
 
             # When None is present there should be no filtering
             if None in namespaces:
@@ -146,12 +146,12 @@ class AssetOutliner(QtWidgets.QWidget):
 
             # Else only namespaces are selected and *not* the top entry so
             # we should filter to only those namespaces.
-            nodes = assets[asset_name]["nodes"]
+            nodes = folder_items[folder_path]["nodes"]
             nodes = [node for node in nodes if
                      commands.get_namespace_from_node(node) in namespaces]
-            assets[asset_name]["nodes"] = nodes
+            folder_items[folder_path]["nodes"] = nodes
 
-        return assets
+        return folder_items
 
     def select_asset_from_items(self):
         """Select nodes from listed asset"""

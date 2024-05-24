@@ -240,7 +240,7 @@ def run_detached_process(args, **kwargs):
 
 
     Args:
-        *args (tuple): AYON cli arguments.
+        args (Iterable[str]): AYON cli arguments.
         **kwargs (dict): Keyword arguments for subprocess.Popen.
 
     Returns:

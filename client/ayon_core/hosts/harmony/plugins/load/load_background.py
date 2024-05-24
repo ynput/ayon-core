@@ -233,8 +233,8 @@ class BackgroundLoader(load.LoaderPlugin):
     """Load images
     Stores the imported asset in a container named after the asset.
     """
-    families = ["background"]
-    representations = ["json"]
+    product_types = {"background"}
+    representations = {"json"}
 
     def load(self, context, name=None, namespace=None, data=None):
 
@@ -254,7 +254,7 @@ class BackgroundLoader(load.LoaderPlugin):
 
         bg_folder = os.path.dirname(path)
 
-        subset_name = context["subset"]["name"]
+        product_name = context["product"]["name"]
         # read_node_name += "_{}".format(uuid.uuid4())
         container_nodes = []
 
@@ -272,16 +272,17 @@ class BackgroundLoader(load.LoaderPlugin):
             container_nodes.append(read_node)
 
         return harmony.containerise(
-            subset_name,
+            product_name,
             namespace,
-            subset_name,
+            product_name,
             context,
             self.__class__.__name__,
             nodes=container_nodes
         )
 
-    def update(self, container, representation):
-        path = get_representation_path(representation)
+    def update(self, container, context):
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         with open(path) as json_file:
             data = json.load(json_file)
 
@@ -301,7 +302,7 @@ class BackgroundLoader(load.LoaderPlugin):
 
         print(container)
 
-        is_latest = is_representation_from_latest(representation)
+        is_latest = is_representation_from_latest(repre_entity)
         for layer in sorted(layers):
             file_to_import = [
                 os.path.join(bg_folder, layer).replace("\\", "/")
@@ -351,8 +352,11 @@ class BackgroundLoader(load.LoaderPlugin):
                 harmony.send({"function": func, "args": [node, "red"]})
 
         harmony.imprint(
-            container['name'], {"representation": str(representation["_id"]),
-                                "nodes": container['nodes']}
+            container['name'],
+            {
+                "representation": repre_entity["id"],
+                "nodes": container["nodes"]
+            }
         )
 
     def remove(self, container):
@@ -369,5 +373,5 @@ class BackgroundLoader(load.LoaderPlugin):
             )
             harmony.imprint(container['name'], {}, remove=True)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)

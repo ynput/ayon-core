@@ -14,10 +14,10 @@ class CreateLook(UnrealAssetCreator):
 
     identifier = "io.ayon.creators.unreal.look"
     label = "Look"
-    family = "look"
+    product_type = "look"
     icon = "paint-brush"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         # We need to set this to True for the parent class to work
         pre_create_data["use_selection"] = True
         selection = send_request("get_selected_assets")
@@ -32,7 +32,7 @@ class CreateLook(UnrealAssetCreator):
         # Create the folder
         folder_name = send_request(
             "create_folder",
-            params={"root": look_directory, "name": subset_name})
+            params={"root": look_directory, "name": product_name})
         path = f"{look_directory}/{folder_name}"
 
         instance_data["look"] = path
@@ -42,7 +42,7 @@ class CreateLook(UnrealAssetCreator):
             params={"path": path, "selected_asset": selected_asset})
 
         super(CreateLook, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 

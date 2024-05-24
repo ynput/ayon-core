@@ -21,7 +21,7 @@ from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
     registered_host,
 )
@@ -30,13 +30,11 @@ from ayon_core.tools.utils import host_tools
 from ayon_core.hosts.nuke import NUKE_ROOT_DIR
 from ayon_core.tools.workfile_template_build import open_template_ui
 
-from .command import viewer_update_and_undo_stop
 from .lib import (
     Context,
     ROOT_DATA_KNOB,
     INSTANCE_DATA_KNOB,
     get_main_window,
-    add_publish_knob,
     WorkfileSettings,
     # TODO: remove this once workfile builder will be removed
     process_workfile_builder,
@@ -128,7 +126,7 @@ class NukeHost(
         register_creator_plugin_path(CREATE_PATH)
         register_inventory_action_path(INVENTORY_PATH)
 
-        # Register Avalon event for workfiles loading.
+        # Register AYON event for workfiles loading.
         register_event_callback("workio.open_file", check_inventory_versions)
         register_event_callback("taskChanged", change_context_label)
 
@@ -224,15 +222,15 @@ def _show_workfiles():
 
 def get_context_label():
     return "{0}, {1}".format(
-        get_current_asset_name(),
+        get_current_folder_path(),
         get_current_task_name()
     )
 
 
 def _install_menu():
-    """Install Avalon menu into Nuke's main menu bar."""
+    """Install AYON menu into Nuke's main menu bar."""
 
-    # uninstall original avalon menu
+    # uninstall original AYON menu
     main_window = get_main_window()
     menubar = nuke.menu("Nuke")
     menu = menubar.addMenu(MENU_LABEL)
@@ -432,7 +430,7 @@ def containerise(node,
             ("name", name),
             ("namespace", namespace),
             ("loader", str(loader)),
-            ("representation", context["representation"]["_id"]),
+            ("representation", context["representation"]["id"]),
         ],
 
         **data or dict()
@@ -530,7 +528,7 @@ def list_instances(creator_id=None):
         (list) of dictionaries matching instances format
     """
     instances_by_order = defaultdict(list)
-    subset_instances = []
+    product_instances = []
     instance_ids = set()
 
     for node in nuke.allNodes(recurseGroups=True):
@@ -568,51 +566,59 @@ def list_instances(creator_id=None):
         else:
             instance_ids.add(instance_id)
 
-        # node name could change, so update subset name data
-        _update_subset_name_data(instance_data, node)
+        # node name could change, so update product name data
+        _update_product_name_data(instance_data, node)
 
         if "render_order" not in node.knobs():
-            subset_instances.append((node, instance_data))
+            product_instances.append((node, instance_data))
             continue
 
         order = int(node["render_order"].value())
         instances_by_order[order].append((node, instance_data))
 
-    # Sort instances based on order attribute or subset name.
+    # Sort instances based on order attribute or product name.
     # TODO: remove in future Publisher enhanced with sorting
     ordered_instances = []
     for key in sorted(instances_by_order.keys()):
-        instances_by_subset = defaultdict(list)
+        instances_by_product = defaultdict(list)
         for node, data_ in instances_by_order[key]:
-            instances_by_subset[data_["subset"]].append((node, data_))
-        for subkey in sorted(instances_by_subset.keys()):
-            ordered_instances.extend(instances_by_subset[subkey])
+            product_name = data_.get("productName")
+            if product_name is None:
+                product_name = data_.get("subset")
+            instances_by_product[product_name].append((node, data_))
+        for subkey in sorted(instances_by_product.keys()):
+            ordered_instances.extend(instances_by_product[subkey])
 
-    instances_by_subset = defaultdict(list)
-    for node, data_ in subset_instances:
-        instances_by_subset[data_["subset"]].append((node, data_))
-    for key in sorted(instances_by_subset.keys()):
-        ordered_instances.extend(instances_by_subset[key])
+    instances_by_product = defaultdict(list)
+    for node, data_ in product_instances:
+        product_name = data_.get("productName")
+        if product_name is None:
+            product_name = data_.get("subset")
+        instances_by_product[product_name].append((node, data_))
+    for key in sorted(instances_by_product.keys()):
+        ordered_instances.extend(instances_by_product[key])
 
     return ordered_instances
 
 
-def _update_subset_name_data(instance_data, node):
-    """Update subset name data in instance data.
+def _update_product_name_data(instance_data, node):
+    """Update product name data in instance data.
 
     Args:
         instance_data (dict): instance creator data
         node (nuke.Node): nuke node
     """
-    # make sure node name is subset name
-    old_subset_name = instance_data["subset"]
+    # make sure node name is product name
+    old_product_name = instance_data.get("productName")
+    if old_product_name is None:
+        old_product_name = instance_data.get("subset")
     old_variant = instance_data["variant"]
-    subset_name_root = old_subset_name.replace(old_variant, "")
+    product_name_root = old_product_name.replace(old_variant, "")
 
-    new_subset_name = node.name()
-    new_variant = new_subset_name.replace(subset_name_root, "")
+    new_product_name = node.name()
+    new_variant = new_product_name.replace(product_name_root, "")
 
-    instance_data["subset"] = new_subset_name
+    instance_data["productName"] = new_product_name
     instance_data["variant"] = new_variant
 
 

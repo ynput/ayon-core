@@ -5,11 +5,13 @@ import pyblish.api
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateYetiRigInputShapesInInstance(pyblish.api.Validator):
+class ValidateYetiRigInputShapesInInstance(pyblish.api.InstancePlugin,
+                                           OptionalPyblishPluginMixin):
     """Validate if all input nodes are part of the instance's hierarchy"""
 
     order = ValidateContentsOrder
@@ -17,9 +19,11 @@ class ValidateYetiRigInputShapesInInstance(pyblish.api.Validator):
     families = ["yetiRig"]
     label = "Yeti Rig Input Shapes In Instance"
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = False
 
     def process(self, instance):
-
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError("Yeti Rig has invalid input meshes")

@@ -6,10 +6,18 @@ import json
 from typing import Any, Dict, Union
 
 import six
-from ayon_core.pipeline import get_current_project_name, colorspace
+import ayon_api
+
+from ayon_core.pipeline import (
+    get_current_project_name,
+    get_current_folder_path,
+    get_current_task_name,
+    colorspace
+)
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.context_tools import (
-    get_current_project, get_current_project_asset)
+    get_current_task_entity
+)
 from ayon_core.style import load_stylesheet
 from pymxs import runtime as rt
 
@@ -215,49 +223,33 @@ def set_scene_resolution(width: int, height: int):
 def reset_scene_resolution():
     """Apply the scene resolution from the project definition
 
-    scene resolution can be overwritten by an asset if the asset.data contains
-    any information regarding scene resolution .
-    Returns:
-        None
+    scene resolution can be overwritten by a folder if the folder.attrib
+    contains any information regarding scene resolution.
     """
-    data = ["data.resolutionWidth", "data.resolutionHeight"]
-    project_resolution = get_current_project(fields=data)
-    project_resolution_data = project_resolution["data"]
-    asset_resolution = get_current_project_asset(fields=data)
-    asset_resolution_data = asset_resolution["data"]
-    # Set project resolution
-    project_width = int(project_resolution_data.get("resolutionWidth", 1920))
-    project_height = int(project_resolution_data.get("resolutionHeight", 1080))
-    width = int(asset_resolution_data.get("resolutionWidth", project_width))
-    height = int(asset_resolution_data.get("resolutionHeight", project_height))
+    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
+    width = int(task_attributes["resolutionWidth"])
+    height = int(task_attributes["resolutionHeight"])
 
     set_scene_resolution(width, height)
 
 
-def get_frame_range(asset_doc=None) -> Union[Dict[str, Any], None]:
-    """Get the current assets frame range and handles.
+def get_frame_range(task_entity=None) -> Union[Dict[str, Any], None]:
+    """Get the current task frame range and handles
 
     Args:
-        asset_doc (dict): Asset Entity Data
+        task_entity (dict): Task Entity.
 
     Returns:
         dict: with frame start, frame end, handle start, handle end.
     """
     # Set frame start/end
-    if asset_doc is None:
-        asset_doc = get_current_project_asset()
-
-    data = asset_doc["data"]
-    frame_start = data.get("frameStart")
-    frame_end = data.get("frameEnd")
-
-    if frame_start is None or frame_end is None:
-        return {}
-
-    frame_start = int(frame_start)
-    frame_end = int(frame_end)
-    handle_start = int(data.get("handleStart", 0))
-    handle_end = int(data.get("handleEnd", 0))
+    if task_entity is None:
+        task_entity = get_current_task_entity(fields={"attrib"})
+    task_attributes = task_entity["attrib"]
+    frame_start = int(task_attributes["frameStart"])
+    frame_end = int(task_attributes["frameEnd"])
+    handle_start = int(task_attributes["handleStart"])
+    handle_end = int(task_attributes["handleEnd"])
     frame_start_handle = frame_start - handle_start
     frame_end_handle = frame_end + handle_end
 
@@ -272,7 +264,7 @@ def get_frame_range(asset_doc=None) -> Union[Dict[str, Any], None]:
 
 
 def reset_frame_range(fps: bool = True):
-    """Set frame range to current asset.
+    """Set frame range to current folder.
     This is part of 3dsmax documentation:
 
     animationRange: A System Global variable which lets you get and
@@ -283,8 +275,9 @@ def reset_frame_range(fps: bool = True):
             scene frame rate in frames-per-second.
     """
     if fps:
-        data_fps = get_current_project(fields=["data.fps"])
-        fps_number = float(data_fps["data"]["fps"])
+        task_entity = get_current_task_entity()
+        task_attributes = task_entity["attrib"]
+        fps_number = float(task_attributes["fps"])
         rt.frameRate = fps_number
     frame_range = get_frame_range()
 
@@ -328,7 +321,7 @@ def convert_unit_scale():
 def set_context_setting():
     """Apply the project settings from the project definition
 
-    Settings can be overwritten by an asset if the asset.data contains
+    Settings can be overwritten by an folder if the folder.attrib contains
     any information regarding those settings.
 
     Examples of settings:

@@ -13,7 +13,7 @@ from ayon_core.lib import (
 
 
 class CreateRenderlayer(plugin.RenderlayerCreator):
-    """Create and manages renderlayer subset per renderLayer in workfile.
+    """Create and manages renderlayer product per renderLayer in workfile.
 
     This generates a single node in the scene which tells the Creator to if
     it exists collect Maya rendersetup renderlayers as individual instances.
@@ -24,7 +24,7 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
     """
 
     identifier = "io.openpype.creators.maya.renderlayer"
-    family = "renderlayer"
+    product_type = "renderlayer"
     label = "Render"
     icon = "eye"
 
@@ -37,17 +37,24 @@ class CreateRenderlayer(plugin.RenderlayerCreator):
     def apply_settings(cls, project_settings):
         cls.render_settings = project_settings["maya"]["render_settings"]
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         # Only allow a single render instance to exist
         if self._get_singleton_node():
-            raise CreatorError("A Render instance already exists - only "
-                               "one can be configured.")
+            raise CreatorError(
+                "A Render instance already exists - only one can be "
+                "configured.\n\n"
+                "To render multiple render layers, create extra Render Setup "
+                "Layers via Maya's Render Setup UI.\n"
+                "Then refresh the publisher to detect the new layers for "
+                "rendering.\n\n"
+                "With a render instance present all Render Setup layers in "
+                "your workfile are renderable instances.")
 
         # Apply default project render settings on create
         if self.render_settings.get("apply_render_settings"):
             lib_rendersettings.RenderSettings().set_default_renderer_settings()
 
-        super(CreateRenderlayer, self).create(subset_name,
+        super(CreateRenderlayer, self).create(product_name,
                                               instance_data,
                                               pre_create_data)
 

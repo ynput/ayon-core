@@ -990,7 +990,7 @@ class FileDescriptor(DescriptorBase):
       :class:`descriptor_pb2.FileDescriptorProto`.
     dependencies (list[FileDescriptor]): List of other :class:`FileDescriptor`
       objects this :class:`FileDescriptor` depends on.
-    public_dependencies (list[FileDescriptor]): A subset of
+    public_dependencies (list[FileDescriptor]): A product of
       :attr:`dependencies`, which were declared as "public".
     message_types_by_name (dict(str, Descriptor)): Mapping from message names
       to their :class:`Descriptor`.

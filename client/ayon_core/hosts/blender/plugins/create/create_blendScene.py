@@ -10,16 +10,16 @@ class CreateBlendScene(plugin.BaseCreator):
 
     identifier = "io.openpype.creators.blender.blendscene"
     label = "Blender Scene"
-    family = "blendScene"
+    product_type = "blendScene"
     icon = "cubes"
 
     maintain_selection = False
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
 
-        instance_node = super().create(subset_name,
+        instance_node = super().create(product_name,
                                        instance_data,
                                        pre_create_data)
 

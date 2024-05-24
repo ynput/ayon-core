@@ -10,15 +10,15 @@ class CreateModel(plugin.BaseCreator):
 
     identifier = "io.openpype.creators.blender.model"
     label = "Model"
-    family = "model"
+    product_type = "model"
     icon = "cube"
 
     create_as_asset_group = True
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
-        asset_group = super().create(subset_name,
+        asset_group = super().create(product_name,
                                      instance_data,
                                      pre_create_data)
 

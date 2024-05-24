@@ -70,7 +70,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         view = SceneInventoryView(controller, self)
         view.setModel(proxy)
 
-        sync_enabled = controller.is_sync_server_enabled()
+        sync_enabled = controller.is_sitesync_enabled()
         view.setColumnHidden(model.active_site_col, not sync_enabled)
         view.setColumnHidden(model.remote_site_col, not sync_enabled)
 
@@ -78,7 +78,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         view.setColumnWidth(0, 250)  # name
         view.setColumnWidth(1, 55)   # version
         view.setColumnWidth(2, 55)   # count
-        view.setColumnWidth(3, 150)  # family
+        view.setColumnWidth(3, 150)  # product type
         view.setColumnWidth(4, 120)  # group
         view.setColumnWidth(5, 150)  # loader
 

@@ -16,8 +16,8 @@ class FbxLoader(load.LoaderPlugin):
 
     order = -10
 
-    families = ["*"]
-    representations = ["*"]
+    product_types = {"*"}
+    representations = {"*"}
     extensions = {"fbx"}
 
     def load(self, context, name=None, namespace=None, data=None):
@@ -47,8 +47,8 @@ class FbxLoader(load.LoaderPlugin):
 
         return containerised_nodes
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_entity = context["representation"]
         node = container["node"]
         try:
             file_node = next(
@@ -59,27 +59,27 @@ class FbxLoader(load.LoaderPlugin):
             return
 
         # Update the file path from representation
-        file_path = get_representation_path(representation)
+        file_path = get_representation_path(repre_entity)
         file_path = file_path.replace("\\", "/")
 
         file_node.setParms({"file": file_path})
 
         # Update attribute
-        node.setParms({"representation": str(representation["_id"])})
+        node.setParms({"representation": repre_entity["id"]})
 
     def remove(self, container):
 
         node = container["node"]
         node.destroy()
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def get_node_name(self, context, name=None, namespace=None):
         """Define node name."""
 
         if not namespace:
-            namespace = context["asset"]["name"]
+            namespace = context["folder"]["name"]
 
         if namespace:
             node_name = "{}_{}".format(namespace, name)
@@ -88,7 +88,7 @@ class FbxLoader(load.LoaderPlugin):
 
         return namespace, node_name
 
-    def create_load_node_tree(self, file_path, node_name, subset_name):
+    def create_load_node_tree(self, file_path, node_name, product_name):
         """Create Load network.
 
         you can start building your tree at any obj level.
@@ -118,14 +118,14 @@ class FbxLoader(load.LoaderPlugin):
         file_node.setParms({"file": file_path})
 
         # Create attribute delete
-        attribdelete_name = "attribdelete_{}".format(subset_name)
+        attribdelete_name = "attribdelete_{}".format(product_name)
         attribdelete = parent_node.createNode("attribdelete",
                                               node_name=attribdelete_name)
         attribdelete.setParms({"ptdel": "fbx_*"})
         attribdelete.setInput(0, file_node)
 
         # Create a Null node
-        null_name = "OUT_{}".format(subset_name)
+        null_name = "OUT_{}".format(product_name)
         null = parent_node.createNode("null", node_name=null_name)
         null.setInput(0, attribdelete)
 

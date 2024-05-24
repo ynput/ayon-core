@@ -4,11 +4,13 @@ from ayon_core.hosts.maya.api.lib import iter_visible_nodes_in_range
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
-    PublishValidationError
+    PublishValidationError,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateAlembicVisibleOnly(pyblish.api.InstancePlugin):
+class ValidateAlembicVisibleOnly(pyblish.api.InstancePlugin,
+                                 OptionalPyblishPluginMixin):
     """Validates at least a single node is visible in frame range.
 
     This validation only validates if the `visibleOnly` flag is enabled
@@ -20,9 +22,11 @@ class ValidateAlembicVisibleOnly(pyblish.api.InstancePlugin):
     hosts = ["maya"]
     families = ["pointcache", "animation"]
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
+    optional = False
 
     def process(self, instance):
-
+        if not self.is_active(instance.data):
+            return
         if not instance.data.get("visibleOnly", False):
             self.log.debug("Visible only is disabled. Validation skipped..")
             return
@@ -30,13 +34,14 @@ class ValidateAlembicVisibleOnly(pyblish.api.InstancePlugin):
         invalid = self.get_invalid(instance)
         if invalid:
             start, end = self.get_frame_range(instance)
-            raise PublishValidationError("No visible nodes found in "
-                               "frame range {}-{}.".format(start, end))
+            raise PublishValidationError(
+                f"No visible nodes found in frame range {start}-{end}."
+            )
 
     @classmethod
     def get_invalid(cls, instance):
 
-        if instance.data["family"] == "animation":
+        if instance.data["productType"] == "animation":
             # Special behavior to use the nodes in out_SET
             nodes = instance.data["out_hierarchy"]
         else:

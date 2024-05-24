@@ -28,7 +28,7 @@ class CollectNewInstances(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder
     hosts = ["maya"]
 
-    valid_empty_families = {"workfile", "renderlayer"}
+    valid_empty_product_types = {"workfile", "renderlayer"}
 
     def process(self, instance):
 
@@ -48,19 +48,21 @@ class CollectNewInstances(pyblish.api.InstancePlugin):
             # Collect members
             members = cmds.ls(members, long=True) or []
 
+            # Collect full hierarchy
             dag_members = cmds.ls(members, type="dagNode", long=True)
-            children = get_all_children(dag_members)
-            children = cmds.ls(children, noIntermediate=True, long=True)
-            parents = (
-                self.get_all_parents(members)
-                if creator_attributes.get("includeParentHierarchy", True)
-                else []
-            )
-            members_hierarchy = list(set(members + children + parents))
+            children = get_all_children(dag_members,
+                                        ignore_intermediate_objects=True)
+
+            members_hierarchy = set(members)
+            members_hierarchy.update(children)
+            if creator_attributes.get("includeParentHierarchy", True):
+                members_hierarchy.update(self.get_all_parents(dag_members))
 
             instance[:] = members_hierarchy
 
-        elif instance.data["family"] not in self.valid_empty_families:
+        elif (
+            instance.data["productType"] not in self.valid_empty_product_types
+        ):
             self.log.warning("Empty instance: \"%s\" " % objset)
         # Store the exact members of the object set
         instance.data["setMembers"] = members
@@ -95,16 +97,16 @@ class CollectNewInstances(pyblish.api.InstancePlugin):
         """Get all parents by using string operations (optimization)
 
         Args:
-            nodes (list): the nodes which are found in the objectSet
+            nodes (iterable): the nodes which are found in the objectSet
 
         Returns:
-            list
+            set
         """
 
-        parents = []
+        parents = set()
         for node in nodes:
             splitted = node.split("|")
             items = ["|".join(splitted[0:i]) for i in range(2, len(splitted))]
-            parents.extend(items)
+            parents.update(items)
 
-        return list(set(parents))
+        return parents

@@ -1,21 +1,19 @@
-from ayon_core.pipeline import CreatedInstance
+import ayon_api
 
-from ayon_core.lib import BoolDef
 import ayon_core.hosts.photoshop.api as api
-from ayon_core.hosts.photoshop.lib import PSAutoCreator, clean_subset_name
-from ayon_core.pipeline.create import get_subset_name
-from ayon_core.lib import prepare_template_data
-from ayon_core.client import get_asset_by_name
+from ayon_core.hosts.photoshop.lib import PSAutoCreator, clean_product_name
+from ayon_core.lib import BoolDef, prepare_template_data
+from ayon_core.pipeline.create import get_product_name, CreatedInstance
 
 
 class AutoImageCreator(PSAutoCreator):
     """Creates flatten image from all visible layers.
 
     Used in simplified publishing as auto created instance.
-    Must be enabled in Setting and template for subset name provided
+    Must be enabled in Setting and template for product name provided
     """
     identifier = "auto_image"
-    family = "image"
+    product_type = "image"
 
     # Settings
     default_variant = ""
@@ -32,24 +30,29 @@ class AutoImageCreator(PSAutoCreator):
 
         context = self.create_context
         project_name = context.get_current_project_name()
-        asset_name = context.get_current_asset_name()
+        folder_path = context.get_current_folder_path()
         task_name = context.get_current_task_name()
         host_name = context.host_name
-        asset_doc = get_asset_by_name(project_name, asset_name)
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+
+        existing_folder_path = None
+        if existing_instance is not None:
+            existing_folder_path = existing_instance["folderPath"]
 
         if existing_instance is None:
-            existing_instance_asset = None
-        else:
-            existing_instance_asset = existing_instance["folderPath"]
-
-        if existing_instance is None:
-            subset_name = self.get_subset_name(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name
+            product_name = self.get_product_name(
+                project_name,
+                folder_entity,
+                task_entity,
+                self.default_variant,
+                host_name,
             )
 
             data = {
-                "folderPath": asset_name,
+                "folderPath": folder_path,
                 "task": task_name,
             }
 
@@ -60,23 +63,26 @@ class AutoImageCreator(PSAutoCreator):
             data.update({"creator_attributes": creator_attributes})
 
             new_instance = CreatedInstance(
-                self.family, subset_name, data, self
+                self.product_type, product_name, data, self
             )
             self._add_instance_to_context(new_instance)
             api.stub().imprint(new_instance.get("instance_id"),
                                new_instance.data_to_store())
 
         elif (  # existing instance from different context
-            existing_instance_asset != asset_name
+            existing_folder_path != folder_path
             or existing_instance["task"] != task_name
         ):
-            subset_name = self.get_subset_name(
-                self.default_variant, task_name, asset_doc,
-                project_name, host_name
+            product_name = self.get_product_name(
+                project_name,
+                folder_entity,
+                task_entity,
+                self.default_variant,
+                host_name,
             )
-            existing_instance["folderPath"] = asset_name
+            existing_instance["folderPath"] = folder_path
             existing_instance["task"] = task_name
-            existing_instance["subset"] = subset_name
+            existing_instance["productName"] = product_name
 
             api.stub().imprint(existing_instance.get("instance_id"),
                                existing_instance.data_to_store())
@@ -119,18 +125,32 @@ class AutoImageCreator(PSAutoCreator):
         review for it though.
         """
 
-    def get_subset_name(
-            self,
-            variant,
-            task_name,
-            asset_doc,
-            project_name,
-            host_name=None,
-            instance=None
+    def get_product_name(
+        self,
+        project_name,
+        folder_entity,
+        task_entity,
+        variant,
+        host_name=None,
+        instance=None
     ):
+        if host_name is None:
+            host_name = self.create_context.host_name
+
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
         dynamic_data = prepare_template_data({"layer": "{layer}"})
-        subset_name = get_subset_name(
-            self.family, variant, task_name, asset_doc,
-            project_name, host_name, dynamic_data=dynamic_data
+
+        product_name = get_product_name(
+            project_name,
+            task_name,
+            task_type,
+            host_name,
+            self.product_type,
+            variant,
+            dynamic_data=dynamic_data
         )
-        return clean_subset_name(subset_name)
+        return clean_product_name(product_name)

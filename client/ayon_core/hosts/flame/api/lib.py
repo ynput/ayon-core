@@ -607,7 +607,7 @@ def get_clips_in_reels(project):
     return output_clips
 
 
-def get_reformated_filename(filename, padded=True):
+def get_reformatted_filename(filename, padded=True):
     """
     Return fixed python expression path
 
@@ -615,10 +615,10 @@ def get_reformated_filename(filename, padded=True):
         filename (str): file name
 
     Returns:
-        type: string with reformated path
+        type: string with reformatted path
 
     Example:
-        get_reformated_filename("plate.1001.exr") > plate.%04d.exr
+        get_reformatted_filename("plate.1001.exr") > plate.%04d.exr
 
     """
     found = FRAME_PATTERN.search(filename)
@@ -980,7 +980,7 @@ class MediaInfoFile(object):
 
     @property
     def file_pattern(self):
-        """Clips file patter
+        """Clips file pattern.
 
         Returns:
             str: file pattern. ex. file.[1-2].exr

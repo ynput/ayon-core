@@ -2,8 +2,6 @@
 """Tools to work with FBX."""
 import logging
 
-from pyblish.api import Instance
-
 from maya import cmds  # noqa
 import maya.mel as mel  # noqa
 from ayon_core.hosts.maya.api.lib import maintained_selection
@@ -146,7 +144,6 @@ class FBXExtractor:
         return options
 
     def set_options_from_instance(self, instance):
-        # type: (Instance) -> None
         """Sets FBX export options from data in the instance.
 
         Args:

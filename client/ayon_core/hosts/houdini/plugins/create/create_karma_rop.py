@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin to create Karma ROP."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
 from ayon_core.lib import BoolDef, EnumDef, NumberDef
 
 
@@ -9,10 +8,10 @@ class CreateKarmaROP(plugin.HoudiniCreator):
     """Karma ROP"""
     identifier = "io.openpype.creators.houdini.karma_rop"
     label = "Karma ROP"
-    family = "karma_rop"
+    product_type = "karma_rop"
     icon = "magic"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
 
         instance_data.pop("active", None)
@@ -23,27 +22,27 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateKarmaROP, self).create(
-            subset_name,
+            product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
         ext = pre_create_data.get("image_format")
 
-        filepath = "{renders_dir}{subset_name}/{subset_name}.$F4.{ext}".format(
+        filepath = "{renders_dir}{product_name}/{product_name}.$F4.{ext}".format(
             renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            subset_name=subset_name,
+            product_name=product_name,
             ext=ext,
         )
-        checkpoint = "{cp_dir}{subset_name}.$F4.checkpoint".format(
+        checkpoint = "{cp_dir}{product_name}.$F4.checkpoint".format(
             cp_dir=hou.text.expandString("$HIP/pyblish/"),
-            subset_name=subset_name
+            product_name=product_name
         )
 
-        usd_directory = "{usd_dir}{subset_name}_$RENDERID".format(
+        usd_directory = "{usd_dir}{product_name}_$RENDERID".format(
             usd_dir=hou.text.expandString("$HIP/pyblish/renders/usd_renders/"),     # noqa
-            subset_name=subset_name
+            product_name=product_name
         )
 
         parms = {
@@ -84,7 +83,7 @@ class CreateKarmaROP(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock some Avalon attributes
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_pre_create_attr_defs(self):

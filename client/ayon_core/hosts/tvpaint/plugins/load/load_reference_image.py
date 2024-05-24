@@ -1,10 +1,7 @@
 import collections
 
 from ayon_core.lib.attribute_definitions import BoolDef
-from ayon_core.pipeline import (
-    get_representation_context,
-    register_host,
-)
+from ayon_core.pipeline import registered_host
 from ayon_core.hosts.tvpaint.api import plugin
 from ayon_core.hosts.tvpaint.api.lib import (
     get_layers_data,
@@ -20,8 +17,8 @@ from ayon_core.hosts.tvpaint.api.pipeline import (
 class LoadImage(plugin.Loader):
     """Load image or image sequence to TVPaint as new layer."""
 
-    families = ["render", "image", "background", "plate", "review"]
-    representations = ["*"]
+    product_types = {"render", "image", "background", "plate", "review"}
+    representations = {"*"}
 
     label = "Load Image"
     order = 1
@@ -82,9 +79,9 @@ class LoadImage(plugin.Loader):
             load_options_str += (load_option + " ")
 
         # Prepare layer name
-        asset_name = context["asset"]["name"]
-        subset_name = context["subset"]["name"]
-        layer_name = self.get_unique_layer_name(asset_name, subset_name)
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        layer_name = self.get_unique_layer_name(folder_name, product_name)
 
         path = self.filepath_from_context(context)
 
@@ -176,7 +173,7 @@ class LoadImage(plugin.Loader):
             return
         representation = container["representation"]
         members = self.get_members_from_container(container)
-        host = register_host()
+        host = registered_host()
         current_containers = host.get_containers()
         pop_idx = None
         for idx, cur_con in enumerate(current_containers):
@@ -210,16 +207,15 @@ class LoadImage(plugin.Loader):
     def switch(self, container, representation):
         self.update(container, representation)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Replace container with different version.
 
         New layers are loaded as first step. Then is tried to change data in
         new layers with data from old layers. When that is done old layers are
         removed.
         """
-        # Create new containers first
-        context = get_representation_context(representation)
 
+        # Create new containers first
         # Get layer ids from previous container
         old_layer_names = self.get_members_from_container(container)
 

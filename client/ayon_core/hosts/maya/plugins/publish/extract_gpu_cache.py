@@ -5,7 +5,8 @@ from maya import cmds
 from ayon_core.pipeline import publish
 
 
-class ExtractGPUCache(publish.Extractor):
+class ExtractGPUCache(publish.Extractor,
+                      publish.OptionalPyblishPluginMixin):
     """Extract the content of the instance to a GPU cache file."""
 
     label = "GPU Cache"
@@ -20,6 +21,9 @@ class ExtractGPUCache(publish.Extractor):
     useBaseTessellation = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         cmds.loadPlugin("gpuCache", quiet=True)
 
         staging_dir = self.staging_dir(instance)

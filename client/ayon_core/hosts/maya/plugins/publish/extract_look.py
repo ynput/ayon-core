@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
 """Maya look extractor."""
+import os
 import sys
-from abc import ABCMeta, abstractmethod
-from collections import OrderedDict
 import contextlib
 import json
 import logging
-import os
 import tempfile
+import platform
+from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+
 import six
 import attr
-
 import pyblish.api
 
 from maya import cmds  # noqa
@@ -104,12 +105,11 @@ class TextureProcessor:
             log = logging.getLogger(self.__class__.__name__)
         self.log = log
 
-    def apply_settings(self, system_settings, project_settings):
-        """Apply OpenPype system/project settings to the TextureProcessor
+    def apply_settings(self, project_settings):
+        """Apply AYON system/project settings to the TextureProcessor
 
         Args:
-            system_settings (dict): OpenPype system settings
-            project_settings (dict): OpenPype project settings
+            project_settings (dict): AYON project settings
 
         Returns:
             None
@@ -250,7 +250,7 @@ class MakeTX(TextureProcessor):
         super(MakeTX, self).__init__(log=log)
         self.extra_args = []
 
-    def apply_settings(self, system_settings, project_settings):
+    def apply_settings(self, project_settings):
         # Allow extra maketx arguments from project settings
         args_settings = (
             project_settings["maya"]["publish"]
@@ -278,7 +278,7 @@ class MakeTX(TextureProcessor):
         """Process the texture.
 
         This function requires the `maketx` executable to be available in an
-        OpenImageIO toolset detectable by OpenPype.
+        OpenImageIO toolset detectable by AYON.
 
         Args:
             source (str): Path to source file.
@@ -488,8 +488,7 @@ class ExtractLook(publish.Extractor):
         }.items():
             if instance.data.get(key, False):
                 processor = Processor(log=self.log)
-                processor.apply_settings(context.data["system_settings"],
-                                         context.data["project_settings"])
+                processor.apply_settings(context.data["project_settings"])
                 processors.append(processor)
 
         if processors:

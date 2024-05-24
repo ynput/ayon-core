@@ -1,7 +1,6 @@
 from ayon_server.settings import (
     BaseSettingsModel,
     SettingsField,
-    ensure_unique_names,
 )
 
 from .imageio import TVPaintImageIOModel

@@ -2,6 +2,7 @@
 """Creator plugin to create Redshift ROP."""
 import hou  # noqa
 
+from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
 from ayon_core.lib import EnumDef, BoolDef
 
@@ -11,14 +12,15 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.redshift_rop"
     label = "Redshift ROP"
-    family = "redshift_rop"
+    product_type = "redshift_rop"
     icon = "magic"
     ext = "exr"
+    multi_layered_mode = "No Multi-Layered EXR File"
 
     # Default to split export and render jobs
     split_render = True
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "Redshift_ROP"})
@@ -28,7 +30,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateRedshiftROP, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -42,7 +44,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
                 "Redshift_IPR", node_name=f"{basename}_IPR"
             )
         except hou.OperationFailed as e:
-            raise plugin.OpenPypeCreatorError(
+            raise CreatorError(
                 (
                     "Cannot create Redshift node. Is Redshift "
                     "installed and enabled?"
@@ -54,25 +56,36 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
 
         # Set the linked rop to the Redshift ROP
         ipr_rop.parm("linked_rop").set(instance_node.path())
-
         ext = pre_create_data.get("image_format")
-        filepath = "{renders_dir}{subset_name}/{subset_name}.{fmt}".format(
-            renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            subset_name=subset_name,
-            fmt="${aov}.$F4.{ext}".format(aov="AOV", ext=ext)
-        )
+        multi_layered_mode = pre_create_data.get("multi_layered_mode")
 
         ext_format_index = {"exr": 0, "tif": 1, "jpg": 2, "png": 3}
+        multilayer_mode_index = {"No Multi-Layered EXR File": "1",
+                                 "Full Multi-Layered EXR File": "2" }
+
+        filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
+                renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
+                product_name=product_name,
+                fmt="$AOV.$F4.{ext}".format(ext=ext)
+            )
+
+        if multilayer_mode_index[multi_layered_mode] == "1":
+            multipart = False
+
+        elif multilayer_mode_index[multi_layered_mode] == "2":
+            multipart = True
 
         parms = {
             # Render frame range
             "trange": 1,
             # Redshift ROP settings
             "RS_outputFileNamePrefix": filepath,
-            "RS_outputMultilayerMode": "1",  # no multi-layered exr
             "RS_outputBeautyAOVSuffix": "beauty",
             "RS_outputFileFormat": ext_format_index[ext],
         }
+        if ext == "exr":
+            parms["RS_outputMultilayerMode"] = multilayer_mode_index[multi_layered_mode]
+            parms["RS_aovMultipart"] = multipart
 
         if self.selected_nodes:
             # set up the render camera from the selected node
@@ -83,7 +96,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             parms["RS_renderCamera"] = camera or ""
 
         export_dir = hou.text.expandString("$HIP/pyblish/rs/")
-        rs_filepath = f"{export_dir}{subset_name}/{subset_name}.$F4.rs"
+        rs_filepath = f"{export_dir}{product_name}/{product_name}.$F4.rs"
         parms["RS_archive_file"] = rs_filepath
 
         if pre_create_data.get("split_render", self.split_render):
@@ -92,7 +105,7 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock some Avalon attributes
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def remove_instances(self, instances):
@@ -110,6 +123,11 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
         image_format_enum = [
             "exr", "tif", "jpg", "png",
         ]
+        multi_layered_mode = [
+            "No Multi-Layered EXR File",
+            "Full Multi-Layered EXR File"
+        ]
+
 
         return attrs + [
             BoolDef("farm",
@@ -121,5 +139,9 @@ class CreateRedshiftROP(plugin.HoudiniCreator):
             EnumDef("image_format",
                     image_format_enum,
                     default=self.ext,
-                    label="Image Format Options")
+                    label="Image Format Options"),
+            EnumDef("multi_layered_mode",
+                    multi_layered_mode,
+                    default=self.multi_layered_mode,
+                    label="Multi-Layered EXR")
         ]

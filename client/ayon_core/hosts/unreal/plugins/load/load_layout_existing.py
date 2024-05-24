@@ -2,15 +2,14 @@
 """Loader for apply layout to already existing assets."""
 import json
 from pathlib import Path
+import ayon_api
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
     load_container,
     get_representation_path,
     AYON_CONTAINER_ID,
-    get_current_project_name,
 )
 from ayon_core.hosts.unreal.api.plugin import UnrealBaseLoader
 from ayon_core.hosts.unreal.api.pipeline import (
@@ -24,8 +23,8 @@ class ExistingLayoutLoader(UnrealBaseLoader):
     Load Layout for an existing scene, and match the existing assets.
     """
 
-    families = ["layout"]
-    representations = ["json"]
+    product_types = {"layout"}
+    representations = {"json"}
 
     label = "Load Layout on Existing Scene"
     icon = "code-fork"
@@ -34,35 +33,13 @@ class ExistingLayoutLoader(UnrealBaseLoader):
     delete_unmatched_assets = True
 
     @classmethod
-    def apply_settings(cls, project_settings, *args, **kwargs):
+    def apply_settings(cls, project_settings):
         super(ExistingLayoutLoader, cls).apply_settings(
-            project_settings, *args, **kwargs
+            project_settings
         )
         cls.delete_unmatched_assets = (
             project_settings["unreal"]["delete_unmatched_assets"]
         )
-
-    def _create_container(
-        self, asset_name, asset_dir, asset, representation, parent, family
-    ):
-        container_name = f"{asset_name}_CON"
-
-        data = {
-            "schema": "ayon:container-2.0",
-            "id": AYON_CONTAINER_ID,
-            "asset": asset,
-            "namespace": asset_dir,
-            "container_name": container_name,
-            "asset_name": asset_name,
-            "loader": self.__class__.__name__,
-            "representation_id": representation,
-            "version_id": parent,
-            "family": family
-        }
-
-        container = containerise(asset_dir, container_name, data)
-
-        return container.get_path_name()
 
     @staticmethod
     def _get_fbx_loader(loaders, family):
@@ -102,19 +79,20 @@ class ExistingLayoutLoader(UnrealBaseLoader):
             else None
         )
 
-    def _get_representation(self, element, repre_docs_by_version_id):
+    def _get_representation(self, element, repre_entities_by_version_id):
         representation = None
         repr_format = None
         if element.get('representation'):
-            repre_docs = repre_docs_by_version_id[element.get("version")]
-            if not repre_docs:
+            version_id = element.get("version")
+            repre_entities = repre_entities_by_version_id[version_id]
+            if not repre_entities:
                 self.log.error(
                     f"No valid representation found for version "
-                    f"{element.get('version')}")
+                    f"{version_id}")
                 return None, None
-            repre_doc = repre_docs[0]
-            representation = str(repre_doc["_id"])
-            repr_format = repre_doc["name"]
+            repre_entity = repre_entities[0]
+            representation = str(repre_entity["_id"])
+            repr_format = repre_entity["name"]
 
         # This is to keep compatibility with old versions of the
         # json format.
@@ -148,53 +126,60 @@ class ExistingLayoutLoader(UnrealBaseLoader):
         return load_container(loader, representation, namespace=instance_name)
 
     @staticmethod
-    def _get_valid_repre_docs(project_name, version_ids):
+    def _get_valid_repre_entities(project_name, version_ids):
         valid_formats = ['fbx', 'abc']
 
-        repre_docs = list(get_representations(
+        repre_entities = list(ayon_api.get_representations(
             project_name,
             representation_names=valid_formats,
             version_ids=version_ids
         ))
 
         return {
-            str(repre_doc["parent"]): repre_doc for repre_doc in repre_docs}
+            str(repre_entity["parent"]):
+                repre_entity for repre_entity in repre_entities}
 
     @staticmethod
     def _get_layout_data(data, project_name):
-        assets = []
+        elements = []
         repre_ids = set()
-
         # Get all the representations in the JSON from the database.
-        for asset in data:
-            if repre_id := asset.get('representation'):
+        for element in data:
+            repre_id = element.get('representation')
+            if repre_id:
                 repre_ids.add(repre_id)
-                assets.append(asset)
+                elements.append(element)
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, representation_ids=repre_ids
         )
-        repre_docs_by_id = {
-            str(repre_doc["_id"]): repre_doc
-            for repre_doc in repre_docs
+        repre_entities_by_id = {
+            repre_entity["id"]: repre_entity
+            for repre_entity in repre_entities
         }
-
         layout_data = []
         version_ids = set()
-        for asset in assets:
-            repre_id = asset.get("representation")
-            repre_doc = repre_docs_by_id.get(repre_id)
-            if not repre_doc:
+        for element in elements:
+            repre_id = element.get("representation")
+            repre_entity = repre_entities_by_id.get(repre_id)
+            if not repre_entity:
                 raise AssertionError("Representation not found")
-            if not repre_doc.get('data') and not repre_doc['data'].get('path'):
+            if not (
+                repre_entity.get("attrib")
+                or repre_entity["attrib"].get("path")
+            ):
                 raise AssertionError("Representation does not have path")
-            if not repre_doc.get('context'):
+            if not repre_entity.get('context'):
                 raise AssertionError("Representation does not have context")
 
-            layout_data.append((repre_doc, asset))
-            version_ids.add(repre_doc["parent"])
+            layout_data.append((repre_entity, element))
+            version_ids.add(repre_entity["versionId"])
 
-        return layout_data, version_ids
+        repre_parents_by_id = ayon_api.get_representation_parents(
+            project_name, repre_entities_by_id.keys()
+        )
+
+        return layout_data, version_ids, repre_parents_by_id
 
     def _process(self, lib_path, project_name):
         with open(lib_path, "r") as fp:
@@ -202,16 +187,17 @@ class ExistingLayoutLoader(UnrealBaseLoader):
 
         all_loaders = discover_loader_plugins()
 
-        layout_data, version_ids = self._get_layout_data(data, project_name)
+        layout_data, version_ids, repre_parents_by_id = (
+            self._get_layout_data(data, project_name))
 
         # Prequery valid repre documents for all elements at once
-        valid_repre_doc_by_version_id = self._get_valid_repre_docs(
+        valid_repre_doc_by_version_id = self._get_valid_repre_entities(
             project_name, version_ids)
 
         containers = []
         actors_matched = []
 
-        for (repr_data, lasset) in layout_data:
+        for (repre_entity, lasset) in layout_data:
             # For every actor in the scene, check if it has a representation
             # in those we got from the JSON. If so, create a container for it.
             # Otherwise, remove it from the scene.
@@ -221,28 +207,36 @@ class ExistingLayoutLoader(UnrealBaseLoader):
                 params={
                     "actors_matched": actors_matched,
                     "lasset": lasset,
-                    "repr_data": repr_data})
+                    "repr_data": repre_entity})
 
             # If an actor has not been found for this representation,
             # we check if it has been loaded already by checking all the
             # loaded containers. If so, we add it to the scene. Otherwise,
             # we load it.
             if matched:
-                asset = repr_data.get('context').get('asset')
-                subset = repr_data.get('context').get('subset')
+                repre_id = repre_entity["id"]
+                repre_parents = repre_parents_by_id[repre_id]
+                folder_path = repre_parents.folder["path"]
+                folder_name = repre_parents.folder["name"]
+                product_name = repre_parents.product["name"]
+                product_type = repre_parents.product["productType"]
+
                 container = self._create_container(
-                    f"{asset}_{subset}", mesh_path, asset,
-                    repr_data.get('_id'), repr_data.get('parent'),
-                    repr_data.get('context').get('family')
+                    f"{folder_name}_{product_name}",
+                    mesh_path,
+                    folder_path,
+                    repre_entity["id"],
+                    repre_entity["versionId"],
+                    product_type
                 )
                 containers.append(container)
 
                 continue
 
             loaded = send_request(
-                "spawn_actors",
+                "spawn_existing_actors",
                 params={
-                    "repr_data": repr_data,
+                    "repre_entity": repre_entity,
                     "lasset": lasset})
 
             if loaded:
@@ -275,7 +269,7 @@ class ExistingLayoutLoader(UnrealBaseLoader):
 
         return containers
 
-    def load(self, context, name=None, namespace=None, options=None):
+    def load(self, context, name, namespace, options):
         """Load and containerise representation into Content Browser.
 
         Load and apply layout to already existing assets in Unreal.
@@ -292,10 +286,11 @@ class ExistingLayoutLoader(UnrealBaseLoader):
             options (dict): Those would be data to be imprinted. This is not
                             used now, data are imprinted by `containerise()`.
         """
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else name
-
-        container_name = f"{asset}_{name}_CON"
+        folder_name = context["folder"]["name"]
+        folder_path = context["folder"]["path"]
+        product_type = context["product"]["productType"]
+        asset_name = f"{folder_name}_{name}" if folder_name else name
+        container_name = f"{folder_name}_{name}_CON"
 
         curr_level = send_request("get_current_level")
 
@@ -311,31 +306,36 @@ class ExistingLayoutLoader(UnrealBaseLoader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "folder_path": folder_path,
             "namespace": curr_level_path,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation_id": str(context["representation"]["_id"]),
-            "version_id": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
-            "loaded_assets": containers
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "product_type": product_type,
+            "loaded_assets": containers,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
 
         containerise(curr_level_path, container_name, data)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         asset_dir = container.get('namespace')
         container_name = container['objectName']
 
-        source_path = get_representation_path(representation)
-        project_name = get_current_project_name()
+        project_name = context["project"]["name"]
+        repre_entity = context["representation"]
+
+        source_path = get_representation_path(repre_entity)
         containers = self._process(source_path, project_name)
 
         data = {
-            "representation_id": str(representation["_id"]),
-            "version_id": str(representation["parent"]),
-            "loaded_assets": containers
+            "representation": repre_entity["id"],
+            "loaded_assets": containers,
+            "parent": repre_entity["versionId"],
         }
 
         containerise(asset_dir, container_name, data)

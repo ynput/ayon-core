@@ -3,20 +3,11 @@ import sys
 import re
 import contextlib
 
-from ayon_core.lib import Logger
-from ayon_core.client import (
-    get_asset_by_name,
-    get_subset_by_name,
-    get_last_version_by_subset_id,
-    get_representation_by_id,
-    get_representation_by_name,
-    get_representation_parents,
-)
-from ayon_core.pipeline import (
-    switch_container,
-    get_current_project_name,
-)
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.lib import Logger, BoolDef, UILabelDef
+from ayon_core.style import load_stylesheet
+from ayon_core.pipeline import registered_host
+from ayon_core.pipeline.create import CreateContext
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 
 self = sys.modules[__name__]
 self._project = None
@@ -63,23 +54,46 @@ def update_frame_range(start, end, comp=None, set_render_range=True,
         comp.SetAttrs(attrs)
 
 
-def set_asset_framerange():
-    """Set Comp's frame range based on current asset"""
-    asset_doc = get_current_project_asset()
-    start = asset_doc["data"]["frameStart"]
-    end = asset_doc["data"]["frameEnd"]
-    handle_start = asset_doc["data"]["handleStart"]
-    handle_end = asset_doc["data"]["handleEnd"]
+def set_current_context_framerange(folder_entity=None):
+    """Set Comp's frame range based on current folder."""
+    if folder_entity is None:
+        folder_entity = get_current_folder_entity(
+            fields={"attrib.frameStart",
+                    "attrib.frameEnd",
+                    "attrib.handleStart",
+                    "attrib.handleEnd"})
+
+    folder_attributes = folder_entity["attrib"]
+    start = folder_attributes["frameStart"]
+    end = folder_attributes["frameEnd"]
+    handle_start = folder_attributes["handleStart"]
+    handle_end = folder_attributes["handleEnd"]
     update_frame_range(start, end, set_render_range=True,
                        handle_start=handle_start,
                        handle_end=handle_end)
 
 
-def set_asset_resolution():
-    """Set Comp's resolution width x height default based on current asset"""
-    asset_doc = get_current_project_asset()
-    width = asset_doc["data"]["resolutionWidth"]
-    height = asset_doc["data"]["resolutionHeight"]
+def set_current_context_fps(folder_entity=None):
+    """Set Comp's frame rate (FPS) to based on current asset"""
+    if folder_entity is None:
+        folder_entity = get_current_folder_entity(fields={"attrib.fps"})
+
+    fps = float(folder_entity["attrib"].get("fps", 24.0))
+    comp = get_current_comp()
+    comp.SetPrefs({
+        "Comp.FrameFormat.Rate": fps,
+    })
+
+
+def set_current_context_resolution(folder_entity=None):
+    """Set Comp's resolution width x height default based on current folder"""
+    if folder_entity is None:
+        folder_entity = get_current_folder_entity(
+            fields={"attrib.resolutionWidth", "attrib.resolutionHeight"})
+
+    folder_attributes = folder_entity["attrib"]
+    width = folder_attributes["resolutionWidth"]
+    height = folder_attributes["resolutionHeight"]
     comp = get_current_comp()
 
     print("Setting comp frame format resolution to {}x{}".format(width,
@@ -91,7 +105,7 @@ def set_asset_resolution():
 
 
 def validate_comp_prefs(comp=None, force_repair=False):
-    """Validate current comp defaults with asset settings.
+    """Validate current comp defaults with folder settings.
 
     Validates fps, resolutionWidth, resolutionHeight, aspectRatio.
 
@@ -103,22 +117,23 @@ def validate_comp_prefs(comp=None, force_repair=False):
 
     log = Logger.get_logger("validate_comp_prefs")
 
-    fields = [
-        "name",
-        "data.fps",
-        "data.resolutionWidth",
-        "data.resolutionHeight",
-        "data.pixelAspect"
-    ]
-    asset_doc = get_current_project_asset(fields=fields)
-    asset_data = asset_doc["data"]
+    fields = {
+        "path",
+        "attrib.fps",
+        "attrib.resolutionWidth",
+        "attrib.resolutionHeight",
+        "attrib.pixelAspect",
+    }
+    folder_entity = get_current_folder_entity(fields=fields)
+    folder_path = folder_entity["path"]
+    folder_attributes = folder_entity["attrib"]
 
     comp_frame_format_prefs = comp.GetPrefs("Comp.FrameFormat")
 
     # Pixel aspect ratio in Fusion is set as AspectX and AspectY so we convert
     # the data to something that is more sensible to Fusion
-    asset_data["pixelAspectX"] = asset_data.pop("pixelAspect")
-    asset_data["pixelAspectY"] = 1.0
+    folder_attributes["pixelAspectX"] = folder_attributes.pop("pixelAspect")
+    folder_attributes["pixelAspectY"] = 1.0
 
     validations = [
         ("fps", "Rate", "FPS"),
@@ -130,23 +145,23 @@ def validate_comp_prefs(comp=None, force_repair=False):
 
     invalid = []
     for key, comp_key, label in validations:
-        asset_value = asset_data[key]
+        folder_value = folder_attributes[key]
         comp_value = comp_frame_format_prefs.get(comp_key)
-        if asset_value != comp_value:
+        if folder_value != comp_value:
             invalid_msg = "{} {} should be {}".format(label,
                                                       comp_value,
-                                                      asset_value)
+                                                      folder_value)
             invalid.append(invalid_msg)
 
             if not force_repair:
                 # Do not log warning if we force repair anyway
                 log.warning(
-                    "Comp {pref} {value} does not match asset "
-                    "'{asset_name}' {pref} {asset_value}".format(
+                    "Comp {pref} {value} does not match folder "
+                    "'{folder_path}' {pref} {folder_value}".format(
                         pref=label,
                         value=comp_value,
-                        asset_name=asset_doc["name"],
-                        asset_value=asset_value)
+                        folder_path=folder_path,
+                        folder_value=folder_value)
                 )
 
     if invalid:
@@ -154,7 +169,7 @@ def validate_comp_prefs(comp=None, force_repair=False):
         def _on_repair():
             attributes = dict()
             for key, comp_key, _label in validations:
-                value = asset_data[key]
+                value = folder_value[key]
                 comp_key_full = "Comp.FrameFormat.{}".format(comp_key)
                 attributes[comp_key_full] = value
             comp.SetPrefs(attributes)
@@ -166,11 +181,10 @@ def validate_comp_prefs(comp=None, force_repair=False):
 
         from . import menu
         from ayon_core.tools.utils import SimplePopup
-        from ayon_core.style import load_stylesheet
         dialog = SimplePopup(parent=menu.menu)
         dialog.setWindowTitle("Fusion comp has invalid configuration")
 
-        msg = "Comp preferences mismatches '{}'".format(asset_doc["name"])
+        msg = "Comp preferences mismatches '{}'".format(folder_path)
         msg += "\n" + "\n".join(invalid)
         dialog.set_message(msg)
         dialog.set_button_text("Repair")
@@ -293,3 +307,96 @@ def comp_lock_and_undo_chunk(
     finally:
         comp.Unlock()
         comp.EndUndo(keep_undo)
+
+
+def update_content_on_context_change():
+    """Update all Creator instances to current asset"""
+    host = registered_host()
+    context = host.get_current_context()
+
+    folder_path = context["folder_path"]
+    task = context["task_name"]
+
+    create_context = CreateContext(host, reset=True)
+
+    for instance in create_context.instances:
+        instance_folder_path = instance.get("folderPath")
+        if instance_folder_path and instance_folder_path != folder_path:
+            instance["folderPath"] = folder_path
+        instance_task = instance.get("task")
+        if instance_task and instance_task != task:
+            instance["task"] = task
+
+    create_context.save_changes()
+
+
+def prompt_reset_context():
+    """Prompt the user what context settings to reset.
+    This prompt is used on saving to a different task to allow the scene to
+    get matched to the new context.
+    """
+    # TODO: Cleanup this prototyped mess of imports and odd dialog
+    from ayon_core.tools.attribute_defs.dialog import (
+        AttributeDefinitionsDialog
+    )
+    from qtpy import QtCore
+
+    definitions = [
+        UILabelDef(
+            label=(
+                "You are saving your workfile into a different folder or task."
+                "\n\n"
+                "Would you like to update some settings to the new context?\n"
+            )
+        ),
+        BoolDef(
+            "fps", 
+            label="FPS", 
+            tooltip="Reset Comp FPS",
+            default=True
+        ),
+        BoolDef(
+            "frame_range", 
+            label="Frame Range",
+            tooltip="Reset Comp start and end frame ranges",
+            default=True
+        ),
+        BoolDef(
+            "resolution", 
+            label="Comp Resolution", 
+            tooltip="Reset Comp resolution",
+            default=True
+        ),
+        BoolDef(
+            "instances", 
+            label="Publish instances", 
+            tooltip="Update all publish instance's folder and task to match "
+                    "the new folder and task", 
+            default=True
+        ),
+    ]
+
+    dialog = AttributeDefinitionsDialog(definitions)
+    dialog.setWindowFlags(
+        dialog.windowFlags() | QtCore.Qt.WindowStaysOnTopHint
+    )
+    dialog.setWindowTitle("Saving to different context.")
+    dialog.setStyleSheet(load_stylesheet())
+    if not dialog.exec_():
+        return None
+
+    options = dialog.get_values()
+    folder_entity = get_current_folder_entity()
+    if options["frame_range"]:
+        set_current_context_framerange(folder_entity)
+
+    if options["fps"]:
+        set_current_context_fps(folder_entity)
+
+    if options["resolution"]:
+        set_current_context_resolution(folder_entity)
+
+    if options["instances"]:
+        update_content_on_context_change()
+
+    dialog.deleteLater()

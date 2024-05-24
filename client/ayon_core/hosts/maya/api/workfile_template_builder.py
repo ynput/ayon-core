@@ -4,7 +4,7 @@ from maya import cmds
 
 from ayon_core.pipeline import (
     registered_host,
-    get_current_asset_name,
+    get_current_folder_path,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
 )
@@ -74,7 +74,7 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
             return True
 
         # update imported sets information
-        asset_name = get_current_asset_name()
+        folder_path = get_current_folder_path()
         for node in imported_sets:
             if not cmds.attributeQuery("id", node=node, exists=True):
                 continue
@@ -82,11 +82,11 @@ class MayaTemplateBuilder(AbstractTemplateBuilder):
                 AYON_INSTANCE_ID, AVALON_INSTANCE_ID
             }:
                 continue
-            if not cmds.attributeQuery("asset", node=node, exists=True):
+            if not cmds.attributeQuery("folderPath", node=node, exists=True):
                 continue
 
             cmds.setAttr(
-                "{}.asset".format(node), asset_name, type="string")
+                "{}.folderPath".format(node), folder_path, type="string")
 
         return True
 
@@ -140,10 +140,12 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
         placeholder_name_parts = placeholder_data["builder_type"].split("_")
 
         pos = 1
-        # add family in any
-        placeholder_family = placeholder_data["family"]
-        if placeholder_family:
-            placeholder_name_parts.insert(pos, placeholder_family)
+        placeholder_product_type = placeholder_data.get("product_type")
+        if placeholder_product_type is None:
+            placeholder_product_type = placeholder_data.get("family")
+
+        if placeholder_product_type:
+            placeholder_name_parts.insert(pos, placeholder_product_type)
             pos += 1
 
         # add loader arguments if any
@@ -284,7 +286,7 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
         if not container:
             return
 
-        roots = cmds.sets(container, q=True)
+        roots = cmds.sets(container, q=True) or []
         ref_node = None
         try:
             ref_node = get_reference_node(roots)
@@ -329,7 +331,8 @@ class MayaPlaceholderLoadPlugin(PlaceholderPlugin, PlaceholderLoadMixin):
             if scene_parent:
                 cmds.parent(node, scene_parent)
             else:
-                cmds.parent(node, world=True)
+                if cmds.listRelatives(node, parent=True):
+                    cmds.parent(node, world=True)
 
         holding_sets = cmds.listSets(object=placeholder.scene_identifier)
         if not holding_sets:

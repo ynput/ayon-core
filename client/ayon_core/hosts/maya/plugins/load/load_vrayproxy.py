@@ -9,11 +9,10 @@ import os
 
 import maya.cmds as cmds
 
-from ayon_core.client import get_representation_by_name
+import ayon_api
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.maya.api.lib import (
@@ -22,14 +21,14 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class VRayProxyLoader(load.LoaderPlugin):
     """Load VRay Proxy with Alembic or VrayMesh."""
 
-    families = ["vrayproxy", "model", "pointcache", "animation"]
-    representations = ["vrmesh", "abc"]
+    product_types = {"vrayproxy", "model", "pointcache", "animation"}
+    representations = {"vrmesh", "abc"}
 
     label = "Import VRay Proxy"
     order = -10
@@ -48,20 +47,19 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         """
 
-        try:
-            family = context["representation"]["context"]["family"]
-        except ValueError:
-            family = "vrayproxy"
+        product_type = context["product"]["productType"]
 
         #  get all representations for this version
-        filename = self._get_abc(context["version"]["_id"])
+        filename = self._get_abc(
+            context["project"]["name"], context["version"]["id"]
+        )
         if not filename:
             filename = self.filepath_from_context(context)
 
-        asset_name = context['asset']["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset_name + "_",
-            prefix="_" if asset_name[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -81,7 +79,7 @@ class VRayProxyLoader(load.LoaderPlugin):
         # colour the group node
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr("{0}.useOutlinerColor".format(group_node), 1)
@@ -96,7 +94,7 @@ class VRayProxyLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # type: (dict, dict) -> None
         """Update container with specified representation."""
         node = container['objectName']
@@ -107,10 +105,12 @@ class VRayProxyLoader(load.LoaderPlugin):
         assert vraymeshes, "Cannot find VRayMesh in container"
 
         #  get all representations for this version
-        filename = (
-            self._get_abc(representation["parent"])
-            or get_representation_path(representation)
+        repre_entity = context["representation"]
+        filename = self._get_abc(
+            context["project"]["name"], context["version"]["id"]
         )
+        if not filename:
+            filename = get_representation_path(repre_entity)
 
         for vray_mesh in vraymeshes:
             cmds.setAttr("{}.fileName".format(vray_mesh),
@@ -119,7 +119,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     repre_entity["id"],
                      type="string")
 
     def remove(self, container):
@@ -140,10 +140,10 @@ class VRayProxyLoader(load.LoaderPlugin):
                 self.log.warning("Namespace not deleted because it "
                                  "still has members: %s", namespace)
 
-    def switch(self, container, representation):
+    def switch(self, container, context):
         # type: (dict, dict) -> None
         """Switch loaded representation."""
-        self.update(container, representation)
+        self.update(container, context)
 
     def create_vray_proxy(self, name, filename):
         # type: (str, str) -> (list, str)
@@ -169,7 +169,7 @@ class VRayProxyLoader(load.LoaderPlugin):
 
         return [parent, proxy], parent
 
-    def _get_abc(self, version_id):
+    def _get_abc(self, project_name, version_id):
         # type: (str) -> str
         """Get abc representation file path if present.
 
@@ -177,6 +177,7 @@ class VRayProxyLoader(load.LoaderPlugin):
         vray proxy, get is file path.
 
         Args:
+            project_name (str): Project name.
             version_id (str): Version hash id.
 
         Returns:
@@ -186,8 +187,9 @@ class VRayProxyLoader(load.LoaderPlugin):
         """
         self.log.debug(
             "Looking for abc in published representations of this version.")
-        project_name = get_current_project_name()
-        abc_rep = get_representation_by_name(project_name, "abc", version_id)
+        abc_rep = ayon_api.get_representation_by_name(
+            project_name, "abc", version_id
+        )
         if abc_rep:
             self.log.debug("Found, we'll link alembic to vray proxy.")
             file_name = get_representation_path(abc_rep)

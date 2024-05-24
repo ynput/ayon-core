@@ -20,8 +20,15 @@ class ImageSequenceLoader(load.LoaderPlugin):
     Stores the imported asset in a container named after the asset.
     """
 
-    families = ["shot", "render", "image", "plate", "reference", "review"]
-    representations = ["*"]
+    product_types = {
+        "shot",
+        "render",
+        "image",
+        "plate",
+        "reference",
+        "review",
+    }
+    representations = {"*"}
     extensions = {"jpeg", "png", "jpg"}
 
     def load(self, context, name=None, namespace=None, data=None):
@@ -46,8 +53,8 @@ class ImageSequenceLoader(load.LoaderPlugin):
         else:
             files.append(fname.parent.joinpath(remainder[0]).as_posix())
 
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         group_id = str(uuid.uuid4())
         read_node = harmony.send(
@@ -55,8 +62,8 @@ class ImageSequenceLoader(load.LoaderPlugin):
                 "function": f"PypeHarmony.Loaders.{self_name}.importFiles",  # noqa: E501
                 "args": [
                     files,
-                    asset,
-                    subset,
+                    folder_name,
+                    product_name,
                     1,
                     group_id
                 ]
@@ -64,7 +71,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )["result"]
 
         return harmony.containerise(
-            f"{asset}_{subset}",
+            f"{folder_name}_{product_name}",
             namespace,
             read_node,
             context,
@@ -72,18 +79,19 @@ class ImageSequenceLoader(load.LoaderPlugin):
             nodes=[read_node]
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update loaded containers.
 
         Args:
             container (dict): Container data.
-            representation (dict): Representation data.
+            context (dict): Representation context data.
 
         """
         self_name = self.__class__.__name__
         node = container.get("nodes").pop()
 
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         collections, remainder = clique.assemble(
             os.listdir(os.path.dirname(path))
         )
@@ -110,7 +118,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )
 
         # Colour node.
-        if is_representation_from_latest(representation):
+        if is_representation_from_latest(repre_entity):
             harmony.send(
                 {
                     "function": "PypeHarmony.setColor",
@@ -124,7 +132,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
                 })
 
         harmony.imprint(
-            node, {"representation": str(representation["_id"])}
+            node, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):
@@ -140,6 +148,6 @@ class ImageSequenceLoader(load.LoaderPlugin):
         )
         harmony.imprint(node, {}, remove=True)
 
-    def switch(self, container, representation):
+    def switch(self, container, context):
         """Switch loaded representations."""
-        self.update(container, representation)
+        self.update(container, context)

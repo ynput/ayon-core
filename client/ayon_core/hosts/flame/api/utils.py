@@ -11,7 +11,7 @@ log = Logger.get_logger(__name__)
 def _sync_utility_scripts(env=None):
     """ Synchronizing basic utlility scripts for flame.
 
-    To be able to run start OpenPype within Flame we have to copy
+    To be able to run start AYON within Flame we have to copy
     all utility_scripts and additional FLAME_SCRIPT_DIR into
     `/opt/Autodesk/shared/python`. This will be always synchronizing those
     folders.
@@ -124,7 +124,7 @@ def setup(env=None):
     # synchronize resolve utility scripts
     _sync_utility_scripts(env)
 
-    log.info("Flame OpenPype wrapper has been installed")
+    log.info("Flame AYON wrapper has been installed")
 
 
 def get_flame_version():

@@ -24,12 +24,12 @@ class CreateTextures(Creator):
     """Create a texture set."""
     identifier = "io.openpype.creators.substancepainter.textureset"
     label = "Textures"
-    family = "textureSet"
+    product_type = "textureSet"
     icon = "picture-o"
 
     default_variant = "Main"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         if not substance_painter.project.is_open():
             raise CreatorError("Can't create a Texture Set instance without "
@@ -47,7 +47,7 @@ class CreateTextures(Creator):
             if key in pre_create_data:
                 creator_attributes[key] = pre_create_data[key]
 
-        instance = self.create_instance_in_context(subset_name,
+        instance = self.create_instance_in_context(product_name,
                                                    instance_data)
         set_instance(
             instance_id=instance["instance_id"],
@@ -57,7 +57,7 @@ class CreateTextures(Creator):
     def collect_instances(self):
         for instance in get_instances():
             if (instance.get("creator_identifier") == self.identifier or
-                    instance.get("family") == self.family):
+                    instance.get("productType") == self.product_type):
                 self.create_instance_in_context_from_existing(instance)
 
     def update_instances(self, update_list):
@@ -75,9 +75,9 @@ class CreateTextures(Creator):
             self._remove_instance_from_context(instance)
 
     # Helper methods (this might get moved into Creator class)
-    def create_instance_in_context(self, subset_name, data):
+    def create_instance_in_context(self, product_name, data):
         instance = CreatedInstance(
-            self.family, subset_name, data, self
+            self.product_type, product_name, data, self
         )
         self.create_context.creator_adds_instance(instance)
         return instance
@@ -144,7 +144,8 @@ class CreateTextures(Creator):
                         9: "512",
                         10: "1024",
                         11: "2048",
-                        12: "4096"
+                        12: "4096",
+                        13: "8192"
                     },
                     default=None,
                     label="Size"),

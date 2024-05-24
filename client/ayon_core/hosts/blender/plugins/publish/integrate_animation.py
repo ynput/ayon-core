@@ -28,25 +28,26 @@ class IntegrateAnimation(
         # Update the json file for the setdress to add the published
         # representations of the animations
         for json_dict in data:
+            json_product_name = json_dict["productName"]
             i = None
             for elem in instance.context:
-                if elem.data.get('subset') == json_dict['subset']:
+                if elem.data["productName"] == json_product_name:
                     i = elem
                     break
             if not i:
                 continue
             rep = None
-            pub_repr = i.data.get('published_representations')
+            pub_repr = i.data["published_representations"]
             for elem in pub_repr:
-                if pub_repr.get(elem).get('representation').get('name') == "fbx":
-                    rep = pub_repr.get(elem)
+                if pub_repr[elem]["representation"]["name"] == "fbx":
+                    rep = pub_repr[elem]
                     break
             if not rep:
                 continue
-            obj_id = rep.get('representation').get('_id')
+            obj_id = rep["representation"]["id"]
 
             if obj_id:
-                json_dict['_id'] = str(obj_id)
+                json_dict["representation_id"] = str(obj_id)
 
         with open(json_path, "w") as file:
             json.dump(data, fp=file, indent=2)

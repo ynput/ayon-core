@@ -23,9 +23,9 @@ class ExtractAnimationABC(
 
         # Define extract output file path
         stagingdir = self.staging_dir(instance)
-        asset_name = instance.data["assetEntity"]["name"]
-        subset = instance.data["subset"]
-        instance_name = f"{asset_name}_{subset}"
+        folder_name = instance.data["folderEntity"]["name"]
+        product_name = instance.data["productName"]
+        instance_name = f"{folder_name}_{product_name}"
         filename = f"{instance_name}.abc"
 
         filepath = os.path.join(stagingdir, filename)

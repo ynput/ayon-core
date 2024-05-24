@@ -1,16 +1,18 @@
+import collections
+
 from ayon_api import (
     get_folder_by_name,
     get_folder_by_path,
     get_folders,
+    get_tasks,
 )
 from maya import cmds  # noqa: F401
 
-from ayon_core.client import get_assets
 from ayon_core.hosts.maya.api import plugin
 from ayon_core.lib import BoolDef, EnumDef, TextDef
 from ayon_core.pipeline import (
     Creator,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_project_name,
 )
 from ayon_core.pipeline.create import CreatorError
@@ -27,7 +29,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
     """
     identifier = "io.openpype.creators.maya.multishotlayout"
     label = "Multi-shot Layout"
-    family = "layout"
+    product_type = "layout"
     icon = "project-diagram"
 
     def get_pre_create_attr_defs(self):
@@ -39,13 +41,13 @@ class CreateMultishotLayout(plugin.MayaCreator):
         Todo: `get_folder_by_name` should be switched to `get_folder_by_path`
               once the fork to pure AYON is done.
 
-        Warning: this will not work for projects where the asset name
+        Warning: this will not work for projects where the folder name
                  is not unique across the project until the switch mentioned
                  above is done.
         """
 
         project_name = get_current_project_name()
-        folder_path = get_current_asset_name()
+        folder_path = get_current_folder_path()
         if "/" in folder_path:
             current_folder = get_folder_by_path(project_name, folder_path)
         else:
@@ -106,7 +108,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
                     default="layout"),
         ]
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         shots = list(
             self.get_related_shots(folder_path=pre_create_data["shotParent"])
         )
@@ -128,10 +130,18 @@ class CreateMultishotLayout(plugin.MayaCreator):
             raise CreatorError(
                 f"Creator {layout_creator_id} not found.")
 
-        # Get OpenPype style asset documents for the shots
-        op_asset_docs = get_assets(
-            self.project_name, [s["id"] for s in shots])
-        asset_docs_by_id = {doc["_id"]: doc for doc in op_asset_docs}
+        folder_ids = {s["id"] for s in shots}
+        folder_entities = get_folders(self.project_name, folder_ids)
+        task_entities = get_tasks(
+            self.project_name, folder_ids=folder_ids
+        )
+        task_entities_by_folder_id = collections.defaultdict(dict)
+        for task_entity in task_entities:
+            folder_id = task_entity["folderId"]
+            task_name = task_entity["name"]
+            task_entities_by_folder_id[folder_id][task_name] = task_entity
+
+        folder_entities_by_id = {fe["id"]: fe for fe in folder_entities}
         for shot in shots:
             # we are setting shot name to be displayed in the sequencer to
             # `shot name (shot label)` if the label is set, otherwise just
@@ -141,12 +151,15 @@ class CreateMultishotLayout(plugin.MayaCreator):
                 continue
 
             # get task for shot
-            asset_doc = asset_docs_by_id[shot["id"]]
+            folder_id = shot["id"]
+            folder_entity = folder_entities_by_id[folder_id]
+            task_entities = task_entities_by_folder_id[folder_id]
 
-            tasks = asset_doc.get("data").get("tasks").keys()
-            layout_task = None
-            if pre_create_data["taskName"] in tasks:
-                layout_task = pre_create_data["taskName"]
+            layout_task_name = None
+            layout_task_entity = None
+            if pre_create_data["taskName"] in task_entities:
+                layout_task_name = pre_create_data["taskName"]
+                layout_task_entity = task_entities[layout_task_name]
 
             shot_name = f"{shot['name']}%s" % (
                 f" ({shot['label']})" if shot["label"] else "")
@@ -160,15 +173,16 @@ class CreateMultishotLayout(plugin.MayaCreator):
                 "folderPath": shot["path"],
                 "variant": layout_creator.get_default_variant()
             }
-            if layout_task:
-                instance_data["task"] = layout_task
+            if layout_task_name:
+                instance_data["task"] = layout_task_name
 
             layout_creator.create(
-                subset_name=layout_creator.get_subset_name(
+                product_name=layout_creator.get_product_name(
+                    self.project_name,
+                    folder_entity,
+                    layout_task_entity,
                     layout_creator.get_default_variant(),
-                    self.create_context.get_current_task_name(),
-                    asset_doc,
-                    self.project_name),
+                ),
                 instance_data=instance_data,
                 pre_create_data={
                     "groupLoadedAssets": pre_create_data["groupLoadedAssets"]
@@ -176,7 +190,7 @@ class CreateMultishotLayout(plugin.MayaCreator):
             )
 
     def get_related_shots(self, folder_path: str):
-        """Get all shots related to the current asset.
+        """Get all shots related to the current folder.
 
         Get all folders of type Shot under specified folder.
 

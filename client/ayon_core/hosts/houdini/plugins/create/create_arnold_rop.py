@@ -7,7 +7,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.arnold_rop"
     label = "Arnold ROP"
-    family = "arnold_rop"
+    product_type = "arnold_rop"
     icon = "magic"
 
     # Default extension
@@ -16,7 +16,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
     # Default to split export and render jobs
     export_job = True
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou
 
         # Remove the active, we are checking the bypass flag of the nodes
@@ -29,17 +29,17 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateArnoldRop, self).create(
-            subset_name,
+            product_name,
             instance_data,
-            pre_create_data)  # type: plugin.CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
         ext = pre_create_data.get("image_format")
 
-        filepath = "{renders_dir}{subset_name}/{subset_name}.$F4.{ext}".format(
+        filepath = "{renders_dir}{product_name}/{product_name}.$F4.{ext}".format(
             renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-            subset_name=subset_name,
+            product_name=product_name,
             ext=ext,
         )
         parms = {
@@ -53,9 +53,9 @@ class CreateArnoldRop(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             ass_filepath = \
-                "{export_dir}{subset_name}/{subset_name}.$F4.ass".format(
+                "{export_dir}{product_name}/{product_name}.$F4.ass".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/ass/"),
-                    subset_name=subset_name,
+                    product_name=product_name,
                 )
             parms["ar_ass_export_enable"] = 1
             parms["ar_ass_file"] = ass_filepath
@@ -63,7 +63,7 @@ class CreateArnoldRop(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock any parameters in this list
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_pre_create_attr_defs(self):

@@ -1,8 +1,8 @@
 import os
 import platform
 
+import ayon_api
 
-from ayon_core.client import get_asset_by_name
 from ayon_core.addon import (
     AYONAddon,
     ITrayService,
@@ -24,14 +24,18 @@ class ExampleTimersManagerConnector:
 
     Required methods are 'stop_timer' and 'start_timer'.
 
-    # TODO pass asset document instead of `hierarchy`
     Example of `data` that are passed during changing timer:
     ```
     data = {
         "project_name": project_name,
+        "folder_id": folder_id,
+        "folder_path": folder_entity["path"],
         "task_name": task_name,
         "task_type": task_type,
-        "hierarchy": hierarchy
+        # Deprecated
+        "asset_id": folder_id,
+        "asset_name": folder_entity["name"],
+        "hierarchy": hierarchy_items,
     }
     ```
     """
@@ -176,16 +180,14 @@ class TimersManager(
         """Convert string path to a timer data.
 
         It is expected that first item is project name, last item is task name
-        and parent asset name is before task name.
+        and folder path in the middle.
         """
         path_items = task_path.split("/")
-        if len(path_items) < 3:
-            raise InvalidContextError("Invalid path \"{}\"".format(task_path))
         task_name = path_items.pop(-1)
-        asset_name = path_items.pop(-1)
         project_name = path_items.pop(0)
+        folder_path = "/" + "/".join(path_items)
         return self.get_timer_data_for_context(
-            project_name, asset_name, task_name, self.log
+            project_name, folder_path, task_name, self.log
         )
 
     def get_launch_hook_paths(self):
@@ -204,40 +206,38 @@ class TimersManager(
 
     @staticmethod
     def get_timer_data_for_context(
-        project_name, asset_name, task_name, logger=None
+        project_name, folder_path, task_name, logger=None
     ):
-        """Prepare data for timer related callbacks.
-
-        TODO:
-        - return predefined object that has access to asset document etc.
-        """
-        if not project_name or not asset_name or not task_name:
+        """Prepare data for timer related callbacks."""
+        if not project_name or not folder_path or not task_name:
             raise InvalidContextError((
                 "Missing context information got"
-                " Project: \"{}\" Asset: \"{}\" Task: \"{}\""
-            ).format(str(project_name), str(asset_name), str(task_name)))
+                " Project: \"{}\" Folder: \"{}\" Task: \"{}\""
+            ).format(str(project_name), str(folder_path), str(task_name)))
 
-        asset_doc = get_asset_by_name(
+        folder_entity = ayon_api.get_folder_by_path(
             project_name,
-            asset_name,
-            fields=["_id", "name", "data.tasks", "data.parents"]
+            folder_path,
+            fields={"id", "name", "path"}
         )
 
-        if not asset_doc:
+        if not folder_entity:
             raise InvalidContextError((
-                "Asset \"{}\" not found in project \"{}\""
-            ).format(asset_name, project_name))
+                "Folder \"{}\" not found in project \"{}\""
+            ).format(folder_path, project_name))
 
-        asset_data = asset_doc.get("data") or {}
-        asset_tasks = asset_data.get("tasks") or {}
-        if task_name not in asset_tasks:
+        folder_id = folder_entity["id"]
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_id, task_name
+        )
+        if not task_entity:
             raise InvalidContextError((
-                "Task \"{}\" not found on asset \"{}\" in project \"{}\""
-            ).format(task_name, asset_name, project_name))
+                "Task \"{}\" not found on folder \"{}\" in project \"{}\""
+            ).format(task_name, folder_path, project_name))
 
         task_type = ""
         try:
-            task_type = asset_tasks[task_name]["type"]
+            task_type = task_entity["taskType"]
         except KeyError:
             msg = "Couldn't find task_type for {}".format(task_name)
             if logger is not None:
@@ -245,32 +245,34 @@ class TimersManager(
             else:
                 print(msg)
 
-        hierarchy_items = asset_data.get("parents") or []
-        hierarchy_items.append(asset_name)
+        hierarchy_items = folder_entity["path"].split("/")
+        hierarchy_items.pop(0)
 
         return {
             "project_name": project_name,
-            "asset_id": str(asset_doc["_id"]),
-            "asset_name": asset_name,
+            "folder_id": folder_id,
+            "folder_path": folder_entity["path"],
             "task_name": task_name,
             "task_type": task_type,
-            "hierarchy": hierarchy_items
+            "asset_id": folder_id,
+            "asset_name": folder_entity["name"],
+            "hierarchy": hierarchy_items,
         }
 
-    def start_timer(self, project_name, asset_name, task_name):
+    def start_timer(self, project_name, folder_path, task_name):
         """Start timer for passed context.
 
         Args:
-            project_name (str): Project name
-            asset_name (str): Asset name
-            task_name (str): Task name
+            project_name (str): Project name.
+            folder_path (str): Folder path.
+            task_name (str): Task name.
         """
         data = self.get_timer_data_for_context(
-            project_name, asset_name, task_name, self.log
+            project_name, folder_path, task_name, self.log
         )
         self.timer_started(None, data)
 
-    def get_task_time(self, project_name, asset_name, task_name):
+    def get_task_time(self, project_name, folder_path, task_name):
         """Get total time for passed context.
 
         TODO:
@@ -281,7 +283,7 @@ class TimersManager(
             if hasattr(connector, "get_task_time"):
                 module = self._modules_by_id[module_id]
                 times[module.name] = connector.get_task_time(
-                    project_name, asset_name, task_name
+                    project_name, folder_path, task_name
                 )
         return times
 
@@ -394,7 +396,7 @@ class TimersManager(
 
     @staticmethod
     def start_timer_with_webserver(
-        project_name, asset_name, task_name, logger=None
+        project_name, folder_path, task_name, logger=None
     ):
         """Prepared method for calling change timers on REST api.
 
@@ -403,7 +405,7 @@ class TimersManager(
 
         Args:
             project_name (str): Project name.
-            asset_name (str): Asset name.
+            folder_path (str): Folder path.
             task_name (str): Task name.
             logger (logging.Logger): Logger object. Using 'print' if not
                 passed.
@@ -430,7 +432,7 @@ class TimersManager(
             return
         data = {
             "project_name": project_name,
-            "asset_name": asset_name,
+            "folder_path": folder_path,
             "task_name": task_name
         }
 
@@ -472,13 +474,13 @@ class TimersManager(
 
     def _on_host_task_change(self, event):
         project_name = event["project_name"]
-        asset_name = event["asset_name"]
+        folder_path = event["folder_path"]
         task_name = event["task_name"]
         self.log.debug((
             "Sending message that timer should change to"
-            " Project: {} Asset: {} Task: {}"
-        ).format(project_name, asset_name, task_name))
+            " Project: {} Folder: {} Task: {}"
+        ).format(project_name, folder_path, task_name))
 
         self.start_timer_with_webserver(
-            project_name, asset_name, task_name, self.log
+            project_name, folder_path, task_name, self.log
         )

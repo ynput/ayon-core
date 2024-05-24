@@ -1,9 +1,8 @@
 import os
 import pyblish.api
 
-from ayon_core.client import get_asset_name_identifier
 from ayon_core.hosts.photoshop import api as photoshop
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 
 
 class CollectAutoWorkfile(pyblish.api.ContextPlugin):
@@ -16,7 +15,7 @@ class CollectAutoWorkfile(pyblish.api.ContextPlugin):
     targets = ["automated"]
 
     def process(self, context):
-        family = "workfile"
+        product_type = "workfile"
         file_path = context.data["currentFile"]
         _, ext = os.path.splitext(file_path)
         staging_dir = os.path.dirname(file_path)
@@ -29,7 +28,7 @@ class CollectAutoWorkfile(pyblish.api.ContextPlugin):
         }
 
         for instance in context:
-            if instance.data["family"] == family:
+            if instance.data["productType"] == product_type:
                 self.log.debug("Workfile instance found, won't create new")
                 instance.data.update({
                     "label": base_name,
@@ -47,7 +46,7 @@ class CollectAutoWorkfile(pyblish.api.ContextPlugin):
         stub = photoshop.stub()
         stored_items = stub.get_layers_metadata()
         for item in stored_items:
-            if item.get("creator_identifier") == family:
+            if item.get("creator_identifier") == product_type:
                 if not item.get("active"):
                     self.log.debug("Workfile instance disabled")
                     return
@@ -69,29 +68,34 @@ class CollectAutoWorkfile(pyblish.api.ContextPlugin):
 
         task_name = context.data["task"]
         host_name = context.data["hostName"]
-        asset_doc = context.data["assetEntity"]
+        folder_entity = context.data["folderEntity"]
+        task_entity = context.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
 
-        folder_path = get_asset_name_identifier(asset_doc)
-        subset_name = get_subset_name(
-            family,
-            variant,
-            task_name,
-            asset_doc,
+        product_name = get_product_name(
             project_name,
-            host_name=host_name,
+            task_name,
+            task_type,
+            host_name,
+            product_type,
+            variant,
             project_settings=proj_settings
         )
 
         # Create instance
-        instance = context.create_instance(subset_name)
+        instance = context.create_instance(product_name)
         instance.data.update({
-            "subset": subset_name,
             "label": base_name,
             "name": base_name,
-            "family": family,
-            "families": [],
+            "productName": product_name,
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
             "representations": [],
-            "folderPath": folder_path
+            "folderPath": folder_entity["path"]
         })
 
         # creating representation

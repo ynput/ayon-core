@@ -19,18 +19,12 @@ from six import string_types
 from maya import cmds, mel
 from maya.api import OpenMaya
 
-from ayon_core.client import (
-    get_project,
-    get_asset_by_name,
-    get_subsets,
-    get_last_versions,
-    get_representation_by_name,
-    get_asset_name_identifier,
-)
+import ayon_api
+
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name,
     discover_loader_plugins,
     loaders_from_representation,
@@ -43,7 +37,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
 )
 from ayon_core.lib import NumberDef
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.lib.profiles_filtering import filter_profiles
 
@@ -137,7 +131,7 @@ def get_main_window():
 def suspended_refresh(suspend=True):
     """Suspend viewport refreshes
 
-    cmds.ogs(pause=True) is a toggle so we cant pass False.
+    cmds.ogs(pause=True) is a toggle so we can't pass False.
     """
     if IS_HEADLESS:
         yield
@@ -284,16 +278,16 @@ def generate_capture_preset(instance, camera, path,
     width_preset = capture_preset["Resolution"]["width"]
     height_preset = capture_preset["Resolution"]["height"]
 
-    # Set resolution variables from asset values
-    asset_data = instance.data["assetEntity"]["data"]
-    asset_width = asset_data.get("resolutionWidth")
-    asset_height = asset_data.get("resolutionHeight")
+    # Set resolution variables from folder values
+    folder_attributes = instance.data["folderEntity"]["attrib"]
+    folder_width = folder_attributes.get("resolutionWidth")
+    folder_height = folder_attributes.get("resolutionHeight")
     review_instance_width = instance.data.get("review_width")
     review_instance_height = instance.data.get("review_height")
 
     # Use resolution from instance if review width/height is set
     # Otherwise use the resolution from preset if it has non-zero values
-    # Otherwise fall back to asset width x height
+    # Otherwise fall back to folder width x height
     # Else define no width, then `capture.capture` will use render resolution
     if review_instance_width and review_instance_height:
         preset["width"] = review_instance_width
@@ -301,9 +295,9 @@ def generate_capture_preset(instance, camera, path,
     elif width_preset and height_preset:
         preset["width"] = width_preset
         preset["height"] = height_preset
-    elif asset_width and asset_height:
-        preset["width"] = asset_width
-        preset["height"] = asset_height
+    elif folder_width and folder_height:
+        preset["width"] = folder_width
+        preset["height"] = folder_height
 
     # Isolate view is requested by having objects in the set besides a
     # camera. If there is only 1 member it'll be the camera because we
@@ -589,7 +583,7 @@ def pairwise(iterable):
 
 
 def collect_animation_defs(fps=False):
-    """Get the basic animation attribute defintions for the publisher.
+    """Get the basic animation attribute definitions for the publisher.
 
     Returns:
         OrderedDict
@@ -1525,24 +1519,30 @@ def extract_alembic(file,
 
 
 # region ID
-def get_id_required_nodes(referenced_nodes=False, nodes=None):
-    """Filter out any node which are locked (reference) or readOnly
+def get_id_required_nodes(referenced_nodes=False,
+                          nodes=None,
+                          existing_ids=True):
+    """Return nodes that should receive a `cbId` attribute.
+
+    This includes only mesh and curve nodes, parent transforms of the shape
+    nodes, file texture nodes and object sets (including shading engines).
+
+    This filters out any node which is locked, referenced, read-only,
+    intermediate object.
 
     Args:
-        referenced_nodes (bool): set True to filter out reference nodes
+        referenced_nodes (bool): set True to include referenced nodes
         nodes (list, Optional): nodes to consider
+        existing_ids (bool): set True to include nodes with `cbId` attribute
+
     Returns:
         nodes (set): list of filtered nodes
     """
 
-    lookup = None
-    if nodes is None:
-        # Consider all nodes
-        nodes = cmds.ls()
-    else:
-        # Build a lookup for the only allowed nodes in output based
-        # on `nodes` input of the function (+ ensure long names)
-        lookup = set(cmds.ls(nodes, long=True))
+    if nodes is not None and not nodes:
+        # User supplied an empty `nodes` list to check so all we can
+        # do is return the empty result
+        return set()
 
     def _node_type_exists(node_type):
         try:
@@ -1551,63 +1551,142 @@ def get_id_required_nodes(referenced_nodes=False, nodes=None):
         except RuntimeError:
             return False
 
+    def iterate(maya_iterator):
+        while not maya_iterator.isDone():
+            yield maya_iterator.thisNode()
+            maya_iterator.next()
+
     # `readOnly` flag is obsolete as of Maya 2016 therefore we explicitly
     # remove default nodes and reference nodes
-    camera_shapes = ["frontShape", "sideShape", "topShape", "perspShape"]
+    default_camera_shapes = {
+        "frontShape", "sideShape", "topShape", "perspShape"
+    }
 
-    ignore = set()
-    if not referenced_nodes:
-        ignore |= set(cmds.ls(long=True, referencedNodes=True))
-
-    # list all defaultNodes to filter out from the rest
-    ignore |= set(cmds.ls(long=True, defaultNodes=True))
-    ignore |= set(cmds.ls(camera_shapes, long=True))
-
-    # Remove Turtle from the result of `cmds.ls` if Turtle is loaded
-    # TODO: This should be a less specific check for a single plug-in.
-    if _node_type_exists("ilrBakeLayer"):
-        ignore |= set(cmds.ls(type="ilrBakeLayer", long=True))
-
-    # Establish set of nodes types to include
-    types = ["objectSet", "file", "mesh", "nurbsCurve", "nurbsSurface"]
+    # The filtered types do not include transforms because we only want the
+    # parent transforms that have a child shape that we filtered to, so we
+    # include the parents here
+    types = ["mesh", "nurbsCurve", "nurbsSurface", "file", "objectSet"]
 
     # Check if plugin nodes are available for Maya by checking if the plugin
     # is loaded
     if cmds.pluginInfo("pgYetiMaya", query=True, loaded=True):
         types.append("pgYetiMaya")
 
-    # We *always* ignore intermediate shapes, so we filter them out directly
-    nodes = cmds.ls(nodes, type=types, long=True, noIntermediate=True)
+    iterator_type = OpenMaya.MIteratorType()
+    # This tries to be closest matching API equivalents of `types` variable
+    iterator_type.filterList = [
+        OpenMaya.MFn.kMesh,  # mesh
+        OpenMaya.MFn.kNurbsSurface,  # nurbsSurface
+        OpenMaya.MFn.kNurbsCurve,  # nurbsCurve
+        OpenMaya.MFn.kFileTexture,  # file
+        OpenMaya.MFn.kSet,  # objectSet
+        OpenMaya.MFn.kPluginShape  # pgYetiMaya
+    ]
+    it = OpenMaya.MItDependencyNodes(iterator_type)
 
-    # The items which need to pass the id to their parent
-    # Add the collected transform to the nodes
-    dag = cmds.ls(nodes, type="dagNode", long=True)  # query only dag nodes
-    transforms = cmds.listRelatives(dag,
-                                    parent=True,
-                                    fullPath=True) or []
+    fn_dep = OpenMaya.MFnDependencyNode()
+    fn_dag = OpenMaya.MFnDagNode()
+    result = set()
 
-    nodes = set(nodes)
-    nodes |= set(transforms)
+    def _should_include_parents(obj):
+        """Whether to include parents of obj in output"""
+        if not obj.hasFn(OpenMaya.MFn.kShape):
+            return False
 
-    nodes -= ignore  # Remove the ignored nodes
-    if not nodes:
-        return nodes
+        fn_dag.setObject(obj)
+        if fn_dag.isIntermediateObject:
+            return False
 
-    # Ensure only nodes from the input `nodes` are returned when a
-    # filter was applied on function call because we also iterated
-    # to parents and alike
-    if lookup is not None:
-        nodes &= lookup
+        # Skip default cameras
+        if (
+            obj.hasFn(OpenMaya.MFn.kCamera) and
+            fn_dag.name() in default_camera_shapes
+        ):
+            return False
 
-    # Avoid locked nodes
-    nodes_list = list(nodes)
-    locked = cmds.lockNode(nodes_list, query=True, lock=True)
-    for node, lock in zip(nodes_list, locked):
-        if lock:
-            log.warning("Skipping locked node: %s" % node)
-            nodes.remove(node)
+        return True
 
-    return nodes
+    def _add_to_result_if_valid(obj):
+        """Add to `result` if the object should be included"""
+        fn_dep.setObject(obj)
+        if not existing_ids and fn_dep.hasAttribute("cbId"):
+            return
+
+        if not referenced_nodes and fn_dep.isFromReferencedFile:
+            return
+
+        if fn_dep.isDefaultNode:
+            return
+
+        if fn_dep.isLocked:
+            return
+
+        # Skip default cameras
+        if (
+            obj.hasFn(OpenMaya.MFn.kCamera) and
+            fn_dep.name() in default_camera_shapes
+        ):
+            return
+
+        if obj.hasFn(OpenMaya.MFn.kDagNode):
+            # DAG nodes
+            fn_dag.setObject(obj)
+
+            # Skip intermediate objects
+            if fn_dag.isIntermediateObject:
+                return
+
+            # DAG nodes can be instanced and thus may have multiple paths.
+            # We need to identify each path
+            paths = OpenMaya.MDagPath.getAllPathsTo(obj)
+            for dag in paths:
+                path = dag.fullPathName()
+                result.add(path)
+        else:
+            # Dependency node
+            path = fn_dep.name()
+            result.add(path)
+
+    for obj in iterate(it):
+        # For any non-intermediate shape node always include the parent
+        # even if we exclude the shape itself (e.g. when locked, default)
+        if _should_include_parents(obj):
+            fn_dag.setObject(obj)
+            parents = [
+                fn_dag.parent(index) for index in range(fn_dag.parentCount())
+            ]
+            for parent_obj in parents:
+                _add_to_result_if_valid(parent_obj)
+
+        _add_to_result_if_valid(obj)
+
+    if not result:
+        return result
+
+    # Exclude some additional types
+    exclude_types = []
+    if _node_type_exists("ilrBakeLayer"):
+        # Remove Turtle from the result if Turtle is loaded
+        exclude_types.append("ilrBakeLayer")
+
+    if exclude_types:
+        exclude_nodes = set(cmds.ls(nodes, long=True, type=exclude_types))
+        if exclude_nodes:
+            result -= exclude_nodes
+
+    # Filter to explicit input nodes if provided
+    if nodes is not None:
+        # The amount of input nodes to filter to can be large and querying
+        # many nodes can be slow in Maya. As such we want to try and reduce
+        # it as much as possible, so we include the type filter to try and
+        # reduce the result of `maya.cmds.ls` here.
+        nodes = set(cmds.ls(nodes, long=True, type=types + ["dagNode"]))
+        if nodes:
+            result &= nodes
+        else:
+            return set()
+
+    return result
 
 
 def get_id(node):
@@ -1638,7 +1717,7 @@ def get_id(node):
         return
 
 
-def generate_ids(nodes, asset_id=None):
+def generate_ids(nodes, folder_id=None):
     """Returns new unique ids for the given nodes.
 
     Note: This does not assign the new ids, it only generates the values.
@@ -1655,27 +1734,33 @@ def generate_ids(nodes, asset_id=None):
 
     Args:
         nodes (list): List of nodes.
-        asset_id (str or bson.ObjectId): The database id for the *asset* to
-            generate for. When None provided the current asset in the
-            active session is used.
+        folder_id (Optional[str]): Folder id to generate id for. When None
+            provided current folder is used.
 
     Returns:
         list: A list of (node, id) tuples.
 
     """
 
-    if asset_id is None:
-        # Get the asset ID from the database for the asset of current context
+    if folder_id is None:
+        # Get the folder id based on current context folder
         project_name = get_current_project_name()
-        asset_name = get_current_asset_name()
-        asset_doc = get_asset_by_name(project_name, asset_name, fields=["_id"])
-        assert asset_doc, "No current asset found in Session"
-        asset_id = asset_doc['_id']
+        folder_path = get_current_folder_path()
+        if not folder_path:
+            raise ValueError("Current folder path is not set")
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields=["id"]
+        )
+        if not folder_entity:
+            raise ValueError((
+                "Current folder '{}' was not found on the server"
+            ).format(folder_path))
+        folder_id = folder_entity["id"]
 
     node_ids = []
     for node in nodes:
         _, uid = str(uuid.uuid4()).rsplit("-", 1)
-        unique_id = "{}:{}".format(asset_id, uid)
+        unique_id = "{}:{}".format(folder_id, uid)
         node_ids.append((node, unique_id))
 
     return node_ids
@@ -1832,6 +1917,29 @@ def apply_attributes(attributes, nodes_by_id):
                 set_attribute(attr, value, node)
 
 
+def is_valid_reference_node(reference_node):
+    """Return whether Maya considers the reference node a valid reference.
+
+    Maya might report an error when using `maya.cmds.referenceQuery`:
+    Reference node 'reference_node' is not associated with a reference file.
+
+    Note that this does *not* check whether the reference node points to an
+    existing file. Instead it only returns whether maya considers it valid
+    and thus is not an unassociated reference node
+
+    Arguments:
+         reference_node (str): Reference node name
+
+    Returns:
+        bool: Whether reference node is a valid reference
+
+    """
+    sel = OpenMaya.MSelectionList()
+    sel.add(reference_node)
+    depend_node = sel.getDependNode(0)
+    return OpenMaya.MFnReference(depend_node).isValidReference()
+
+
 def get_container_members(container):
     """Returns the members of a container.
     This includes the nodes from any loaded references in the container.
@@ -1857,7 +1965,16 @@ def get_container_members(container):
         if ref.rsplit(":", 1)[-1].startswith("_UNKNOWN_REF_NODE_"):
             continue
 
-        reference_members = cmds.referenceQuery(ref, nodes=True, dagPath=True)
+        try:
+            reference_members = cmds.referenceQuery(ref,
+                                                    nodes=True,
+                                                    dagPath=True)
+        except RuntimeError:
+            # Ignore reference nodes that are not associated with a
+            # referenced file on which `referenceQuery` command fails
+            if not is_valid_reference_node(ref):
+                continue
+            raise
         reference_members = cmds.ls(reference_members,
                                     long=True,
                                     objectsOnly=True)
@@ -1867,21 +1984,18 @@ def get_container_members(container):
 
 
 # region LOOKDEV
-def list_looks(project_name, asset_id):
-    """Return all look subsets for the given asset
+def list_looks(project_name, folder_id):
+    """Return all look products for the given folder.
 
-    This assumes all look subsets start with "look*" in their names.
+    This assumes all look products start with "look*" in their names.
+
+    Returns:
+        list[dict[str, Any]]: List of look products.
+
     """
-    # # get all subsets with look leading in
-    # the name associated with the asset
-    # TODO this should probably look for family 'look' instead of checking
-    #   subset name that can not start with family
-    subset_docs = get_subsets(project_name, asset_ids=[asset_id])
-    return [
-        subset_doc
-        for subset_doc in subset_docs
-        if subset_doc["name"].startswith("look")
-    ]
+    return list(ayon_api.get_products(
+        project_name, folder_ids=[folder_id], product_types={"look"}
+    ))
 
 
 def assign_look_by_version(nodes, version_id):
@@ -1900,16 +2014,19 @@ def assign_look_by_version(nodes, version_id):
     project_name = get_current_project_name()
 
     # Get representations of shader file and relationships
-    look_representation = get_representation_by_name(
-        project_name, "ma", version_id
-    )
-    json_representation = get_representation_by_name(
-        project_name, "json", version_id
-    )
+    representations = list(ayon_api.get_representations(
+        project_name=project_name,
+        representation_names={"ma", "json"},
+        version_ids=[version_id]
+    ))
+    look_representation = next(
+        repre for repre in representations if repre["name"] == "ma")
+    json_representation = next(
+        repre for repre in representations if repre["name"] == "json")
 
     # See if representation is already loaded, if so reuse it.
     host = registered_host()
-    representation_id = str(look_representation['_id'])
+    representation_id = look_representation["id"]
     for container in host.ls():
         if (container['loader'] == "LookLoader" and
                 container['representation'] == representation_id):
@@ -1942,75 +2059,72 @@ def assign_look_by_version(nodes, version_id):
     apply_shaders(relationships, shader_nodes, nodes)
 
 
-def assign_look(nodes, subset="lookDefault"):
+def assign_look(nodes, product_name="lookMain"):
     """Assigns a look to a node.
 
-    Optimizes the nodes by grouping by asset id and finding
-    related subset by name.
+    Optimizes the nodes by grouping by folder id and finding
+    related product by name.
 
     Args:
         nodes (list): all nodes to assign the look to
-        subset (str): name of the subset to find
+        product_name (str): name of the product to find
     """
 
-    # Group all nodes per asset id
+    # Group all nodes per folder id
     grouped = defaultdict(list)
     for node in nodes:
-        pype_id = get_id(node)
-        if not pype_id:
+        hash_id = get_id(node)
+        if not hash_id:
             continue
 
-        parts = pype_id.split(":", 1)
+        parts = hash_id.split(":", 1)
         grouped[parts[0]].append(node)
 
     project_name = get_current_project_name()
-    subset_docs = get_subsets(
-        project_name, subset_names=[subset], asset_ids=grouped.keys()
+    product_entities = ayon_api.get_products(
+        project_name, product_names=[product_name], folder_ids=grouped.keys()
     )
-    subset_docs_by_asset_id = {
-        str(subset_doc["parent"]): subset_doc
-        for subset_doc in subset_docs
+    product_entities_by_folder_id = {
+        product_entity["folderId"]: product_entity
+        for product_entity in product_entities
     }
-    subset_ids = {
-        subset_doc["_id"]
-        for subset_doc in subset_docs_by_asset_id.values()
+    product_ids = {
+        product_entity["id"]
+        for product_entity in product_entities_by_folder_id.values()
     }
-    last_version_docs = get_last_versions(
+    last_version_entities_by_product_id = ayon_api.get_last_versions(
         project_name,
-        subset_ids=subset_ids,
-        fields=["_id", "name", "data.families"]
+        product_ids
     )
-    last_version_docs_by_subset_id = {
-        last_version_doc["parent"]: last_version_doc
-        for last_version_doc in last_version_docs
-    }
 
-    for asset_id, asset_nodes in grouped.items():
-        # create objectId for database
-        subset_doc = subset_docs_by_asset_id.get(asset_id)
-        if not subset_doc:
-            log.warning("No subset '{}' found for {}".format(subset, asset_id))
+    for folder_id, asset_nodes in grouped.items():
+        product_entity = product_entities_by_folder_id.get(folder_id)
+        if not product_entity:
+            log.warning((
+                "No product '{}' found for {}"
+            ).format(product_name, folder_id))
             continue
 
-        last_version = last_version_docs_by_subset_id.get(subset_doc["_id"])
+        product_id = product_entity["id"]
+        last_version = last_version_entities_by_product_id.get(product_id)
         if not last_version:
             log.warning((
-                "Not found last version for subset '{}' on asset with id {}"
-            ).format(subset, asset_id))
+                "Not found last version for product '{}' on folder with id {}"
+            ).format(product_name, folder_id))
             continue
 
-        families = last_version.get("data", {}).get("families") or []
+        families = last_version.get("attrib", {}).get("families") or []
         if "look" not in families:
             log.warning((
-                "Last version for subset '{}' on asset with id {}"
-                " does not have look family"
-            ).format(subset, asset_id))
+                "Last version for product '{}' on folder with id {}"
+                " does not have look product type"
+            ).format(product_name, folder_id))
             continue
 
         log.debug("Assigning look '{}' <v{:03d}>".format(
-            subset, last_version["name"]))
+            product_name, last_version["version"]))
 
-        assign_look_by_version(asset_nodes, last_version["_id"])
+        assign_look_by_version(asset_nodes, last_version["id"])
 
 
 def apply_shaders(relationships, shadernodes, nodes):
@@ -2118,22 +2232,6 @@ def get_related_sets(node):
 
     """
 
-    # Ignore specific suffices
-    ignore_suffices = ["out_SET", "controls_SET", "_INST", "_CON"]
-
-    # Default nodes to ignore
-    defaults = {"defaultLightSet", "defaultObjectSet"}
-
-    # Ids to ignore
-    ignored = {
-        AVALON_INSTANCE_ID,
-        AVALON_CONTAINER_ID,
-        AYON_INSTANCE_ID,
-        AYON_CONTAINER_ID,
-    }
-
-    view_sets = get_isolate_view_sets()
-
     sets = cmds.listSets(object=node, extendToShape=False)
     if not sets:
         return []
@@ -2144,25 +2242,47 @@ def get_related_sets(node):
     # returned by `cmds.listSets(allSets=True)`
     sets = cmds.ls(sets)
 
+    # Ids to ignore
+    ignored = {
+        AVALON_INSTANCE_ID,
+        AVALON_CONTAINER_ID,
+        AYON_INSTANCE_ID,
+        AYON_CONTAINER_ID,
+    }
+
     # Ignore `avalon.container`
-    sets = [s for s in sets if
-            not cmds.attributeQuery("id", node=s, exists=True) or
-            not cmds.getAttr("%s.id" % s) in ignored]
+    sets = [
+        s for s in sets
+        if (
+           not cmds.attributeQuery("id", node=s, exists=True)
+           or cmds.getAttr(f"{s}.id") not in ignored
+        )
+    ]
+    if not sets:
+        return sets
 
     # Exclude deformer sets (`type=2` for `maya.cmds.listSets`)
-    deformer_sets = cmds.listSets(object=node,
-                                  extendToShape=False,
-                                  type=2) or []
-    deformer_sets = set(deformer_sets)  # optimize lookup
-    sets = [s for s in sets if s not in deformer_sets]
+    exclude_sets = cmds.listSets(object=node,
+                                 extendToShape=False,
+                                 type=2) or []
+    exclude_sets = set(exclude_sets)  # optimize lookup
+
+    # Default nodes to ignore
+    exclude_sets.update({"defaultLightSet", "defaultObjectSet"})
+
+    # Filter out the sets to exclude
+    sets = [s for s in sets if s not in exclude_sets]
 
     # Ignore when the set has a specific suffix
-    sets = [s for s in sets if not any(s.endswith(x) for x in ignore_suffices)]
+    ignore_suffices = ("out_SET", "controls_SET", "_INST", "_CON")
+    sets = [s for s in sets if not s.endswith(ignore_suffices)]
+    if not sets:
+        return sets
 
     # Ignore viewport filter view sets (from isolate select and
     # viewports)
+    view_sets = get_isolate_view_sets()
     sets = [s for s in sets if s not in view_sets]
-    sets = [s for s in sets if s not in defaults]
 
     return sets
 
@@ -2433,12 +2553,10 @@ def set_scene_fps(fps, update=True):
     cmds.currentUnit(time=unit, updateAnimation=update)
 
     # Set time slider data back to previous state
-    cmds.playbackOptions(edit=True, minTime=start_frame)
-    cmds.playbackOptions(edit=True, maxTime=end_frame)
-
-    # Set animation data
-    cmds.playbackOptions(edit=True, animationStartTime=animation_start)
-    cmds.playbackOptions(edit=True, animationEndTime=animation_end)
+    cmds.playbackOptions(minTime=start_frame,
+                         maxTime=end_frame,
+                         animationStartTime=animation_start,
+                         animationEndTime=animation_end)
 
     cmds.currentTime(current_frame, edit=True, update=True)
 
@@ -2496,14 +2614,16 @@ def get_fps_for_current_context():
     """
 
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
-    asset_doc = get_asset_by_name(
-        project_name, asset_name, fields=["data.fps"]
+    folder_path = get_current_folder_path()
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path, fields={"attrib.fps"}
     ) or {}
-    fps = asset_doc.get("data", {}).get("fps")
+    fps = folder_entity.get("attrib", {}).get("fps")
     if not fps:
-        project_doc = get_project(project_name, fields=["data.fps"]) or {}
-        fps = project_doc.get("data", {}).get("fps")
+        project_entity = ayon_api.get_project(
+            project_name, fields=["attrib.fps"]
+        ) or {}
+        fps = project_entity.get("attrib", {}).get("fps")
 
         if not fps:
             fps = 25
@@ -2512,7 +2632,7 @@ def get_fps_for_current_context():
 
 
 def get_frame_range(include_animation_range=False):
-    """Get the current assets frame range and handles.
+    """Get the current task frame range and handles.
 
     Args:
         include_animation_range (bool, optional): Whether to include
@@ -2520,24 +2640,34 @@ def get_frame_range(include_animation_range=False):
             range of the timeline. It is excluded by default.
 
     Returns:
-        dict: Asset's expected frame range values.
+        dict: Task's expected frame range values.
 
     """
 
     # Set frame start/end
     project_name = get_current_project_name()
-    asset_name = get_current_asset_name()
-    asset = get_asset_by_name(project_name, asset_name)
+    folder_path = get_current_folder_path()
+    task_name = get_current_task_name()
 
-    frame_start = asset["data"].get("frameStart")
-    frame_end = asset["data"].get("frameEnd")
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name,
+        folder_path,
+        fields={"id"})
+    task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+
+    task_attributes = task_entity["attrib"]
+
+    frame_start = task_attributes.get("frameStart")
+    frame_end = task_attributes.get("frameEnd")
 
     if frame_start is None or frame_end is None:
-        cmds.warning("No edit information found for %s" % asset_name)
+        cmds.warning("No edit information found for '{}'".format(folder_path))
         return
 
-    handle_start = asset["data"].get("handleStart") or 0
-    handle_end = asset["data"].get("handleEnd") or 0
+    handle_start = task_attributes.get("handleStart") or 0
+    handle_end = task_attributes.get("handleEnd") or 0
 
     frame_range = {
         "frameStart": frame_start,
@@ -2551,17 +2681,19 @@ def get_frame_range(include_animation_range=False):
         # Some usages of this function use the full dictionary to define
         # instance attributes for which we want to exclude the animation
         # keys. That is why these are excluded by default.
-        task_name = get_current_task_name()
+
         settings = get_project_settings(project_name)
+
+        task_type = task_entity["taskType"]
+
         include_handles_settings = settings["maya"]["include_handles"]
-        current_task = asset.get("data").get("tasks").get(task_name)
 
         animation_start = frame_start
         animation_end = frame_end
 
         include_handles = include_handles_settings["include_handles_default"]
         for item in include_handles_settings["per_task_type"]:
-            if current_task["type"] in item["task_type"]:
+            if task_type in item["task_type"]:
                 include_handles = item["include_handles"]
                 break
         if include_handles:
@@ -2575,7 +2707,7 @@ def get_frame_range(include_animation_range=False):
 
 
 def reset_frame_range(playback=True, render=True, fps=True):
-    """Set frame range to current asset
+    """Set frame range to current folder.
 
     Args:
         playback (bool, Optional): Whether to set the maya timeline playback
@@ -2589,7 +2721,7 @@ def reset_frame_range(playback=True, render=True, fps=True):
 
     frame_range = get_frame_range(include_animation_range=True)
     if not frame_range:
-        # No frame range data found for asset
+        # No frame range data found for folder
         return
 
     frame_start = frame_range["frameStart"]
@@ -2614,57 +2746,131 @@ def reset_frame_range(playback=True, render=True, fps=True):
 def reset_scene_resolution():
     """Apply the scene resolution  from the project definition
 
-    scene resolution can be overwritten by an asset if the asset.data contains
-    any information regarding scene resolution .
+    The scene resolution will be retrieved from the current task entity's
+    attributes.
 
     Returns:
         None
     """
 
-    project_name = get_current_project_name()
-    project_doc = get_project(project_name)
-    project_data = project_doc["data"]
-    asset_data = get_current_project_asset()["data"]
+    task_attributes = get_current_task_entity(fields={"attrib"})["attrib"]
 
-    # Set project resolution
-    width_key = "resolutionWidth"
-    height_key = "resolutionHeight"
-    pixelAspect_key = "pixelAspect"
+    # Set resolution
+    width = task_attributes.get("resolutionWidth", 1920)
+    height = task_attributes.get("resolutionHeight", 1080)
+    pixel_aspect = task_attributes.get("pixelAspect", 1)
 
-    width = asset_data.get(width_key, project_data.get(width_key, 1920))
-    height = asset_data.get(height_key, project_data.get(height_key, 1080))
-    pixelAspect = asset_data.get(pixelAspect_key,
-                                 project_data.get(pixelAspect_key, 1))
-
-    set_scene_resolution(width, height, pixelAspect)
+    set_scene_resolution(width, height, pixel_aspect)
 
 
-def set_context_settings():
+def set_context_settings(
+        fps=True,
+        resolution=True,
+        frame_range=True,
+        colorspace=True
+):
     """Apply the project settings from the project definition
 
     Settings can be overwritten by an asset if the asset.data contains
     any information regarding those settings.
 
-    Examples of settings:
-        fps
-        resolution
-        renderer
+    Args:
+        fps (bool): Whether to set the scene FPS.
+        resolution (bool): Whether to set the render resolution.
+        frame_range (bool): Whether to reset the time slide frame ranges.
+        colorspace (bool): Whether to reset the colorspace.
 
     Returns:
         None
+
     """
+    if fps:
+        # Set project fps
+        set_scene_fps(get_fps_for_current_context())
 
-
-    # Set project fps
-    set_scene_fps(get_fps_for_current_context())
-
-    reset_scene_resolution()
+    if resolution:
+        reset_scene_resolution()
 
     # Set frame range.
-    reset_frame_range()
+    if frame_range:
+        reset_frame_range(fps=False)
 
     # Set colorspace
-    set_colorspace()
+    if colorspace:
+        set_colorspace()
+
+
+def prompt_reset_context():
+    """Prompt the user what context settings to reset.
+    This prompt is used on saving to a different task to allow the scene to
+    get matched to the new context.
+    """
+    # TODO: Cleanup this prototyped mess of imports and odd dialog
+    from ayon_core.tools.attribute_defs.dialog import (
+        AttributeDefinitionsDialog
+    )
+    from ayon_core.style import load_stylesheet
+    from ayon_core.lib import BoolDef, UILabelDef
+
+    definitions = [
+        UILabelDef(
+            label=(
+                "You are saving your workfile into a different folder or task."
+                "\n\n"
+                "Would you like to update some settings to the new context?\n"
+            )
+        ),
+        BoolDef(
+            "fps",
+            label="FPS",
+            tooltip="Reset workfile FPS",
+            default=True
+        ),
+        BoolDef(
+            "frame_range",
+            label="Frame Range",
+            tooltip="Reset workfile start and end frame ranges",
+            default=True
+        ),
+        BoolDef(
+            "resolution",
+            label="Resolution",
+            tooltip="Reset workfile resolution",
+            default=True
+        ),
+        BoolDef(
+            "colorspace",
+            label="Colorspace",
+            tooltip="Reset workfile resolution",
+            default=True
+        ),
+        BoolDef(
+            "instances",
+            label="Publish instances",
+            tooltip="Update all publish instance's folder and task to match "
+                    "the new folder and task",
+            default=True
+        ),
+    ]
+
+    dialog = AttributeDefinitionsDialog(definitions)
+    dialog.setWindowTitle("Saving to different context.")
+    dialog.setStyleSheet(load_stylesheet())
+    if not dialog.exec_():
+        return None
+
+    options = dialog.get_values()
+    with suspended_refresh():
+        set_context_settings(
+            fps=options["fps"],
+            resolution=options["resolution"],
+            frame_range=options["frame_range"],
+            colorspace=options["colorspace"]
+        )
+        if options["instances"]:
+            update_content_on_context_change()
+
+    dialog.deleteLater()
 
 
 # Valid FPS
@@ -2924,13 +3130,13 @@ def bake_to_world_space(nodes,
 
 
 def load_capture_preset(data):
-    """Convert OpenPype Extract Playblast settings to `capture` arguments
+    """Convert AYON Extract Playblast settings to `capture` arguments
 
     Input data is the settings from:
         `project_settings/maya/publish/ExtractPlayblast/capture_preset`
 
     Args:
-        data (dict): Capture preset settings from OpenPype settings
+        data (dict): Capture preset settings from AYON settings
 
     Returns:
         dict: `capture.capture` compatible keyword arguments
@@ -3040,7 +3246,7 @@ def load_capture_preset(data):
     return options
 
 
-def get_attr_in_layer(attr, layer):
+def get_attr_in_layer(attr, layer, as_string=True):
     """Return attribute value in specified renderlayer.
 
     Same as cmds.getAttr but this gets the attribute's value in a
@@ -3058,6 +3264,7 @@ def get_attr_in_layer(attr, layer):
     Args:
         attr (str): attribute name, ex. "node.attribute"
         layer (str): layer name
+        as_string (bool): whether attribute should convert to a string value
 
     Returns:
         The return value from `maya.cmds.getAttr`
@@ -3067,7 +3274,8 @@ def get_attr_in_layer(attr, layer):
     try:
         if cmds.mayaHasRenderSetup():
             from . import lib_rendersetup
-            return lib_rendersetup.get_attr_in_layer(attr, layer)
+            return lib_rendersetup.get_attr_in_layer(
+                attr, layer, as_string=as_string)
     except AttributeError:
         pass
 
@@ -3075,7 +3283,7 @@ def get_attr_in_layer(attr, layer):
     current_layer = cmds.editRenderLayerGlobals(query=True,
                                                 currentRenderLayer=True)
     if layer == current_layer:
-        return cmds.getAttr(attr)
+        return cmds.getAttr(attr, asString=as_string)
 
     connections = cmds.listConnections(attr,
                                        plugs=True,
@@ -3126,7 +3334,7 @@ def get_attr_in_layer(attr, layer):
                         value *= conversion
                     return value
 
-    return cmds.getAttr(attr)
+    return cmds.getAttr(attr, asString=as_string)
 
 
 def fix_incompatible_containers():
@@ -3155,33 +3363,46 @@ def update_content_on_context_change():
     """
     This will update scene content to match new folder on context change
     """
-    scene_sets = cmds.listSets(allSets=True)
-    asset_doc = get_current_project_asset()
-    new_folder_path = get_asset_name_identifier(asset_doc)
-    new_data = asset_doc["data"]
-    for s in scene_sets:
-        try:
-            if cmds.getAttr("{}.id".format(s)) in {
-                AYON_INSTANCE_ID, AVALON_INSTANCE_ID
-            }:
-                attr = cmds.listAttr(s)
-                print(s)
-                if "folderPath" in attr:
-                    print(
-                        "  - setting folder to: [ {} ]".format(new_folder_path)
-                    )
-                    cmds.setAttr(
-                        "{}.folderPath".format(s),
-                        new_folder_path, type="string"
-                    )
-                if "frameStart" in attr:
-                    cmds.setAttr("{}.frameStart".format(s),
-                                 new_data["frameStart"])
-                if "frameEnd" in attr:
-                    cmds.setAttr("{}.frameEnd".format(s),
-                                 new_data["frameEnd"],)
-        except ValueError:
-            pass
+
+    host = registered_host()
+    create_context = CreateContext(host)
+    folder_entity = get_current_task_entity(fields={"attrib"})
+
+    instance_values = {
+        "folderPath": create_context.get_current_folder_path(),
+        "task": create_context.get_current_task_name(),
+    }
+    creator_attribute_values = {
+        "frameStart": folder_entity["attrib"]["frameStart"],
+        "frameEnd": folder_entity["attrib"]["frameEnd"],
+    }
+
+    has_changes = False
+    for instance in create_context.instances:
+        for key, value in instance_values.items():
+            if key not in instance or instance[key] == value:
+                continue
+
+            # Update instance value
+            print(f"Updating {instance.product_name} {key} to: {value}")
+            instance[key] = value
+            has_changes = True
+
+        creator_attributes = instance.creator_attributes
+        for key, value in creator_attribute_values.items():
+            if (
+                    key not in creator_attributes
+                    or creator_attributes[key] == value
+            ):
+                continue
+
+            # Update instance creator attribute value
+            print(f"Updating {instance.product_name} {key} to: {value}")
+            instance[key] = value
+            has_changes = True
+
+    if has_changes:
+        create_context.save_changes()
 
 
 def show_message(title, msg):
@@ -3281,7 +3502,7 @@ def set_colorspace():
     else:
         # TODO: deprecated code from 3.15.5 - remove
         # Maya 2022+ introduces new OCIO v2 color management settings that
-        # can override the old color management preferences. OpenPype has
+        # can override the old color management preferences. AYON has
         # separate settings for both so we fall back when necessary.
         use_ocio_v2 = imageio["colorManagementPreference_v2"]["enabled"]
         if use_ocio_v2 and not ocio_v2_support:
@@ -3827,7 +4048,7 @@ def get_color_management_output_transform():
 
 def image_info(file_path):
     # type: (str) -> dict
-    """Based on tha texture path, get its bit depth and format information.
+    """Based on the texture path, get its bit depth and format information.
     Take reference from makeTx.py in Arnold:
         ImageInfo(filename): Get Image Information for colorspace
         AiTextureGetFormat(filename): Get Texture Format
@@ -3915,17 +4136,26 @@ def len_flattened(components):
     return n
 
 
-def get_all_children(nodes):
+def get_all_children(nodes, ignore_intermediate_objects=False):
     """Return all children of `nodes` including each instanced child.
     Using maya.cmds.listRelatives(allDescendents=True) includes only the first
     instance. As such, this function acts as an optimal replacement with a
     focus on a fast query.
+
+    Args:
+        nodes (iterable): List of nodes to get children for.
+        ignore_intermediate_objects (bool): Ignore any children that
+            are intermediate objects.
+
+    Returns:
+        set: Children of input nodes.
 
     """
 
     sel = OpenMaya.MSelectionList()
     traversed = set()
     iterator = OpenMaya.MItDag(OpenMaya.MItDag.kDepthFirst)
+    fn_dag = OpenMaya.MFnDagNode()
     for node in nodes:
 
         if node in traversed:
@@ -3942,6 +4172,13 @@ def get_all_children(nodes):
         iterator.next()  # noqa: B305
         while not iterator.isDone():
 
+            if ignore_intermediate_objects:
+                fn_dag.setObject(iterator.currentItem())
+                if fn_dag.isIntermediateObject:
+                    iterator.prune()
+                    iterator.next()  # noqa: B305
+                    continue
+
             path = iterator.fullPathName()
 
             if path in traversed:
@@ -3952,10 +4189,12 @@ def get_all_children(nodes):
             traversed.add(path)
             iterator.next()  # noqa: B305
 
-    return list(traversed)
+    return traversed
 
 
-def get_capture_preset(task_name, task_type, subset, project_settings, log):
+def get_capture_preset(
+    task_name, task_type, product_name, project_settings, log
+):
     """Get capture preset for playblasting.
 
     Logic for transitioning from old style capture preset to new capture preset
@@ -3964,17 +4203,15 @@ def get_capture_preset(task_name, task_type, subset, project_settings, log):
     Args:
         task_name (str): Task name.
         task_type (str): Task type.
-        subset (str): Subset name.
+        product_name (str): Product name.
         project_settings (dict): Project settings.
         log (logging.Logger): Logging object.
     """
     capture_preset = None
     filtering_criteria = {
-        "hosts": "maya",
-        "families": "review",
         "task_names": task_name,
         "task_types": task_type,
-        "subset": subset
+        "product_names": product_name
     }
 
     plugin_settings = project_settings["maya"]["publish"]["ExtractPlayblast"]
@@ -4033,6 +4270,9 @@ def get_reference_node(members, log=None):
         if ref.rsplit(":", 1)[-1].startswith("_UNKNOWN_REF_NODE_"):
             continue
 
+        if not is_valid_reference_node(ref):
+            continue
+
         references.add(ref)
 
     assert references, "No reference node found in container"
@@ -4063,15 +4303,19 @@ def get_reference_node_parents(ref):
         list: The upstream parent reference nodes.
 
     """
-    parent = cmds.referenceQuery(ref,
-                                 referenceNode=True,
-                                 parent=True)
+    def _get_parent(reference_node):
+        """Return parent reference node, but ignore invalid reference nodes"""
+        if not is_valid_reference_node(reference_node):
+            return
+        return cmds.referenceQuery(reference_node,
+                                   referenceNode=True,
+                                   parent=True)
+
+    parent = _get_parent(ref)
     parents = []
     while parent:
         parents.append(parent)
-        parent = cmds.referenceQuery(parent,
-                                     referenceNode=True,
-                                     parent=True)
+        parent = _get_parent(parent)
     return parents
 
 
@@ -4117,24 +4361,31 @@ def create_rig_animation_instance(
     )
     assert roots, "No root nodes in rig, this is a bug."
 
-    custom_subset = options.get("animationSubsetName")
-    if custom_subset:
+    folder_entity = context["folder"]
+    product_entity = context["product"]
+    product_type = product_entity["productType"]
+    product_name = product_entity["name"]
+
+    custom_product_name = options.get("animationProductName")
+    if custom_product_name:
         formatting_data = {
-            "asset": context["asset"],
-            "subset": context['subset']['name'],
-            "family": (
-                context['subset']['data'].get('family') or
-                context['subset']['data']['families'][0]
-            )
+            "folder": {
+                "name": folder_entity["name"]
+            },
+            "product": {
+                "type": product_type,
+                "name": product_name,
+            },
+            "asset": folder_entity["name"],
+            "subset": product_name,
+            "family": product_type
         }
         namespace = get_custom_namespace(
-            custom_subset.format(
-                **formatting_data
-            )
+            custom_product_name.format(**formatting_data)
         )
 
     if log:
-        log.info("Creating subset: {}".format(namespace))
+        log.info("Creating product: {}".format(namespace))
 
     # Fill creator identifier
     creator_identifier = "io.openpype.creators.maya.animation"

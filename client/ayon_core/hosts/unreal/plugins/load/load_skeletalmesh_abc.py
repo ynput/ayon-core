@@ -16,7 +16,7 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class SkeletalMeshAlembicLoader(UnrealBaseLoader):
     """Load Unreal SkeletalMesh from Alembic"""
 
-    families = ["pointcache", "skeletalMesh"]
+    product_types = {"pointcache", "skeletalMesh"}
     label = "Import Alembic Skeletal Mesh"
     representations = ["abc"]
     icon = "cube"
@@ -58,7 +58,7 @@ class SkeletalMeshAlembicLoader(UnrealBaseLoader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -70,20 +70,24 @@ class SkeletalMeshAlembicLoader(UnrealBaseLoader):
         """
         # Create directory for asset and ayon container
         root = AYON_ASSET_DIR
+        folder_path = context["folder"]["path"]
+        folder_name = context["folder"]["name"]
         if options and options.get("asset_dir"):
             root = options["asset_dir"]
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
-        version = context.get('version')
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        version = context["version"]["version"]
 
-        default_conversion = options.get("default_conversion") or False
-
+        # Check if version is hero version and use different name
+        name_version = (
+            f"{name}_hero" if version < 0 else f"{name}_v{version:03d}"
+        )
         asset_dir, container_name = send_request(
             "create_unique_asset_name", params={
                 "root": root,
-                "asset": asset,
-                "name": name,
-                "version": version})
+                "folder_name": folder_name,
+                "name": name_version})
+
+        default_conversion = options.get("default_conversion") or False
 
         if not send_request(
                 "does_directory_exist", params={"directory_path": asset_dir}):
@@ -93,18 +97,22 @@ class SkeletalMeshAlembicLoader(UnrealBaseLoader):
             self._import_abc_task(
                 self.fname, asset_dir, asset_name, False, default_conversion)
 
+        product_type = context["product"]["productType"]
+
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": self.__class__.__name__,
-            "representation_id": str(context["representation"]["_id"]),
-            "version_id": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
-            "default_conversion": default_conversion
+            "representation": str(context["representation"]["_id"]),
+            "parent": str(context["representation"]["parent"]),
+            "default_conversion": default_conversion,
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
 
         containerise(asset_dir, container_name, data)
@@ -115,8 +123,9 @@ class SkeletalMeshAlembicLoader(UnrealBaseLoader):
                 "recursive": True,
                 "include_folder": True})
 
-    def update(self, container, representation):
-        filename = get_representation_path(representation)
+    def update(self, container, context):
+        repre_entity = context["representation"]
+        filename = get_representation_path(repre_entity)
         asset_dir = container["namespace"]
         asset_name = container["asset_name"]
 
@@ -125,4 +134,4 @@ class SkeletalMeshAlembicLoader(UnrealBaseLoader):
         self._import_abc_task(
             filename, asset_dir, asset_name, True, default_conversion)
 
-        super(UnrealBaseLoader, self).update(container, representation)
+        super(UnrealBaseLoader, self).update(container, context)

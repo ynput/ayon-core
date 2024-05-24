@@ -11,14 +11,14 @@ from ayon_core.lib.transcoding import (
 
 
 class LoadClip(opfapi.ClipLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
     """
 
-    families = ["render2d", "source", "plate", "render", "review"]
-    representations = ["*"]
+    product_types = {"render2d", "source", "plate", "render", "review"}
+    representations = {"*"}
     extensions = set(
         ext.lstrip(".") for ext in IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
     )
@@ -31,14 +31,14 @@ class LoadClip(opfapi.ClipLoader):
     # settings
     reel_group_name = "OpenPype_Reels"
     reel_name = "Loaded"
-    clip_name_template = "{asset}_{subset}<_{output}>"
+    clip_name_template = "{folder[name]}_{product[name]}<_{output}>"
 
     """ Anatomy keys from version context data and dynamically added:
         - {layerName} - original layer name token
         - {layerUID} - original layer UID token
         - {originalBasename} - original clip name taken from file
     """
-    layer_rename_template = "{asset}_{subset}<_{output}>"
+    layer_rename_template = "{folder[name]}_{product[name]}<_{output}>"
     layer_rename_patterns = []
 
     def load(self, context, name, namespace, options):
@@ -48,9 +48,9 @@ class LoadClip(opfapi.ClipLoader):
         self.fpd = fproject.current_workspace.desktop
 
         # load clip to timeline and get main variables
-        version = context['version']
-        version_data = version.get("data", {})
-        version_name = version.get("name", None)
+        version_entity = context["version"]
+        version_attributes = version_entity["attrib"]
+        version_name = version_entity["version"]
         colorspace = self.get_colorspace(context)
 
         # in case output is not in context replace key to representation
@@ -112,11 +112,10 @@ class LoadClip(opfapi.ClipLoader):
         ]
 
         # move all version data keys to tag data
-        data_imprint = {}
-        for key in add_keys:
-            data_imprint.update({
-                key: version_data.get(key, str(None))
-            })
+        data_imprint = {
+            key: version_attributes.get(key, str(None))
+            for key in add_keys
+        }
 
         # add variables related to version context
         data_imprint.update({
@@ -180,27 +179,27 @@ class LoadClip(opfapi.ClipLoader):
         # unwrapping segment from input clip
         pass
 
-    # def switch(self, container, representation):
-    #     self.update(container, representation)
+    # def switch(self, container, context):
+    #     self.update(container, context)
 
-    # def update(self, container, representation):
+    # def update(self, container, context):
     #     """ Updating previously loaded clips
     #     """
-
     #     # load clip to timeline and get main variables
+    #     repre_entity = context['representation']
     #     name = container['name']
     #     namespace = container['namespace']
     #     track_item = phiero.get_track_items(
     #         track_item_name=namespace)
     #     version = io.find_one({
     #         "type": "version",
-    #         "_id": representation["parent"]
+    #         "id": repre_entity["versionId"]
     #     })
     #     version_data = version.get("data", {})
     #     version_name = version.get("name", None)
-    #     colorspace = version_data.get("colorspace", None)
+    #     colorspace = version_data.get("colorSpace", None)
     #     object_name = "{}_{}".format(name, namespace)
-    #     file = get_representation_path(representation).replace("\\", "/")
+    #     file = get_representation_path(repre_entity).replace("\\", "/")
     #     clip = track_item.source()
 
     #     # reconnect media to new path
@@ -225,7 +224,7 @@ class LoadClip(opfapi.ClipLoader):
 
     #     # add variables related to version context
     #     data_imprint.update({
-    #         "representation": str(representation["_id"]),
+    #         "representation": repre_entity["id"],
     #         "version": version_name,
     #         "colorspace": colorspace,
     #         "objectName": object_name

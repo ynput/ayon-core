@@ -12,8 +12,8 @@ from ayon_core.hosts.maya.api import setdress
 
 class AssemblyLoader(load.LoaderPlugin):
 
-    families = ["assembly"]
-    representations = ["json"]
+    product_types = {"assembly"}
+    representations = {"json"}
 
     label = "Load Set Dress"
     order = -9
@@ -21,11 +21,10 @@ class AssemblyLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -49,9 +48,9 @@ class AssemblyLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
 
-        return setdress.update_package(container, representation)
+        return setdress.update_package(container, context)
 
     def remove(self, container):
         """Remove all sub containers"""

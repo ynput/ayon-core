@@ -4,14 +4,12 @@ import os
 import json
 import re
 from copy import deepcopy
+
 import requests
 import clique
-
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import (
-    get_last_version_by_subset_name,
-)
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -19,7 +17,7 @@ from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.farm.pyblish_functions import (
     create_skeleton_instance,
     create_instances_for_aov,
-    attach_instances_to_subset,
+    attach_instances_to_product,
     prepare_representations,
     create_metadata_path
 )
@@ -132,7 +130,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         "FTRACK_SERVER",
         "AYON_APP_NAME",
         "AYON_USERNAME",
-        "OPENPYPE_SG_USER",
+        "AYON_SG_USERNAME",
         "KITSU_LOGIN",
         "KITSU_PWD"
     ]
@@ -174,12 +172,12 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             (str): deadline_publish_job_id
         """
         data = instance.data.copy()
-        subset = data["subset"]
-        job_name = "Publish - {subset}".format(subset=subset)
+        product_name = data["productName"]
+        job_name = "Publish - {}".format(product_name)
 
         anatomy = instance.context.data['anatomy']
 
-        # instance.data.get("subset") != instances[0]["subset"]
+        # instance.data.get("productName") != instances[0]["productName"]
         # 'Main' vs 'renderMain'
         override_version = None
         instance_version = instance.data.get("version")  # take this if exists
@@ -189,10 +187,10 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         output_dir = self._get_publish_folder(
             anatomy,
             deepcopy(instance.data["anatomyData"]),
-            instance.data.get("folderPath"),
-            instances[0]["subset"],
+            instance.data.get("folderEntity"),
+            instances[0]["productName"],
             instance.context,
-            instances[0]["family"],
+            instances[0]["productType"],
             override_version
         )
 
@@ -212,6 +210,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "AYON_RENDER_JOB": "0",
             "AYON_REMOTE_PUBLISH": "0",
             "AYON_BUNDLE_NAME": os.environ["AYON_BUNDLE_NAME"],
+            "AYON_DEFAULT_SETTINGS_VARIANT": (
+                os.environ["AYON_DEFAULT_SETTINGS_VARIANT"]
+            ),
         }
 
         # add environments from self.environ_keys
@@ -356,7 +357,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             }
         ]
 
-        This will create instances for `beauty` and `Z` subset
+        This will create instances for `beauty` and `Z` product
         adding those files to their respective representations.
 
         If we have only list of files, we collect all file sequences.
@@ -411,9 +412,9 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             instance_skeleton_data["representations"] += representations
             instances = [instance_skeleton_data]
 
-        # attach instances to subset
+        # attach instances to product
         if instance.data.get("attachTo"):
-            instances = attach_instances_to_subset(
+            instances = attach_instances_to_product(
                 instance.data.get("attachTo"), instances
             )
 
@@ -503,23 +504,25 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             json.dump(publish_job, f, indent=4, sort_keys=True)
 
     def _get_publish_folder(self, anatomy, template_data,
-                            asset, subset, context,
-                            family, version=None):
+                            folder_entity, product_name, context,
+                            product_type, version=None):
         """
             Extracted logic to pre-calculate real publish folder, which is
             calculated in IntegrateNew inside of Deadline process.
             This should match logic in:
                 'collect_anatomy_instance_data' - to
-                    get correct anatomy, family, version for subset and
+                    get correct anatomy, family, version for product name and
                 'collect_resources_path'
                     get publish_path
 
         Args:
             anatomy (ayon_core.pipeline.anatomy.Anatomy):
             template_data (dict): pre-calculated collected data for process
-            asset (string): asset name
-            subset (string): subset name (actually group name of subset)
-            family (string): for current deadline process it's always 'render'
+            folder_entity (dict[str, Any]): Folder entity.
+            product_name (string): Product name (actually group name
+                of product)
+            product_type (string): for current deadline process it's always
+                'render'
                 TODO - for generic use family needs to be dynamically
                     calculated like IntegrateNew does
             version (int): override version from instance if exists
@@ -533,21 +536,24 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         project_name = context.data["projectName"]
         host_name = context.data["hostName"]
         if not version:
-            version = get_last_version_by_subset_name(
-                project_name,
-                subset,
-                asset_name=asset
-            )
-            if version:
-                version = int(version["name"]) + 1
+            version_entity = None
+            if folder_entity:
+                version_entity = ayon_api.get_last_version_by_product_name(
+                    project_name,
+                    product_name,
+                    folder_entity["id"]
+                )
+
+            if version_entity:
+                version = int(version_entity["version"]) + 1
             else:
                 version = get_versioning_start(
                     project_name,
                     host_name,
                     task_name=template_data["task"]["name"],
                     task_type=template_data["task"]["type"],
-                    family="render",
-                    subset=subset,
+                    product_type="render",
+                    product_name=product_name,
                     project_settings=context.data["project_settings"]
                 )
 
@@ -557,32 +563,23 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
         template_name = publish.get_publish_template_name(
             project_name,
             host_name,
-            family,
+            product_type,
             task_info.get("name"),
             task_info.get("type"),
         )
 
-        template_data["subset"] = subset
-        template_data["family"] = family
         template_data["version"] = version
+        template_data["subset"] = product_name
+        template_data["family"] = product_type
+        template_data["product"] = {
+            "name": product_name,
+            "type": product_type,
+        }
 
-        render_templates = anatomy.templates_obj[template_name]
-        if "folder" in render_templates:
-            publish_folder = render_templates["folder"].format_strict(
-                template_data
-            )
-        else:
-            # solve deprecated situation when `folder` key is not underneath
-            # `publish` anatomy
-            self.log.warning((
-                "Deprecation warning: Anatomy does not have set `folder`"
-                " key underneath `publish` (in global of for project `{}`)."
-            ).format(project_name))
-
-            file_path = render_templates["path"].format_strict(template_data)
-            publish_folder = os.path.dirname(file_path)
-
-        return publish_folder
+        render_dir_template = anatomy.get_template_item(
+            "publish", template_name, "directory"
+        )
+        return render_dir_template.format_strict(template_data)
 
     @classmethod
     def get_attribute_defs(cls):

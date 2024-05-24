@@ -3,7 +3,7 @@ import subprocess
 import platform
 import uuid
 
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 
 
 class InstallPySideToFusion(PreLaunchHook):
@@ -85,7 +85,6 @@ class InstallPySideToFusion(PreLaunchHook):
         administration rights.
         """
         try:
-            import win32api
             import win32con
             import win32process
             import win32event

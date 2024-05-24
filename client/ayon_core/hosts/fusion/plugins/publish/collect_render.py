@@ -37,43 +37,43 @@ class CollectFusionRender(
         aspect_x = comp_frame_format_prefs["AspectX"]
         aspect_y = comp_frame_format_prefs["AspectY"]
 
-        instances = []
-        instances_to_remove = []
 
         current_file = context.data["currentFile"]
         version = context.data["version"]
 
         project_entity = context.data["projectEntity"]
 
+        instances = []
         for inst in context:
             if not inst.data.get("active", True):
                 continue
 
-            family = inst.data["family"]
-            if family not in ["render", "image"]:
+            product_type = inst.data["productType"]
+            if product_type not in ["render", "image"]:
                 continue
 
             task_name = context.data["task"]
             tool = inst.data["transientData"]["tool"]
 
             instance_families = inst.data.get("families", [])
-            subset_name = inst.data["subset"]
+            product_name = inst.data["productName"]
             instance = FusionRenderInstance(
-                family=family,
                 tool=tool,
                 workfileComp=comp,
+                productType=product_type,
+                family=product_type,
                 families=instance_families,
                 version=version,
                 time="",
                 source=current_file,
                 label=inst.data["label"],
-                subset=subset_name,
+                productName=product_name,
                 folderPath=inst.data["folderPath"],
                 task=task_name,
                 attachTo=False,
                 setMembers='',
                 publish=True,
-                name=subset_name,
+                name=product_name,
                 resolutionWidth=comp_frame_format_prefs.get("Width"),
                 resolutionHeight=comp_frame_format_prefs.get("Height"),
                 pixelAspect=aspect_x / aspect_y,
@@ -90,7 +90,10 @@ class CollectFusionRender(
                 frameStep=1,
                 fps=comp_frame_format_prefs.get("Rate"),
                 app_version=comp.GetApp().Version,
-                publish_attributes=inst.data.get("publish_attributes", {})
+                publish_attributes=inst.data.get("publish_attributes", {}),
+
+                # The source instance this render instance replaces
+                source_instance=inst
             )
 
             render_target = inst.data["creator_attributes"]["render_target"]
@@ -113,13 +116,7 @@ class CollectFusionRender(
                     # to skip ExtractReview locally
                     instance.families.remove("review")
 
-            # add new instance to the list and remove the original
-            # instance since it is not needed anymore
             instances.append(instance)
-            instances_to_remove.append(inst)
-
-        for instance in instances_to_remove:
-            context.remove(instance)
 
         return instances
 

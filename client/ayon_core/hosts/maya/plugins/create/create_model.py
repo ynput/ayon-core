@@ -10,7 +10,7 @@ class CreateModel(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.model"
     label = "Model"
-    family = "model"
+    product_type = "model"
     icon = "cube"
     default_variants = ["Main", "Proxy", "_MD", "_HD", "_LD"]
 

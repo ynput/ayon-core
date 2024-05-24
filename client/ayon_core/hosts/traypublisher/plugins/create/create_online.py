@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """Creator of online files.
 
-Online file retain their original name and use it as subset name. To
-avoid conflicts, this creator checks if subset with this name already
-exists under selected asset.
+Online file retain their original name and use it as product name. To
+avoid conflicts, this creator checks if product with this name already
+exists under selected folder.
 """
 from pathlib import Path
 
-# from ayon_core.client import get_subset_by_name, get_asset_by_name
+# import ayon_api
+
 from ayon_core.lib.attribute_definitions import FileDef, BoolDef
 from ayon_core.pipeline import (
     CreatedInstance,
@@ -21,7 +22,7 @@ class OnlineCreator(TrayPublishCreator):
 
     identifier = "io.openpype.creators.traypublisher.online"
     label = "Online"
-    family = "online"
+    product_type = "online"
     description = "Publish file retaining its original file name"
     extensions = [".mov", ".mp4", ".mxf", ".m4v", ".mpg", ".exr",
                   ".dpx", ".tif", ".png", ".jpg"]
@@ -30,7 +31,7 @@ class OnlineCreator(TrayPublishCreator):
         return """# Create file retaining its original file name.
 
         This will publish files using template helping to retain original
-        file name and that file name is used as subset name.
+        file name and that file name is used as product name.
 
         Bz default it tries to guard against multiple publishes of the same
         file."""
@@ -38,7 +39,7 @@ class OnlineCreator(TrayPublishCreator):
     def get_icon(self):
         return "fa.file"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         repr_file = pre_create_data.get("representation_file")
         if not repr_file:
             raise CreatorError("No files specified")
@@ -50,27 +51,27 @@ class OnlineCreator(TrayPublishCreator):
 
         origin_basename = Path(files[0]).stem
 
-        # disable check for existing subset with the same name
+        # disable check for existing product with the same name
         """
-        asset = get_asset_by_name(
-            self.project_name, instance_data["folderPath"], fields=["_id"])
+        folder_entity = ayon_api.get_folder_by_path(
+            self.project_name, instance_data["folderPath"], fields={"id"})
 
-        if get_subset_by_name(
-                self.project_name, origin_basename, asset["_id"],
-                fields=["_id"]):
-            raise CreatorError(f"subset with {origin_basename} already "
-                               "exists in selected asset")
+        if ayon_api.get_product_by_name(
+                self.project_name, origin_basename, folder_entity["id"],
+                fields={"id"}):
+            raise CreatorError(f"product with {origin_basename} already "
+                               "exists in selected folder")
         """
 
         instance_data["originalBasename"] = origin_basename
-        subset_name = origin_basename
+        product_name = origin_basename
 
         instance_data["creator_attributes"] = {
             "path": (Path(repr_file["directory"]) / files[0]).as_posix()
         }
 
         # Create new instance
-        new_instance = CreatedInstance(self.family, subset_name,
+        new_instance = CreatedInstance(self.product_type, product_name,
                                        instance_data, self)
         self._store_new_instance(new_instance)
 
@@ -100,16 +101,16 @@ class OnlineCreator(TrayPublishCreator):
             )
         ]
 
-    def get_subset_name(
+    def get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        folder_entity,
+        task_entity,
+        variant,
         host_name=None,
         instance=None
     ):
         if instance is None:
             return "{originalBasename}"
 
-        return instance.data["subset"]
+        return instance.data["productName"]

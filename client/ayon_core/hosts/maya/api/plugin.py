@@ -4,6 +4,7 @@ from abc import ABCMeta
 
 import qargparse
 import six
+import ayon_api
 from maya import cmds
 from maya.app.renderSetup.model import renderSetup
 
@@ -28,8 +29,7 @@ from ayon_core.pipeline import (
     get_current_project_name,
 )
 from ayon_core.pipeline.load import LoadError
-from ayon_core.client import get_asset_by_name
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 
 from . import lib
 from .lib import imprint, read
@@ -89,25 +89,22 @@ class Creator(LegacyCreator):
 class MayaCreatorBase(object):
 
     @staticmethod
-    def cache_subsets(shared_data):
+    def cache_instance_data(shared_data):
         """Cache instances for Creators to shared data.
 
-        Create `maya_cached_subsets` key when needed in shared data and
+        Create `maya_cached_instance_data` key when needed in shared data and
         fill it with all collected instances from the scene under its
         respective creator identifiers.
 
         If legacy instances are detected in the scene, create
-        `maya_cached_legacy_subsets` there and fill it with
-        all legacy subsets under family as a key.
+        `maya_cached_legacy_instances` there and fill it with
+        all legacy products under product type as a key.
 
         Args:
             Dict[str, Any]: Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data dictionary.
-
         """
-        if shared_data.get("maya_cached_subsets") is None:
+        if shared_data.get("maya_cached_instance_data") is None:
             cache = dict()
             cache_legacy = dict()
 
@@ -131,8 +128,8 @@ class MayaCreatorBase(object):
 
                     cache_legacy.setdefault(family, []).append(node)
 
-            shared_data["maya_cached_subsets"] = cache
-            shared_data["maya_cached_legacy_subsets"] = cache_legacy
+            shared_data["maya_cached_instance_data"] = cache
+            shared_data["maya_cached_legacy_instances"] = cache_legacy
         return shared_data
 
     def get_publish_families(self):
@@ -143,8 +140,7 @@ class MayaCreatorBase(object):
         specify `usd` but apply different extractors like `usdMultiverse`.
 
         There is no need to override this method if you only have the
-        primary family defined by the `family` property as that will always
-        be set.
+        'product_type' required for publish filtering.
 
         Returns:
             list: families for instances of this creator
@@ -165,7 +161,7 @@ class MayaCreatorBase(object):
         data.pop("families", None)
 
         # We store creator attributes at the root level and assume they
-        # will not clash in names with `subset`, `task`, etc. and other
+        # will not clash in names with `product`, `task`, etc. and other
         # default names. This is just so these attributes in many cases
         # are still editable in the maya UI by artists.
         # note: pop to move to end of dict to sort attributes last on the node
@@ -244,9 +240,11 @@ class MayaCreatorBase(object):
         return node_data
 
     def _default_collect_instances(self):
-        self.cache_subsets(self.collection_shared_data)
-        cached_subsets = self.collection_shared_data["maya_cached_subsets"]
-        for node in cached_subsets.get(self.identifier, []):
+        self.cache_instance_data(self.collection_shared_data)
+        cached_instances = (
+            self.collection_shared_data["maya_cached_instance_data"]
+        )
+        for node in cached_instances.get(self.identifier, []):
             node_data = self.read_instance_node(node)
 
             created_instance = CreatedInstance.from_existing(node_data, self)
@@ -279,7 +277,7 @@ class MayaCreator(NewCreator, MayaCreatorBase):
 
     settings_category = "maya"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         members = list()
         if pre_create_data.get("use_selection"):
@@ -294,11 +292,11 @@ class MayaCreator(NewCreator, MayaCreatorBase):
                     families.append(family)
 
         with lib.undo_chunk():
-            instance_node = cmds.sets(members, name=subset_name)
+            instance_node = cmds.sets(members, name=product_name)
             instance_data["instance_node"] = instance_node
             instance = CreatedInstance(
-                self.family,
-                subset_name,
+                self.product_type,
+                product_name,
                 instance_data,
                 self)
             self._add_instance_to_context(instance)
@@ -385,7 +383,7 @@ def ensure_namespace(namespace):
 class RenderlayerCreator(NewCreator, MayaCreatorBase):
     """Creator which creates an instance per renderlayer in the workfile.
 
-    Create and manages renderlayer subset per renderLayer in workfile.
+    Create and manages renderlayer product per renderLayer in workfile.
     This generates a singleton node in the scene which, if it exists, tells the
     Creator to collect Maya rendersetup renderlayers as individual instances.
     As such, triggering create doesn't actually create the instance node per
@@ -405,7 +403,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         if nodes:
             return nodes if return_all else nodes[0]
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         # A Renderlayer is never explicitly created using the create method.
         # Instead, renderlayers from the scene are collected. Thus "create"
         # would only ever be called to say, 'hey, please refresh collect'
@@ -443,6 +441,7 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
         if not self._get_singleton_node():
             return
 
+        host_name = self.create_context.host_name
         rs = renderSetup.instance()
         layers = rs.getRenderLayers()
         for layer in layers:
@@ -455,22 +454,30 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
                 # this instance will not have the `instance_node` data yet
                 # until it's been saved/persisted at least once.
                 project_name = self.create_context.get_current_project_name()
-                asset_name = self.create_context.get_current_asset_name()
+                folder_path = self.create_context.get_current_folder_path()
+                task_name = self.create_context.get_current_task_name()
                 instance_data = {
-                    "folderPath": asset_name,
-                    "task": self.create_context.get_current_task_name(),
+                    "folderPath": folder_path,
+                    "task": task_name,
                     "variant": layer.name(),
                 }
-                asset_doc = get_asset_by_name(project_name, asset_name)
-                subset_name = self.get_subset_name(
+                folder_entity = ayon_api.get_folder_by_path(
+                    project_name, folder_path
+                )
+                task_entity = ayon_api.get_task_by_name(
+                    project_name, folder_entity["id"], task_name
+                )
+                product_name = self.get_product_name(
+                    project_name,
+                    folder_entity,
+                    task_entity,
                     layer.name(),
-                    instance_data["task"],
-                    asset_doc,
-                    project_name)
+                    host_name,
+                )
 
                 instance = CreatedInstance(
-                    family=self.family,
-                    subset_name=subset_name,
+                    product_type=self.product_type,
+                    product_name=product_name,
                     data=instance_data,
                     creator=self
                 )
@@ -574,28 +581,47 @@ class RenderlayerCreator(NewCreator, MayaCreatorBase):
                 if node and cmds.objExists(node):
                     cmds.delete(node)
 
-    def get_subset_name(
+    def get_product_name(
         self,
-        variant,
-        task_name,
-        asset_doc,
         project_name,
+        folder_entity,
+        task_entity,
+        variant,
         host_name=None,
         instance=None
     ):
-        # creator.family != 'render' as expected
-        return get_subset_name(self.layer_instance_prefix,
-                               variant,
-                               task_name,
-                               asset_doc,
-                               project_name)
+        if host_name is None:
+            host_name = self.create_context.host_name
+        dynamic_data = self.get_dynamic_data(
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance
+        )
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+        # creator.product_type != 'render' as expected
+        return get_product_name(
+            project_name,
+            task_name,
+            task_type,
+            host_name,
+            self.layer_instance_prefix or self.product_type,
+            variant,
+            dynamic_data=dynamic_data,
+            project_settings=self.project_settings
+        )
 
 
-def get_load_color_for_family(family, settings=None):
-    """Get color for family from settings.
+def get_load_color_for_product_type(product_type, settings=None):
+    """Get color for product type from settings.
 
     Args:
-        family (str): Family name.
+        product_type (str): Family name.
         settings (Optional[dict]): Settings dictionary.
 
     Returns:
@@ -606,7 +632,7 @@ def get_load_color_for_family(family, settings=None):
         settings = get_project_settings(get_current_project_name())
 
     colors = settings["maya"]["load"]["colors"]
-    color = colors.get(family)
+    color = colors.get(product_type)
     if not color:
         return None
 
@@ -630,8 +656,8 @@ class Loader(LoaderPlugin):
     load_settings = {}  # defined in settings
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
-        super(Loader, cls).apply_settings(project_settings, system_settings)
+    def apply_settings(cls, project_settings):
+        super(Loader, cls).apply_settings(project_settings)
         cls.load_settings = project_settings['maya']['load']
 
     def get_custom_namespace_and_group(self, context, options, loader_key):
@@ -657,24 +683,22 @@ class Loader(LoaderPlugin):
             self.log.debug("No custom group_name, no group will be created.")
             options["attach_to_root"] = False
 
-        asset = context["asset"]
-        subset = context["subset"]
-        family = (
-            subset["data"].get("family")
-            or subset["data"]["families"][0]
-        )
+        folder_entity = context["folder"]
+        product_entity = context["product"]
+        product_name = product_entity["name"]
+        product_type = product_entity["productType"]
         formatting_data = {
-            "asset_name": asset["name"],
-            "asset_type": asset["type"],
+            "asset_name": folder_entity["name"],
+            "asset_type": "asset",
             "folder": {
-                "name": asset["name"],
+                "name": folder_entity["name"],
             },
-            "subset": subset["name"],
+            "subset": product_name,
             "product": {
-                "name": subset["name"],
-                "type": family,
+                "name": product_name,
+                "type": product_type,
             },
-            "family": family
+            "family": product_type
         }
 
         custom_namespace = custom_naming["namespace"].format(
@@ -745,7 +769,7 @@ class ReferenceLoader(Loader):
 
             options['group_name'] = group_name
 
-            # Offset loaded subset
+            # Offset loaded product
             if "offset" in options:
                 offset = [i * c for i in options["offset"]]
                 options["translate"] = offset
@@ -782,14 +806,17 @@ class ReferenceLoader(Loader):
         """To be implemented by subclass"""
         raise NotImplementedError("Must be implemented by subclass")
 
-    def update(self, container, representation):
+    def update(self, container, context):
         from maya import cmds
 
         from ayon_core.hosts.maya.api.lib import get_container_members
 
         node = container["objectName"]
 
-        path = get_representation_path(representation)
+        project_name = context["project"]["name"]
+        repre_entity = context["representation"]
+
+        path = get_representation_path(repre_entity)
 
         # Get reference node from container members
         members = get_container_members(node)
@@ -802,9 +829,9 @@ class ReferenceLoader(Loader):
             "abc": "Alembic",
             "fbx": "FBX",
             "usd": "USD Import"
-        }.get(representation["name"])
+        }.get(repre_entity["name"])
 
-        assert file_type, "Unsupported representation: %s" % representation
+        assert file_type, "Unsupported representation: %s" % repre_entity
 
         assert os.path.exists(path), "%s does not exist." % path
 
@@ -812,7 +839,7 @@ class ReferenceLoader(Loader):
         # them to incoming data.
         alembic_attrs = ["speed", "offset", "cycleType", "time"]
         alembic_data = {}
-        if representation["name"] == "abc":
+        if repre_entity["name"] == "abc":
             alembic_nodes = cmds.ls(
                 "{}:*".format(namespace), type="AlembicNode"
             )
@@ -829,10 +856,7 @@ class ReferenceLoader(Loader):
                 self.log.debug("No alembic nodes found in {}".format(members))
 
         try:
-            path = self.prepare_root_value(path,
-                                           representation["context"]
-                                                         ["project"]
-                                                         ["name"])
+            path = self.prepare_root_value(path, project_name)
             content = cmds.file(path,
                                 loadReference=reference_node,
                                 type=file_type,
@@ -856,7 +880,7 @@ class ReferenceLoader(Loader):
         self._organize_containers(content, container["objectName"])
 
         # Reapply alembic settings.
-        if representation["name"] == "abc" and alembic_data:
+        if repre_entity["name"] == "abc" and alembic_data:
             alembic_nodes = cmds.ls(
                 "{}:*".format(namespace), type="AlembicNode"
             )
@@ -875,7 +899,7 @@ class ReferenceLoader(Loader):
                             cmds.disconnectAttr(input, node_attr)
                         cmds.setAttr(node_attr, data["value"])
 
-        # Fix PLN-40 for older containers created with Avalon that had the
+        # Fix PLN-40 for older containers created with AYON that had the
         # `.verticesOnlySet` set to True.
         if cmds.getAttr("{}.verticesOnlySet".format(node)):
             self.log.info("Setting %s.verticesOnlySet to False", node)
@@ -890,7 +914,7 @@ class ReferenceLoader(Loader):
 
         # Update metadata
         cmds.setAttr("{}.representation".format(node),
-                     str(representation["_id"]),
+                     repre_entity["id"],
                      type="string")
 
         # When an animation or pointcache gets connected to an Xgen container,

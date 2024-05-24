@@ -1,10 +1,8 @@
-import os
 import copy
 
 from ayon_core.lib import EnumDef
 from ayon_core.pipeline import (
     load,
-    get_representation_context,
     get_current_host_name,
 )
 from ayon_core.pipeline.load.utils import get_representation_path_from_context
@@ -93,9 +91,9 @@ def create_stencil():
 class FileNodeLoader(load.LoaderPlugin):
     """File node loader."""
 
-    families = ["image", "plate", "render"]
+    product_types = {"image", "plate", "render"}
     label = "Load file node"
-    representations = ["exr", "tif", "png", "jpg"]
+    representations = {"exr", "tif", "png", "jpg"}
     icon = "image"
     color = "orange"
     order = 2
@@ -114,11 +112,10 @@ class FileNodeLoader(load.LoaderPlugin):
     ]
 
     def load(self, context, name, namespace, data):
-
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -146,23 +143,23 @@ class FileNodeLoader(load.LoaderPlugin):
             loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_entity = context["representation"]
 
         members = cmds.sets(container['objectName'], query=True)
         file_node = cmds.ls(members, type="file")[0]
 
-        context = get_representation_context(representation)
         self._apply_representation_context(context, file_node)
 
         # Update representation
         cmds.setAttr(
             container["objectName"] + ".representation",
-            str(representation["_id"]),
+            repre_entity["id"],
             type="string"
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)
@@ -223,15 +220,18 @@ class FileNodeLoader(load.LoaderPlugin):
 
     def _is_sequence(self, context):
         """Check whether frameStart and frameEnd are not the same."""
-        version = context.get("version", {})
-        representation = context.get("representation", {})
+        version = context["version"]
+        representation = context["representation"]
 
-        for doc in [representation, version]:
+        # TODO this is invalid logic, it should be based only on
+        #   representation entity
+        for entity in [representation, version]:
             # Frame range can be set on version or representation.
             # When set on representation it overrides version data.
-            data = doc.get("data", {})
-            start = data.get("frameStartHandle", data.get("frameStart", None))
-            end = data.get("frameEndHandle", data.get("frameEnd", None))
+            attributes = entity["attrib"]
+            data = entity["data"]
+            start = data.get("frameStartHandle", attributes.get("frameStart"))
+            end = data.get("frameEndHandle", attributes.get("frameEnd"))
 
             if start is None or end is None:
                 continue
@@ -301,7 +301,7 @@ class FileNodeLoader(load.LoaderPlugin):
 
         context = copy.deepcopy(context)
         representation = context["representation"]
-        template = representation.get("data", {}).get("template")
+        template = representation.get("attrib", {}).get("template")
         if not template:
             # No template to find token locations for
             return get_representation_path_from_context(context)
@@ -327,7 +327,7 @@ class FileNodeLoader(load.LoaderPlugin):
                 has_tokens = True
 
         # Replace with our custom template that has the tokens set
-        representation["data"]["template"] = template
+        representation["attrib"]["template"] = template
         path = get_representation_path_from_context(context)
 
         if has_tokens:

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating publishable Houdini Digital Assets."""
-from ayon_core.client import (
-    get_asset_by_name,
-    get_subsets,
-)
+import ayon_api
+
+from ayon_core.pipeline import CreatorError
 from ayon_core.hosts.houdini.api import plugin
 import hou
 
@@ -13,29 +12,29 @@ class CreateHDA(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.hda"
     label = "Houdini Digital Asset (Hda)"
-    family = "hda"
+    product_type = "hda"
     icon = "gears"
     maintain_selection = False
 
-    def _check_existing(self, asset_name, subset_name):
-        # type: (str) -> bool
-        """Check if existing subset name versions already exists."""
-        # Get all subsets of the current asset
+    def _check_existing(self, folder_path, product_name):
+        # type: (str, str) -> bool
+        """Check if existing product name versions already exists."""
+        # Get all products of the current folder
         project_name = self.project_name
-        asset_doc = get_asset_by_name(
-            project_name, asset_name, fields=["_id"]
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields={"id"}
         )
-        subset_docs = get_subsets(
-            project_name, asset_ids=[asset_doc["_id"]], fields=["name"]
+        product_entities = ayon_api.get_products(
+            project_name, folder_ids={folder_entity["id"]}, fields={"name"}
         )
-        existing_subset_names_low = {
-            subset_doc["name"].lower()
-            for subset_doc in subset_docs
+        existing_product_names_low = {
+            product_entity["name"].lower()
+            for product_entity in product_entities
         }
-        return subset_name.lower() in existing_subset_names_low
+        return product_name.lower() in existing_product_names_low
 
     def create_instance_node(
-        self, asset_name, node_name, parent, node_type="geometry"
+        self, folder_path, node_name, parent, node_type="geometry"
     ):
 
         parent_node = hou.node("/obj")
@@ -54,7 +53,7 @@ class CreateHDA(plugin.HoudiniCreator):
             # if node type has not its definition, it is not user
             # created hda. We test if hda can be created from the node.
             if not to_hda.canCreateDigitalAsset():
-                raise plugin.OpenPypeCreatorError(
+                raise CreatorError(
                     "cannot create hda from node {}".format(to_hda))
 
             hda_node = to_hda.createDigitalAsset(
@@ -62,9 +61,9 @@ class CreateHDA(plugin.HoudiniCreator):
                 hda_file_name="$HIP/{}.hda".format(node_name)
             )
             hda_node.layoutChildren()
-        elif self._check_existing(asset_name, node_name):
-            raise plugin.OpenPypeCreatorError(
-                ("subset {} is already published with different HDA"
+        elif self._check_existing(folder_path, node_name):
+            raise CreatorError(
+                ("product {} is already published with different HDA"
                  "definition.").format(node_name))
         else:
             hda_node = to_hda
@@ -73,13 +72,13 @@ class CreateHDA(plugin.HoudiniCreator):
         self.customize_node_look(hda_node)
         return hda_node
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
 
         instance = super(CreateHDA, self).create(
-            subset_name,
+            product_name,
             instance_data,
-            pre_create_data)  # type: plugin.CreatedInstance
+            pre_create_data)
 
         return instance
 

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating USDs."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
 
 import hou
 
@@ -10,24 +9,24 @@ class CreateUSD(plugin.HoudiniCreator):
     """Universal Scene Description"""
     identifier = "io.openpype.creators.houdini.usd"
     label = "USD (experimental)"
-    family = "usd"
+    product_type = "usd"
     icon = "gears"
     enabled = False
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "usd"})
 
         instance = super(CreateUSD, self).create(
-            subset_name,
+            product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
         parms = {
-            "lopoutput": "$HIP/pyblish/{}.usd".format(subset_name),
+            "lopoutput": "$HIP/pyblish/{}.usd".format(product_name),
             "enableoutputprocessor_simplerelativepaths": False,
         }
 
@@ -40,7 +39,7 @@ class CreateUSD(plugin.HoudiniCreator):
         to_lock = [
             "fileperframe",
             # Lock some Avalon attributes
-            "family",
+            "productType",
             "id",
         ]
         self.lock_parameters(instance_node, to_lock)

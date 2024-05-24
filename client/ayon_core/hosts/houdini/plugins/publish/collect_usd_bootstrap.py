@@ -1,17 +1,13 @@
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import (
-    get_subset_by_name,
-    get_asset_by_name,
-    get_asset_name_identifier,
-)
-from ayon_core.pipeline import usdlib
+from ayon_core.pipeline import usdlib, KnownPublishError
 
 
 class CollectUsdBootstrap(pyblish.api.InstancePlugin):
     """Collect special Asset/Shot bootstrap instances if those are needed.
 
-    Some specific subsets are intended to be part of the default structure
+    Some specific products are intended to be part of the default structure
     of an "Asset" or "Shot" in our USD pipeline. For example, for an Asset
     we layer a Model and Shade USD file over each other and expose that in
     a Asset USD file, ready to use.
@@ -30,13 +26,12 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
 
     def process(self, instance):
 
-        # Detect whether the current subset is a subset in a pipeline
+        # Detect whether the current product is a product in a pipeline
         def get_bootstrap(instance):
-            instance_subset = instance.data["subset"]
+            instance_product_name = instance.data["productName"]
             for name, layers in usdlib.PIPELINE.items():
-                if instance_subset in set(layers):
+                if instance_product_name in set(layers):
                     return name  # e.g. "asset"
-                    break
             else:
                 return
 
@@ -55,9 +50,13 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
         self.log.debug("Add bootstrap for: %s" % bootstrap)
 
         project_name = instance.context.data["projectName"]
-        asset_name = instance.data["folderPath"]
-        asset_doc = get_asset_by_name(project_name, asset_name)
-        assert asset_doc, "Asset must exist: %s" % asset_name
+        folder_path = instance.data["folderPath"]
+        folder_name = folder_path.rsplit("/", 1)[-1]
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        if not folder_entity:
+            raise KnownPublishError(
+                "Folder '{}' does not exist".format(folder_path)
+            )
 
         # Check which are not about to be created and don't exist yet
         required = {"shot": ["usdShot"], "asset": ["usdAsset"]}.get(bootstrap)
@@ -72,22 +71,24 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
                 required += list(layers)
 
         self.log.debug("Checking required bootstrap: %s" % required)
-        for subset_name in required:
-            if self._subset_exists(
-                project_name, instance, subset_name, asset_doc
+        for product_name in required:
+            if self._product_exists(
+                project_name, instance, product_name, folder_entity
             ):
                 continue
 
             self.log.debug(
                 "Creating {0} USD bootstrap: {1} {2}".format(
-                    bootstrap, asset_name, subset_name
+                    bootstrap, folder_path, product_name
                 )
             )
 
-            new = instance.context.create_instance(subset_name)
-            new.data["subset"] = subset_name
-            new.data["label"] = "{0} ({1})".format(subset_name, asset_name)
-            new.data["family"] = "usd.bootstrap"
+            product_type = "usd.bootstrap"
+            new = instance.context.create_instance(product_name)
+            new.data["productName"] = product_name
+            new.data["label"] = "{0} ({1})".format(product_name, folder_name)
+            new.data["productType"] = product_type
+            new.data["family"] = product_type
             new.data["comment"] = "Automated bootstrap USD file."
             new.data["publishFamilies"] = ["usd"]
 
@@ -98,23 +99,25 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
             for key in ["folderPath"]:
                 new.data[key] = instance.data[key]
 
-    def _subset_exists(self, project_name, instance, subset_name, asset_doc):
-        """Return whether subset exists in current context or in database."""
+    def _product_exists(
+        self, project_name, instance, product_name, folder_entity
+    ):
+        """Return whether product exists in current context or in database."""
         # Allow it to be created during this publish session
         context = instance.context
 
-        asset_doc_name = get_asset_name_identifier(asset_doc)
+        folder_path = folder_entity["path"]
         for inst in context:
             if (
-                inst.data["subset"] == subset_name
-                and inst.data["folderPath"] == asset_doc_name
+                inst.data["productName"] == product_name
+                and inst.data["folderPath"] == folder_path
             ):
                 return True
 
         # Or, if they already exist in the database we can
         # skip them too.
-        if get_subset_by_name(
-            project_name, subset_name, asset_doc["_id"], fields=["_id"]
+        if ayon_api.get_product_by_name(
+            project_name, product_name, folder_entity["id"], fields={"id"}
         ):
             return True
         return False

@@ -1,6 +1,6 @@
 import os
 
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 
 
 class AddLastWorkfileToLaunchArgs(PreLaunchHook):
@@ -27,7 +27,8 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "tvpaint",
         "substancepainter",
         "aftereffects",
-        "wrap"
+        "wrap",
+        "openrv"
     }
     launch_types = {LaunchTypes.local}
 

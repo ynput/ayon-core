@@ -12,10 +12,9 @@ from ayon_core.hosts.maya.api.lib import (
     unique_namespace,
     get_attribute_input,
     maintained_selection,
-    convert_to_maya_fps
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 def is_sequence(files):
@@ -29,8 +28,10 @@ def is_sequence(files):
 class ArnoldStandinLoader(load.LoaderPlugin):
     """Load as Arnold standin"""
 
-    families = ["ass", "animation", "model", "proxyAbc", "pointcache", "usd"]
-    representations = ["ass", "abc", "usda", "usdc", "usd"]
+    product_types = {
+        "ass", "animation", "model", "proxyAbc", "pointcache", "usd"
+    }
+    representations = {"ass", "abc", "usda", "usdc", "usd"}
 
     label = "Load as Arnold standin"
     order = -5
@@ -49,15 +50,14 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         import mtoa.ui.arnoldmenu
 
-        version = context['version']
-        version_data = version.get("data", {})
+        version_attributes = context["version"]["attrib"]
 
-        self.log.info("version_data: {}\n".format(version_data))
+        self.log.info("version_attributes: {}\n".format(version_attributes))
 
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -67,7 +67,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         # Set color.
         settings = get_project_settings(context["project"]["name"])
-        color = get_load_color_for_family("ass", settings)
+        color = get_load_color_for_product_type("ass", settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", True)
@@ -95,7 +95,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             sequence = is_sequence(os.listdir(os.path.dirname(repre_path)))
             cmds.setAttr(standin_shape + ".useFrameExtension", sequence)
 
-            fps = float(version["data"].get("fps")) or 25
+            fps = float(version_attributes.get("fps")) or 25
             cmds.setAttr(standin_shape + ".abcFPS", fps)
 
         nodes = [root, standin, standin_shape]
@@ -177,7 +177,7 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         return proxy_path, string_replace_operator
 
-    def update(self, container, representation):
+    def update(self, container, context):
         # Update the standin
         members = cmds.sets(container['objectName'], query=True)
         for member in members:
@@ -190,7 +190,8 @@ class ArnoldStandinLoader(load.LoaderPlugin):
             if cmds.nodeType(shapes[0]) == "aiStandIn":
                 standin = shapes[0]
 
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         proxy_basename, proxy_path = self._get_proxy_path(path)
 
         # Whether there is proxy or so, we still update the string operator.
@@ -216,12 +217,12 @@ class ArnoldStandinLoader(load.LoaderPlugin):
 
         cmds.setAttr(
             container["objectName"] + ".representation",
-            str(representation["_id"]),
+            repre_entity["id"],
             type="string"
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)

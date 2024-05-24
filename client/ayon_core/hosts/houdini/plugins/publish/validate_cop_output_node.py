@@ -71,6 +71,8 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
         # the isinstance check above should be stricter than this category
         if output_node.type().category().name() != "Cop2":
             raise PublishValidationError(
-                ("Output node %s is not of category Cop2. "
-                 "This is a bug...").format(output_node.path()),
+                (
+                    "Output node {} is not of category Cop2."
+                    " This is a bug..."
+                ).format(output_node.path()),
                 title=cls.label)

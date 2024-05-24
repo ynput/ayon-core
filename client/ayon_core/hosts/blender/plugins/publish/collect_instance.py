@@ -25,7 +25,7 @@ class CollectBlenderInstanceData(pyblish.api.InstancePlugin):
             members.extend(instance_node.children)
 
             # Special case for animation instances, include armatures
-            if instance.data["family"] == "animation":
+            if instance.data["productType"] == "animation":
                 for obj in instance_node.objects:
                     if obj.type == 'EMPTY' and obj.get(AVALON_PROPERTY):
                         members.extend(

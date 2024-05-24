@@ -1,9 +1,9 @@
 import json
 import re
-import os
 import hiero
 
-from ayon_core.client import get_project, get_assets
+import ayon_api
+
 from ayon_core.lib import Logger
 from ayon_core.pipeline import get_current_project_name
 
@@ -28,8 +28,8 @@ def tag_data():
         #     "note": "Collecting track items to Nuke scripts.",
         #     "icon": "icons:TagNuke.png",
         #     "metadata": {
-        #         "family": "nukescript",
-        #         "subset": "main"
+        #         "productType": "nukescript",
+        #         "productName": "main"
         #     }
         # },
         "Comment": {
@@ -37,17 +37,17 @@ def tag_data():
             "note": "Comment on a shot.",
             "icon": "icons:TagComment.png",
             "metadata": {
-                "family": "comment",
-                "subset": "main"
+                "productType": "comment",
+                "productName": "main"
             }
         },
         "FrameMain": {
             "editable": "1",
-            "note": "Publishing a frame subset.",
+            "note": "Publishing a frame product.",
             "icon": "z_layer_main.png",
             "metadata": {
-                "family": "frame",
-                "subset": "main",
+                "productType": "frame",
+                "productName": "main",
                 "format": "png"
             }
         }
@@ -89,7 +89,7 @@ def update_tag(tag, data):
     # set all data metadata to tag metadata
     for _k, _v in data_mtd.items():
         value = str(_v)
-        if type(_v) == dict:
+        if isinstance(_v, dict):
             value = json.dumps(_v)
 
         # set the value
@@ -143,39 +143,21 @@ def add_tags_to_workfile():
 
     # Get project task types.
     project_name = get_current_project_name()
-    project_doc = get_project(project_name)
-    tasks = project_doc["config"]["tasks"]
+    project_entity = ayon_api.get_project(project_name)
+    task_types = project_entity["taskType"]
     nks_pres_tags["[Tasks]"] = {}
-    log.debug("__ tasks: {}".format(tasks))
-    for task_type in tasks.keys():
-        nks_pres_tags["[Tasks]"][task_type.lower()] = {
+    log.debug("__ tasks: {}".format(task_types))
+    for task_type in task_types:
+        task_type_name = task_type["name"]
+        nks_pres_tags["[Tasks]"][task_type_name.lower()] = {
             "editable": "1",
-            "note": task_type,
+            "note": task_type_name,
             "icon": "icons:TagGood.png",
             "metadata": {
-                "family": "task",
-                "type": task_type
+                "productType": "task",
+                "type": task_type_name
             }
         }
-
-    # Get project assets. Currently Ftrack specific to differentiate between
-    # asset builds and shots.
-    if int(os.getenv("TAG_ASSETBUILD_STARTUP", 0)) == 1:
-        nks_pres_tags["[AssetBuilds]"] = {}
-        for asset in get_assets(
-            project_name, fields=["name", "data.entityType"]
-        ):
-            if asset["data"]["entityType"] == "AssetBuild":
-                nks_pres_tags["[AssetBuilds]"][asset["name"]] = {
-                    "editable": "1",
-                    "note": "",
-                    "icon": {
-                        "path": "icons:TagActor.png"
-                    },
-                    "metadata": {
-                        "family": "assetbuild"
-                    }
-                }
 
     # loop through tag data dict and create deep tag structure
     for _k, _val in nks_pres_tags.items():

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating composite sequences."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance, CreatorError
+from ayon_core.pipeline import CreatorError
 
 import hou
 
@@ -11,26 +11,26 @@ class CreateCompositeSequence(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.imagesequence"
     label = "Composite (Image Sequence)"
-    family = "imagesequence"
+    product_type = "imagesequence"
     icon = "gears"
 
     ext = ".exr"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "comp"})
 
         instance = super(CreateCompositeSequence, self).create(
-            subset_name,
+            product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
         filepath = "{}{}".format(
             hou.text.expandString("$HIP/pyblish/"),
-            "{}.$F4{}".format(subset_name, self.ext)
+            "{}.$F4{}".format(product_name, self.ext)
         )
         parms = {
             "trange": 1,

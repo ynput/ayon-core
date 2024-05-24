@@ -79,23 +79,12 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
             "representation": "TEMP"
         })
 
-        publish_templates = anatomy.templates_obj["publish"]
-        if "folder" in publish_templates:
-            publish_folder = publish_templates["folder"].format_strict(
-                template_data
-            )
-        else:
-            # solve deprecated situation when `folder` key is not underneath
-            # `publish` anatomy
-            self.log.warning((
-                "Deprecation warning: Anatomy does not have set `folder`"
-                " key underneath `publish` (in global of for project `{}`)."
-            ).format(anatomy.project_name))
-
-            file_path = publish_templates["path"].format_strict(template_data)
-            publish_folder = os.path.dirname(file_path)
-
-        publish_folder = os.path.normpath(publish_folder)
+        publish_templates = anatomy.get_template_item(
+            "publish", "default", "directory"
+        )
+        publish_folder = os.path.normpath(
+            publish_templates.format_strict(template_data)
+        )
         resources_folder = os.path.join(publish_folder, "resources")
 
         instance.data["publishDir"] = publish_folder

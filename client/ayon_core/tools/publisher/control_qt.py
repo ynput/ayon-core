@@ -212,13 +212,13 @@ class QtRemotePublishController(BasePublisherController):
         pass
 
     @abstractproperty
-    def current_asset_name(self):
-        """Current context asset name from client.
+    def current_folder_path(self):
+        """Current context folder path from host.
 
         Returns:
-            Union[str, None]: Name of asset.
-        """
+            Union[str, None]: Folder path.
 
+        """
         pass
 
     @abstractproperty
@@ -251,16 +251,7 @@ class QtRemotePublishController(BasePublisherController):
 
         pass
 
-    def get_asset_docs(self):
-        pass
-
-    def get_asset_hierarchy(self):
-        pass
-
-    def get_task_names_by_asset_names(self, asset_names):
-        pass
-
-    def get_existing_subset_names(self, asset_name):
+    def get_existing_product_names(self, folder_path):
         pass
 
     @property
@@ -300,23 +291,23 @@ class QtRemotePublishController(BasePublisherController):
         pass
 
     @abstractmethod
-    def get_subset_name(
+    def get_product_name(
         self,
         creator_identifier,
         variant,
         task_name,
-        asset_name,
+        folder_path,
         instance_id=None
     ):
-        """Get subset name based on passed data.
+        """Get product name based on passed data.
 
         Args:
             creator_identifier (str): Identifier of creator which should be
-                responsible for subset name creation.
+                responsible for product name creation.
             variant (str): Variant value from user's input.
             task_name (str): Name of task for which is instance created.
-            asset_name (str): Name of asset for which is instance created.
-            instance_id (Union[str, None]): Existing instance id when subset
+            folder_path (str): Folder path for which is instance created.
+            instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
 
@@ -324,7 +315,7 @@ class QtRemotePublishController(BasePublisherController):
 
     @abstractmethod
     def create(
-        self, creator_identifier, subset_name, instance_data, options
+        self, creator_identifier, product_name, instance_data, options
     ):
         """Trigger creation by creator identifier.
 
@@ -332,9 +323,9 @@ class QtRemotePublishController(BasePublisherController):
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
-            subset_name (str): Calculated subset name.
+            product_name (str): Calculated product name.
             instance_data (Dict[str, Any]): Base instance data with variant,
-                asset name and task name.
+                folder path and task name.
             options (Dict[str, Any]): Data from pre-create attributes.
         """
 
@@ -352,8 +343,9 @@ class QtRemotePublishController(BasePublisherController):
 
     @abstractmethod
     def _send_instance_changes_to_client(self):
-        instance_changes = self._get_instance_changes_for_client()
-        # Implement to send 'instance_changes' value to client
+        # TODO Implement to send 'instance_changes' value to client
+        # instance_changes = self._get_instance_changes_for_client()
+        pass
 
     @abstractmethod
     def save_changes(self):

@@ -15,12 +15,12 @@ class CreateUAsset(UnrealAssetCreator):
 
     identifier = "io.ayon.creators.unreal.uasset"
     label = "UAsset"
-    family = "uasset"
+    product_type = "uasset"
     icon = "cube"
 
     extension = ".uasset"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         if pre_create_data.get("use_selection"):
             selection = send_request("get_selected_assets")
 
@@ -42,7 +42,7 @@ class CreateUAsset(UnrealAssetCreator):
                     f"{Path(sys_path).name} is not a {self.label}.")
 
         super(CreateUAsset, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -52,13 +52,13 @@ class CreateUMap(CreateUAsset):
 
     identifier = "io.ayon.creators.unreal.umap"
     label = "Level"
-    family = "uasset"
+    product_type = "uasset"
     extension = ".umap"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         instance_data["families"] = ["umap"]
 
         super(CreateUMap, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)

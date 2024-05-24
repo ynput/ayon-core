@@ -18,7 +18,7 @@ def start_rendering():
     # Get selected sequences
     selection = send_request("get_selected_assets")
 
-    if not assets:
+    if not selection:
         show_message_dialog(
             title="No assets selected",
             message="No assets selected. Select a render instance.",

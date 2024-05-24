@@ -3,7 +3,7 @@
 import hou
 
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
+from ayon_core.pipeline import CreatorError
 from ayon_core.lib import EnumDef, BoolDef
 
 
@@ -12,14 +12,14 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.vray_rop"
     label = "VRay ROP"
-    family = "vray_rop"
+    product_type = "vray_rop"
     icon = "magic"
     ext = "exr"
 
     # Default to split export and render jobs
     export_job = True
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "vray_renderer"})
@@ -29,9 +29,9 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance_data["farm"] = pre_create_data.get("farm")
 
         instance = super(CreateVrayROP, self).create(
-            subset_name,
+            product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
@@ -42,7 +42,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
                 "vray", node_name=basename + "_IPR"
             )
         except hou.OperationFailed:
-            raise plugin.OpenPypeCreatorError(
+            raise CreatorError(
                 "Cannot create Vray render node. "
                 "Make sure Vray installed and enabled!"
             )
@@ -57,9 +57,9 @@ class CreateVrayROP(plugin.HoudiniCreator):
 
         if pre_create_data.get("export_job"):
             scene_filepath = \
-                "{export_dir}{subset_name}/{subset_name}.$F4.vrscene".format(
+                "{export_dir}{product_name}/{product_name}.$F4.vrscene".format(
                     export_dir=hou.text.expandString("$HIP/pyblish/vrscene/"),
-                    subset_name=subset_name,
+                    product_name=product_name,
                 )
             # Setting render_export_mode to "2" because that's for
             # "Export only" ("1" is for "Export & Render")
@@ -81,16 +81,16 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance_data["RenderElement"] = pre_create_data.get("render_element_enabled")         # noqa
         if pre_create_data.get("render_element_enabled", True):
             # Vray has its own tag for AOV file output
-            filepath = "{renders_dir}{subset_name}/{subset_name}.{fmt}".format(
+            filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
                 renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-                subset_name=subset_name,
+                product_name=product_name,
                 fmt="${aov}.$F4.{ext}".format(aov="AOV",
                                               ext=ext)
             )
             filepath = "{}{}".format(
                 hou.text.expandString("$HIP/pyblish/renders/"),
-                "{}/{}.${}.$F4.{}".format(subset_name,
-                                          subset_name,
+                "{}/{}.${}.$F4.{}".format(product_name,
+                                          product_name,
                                           "AOV",
                                           ext)
             )
@@ -108,9 +108,9 @@ class CreateVrayROP(plugin.HoudiniCreator):
             })
 
         else:
-            filepath = "{renders_dir}{subset_name}/{subset_name}.{fmt}".format(
+            filepath = "{renders_dir}{product_name}/{product_name}.{fmt}".format(
                 renders_dir=hou.text.expandString("$HIP/pyblish/renders/"),
-                subset_name=subset_name,
+                product_name=product_name,
                 fmt="$F4.{ext}".format(ext=ext)
             )
             parms.update({
@@ -125,7 +125,7 @@ class CreateVrayROP(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # lock parameters from AVALON
-        to_lock = ["family", "id"]
+        to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def remove_instances(self, instances):

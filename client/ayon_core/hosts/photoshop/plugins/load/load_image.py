@@ -11,14 +11,14 @@ class ImageLoader(photoshop.PhotoshopLoader):
     Stores the imported asset in a container named after the asset.
     """
 
-    families = ["image", "render"]
-    representations = ["*"]
+    product_types = {"image", "render"}
+    representations = {"*"}
 
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()
         layer_name = get_unique_layer_name(
             stub.get_layers(),
-            context["asset"]["name"],
+            context["folder"]["name"],
             name
         )
         with photoshop.maintained_selection():
@@ -36,33 +36,35 @@ class ImageLoader(photoshop.PhotoshopLoader):
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """ Switch asset or change version """
         stub = self.get_stub()
 
         layer = container.pop("layer")
 
-        context = representation.get("context", {})
+        repre_entity = context["representation"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])
-        layer_name = "{}_{}".format(context["asset"], context["subset"])
+        layer_name = "{}_{}".format(folder_name, product_name)
         # switching assets
         if namespace_from_container != layer_name:
             layer_name = get_unique_layer_name(
-                stub.get_layers(), context["asset"], context["subset"]
+                stub.get_layers(), folder_name, product_name
             )
         else:  # switching version - keep same name
             layer_name = container["namespace"]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_entity)
         with photoshop.maintained_selection():
             stub.replace_smart_object(
                 layer, path, layer_name
             )
 
         stub.imprint(
-            layer.id, {"representation": str(representation["_id"])}
+            layer.id, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):
@@ -77,8 +79,8 @@ class ImageLoader(photoshop.PhotoshopLoader):
         stub.imprint(layer.id, {})
         stub.delete_layer(layer.id)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def import_layer(self, file_name, layer_name, stub):
         return stub.import_smart_object(file_name, layer_name)

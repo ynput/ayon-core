@@ -5,7 +5,9 @@ from collections import defaultdict
 from maya import cmds
 
 from ayon_core.pipeline import (
-    InventoryAction, get_representation_context, get_representation_path
+    InventoryAction,
+    get_repres_contexts,
+    get_representation_path,
 )
 from ayon_core.hosts.maya.api.lib import get_container_members, get_id
 
@@ -26,17 +28,25 @@ class ConnectYetiRig(InventoryAction):
             self.display_warning(message)
             return
 
-        # Categorize containers by family.
-        containers_by_family = defaultdict(list)
+        # Categorize containers by product type.
+        containers_by_product_type = defaultdict(list)
+        repre_ids = {
+            container["representation"]
+            for container in containers
+        }
+        repre_contexts_by_id = get_repres_contexts(repre_ids)
         for container in containers:
-            family = get_representation_context(
-                container["representation"]
-            )["subset"]["data"]["family"]
-            containers_by_family[family].append(container)
+            repre_id = container["representation"]
+            repre_context = repre_contexts_by_id[repre_id]
+
+            product_type = repre_context["product"]["productType"]
+
+            containers_by_product_type.setdefault(product_type, [])
+            containers_by_product_type[product_type].append(container)
 
         # Validate to only 1 source container.
-        source_containers = containers_by_family.get("animation", [])
-        source_containers += containers_by_family.get("pointcache", [])
+        source_containers = containers_by_product_type.get("animation", [])
+        source_containers += containers_by_product_type.get("pointcache", [])
         source_container_namespaces = [
             x["namespace"] for x in source_containers
         ]
@@ -57,7 +67,7 @@ class ConnectYetiRig(InventoryAction):
         target_ids = {}
         inputs = []
 
-        yeti_rig_containers = containers_by_family.get("yetiRig")
+        yeti_rig_containers = containers_by_product_type.get("yetiRig")
         if not yeti_rig_containers:
             self.display_warning(
                 "Select at least one yetiRig container"
@@ -66,11 +76,10 @@ class ConnectYetiRig(InventoryAction):
 
         for container in yeti_rig_containers:
             target_ids.update(self.nodes_by_id(container))
+            repre_id = container["representation"]
 
             maya_file = get_representation_path(
-                get_representation_context(
-                    container["representation"]
-                )["representation"]
+                repre_contexts_by_id[repre_id]["representation"]
             )
             _, ext = os.path.splitext(maya_file)
             settings_file = maya_file.replace(ext, ".rigsettings")

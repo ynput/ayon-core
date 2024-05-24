@@ -4,12 +4,12 @@ import os
 import json
 import logging
 from contextlib import contextmanager
-import semver
 import time
 
+import semver
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import get_asset_by_name, get_assets
 from ayon_core.pipeline import (
     register_loader_plugin_path,
     register_creator_plugin_path,
@@ -101,7 +101,7 @@ class UnrealHost(HostBase, ILoadHost, IPublishHost):
 
 
 def install():
-    """Install Unreal configuration for OpenPype."""
+    """Install Unreal configuration for AYON."""
     print("-=" * 40)
     logo = '''.
 .

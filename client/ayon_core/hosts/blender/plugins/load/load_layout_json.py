@@ -26,8 +26,8 @@ from ayon_core.hosts.blender.api import plugin
 class JsonLayoutLoader(plugin.AssetLoader):
     """Load layout published from Unreal."""
 
-    families = ["layout"]
-    representations = ["json"]
+    product_types = {"layout"}
+    representations = {"json"}
 
     label = "Load Layout"
     icon = "code-fork"
@@ -50,11 +50,11 @@ class JsonLayoutLoader(plugin.AssetLoader):
                 if anim_collection:
                     bpy.data.collections.remove(anim_collection)
 
-    def _get_loader(self, loaders, family):
+    def _get_loader(self, loaders, product_type):
         name = ""
-        if family == 'rig':
+        if product_type == 'rig':
             name = "BlendRigLoader"
-        elif family == 'model':
+        elif product_type == 'model':
             name = "BlendModelLoader"
 
         if name == "":
@@ -76,10 +76,12 @@ class JsonLayoutLoader(plugin.AssetLoader):
 
         for element in data:
             reference = element.get('reference')
-            family = element.get('family')
+            product_type = element.get("product_type")
+            if product_type is None:
+                product_type = element.get("family")
 
             loaders = loaders_from_representation(all_loaders, reference)
-            loader = self._get_loader(loaders, family)
+            loader = self._get_loader(loaders, product_type)
 
             if not loader:
                 continue
@@ -95,7 +97,7 @@ class JsonLayoutLoader(plugin.AssetLoader):
                 'parent': asset_group,
                 'transform': element.get('transform'),
                 'action': action,
-                'create_animation': True if family == 'rig' else False,
+                'create_animation': True if product_type == 'rig' else False,
                 'animation_asset': asset
             }
 
@@ -127,10 +129,10 @@ class JsonLayoutLoader(plugin.AssetLoader):
         # legacy_create(
         #     creator_plugin,
         #     name="camera",
-        #     # name=f"{unique_number}_{subset}_animation",
+        #     # name=f"{unique_number}_{product[name]}_animation",
         #     asset=asset,
         #     options={"useSelection": False}
-        #     # data={"dependencies": str(context["representation"]["_id"])}
+        #     # data={"dependencies": context["representation"]["id"]}
         # )
 
     def process_asset(self,
@@ -146,13 +148,15 @@ class JsonLayoutLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
-        asset_name = plugin.prepare_scene_name(asset, subset)
-        unique_number = plugin.get_unique_number(asset, subset)
-        group_name = plugin.prepare_scene_name(asset, subset, unique_number)
-        namespace = namespace or f"{asset}_{unique_number}"
+        asset_name = plugin.prepare_scene_name(folder_name, product_name)
+        unique_number = plugin.get_unique_number(folder_name, product_name)
+        group_name = plugin.prepare_scene_name(
+            folder_name, product_name, unique_number
+        )
+        namespace = namespace or f"{folder_name}_{unique_number}"
 
         avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
         if not avalon_container:
@@ -163,7 +167,7 @@ class JsonLayoutLoader(plugin.AssetLoader):
         asset_group.empty_display_type = 'SINGLE_ARROW'
         avalon_container.objects.link(asset_group)
 
-        self._process(libpath, asset, asset_group, None)
+        self._process(libpath, asset_name, asset_group, None)
 
         bpy.context.scene.collection.objects.link(asset_group)
 
@@ -173,18 +177,18 @@ class JsonLayoutLoader(plugin.AssetLoader):
             "name": name,
             "namespace": namespace or '',
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
             "libpath": libpath,
             "asset_name": asset_name,
-            "parent": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
+            "parent": context["representation"]["versionId"],
+            "productType": context["product"]["productType"],
             "objectName": group_name
         }
 
         self[:] = asset_group.children
         return asset_group.children
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """Update the loaded asset.
 
         This will remove all objects of the current collection, load the new
@@ -193,15 +197,16 @@ class JsonLayoutLoader(plugin.AssetLoader):
         will not be removed, only unlinked. Normally this should not be the
         case though.
         """
+        repre_entity = context["representation"]
         object_name = container["objectName"]
         asset_group = bpy.data.objects.get(object_name)
-        libpath = Path(get_representation_path(representation))
+        libpath = Path(get_representation_path(repre_entity))
         extension = libpath.suffix.lower()
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(representation, indent=2),
+            pformat(repre_entity, indent=2),
         )
 
         assert asset_group, (
@@ -239,7 +244,10 @@ class JsonLayoutLoader(plugin.AssetLoader):
 
         for obj in asset_group.children:
             obj_meta = obj.get(AVALON_PROPERTY)
-            if obj_meta.get('family') == 'rig':
+            product_type = obj_meta.get("productType")
+            if product_type is None:
+                product_type = obj_meta.get("family")
+            if product_type == "rig":
                 rig = None
                 for child in obj.children:
                     if child.type == 'ARMATURE':
@@ -262,7 +270,7 @@ class JsonLayoutLoader(plugin.AssetLoader):
         asset_group.matrix_basis = mat
 
         metadata["libpath"] = str(libpath)
-        metadata["representation"] = str(representation["_id"])
+        metadata["representation"] = repre_entity["id"]
 
     def exec_remove(self, container: Dict) -> bool:
         """Remove an existing container from a Blender scene.

@@ -27,7 +27,7 @@ class ExtractBurnin(publish.Extractor):
     Extractor to create video with pre-defined burnins from
     existing extracted video representation.
 
-    It will work only on represenations having `burnin = True` or
+    It will work only on representations having `burnin = True` or
     `tags` including `burnin`
     """
 
@@ -125,7 +125,7 @@ class ExtractBurnin(publish.Extractor):
 
             burnin_defs = copy.deepcopy(src_burnin_defs)
 
-            # Filter output definition by `burnin` represetation key
+            # Filter output definition by `burnin` representation key
             repre_linked_burnins = [
                 burnin_def
                 for burnin_def in burnin_defs
@@ -156,16 +156,16 @@ class ExtractBurnin(publish.Extractor):
 
     def main_process(self, instance):
         host_name = instance.context.data["hostName"]
-        family = instance.data["family"]
+        product_type = instance.data["productType"]
+        product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
-        subset = instance.data["subset"]
 
         filtering_criteria = {
             "hosts": host_name,
-            "product_types": family,
-            "product_names": subset,
+            "product_types": product_type,
+            "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
         }
@@ -177,9 +177,11 @@ class ExtractBurnin(publish.Extractor):
         if not profile:
             self.log.debug((
                 "Skipped instance. None of profiles in presets are for"
-                " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
-                " | Task type \"{}\" | Product name \"{}\" "
-            ).format(host_name, family, task_name, task_type, subset))
+                " Host: \"{}\" | Product type: \"{}\" | Product name \"{}\""
+                " | Task name \"{}\" | Task type \"{}\""
+            ).format(
+                host_name, product_type, product_name, task_name, task_type
+            ))
             return
 
         # Pre-filter burnin definitions by instance families
@@ -189,7 +191,17 @@ class ExtractBurnin(publish.Extractor):
                 "Skipped instance. Burnin definitions are not set for profile"
                 " Host: \"{}\" | Product type: \"{}\" | Task name \"{}\""
                 " | Profile \"{}\""
-            ).format(host_name, family, task_name, profile))
+            ).format(host_name, product_type, task_name, profile))
+            return
+
+        burnins_per_repres = self._get_burnins_per_representations(
+            instance, burnin_defs
+        )
+        if not burnins_per_repres:
+            self.log.debug(
+                "Skipped instance. No representations found matching a burnin"
+                "definition in: %s", burnin_defs
+            )
             return
 
         burnin_options = self._get_burnin_options()
@@ -202,9 +214,6 @@ class ExtractBurnin(publish.Extractor):
 
         # Args that will execute the script
         executable_args = ["run", scriptpath]
-        burnins_per_repres = self._get_burnins_per_representations(
-            instance, burnin_defs
-        )
         for repre, repre_burnin_defs in burnins_per_repres:
             # Create copy of `_burnin_data` and `_temp_data` for repre.
             burnin_data = copy.deepcopy(_burnin_data)
@@ -369,6 +378,7 @@ class ExtractBurnin(publish.Extractor):
                 # Prepare subprocess arguments
                 args = list(executable_args)
                 args.append(temporary_json_filepath)
+                args.append("--headless")
                 self.log.debug("Executing: {}".format(" ".join(args)))
 
                 # Run burnin script
@@ -538,7 +548,7 @@ class ExtractBurnin(publish.Extractor):
         return burnin_data, temp_data
 
     def repres_is_valid(self, repre):
-        """Validation if representaion should be processed.
+        """Validation if representation should be processed.
 
         Args:
             repre (dict): Representation which should be checked.
@@ -570,7 +580,7 @@ class ExtractBurnin(publish.Extractor):
             tags (list): Tags of processed representation.
 
         Returns:
-            list: Containg all burnin definitions matching entered tags.
+            list: Contain all burnin definitions matching entered tags.
 
         """
         filtered_burnins = []
@@ -595,7 +605,7 @@ class ExtractBurnin(publish.Extractor):
 
         Store data to `temp_data` for keys "full_input_path" which is full path
         to source files optionally with sequence formatting,
-        "full_output_path" full path to otput with optionally with sequence
+        "full_output_path" full path to output with optionally with sequence
         formatting, "full_input_paths" list of all source files which will be
         deleted when burnin script ends, "repre_files" list of output
         filenames.
@@ -745,7 +755,7 @@ class ExtractBurnin(publish.Extractor):
             profile (dict): Profile from presets matching current context.
 
         Returns:
-            list: Containg all valid output definitions.
+            list: Contain all valid output definitions.
         """
         filtered_burnin_defs = []
 
@@ -766,7 +776,7 @@ class ExtractBurnin(publish.Extractor):
             ):
                 self.log.debug((
                     "Skipped burnin definition \"{}\". Family"
-                    " fiters ({}) does not match current instance families: {}"
+                    " filters ({}) does not match current instance families: {}"
                 ).format(
                     filename_suffix, str(families_filters), str(families)
                 ))

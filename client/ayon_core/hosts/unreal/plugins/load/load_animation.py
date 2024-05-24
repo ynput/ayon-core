@@ -2,7 +2,7 @@
 """Load FBX with animations."""
 import json
 
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
@@ -17,9 +17,9 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class AnimationFBXLoader(UnrealBaseLoader):
     """Load Unreal SkeletalMesh from FBX."""
 
-    families = ["animation"]
+    product_types = {"animation"}
     label = "Import FBX Animation"
-    representations = ["fbx"]
+    representations = {"fbx"}
     icon = "cube"
     color = "orange"
 
@@ -28,8 +28,8 @@ class AnimationFBXLoader(UnrealBaseLoader):
         filename, destination_path, destination_name, replace, automated,
         skeleton
     ):
-        asset_doc = get_current_project_asset(fields=["data.fps"])
-        fps = asset_doc.get("data", {}).get("fps")
+        folder_entity = get_current_folder_entity(fields=["attrib.fps"])
+        fps = folder_entity.get("attrib", {}).get("fps")
 
         options_properties = [
             ["automated_import_should_detect_type", "False"],
@@ -121,7 +121,7 @@ class AnimationFBXLoader(UnrealBaseLoader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -130,15 +130,18 @@ class AnimationFBXLoader(UnrealBaseLoader):
                             used now, data are imprinted by `containerise()`.
         """
         # Create directory for asset and Ayon container
-        hierarchy = context.get('asset').get('data').get('parents')
         root = self.root
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+
+        folder_name = hierarchy.pop(-1)
+        asset_name = f"{folder_name}_{name}" if folder_name else name
 
         asset_dir, container_name = send_request(
             "create_unique_asset_name", params={
                 "root": root,
-                "asset": asset,
+                "folder_name": folder_name,
                 "name": name})
 
         master_level = send_request(
@@ -151,7 +154,7 @@ class AnimationFBXLoader(UnrealBaseLoader):
         hierarchy_dir = root
         for h in hierarchy:
             hierarchy_dir = f"{hierarchy_dir}/{h}"
-        hierarchy_dir = f"{hierarchy_dir}/{asset}"
+        hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
 
         level = send_request(
             "get_first_asset_of_class",
@@ -197,19 +200,23 @@ class AnimationFBXLoader(UnrealBaseLoader):
                 "instance_name": instance_name,
                 "sequences": sequences})
 
+        product_type = context["product"]["productType"]
+
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
-            "loader": self.__class__.__name__,
-            "representation_id": str(context["representation"]["_id"]),
-            "version_id": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"]
+            "loader": str(self.__class__.__name__),
+            "representation": str(context["representation"]["id"]),
+            "parent": str(context["representation"]["versionId"]),
+            "folder_path": folder_path,
+            "product_type": product_type,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type
         }
-
         containerise(asset_dir, container_name, data)
 
         send_request("save_current_level")
@@ -221,10 +228,12 @@ class AnimationFBXLoader(UnrealBaseLoader):
                 "recursive": True,
                 "include_folder": True})
 
-    def update(self, container, representation):
-        filename = get_representation_path(representation)
-        asset_dir = container["namespace"]
+    def update(self, container, context):
+        asset_dir = container.get('namespace')
+        repre_entity = context["representation"]
         asset_name = container["asset_name"]
+
+        filename = get_representation_path(repre_entity)
 
         skeleton = send_request(
             "get_skeleton_from_skeletal_mesh",
@@ -234,4 +243,4 @@ class AnimationFBXLoader(UnrealBaseLoader):
         self._import_fbx_task(
             filename, asset_dir, asset_name, True, True, skeleton)
 
-        super(UnrealBaseLoader, self).update(container, representation)
+        super(UnrealBaseLoader, self).update(container, repre_entity)

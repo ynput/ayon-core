@@ -9,11 +9,11 @@ class CollectDefaultDeadlineServer(pyblish.api.ContextPlugin):
     DL webservice addresses must be configured first in System Settings for
     project settings enum to work.
 
-    Default webservice could be overriden by
+    Default webservice could be overridden by
     `project_settings/deadline/deadline_servers`. Currently only single url
     is expected.
 
-    This url could be overriden by some hosts directly on instances with
+    This url could be overridden by some hosts directly on instances with
     `CollectDeadlineServerFromInstance`.
     """
 

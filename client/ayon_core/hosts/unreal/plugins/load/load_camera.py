@@ -2,11 +2,13 @@
 """Load camera from FBX."""
 from pathlib import Path
 
-from ayon_core.client import get_asset_by_name
+import ayon_api
+
+from ayon_core.client import get_assets, get_asset_by_name
 from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
-    get_current_project_name,
+    get_representation_path,
 )
 from ayon_core.hosts.unreal.api.plugin import UnrealBaseLoader
 from ayon_core.hosts.unreal.api.pipeline import (
@@ -18,9 +20,9 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class CameraLoader(UnrealBaseLoader):
     """Load Unreal StaticMesh from FBX"""
 
-    families = ["camera"]
+    product_types = {"camera"}
     label = "Load Camera"
-    representations = ["fbx"]
+    representations = {"fbx"}
     icon = "cube"
     color = "orange"
 
@@ -134,7 +136,7 @@ class CameraLoader(UnrealBaseLoader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -143,14 +145,21 @@ class CameraLoader(UnrealBaseLoader):
                             used now, data are imprinted by `containerise()`.
         """
         # Create directory for asset and OpenPype container
-        hierarchy = context.get('asset').get('data').get('parents')
+        folder_entity = context["folder"]
+        folder_attributes = folder_entity["attrib"]
+        folder_path = folder_entity["path"]
+        hierarchy_parts = folder_path.split("/")
+        # Remove empty string
+        hierarchy_parts.pop(0)
+        # Pop folder name
+        folder_name = hierarchy_parts.pop(-1)
+
         root = self.root
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
+        asset_name = f"{folder_name}_{name}" if folder_name else name
 
         hierarchy_dir = root
         hierarchy_dir_list = []
-        for h in hierarchy:
+        for h in hierarchy_parts:
             hierarchy_dir = f"{hierarchy_dir}/{h}"
             hierarchy_dir_list.append(hierarchy_dir)
 
@@ -158,10 +167,10 @@ class CameraLoader(UnrealBaseLoader):
         unique_number = 1
         if send_request(
                 "does_directory_exist",
-                params={"directory_path": f"{hierarchy_dir}/{asset}"}):
+                params={"directory_path": f"{hierarchy_dir}/{folder_name}"}):
             asset_content = send_request(
                 "list_assets", params={
-                    "directory_path": f"{root}/{asset}",
+                    "directory_path": f"{root}/{folder_name}",
                     "recursive": False,
                     "include_folder": True})
 
@@ -175,32 +184,34 @@ class CameraLoader(UnrealBaseLoader):
         asset_dir, container_name = send_request(
             "create_unique_asset_name", params={
                 "root": hierarchy_dir,
-                "asset": asset,
+                "folder_name": folder_name,
                 "name": name,
                 "version": {"name": unique_number}})
 
         send_request("make_directory", params={"directory_path": asset_dir})
 
         master_level, level = self._create_levels(
-            hierarchy_dir_list, hierarchy, asset_dir, asset)
+            hierarchy_dir_list, hierarchy_parts, asset_dir, folder_name)
 
         sequences, frame_ranges = self._get_sequences(
-            hierarchy_dir_list, hierarchy)
+            hierarchy_dir_list, hierarchy_parts)
 
-        project_name = get_current_project_name()
-        data = get_asset_by_name(project_name, asset)["data"]
+        fps = folder_attributes.get("fps")
+        clip_in = folder_attributes.get("clipIn")
+        clip_out = folder_attributes.get("clipOut")
+        frame_start = folder_attributes.get('frameStart')
 
         cam_sequence = send_request(
             "generate_camera_sequence",
             params={
-                "asset": asset,
+                "folder_name": folder_name,
                 "asset_dir": asset_dir,
                 "sequences": sequences,
                 "frame_ranges": frame_ranges,
                 "level": level,
-                "fps": data.get("fps"),
-                "clip_in": data.get("clipIn"),
-                "clip_out": data.get("clipOut")})
+                "fps": fps,
+                "clip_in": clip_in,
+                "clip_out": clip_out})
 
         send_request(
             "import_camera",
@@ -212,21 +223,25 @@ class CameraLoader(UnrealBaseLoader):
             "set_sequences_range",
             params={
                 "sequence": cam_sequence,
-                "clip_in": data.get("clipIn"),
-                "clip_out": data.get("clipOut"),
-                "frame_start": data.get("frameStart")})
+                "clip_in": clip_in,
+                "clip_out": clip_out,
+                "frame_start": frame_start})
 
+        product_type = context["product"]["productType"]
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation_id": str(context["representation"]["_id"]),
-            "version_id": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"]
+            "representation": str(context["representation"]["id"]),
+            "parent": str(context["representation"]["versionId"]),
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_name,
+            "family": product_type,
         }
 
         containerise(asset_dir, container_name, data)
@@ -244,7 +259,10 @@ class CameraLoader(UnrealBaseLoader):
 
         return assets
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_entity = context["representation"]
+        repre_path = get_representation_path(repre_entity)
+
         sequence_path, curr_time, is_cam_lock, vp_loc, vp_rot = send_request(
             "get_current_sequence_and_level_info")
 
@@ -259,21 +277,28 @@ class CameraLoader(UnrealBaseLoader):
             "import_camera",
             params={
                 "sequence_path": new_sequence,
-                "import_filename": str(representation["data"]["path"])})
+                "import_filename": repre_path})
 
         project_name = get_current_project_name()
-        asset = container.get('asset')
-        data = get_asset_by_name(project_name, asset)["data"]
+        folder_path = container.get("folder_path")
+        if folder_path is None:
+            folder_path = container.get("asset")
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        folder_attributes = folder_entity["attrib"]
+
+        clip_in = folder_attributes["clipIn"]
+        clip_out = folder_attributes["clipOut"]
+        frame_start = folder_attributes["frameStart"]
 
         send_request(
             "set_sequences_range",
             params={
                 "sequence": new_sequence,
-                "clip_in": data.get("clipIn"),
-                "clip_out": data.get("clipOut"),
-                "frame_start": data.get("frameStart")})
+                "clip_in": clip_in,
+                "clip_out": clip_out,
+                "frame_start": frame_start})
 
-        super(CameraLoader, self).update(container, representation)
+        super(CameraLoader, self).update(container, context)
 
         send_request("save_all_dirty_levels")
 

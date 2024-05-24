@@ -13,6 +13,11 @@ from .path_resolving import (
     create_workdir_extra_folders,
 )
 
+from .utils import (
+    should_use_last_workfile_on_launch,
+    should_open_workfiles_tool_on_launch,
+)
+
 from .build_workfile import BuildWorkfile
 
 
@@ -29,6 +34,9 @@ __all__ = (
     "get_custom_workfile_template_by_string_context",
 
     "create_workdir_extra_folders",
+
+    "should_use_last_workfile_on_launch",
+    "should_open_workfiles_tool_on_launch",
 
     "BuildWorkfile",
 )

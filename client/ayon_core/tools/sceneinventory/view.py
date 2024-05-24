@@ -4,16 +4,10 @@ import logging
 import itertools
 from functools import partial
 
+import ayon_api
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_versions,
-    get_hero_versions,
-    get_representation_by_id,
-    get_representations,
-)
 from ayon_core import style
 from ayon_core.pipeline import (
     HeroVersionType,
@@ -97,50 +91,54 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 pass
 
         project_name = self._controller.get_current_project_name()
-        repre_docs = get_representations(
-            project_name, representation_ids=repre_ids, fields=["parent"]
+        repre_entities = ayon_api.get_representations(
+            project_name,
+            representation_ids=repre_ids,
+            fields={"versionId"}
         )
 
         version_ids = {
-            repre_doc["parent"]
-            for repre_doc in repre_docs
+            repre_entity["versionId"]
+            for repre_entity in repre_entities
         }
 
-        loaded_versions = get_versions(
-            project_name, version_ids=version_ids, hero=True
+        loaded_versions = ayon_api.get_versions(
+            project_name, version_ids=version_ids
         )
 
         loaded_hero_versions = []
-        versions_by_parent_id = collections.defaultdict(list)
-        subset_ids = set()
-        for version in loaded_versions:
-            if version["type"] == "hero_version":
-                loaded_hero_versions.append(version)
+        versions_by_product_id = collections.defaultdict(list)
+        product_ids = set()
+        for version_entity in loaded_versions:
+            version = version_entity["version"]
+            if version < 0:
+                loaded_hero_versions.append(version_entity)
             else:
-                parent_id = version["parent"]
-                versions_by_parent_id[parent_id].append(version)
-                subset_ids.add(parent_id)
+                product_id = version_entity["productId"]
+                versions_by_product_id[product_id].append(version_entity)
+                product_ids.add(product_id)
 
-        all_versions = get_versions(
-            project_name, subset_ids=subset_ids, hero=True
+        all_versions = ayon_api.get_versions(
+            project_name, product_ids=product_ids
         )
         hero_versions = []
-        versions = []
-        for version in all_versions:
-            if version["type"] == "hero_version":
-                hero_versions.append(version)
+        version_entities = []
+        for version_entity in all_versions:
+            version = version_entity["version"]
+            if version < 0:
+                hero_versions.append(version_entity)
             else:
-                versions.append(version)
+                version_entities.append(version_entity)
 
         has_loaded_hero_versions = len(loaded_hero_versions) > 0
         has_available_hero_version = len(hero_versions) > 0
         has_outdated = False
 
-        for version in versions:
-            parent_id = version["parent"]
-            current_versions = versions_by_parent_id[parent_id]
+        for version_entity in version_entities:
+            product_id = version_entity["productId"]
+            current_versions = versions_by_product_id[product_id]
             for current_version in current_versions:
-                if current_version["name"] < version["name"]:
+                if current_version["version"] < version_entity["version"]:
                     has_outdated = True
                     break
 
@@ -155,46 +153,52 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     for item in items
                 }
 
-                repre_docs = get_representations(
+                repre_entities = ayon_api.get_representations(
                     project_name,
                     representation_ids=repre_ids,
-                    fields=["parent"]
+                    fields={"id", "versionId"}
                 )
 
-                version_ids = set()
                 version_id_by_repre_id = {}
-                for repre_doc in repre_docs:
-                    version_id = repre_doc["parent"]
-                    repre_id = str(repre_doc["_id"])
+                for repre_entity in repre_entities:
+                    repre_id = repre_entity["id"]
+                    version_id = repre_entity["versionId"]
                     version_id_by_repre_id[repre_id] = version_id
-                    version_ids.add(version_id)
+                version_ids = set(version_id_by_repre_id.values())
 
-                hero_versions = get_hero_versions(
+                src_version_entity_by_id = {
+                    version_entity["id"]: version_entity
+                    for version_entity in ayon_api.get_versions(
+                        project_name,
+                        version_ids,
+                        fields={"productId", "version"}
+                    )
+                }
+                hero_versions_by_product_id = {}
+                for version_entity in src_version_entity_by_id.values():
+                    version = version_entity["version"]
+                    if version < 0:
+                        product_id = version_entity["productId"]
+                        hero_versions_by_product_id[product_id] = abs(version)
+
+                if not hero_versions_by_product_id:
+                    return
+
+                standard_versions = ayon_api.get_versions(
                     project_name,
-                    version_ids=version_ids,
-                    fields=["version_id"]
+                    product_ids=hero_versions_by_product_id.keys(),
+                    versions=hero_versions_by_product_id.values()
                 )
-
-                hero_src_version_ids = set()
-                for hero_version in hero_versions:
-                    version_id = hero_version["version_id"]
-                    hero_src_version_ids.add(version_id)
-                    hero_version_id = hero_version["_id"]
-                    for _repre_id, current_version_id in (
-                        version_id_by_repre_id.items()
-                    ):
-                        if current_version_id == hero_version_id:
-                            version_id_by_repre_id[_repre_id] = version_id
-
-                version_docs = get_versions(
-                    project_name,
-                    version_ids=hero_src_version_ids,
-                    fields=["name"]
-                )
-                version_name_by_id = {}
-                for version_doc in version_docs:
-                    version_name_by_id[version_doc["_id"]] = \
-                        version_doc["name"]
+                standard_version_by_product_id = {
+                    product_id: {}
+                    for product_id in hero_versions_by_product_id.keys()
+                }
+                for version_entity in standard_versions:
+                    product_id = version_entity["productId"]
+                    version = version_entity["version"]
+                    standard_version_by_product_id[product_id][version] = (
+                        version_entity
+                    )
 
                 # Specify version per item to update to
                 update_items = []
@@ -202,10 +206,20 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 for item in items:
                     repre_id = item["representation"]
                     version_id = version_id_by_repre_id.get(repre_id)
-                    version_name = version_name_by_id.get(version_id)
-                    if version_name is not None:
+                    version_entity = src_version_entity_by_id.get(version_id)
+                    if not version_entity or version_entity["version"] >= 0:
+                        continue
+                    product_id = version_entity["productId"]
+                    version_entities_by_version = (
+                        standard_version_by_product_id[product_id]
+                    )
+                    new_version = hero_versions_by_product_id.get(product_id)
+                    new_version_entity = version_entities_by_version.get(
+                        new_version
+                    )
+                    if new_version_entity is not None:
                         update_items.append(item)
-                        update_versions.append(version_name)
+                        update_versions.append(new_version)
                 self._update_containers(update_items, update_versions)
 
             update_icon = qtawesome.icon(
@@ -249,8 +263,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 menu
             )
             change_to_hero.triggered.connect(
-                lambda: self._update_containers(items,
-                                                version=HeroVersionType(-1))
+                lambda: self._update_containers(
+                    items, version=HeroVersionType(-1)
+                )
             )
 
         # set version
@@ -296,9 +311,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         menu.addAction(remove_action)
 
-        self._handle_sync_server(menu, repre_ids)
+        self._handle_sitesync(menu, repre_ids)
 
-    def _handle_sync_server(self, menu, repre_ids):
+    def _handle_sitesync(self, menu, repre_ids):
         """Adds actions for download/upload when SyncServer is enabled
 
         Args:
@@ -309,7 +324,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             (OptionMenu)
         """
 
-        if not self._controller.is_sync_server_enabled():
+        if not self._controller.is_sitesync_enabled():
             return
 
         menu.addSeparator()
@@ -608,44 +623,31 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         project_name = self._controller.get_current_project_name()
         # Get available versions for active representation
-        repre_doc = get_representation_by_id(
+        repre_entity = ayon_api.get_representation_by_id(
             project_name,
             active["representation"],
-            fields=["parent"]
+            fields={"versionId"}
         )
 
-        repre_version_doc = get_version_by_id(
+        repre_version_entity = ayon_api.get_version_by_id(
             project_name,
-            repre_doc["parent"],
-            fields=["parent"]
+            repre_entity["versionId"],
+            fields={"productId"}
         )
 
-        version_docs = list(get_versions(
+        version_entities = list(ayon_api.get_versions(
             project_name,
-            subset_ids=[repre_version_doc["parent"]],
-            hero=True
+            product_ids={repre_version_entity["productId"]},
         ))
         hero_version = None
         standard_versions = []
-        for version_doc in version_docs:
-            if version_doc["type"] == "hero_version":
-                hero_version = version_doc
+        for version_entity in version_entities:
+            if version_entity["version"] < 0:
+                hero_version = version_entity
             else:
-                standard_versions.append(version_doc)
-        versions = list(reversed(
-            sorted(standard_versions, key=lambda item: item["name"])
-        ))
-        if hero_version:
-            _version_id = hero_version["version_id"]
-            for _version in versions:
-                if _version["_id"] != _version_id:
-                    continue
-
-                hero_version["name"] = HeroVersionType(
-                    _version["name"]
-                )
-                hero_version["data"] = _version["data"]
-                break
+                standard_versions.append(version_entity)
+        standard_versions.sort(key=lambda item: item["version"])
+        standard_versions.reverse()
 
         # Get index among the listed versions
         current_item = None
@@ -653,15 +655,15 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if isinstance(current_version, HeroVersionType):
             current_item = hero_version
         else:
-            for version in versions:
-                if version["name"] == current_version:
-                    current_item = version
+            for version_entity in standard_versions:
+                if version_entity["version"] == current_version:
+                    current_item = version_entity
                     break
 
         all_versions = []
         if hero_version:
             all_versions.append(hero_version)
-        all_versions.extend(versions)
+        all_versions.extend(standard_versions)
 
         if current_item:
             index = all_versions.index(current_item)
@@ -670,11 +672,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         versions_by_label = dict()
         labels = []
-        for version in all_versions:
-            is_hero = version["type"] == "hero_version"
-            label = format_version(version["name"], is_hero)
+        for version_entity in all_versions:
+            label = format_version(version_entity["version"])
             labels.append(label)
-            versions_by_label[label] = version["name"]
+            versions_by_label[label] = version_entity["version"]
 
         label, state = QtWidgets.QInputDialog.getItem(
             self,
@@ -689,6 +690,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         if label:
             version = versions_by_label[label]
+            if version < 0:
+                version = HeroVersionType(version)
             self._update_containers(items, version)
 
     def _show_switch_dialog(self, items):

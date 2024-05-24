@@ -18,19 +18,17 @@ import copy
 from abc import ABCMeta, abstractmethod
 
 import six
-from ayon_api import get_products, get_last_versions
-from ayon_api.graphql_queries import folders_graphql_query
-
-from ayon_core.client import (
-    get_asset_by_name,
-    get_linked_assets,
+from ayon_api import (
+    get_folders,
+    get_folder_by_path,
+    get_folder_links,
+    get_task_by_name,
+    get_products,
+    get_last_versions,
     get_representations,
-    get_ayon_server_api_connection,
 )
-from ayon_core.settings import (
-    get_project_settings,
-    get_system_settings,
-)
+
+from ayon_core.settings import get_project_settings
 from ayon_core.host import IWorkfileHost, HostBase
 from ayon_core.lib import (
     Logger,
@@ -42,7 +40,7 @@ from ayon_core.lib.attribute_definitions import get_attributes_keys
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import (
     get_loaders_by_name,
-    get_contexts_for_repre_docs,
+    get_representation_contexts,
     load_with_repre_context,
 )
 
@@ -50,6 +48,8 @@ from ayon_core.pipeline.create import (
     discover_legacy_creator_plugins,
     CreateContext,
 )
+
+_NOT_SET = object()
 
 
 class TemplateNotFound(Exception):
@@ -118,12 +118,11 @@ class AbstractTemplateBuilder(object):
         self._creators_by_name = None
         self._create_context = None
 
-        self._system_settings = None
         self._project_settings = None
 
-        self._current_asset_doc = None
-        self._linked_asset_docs = None
-        self._task_type = None
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._linked_folder_entities = _NOT_SET
 
     @property
     def project_name(self):
@@ -132,9 +131,9 @@ class AbstractTemplateBuilder(object):
         return os.getenv("AYON_PROJECT_NAME")
 
     @property
-    def current_asset_name(self):
+    def current_folder_path(self):
         if isinstance(self._host, HostBase):
-            return self._host.get_current_asset_name()
+            return self._host.get_current_folder_path()
         return os.getenv("AYON_FOLDER_PATH")
 
     @property
@@ -148,15 +147,9 @@ class AbstractTemplateBuilder(object):
             return self._host.get_current_context()
         return {
             "project_name": self.project_name,
-            "asset_name": self.current_asset_name,
+            "folder_path": self.current_folder_path,
             "task_name": self.current_task_name
         }
-
-    @property
-    def system_settings(self):
-        if self._system_settings is None:
-            self._system_settings = get_system_settings()
-        return self._system_settings
 
     @property
     def project_settings(self):
@@ -165,33 +158,39 @@ class AbstractTemplateBuilder(object):
         return self._project_settings
 
     @property
-    def current_asset_doc(self):
-        if self._current_asset_doc is None:
-            self._current_asset_doc = get_asset_by_name(
-                self.project_name, self.current_asset_name
+    def current_folder_entity(self):
+        if self._current_folder_entity is _NOT_SET:
+            self._current_folder_entity = get_folder_by_path(
+                self.project_name, self.current_folder_path
             )
-        return self._current_asset_doc
+        return self._current_folder_entity
 
     @property
-    def linked_asset_docs(self):
-        if self._linked_asset_docs is None:
-            self._linked_asset_docs = get_linked_assets(
-                self.project_name, self.current_asset_doc
-            )
-        return self._linked_asset_docs
+    def linked_folder_entities(self):
+        if self._linked_folder_entities is _NOT_SET:
+            self._linked_folder_entities = self._get_linked_folder_entities()
+        return self._linked_folder_entities
+
+    @property
+    def current_task_entity(self):
+        if self._current_task_entity is _NOT_SET:
+            task_entity = None
+            folder_entity = self.current_folder_entity
+            if folder_entity:
+                task_entity = get_task_by_name(
+                    self.project_name,
+                    folder_entity["id"],
+                    self.current_task_name
+                )
+            self._current_task_entity = task_entity
+        return self._current_task_entity
 
     @property
     def current_task_type(self):
-        asset_doc = self.current_asset_doc
-        if not asset_doc:
-            return None
-        return (
-            asset_doc
-            .get("data", {})
-            .get("tasks", {})
-            .get(self.current_task_name, {})
-            .get("type")
-        )
+        task_entity = self.current_task_entity
+        if task_entity:
+            return task_entity["taskType"]
+        return None
 
     @property
     def create_context(self):
@@ -252,11 +251,10 @@ class AbstractTemplateBuilder(object):
         self._loaders_by_name = None
         self._creators_by_name = None
 
-        self._current_asset_doc = None
-        self._linked_asset_docs = None
-        self._task_type = None
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._linked_folder_entities = _NOT_SET
 
-        self._system_settings = None
         self._project_settings = None
 
         self.clear_shared_data()
@@ -266,6 +264,22 @@ class AbstractTemplateBuilder(object):
         if self._loaders_by_name is None:
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
+
+    def _get_linked_folder_entities(self):
+        project_name = self.project_name
+        folder_entity = self.current_folder_entity
+        if not folder_entity:
+            return []
+        links = get_folder_links(
+            project_name, folder_entity["id"], link_direction="in"
+        )
+        linked_folder_ids = {
+            link["entityId"]
+            for link in links
+            if link["entityType"] == "folder"
+        }
+
+        return list(get_folders(project_name, folder_ids=linked_folder_ids))
 
     def _collect_legacy_creators(self):
         creators_by_name = {}
@@ -315,9 +329,9 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        Key should be self-explanatory to content.
+        - wrong: 'folder'
+        - good: 'folder_name'
 
         Args:
             key (str): Key under which is key stored.
@@ -361,9 +375,9 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        Key should be self-explanatory to content.
+        - wrong: 'folder'
+        - good: 'folder_path'
 
         Args:
             key (str): Key under which is key stored.
@@ -381,9 +395,9 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        Key should be self-explanatory to content.
+        - wrong: 'folder'
+        - good: 'folder_path'
 
         Args:
             key (str): Key under which is key stored.
@@ -452,7 +466,7 @@ class AbstractTemplateBuilder(object):
 
         return list(sorted(
             placeholders,
-            key=lambda i: i.order
+            key=lambda placeholder: placeholder.order
         ))
 
     def build_template(
@@ -484,15 +498,21 @@ class AbstractTemplateBuilder(object):
                                               process if version is created
 
         """
-        template_preset = self.get_template_preset()
-
-        if template_path is None:
-            template_path = template_preset["path"]
-
-        if keep_placeholders is None:
-            keep_placeholders = template_preset["keep_placeholder"]
-        if create_first_version is None:
-            create_first_version = template_preset["create_first_version"]
+        if any(
+            value is None
+            for value in [
+                template_path,
+                keep_placeholders,
+                create_first_version,
+            ]
+        ):
+            template_preset = self.get_template_preset()
+            if template_path is None:
+                template_path = template_preset["path"]
+            if keep_placeholders is None:
+                keep_placeholders = template_preset["keep_placeholder"]
+            if create_first_version is None:
+                create_first_version = template_preset["create_first_version"]
 
         # check if first version is created
         created_version_workfile = False
@@ -671,7 +691,7 @@ class AbstractTemplateBuilder(object):
             for placeholder in placeholders
         }
         all_processed = len(placeholders) == 0
-        # Counter is checked at the ned of a loop so the loop happens at least
+        # Counter is checked at the end of a loop so the loop happens at least
         #   once.
         iter_counter = 0
         while not all_processed:
@@ -758,12 +778,14 @@ class AbstractTemplateBuilder(object):
         - 'project_settings/{host name}/templated_workfile_build/profiles'
 
         Returns:
-            str: Path to a template file with placeholders.
+            dict: Dictionary with `path`, `keep_placeholder` and
+                `create_first_version` settings from the template preset
+                for current context.
 
         Raises:
             TemplateProfileNotFound: When profiles are not filled.
             TemplateLoadFailed: Profile was found but path is not set.
-            TemplateNotFound: Path was set but file does not exists.
+            TemplateNotFound: Path was set but file does not exist.
         """
 
         host_name = self.host_name
@@ -1031,9 +1053,9 @@ class PlaceholderPlugin(object):
 
         Using shared data from builder but stored under plugin identifier.
 
-        Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        Key should be self-explanatory to content.
+        - wrong: 'folder'
+        - good: 'folder_path'
 
         Args:
             key (str): Key under which is key stored.
@@ -1071,9 +1093,9 @@ class PlaceholderPlugin(object):
 
         Using shared data from builder but stored under plugin identifier.
 
-        Key should be self explanatory to content.
-        - wrong: 'asset'
-        - good: 'asset_name'
+        Key should be self-explanatory to content.
+        - wrong: 'folder'
+        - good: 'folder_path'
 
         Shared populate data are cleaned up during populate while loop.
 
@@ -1093,10 +1115,10 @@ class PlaceholderItem(object):
     """Item representing single item in scene that is a placeholder to process.
 
     Items are always created and updated by their plugins. Each plugin can use
-    modified class of 'PlacehoderItem' but only to add more options instead of
+    modified class of 'PlaceholderItem' but only to add more options instead of
     new other.
 
-    Scene identifier is used to avoid processing of the palceholder item
+    Scene identifier is used to avoid processing of the placeholder item
     multiple times so must be unique across whole workfile builder.
 
     Args:
@@ -1148,7 +1170,7 @@ class PlaceholderItem(object):
         """Placeholder data which can modify how placeholder is processed.
 
         Possible general keys
-        - order: Can define the order in which is palceholder processed.
+        - order: Can define the order in which is placeholder processed.
                     Lower == earlier.
 
         Other keys are defined by placeholder and should validate them on item
@@ -1250,11 +1272,9 @@ class PlaceholderLoadMixin(object):
         """Unified attribute definitions for load placeholder.
 
         Common function for placeholder plugins used for loading of
-        repsentations. Use it in 'get_placeholder_options'.
+        representations. Use it in 'get_placeholder_options'.
 
         Args:
-            plugin (PlaceholderPlugin): Plugin used for loading of
-                representations.
             options (Dict[str, Any]): Already available options which are used
                 as defaults for attributes.
 
@@ -1272,14 +1292,14 @@ class PlaceholderLoadMixin(object):
         loader_items = list(sorted(loader_items, key=lambda i: i["label"]))
         options = options or {}
 
-        # Get families from all loaders excluding "*"
-        families = set()
+        # Get product types from all loaders excluding "*"
+        product_types = set()
         for loader in loaders_by_name.values():
-            families.update(loader.families)
-        families.discard("*")
+            product_types.update(loader.product_types)
+        product_types.discard("*")
 
         # Sort for readability
-        families = list(sorted(families))
+        product_types = list(sorted(product_types))
 
         builder_type_enum_items = [
             {"label": "Current folder", "value": "context_folder"},
@@ -1299,6 +1319,10 @@ class PlaceholderLoadMixin(object):
             " used."
         )
 
+        product_type = options.get("product_type")
+        if product_type is None:
+            product_type = options.get("family")
+
         return [
             attribute_definitions.UISeparatorDef(),
             attribute_definitions.UILabelDef("Main attributes"),
@@ -1312,10 +1336,10 @@ class PlaceholderLoadMixin(object):
                 tooltip=build_type_help
             ),
             attribute_definitions.EnumDef(
-                "family",
-                label="Family",
-                default=options.get("family"),
-                items=families
+                "product_type",
+                label="Product type",
+                default=product_type,
+                items=product_types
             ),
             attribute_definitions.TextDef(
                 "representation",
@@ -1330,7 +1354,7 @@ class PlaceholderLoadMixin(object):
                 items=loader_items,
                 tooltip=(
                     "Loader"
-                    "\nDefines what OpenPype loader will be used to"
+                    "\nDefines what AYON loader will be used to"
                     " load assets."
                     "\nUseable loader depends on current host's loader list."
                     "\nField is case sensitive."
@@ -1415,50 +1439,6 @@ class PlaceholderLoadMixin(object):
 
         return {}
 
-    def _query_by_folder_regex(self, project_name, folder_regex):
-        """Query folders by folder path regex.
-
-        WARNING:
-            This method will be removed once the same functionality is
-                available in ayon-python-api.
-
-        Args:
-            project_name (str): Project name.
-            folder_regex (str): Regex for folder path.
-
-        Returns:
-            list[str]: List of folder paths.
-        """
-
-        query = folders_graphql_query({"id"})
-
-        folders_field = None
-        for child in query._children:
-            if child.path != "project":
-                continue
-
-            for project_child in child._children:
-                if project_child.path == "project/folders":
-                    folders_field = project_child
-                    break
-            if folders_field:
-                break
-
-        if "folderPathRegex" not in query._variables:
-            folder_path_regex_var = query.add_variable(
-                "folderPathRegex", "String!"
-            )
-            folders_field.set_filter("pathEx", folder_path_regex_var)
-
-        query.set_variable_value("projectName", project_name)
-        if folder_regex:
-            query.set_variable_value("folderPathRegex", folder_regex)
-
-        api = get_ayon_server_api_connection()
-        for parsed_data in query.continuous_query(api):
-            for folder in parsed_data["project"]["folders"]:
-                yield folder["id"]
-
     def _get_representations(self, placeholder):
         """Prepared query of representations based on load options.
 
@@ -1467,8 +1447,8 @@ class PlaceholderLoadMixin(object):
 
         Note:
             This returns all representation documents from all versions of
-                matching subset. To filter for last version use
-                '_reduce_last_version_repre_docs'.
+                matching product. To filter for last version use
+                '_reduce_last_version_repre_entities'.
 
         Args:
             placeholder (PlaceholderItem): Item which should be populated.
@@ -1487,24 +1467,31 @@ class PlaceholderLoadMixin(object):
             return []
 
         project_name = self.builder.project_name
-        current_asset_doc = self.builder.current_asset_doc
+        current_folder_entity = self.builder.current_folder_entity
 
         folder_path_regex = placeholder.data["folder_path"]
         product_name_regex_value = placeholder.data["product_name"]
         product_name_regex = None
         if product_name_regex_value:
             product_name_regex = re.compile(product_name_regex_value)
-        product_type = placeholder.data["family"]
+        product_type = placeholder.data.get("product_type")
+        if product_type is None:
+            product_type = placeholder.data["family"]
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
         if builder_type == "context_folder":
-            folder_ids = [current_asset_doc["_id"]]
+            folder_ids = [current_folder_entity["id"]]
 
         elif builder_type == "all_folders":
-            folder_ids = list(self._query_by_folder_regex(
-                project_name, folder_path_regex
-            ))
+            folder_ids = {
+                folder_entity["id"]
+                for folder_entity in get_folders(
+                    project_name,
+                    folder_path_regex=folder_path_regex,
+                    fields={"id"}
+                )
+            }
 
         if not folder_ids:
             return []
@@ -1518,8 +1505,8 @@ class PlaceholderLoadMixin(object):
         filtered_product_ids = set()
         for product in products:
             if (
-                    product_name_regex is None
-                    or product_name_regex.match(product["name"])
+                product_name_regex is None
+                or product_name_regex.match(product["name"])
             ):
                 filtered_product_ids.add(product["id"])
 
@@ -1534,7 +1521,7 @@ class PlaceholderLoadMixin(object):
         )
         return list(get_representations(
             project_name,
-            representation_names=[representation_name],
+            representation_names={representation_name},
             version_ids=version_ids
         ))
 
@@ -1550,32 +1537,22 @@ class PlaceholderLoadMixin(object):
 
         pass
 
-    def _reduce_last_version_repre_docs(self, representations):
-        """Reduce representations to last verison."""
+    def _reduce_last_version_repre_entities(self, repre_contexts):
+        """Reduce representations to last version."""
 
-        mapping = {}
-        for repre_doc in representations:
-            repre_context = repre_doc["context"]
-
-            asset_name = repre_context["asset"]
-            subset_name = repre_context["subset"]
-            version = repre_context.get("version", -1)
-
-            if asset_name not in mapping:
-                mapping[asset_name] = {}
-
-            subset_mapping = mapping[asset_name]
-            if subset_name not in subset_mapping:
-                subset_mapping[subset_name] = collections.defaultdict(list)
-
-            version_mapping = subset_mapping[subset_name]
-            version_mapping[version].append(repre_doc)
+        version_mapping_by_product_id = {}
+        for repre_context in repre_contexts:
+            product_id = repre_context["product"]["id"]
+            version = repre_context["version"]["version"]
+            version_mapping = version_mapping_by_product_id.setdefault(
+                product_id, {}
+            )
+            version_mapping.setdefault(version, []).append(repre_context)
 
         output = []
-        for subset_mapping in mapping.values():
-            for version_mapping in subset_mapping.values():
-                last_version = tuple(sorted(version_mapping.keys()))[-1]
-                output.extend(version_mapping[last_version])
+        for version_mapping in version_mapping_by_product_id.values():
+            last_version = max(version_mapping.keys())
+            output.extend(version_mapping[last_version])
         return output
 
     def populate_load_placeholder(self, placeholder, ignore_repre_ids=None):
@@ -1584,8 +1561,8 @@ class PlaceholderLoadMixin(object):
         Note:
             Ignore repre ids is to avoid loading the same representation again
             on load. But the representation can be loaded with different loader
-            and there could be published new version of matching subset for the
-            representation. We should maybe expect containers.
+            and there could be published new version of matching product for
+            the representation. We should maybe expect containers.
 
             Also import loaders don't have containers at all...
 
@@ -1603,42 +1580,44 @@ class PlaceholderLoadMixin(object):
         loader_name = placeholder.data["loader"]
         loader_args = self.parse_loader_args(placeholder.data["loader_args"])
 
-        placeholder_representations = self._get_representations(placeholder)
+        placeholder_representations = [
+            repre_entity
+            for repre_entity in self._get_representations(placeholder)
+            if repre_entity["id"] not in ignore_repre_ids
+        ]
 
-        filtered_representations = []
-        for representation in self._reduce_last_version_repre_docs(
-            placeholder_representations
-        ):
-            repre_id = str(representation["_id"])
-            if repre_id not in ignore_repre_ids:
-                filtered_representations.append(representation)
-
-        if not filtered_representations:
+        repre_load_contexts = get_representation_contexts(
+            self.project_name, placeholder_representations
+        )
+        filtered_repre_contexts = self._reduce_last_version_repre_entities(
+            repre_load_contexts.values()
+        )
+        if not filtered_repre_contexts:
             self.log.info((
                 "There's no representation for this placeholder: {}"
             ).format(placeholder.scene_identifier))
+            if not placeholder.data.get("keep_placeholder", True):
+                self.delete_placeholder(placeholder)
             return
 
-        repre_load_contexts = get_contexts_for_repre_docs(
-            self.project_name, filtered_representations
-        )
         loaders_by_name = self.builder.get_loaders_by_name()
         self._before_placeholder_load(
             placeholder
         )
 
         failed = False
-        for repre_load_context in repre_load_contexts.values():
+        for repre_load_context in filtered_repre_contexts:
+            folder_path = repre_load_context["folder"]["path"]
+            product_name = repre_load_context["product"]["name"]
             representation = repre_load_context["representation"]
-            repre_context = representation["context"]
             self._before_repre_load(
                 placeholder, representation
             )
             self.log.info(
                 "Loading {} from {} with loader {}\n"
                 "Loader arguments used : {}".format(
-                    repre_context["subset"],
-                    repre_context["asset"],
+                    product_name,
+                    folder_path,
                     loader_name,
                     placeholder.data["loader_args"],
                 )
@@ -1712,8 +1691,6 @@ class PlaceholderCreateMixin(object):
         publishable instances. Use it with 'get_placeholder_options'.
 
         Args:
-            plugin (PlaceholderPlugin): Plugin used for creating of
-                publish instances.
             options (Dict[str, Any]): Already available options which are used
                 as defaults for attributes.
 
@@ -1743,7 +1720,7 @@ class PlaceholderCreateMixin(object):
                 items=creator_items,
                 tooltip=(
                     "Creator"
-                    "\nDefines what OpenPype creator will be used to"
+                    "\nDefines what AYON creator will be used to"
                     " create publishable instance."
                     "\nUseable creator depends on current host's creator list."
                     "\nField is case sensitive."
@@ -1757,7 +1734,7 @@ class PlaceholderCreateMixin(object):
                 tooltip=(
                     "Creator"
                     "\nDefines variant name which will be use for "
-                    "\ncompiling of subset name."
+                    "\ncompiling of product name."
                 )
             ),
             attribute_definitions.UISeparatorDef(),
@@ -1792,56 +1769,49 @@ class PlaceholderCreateMixin(object):
 
         creator_plugin = self.builder.get_creators_by_name()[creator_name]
 
-        # create subset name
+        # create product name
         context = self._builder.get_current_context()
         project_name = context["project_name"]
-        asset_name = context["asset_name"]
+        folder_path = context["folder_path"]
         task_name = context["task_name"]
+        host_name = self.builder.host_name
 
-        if legacy_create:
-            asset_doc = get_asset_by_name(
-                project_name, asset_name, fields=["_id"]
-            )
-            assert asset_doc, "No current asset found in Session"
-            subset_name = creator_plugin.get_subset_name(
-                create_variant,
-                task_name,
-                asset_doc["_id"],
-                project_name
-            )
+        folder_entity = get_folder_by_path(project_name, folder_path)
+        if not folder_entity:
+            raise ValueError("Current context does not have set folder")
+        task_entity = get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
 
-        else:
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            assert asset_doc, "No current asset found in Session"
-            subset_name = creator_plugin.get_subset_name(
-                create_variant,
-                task_name,
-                asset_doc,
-                project_name,
-                self.builder.host_name
-            )
+        product_name = creator_plugin.get_product_name(
+            project_name,
+            folder_entity,
+            task_entity,
+            create_variant,
+            host_name
+        )
 
         creator_data = {
             "creator_name": creator_name,
             "create_variant": create_variant,
-            "subset_name": subset_name,
+            "product_name": product_name,
             "creator_plugin": creator_plugin
         }
 
         self._before_instance_create(placeholder)
 
-        # compile subset name from variant
+        # compile product name from variant
         try:
             if legacy_create:
                 creator_instance = creator_plugin(
-                    subset_name,
-                    asset_name
+                    product_name,
+                    folder_path
                 ).process()
             else:
                 creator_instance = self.builder.create_context.create(
                     creator_plugin.identifier,
                     create_variant,
-                    asset_doc,
+                    folder_entity,
                     task_name=task_name,
                     pre_create_data=pre_create_data
                 )
@@ -1889,7 +1859,7 @@ class PlaceholderCreateMixin(object):
         self.log.debug("Clean up of placeholder is not implemented.")
 
     def _before_instance_create(self, placeholder):
-        """Can be overriden. Is called before instance is created."""
+        """Can be overridden. Is called before instance is created."""
 
         pass
 

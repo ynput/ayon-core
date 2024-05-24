@@ -1,11 +1,7 @@
 import nuke
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
 from ayon_core.pipeline import (
-    get_current_project_name,
     load,
     get_representation_path,
 )
@@ -20,8 +16,8 @@ from ayon_core.hosts.nuke.api import (
 class LinkAsGroup(load.LoaderPlugin):
     """Copy the published file to be pasted at the desired location"""
 
-    families = ["workfile", "nukenodes"]
-    representations = ["*"]
+    product_types = {"workfile", "nukenodes"}
+    representations = {"*"}
     extensions = {"nk"}
 
     label = "Load Precomp"
@@ -32,34 +28,37 @@ class LinkAsGroup(load.LoaderPlugin):
     def load(self, context, name, namespace, data):
         # for k, v in context.items():
         #     log.info("key: `{}`, value: {}\n".format(k, v))
-        version = context['version']
-        version_data = version.get("data", {})
+        version_entity = context["version"]
 
-        vname = version.get("name", None)
-        first = version_data.get("frameStart", None)
-        last = version_data.get("frameEnd", None)
+        version_attributes = version_entity["attrib"]
+        first = version_attributes.get("frameStart")
+        last = version_attributes.get("frameEnd")
+        colorspace = version_attributes.get("colorSpace")
 
-        # Fallback to asset name when namespace is None
+        # Fallback to folder name when namespace is None
         if namespace is None:
-            namespace = context['asset']['name']
+            namespace = context["folder"]["name"]
 
         file = self.filepath_from_context(context).replace("\\", "/")
         self.log.info("file: {}\n".format(file))
 
-        self.log.info("versionData: {}\n".format(context["version"]["data"]))
-
-        # add additional metadata from the version to imprint to Avalon knob
-        add_keys = ["frameStart", "frameEnd", "handleStart", "handleEnd",
-                    "source", "author", "fps"]
-
         data_imprint = {
-                "startingFrame": first,
-                "frameStart": first,
-                "frameEnd": last,
-                "version": vname
+            "startingFrame": first,
+            "frameStart": first,
+            "frameEnd": last,
+            "version": version_entity["version"]
         }
-        for k in add_keys:
-            data_imprint.update({k: context["version"]['data'][k]})
+        # add additional metadata from the version to imprint to Avalon knob
+        for k in [
+            "frameStart",
+            "frameEnd",
+            "handleStart",
+            "handleEnd",
+            "source",
+            "author",
+            "fps"
+        ]:
+            data_imprint[k] = version_attributes[k]
 
         # group context is set to precomp, so back up one level.
         nuke.endGroup()
@@ -72,7 +71,6 @@ class LinkAsGroup(load.LoaderPlugin):
         )
 
         # Set colorspace defined in version data
-        colorspace = context["version"]["data"].get("colorspace", None)
         self.log.info("colorspace: {}\n".format(colorspace))
 
         P["name"].setValue("{}_{}".format(name, namespace))
@@ -104,10 +102,10 @@ class LinkAsGroup(load.LoaderPlugin):
                      loader=self.__class__.__name__,
                      data=data_imprint)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update the Loader's path
 
         Nuke automatically tries to reset some variables when changing
@@ -117,26 +115,24 @@ class LinkAsGroup(load.LoaderPlugin):
         """
         node = container["node"]
 
-        root = get_representation_path(representation).replace("\\", "/")
+        project_name = context["project"]["name"]
+        version_entity = context["version"]
+        repre_entity = context["representation"]
+
+        root = get_representation_path(repre_entity).replace("\\", "/")
 
         # Get start frame from version data
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version_doc["parent"], fields=["_id"]
-        )
 
-        updated_dict = {}
-        version_data = version_doc["data"]
-        updated_dict.update({
-            "representation": str(representation["_id"]),
-            "frameEnd": version_data.get("frameEnd"),
-            "version": version_doc.get("name"),
-            "colorspace": version_data.get("colorspace"),
-            "source": version_data.get("source"),
-            "fps": version_data.get("fps"),
-            "author": version_data.get("author")
-        })
+        version_attributes = version_entity["attrib"]
+        updated_dict = {
+            "representation": repre_entity["id"],
+            "frameEnd": version_attributes.get("frameEnd"),
+            "version": version_entity["version"],
+            "colorspace": version_attributes.get("colorSpace"),
+            "source": version_attributes.get("source"),
+            "fps": version_attributes.get("fps"),
+            "author": version_attributes.get("author")
+        }
 
         # Update the imprinted representation
         update_container(
@@ -146,14 +142,19 @@ class LinkAsGroup(load.LoaderPlugin):
 
         node["file"].setValue(root)
 
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
+        )
         # change color of node
-        if version_doc["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = "0xff0ff0ff"
         else:
             color_value = "0xd84f20ff"
         node["tile_color"].setValue(int(color_value, 16))
 
-        self.log.info("updated to version: {}".format(version_doc.get("name")))
+        self.log.info(
+            "updated to version: {}".format(version_entity["version"])
+        )
 
     def remove(self, container):
         node = container["node"]

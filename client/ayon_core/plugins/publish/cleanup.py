@@ -72,7 +72,7 @@ class CleanUp(pyblish.api.InstancePlugin):
             self.clean_renders(instance, skip_cleanup_filepaths)
 
         if [ef for ef in self.exclude_families
-                if instance.data["family"] in ef]:
+                if instance.data["productType"] in ef]:
             return
         import tempfile
 
@@ -105,8 +105,8 @@ class CleanUp(pyblish.api.InstancePlugin):
     def clean_renders(self, instance, skip_cleanup_filepaths):
         transfers = instance.data.get("transfers", list())
 
-        current_families = instance.data.get("families", list())
-        instance_family = instance.data.get("family", None)
+        instance_families = instance.data.get("families", list())
+        instance_product_type = instance.data.get("productType")
         dirnames = []
         transfers_dirs = []
 
@@ -127,19 +127,24 @@ class CleanUp(pyblish.api.InstancePlugin):
                 ).format(src))
                 continue
 
-            if os.path.normpath(src) != os.path.normpath(dest):
-                if instance_family == 'render' or 'render' in current_families:
-                    self.log.info("Removing src: `{}`...".format(src))
-                    try:
-                        os.remove(src)
-                    except PermissionError:
-                        self.log.warning(
-                            "Insufficient permission to delete {}".format(src)
-                        )
-                        continue
+            if os.path.normpath(src) == os.path.normpath(dest):
+                continue
 
-                    # add dir for cleanup
-                    dirnames.append(os.path.dirname(src))
+            if (
+                instance_product_type == "render"
+                or "render" in instance_families
+            ):
+                self.log.info("Removing src: `{}`...".format(src))
+                try:
+                    os.remove(src)
+                except PermissionError:
+                    self.log.warning(
+                        "Insufficient permission to delete {}".format(src)
+                    )
+                    continue
+
+                # add dir for cleanup
+                dirnames.append(os.path.dirname(src))
 
         # clean by regex patterns
         # make unique set

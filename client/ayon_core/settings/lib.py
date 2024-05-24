@@ -1,198 +1,126 @@
 import os
 import json
 import logging
+import collections
 import copy
+import time
 
-from .constants import (
-    M_OVERRIDDEN_KEY,
-
-    METADATA_KEYS,
-
-    SYSTEM_SETTINGS_KEY,
-    PROJECT_SETTINGS_KEY,
-    DEFAULT_PROJECT_KEY
-)
-
-from .ayon_settings import (
-    get_ayon_project_settings,
-    get_ayon_system_settings,
-    get_ayon_settings,
-)
+import ayon_api
 
 log = logging.getLogger(__name__)
 
-# Py2 + Py3 json decode exception
-JSON_EXC = getattr(json.decoder, "JSONDecodeError", ValueError)
+
+class CacheItem:
+    lifetime = 10
+
+    def __init__(self, value, outdate_time=None):
+        self._value = value
+        if outdate_time is None:
+            outdate_time = time.time() + self.lifetime
+        self._outdate_time = outdate_time
+
+    @classmethod
+    def create_outdated(cls):
+        return cls({}, 0)
+
+    def get_value(self):
+        return copy.deepcopy(self._value)
+
+    def update_value(self, value):
+        self._value = value
+        self._outdate_time = time.time() + self.lifetime
+
+    @property
+    def is_outdated(self):
+        return time.time() > self._outdate_time
 
 
-# Path to default settings
-DEFAULTS_DIR = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "defaults"
-)
+class _AyonSettingsCache:
+    use_bundles = None
+    variant = None
+    addon_versions = CacheItem.create_outdated()
+    studio_settings = CacheItem.create_outdated()
+    cache_by_project_name = collections.defaultdict(
+        CacheItem.create_outdated)
 
-# Variable where cache of default settings are stored
-_DEFAULT_SETTINGS = None
+    @classmethod
+    def _use_bundles(cls):
+        if _AyonSettingsCache.use_bundles is None:
+            major, minor, _, _, _ = ayon_api.get_server_version_tuple()
+            use_bundles = True
+            if (major, minor) < (0, 3):
+                use_bundles = False
+            _AyonSettingsCache.use_bundles = use_bundles
+        return _AyonSettingsCache.use_bundles
 
+    @classmethod
+    def _get_variant(cls):
+        if _AyonSettingsCache.variant is None:
+            from ayon_core.lib import is_staging_enabled, is_dev_mode_enabled
 
-def clear_metadata_from_settings(values):
-    """Remove all metadata keys from loaded settings."""
-    if isinstance(values, dict):
-        for key in tuple(values.keys()):
-            if key in METADATA_KEYS:
-                values.pop(key)
+            variant = "production"
+            if is_dev_mode_enabled():
+                variant = cls._get_bundle_name()
+            elif is_staging_enabled():
+                variant = "staging"
+
+            # Cache variant
+            _AyonSettingsCache.variant = variant
+
+            # Set the variant to global ayon api connection
+            ayon_api.set_default_settings_variant(variant)
+        return _AyonSettingsCache.variant
+
+    @classmethod
+    def _get_bundle_name(cls):
+        return os.environ["AYON_BUNDLE_NAME"]
+
+    @classmethod
+    def get_value_by_project(cls, project_name):
+        cache_item = _AyonSettingsCache.cache_by_project_name[project_name]
+        if cache_item.is_outdated:
+            if cls._use_bundles():
+                value = ayon_api.get_addons_settings(
+                    bundle_name=cls._get_bundle_name(),
+                    project_name=project_name,
+                    variant=cls._get_variant()
+                )
             else:
-                clear_metadata_from_settings(values[key])
-    elif isinstance(values, list):
-        for item in values:
-            clear_metadata_from_settings(item)
+                value = ayon_api.get_addons_settings(project_name)
+            cache_item.update_value(value)
+        return cache_item.get_value()
 
-
-def load_openpype_default_settings():
-    """Load openpype default settings."""
-    return load_jsons_from_dir(DEFAULTS_DIR)
-
-
-def reset_default_settings():
-    """Reset cache of default settings. Can't be used now."""
-    global _DEFAULT_SETTINGS
-    _DEFAULT_SETTINGS = None
-
-
-def _get_default_settings():
-    return load_openpype_default_settings()
-
-
-def get_default_settings():
-    """Get default settings.
-
-    Todo:
-        Cache loaded defaults.
-
-    Returns:
-        dict: Loaded default settings.
-    """
-    global _DEFAULT_SETTINGS
-    if _DEFAULT_SETTINGS is None:
-        _DEFAULT_SETTINGS = _get_default_settings()
-    return copy.deepcopy(_DEFAULT_SETTINGS)
-
-
-def load_json_file(fpath):
-    # Load json data
-    try:
-        with open(fpath, "r") as opened_file:
-            return json.load(opened_file)
-
-    except JSON_EXC:
-        log.warning(
-            "File has invalid json format \"{}\"".format(fpath),
-            exc_info=True
+    @classmethod
+    def _get_addon_versions_from_bundle(cls):
+        expected_bundle = cls._get_bundle_name()
+        bundles = ayon_api.get_bundles()["bundles"]
+        bundle = next(
+            (
+                bundle
+                for bundle in bundles
+                if bundle["name"] == expected_bundle
+            ),
+            None
         )
-    return {}
+        if bundle is not None:
+            return bundle["addons"]
+        return {}
 
+    @classmethod
+    def get_addon_versions(cls):
+        cache_item = _AyonSettingsCache.addon_versions
+        if cache_item.is_outdated:
+            if cls._use_bundles():
+                addons = cls._get_addon_versions_from_bundle()
+            else:
+                settings_data = ayon_api.get_addons_settings(
+                    only_values=False,
+                    variant=cls._get_variant()
+                )
+                addons = settings_data["versions"]
+            cache_item.update_value(addons)
 
-def load_jsons_from_dir(path, *args, **kwargs):
-    """Load all .json files with content from entered folder path.
-
-    Data are loaded recursively from a directory and recreate the
-    hierarchy as a dictionary.
-
-    Entered path hierarchy:
-    |_ folder1
-    | |_ data1.json
-    |_ folder2
-      |_ subfolder1
-        |_ data2.json
-
-    Will result in:
-    ```javascript
-    {
-        "folder1": {
-            "data1": "CONTENT OF FILE"
-        },
-        "folder2": {
-            "subfolder1": {
-                "data2": "CONTENT OF FILE"
-            }
-        }
-    }
-    ```
-
-    Args:
-        path (str): Path to the root folder where the json hierarchy starts.
-
-    Returns:
-        dict: Loaded data.
-    """
-    output = {}
-
-    path = os.path.normpath(path)
-    if not os.path.exists(path):
-        # TODO warning
-        return output
-
-    sub_keys = list(kwargs.pop("subkeys", args))
-    for sub_key in tuple(sub_keys):
-        _path = os.path.join(path, sub_key)
-        if not os.path.exists(_path):
-            break
-
-        path = _path
-        sub_keys.pop(0)
-
-    base_len = len(path) + 1
-    for base, _directories, filenames in os.walk(path):
-        base_items_str = base[base_len:]
-        if not base_items_str:
-            base_items = []
-        else:
-            base_items = base_items_str.split(os.path.sep)
-
-        for filename in filenames:
-            basename, ext = os.path.splitext(filename)
-            if ext == ".json":
-                full_path = os.path.join(base, filename)
-                value = load_json_file(full_path)
-                dict_keys = base_items + [basename]
-                output = subkey_merge(output, value, dict_keys)
-
-    for sub_key in sub_keys:
-        output = output[sub_key]
-    return output
-
-
-def subkey_merge(_dict, value, keys):
-    key = keys.pop(0)
-    if not keys:
-        _dict[key] = value
-        return _dict
-
-    if key not in _dict:
-        _dict[key] = {}
-    _dict[key] = subkey_merge(_dict[key], value, keys)
-
-    return _dict
-
-
-def merge_overrides(source_dict, override_dict):
-    """Merge data from override_dict to source_dict."""
-
-    if M_OVERRIDDEN_KEY in override_dict:
-        overridden_keys = set(override_dict.pop(M_OVERRIDDEN_KEY))
-    else:
-        overridden_keys = set()
-
-    for key, value in override_dict.items():
-        if (key in overridden_keys or key not in source_dict):
-            source_dict[key] = value
-
-        elif isinstance(value, dict) and isinstance(source_dict[key], dict):
-            source_dict[key] = merge_overrides(source_dict[key], value)
-
-        else:
-            source_dict[key] = value
-    return source_dict
+        return cache_item.get_value()
 
 
 def get_site_local_overrides(project_name, site_name, local_settings=None):
@@ -211,13 +139,69 @@ def get_site_local_overrides(project_name, site_name, local_settings=None):
     return {}
 
 
+def get_ayon_settings(project_name=None):
+    """AYON studio settings.
+
+    Raw AYON settings values.
+
+    Args:
+        project_name (Optional[str]): Project name.
+
+    Returns:
+        dict[str, Any]: AYON settings.
+    """
+
+    return _AyonSettingsCache.get_value_by_project(project_name)
+
+
+def get_studio_settings(*args, **kwargs):
+    return _AyonSettingsCache.get_value_by_project(None)
+
+
+def get_project_settings(project_name, *args, **kwargs):
+    return _AyonSettingsCache.get_value_by_project(project_name)
+
+
+def get_general_environments(studio_settings=None):
+    """General studio environment variables.
+
+    Args:
+        studio_settings (Optional[dict]): Pre-queried studio settings.
+
+    Returns:
+        dict[str, Any]: General studio environment variables.
+
+    """
+    if studio_settings is None:
+        studio_settings = get_ayon_settings()
+    return json.loads(studio_settings["core"]["environments"])
+
+
+def get_project_environments(project_name, project_settings=None):
+    """Project environment variables.
+
+    Args:
+        project_name (str): Project name.
+        project_settings (Optional[dict]): Pre-queried project settings.
+
+    Returns:
+        dict[str, Any]: Project environment variables.
+
+    """
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+    return json.loads(
+        project_settings["core"]["project_environments"]
+    )
+
+
 def get_current_project_settings():
     """Project settings for current context project.
 
     Project name should be stored in environment variable `AYON_PROJECT_NAME`.
     This function should be used only in host context where environment
     variable must be set and should not happen that any part of process will
-    change the value of the enviornment variable.
+    change the value of the environment variable.
     """
     project_name = os.environ.get("AYON_PROJECT_NAME")
     if not project_name:
@@ -225,18 +209,3 @@ def get_current_project_settings():
             "Missing context project in environemt variable `AYON_PROJECT_NAME`."
         )
     return get_project_settings(project_name)
-
-
-def get_general_environments():
-    settings = get_ayon_settings()
-    return json.loads(settings["core"]["environments"])
-
-
-def get_system_settings(*args, **kwargs):
-    default_settings = get_default_settings()[SYSTEM_SETTINGS_KEY]
-    return get_ayon_system_settings(default_settings)
-
-
-def get_project_settings(project_name, *args, **kwargs):
-    default_settings = get_default_settings()[PROJECT_SETTINGS_KEY]
-    return get_ayon_project_settings(default_settings, project_name)

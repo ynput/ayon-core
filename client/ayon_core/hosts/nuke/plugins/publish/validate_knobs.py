@@ -1,3 +1,5 @@
+import json
+
 import nuke
 import six
 import pyblish.api
@@ -67,7 +69,7 @@ class ValidateKnobs(pyblish.api.ContextPlugin):
             settings_knobs = json.loads(cls.knobs)
 
             # Filter families.
-            families = [instance.data["family"]]
+            families = [instance.data["productType"]]
             families += instance.data.get("families", [])
 
             # Get all knobs to validate.

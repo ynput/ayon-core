@@ -17,7 +17,7 @@ class CreateSource(NukeCreator):
 
     identifier = "create_source"
     label = "Source (read)"
-    family = "source"
+    product_type = "source"
     icon = "film"
     default_variants = ["Effect", "Backplate", "Fire", "Smoke"]
 
@@ -35,7 +35,7 @@ class CreateSource(NukeCreator):
 
         return read_node
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         # make sure selected nodes are added
         self.set_selected_nodes(pre_create_data)
@@ -46,18 +46,18 @@ class CreateSource(NukeCreator):
                     continue
 
                 node_name = read_node.name()
-                _subset_name = subset_name + node_name
+                _product_name = product_name + node_name
 
-                # make sure subset name is unique
-                self.check_existing_subset(_subset_name)
+                # make sure product name is unique
+                self.check_existing_product(_product_name)
 
                 instance_node = self.create_instance_node(
-                    _subset_name,
+                    _product_name,
                     read_node
                 )
                 instance = CreatedInstance(
-                    self.family,
-                    _subset_name,
+                    self.product_type,
+                    _product_name,
                     instance_data,
                     self
                 )

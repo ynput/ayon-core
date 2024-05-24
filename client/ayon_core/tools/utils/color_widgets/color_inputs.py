@@ -562,11 +562,11 @@ class HSLInputs(QtWidgets.QWidget):
             return
 
         self._block_changes = True
-        h, s, l, _ = self.color.getHsl()
+        hue, sat, lum, _ = self.color.getHsl()
 
-        self.input_hue.setValue(h)
-        self.input_sat.setValue(s)
-        self.input_light.setValue(l)
+        self.input_hue.setValue(hue)
+        self.input_sat.setValue(sat)
+        self.input_light.setValue(lum)
 
         self._block_changes = False
 

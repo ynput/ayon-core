@@ -17,7 +17,7 @@ from ayon_core.lib import (
     is_staging_enabled,
     is_running_from_build,
 )
-from ayon_core.settings import get_ayon_settings
+from ayon_core.settings import get_studio_settings
 from ayon_core.addon import (
     ITrayAction,
     ITrayService,
@@ -47,7 +47,7 @@ class TrayManager:
 
         self.log = Logger.get_logger(self.__class__.__name__)
 
-        studio_settings = get_ayon_settings()
+        studio_settings = get_studio_settings()
 
         update_check_interval = studio_settings["core"].get(
             "update_check_interval"
@@ -552,7 +552,7 @@ class TrayStarter(QtCore.QObject):
 def main():
     app = get_ayon_qt_app()
 
-    starter = TrayStarter(app)
+    starter = TrayStarter(app)  # noqa F841
 
     if not is_running_from_build() and os.name == "nt":
         import ctypes

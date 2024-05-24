@@ -11,7 +11,7 @@ class CreateModel(NukeCreator):
 
     identifier = "create_model"
     label = "Model (3d)"
-    family = "model"
+    product_type = "model"
     icon = "cube"
     default_variants = ["Main"]
 
@@ -42,12 +42,12 @@ class CreateModel(NukeCreator):
 
             return created_node
 
-    def create(self, subset_name, instance_data, pre_create_data):
-        # make sure subset name is unique
-        self.check_existing_subset(subset_name)
+    def create(self, product_name, instance_data, pre_create_data):
+        # make sure product name is unique
+        self.check_existing_product(product_name)
 
         instance = super(CreateModel, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data
         )

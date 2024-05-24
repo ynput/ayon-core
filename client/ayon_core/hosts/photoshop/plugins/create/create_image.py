@@ -8,9 +8,9 @@ from ayon_core.pipeline import (
     CreatorError
 )
 from ayon_core.lib import prepare_template_data
-from ayon_core.pipeline.create import SUBSET_NAME_ALLOWED_SYMBOLS
+from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
 from ayon_core.hosts.photoshop.api.pipeline import cache_and_get_instances
-from ayon_core.hosts.photoshop.lib import clean_subset_name
+from ayon_core.hosts.photoshop.lib import clean_product_name
 
 
 class ImageCreator(Creator):
@@ -21,7 +21,7 @@ class ImageCreator(Creator):
     """
     identifier = "image"
     label = "Image"
-    family = "image"
+    product_type = "image"
     description = "Image creator"
 
     # Settings
@@ -29,7 +29,7 @@ class ImageCreator(Creator):
     mark_for_review = False
     active_on_create = True
 
-    def create(self, subset_name_from_ui, data, pre_create_data):
+    def create(self, product_name_from_ui, data, pre_create_data):
         groups_to_create = []
         top_layers_to_wrap = []
         create_empty_group = False
@@ -47,19 +47,19 @@ class ImageCreator(Creator):
                     else:
                         top_layers_to_wrap.append(selected_item)
             else:
-                group = stub.group_selected_layers(subset_name_from_ui)
+                group = stub.group_selected_layers(product_name_from_ui)
                 groups_to_create.append(group)
         else:
             stub.select_layers(stub.get_layers())
             try:
-                group = stub.group_selected_layers(subset_name_from_ui)
+                group = stub.group_selected_layers(product_name_from_ui)
             except:
                 raise CreatorError("Cannot group locked Background layer!")
             groups_to_create.append(group)
 
         # create empty group if nothing selected
         if not groups_to_create and not top_layers_to_wrap:
-            group = stub.create_group(subset_name_from_ui)
+            group = stub.create_group(product_name_from_ui)
             groups_to_create.append(group)
 
         # wrap each top level layer into separate new group
@@ -69,27 +69,27 @@ class ImageCreator(Creator):
             groups_to_create.append(group)
 
         layer_name = ''
-        # use artist chosen option OR force layer if more subsets are created
+        # use artist chosen option OR force layer if more products are created
         # to differentiate them
         use_layer_name = (pre_create_data.get("use_layer_name") or
                           len(groups_to_create) > 1)
         for group in groups_to_create:
-            subset_name = subset_name_from_ui  # reset to name from creator UI
+            product_name = product_name_from_ui  # reset to name from creator UI
             layer_names_in_hierarchy = []
             created_group_name = self._clean_highlights(stub, group.name)
 
             if use_layer_name:
                 layer_name = re.sub(
-                    "[^{}]+".format(SUBSET_NAME_ALLOWED_SYMBOLS),
+                    "[^{}]+".format(PRODUCT_NAME_ALLOWED_SYMBOLS),
                     "",
                     group.name
                 )
-                if "{layer}" not in subset_name.lower():
-                    subset_name += "{Layer}"
+                if "{layer}" not in product_name.lower():
+                    product_name += "{Layer}"
 
             layer_fill = prepare_template_data({"layer": layer_name})
-            subset_name = subset_name.format(**layer_fill)
-            subset_name = clean_subset_name(subset_name)
+            product_name = product_name.format(**layer_fill)
+            product_name = clean_product_name(product_name)
 
             if group.long_name:
                 for directory in group.long_name[::-1]:
@@ -97,7 +97,7 @@ class ImageCreator(Creator):
                     layer_names_in_hierarchy.append(name)
 
             data_update = {
-                "subset": subset_name,
+                "productName": product_name,
                 "members": [str(group.id)],
                 "layer_name": layer_name,
                 "long_name": "_".join(layer_names_in_hierarchy)
@@ -112,8 +112,9 @@ class ImageCreator(Creator):
             if not self.active_on_create:
                 data["active"] = False
 
-            new_instance = CreatedInstance(self.family, subset_name, data,
-                                           self)
+            new_instance = CreatedInstance(
+                self.product_type, product_name, data, self
+            )
 
             stub.imprint(new_instance.get("instance_id"),
                          new_instance.data_to_store())
@@ -159,7 +160,7 @@ class ImageCreator(Creator):
                     label="Create separate instance for each selected"),
             BoolDef("use_layer_name",
                     default=False,
-                    label="Use layer name in subset"),
+                    label="Use layer name in product"),
             BoolDef(
                 "mark_for_review",
                 label="Create separate review",
@@ -189,9 +190,9 @@ class ImageCreator(Creator):
     def get_detail_description(self):
         return """Creator for Image instances
 
-        Main publishable item in Photoshop will be of `image` family. Result of
-        this item (instance) is picture that could be loaded and used
-        in another DCCs (for example as single layer in composition in
+        Main publishable item in Photoshop will be of `image` product type.
+        Result of this item (instance) is picture that could be loaded and
+        used in another DCCs (for example as single layer in composition in
         AfterEffects, reference in Maya etc).
 
         There are couple of options what to publish:
@@ -207,13 +208,13 @@ class ImageCreator(Creator):
         Use 'Create separate instance for each selected' to create separate
         images per selected layer (group of layers).
 
-        'Use layer name in subset' will explicitly add layer name into subset
-        name. Position of this name is configurable in
+        'Use layer name in product' will explicitly add layer name into
+        product name. Position of this name is configurable in
         `project_settings/global/tools/creator/product_name_profiles`.
         If layer placeholder ({layer}) is not used in `product_name_profiles`
         but layer name should be used (set explicitly in UI or implicitly if
         multiple images should be created), it is added in capitalized form
-        as a suffix to subset name.
+        as a suffix to product name.
 
         Each image could have its separate review created if necessary via
         `Create separate review` toggle.
@@ -243,8 +244,15 @@ class ImageCreator(Creator):
         return item.replace(stub.PUBLISH_ICON, '').replace(stub.LOADED_ICON,
                                                            '')
 
-    def get_dynamic_data(self, variant, task_name, asset_doc,
-                         project_name, host_name, instance):
+    def get_dynamic_data(
+        self,
+        project_name,
+        folder_entity,
+        task_entity,
+        variant,
+        host_name,
+        instance
+    ):
         if instance is not None:
             layer_name = instance.get("layer_name")
             if layer_name:

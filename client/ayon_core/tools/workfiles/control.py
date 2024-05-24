@@ -3,7 +3,6 @@ import shutil
 
 import ayon_api
 
-from ayon_core.client import get_asset_by_id
 from ayon_core.host import IWorkfileHost
 from ayon_core.lib import Logger, emit_event
 from ayon_core.lib.events import QueuedEventSystem
@@ -16,7 +15,7 @@ from ayon_core.pipeline.context_tools import (
 )
 from ayon_core.pipeline.workfile import create_workdir_extra_folders
 
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
     ProjectsModel,
@@ -156,7 +155,7 @@ class BaseWorkfileController(
         self._log = None
 
         self._current_project_name = None
-        self._current_folder_name = None
+        self._current_folder_path = None
         self._current_folder_id = None
         self._current_task_name = None
         self._save_is_enabled = True
@@ -468,12 +467,12 @@ class BaseWorkfileController(
         context = self._get_host_current_context()
 
         project_name = context["project_name"]
-        folder_name = context["asset_name"]
+        folder_path = context["folder_path"]
         task_name = context["task_name"]
         current_file = self.get_current_workfile()
         folder_id = None
-        if folder_name:
-            folder = ayon_api.get_folder_by_path(project_name, folder_name)
+        if folder_path:
+            folder = ayon_api.get_folder_by_path(project_name, folder_path)
             if folder:
                 folder_id = folder["id"]
 
@@ -481,7 +480,7 @@ class BaseWorkfileController(
         self._project_anatomy = None
 
         self._current_project_name = project_name
-        self._current_folder_name = folder_name
+        self._current_folder_path = folder_path
         self._current_folder_id = folder_id
         self._current_task_name = task_name
 
@@ -573,6 +572,7 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
+                src_filepath=representation_filepath
             )
         except Exception:
             failed = True
@@ -635,12 +635,10 @@ class BaseWorkfileController(
             folder = self.get_folder_entity(project_name, folder_id)
         if task is None:
             task = self.get_task_entity(project_name, task_id)
-        # NOTE keys should are OpenPype compatible
         return {
             "project_name": project_name,
             "folder_id": folder_id,
-            "asset_id": folder_id,
-            "asset_name": folder["name"],
+            "folder_path": folder["path"],
             "task_id": task_id,
             "task_name": task["name"],
             "host_name": self.get_host_name(),
@@ -661,15 +659,7 @@ class BaseWorkfileController(
             folder_id != self.get_current_folder_id()
             or task_name != self.get_current_task_name()
         ):
-            # Use OpenPype asset-like object
-            asset_doc = get_asset_by_id(
-                event_data["project_name"],
-                event_data["folder_id"],
-            )
-            change_current_context(
-                asset_doc,
-                event_data["task_name"]
-            )
+            self._change_current_context(project_name, folder_id, task_id)
 
         self._host_open_workfile(filepath)
 
@@ -711,12 +701,8 @@ class BaseWorkfileController(
             folder_id != self.get_current_folder_id()
             or task_name != self.get_current_task_name()
         ):
-            # Use OpenPype asset-like object
-            asset_doc = get_asset_by_id(project_name, folder["id"])
-            change_current_context(
-                asset_doc,
-                task["name"],
-                template_key=template_key
+            self._change_current_context(
+                project_name, folder_id, task_id, template_key
             )
 
         # Save workfile
@@ -741,4 +727,18 @@ class BaseWorkfileController(
 
         # Trigger after save events
         emit_event("workfile.save.after", event_data, source="workfiles.tool")
-        self.reset()
+
+    def _change_current_context(
+        self, project_name, folder_id, task_id, template_key=None
+    ):
+        # Change current context
+        folder_entity = self.get_folder_entity(project_name, folder_id)
+        task_entity = self.get_task_entity(project_name, task_id)
+        change_current_context(
+            folder_entity,
+            task_entity,
+            template_key=template_key
+        )
+        self._current_folder_id = folder_entity["id"]
+        self._current_folder_path = folder_entity["path"]
+        self._current_task_name = task_entity["name"]

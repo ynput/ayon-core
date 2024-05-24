@@ -28,9 +28,9 @@ class CollectSequenceFrameData(
             return
 
         # editorial would fail since they might not be in database yet
-        new_asset_publishing = instance.data.get("newAssetPublishing")
-        if new_asset_publishing:
-            self.log.debug("Instance is creating new asset. Skipping.")
+        new_folder_publishing = instance.data.get("newAssetPublishing")
+        if new_folder_publishing:
+            self.log.debug("Instance is creating new folders. Skipping.")
             return
 
         frame_data = self.get_frame_data_from_repre_sequence(instance)
@@ -43,10 +43,9 @@ class CollectSequenceFrameData(
             instance.data[key] = value
             self.log.debug(f"Collected Frame range data '{key}':{value} ")
 
-
     def get_frame_data_from_repre_sequence(self, instance):
         repres = instance.data.get("representations")
-        asset_data = instance.data["assetEntity"]["data"]
+        folder_attributes = instance.data["folderEntity"]["attrib"]
 
         if repres:
             first_repre = repres[0]
@@ -56,6 +55,9 @@ class CollectSequenceFrameData(
                 return
 
             files = first_repre["files"]
+            if not isinstance(files, list):
+                files = [files]
+
             collections, _ = clique.assemble(files)
             if not collections:
                 # No sequences detected and we can't retrieve
@@ -72,5 +74,5 @@ class CollectSequenceFrameData(
                 "frameEnd": repres_frames[-1],
                 "handleStart": 0,
                 "handleEnd": 0,
-                "fps": asset_data["fps"]
+                "fps": folder_attributes["fps"]
             }

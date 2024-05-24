@@ -154,8 +154,9 @@ class CollectShotInstance(pyblish.api.InstancePlugin):
         handle_end = int(instance.data["handleEnd"])
 
         in_info = {
-            "entity_type": "Shot",
-            "custom_attributes": {
+            "entity_type": "folder",
+            "folder_type": "Shot",
+            "attributes": {
                 "handleStart": handle_start,
                 "handleEnd": handle_end,
                 "frameStart": instance.data["frameStart"],
@@ -169,19 +170,18 @@ class CollectShotInstance(pyblish.api.InstancePlugin):
 
         parents = instance.data.get('parents', [])
 
-        # Split by '/' for AYON where asset is a path
-        asset_name = instance.data["folderPath"].split("/")[-1]
-        actual = {asset_name: in_info}
+        folder_name = instance.data["folderPath"].split("/")[-1]
+        actual = {folder_name: in_info}
 
         for parent in reversed(parents):
             parent_name = parent["entity_name"]
-            next_dict = {
-                parent_name: {
-                    "entity_type": parent["entity_type"],
-                    "childs": actual
-                }
+            parent_info = {
+                "entity_type": parent["entity_type"],
+                "children": actual,
             }
-            actual = next_dict
+            if parent_info["entity_type"] == "folder":
+                parent_info["folder_type"] = parent["folder_type"]
+            actual = {parent_name: parent_info}
 
         final_context = self._update_dict(final_context, actual)
 

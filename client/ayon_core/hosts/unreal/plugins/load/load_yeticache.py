@@ -15,9 +15,9 @@ import unreal  # noqa
 class YetiLoader(plugin.Loader):
     """Load Yeti Cache"""
 
-    families = ["yeticacheUE"]
+    product_types = {"yeticacheUE"}
     label = "Import Yeti"
-    representations = ["abc"]
+    representations = {"abc"}
     icon = "pagelines"
     color = "orange"
 
@@ -69,7 +69,7 @@ class YetiLoader(plugin.Loader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -87,13 +87,14 @@ class YetiLoader(plugin.Loader):
 
         # Create directory for asset and Ayon container
         root = unreal_pipeline.AYON_ASSET_DIR
-        asset = context.get('asset').get('name')
+        folder_path = context["folder"]["path"]
+        folder_name = context["folder"]["name"]
         suffix = "_CON"
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
 
         tools = unreal.AssetToolsHelpers().get_asset_tools()
         asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/{asset}/{name}", suffix="")
+            f"{root}/{folder_name}/{name}", suffix="")
 
         unique_number = 1
         while unreal.EditorAssetLibrary.does_directory_exist(
@@ -116,17 +117,21 @@ class YetiLoader(plugin.Loader):
             unreal_pipeline.create_container(
                 container=container_name, path=asset_dir)
 
+        product_type = context["product"]["productType"]
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
             "namespace": asset_dir,
             "container_name": container_name,
+            "folder_path": folder_path,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": context["representation"]["_id"],
-            "parent": context["representation"]["parent"],
-            "family": context["representation"]["context"]["family"]
+            "representation": context["representation"]["id"],
+            "parent": context["representation"]["versionId"],
+            "product_type": product_type,
+            # TODO these shold be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
         unreal_pipeline.imprint(f"{asset_dir}/{container_name}", data)
 
@@ -139,9 +144,10 @@ class YetiLoader(plugin.Loader):
 
         return asset_content
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_entity = context["representation"]
         name = container["asset_name"]
-        source_path = get_representation_path(representation)
+        source_path = get_representation_path(repre_entity)
         destination_path = container["namespace"]
 
         task = self.get_task(source_path, destination_path, name, True)
@@ -154,8 +160,8 @@ class YetiLoader(plugin.Loader):
         unreal_pipeline.imprint(
             container_path,
             {
-                "representation": str(representation["_id"]),
-                "parent": str(representation["parent"])
+                "representation": repre_entity["id"],
+                "parent": repre_entity["versionId"],
             })
 
         asset_content = unreal.EditorAssetLibrary.list_assets(

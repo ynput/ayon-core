@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateColorSets(pyblish.api.Validator,
+class ValidateColorSets(pyblish.api.InstancePlugin,
                         OptionalPyblishPluginMixin):
     """Validate all meshes in the instance have unlocked normals
 

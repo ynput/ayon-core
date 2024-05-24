@@ -93,8 +93,8 @@ class ExtractCameraMayaScene(publish.Extractor,
     The cameras gets baked to world space by default. Only when the instance's
     `bakeToWorldSpace` is set to False it will include its full hierarchy.
 
-    'camera' family expects only single camera, if multiple cameras are needed,
-    'matchmove' is better choice.
+    'camera' product type expects only single camera, if multiple cameras are
+    needed, 'matchmove' is better choice.
 
     Note:
         The extracted Maya ascii file gets "massaged" removing the uuid values
@@ -299,4 +299,10 @@ def transfer_image_planes(source_cameras, target_cameras,
 
 def _attach_image_plane(camera, image_plane):
     cmds.imagePlane(image_plane, edit=True, detach=True)
+
+    # Attaching to a camera resets it to identity size, so we counter that
+    size_x = cmds.getAttr(f"{image_plane}.sizeX")
+    size_y = cmds.getAttr(f"{image_plane}.sizeY")
     cmds.imagePlane(image_plane, edit=True, camera=camera)
+    cmds.setAttr(f"{image_plane}.sizeX", size_x)
+    cmds.setAttr(f"{image_plane}.sizeY", size_y)

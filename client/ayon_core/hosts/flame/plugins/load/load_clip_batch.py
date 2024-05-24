@@ -10,14 +10,14 @@ from ayon_core.lib.transcoding import (
 )
 
 class LoadClipBatch(opfapi.ClipLoader):
-    """Load a subset to timeline as clip
+    """Load a product to timeline as clip
 
     Place clip to timeline on its asset origin timings collected
     during conforming to project
     """
 
-    families = ["render2d", "source", "plate", "render", "review"]
-    representations = ["*"]
+    product_types = {"render2d", "source", "plate", "render", "review"}
+    representations = {"*"}
     extensions = set(
         ext.lstrip(".") for ext in IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
     )
@@ -29,14 +29,14 @@ class LoadClipBatch(opfapi.ClipLoader):
 
     # settings
     reel_name = "OP_LoadedReel"
-    clip_name_template = "{batch}_{asset}_{subset}<_{output}>"
+    clip_name_template = "{batch}_{folder[name]}_{product[name]}<_{output}>"
 
     """ Anatomy keys from version context data and dynamically added:
         - {layerName} - original layer name token
         - {layerUID} - original layer UID token
         - {originalBasename} - original clip name taken from file
     """
-    layer_rename_template = "{asset}_{subset}<_{output}>"
+    layer_rename_template = "{folder[name]}_{product[name]}<_{output}>"
     layer_rename_patterns = []
 
     def load(self, context, name, namespace, options):
@@ -45,22 +45,13 @@ class LoadClipBatch(opfapi.ClipLoader):
         self.batch = options.get("batch") or flame.batch
 
         # load clip to timeline and get main variables
-        version = context['version']
-        version_data = version.get("data", {})
-        version_name = version.get("name", None)
+        version_entity = context["version"]
+        version_attributes =version_entity["attrib"]
+        version_name = version_entity["version"]
         colorspace = self.get_colorspace(context)
 
-        # TODO remove '{folder[name]}' and '{product[name]}' replacement
-        clip_name_template = (
-            self.clip_name_template
-            .replace("{folder[name]}", "{asset}")
-            .replace("{product[name]}", "{subset}")
-        )
-        layer_rename_template = (
-            self.layer_rename_template
-            .replace("{folder[name]}", "{asset}")
-            .replace("{product[name]}", "{subset}")
-        )
+        clip_name_template = self.clip_name_template
+        layer_rename_template = self.layer_rename_template
         # in case output is not in context replace key to representation
         if not context["representation"]["context"].get("output"):
             clip_name_template = clip_name_template.replace(
@@ -68,8 +59,22 @@ class LoadClipBatch(opfapi.ClipLoader):
             layer_rename_template = layer_rename_template.replace(
                 "output", "representation")
 
+        folder_entity = context["folder"]
+        product_entity = context["product"]
         formatting_data = deepcopy(context["representation"]["context"])
         formatting_data["batch"] = self.batch.name.get_value()
+        formatting_data.update({
+            "asset": folder_entity["name"],
+            "folder": {
+                "name": folder_entity["name"],
+            },
+            "subset": product_entity["name"],
+            "family": product_entity["productType"],
+            "product": {
+                "name": product_entity["name"],
+                "type": product_entity["productType"],
+            }
+        })
 
         clip_name = StringTemplate(clip_name_template).format(
             formatting_data)
@@ -124,7 +129,7 @@ class LoadClipBatch(opfapi.ClipLoader):
 
         # move all version data keys to tag data
         data_imprint = {
-            key: version_data.get(key, str(None))
+            key: version_attributes.get(key, str(None))
             for key in add_keys
         }
         # add variables related to version context

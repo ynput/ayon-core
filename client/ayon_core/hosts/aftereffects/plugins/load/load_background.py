@@ -11,7 +11,7 @@ from ayon_core.hosts.aftereffects.api.lib import (
 
 class BackgroundLoader(api.AfterEffectsLoader):
     """
-        Load images from Background family
+        Load images from Background product type
         Creates for each background separate folder with all imported images
         from background json AND automatically created composition with layers,
         each layer for separate image.
@@ -20,8 +20,8 @@ class BackgroundLoader(api.AfterEffectsLoader):
         metadata
     """
     label = "Load JSON Background"
-    families = ["background"]
-    representations = ["json"]
+    product_types = {"background"}
+    representations = {"json"}
 
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()
@@ -31,7 +31,7 @@ class BackgroundLoader(api.AfterEffectsLoader):
 
         comp_name = get_unique_layer_name(
             existing_items,
-            "{}_{}".format(context["asset"]["name"], name))
+            "{}_{}".format(context["folder"]["name"], name))
 
         path = self.filepath_from_context(context)
         layers = get_background_layers(path)
@@ -56,16 +56,19 @@ class BackgroundLoader(api.AfterEffectsLoader):
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """ Switch asset or change version """
         stub = self.get_stub()
-        context = representation.get("context", {})
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
+        repre_entity = context["representation"]
+
         _ = container.pop("layer")
 
         # without iterator number (_001, 002...)
         namespace_from_container = re.sub(r'_\d{3}$', '',
                                           container["namespace"])
-        comp_name = "{}_{}".format(context["asset"], context["subset"])
+        comp_name = "{}_{}".format(folder_name, product_name)
 
         # switching assets
         if namespace_from_container != comp_name:
@@ -73,11 +76,11 @@ class BackgroundLoader(api.AfterEffectsLoader):
             existing_items = [layer.name for layer in items]
             comp_name = get_unique_layer_name(
                 existing_items,
-                "{}_{}".format(context["asset"], context["subset"]))
+                "{}_{}".format(folder_name, product_name))
         else:  # switching version - keep same name
             comp_name = container["namespace"]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_entity)
 
         layers = get_background_layers(path)
         comp = stub.reload_background(container["members"][1],
@@ -85,8 +88,8 @@ class BackgroundLoader(api.AfterEffectsLoader):
                                       layers)
 
         # update container
-        container["representation"] = str(representation["_id"])
-        container["name"] = context["subset"]
+        container["representation"] = repre_entity["id"]
+        container["name"] = product_name
         container["namespace"] = comp_name
         container["members"] = comp.members
 
@@ -104,5 +107,5 @@ class BackgroundLoader(api.AfterEffectsLoader):
         stub.imprint(layer.id, {})
         stub.delete_item(layer.id)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)

@@ -3,11 +3,13 @@ import pyblish.api
 import ayon_core.hosts.maya.api.action
 from ayon_core.pipeline.publish import (
     PublishValidationError,
-    ValidateContentsOrder
+    ValidateContentsOrder,
+    OptionalPyblishPluginMixin
 )
 
 
-class ValidateStepSize(pyblish.api.InstancePlugin):
+class ValidateStepSize(pyblish.api.InstancePlugin,
+                       OptionalPyblishPluginMixin):
     """Validates the step size for the instance is in a valid range.
 
     For example the `step` size should never be lower or equal to zero.
@@ -20,14 +22,14 @@ class ValidateStepSize(pyblish.api.InstancePlugin):
                 'pointcache',
                 'animation']
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction]
-
+    optional = False
     MIN = 0.01
     MAX = 1.0
 
     @classmethod
     def get_invalid(cls, instance):
 
-        objset = instance.data['name']
+        objset = instance.data['instance_node']
         step = instance.data.get("step", 1.0)
 
         if step < cls.MIN or step > cls.MAX:
@@ -40,8 +42,9 @@ class ValidateStepSize(pyblish.api.InstancePlugin):
         return []
 
     def process(self, instance):
-
+        if not self.is_active(instance.data):
+            return
         invalid = self.get_invalid(instance)
         if invalid:
             raise PublishValidationError(
-                "Invalid instances found: {0}".format(invalid))
+                "Instance found with invalid step size: {0}".format(invalid))

@@ -1,13 +1,9 @@
 import nuke
 import nukescripts
+import ayon_api
 
-from ayon_core.client import (
-    get_version_by_id,
-    get_last_version_by_subset_id,
-)
 from ayon_core.pipeline import (
     load,
-    get_current_project_name,
     get_representation_path,
 )
 from ayon_core.hosts.nuke.api.lib import (
@@ -25,8 +21,8 @@ from ayon_core.hosts.nuke.api import containerise, update_container
 class LoadBackdropNodes(load.LoaderPlugin):
     """Loading Published Backdrop nodes (workfile, nukenodes)"""
 
-    families = ["workfile", "nukenodes"]
-    representations = ["*"]
+    product_types = {"workfile", "nukenodes"}
+    representations = {"*"}
     extensions = {"nk"}
 
     label = "Import Nuke Nodes"
@@ -43,7 +39,7 @@ class LoadBackdropNodes(load.LoaderPlugin):
         Arguments:
             context (dict): context of version
             name (str): name of the version
-            namespace (str): asset name
+            namespace (str): namespace name
             data (dict): compulsory attribute > not used
 
         Returns:
@@ -51,24 +47,23 @@ class LoadBackdropNodes(load.LoaderPlugin):
         """
 
         # get main variables
-        version = context['version']
-        version_data = version.get("data", {})
-        vname = version.get("name", None)
-        namespace = namespace or context['asset']['name']
-        colorspace = version_data.get("colorspace", None)
+        namespace = namespace or context["folder"]["name"]
+        version_entity = context["version"]
+
+        version_attributes = version_entity["attrib"]
+        colorspace = version_attributes.get("colorSpace")
+
         object_name = "{}_{}".format(name, namespace)
 
         # prepare data for imprinting
-        # add additional metadata from the version to imprint to Avalon knob
-        add_keys = ["source", "author", "fps"]
-
         data_imprint = {
-            "version": vname,
+            "version": version_entity["version"],
             "colorspaceInput": colorspace
         }
 
-        for k in add_keys:
-            data_imprint.update({k: version_data[k]})
+        # add attributes from the version to imprint to metadata knob
+        for k in ["source", "author", "fps"]:
+            data_imprint[k] = version_attributes[k]
 
         # getting file path
         file = self.filepath_from_context(context).replace("\\", "/")
@@ -178,7 +173,7 @@ class LoadBackdropNodes(load.LoaderPlugin):
                 loader=self.__class__.__name__,
                 data=data_imprint)
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update the Loader's path
 
         Nuke automatically tries to reset some variables when changing
@@ -189,31 +184,30 @@ class LoadBackdropNodes(load.LoaderPlugin):
 
         # get main variables
         # Get version from io
-        project_name = get_current_project_name()
-        version_doc = get_version_by_id(project_name, representation["parent"])
+        project_name = context["project"]["name"]
+        version_entity = context["version"]
+        repre_entity = context["representation"]
 
         # get corresponding node
         GN = container["node"]
 
-        file = get_representation_path(representation).replace("\\", "/")
+        file = get_representation_path(repre_entity).replace("\\", "/")
 
-        name = container['name']
-        version_data = version_doc.get("data", {})
-        vname = version_doc.get("name", None)
-        namespace = container['namespace']
-        colorspace = version_data.get("colorspace", None)
+        name = container["name"]
+        namespace = container["namespace"]
         object_name = "{}_{}".format(name, namespace)
 
-        add_keys = ["source", "author", "fps"]
+        version_attributes = version_entity["attrib"]
+        colorspace = version_attributes.get("colorSpace")
 
         data_imprint = {
-            "representation": str(representation["_id"]),
-            "version": vname,
+            "representation": repre_entity["id"],
+            "version": version_entity["version"],
             "colorspaceInput": colorspace,
         }
 
-        for k in add_keys:
-            data_imprint.update({k: version_data[k]})
+        for k in ["source", "author", "fps"]:
+            data_imprint[k] = version_attributes[k]
 
         # adding nodes to node graph
         # just in case we are in group lets jump out of it
@@ -233,23 +227,25 @@ class LoadBackdropNodes(load.LoaderPlugin):
             GN["name"].setValue(object_name)
 
         # get all versions in list
-        last_version_doc = get_last_version_by_subset_id(
-            project_name, version_doc["parent"], fields=["_id"]
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, version_entity["productId"], fields={"id"}
         )
 
         # change color of node
-        if version_doc["_id"] == last_version_doc["_id"]:
+        if version_entity["id"] == last_version_entity["id"]:
             color_value = self.node_color
         else:
             color_value = "0xd88467ff"
         GN["tile_color"].setValue(int(color_value, 16))
 
-        self.log.info("updated to version: {}".format(version_doc.get("name")))
+        self.log.info(
+            "updated to version: {}".format(version_entity["version"])
+        )
 
         return update_container(GN, data_imprint)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         node = container["node"]

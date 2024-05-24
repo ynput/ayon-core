@@ -15,7 +15,7 @@ from ayon_core.pipeline import (
     CreatorError,
     CreatedInstance
 )
-from openpype.hosts.unreal.api.pipeline import (
+from ayon_core.hosts.unreal.api.pipeline import (
     send_request,
     unreal_log,
     ls_inst,
@@ -32,50 +32,49 @@ class UnrealBaseCreator(Creator):
     suffix = "_INS"
 
     @staticmethod
-    def cache_subsets(shared_data):
+    def cache_instance_data(shared_data):
         """Cache instances for Creators to shared data.
 
-        Create `unreal_cached_subsets` key when needed in shared data and
+        Create `unreal_cached_instances` key when needed in shared data and
         fill it with all collected instances from the scene under its
         respective creator identifiers.
 
         If legacy instances are detected in the scene, create
-        `unreal_cached_legacy_subsets` there and fill it with
-        all legacy subsets under family as a key.
+        `unreal_cached_legacy_instances` there and fill it with
+        all legacy products under family as a key.
 
         Args:
             Dict[str, Any]: Shared data.
 
-        Return:
-            Dict[str, Any]: Shared data dictionary.
-
         """
-        if shared_data.get("unreal_cached_subsets") is None:
-            unreal_cached_subsets = collections.defaultdict(list)
-            unreal_cached_legacy_subsets = collections.defaultdict(list)
-            for instance in ls_inst():
-                if creator_id := instance.get("creator_identifier"):
-                    unreal_cached_subsets[creator_id].append(instance)
-                else:
-                    family = instance.get("family")
-                    unreal_cached_legacy_subsets[family].append(instance)
+        if "unreal_cached_instances" in shared_data:
+            return
 
-            shared_data["unreal_cached_subsets"] = unreal_cached_subsets
-            shared_data["unreal_cached_legacy_subsets"] = (
-                unreal_cached_legacy_subsets
-            )
-        return shared_data
+        unreal_cached_instances = collections.defaultdict(list)
+        unreal_cached_legacy_instances = collections.defaultdict(list)
+        for instance in ls_inst():
+            creator_id = instance.get("creator_identifier")
+            if creator_id:
+                unreal_cached_instances[creator_id].append(instance)
+            else:
+                family = instance.get("family")
+                unreal_cached_legacy_instances[family].append(instance)
 
-    def create(self, subset_name, instance_data, pre_create_data):
+        shared_data["unreal_cached_instances"] = unreal_cached_instances
+        shared_data["unreal_cached_legacy_instances"] = (
+            unreal_cached_legacy_instances
+        )
+
+    def create(self, product_name, instance_data, pre_create_data):
         try:
-            instance_name = f"{subset_name}{self.suffix}"
+            instance_name = f"{product_name}{self.suffix}"
 
-            instance_data["subset"] = subset_name
+            instance_data["productName"] = product_name
             instance_data["instance_path"] = f"{self.root}/{instance_name}"
 
             instance = CreatedInstance(
-                self.family,
-                subset_name,
+                self.product_type,
+                product_name,
                 instance_data,
                 self)
             self._add_instance_to_context(instance)
@@ -96,9 +95,9 @@ class UnrealBaseCreator(Creator):
 
     def collect_instances(self):
         # cache instances if missing
-        self.cache_subsets(self.collection_shared_data)
+        self.cache_instance_data(self.collection_shared_data)
         for instance in self.collection_shared_data[
-                "unreal_cached_subsets"].get(self.identifier, []):
+                "unreal_cached_instances"].get(self.identifier, []):
             # Unreal saves metadata as string, so we need to convert it back
             instance['creator_attributes'] = ast.literal_eval(
                 instance.get('creator_attributes', '{}'))
@@ -135,11 +134,11 @@ class UnrealBaseCreator(Creator):
 class UnrealAssetCreator(UnrealBaseCreator):
     """Base class for Unreal creator plugins based on assets."""
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         """Create instance of the asset.
 
         Args:
-            subset_name (str): Name of the subset.
+            product_name (str): Name of the product.
             instance_data (dict): Data for the instance.
             pre_create_data (dict): Data for the instance.
 
@@ -157,7 +156,7 @@ class UnrealAssetCreator(UnrealBaseCreator):
                         "get_selected_assets")
 
             super(UnrealAssetCreator, self).create(
-                subset_name,
+                product_name,
                 instance_data,
                 pre_create_data)
 
@@ -177,11 +176,11 @@ class UnrealAssetCreator(UnrealBaseCreator):
 class UnrealActorCreator(UnrealBaseCreator):
     """Base class for Unreal creator plugins based on actors."""
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         """Create instance of the asset.
 
         Args:
-            subset_name (str): Name of the subset.
+            product_name (str): Name of the product.
             instance_data (dict): Data for the instance.
             pre_create_data (dict): Data for the instance.
 
@@ -205,7 +204,7 @@ class UnrealActorCreator(UnrealBaseCreator):
             instance_data["level"] = world
 
             super(UnrealActorCreator, self).create(
-                subset_name,
+                product_name,
                 instance_data,
                 pre_create_data)
 
@@ -227,13 +226,15 @@ class UnrealBaseLoader(LoaderPlugin):
     root = "/Game/Ayon"
     suffix = "_CON"
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        repre_entity = context["representation"]
+
         asset_dir = container["namespace"]
         container_name = container['objectName']
 
         data = {
-            "representation_id": str(representation["_id"]),
-            "version_id": str(representation["parent"])
+            "representation": str(repre_entity["id"]),
+            "parent": str(repre_entity["versionId"])
         }
 
         imprint(f"{asset_dir}/{container_name}", data)

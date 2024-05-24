@@ -115,7 +115,7 @@ class ExtractSlateFrame(publish.Extractor):
         """Slate frame renderer
 
         Args:
-            instance (PyblishInstance): Pyblish instance with subset data
+            instance (PyblishInstance): Pyblish instance with product data
             output_name (str, optional):
                 Slate variation name. Defaults to None.
             bake_viewer_process (bool, optional):
@@ -299,6 +299,10 @@ class ExtractSlateFrame(publish.Extractor):
             )
             self.log.debug(
                 "__ matching_repre: {}".format(pformat(matching_repre)))
+
+        data = matching_repre.get("data", {})
+        data["slateFrames"] = 1
+        matching_repre["data"] = data
 
         self.log.info("Added slate frame to representation files")
 

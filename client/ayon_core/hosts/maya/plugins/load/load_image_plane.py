@@ -1,14 +1,8 @@
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.client import (
-    get_asset_by_id,
-    get_subset_by_id,
-    get_version_by_id,
-)
 from ayon_core.pipeline import (
     load,
     get_representation_path,
-    get_current_project_name,
 )
 from ayon_core.hosts.maya.api.pipeline import containerise
 from ayon_core.hosts.maya.api.lib import (
@@ -93,19 +87,19 @@ class CameraWindow(QtWidgets.QDialog):
 class ImagePlaneLoader(load.LoaderPlugin):
     """Specific loader of plate for image planes on selected camera."""
 
-    families = ["image", "plate", "render"]
+    product_types = {"image", "plate", "render"}
     label = "Load imagePlane"
-    representations = ["mov", "exr", "preview", "png", "jpg"]
+    representations = {"mov", "exr", "preview", "png", "jpg"}
     icon = "image"
     color = "orange"
 
     def load(self, context, name, namespace, data, options=None):
 
         image_plane_depth = 1000
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -148,9 +142,21 @@ class ImagePlaneLoader(load.LoaderPlugin):
         with namespaced(namespace):
             # Create inside the namespace
             image_plane_transform, image_plane_shape = cmds.imagePlane(
-                fileName=context["representation"]["data"]["path"],
+                fileName=self.filepath_from_context(context),
                 camera=camera
             )
+
+        # Set colorspace
+        colorspace = self.get_colorspace(context["representation"])
+        if colorspace:
+            cmds.setAttr(
+                "{}.ignoreColorSpaceFileRules".format(image_plane_shape),
+                True
+            )
+            cmds.setAttr("{}.colorSpace".format(image_plane_shape),
+                         colorspace, type="string")
+
+        # Set offset frame range
         start_frame = cmds.playbackOptions(query=True, min=True)
         end_frame = cmds.playbackOptions(query=True, max=True)
 
@@ -165,7 +171,7 @@ class ImagePlaneLoader(load.LoaderPlugin):
             plug = "{}.{}".format(image_plane_shape, attr)
             cmds.setAttr(plug, value)
 
-        movie_representations = ["mov", "preview"]
+        movie_representations = {"mov", "preview"}
         if context["representation"]["name"] in movie_representations:
             cmds.setAttr(image_plane_shape + ".type", 2)
 
@@ -205,34 +211,35 @@ class ImagePlaneLoader(load.LoaderPlugin):
             loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
+        folder_entity = context["folder"]
+        repre_entity = context["representation"]
 
         members = get_container_members(container)
         image_planes = cmds.ls(members, type="imagePlane")
         assert image_planes, "Image plane not found."
         image_plane_shape = image_planes[0]
 
-        path = get_representation_path(representation)
+        path = get_representation_path(repre_entity)
         cmds.setAttr("{}.imageName".format(image_plane_shape),
                      path,
                      type="string")
         cmds.setAttr("{}.representation".format(container["objectName"]),
-                     str(representation["_id"]),
+                     repre_entity["id"],
                      type="string")
 
+        colorspace = self.get_colorspace(repre_entity)
+        if colorspace:
+            cmds.setAttr(
+                "{}.ignoreColorSpaceFileRules".format(image_plane_shape),
+                True
+            )
+            cmds.setAttr("{}.colorSpace".format(image_plane_shape),
+                         colorspace, type="string")
+
         # Set frame range.
-        project_name = get_current_project_name()
-        version = get_version_by_id(
-            project_name, representation["parent"], fields=["parent"]
-        )
-        subset = get_subset_by_id(
-            project_name, version["parent"], fields=["parent"]
-        )
-        asset = get_asset_by_id(
-            project_name, subset["parent"], fields=["parent"]
-        )
-        start_frame = asset["data"]["frameStart"]
-        end_frame = asset["data"]["frameEnd"]
+        start_frame = folder_entity["attrib"]["frameStart"]
+        end_frame = folder_entity["attrib"]["frameEnd"]
 
         for attr, value in {
             "frameOffset": 0,
@@ -243,8 +250,8 @@ class ImagePlaneLoader(load.LoaderPlugin):
             plug = "{}.{}".format(image_plane_shape, attr)
             cmds.setAttr(plug, value)
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)
@@ -257,3 +264,12 @@ class ImagePlaneLoader(load.LoaderPlugin):
                            deleteNamespaceContent=True)
         except RuntimeError:
             pass
+
+    def get_colorspace(self, representation):
+
+        data = representation.get("data", {}).get("colorspaceData", {})
+        if not data:
+            return
+
+        colorspace = data.get("colorspace")
+        return colorspace

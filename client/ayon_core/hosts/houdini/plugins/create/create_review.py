@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating openGL reviews."""
-from ayon_core.hosts.houdini.api import plugin
+from ayon_core.hosts.houdini.api import lib, plugin
 from ayon_core.lib import EnumDef, BoolDef, NumberDef
 
 import os
@@ -12,10 +12,17 @@ class CreateReview(plugin.HoudiniCreator):
 
     identifier = "io.openpype.creators.houdini.review"
     label = "Review"
-    family = "review"
+    product_type = "review"
     icon = "video-camera"
+    review_color_space = ""
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def apply_settings(self, project_settings):
+        super(CreateReview, self).apply_settings(project_settings)
+        color_settings = project_settings["houdini"]["imageio"]["workfile"]
+        if color_settings["enabled"]:
+            self.review_color_space = color_settings.get("review_color_space")
+
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
         instance_data.update({"node_type": "opengl"})
@@ -23,7 +30,7 @@ class CreateReview(plugin.HoudiniCreator):
         instance_data["keepImages"] = pre_create_data.get("keepImages")
 
         instance = super(CreateReview, self).create(
-            subset_name,
+            product_name,
             instance_data,
             pre_create_data)
 
@@ -31,9 +38,10 @@ class CreateReview(plugin.HoudiniCreator):
 
         frame_range = hou.playbar.frameRange()
 
-        filepath = "{root}/{subset}/{subset}.$F4.{ext}".format(
+        filepath = "{root}/{product_name}/{product_name}.$F4.{ext}".format(
             root=hou.text.expandString("$HIP/pyblish"),
-            subset="`chs(\"subset\")`",  # keep dynamic link to subset
+            # keep dynamic link to product name
+            product_name="`chs(\"AYON_productName\")`",
             ext=pre_create_data.get("image_format") or "png"
         )
 
@@ -84,12 +92,22 @@ class CreateReview(plugin.HoudiniCreator):
 
         instance_node.setParms(parms)
 
-        # Set OCIO Colorspace to the default output colorspace
+        # Set OCIO Colorspace to the default colorspace
         #  if there's OCIO
         if os.getenv("OCIO"):
-            self.set_colorcorrect_to_default_view_space(instance_node)
+            # Fall to the default value if cls.review_color_space is empty.
+            if not self.review_color_space:
+                # cls.review_color_space is an empty string
+                #  when the imageio/workfile setting is disabled or
+                #  when the Review colorspace setting is empty.
+                from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
+                self.review_color_space = get_default_display_view_colorspace()
 
-        to_lock = ["id", "family"]
+            lib.set_review_color_space(instance_node,
+                                       self.review_color_space,
+                                       self.log)
+
+        to_lock = ["id", "productType"]
 
         self.lock_parameters(instance_node, to_lock)
 
@@ -130,23 +148,3 @@ class CreateReview(plugin.HoudiniCreator):
                       minimum=0.0001,
                       decimals=3)
         ]
-
-    def set_colorcorrect_to_default_view_space(self,
-                                               instance_node):
-        """Set ociocolorspace to the default output space."""
-        from ayon_core.hosts.houdini.api.colorspace import get_default_display_view_colorspace  # noqa
-
-        # set Color Correction parameter to OpenColorIO
-        instance_node.setParms({"colorcorrect": 2})
-
-        # Get default view space for ociocolorspace parm.
-        default_view_space = get_default_display_view_colorspace()
-        instance_node.setParms(
-            {"ociocolorspace": default_view_space}
-        )
-
-        self.log.debug(
-            "'OCIO Colorspace' parm on '{}' has been set to "
-            "the default view color space '{}'"
-            .format(instance_node, default_view_space)
-        )

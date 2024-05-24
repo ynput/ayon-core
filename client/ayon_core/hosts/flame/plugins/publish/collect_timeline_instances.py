@@ -37,7 +37,7 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
         self.otio_timeline = context.data["otioTimeline"]
         self.fps = context.data["fps"]
 
-        # process all sellected
+        # process all selected
         for segment in selected_segments:
             # get openpype tag data
             marker_data = opfapi.get_segment_data_marker(segment)
@@ -100,6 +100,12 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
             marker_data["handleEnd"] = min(
                 marker_data["handleEnd"], tail)
 
+            # Backward compatibility fix of 'entity_type' > 'folder_type'
+            if "parents" in marker_data:
+                for parent in marker_data["parents"]:
+                    if "entity_type" in parent:
+                        parent["folder_type"] = parent.pop("entity_type")
+
             workfile_start = self._set_workfile_start(marker_data)
 
             with_audio = bool(marker_data.pop("audio"))
@@ -110,24 +116,25 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
             # add ocio_data to instance data
             inst_data.update(otio_data)
 
-            asset = marker_data["asset"]
-            subset = marker_data["subset"]
+            folder_path = marker_data["folderPath"]
+            folder_name = folder_path.rsplit("/")[-1]
+            product_name = marker_data["productName"]
 
-            # insert family into families
-            family = marker_data["family"]
+            # insert product type into families
+            product_type = marker_data["productType"]
             families = [str(f) for f in marker_data["families"]]
-            families.insert(0, str(family))
+            families.insert(0, str(product_type))
 
             # form label
-            label = asset
-            if asset != clip_name:
+            label = folder_name
+            if folder_name != clip_name:
                 label += " ({})".format(clip_name)
-            label += " {} [{}]".format(subset, ", ".join(families))
+            label += " {} [{}]".format(product_name, ", ".join(families))
 
             inst_data.update({
-                "name": "{}_{}".format(asset, subset),
+                "name": "{}_{}".format(folder_name, product_name),
                 "label": label,
-                "asset": asset,
+                "folderPath": folder_path,
                 "item": segment,
                 "families": families,
                 "publish": marker_data["publish"],
@@ -335,26 +342,28 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
         if not hierarchy_data:
             return
 
-        asset = data["asset"]
-        subset = "shotMain"
+        folder_path = data["folderPath"]
+        folder_name = folder_path.rsplit("/")[-1]
+        product_name = "shotMain"
 
-        # insert family into families
-        family = "shot"
+        # insert product type into families
+        product_type = "shot"
 
         # form label
-        label = asset
-        if asset != clip_name:
+        label = folder_name
+        if folder_name != clip_name:
             label += " ({}) ".format(clip_name)
-        label += " {}".format(subset)
-        label += " [{}]".format(family)
+        label += " {}".format(product_name)
+        label += " [{}]".format(product_type)
 
         data.update({
-            "name": "{}_{}".format(asset, subset),
+            "name": "{}_{}".format(folder_name, product_name),
             "label": label,
-            "subset": subset,
-            "asset": asset,
-            "family": family,
-            "families": []
+            "productName": product_name,
+            "folderPath": folder_path,
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type]
         })
 
         instance = context.create_instance(**data)

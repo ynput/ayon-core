@@ -1,14 +1,11 @@
 import os
-import re
 import tempfile
-import attr
 
+import attr
 import pyblish.api
 
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import RenderInstance
-
 from ayon_core.hosts.aftereffects.api import get_stub
 
 
@@ -44,7 +41,6 @@ class CollectAERender(publish.AbstractCollectRender):
 
     def get_instances(self, context):
         instances = []
-        instances_to_remove = []
 
         app_version = CollectAERender.get_stub().get_app_version()
         app_version = app_version[0:4]
@@ -60,8 +56,8 @@ class CollectAERender(publish.AbstractCollectRender):
             if not inst.data.get("active", True):
                 continue
 
-            family = inst.data["family"]
-            if family not in ["render", "renderLocal"]:  # legacy
+            product_type = inst.data["productType"]
+            if product_type not in ["render", "renderLocal"]:  # legacy
                 continue
 
             comp_id = int(inst.data["members"][0])
@@ -81,29 +77,32 @@ class CollectAERender(publish.AbstractCollectRender):
             fps = comp_info.frameRate
             # TODO add resolution when supported by extension
 
-            task_name = inst.data.get("task")  # legacy
+            task_name = inst.data.get("task")
 
             render_q = CollectAERender.get_stub().get_render_info(comp_id)
             if not render_q:
                 raise ValueError("No file extension set in Render Queue")
             render_item = render_q[0]
 
+            product_type = "render"
             instance_families = inst.data.get("families", [])
-            subset_name = inst.data["subset"]
+            instance_families.append(product_type)
+            product_name = inst.data["productName"]
             instance = AERenderInstance(
-                family="render",
+                productType=product_type,
+                family=product_type,
                 families=instance_families,
                 version=version,
                 time="",
                 source=current_file,
-                label="{} - {}".format(subset_name, family),
-                subset=subset_name,
+                label="{} - {}".format(product_name, product_type),
+                productName=product_name,
                 folderPath=inst.data["folderPath"],
                 task=task_name,
                 attachTo=False,
                 setMembers='',
                 publish=True,
-                name=subset_name,
+                name=product_name,
                 resolutionWidth=render_item.width,
                 resolutionHeight=render_item.height,
                 pixelAspect=1,
@@ -117,7 +116,10 @@ class CollectAERender(publish.AbstractCollectRender):
                 fps=fps,
                 app_version=app_version,
                 publish_attributes=inst.data.get("publish_attributes", {}),
-                file_names=[item.file_name for item in render_q]
+                file_names=[item.file_name for item in render_q],
+
+                # The source instance this render instance replaces
+                source_instance=inst
             )
 
             comp = compositions_by_id.get(comp_id)
@@ -145,10 +147,7 @@ class CollectAERender(publish.AbstractCollectRender):
                     instance.families.remove("review")
 
             instances.append(instance)
-            instances_to_remove.append(inst)
 
-        for instance in instances_to_remove:
-            context.remove(instance)
         return instances
 
     def get_expected_files(self, render_instance):
@@ -176,7 +175,7 @@ class CollectAERender(publish.AbstractCollectRender):
             if "#" not in file_name:  # single frame (mov)W
                 path = os.path.join(base_dir, "{}_{}_{}.{}".format(
                     render_instance.folderPath,
-                    render_instance.subset,
+                    render_instance.productName,
                     version_str,
                     ext
                 ))
@@ -185,7 +184,7 @@ class CollectAERender(publish.AbstractCollectRender):
                 for frame in range(start, end + 1):
                     path = os.path.join(base_dir, "{}_{}_{}.{}.{}".format(
                         render_instance.folderPath,
-                        render_instance.subset,
+                        render_instance.productName,
                         version_str,
                         str(frame).zfill(self.padding_width),
                         ext

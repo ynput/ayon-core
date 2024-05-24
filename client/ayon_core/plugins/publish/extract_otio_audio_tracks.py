@@ -80,7 +80,7 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
             # create duration
             duration = (timeline_out_h - timeline_in_h) + 1
 
-            # ffmpeg generate new file only if doesnt exists already
+            # ffmpeg generate new file only if doesn't exists already
             if not recycling_file:
                 # convert to seconds
                 start_sec = float(timeline_in_h / fps)
@@ -103,7 +103,9 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
             else:
                 audio_fpath = recycling_file.pop()
 
-            if "audio" in (inst.data["families"] + [inst.data["family"]]):
+            if "audio" in (
+                inst.data["families"] + [inst.data["productType"]]
+            ):
                 # create empty representation attr
                 if "representations" not in inst.data:
                     inst.data["representations"] = []
@@ -140,10 +142,10 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         """
         return [
             _i for _i in context
-            # filter only those with audio family
+            # filter only those with audio product type or family
             # and also with reviewAudio data key
             if bool("audio" in (
-                _i.data.get("families", []) + [_i.data["family"]])
+                _i.data.get("families", []) + [_i.data["productType"]])
             ) or _i.data.get("reviewAudio")
         ]
 

@@ -7,7 +7,7 @@ from ayon_core.lib import Logger
 from ayon_core.settings import get_project_settings
 
 from ayon_core.pipeline import CreatorError, get_current_project_name
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.hosts.maya.api.lib import reset_frame_range
 
 
@@ -77,7 +77,8 @@ class RenderSettings(object):
             renderer = cmds.getAttr(
                 'defaultRenderGlobals.currentRenderer').lower()
 
-        asset_doc = get_current_project_asset()
+        folder_entity = get_current_folder_entity()
+        folder_attributes = folder_entity["attrib"]
         # project_settings/maya/create/CreateRender/aov_separator
         try:
             aov_separator = self._aov_chars[(
@@ -101,8 +102,8 @@ class RenderSettings(object):
         else:
             print("{0} isn't a supported renderer to autoset settings.".format(renderer)) # noqa
         # TODO: handle not having res values in the doc
-        width = asset_doc["data"].get("resolutionWidth")
-        height = asset_doc["data"].get("resolutionHeight")
+        width = folder_attributes.get("resolutionWidth")
+        height = folder_attributes.get("resolutionHeight")
 
         if renderer == "arnold":
             # set renderer settings for Arnold from project settings

@@ -1,8 +1,5 @@
 from pyblish import api
-from ayon_core.settings import (
-    get_current_project_settings,
-    get_system_settings,
-)
+from ayon_core.settings import get_project_settings
 
 
 class CollectSettings(api.ContextPlugin):
@@ -12,5 +9,9 @@ class CollectSettings(api.ContextPlugin):
     label = "Collect Settings"
 
     def process(self, context):
-        context.data["project_settings"] = get_current_project_settings()
-        context.data["system_settings"] = get_system_settings()
+        project_name = context.data["projectName"]
+        self.log.debug(
+            "Collecting settings for project: {}".format(project_name)
+        )
+        project_settings = get_project_settings(project_name)
+        context.data["project_settings"] = project_settings

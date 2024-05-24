@@ -5,15 +5,15 @@ from ayon_core.pipeline import (
     load,
     get_representation_path
 )
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 # TODO aiVolume doesn't automatically set velocity fps correctly, set manual?
 
 
 class LoadVDBtoArnold(load.LoaderPlugin):
     """Load OpenVDB for Arnold in aiVolume"""
 
-    families = ["vdbcache"]
-    representations = ["vdb"]
+    product_types = {"vdbcache"}
+    representations = {"vdb"}
 
     label = "Load VDB to Arnold"
     icon = "cloud"
@@ -25,10 +25,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         from ayon_core.hosts.maya.api.pipeline import containerise
         from ayon_core.hosts.maya.api.lib import unique_namespace
 
-        try:
-            family = context["representation"]["context"]["family"]
-        except ValueError:
-            family = "vdbcache"
+        product_type = context["product"]["productType"]
 
         # Check if the plugin for arnold is available on the pc
         try:
@@ -37,11 +34,10 @@ class LoadVDBtoArnold(load.LoaderPlugin):
             self.log.error("Encountered exception:\n%s" % exc)
             return
 
-        asset = context['asset']
-        asset_name = asset["name"]
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset_name + "_",
-            prefix="_" if asset_name[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -51,7 +47,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family(family, settings)
+        color = get_load_color_for_product_type(product_type, settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
@@ -65,7 +61,7 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         path = self.filepath_from_context(context)
         self._set_path(grid_node,
                        path=path,
-                       representation=context["representation"])
+                       repre_entity=context["representation"])
 
         # Lock the shape node so the user can't delete the transform/shape
         # as if it was referenced
@@ -81,11 +77,13 @@ class LoadVDBtoArnold(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
+    def update(self, container, context):
 
         from maya import cmds
 
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+
+        path = get_representation_path(repre_entity)
 
         # Find VRayVolumeGrid
         members = cmds.sets(container['objectName'], query=True)
@@ -93,21 +91,21 @@ class LoadVDBtoArnold(load.LoaderPlugin):
         assert len(grid_nodes) == 1, "This is a bug"
 
         # Update the VRayVolumeGrid
-        self._set_path(grid_nodes[0], path=path, representation=representation)
+        self._set_path(grid_nodes[0], path=path, repre_entity=repre_entity)
 
         # Update container representation
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     repre_entity["id"],
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
 
         from maya import cmds
 
-        # Get all members of the avalon container, ensure they are unlocked
+        # Get all members of the AYON container, ensure they are unlocked
         # and delete everything
         members = cmds.sets(container['objectName'], query=True)
         cmds.lockNode(members, lock=False)
@@ -123,14 +121,14 @@ class LoadVDBtoArnold(load.LoaderPlugin):
     @staticmethod
     def _set_path(grid_node,
                   path,
-                  representation):
+                  repre_entity):
         """Apply the settings for the VDB path to the aiVolume node"""
         from maya import cmds
 
         if not os.path.exists(path):
             raise RuntimeError("Path does not exist: %s" % path)
 
-        is_sequence = bool(representation["context"].get("frame"))
+        is_sequence = "frame" in repre_entity["context"]
         cmds.setAttr(grid_node + ".useFrameExtension", is_sequence)
 
         # Set file path

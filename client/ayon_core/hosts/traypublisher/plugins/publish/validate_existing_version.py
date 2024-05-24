@@ -16,6 +16,7 @@ class ValidateExistingVersion(
     order = ValidateContentsOrder
 
     hosts = ["traypublisher"]
+    targets = ["local"]
 
     actions = [RepairAction]
 
@@ -34,13 +35,13 @@ class ValidateExistingVersion(
         if last_version is None or last_version < version:
             return
 
-        subset_name = instance.data["subset"]
-        msg = "Version {} already exists for subset {}.".format(
-            version, subset_name)
+        product_name = instance.data["productName"]
+        msg = "Version {} already exists for product {}.".format(
+            version, product_name)
 
         formatting_data = {
-            "subset_name": subset_name,
-            "asset_name": instance.data["folderPath"],
+            "product_name": product_name,
+            "folder_path": instance.data["folderPath"],
             "version": version
         }
         raise PublishXmlValidationError(

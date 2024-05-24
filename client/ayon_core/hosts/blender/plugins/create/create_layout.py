@@ -10,16 +10,16 @@ class CreateLayout(plugin.BaseCreator):
 
     identifier = "io.openpype.creators.blender.layout"
     label = "Layout"
-    family = "layout"
+    product_type = "layout"
     icon = "cubes"
 
     create_as_asset_group = True
 
     def create(
-        self, subset_name: str, instance_data: dict, pre_create_data: dict
+        self, product_name: str, instance_data: dict, pre_create_data: dict
     ):
 
-        asset_group = super().create(subset_name,
+        asset_group = super().create(product_name,
                                      instance_data,
                                      pre_create_data)
 

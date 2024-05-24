@@ -2,6 +2,7 @@ import os
 
 import bpy
 
+from ayon_core.lib import BoolDef
 from ayon_core.pipeline import publish
 from ayon_core.hosts.blender.api import plugin
 
@@ -17,11 +18,13 @@ class ExtractABC(publish.Extractor, publish.OptionalPyblishPluginMixin):
         if not self.is_active(instance.data):
             return
 
+        attr_values = self.get_attr_values_from_data(instance.data)
+
         # Define extract output file path
         stagingdir = self.staging_dir(instance)
-        asset_name = instance.data["assetEntity"]["name"]
-        subset = instance.data["subset"]
-        instance_name = f"{asset_name}_{subset}"
+        folder_name = instance.data["folderEntity"]["name"]
+        product_name = instance.data["productName"]
+        instance_name = f"{folder_name}_{product_name}"
         filename = f"{instance_name}.abc"
         filepath = os.path.join(stagingdir, filename)
 
@@ -46,7 +49,8 @@ class ExtractABC(publish.Extractor, publish.OptionalPyblishPluginMixin):
             bpy.ops.wm.alembic_export(
                 filepath=filepath,
                 selected=True,
-                flatten=False
+                flatten=False,
+                subdiv_schema=attr_values.get("subdiv_schema", False)
             )
 
         plugin.deselect_all()
@@ -64,6 +68,21 @@ class ExtractABC(publish.Extractor, publish.OptionalPyblishPluginMixin):
 
         self.log.debug("Extracted instance '%s' to: %s",
                        instance.name, representation)
+
+    @classmethod
+    def get_attribute_defs(cls):
+        return [
+            BoolDef(
+                "subdiv_schema",
+                label="Alembic Mesh Subdiv Schema",
+                tooltip="Export Meshes using Alembic's subdivision schema.\n"
+                        "Enabling this includes creases with the export but "
+                        "excludes the mesh's normals.\n"
+                        "Enabling this usually result in smaller file size "
+                        "due to lack of normals.",
+                default=False
+            )
+        ]
 
 
 class ExtractModelABC(ExtractABC):

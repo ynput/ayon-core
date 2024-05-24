@@ -1,6 +1,8 @@
 import json
 import logging
 
+from ayon_api import get_representation_by_name
+
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
@@ -9,7 +11,6 @@ from ayon_core.pipeline import (
     loaders_from_representation,
     load_container
 )
-from ayon_core.client import get_representation_by_name
 from ayon_core.hosts.maya.api import lib
 
 
@@ -29,7 +30,7 @@ def get_look_relationships(version_id):
 
     project_name = get_current_project_name()
     json_representation = get_representation_by_name(
-        project_name, representation_name="json", version_id=version_id
+        project_name, "json", version_id
     )
 
     # Load relationships
@@ -57,12 +58,12 @@ def load_look(version_id):
     project_name = get_current_project_name()
     # Get representations of shader file and relationships
     look_representation = get_representation_by_name(
-        project_name, representation_name="ma", version_id=version_id
+        project_name, "ma", version_id
     )
 
     # See if representation is already loaded, if so reuse it.
     host = registered_host()
-    representation_id = str(look_representation['_id'])
+    representation_id = look_representation["id"]
     for container in host.ls():
         if (container['loader'] == "LookLoader" and
                 container['representation'] == representation_id):

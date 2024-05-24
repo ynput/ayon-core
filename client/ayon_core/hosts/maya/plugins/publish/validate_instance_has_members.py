@@ -26,7 +26,7 @@ class ValidateInstanceHasMembers(pyblish.api.InstancePlugin):
     def process(self, instance):
         # Allow renderlayer, rendersetup and workfile to be empty
         skip_families = {"workfile", "renderlayer", "rendersetup"}
-        if instance.data.get("family") in skip_families:
+        if instance.data.get("productType") in skip_families:
             return
 
         invalid = self.get_invalid(instance)

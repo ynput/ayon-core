@@ -16,7 +16,7 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class AnimationAlembicLoader(UnrealBaseLoader):
     """Load Unreal SkeletalMesh from Alembic"""
 
-    families = ["animation"]
+    product_types = {"animation"}
     label = "Import Alembic Animation"
     representations = ["abc"]
     icon = "cube"
@@ -58,7 +58,7 @@ class AnimationAlembicLoader(UnrealBaseLoader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -69,14 +69,16 @@ class AnimationAlembicLoader(UnrealBaseLoader):
 
         # Create directory for asset and ayon container
         root = AYON_ASSET_DIR
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
-        version = context.get('version')
+        folder_name = context["folder"]["name"]
+        folder_path = context["folder"]["path"]
+        product_type = context["product"]["productType"]
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        version = context["version"]["version"]
 
         asset_dir, container_name = send_request(
             "create_unique_asset_name", params={
                 "root": root,
-                "asset": asset,
+                "folder_name": folder_name,
                 "name": name,
                 "version": version})
 
@@ -91,14 +93,17 @@ class AnimationAlembicLoader(UnrealBaseLoader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": self.__class__.__name__,
-            "representation_id": str(context["representation"]["_id"]),
-            "version_id": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"]
+            "representation_id": str(context["representation"]["id"]),
+            "version_id": str(context["representation"]["versionId"]),
+            "product_type": product_type,
+            # TODO these should be probably removed
+            "asset": folder_path,
+            "family": product_type,
         }
 
         containerise(asset_dir, container_name, data)
@@ -109,11 +114,12 @@ class AnimationAlembicLoader(UnrealBaseLoader):
                 "recursive": True,
                 "include_folder": True})
 
-    def update(self, container, representation):
-        filename = get_representation_path(representation)
+    def update(self, container, context):
+        repre_entity = context["representation"]
+        filename = get_representation_path(repre_entity)
         asset_dir = container["namespace"]
         asset_name = container["asset_name"]
 
         self._import_abc_task(filename, asset_dir, asset_name, True)
 
-        super(UnrealBaseLoader, self).update(container, representation)
+        super(UnrealBaseLoader, self).update(container, context)

@@ -179,7 +179,7 @@ class ConvertorItemsGroupWidget(BaseGroupWidget):
         # Remove instance widgets that are not in passed instances
         self._remove_all_except(items_by_id.keys())
 
-        # Sort instances by subset name
+        # Sort instances by product name
         sorted_labels = list(sorted(items_by_label.keys()))
 
         # Add new instances to widget
@@ -226,24 +226,24 @@ class InstanceGroupWidget(BaseGroupWidget):
                 CreateContext.
         """
 
-        # Store instances by id and by subset name
+        # Store instances by id and by product name
         instances_by_id = {}
-        instances_by_subset_name = collections.defaultdict(list)
+        instances_by_product_name = collections.defaultdict(list)
         for instance in instances:
             instances_by_id[instance.id] = instance
-            subset_name = instance["subset"]
-            instances_by_subset_name[subset_name].append(instance)
+            product_name = instance["productName"]
+            instances_by_product_name[product_name].append(instance)
 
         # Remove instance widgets that are not in passed instances
         self._remove_all_except(instances_by_id.keys())
 
-        # Sort instances by subset name
-        sorted_subset_names = list(sorted(instances_by_subset_name.keys()))
+        # Sort instances by product name
+        sorted_product_names = list(sorted(instances_by_product_name.keys()))
 
         # Add new instances to widget
         widget_idx = 1
-        for subset_names in sorted_subset_names:
-            for instance in instances_by_subset_name[subset_names]:
+        for product_names in sorted_product_names:
+            for instance in instances_by_product_name[product_names]:
                 if instance.id in self._widgets_by_id:
                     widget = self._widgets_by_id[instance.id]
                     widget.update_instance(instance)
@@ -326,7 +326,7 @@ class ContextCardWidget(CardWidget):
         self._group_identifier = CONTEXT_GROUP
 
         icon_widget = PublishPixmapLabel(None, self)
-        icon_widget.setObjectName("FamilyIconLabel")
+        icon_widget.setObjectName("ProductTypeIconLabel")
 
         label_widget = QtWidgets.QLabel(CONTEXT_LABEL, self)
 
@@ -357,7 +357,7 @@ class ConvertorItemCardWidget(CardWidget):
         self._group_identifier = CONVERTOR_ITEM_GROUP
 
         icon_widget = IconValuePixmapLabel("fa.magic", self)
-        icon_widget.setObjectName("FamilyIconLabel")
+        icon_widget.setObjectName("ProductTypeIconLabel")
 
         label_widget = QtWidgets.QLabel(item.label, self)
 
@@ -391,12 +391,12 @@ class InstanceCardWidget(CardWidget):
 
         self.instance = instance
 
-        self._last_subset_name = None
+        self._last_product_name = None
         self._last_variant = None
         self._last_label = None
 
         icon_widget = IconValuePixmapLabel(group_icon, self)
-        icon_widget.setObjectName("FamilyIconLabel")
+        icon_widget.setObjectName("ProductTypeIconLabel")
         context_warning = ContextWarningLabel(self)
 
         icon_layout = QtWidgets.QHBoxLayout()
@@ -475,19 +475,19 @@ class InstanceCardWidget(CardWidget):
         self._icon_widget.setVisible(valid)
         self._context_warning.setVisible(not valid)
 
-    def _update_subset_name(self):
+    def _update_product_name(self):
         variant = self.instance["variant"]
-        subset_name = self.instance["subset"]
+        product_name = self.instance["productName"]
         label = self.instance.label
         if (
             variant == self._last_variant
-            and subset_name == self._last_subset_name
+            and product_name == self._last_product_name
             and label == self._last_label
         ):
             return
 
         self._last_variant = variant
-        self._last_subset_name = subset_name
+        self._last_product_name = product_name
         self._last_label = label
         # Make `variant` bold
         label = html_escape(self.instance.label)
@@ -506,7 +506,7 @@ class InstanceCardWidget(CardWidget):
 
     def update_instance_values(self):
         """Update instance data"""
-        self._update_subset_name()
+        self._update_product_name()
         self.set_active(self.instance["active"])
         self._validate_context()
 

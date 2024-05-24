@@ -32,6 +32,13 @@ class ValidateRigOutputIds(pyblish.api.InstancePlugin):
     actions = [RepairAction,
                ayon_core.hosts.maya.api.action.SelectInvalidAction]
 
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Disable plug-in if cbId workflow is disabled
+        if not project_settings["maya"].get("use_cbid_workflow", True):
+            cls.enabled = False
+            return
+
     def process(self, instance):
         invalid = self.get_invalid(instance, compute=True)
         if invalid:

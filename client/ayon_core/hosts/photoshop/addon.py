@@ -1,7 +1,7 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
-PHOTOSHOP_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
+PHOTOSHOP_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class PhotoshopAddon(AYONAddon, IHostAddon):
@@ -20,3 +20,17 @@ class PhotoshopAddon(AYONAddon, IHostAddon):
 
     def get_workfile_extensions(self):
         return [".psd", ".psb"]
+
+    def get_launch_hook_paths(self, app):
+        if app.host_name != self.host_name:
+            return []
+        return [
+            os.path.join(PHOTOSHOP_ADDON_ROOT, "hooks")
+        ]
+
+
+def get_launch_script_path():
+    return os.path.join(
+        PHOTOSHOP_ADDON_ROOT, "api", "launch_script.py"
+    )
+

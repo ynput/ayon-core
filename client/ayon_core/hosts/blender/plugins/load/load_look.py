@@ -23,8 +23,8 @@ class BlendLookLoader(plugin.AssetLoader):
     contains the model. There is no further need to 'containerise' it.
     """
 
-    families = ["look"]
-    representations = ["json"]
+    product_types = {"look"}
+    representations = {"json"}
 
     label = "Load Look"
     icon = "code-fork"
@@ -93,18 +93,18 @@ class BlendLookLoader(plugin.AssetLoader):
         """
 
         libpath = self.filepath_from_context(context)
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         lib_container = plugin.prepare_scene_name(
-            asset, subset
+            folder_name, product_name
         )
         unique_number = plugin.get_unique_number(
-            asset, subset
+            folder_name, product_name
         )
-        namespace = namespace or f"{asset}_{unique_number}"
+        namespace = namespace or f"{folder_name}_{unique_number}"
         container_name = plugin.prepare_scene_name(
-            asset, subset, unique_number
+            folder_name, product_name, unique_number
         )
 
         container = bpy.data.collections.new(lib_container)
@@ -130,23 +130,24 @@ class BlendLookLoader(plugin.AssetLoader):
         metadata["objects"] = objects
         metadata["materials"] = materials
 
-        metadata["parent"] = str(context["representation"]["parent"])
-        metadata["family"] = context["representation"]["context"]["family"]
+        metadata["parent"] = context["representation"]["versionId"]
+        metadata["product_type"] = context["product"]["productType"]
 
         nodes = list(container.objects)
         nodes.append(container)
         self[:] = nodes
         return nodes
 
-    def update(self, container: Dict, representation: Dict):
+    def update(self, container: Dict, context: Dict):
         collection = bpy.data.collections.get(container["objectName"])
-        libpath = Path(get_representation_path(representation))
+        repre_entity = context["representation"]
+        libpath = Path(get_representation_path(repre_entity))
         extension = libpath.suffix.lower()
 
         self.log.info(
             "Container: %s\nRepresentation: %s",
             pformat(container, indent=2),
-            pformat(representation, indent=2),
+            pformat(repre_entity, indent=2),
         )
 
         assert collection, (
@@ -201,7 +202,7 @@ class BlendLookLoader(plugin.AssetLoader):
         collection_metadata["objects"] = objects
         collection_metadata["materials"] = materials
         collection_metadata["libpath"] = str(libpath)
-        collection_metadata["representation"] = str(representation["_id"])
+        collection_metadata["representation"] = repre_entity["id"]
 
     def remove(self, container: Dict) -> bool:
         collection = bpy.data.collections.get(container["objectName"])

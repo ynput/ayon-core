@@ -10,12 +10,12 @@ class CreateShotClip(plugin.Creator):
     """Publishable clip"""
 
     label = "Create Publishable Clip"
-    family = "clip"
+    product_type = "clip"
     icon = "film"
     defaults = ["Main"]
 
     gui_tracks = get_video_track_names()
-    gui_name = "OpenPype publish attributes creator"
+    gui_name = "AYON publish attributes creator"
     gui_info = "Define sequential rename and fill hierarchy data."
     gui_inputs = {
         "renameHierarchy": {
@@ -133,19 +133,19 @@ class CreateShotClip(plugin.Creator):
             "target": "ui",
             "order": 3,
             "value": {
-                "subsetName": {
+                "productName": {
                     "value": ["<track_name>", "main", "bg", "fg", "bg",
                               "animatic"],
                     "type": "QComboBox",
-                    "label": "Subset Name",
+                    "label": "Product Name",
                     "target": "ui",
-                    "toolTip": "chose subset name pattern, if <track_name> is selected, name of track layer will be used",  # noqa
+                    "toolTip": "chose product name pattern, if <track_name> is selected, name of track layer will be used",  # noqa
                     "order": 0},
-                "subsetFamily": {
+                "productType": {
                     "value": ["plate", "take"],
                     "type": "QComboBox",
-                    "label": "Subset Family",
-                    "target": "ui", "toolTip": "What use of this subset is for",  # noqa
+                    "label": "Product type",
+                    "target": "ui", "toolTip": "What use of this product is for",  # noqa
                     "order": 1},
                 "reviewTrack": {
                     "value": ["< none >"] + gui_tracks,
@@ -159,14 +159,14 @@ class CreateShotClip(plugin.Creator):
                     "type": "QCheckBox",
                     "label": "Include audio",
                     "target": "tag",
-                    "toolTip": "Process subsets with corresponding audio",  # noqa
+                    "toolTip": "Process products with corresponding audio",  # noqa
                     "order": 3},
                 "sourceResolution": {
                     "value": False,
                     "type": "QCheckBox",
                     "label": "Source resolution",
                     "target": "tag",
-                    "toolTip": "Is resloution taken from timeline or source?",  # noqa
+                    "toolTip": "Is resolution taken from timeline or source?",  # noqa
                     "order": 4},
             }
         },
@@ -207,7 +207,7 @@ class CreateShotClip(plugin.Creator):
     presets = None
 
     def process(self):
-        # get key pares from presets and match it on ui inputs
+        # get key pairs from presets and match it on ui inputs
         for k, v in self.gui_inputs.items():
             if v["type"] in ("dict", "section"):
                 # nested dictionary (only one level allowed

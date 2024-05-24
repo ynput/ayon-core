@@ -1,9 +1,8 @@
 import pyblish.api
 
-from ayon_core.client import get_asset_name_identifier
 import ayon_core.hosts.flame.api as opfapi
 from ayon_core.hosts.flame.otio import flame_export
-from ayon_core.pipeline.create import get_subset_name
+from ayon_core.pipeline.create import get_product_name
 
 
 class CollecTimelineOTIO(pyblish.api.ContextPlugin):
@@ -14,38 +13,41 @@ class CollecTimelineOTIO(pyblish.api.ContextPlugin):
 
     def process(self, context):
         # plugin defined
-        family = "workfile"
+        product_type = "workfile"
         variant = "otioTimeline"
 
         # main
-        asset_doc = context.data["assetEntity"]
-        task_name = context.data["task"]
+        folder_entity = context.data["folderEntity"]
         project = opfapi.get_current_project()
         sequence = opfapi.get_current_sequence(opfapi.CTX.selection)
 
-        # create subset name
-        subset_name = get_subset_name(
-            family,
-            variant,
-            task_name,
-            asset_doc,
+        # create product name
+        task_entity = context.data["taskEntity"]
+        task_name = task_type = None
+        if task_entity:
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+        product_name = get_product_name(
             context.data["projectName"],
+            task_name,
+            task_type,
             context.data["hostName"],
+            product_type,
+            variant,
             project_settings=context.data["project_settings"]
         )
-
-        folder_path = get_asset_name_identifier(asset_doc)
 
         # adding otio timeline to context
         with opfapi.maintained_segment_selection(sequence) as selected_seg:
             otio_timeline = flame_export.create_otio_timeline(sequence)
 
             instance_data = {
-                "name": subset_name,
-                "folderPath": folder_path,
-                "subset": subset_name,
-                "family": "workfile",
-                "families": []
+                "name": product_name,
+                "folderPath": folder_entity["path"],
+                "productName": product_name,
+                "productType": product_type,
+                "family": product_type,
+                "families": [product_type]
             }
 
             # create instance with workfile

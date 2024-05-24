@@ -1,4 +1,5 @@
 import re
+
 import pyblish.api
 
 
@@ -12,13 +13,13 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
     effect_categories = []
 
     def process(self, instance):
-        family = "effect"
+        product_type = "effect"
         effects = {}
         review = instance.data.get("review")
         review_track_index = instance.context.data.get("reviewTrackIndex")
         item = instance.data["item"]
 
-        if "audio" in instance.data["family"]:
+        if "audio" in instance.data["productType"]:
             return
 
         # frame range
@@ -61,16 +62,16 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
         if not effects:
             return
 
-        subset = instance.data.get("subset")
-        effects.update({"assignTo": subset})
+        product_name = instance.data.get("productName")
+        effects.update({"assignTo": product_name})
 
-        subset_split = re.findall(r'[A-Z][^A-Z]*', subset)
+        product_name_split = re.findall(r'[A-Z][^A-Z]*', product_name)
 
-        if len(subset_split) > 0:
-            root_name = subset.replace(subset_split[0], "")
-            subset_split.insert(0, root_name.capitalize())
+        if len(product_name_split) > 0:
+            root_name = product_name.replace(product_name_split[0], "")
+            product_name_split.insert(0, root_name.capitalize())
 
-        subset_split.insert(0, "effect")
+        product_name_split.insert(0, "effect")
 
         effect_categories = {
             x["name"]: x["effect_classes"] for x in self.effect_categories
@@ -104,8 +105,8 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
             effects_categorized[category]["assignTo"] = effects["assignTo"]
 
         for category, effects in effects_categorized.items():
-            name = "".join(subset_split)
-            name += category.capitalize()
+            product_name = "".join(product_name_split)
+            product_name += category.capitalize()
 
             # create new instance and inherit data
             data = {}
@@ -114,15 +115,17 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
                     continue
                 data[key] = value
 
-            # change names
-            data["subset"] = name
-            data["family"] = family
-            data["families"] = [family]
-            data["name"] = data["subset"] + "_" + data["folderPath"]
-            data["label"] = "{} - {}".format(
-                data["folderPath"], data["subset"]
-            )
-            data["effects"] = effects
+            data.update({
+                "productName": product_name,
+                "productType": product_type,
+                "family": product_type,
+                "families": [product_type],
+                "name": product_name + "_" + data["folderPath"],
+                "label": "{} - {}".format(
+                    data["folderPath"], product_name
+                ),
+                "effects": effects,
+            })
 
             # create new instance
             _instance = instance.context.create_instance(**data)

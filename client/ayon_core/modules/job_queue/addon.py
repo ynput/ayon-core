@@ -42,7 +42,7 @@ import copy
 import platform
 
 from ayon_core.addon import AYONAddon, click_wrap
-from ayon_core.settings import get_system_settings
+from ayon_core.settings import get_studio_settings
 
 
 class JobQueueAddon(AYONAddon):
@@ -122,7 +122,7 @@ class JobQueueAddon(AYONAddon):
 
     @classmethod
     def get_jobs_root_from_settings(cls):
-        studio_settings = get_system_settings()
+        studio_settings = get_studio_settings()
         jobs_root_mapping = studio_settings.get(cls.name, {}).get("jobs_root")
         converted_mapping = cls._roots_mapping_conversion(jobs_root_mapping)
 
@@ -152,7 +152,7 @@ class JobQueueAddon(AYONAddon):
 
     @classmethod
     def get_server_url_from_settings(cls):
-        studio_settings = get_system_settings()
+        studio_settings = get_studio_settings()
         return cls.url_conversion(
             studio_settings
             .get(cls.name, {})
@@ -168,7 +168,7 @@ class JobQueueAddon(AYONAddon):
     @classmethod
     def start_worker(cls, app_name, server_url=None):
         import requests
-        from ayon_core.lib import ApplicationManager
+        from ayon_applications import ApplicationManager
 
         if not server_url:
             server_url = cls.get_server_url_from_settings()

@@ -1,6 +1,6 @@
 from maya import cmds
 
-from ayon_core.pipeline import InventoryAction, get_representation_context
+from ayon_core.pipeline import InventoryAction, get_repres_contexts
 from ayon_core.hosts.maya.api.lib import get_id
 
 
@@ -9,7 +9,7 @@ class ConnectGeometry(InventoryAction):
 
     Source container will connect to the target containers, by searching for
     matching geometry IDs (cbid).
-    Source containers are of family; "animation" and "pointcache".
+    Source containers are of product type: "animation" and "pointcache".
     The connection with be done with a live world space blendshape.
     """
 
@@ -27,19 +27,24 @@ class ConnectGeometry(InventoryAction):
             return
 
         # Categorize containers by family.
-        containers_by_family = {}
+        containers_by_product_type = {}
+        repre_ids = {
+            container["representation"]
+            for container in containers
+        }
+        repre_contexts_by_id = get_repres_contexts(repre_ids)
         for container in containers:
-            family = get_representation_context(
-                container["representation"]
-            )["subset"]["data"]["family"]
-            try:
-                containers_by_family[family].append(container)
-            except KeyError:
-                containers_by_family[family] = [container]
+            repre_id = container["representation"]
+            repre_context = repre_contexts_by_id[repre_id]
+
+            product_type = repre_context["product"]["productType"]
+
+            containers_by_product_type.setdefault(product_type, [])
+            containers_by_product_type[product_type].append(container)
 
         # Validate to only 1 source container.
-        source_containers = containers_by_family.get("animation", [])
-        source_containers += containers_by_family.get("pointcache", [])
+        source_containers = containers_by_product_type.get("animation", [])
+        source_containers += containers_by_product_type.get("pointcache", [])
         source_container_namespaces = [
             x["namespace"] for x in source_containers
         ]
@@ -57,8 +62,8 @@ class ConnectGeometry(InventoryAction):
 
         # Collect matching geometry transforms based cbId attribute.
         target_containers = []
-        for family, containers in containers_by_family.items():
-            if family in ["animation", "pointcache"]:
+        for product_type, containers in containers_by_product_type.items():
+            if product_type in ["animation", "pointcache"]:
                 continue
 
             target_containers.extend(containers)

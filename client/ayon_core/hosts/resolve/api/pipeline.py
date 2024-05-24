@@ -123,7 +123,7 @@ def containerise(timeline_item,
         "name": str(name),
         "namespace": str(namespace),
         "loader": str(loader),
-        "representation": str(context["representation"]["_id"]),
+        "representation": context["representation"]["id"],
     })
 
     if data:
@@ -296,8 +296,8 @@ def list_instances():
 
         if tag_data:
             asset = tag_data.get("asset")
-            subset = tag_data.get("subset")
-            tag_data["label"] = f"{ti_name} [{asset}-{subset}]"
+            product_name = tag_data.get("productName")
+            tag_data["label"] = f"{ti_name} [{asset}-{product_name}]"
             listed_instances.append(tag_data)
 
     return listed_instances

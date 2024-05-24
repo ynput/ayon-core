@@ -13,7 +13,7 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
 
     identifier = "io.openpype.creators.maya.ass"
     label = "Arnold Scene Source"
-    family = "ass"
+    product_type = "ass"
     icon = "cube"
     settings_name = "CreateAss"
 
@@ -87,12 +87,12 @@ class CreateArnoldSceneSource(plugin.MayaCreator):
 
         return defs
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         from maya import cmds
 
         instance = super(CreateArnoldSceneSource, self).create(
-            subset_name, instance_data, pre_create_data
+            product_name, instance_data, pre_create_data
         )
 
         instance_node = instance.get("instance_node")

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating pointcache bgeo files."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance, CreatorError
+from ayon_core.pipeline import CreatorError
 import hou
 from ayon_core.lib import EnumDef, BoolDef
 
@@ -10,10 +10,10 @@ class CreateBGEO(plugin.HoudiniCreator):
     """BGEO pointcache creator."""
     identifier = "io.openpype.creators.houdini.bgeo"
     label = "PointCache (Bgeo)"
-    family = "pointcache"
+    product_type = "pointcache"
     icon = "gears"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
 
         instance_data.pop("active", None)
 
@@ -23,16 +23,16 @@ class CreateBGEO(plugin.HoudiniCreator):
         creator_attributes["farm"] = pre_create_data["farm"]
 
         instance = super(CreateBGEO, self).create(
-            subset_name,
+            product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
         file_path = "{}{}".format(
             hou.text.expandString("$HIP/pyblish/"),
             "{}.$F4.{}".format(
-                subset_name,
+                product_name,
                 pre_create_data.get("bgeo_type") or "bgeo.sc")
         )
         parms = {

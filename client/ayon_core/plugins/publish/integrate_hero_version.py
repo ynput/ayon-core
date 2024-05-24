@@ -1,31 +1,57 @@
 import os
 import copy
-import clique
 import errno
 import shutil
 
+import clique
 import pyblish.api
-
-from ayon_core.client import (
-    get_version_by_id,
-    get_hero_version_by_subset_id,
-    get_archived_representations,
-    get_representations,
-)
-from ayon_core.client.operations import (
+import ayon_api
+from ayon_api.operations import (
     OperationsSession,
-    new_hero_version_doc,
-    prepare_hero_version_update_data,
-    prepare_representation_update_data,
+    new_version_entity,
 )
-from ayon_core.lib import create_hard_link
-from ayon_core.pipeline import (
-    schema
+from ayon_api.utils import create_entity_id
+
+from ayon_core.lib import create_hard_link, source_hash
+from ayon_core.pipeline.publish import (
+    get_publish_template_name,
+    OptionalPyblishPluginMixin,
 )
-from ayon_core.pipeline.publish import get_publish_template_name
 
 
-class IntegrateHeroVersion(pyblish.api.InstancePlugin):
+def prepare_changes(old_entity, new_entity):
+    """Prepare changes for entity update.
+
+    Args:
+        old_entity: Existing entity.
+        new_entity: New entity.
+
+    Returns:
+        dict[str, Any]: Changes that have new entity.
+
+    """
+    changes = {}
+    for key in set(new_entity.keys()):
+        if key == "attrib":
+            continue
+
+        if key in new_entity and new_entity[key] != old_entity.get(key):
+            changes[key] = new_entity[key]
+            continue
+
+    attrib_changes = {}
+    if "attrib" in new_entity:
+        for key, value in new_entity["attrib"].items():
+            if value != old_entity["attrib"].get(key):
+                attrib_changes[key] = value
+    if attrib_changes:
+        changes["attrib"] = attrib_changes
+    return changes
+
+
+class IntegrateHeroVersion(
+    OptionalPyblishPluginMixin, pyblish.api.InstancePlugin
+):
     label = "Integrate Hero Version"
     # Must happen after IntegrateNew
     order = pyblish.api.IntegratorOrder + 0.1
@@ -46,19 +72,30 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
     # Can specify representation names that will be ignored (lower case)
     ignored_representation_names = []
     db_representation_context_keys = [
-        "project", "asset", "task", "subset", "representation",
-        "family", "hierarchy", "task", "username", "user"
+        "project",
+        "folder",
+        "asset",
+        "hierarchy",
+        "task",
+        "product",
+        "subset",
+        "family",
+        "representation",
+        "username",
+        "user",
+        "output"
     ]
     # QUESTION/TODO this process should happen on server if crashed due to
     # permissions error on files (files were used or user didn't have perms)
     # *but all other plugins must be sucessfully completed
 
-    _default_template_name = "hero"
-
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         self.log.debug(
-            "--- Integration of Hero version for subset `{}` begins.".format(
-                instance.data.get("subset", str(instance))
+            "--- Integration of Hero version for product `{}` begins.".format(
+                instance.data["productName"]
             )
         )
         published_repres = instance.data.get("published_representations")
@@ -72,22 +109,17 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         project_name = anatomy.project_name
 
         template_key = self._get_template_key(project_name, instance)
+        hero_template = anatomy.get_template_item(
+            "hero", template_key, "path", default=None
+        )
 
-        if template_key not in anatomy.templates:
+        if hero_template is None:
             self.log.warning((
                 "!!! Anatomy of project \"{}\" does not have set"
                 " \"{}\" template key!"
             ).format(project_name, template_key))
             return
 
-        if "path" not in anatomy.templates[template_key]:
-            self.log.warning((
-                "!!! There is not set \"path\" template in \"{}\" anatomy"
-                " for project \"{}\"."
-            ).format(template_key, project_name))
-            return
-
-        hero_template = anatomy.templates[template_key]["path"]
         self.log.debug("`hero` template check was successful. `{}`".format(
             hero_template
         ))
@@ -140,7 +172,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
             ))
             return
 
-        if src_version_entity["name"] == 0:
+        if src_version_entity["version"] == 0:
             self.log.debug(
                 "Version 0 cannot have hero version. Skipping."
             )
@@ -190,39 +222,45 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         old_version, old_repres = self.current_hero_ents(
             project_name, src_version_entity
         )
-
-        old_repres_by_name = {
-            repre["name"].lower(): repre for repre in old_repres
-        }
+        inactive_old_repres_by_name = {}
+        old_repres_by_name = {}
+        for repre in old_repres:
+            low_name = repre["name"].lower()
+            if repre["active"]:
+                old_repres_by_name[low_name] = repre
+            else:
+                inactive_old_repres_by_name[low_name] = repre
 
         op_session = OperationsSession()
 
         entity_id = None
         if old_version:
-            entity_id = old_version["_id"]
+            entity_id = old_version["id"]
 
-        new_hero_version = new_hero_version_doc(
-            src_version_entity["parent"],
-            copy.deepcopy(src_version_entity["data"]),
-            src_version_entity["name"],
-            entity_id=entity_id
+        new_hero_version = new_version_entity(
+            - src_version_entity["version"],
+            src_version_entity["productId"],
+            task_id=src_version_entity.get("taskId"),
+            data=copy.deepcopy(src_version_entity["data"]),
+            attribs=copy.deepcopy(src_version_entity["attrib"]),
+            entity_id=entity_id,
         )
 
         if old_version:
             self.log.debug("Replacing old hero version.")
-            update_data = prepare_hero_version_update_data(
+            update_data = prepare_changes(
                 old_version, new_hero_version
             )
             op_session.update_entity(
                 project_name,
-                new_hero_version["type"],
-                old_version["_id"],
+                "version",
+                old_version["id"],
                 update_data
             )
         else:
             self.log.debug("Creating first hero version.")
             op_session.create_entity(
-                project_name, new_hero_version["type"], new_hero_version
+                project_name, "version", new_hero_version
             )
 
         # Separate old representations into `to replace` and `to delete`
@@ -238,16 +276,6 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
 
         if old_repres_by_name:
             old_repres_to_delete = old_repres_by_name
-
-        archived_repres = list(get_archived_representations(
-            project_name,
-            # Check what is type of archived representation
-            version_ids=[new_hero_version["_id"]]
-        ))
-        archived_repres_by_name = {}
-        for repre in archived_repres:
-            repre_name_low = repre["name"].lower()
-            archived_repres_by_name[repre_name_low] = repre
 
         backup_hero_publish_dir = None
         if os.path.exists(hero_publish_dir):
@@ -296,9 +324,13 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                     "Could not create hero version because it is not"
                     " possible to replace current hero files."
                 ))
+
         try:
             src_to_dst_file_paths = []
-            path_template_obj = anatomy.templates_obj[template_key]["path"]
+            repre_integrate_data = []
+            path_template_obj = anatomy.get_template_item(
+                "hero", template_key, "path"
+            )
             for repre_info in published_repres.values():
 
                 # Skip if new repre does not have published repre files
@@ -311,11 +343,9 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 anatomy_data.pop("version", None)
 
                 # Get filled path to repre context
-                template_filled = path_template_obj.format_strict(anatomy_data)
-                repre_data = {
-                    "path": str(template_filled),
-                    "template": hero_template
-                }
+                template_filled = path_template_obj.format_strict(
+                    anatomy_data
+                )
                 repre_context = template_filled.used_values
                 for key in self.db_representation_context_keys:
                     value = anatomy_data.get(key)
@@ -323,14 +353,19 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                         repre_context[key] = value
 
                 # Prepare new repre
-                repre = copy.deepcopy(repre_info["representation"])
-                repre["parent"] = new_hero_version["_id"]
-                repre["context"] = repre_context
-                repre["data"] = repre_data
-                repre.pop("_id", None)
+                repre_entity = copy.deepcopy(repre_info["representation"])
+                repre_entity.pop("id", None)
+                repre_entity["versionId"] = new_hero_version["id"]
+                repre_entity["context"] = repre_context
+                repre_entity["attrib"] = {
+                    "path": str(template_filled),
+                    "template": hero_template.template
+                }
 
+                dst_paths = []
                 # Prepare paths of source and destination files
                 if len(published_files) == 1:
+                    dst_paths.append(str(template_filled))
                     src_to_dst_file_paths.append(
                         (published_files[0], template_filled)
                     )
@@ -353,9 +388,7 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                         anatomy_data
                     )
                     head, tail = _template_filled.split(frame_splitter)
-                    padding = int(
-                        anatomy.templates[template_key]["frame_padding"]
-                    )
+                    padding = anatomy.templates_obj.frame_padding
 
                     dst_col = clique.Collection(
                         head=head, padding=padding, tail=tail
@@ -366,84 +399,11 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                         src_to_dst_file_paths.append(
                             (src_file, dst_file)
                         )
+                        dst_paths.append(dst_file)
 
-                # replace original file name with hero name in repre doc
-                for index in range(len(repre.get("files"))):
-                    file = repre.get("files")[index]
-                    file_name = os.path.basename(file.get('path'))
-                    for src_file, dst_file in src_to_dst_file_paths:
-                        src_file_name = os.path.basename(src_file)
-                        if src_file_name == file_name:
-                            repre["files"][index]["path"] = self._update_path(
-                                anatomy, repre["files"][index]["path"],
-                                src_file, dst_file)
-
-                            repre["files"][index]["hash"] = self._update_hash(
-                                repre["files"][index]["hash"],
-                                src_file_name, dst_file
-                            )
-
-                schema.validate(repre)
-
-                repre_name_low = repre["name"].lower()
-                # Replace current representation
-                if repre_name_low in old_repres_to_replace:
-                    old_repre = old_repres_to_replace.pop(repre_name_low)
-
-                    repre["_id"] = old_repre["_id"]
-                    update_data = prepare_representation_update_data(
-                        old_repre, repre)
-
-                    # Keep previously synchronized sites up-to-date
-                    #   by comparing old and new sites and adding old sites
-                    #   if missing in new ones
-                    # Prepare all sites from all files in old representation
-                    old_site_names = set()
-                    for file_info in old_repre.get("files", []):
-                        old_site_names |= {
-                            site["name"]
-                            for site in file_info["sites"]
-                        }
-
-                    for file_info in update_data.get("files", []):
-                        file_info.setdefault("sites", [])
-                        file_info_site_names = {
-                            site["name"]
-                            for site in file_info["sites"]
-                        }
-                        for site_name in old_site_names:
-                            if site_name not in file_info_site_names:
-                                file_info["sites"].append({
-                                    "name": site_name
-                                })
-
-                    op_session.update_entity(
-                        project_name,
-                        old_repre["type"],
-                        old_repre["_id"],
-                        update_data
-                    )
-
-                # Unarchive representation
-                elif repre_name_low in archived_repres_by_name:
-                    archived_repre = archived_repres_by_name.pop(
-                        repre_name_low
-                    )
-                    repre["_id"] = archived_repre["old_id"]
-                    update_data = prepare_representation_update_data(
-                        archived_repre, repre)
-                    op_session.update_entity(
-                        project_name,
-                        old_repre["type"],
-                        archived_repre["_id"],
-                        update_data
-                    )
-
-                # Create representation
-                else:
-                    repre.pop("_id", None)
-                    op_session.create_entity(project_name, "representation",
-                                             repre)
+                repre_integrate_data.append(
+                    (repre_entity, dst_paths)
+                )
 
             self.path_checks = []
 
@@ -456,28 +416,61 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
             for src_path, dst_path in other_file_paths_mapping:
                 self.copy_file(src_path, dst_path)
 
-            # Archive not replaced old representations
-            for repre_name_low, repre in old_repres_to_delete.items():
-                # Replace archived representation (This is backup)
-                # - should not happen to have both repre and archived repre
-                if repre_name_low in archived_repres_by_name:
-                    archived_repre = archived_repres_by_name.pop(
-                        repre_name_low
+            # Update prepared representation etity data with files
+            #   and integrate it to server.
+            # NOTE: This must happen with existing files on disk because of
+            #   file hash.
+            for repre_entity, dst_paths in repre_integrate_data:
+                repre_files = self.get_files_info(dst_paths, anatomy)
+                repre_entity["files"] = repre_files
+
+                repre_name_low = repre_entity["name"].lower()
+                # Replace current representation
+                if repre_name_low in old_repres_to_replace:
+                    old_repre = old_repres_to_replace.pop(repre_name_low)
+
+                    repre_entity["id"] = old_repre["id"]
+                    update_data = prepare_changes(old_repre, repre_entity)
+
+                    op_session.update_entity(
+                        project_name,
+                        "representation",
+                        old_repre["id"],
+                        update_data
                     )
 
-                    changes = {"old_id": repre["_id"],
-                               "_id": archived_repre["_id"],
-                               "type": archived_repre["type"]}
-                    op_session.update_entity(project_name,
-                                             archived_repre["type"],
-                                             archived_repre["_id"],
-                                             changes)
+                # Activate representation
+                elif repre_name_low in inactive_old_repres_by_name:
+                    inactive_repre = inactive_old_repres_by_name.pop(
+                        repre_name_low
+                    )
+                    repre_entity["id"] = inactive_repre["id"]
+                    update_data = prepare_changes(
+                        inactive_repre, repre_entity
+                    )
+                    op_session.update_entity(
+                        project_name,
+                        "representation",
+                        inactive_repre["id"],
+                        update_data
+                    )
+
+                # Create representation
                 else:
-                    repre["old_id"] = repre.pop("_id")
-                    repre["type"] = "archived_representation"
-                    op_session.create_entity(project_name,
-                                             "archived_representation",
-                                             repre)
+                    op_session.create_entity(
+                        project_name,
+                        "representation",
+                        repre_entity
+                    )
+
+            # Deactivate not replaced representations
+            for repre in old_repres_to_delete.values():
+                op_session.update_entity(
+                    project_name,
+                    "representation",
+                    repre["id"],
+                    {"active": False}
+                )
 
             op_session.commit()
 
@@ -503,19 +496,48 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
             raise
 
         self.log.debug((
-            "--- hero version integration for subset `{}`"
+            "--- hero version integration for product `{}`"
             " seems to be successful."
         ).format(
-            instance.data.get("subset", str(instance))
+            instance.data["productName"]
         ))
 
-    def get_all_files_from_path(self, path):
-        files = []
-        for (dir_path, dir_names, file_names) in os.walk(path):
-            for file_name in file_names:
-                _path = os.path.join(dir_path, file_name)
-                files.append(_path)
-        return files
+    def get_files_info(self, filepaths, anatomy):
+        """Prepare 'files' info portion for representations.
+
+        Arguments:
+            filepaths (Iterable[str]): List of transferred file paths.
+            anatomy (Anatomy): Project anatomy.
+
+        Returns:
+            list[dict[str, Any]]: Representation 'files' information.
+
+        """
+        file_infos = []
+        for filepath in filepaths:
+            file_info = self.prepare_file_info(filepath, anatomy)
+            file_infos.append(file_info)
+        return file_infos
+
+    def prepare_file_info(self, path, anatomy):
+        """ Prepare information for one file (asset or resource)
+
+        Arguments:
+            path (str): Destination url of published file.
+            anatomy (Anatomy): Project anatomy part from instance.
+
+        Returns:
+            dict[str, Any]: Representation file info dictionary.
+
+        """
+        return {
+            "id": create_entity_id(),
+            "name": os.path.basename(path),
+            "path": self.get_rootless_path(anatomy, path),
+            "size": os.path.getsize(path),
+            "hash": source_hash(path),
+            "hash_type": "op3",
+        }
 
     def get_publish_dir(self, instance, template_key):
         anatomy = instance.context.data["anatomy"]
@@ -526,29 +548,12 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
                 "originalBasename": instance.data.get("originalBasename")
             })
 
-        if "folder" in anatomy.templates[template_key]:
-            template_obj = anatomy.templates_obj[template_key]["folder"]
-            publish_folder = template_obj.format_strict(template_data)
-        else:
-            # This is for cases of Deprecated anatomy without `folder`
-            # TODO remove when all clients have solved this issue
-            self.log.warning((
-                "Deprecation warning: Anatomy does not have set `folder`"
-                " key underneath `publish` (in global of for project `{}`)."
-            ).format(anatomy.project_name))
-            # solve deprecated situation when `folder` key is not underneath
-            # `publish` anatomy
-            template_data.update({
-                "frame": "FRAME_TEMP",
-                "representation": "TEMP"
-            })
-            template_obj = anatomy.templates_obj[template_key]["path"]
-            file_path = template_obj.format_strict(template_data)
-
-            # Directory
-            publish_folder = os.path.dirname(file_path)
-
-        publish_folder = os.path.normpath(publish_folder)
+        template_obj = anatomy.get_template_item(
+            "hero", template_key, "directory"
+        )
+        publish_folder = os.path.normpath(
+            template_obj.format_strict(template_data)
+        )
 
         self.log.debug("hero publish dir: \"{}\"".format(publish_folder))
 
@@ -558,14 +563,12 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
         anatomy_data = instance.data["anatomyData"]
         task_info = anatomy_data.get("task") or {}
         host_name = instance.context.data["hostName"]
-
-        # TODO raise error if Hero not set?
-        family = self.main_family_from_instance(instance)
+        product_type = instance.data["productType"]
 
         return get_publish_template_name(
             project_name,
             host_name,
-            family,
+            product_type,
             task_info.get("name"),
             task_info.get("type"),
             project_settings=instance.context.data["project_settings"],
@@ -573,12 +576,32 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
             logger=self.log
         )
 
-    def main_family_from_instance(self, instance):
-        """Returns main family of entered instance."""
-        family = instance.data.get("family")
-        if not family:
-            family = instance.data["families"][0]
-        return family
+    def get_rootless_path(self, anatomy, path):
+        """Returns, if possible, path without absolute portion from root
+            (eg. 'c:\' or '/opt/..')
+
+         This information is platform dependent and shouldn't be captured.
+         Example:
+             'c:/projects/MyProject1/Assets/publish...' >
+             '{root}/MyProject1/Assets...'
+
+        Args:
+            anatomy (Anatomy): Project anatomy.
+            path (str): Absolute path.
+
+        Returns:
+            str: Path where root path is replaced by formatting string.
+
+        """
+        success, rootless_path = anatomy.find_root_template_from_path(path)
+        if success:
+            path = rootless_path
+        else:
+            self.log.warning((
+                "Could not find root path for remapping \"{}\"."
+                " This may cause issues on farm."
+            ).format(path))
+        return path
 
     def copy_file(self, src_path, dst_path):
         # TODO check drives if are the same to check if cas hardlink
@@ -616,47 +639,24 @@ class IntegrateHeroVersion(pyblish.api.InstancePlugin):
 
     def version_from_representations(self, project_name, repres):
         for repre in repres:
-            version = get_version_by_id(project_name, repre["parent"])
+            version = ayon_api.get_version_by_id(
+                project_name, repre["versionId"]
+            )
             if version:
                 return version
 
     def current_hero_ents(self, project_name, version):
-        hero_version = get_hero_version_by_subset_id(
-            project_name, version["parent"]
+        hero_version = ayon_api.get_hero_version_by_product_id(
+            project_name, version["productId"]
         )
 
         if not hero_version:
             return (None, [])
 
-        hero_repres = list(get_representations(
-            project_name, version_ids=[hero_version["_id"]]
+        hero_repres = list(ayon_api.get_representations(
+            project_name, version_ids={hero_version["id"]}
         ))
         return (hero_version, hero_repres)
-
-    def _update_path(self, anatomy, path, src_file, dst_file):
-        """
-            Replaces source path with new hero path
-
-            'path' contains original path with version, must be replaced with
-            'hero' path (with 'hero' label and without version)
-
-            Args:
-                anatomy (Anatomy) - to get rootless style of path
-                path (string) - path from DB
-                src_file (string) - original file path
-                dst_file (string) - hero file path
-        """
-        _, rootless = anatomy.find_root_template_from_path(dst_file)
-        _, rtls_src = anatomy.find_root_template_from_path(src_file)
-        return path.replace(rtls_src, rootless)
-
-    def _update_hash(self, hash, src_file_name, dst_file):
-        """
-            Updates hash value with proper hero name
-        """
-        src_file_name = self._get_name_without_ext(src_file_name)
-        hero_file_name = self._get_name_without_ext(dst_file)
-        return hash.replace(src_file_name, hero_file_name)
 
     def _get_name_without_ext(self, value):
         file_name = os.path.basename(value)

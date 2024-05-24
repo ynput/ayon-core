@@ -25,8 +25,9 @@ from ayon_core.hosts.tvpaint.lib import (
 )
 
 
-class ExtractSequence(pyblish.api.Extractor):
+class ExtractSequence(pyblish.api.InstancePlugin):
     label = "Extract Sequence"
+    order = pyblish.api.ExtractorOrder
     hosts = ["tvpaint"]
     families = ["review", "render"]
 
@@ -111,7 +112,7 @@ class ExtractSequence(pyblish.api.Extractor):
             "Files will be rendered to folder: {}".format(output_dir)
         )
 
-        if instance.data["family"] == "review":
+        if instance.data["productType"] == "review":
             result = self.render_review(
                 output_dir, mark_in, mark_out, scene_bg_color
             )

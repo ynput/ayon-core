@@ -1,5 +1,3 @@
-import os
-
 import maya.cmds as cmds
 
 from ayon_core.hosts.maya.api.pipeline import containerise
@@ -9,14 +7,14 @@ from ayon_core.pipeline import (
     get_representation_path
 )
 from ayon_core.settings import get_project_settings
-from ayon_core.hosts.maya.api.plugin import get_load_color_for_family
+from ayon_core.hosts.maya.api.plugin import get_load_color_for_product_type
 
 
 class GpuCacheLoader(load.LoaderPlugin):
     """Load Alembic as gpuCache"""
 
-    families = ["model", "animation", "proxyAbc", "pointcache"]
-    representations = ["abc", "gpu_cache"]
+    product_types = {"model", "animation", "proxyAbc", "pointcache"}
+    representations = {"abc", "gpu_cache"}
 
     label = "Load Gpu Cache"
     order = -5
@@ -24,11 +22,10 @@ class GpuCacheLoader(load.LoaderPlugin):
     color = "orange"
 
     def load(self, context, name, namespace, data):
-
-        asset = context['asset']['name']
+        folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
-            asset + "_",
-            prefix="_" if asset[0].isdigit() else "",
+            folder_name + "_",
+            prefix="_" if folder_name[0].isdigit() else "",
             suffix="_",
         )
 
@@ -40,7 +37,7 @@ class GpuCacheLoader(load.LoaderPlugin):
 
         project_name = context["project"]["name"]
         settings = get_project_settings(project_name)
-        color = get_load_color_for_family("model", settings)
+        color = get_load_color_for_product_type("model", settings)
         if color is not None:
             red, green, blue = color
             cmds.setAttr(root + ".useOutlinerColor", 1)
@@ -74,8 +71,9 @@ class GpuCacheLoader(load.LoaderPlugin):
             context=context,
             loader=self.__class__.__name__)
 
-    def update(self, container, representation):
-        path = get_representation_path(representation)
+    def update(self, container, context):
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
 
         # Update the cache
         members = cmds.sets(container['objectName'], query=True)
@@ -87,11 +85,11 @@ class GpuCacheLoader(load.LoaderPlugin):
             cmds.setAttr(cache + ".cacheFileName", path, type="string")
 
         cmds.setAttr(container["objectName"] + ".representation",
-                     str(representation["_id"]),
+                     repre_entity["id"],
                      type="string")
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         members = cmds.sets(container['objectName'], query=True)

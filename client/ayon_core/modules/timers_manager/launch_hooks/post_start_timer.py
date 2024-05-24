@@ -1,4 +1,4 @@
-from ayon_core.lib.applications import PostLaunchHook, LaunchTypes
+from ayon_applications import PostLaunchHook, LaunchTypes
 
 
 class PostStartTimerHook(PostLaunchHook):
@@ -11,14 +11,14 @@ class PostStartTimerHook(PostLaunchHook):
 
     def execute(self):
         project_name = self.data.get("project_name")
-        asset_name = self.data.get("asset_name")
+        folder_path = self.data.get("folder_path")
         task_name = self.data.get("task_name")
 
         missing_context_keys = set()
         if not project_name:
             missing_context_keys.add("project_name")
-        if not asset_name:
-            missing_context_keys.add("asset_name")
+        if not folder_path:
+            missing_context_keys.add("folder_path")
         if not task_name:
             missing_context_keys.add("task_name")
 
@@ -40,5 +40,5 @@ class PostStartTimerHook(PostLaunchHook):
             return
 
         timers_manager.start_timer_with_webserver(
-            project_name, asset_name, task_name, logger=self.log
+            project_name, folder_path, task_name, logger=self.log
         )

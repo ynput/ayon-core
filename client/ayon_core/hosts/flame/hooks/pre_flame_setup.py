@@ -9,7 +9,7 @@ from ayon_core.lib import (
     get_ayon_username,
     run_subprocess,
 )
-from ayon_core.lib.applications import PreLaunchHook, LaunchTypes
+from ayon_applications import PreLaunchHook, LaunchTypes
 from ayon_core.hosts import flame as opflame
 
 
@@ -36,8 +36,8 @@ class FlamePrelaunch(PreLaunchHook):
         self.flame_pythonpath = _env["AYON_FLAME_PYTHONPATH"]
 
         """Hook entry method."""
-        project_doc = self.data["project_doc"]
-        project_name = project_doc["name"]
+        project_entity = self.data["project_entity"]
+        project_name = project_entity["name"]
         volume_name = _env.get("FLAME_WIRETAP_VOLUME")
 
         # get image io
@@ -63,20 +63,22 @@ class FlamePrelaunch(PreLaunchHook):
         hostname = socket.gethostname()  # not returning wiretap host name
 
         self.log.debug("Collected user \"{}\"".format(user_name))
-        self.log.info(pformat(project_doc))
-        _db_p_data = project_doc["data"]
-        width = _db_p_data["resolutionWidth"]
-        height = _db_p_data["resolutionHeight"]
-        fps = float(_db_p_data["fps"])
+        self.log.info(pformat(project_entity))
+        project_attribs = project_entity["attrib"]
+        width = project_attribs["resolutionWidth"]
+        height = project_attribs["resolutionHeight"]
+        fps = float(project_attribs["fps"])
 
         project_data = {
-            "Name": project_doc["name"],
-            "Nickname": _db_p_data["code"],
-            "Description": "Created by OpenPype",
-            "SetupDir": project_doc["name"],
+            "Name": project_entity["name"],
+            "Nickname": project_entity["code"],
+            "Description": "Created by AYON",
+            "SetupDir": project_entity["name"],
             "FrameWidth": int(width),
             "FrameHeight": int(height),
-            "AspectRatio": float((width / height) * _db_p_data["pixelAspect"]),
+            "AspectRatio": float(
+                (width / height) * project_attribs["pixelAspect"]
+            ),
             "FrameRate": self._get_flame_fps(fps)
         }
 

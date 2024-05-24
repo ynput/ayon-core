@@ -31,6 +31,13 @@ class ValidateNodeIDs(pyblish.api.InstancePlugin):
     actions = [ayon_core.hosts.maya.api.action.SelectInvalidAction,
                ayon_core.hosts.maya.api.action.GenerateUUIDsOnInvalidAction]
 
+    @classmethod
+    def apply_settings(cls, project_settings):
+        # Disable plug-in if cbId workflow is disabled
+        if not project_settings["maya"].get("use_cbid_workflow", True):
+            cls.enabled = False
+            return
+
     def process(self, instance):
         """Process all meshes"""
 
@@ -53,7 +60,8 @@ class ValidateNodeIDs(pyblish.api.InstancePlugin):
         # We do want to check the referenced nodes as it might be
         # part of the end product.
         id_nodes = lib.get_id_required_nodes(referenced_nodes=True,
-                                             nodes=instance[:])
-        invalid = [n for n in id_nodes if not lib.get_id(n)]
-
-        return invalid
+                                             nodes=instance[:],
+                                             # Exclude those with already
+                                             # existing ids
+                                             existing_ids=False)
+        return id_nodes

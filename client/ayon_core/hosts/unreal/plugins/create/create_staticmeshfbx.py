@@ -9,5 +9,5 @@ class CreateStaticMeshFBX(UnrealAssetCreator):
 
     identifier = "io.ayon.creators.unreal.staticmeshfbx"
     label = "Static Mesh (FBX)"
-    family = "unrealStaticMesh"
+    product_type = "unrealStaticMesh"
     icon = "cube"

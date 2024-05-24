@@ -6,8 +6,8 @@ import math
 import unreal
 from unreal import EditorLevelLibrary as ell
 from unreal import EditorAssetLibrary as eal
+import ayon_api
 
-from ayon_core.client import get_representation_by_name
 from ayon_core.pipeline import publish
 
 
@@ -60,14 +60,15 @@ class ExtractLayout(publish.Extractor):
                 family = eal.get_metadata_tag(asset_container, "family")
 
                 self.log.info("Parent: {}".format(parent_id))
-                blend = get_representation_by_name(
-                    project_name, "blend", parent_id, fields=["_id"]
+                blend = ayon_api.get_representation_by_name(
+                    project_name, "blend", parent_id, fields={"id"}
                 )
-                blend_id = blend["_id"]
+                blend_id = blend["id"]
 
                 json_element = {}
                 json_element["reference"] = str(blend_id)
                 json_element["family"] = family
+                json_element["product_type"] = family
                 json_element["instance_name"] = actor.get_name()
                 json_element["asset_name"] = mesh.get_name()
                 import_data = mesh.get_editor_property("asset_import_data")

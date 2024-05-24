@@ -1,4 +1,5 @@
 import os
+import re
 
 from ayon_core.pipeline import (
     load,
@@ -44,9 +45,16 @@ def get_image_avalon_container():
 class ImageLoader(load.LoaderPlugin):
     """Load images into COP2"""
 
-    families = ["imagesequence"]
+    product_types = {
+        "imagesequence",
+        "review",
+        "render",
+        "plate",
+        "image",
+        "online",
+    }
     label = "Load Image (COP2)"
-    representations = ["*"]
+    representations = {"*"}
     order = -10
 
     icon = "code-fork"
@@ -55,22 +63,23 @@ class ImageLoader(load.LoaderPlugin):
     def load(self, context, name=None, namespace=None, data=None):
 
         # Format file name, Houdini only wants forward slashes
-        file_path = self.filepath_from_context(context)
-        file_path = os.path.normpath(file_path)
-        file_path = file_path.replace("\\", "/")
-        file_path = self._get_file_sequence(file_path)
+        path = self.filepath_from_context(context)
+        path = self.format_path(path, representation=context["representation"])
 
         # Get the root node
         parent = get_image_avalon_container()
 
         # Define node name
-        namespace = namespace if namespace else context["asset"]["name"]
+        namespace = namespace if namespace else context["folder"]["name"]
         node_name = "{}_{}".format(namespace, name) if namespace else name
 
         node = parent.createNode("file", node_name=node_name)
         node.moveToGoodPosition()
 
-        node.setParms({"filename1": file_path})
+        parms = {"filename1": path}
+        parms.update(self.get_colorspace_parms(context["representation"]))
+
+        node.setParms(parms)
 
         # Imprint it manually
         data = {
@@ -79,7 +88,7 @@ class ImageLoader(load.LoaderPlugin):
             "name": node_name,
             "namespace": namespace,
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
         }
 
         # todo: add folder="Avalon"
@@ -87,22 +96,23 @@ class ImageLoader(load.LoaderPlugin):
 
         return node
 
-    def update(self, container, representation):
-
+    def update(self, container, context):
+        repre_entity = context["representation"]
         node = container["node"]
 
         # Update the file path
-        file_path = get_representation_path(representation)
-        file_path = file_path.replace("\\", "/")
-        file_path = self._get_file_sequence(file_path)
+        file_path = get_representation_path(repre_entity)
+        file_path = self.format_path(file_path, repre_entity)
+
+        parms = {
+            "filename1": file_path,
+            "representation": repre_entity["id"],
+        }
+
+        parms.update(self.get_colorspace_parms(repre_entity))
 
         # Update attributes
-        node.setParms(
-            {
-                "filename1": file_path,
-                "representation": str(representation["_id"]),
-            }
-        )
+        node.setParms(parms)
 
     def remove(self, container):
 
@@ -119,14 +129,58 @@ class ImageLoader(load.LoaderPlugin):
         if not parent.children():
             parent.destroy()
 
-    def _get_file_sequence(self, file_path):
-        root = os.path.dirname(file_path)
-        files = sorted(os.listdir(root))
+    @staticmethod
+    def format_path(path, representation):
+        """Format file path correctly for single image or sequence."""
+        if not os.path.exists(path):
+            raise RuntimeError("Path does not exist: %s" % path)
 
-        first_fname = files[0]
-        prefix, padding, suffix = first_fname.rsplit(".", 2)
-        fname = ".".join([prefix, "$F{}".format(len(padding)), suffix])
-        return os.path.join(root, fname).replace("\\", "/")
+        ext = os.path.splitext(path)[-1]
+
+        is_sequence = bool(representation["context"].get("frame"))
+        # The path is either a single file or sequence in a folder.
+        if not is_sequence:
+            filename = path
+        else:
+            filename = re.sub(r"(.*)\.(\d+){}$".format(re.escape(ext)),
+                              "\\1.$F4{}".format(ext),
+                              path)
+
+            filename = os.path.join(path, filename)
+
+        filename = os.path.normpath(filename)
+        filename = filename.replace("\\", "/")
+
+        return filename
+
+    def get_colorspace_parms(self, representation: dict) -> dict:
+        """Return the color space parameters.
+
+        Returns the values for the colorspace parameters on the node if there
+        is colorspace data on the representation.
+
+        Arguments:
+            representation (dict): The representation entity.
+
+        Returns:
+            dict: Parm to value mapping if colorspace data is defined.
+
+        """
+        # Using OCIO colorspace on COP2 File node is only supported in Hou 20+
+        major, _, _ = hou.applicationVersion()
+        if major < 20:
+            return {}
+
+        data = representation.get("data", {}).get("colorspaceData", {})
+        if not data:
+            return {}
+
+        colorspace = data["colorspace"]
+        if colorspace:
+            return {
+                "colorspace": 3,  # Use OpenColorIO
+                "ocio_space": colorspace
+            }
 
     def switch(self, container, representation):
         self.update(container, representation)

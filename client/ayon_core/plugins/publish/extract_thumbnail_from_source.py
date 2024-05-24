@@ -38,9 +38,9 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     def process(self, instance):
         self._create_context_thumbnail(instance.context)
 
-        subset_name = instance.data["subset"]
+        product_name = instance.data["productName"]
         self.log.debug(
-            "Processing instance with subset name {}".format(subset_name)
+            "Processing instance with product name {}".format(product_name)
         )
         thumbnail_source = instance.data.get("thumbnailSource")
         if not thumbnail_source:

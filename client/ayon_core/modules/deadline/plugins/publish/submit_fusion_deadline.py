@@ -103,17 +103,17 @@ class FusionSubmitDeadline(
 
         # Collect all saver instances in context that are to be rendered
         saver_instances = []
-        for instance in context:
-            if instance.data["family"] != "render":
+        for inst in context:
+            if inst.data["productType"] != "render":
                 # Allow only saver family instances
                 continue
 
-            if not instance.data.get("publish", True):
+            if not inst.data.get("publish", True):
                 # Skip inactive instances
                 continue
 
-            self.log.debug(instance.data["name"])
-            saver_instances.append(instance)
+            self.log.debug(inst.data["name"])
+            saver_instances.append(inst)
 
         if not saver_instances:
             raise RuntimeError("No instances found for Deadline submission")
@@ -123,6 +123,10 @@ class FusionSubmitDeadline(
 
         script_path = context.data["currentFile"]
 
+        anatomy = instance.context.data["anatomy"]
+        publish_template = anatomy.get_template_item(
+            "publish", "default", "path"
+        )
         for item in context:
             if "workfile" in item.data["families"]:
                 msg = "Workfile (scene) must be published along"
@@ -133,8 +137,9 @@ class FusionSubmitDeadline(
                 template_data["representation"] = rep
                 template_data["ext"] = rep
                 template_data["comment"] = None
-                anatomy_filled = context.data["anatomy"].format(template_data)
-                template_filled = anatomy_filled["publish"]["path"]
+                template_filled = publish_template.format_strict(
+                    template_data
+                )
                 script_path = os.path.normpath(template_filled)
 
                 self.log.info(
@@ -220,6 +225,8 @@ class FusionSubmitDeadline(
             "FTRACK_API_KEY",
             "FTRACK_API_USER",
             "FTRACK_SERVER",
+            "AYON_BUNDLE_NAME",
+            "AYON_DEFAULT_SETTINGS_VARIANT",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",

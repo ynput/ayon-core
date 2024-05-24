@@ -2,7 +2,6 @@
 """Submitting render job to RoyalRender."""
 import os
 import json
-import platform
 import re
 import tempfile
 import uuid
@@ -108,7 +107,7 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
 
         context = instance.context
 
-        self._rr_root = instance.data.get("rrPathName")
+        self._rr_root = instance.data.get("rr_root")
         if not self._rr_root:
             raise KnownPublishError(
                 ("Missing RoyalRender root. "
@@ -309,30 +308,44 @@ class BaseCreateRoyalRenderJob(pyblish.api.InstancePlugin,
         export_url = os.path.join(tempfile.gettempdir(), temp_file_name)
         print(">>> Temporary path: {}".format(export_url))
 
-        args = [
-            "--headless",
-            "extractenvironments",
-            export_url
-        ]
-
         anatomy_data = instance.context.data["anatomyData"]
+        addons_manager = instance.context.data["ayonAddonsManager"]
+        applications_addon = addons_manager.get_enabled_addon("applications")
+
+        folder_key = "folder"
+        if applications_addon is None:
+            # Use 'asset' when applications addon command is not used
+            folder_key = "asset"
 
         add_kwargs = {
             "project": anatomy_data["project"]["name"],
-            "asset": instance.context.data["folderPath"],
+            folder_key: instance.context.data["folderPath"],
             "task": anatomy_data["task"]["name"],
             "app": instance.context.data.get("appName"),
             "envgroup": "farm"
         }
-
-        if os.getenv('IS_TEST'):
-            args.append("--automatic-tests")
 
         if not all(add_kwargs.values()):
             raise RuntimeError((
                 "Missing required env vars: AYON_PROJECT_NAME, AYON_FOLDER_PATH,"
                 " AYON_TASK_NAME, AYON_APP_NAME"
             ))
+
+        args = ["--headless"]
+        # Use applications addon to extract environments
+        # NOTE this is for backwards compatibility, the global command
+        #   will be removed in future and only applications addon command
+        #   should be used.
+        if applications_addon is not None:
+            args.extend(["addon", "applications"])
+
+        args.extend([
+            "extractenvironments",
+            export_url
+        ])
+
+        if os.getenv('IS_TEST'):
+            args.append("--automatic-tests")
 
         for key, value in add_kwargs.items():
             args.extend([f"--{key}", value])

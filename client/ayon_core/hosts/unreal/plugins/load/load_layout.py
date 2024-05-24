@@ -4,7 +4,8 @@ import json
 import collections
 from pathlib import Path
 
-from ayon_core.client import get_assets, get_asset_by_name, get_representations
+from ayon_core.client import get_assets, get_asset_by_name
+import ayon_api
 from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
@@ -13,7 +14,7 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
 )
-from ayon_core.pipeline.context_tools import get_current_project_asset
+from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.settings import get_current_project_settings
 from ayon_core.hosts.unreal.api.plugin import UnrealBaseLoader
 from ayon_core.hosts.unreal.api.pipeline import (
@@ -26,8 +27,8 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class LayoutLoader(UnrealBaseLoader):
     """Load Layout from a JSON file"""
 
-    families = ["layout"]
-    representations = ["json"]
+    product_types = {"layout"}
+    representations = {"json"}
 
     label = "Load Layout"
     icon = "code-fork"
@@ -278,8 +279,7 @@ class LayoutLoader(UnrealBaseLoader):
                             "binding_guid": binding,
                             "animation_path": animation})
 
-    @staticmethod
-    def _get_repre_docs_by_version_id(data):
+    def _get_repre_entities_by_version_id(self, data):
         version_ids = {
             element.get("version")
             for element in data
@@ -292,30 +292,31 @@ class LayoutLoader(UnrealBaseLoader):
             return output
 
         project_name = get_current_project_name()
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
-            representation_names=["fbx", "abc"],
+            representation_names={"fbx", "abc"},
             version_ids=version_ids,
-            fields=["_id", "parent", "name"]
+            fields={"id", "versionId", "name"}
         )
-        for repre_doc in repre_docs:
-            version_id = str(repre_doc["parent"])
-            output[version_id].append(repre_doc)
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            output[version_id].append(repre_entity)
         return output
 
-    def _get_representation(self, element, repre_docs_by_version_id):
+    def _get_representation(self, element, repre_entities_by_version_id):
         representation = None
         repr_format = None
         if element.get('representation'):
-            repre_docs = repre_docs_by_version_id[element.get("version")]
-            if not repre_docs:
+            version_id = element.get("version")
+            repre_entities = repre_entities_by_version_id[version_id]
+            if not repre_entities:
                 self.log.error(
                     f"No valid representation found for version "
-                    f"{element.get('version')}")
+                    f"{version_id}")
                 return None, None
-            repre_doc = repre_docs[0]
-            representation = str(repre_doc["_id"])
-            repr_format = repre_doc["name"]
+            repre_entity = repre_entities[0]
+            representation = str(repre_entity["_id"])
+            repr_format = repre_entity["name"]
 
         # This is to keep compatibility with old versions of the
         # json format.
@@ -329,7 +330,8 @@ class LayoutLoader(UnrealBaseLoader):
         return representation, repr_format
 
     def _load_representation(
-        self, family, representation, repr_format, instance_name, all_loaders
+        self, product_type, representation, repr_format, instance_name,
+        all_loaders
     ):
         loaders = loaders_from_representation(
             all_loaders, representation)
@@ -337,9 +339,9 @@ class LayoutLoader(UnrealBaseLoader):
         loader = None
 
         if repr_format == 'fbx':
-            loader = self._get_fbx_loader(loaders, family)
+            loader = self._get_fbx_loader(loaders, product_type)
         elif repr_format == 'abc':
-            loader = self._get_abc_loader(loaders, family)
+            loader = self._get_abc_loader(loaders, product_type)
 
         if not loader:
             self.log.error(
@@ -376,7 +378,7 @@ class LayoutLoader(UnrealBaseLoader):
 
     @staticmethod
     def _process_instances(
-        data, element, representation, family, sequence, assets
+        data, element, representation, product_type, sequence, assets
     ):
         actors_dict = {}
         bindings_dict = {}
@@ -393,7 +395,7 @@ class LayoutLoader(UnrealBaseLoader):
             basis = str(instance.get('basis'))
             instance_name = instance.get('instance_name')
 
-            if family == 'model':
+            if product_type == 'model':
                 send_request(
                     "process_family",
                     params={
@@ -403,7 +405,7 @@ class LayoutLoader(UnrealBaseLoader):
                         "transform": transform,
                         "basis": basis,
                         "sequence_path": sequence})
-            elif family == 'rig':
+            elif product_type == 'rig':
                 (actors, bindings) = send_request(
                     "process_family",
                     params={
@@ -436,10 +438,12 @@ class LayoutLoader(UnrealBaseLoader):
 
         loaded_assets = []
 
-        repre_docs_by_version_id = self._get_repre_docs_by_version_id(data)
+        repre_entities_by_version_id = self._get_repre_entities_by_version_id(
+            data
+        )
         for element in data:
             representation, repr_format = self._get_representation(
-                element, repre_docs_by_version_id)
+                element, repre_entities_by_version_id)
 
             # If reference is None, this element is skipped, as it cannot be
             # imported in Unreal
@@ -448,20 +452,24 @@ class LayoutLoader(UnrealBaseLoader):
 
             instance_name = element.get('instance_name')
 
-            # Check if representation has already been loaded
+            skeleton = None
+
             if representation not in repr_loaded:
                 repr_loaded.append(representation)
 
-                family = element.get('family')
+                product_type = element.get("product_type")
+                if product_type is None:
+                    product_type = element.get("family")
 
                 assets, container, skeleton = self._load_representation(
-                    family, representation, repr_format, instance_name,
+                    product_type, representation, repr_format, instance_name,
                     all_loaders)
 
                 loaded_assets.append(container)
 
                 new_actors, new_bindings = self._process_instances(
-                    data, element, representation, family, sequence, assets)
+                    data, element, representation, product_type, sequence,
+                    assets)
 
                 actors_dict |= new_actors
                 bindings_dict |= new_bindings
@@ -493,7 +501,7 @@ class LayoutLoader(UnrealBaseLoader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -505,21 +513,23 @@ class LayoutLoader(UnrealBaseLoader):
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
 
         # Create directory for asset and Ayon container
-        hierarchy = context.get('asset').get('data').get('parents')
-        root = self.root
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
 
-        hierarchy_dir = root
+        hierarchy_dir = self.root
         hierarchy_dir_list = []
         for h in hierarchy:
             hierarchy_dir = f"{hierarchy_dir}/{h}"
             hierarchy_dir_list.append(hierarchy_dir)
 
+        folder_name = hierarchy.pop(-1)
+        asset_name = f"{folder_name}_{name}" if folder_name else name
+
         asset_dir, container_name = send_request(
             "create_unique_asset_name", params={
                 "root": hierarchy_dir,
-                "asset": asset,
+                "folder_name": folder_name,
                 "name": name})
 
         send_request("make_directory", params={"directory_path": asset_dir})
@@ -527,7 +537,7 @@ class LayoutLoader(UnrealBaseLoader):
         shot = None
 
         level, master_level = self._create_levels(
-            hierarchy_dir_list, hierarchy, asset_dir, asset,
+            hierarchy_dir_list, hierarchy, asset_dir, folder_name,
             create_sequences)
 
         if create_sequences:
@@ -535,12 +545,12 @@ class LayoutLoader(UnrealBaseLoader):
                 hierarchy_dir_list, hierarchy)
 
             project_name = get_current_project_name()
-            data = get_asset_by_name(project_name, asset)["data"]
+            data = get_asset_by_name(project_name, folder_name)["data"]
 
             shot = send_request(
                 "generate_layout_sequence",
                 params={
-                    "asset": asset,
+                    "folder_name": folder_name,
                     "asset_dir": asset_dir,
                     "sequences": sequences,
                     "frame_ranges": frame_ranges,
@@ -561,14 +571,15 @@ class LayoutLoader(UnrealBaseLoader):
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
+            "asset": folder_name,
+            "folder_path": folder_path,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation_id": str(context["representation"]["_id"]),
-            "version_id": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
+            "representation": str(context["representation"]["_id"]),
+            "parent": str(context["representation"]["versionId"]),
+            "family": context["product"]["productType"],
             "loaded_assets": loaded_assets
         }
 
@@ -589,10 +600,14 @@ class LayoutLoader(UnrealBaseLoader):
 
         return assets
 
-    def update(self, container, representation):
+    def update(self, container, context):
         asset_dir = container.get('namespace')
-        context = representation.get("context")
-        hierarchy = context.get('hierarchy').split("/")
+
+        folder_entity = context["folder"]
+        repre_entity = context["representation"]
+
+        hierarchy = folder_entity["path"].lstrip("/").split("/")
+        first_parent_name = hierarchy[0]
 
         data = get_current_project_settings()
         create_sequences = data["unreal"]["level_sequences_for_layouts"]
@@ -607,21 +622,22 @@ class LayoutLoader(UnrealBaseLoader):
                 "hierarchy": hierarchy,
                 "create_sequences": create_sequences})
 
-        source_path = get_representation_path(representation)
+        source_path = get_representation_path(repre_entity)
 
         loaded_assets = self._process_assets(source_path, asset_dir, sequence)
 
         data = {
-            "representation_id": str(representation["_id"]),
-            "version_id": str(representation["parent"]),
-            "loaded_assets": loaded_assets
+            "representation": repre_entity["id"],
+            "parent": repre_entity["versionId"],
+            "loaded_assets": loaded_assets,
         }
         imprint(f"{asset_dir}/{container.get('objectName')}", data)
 
         send_request("save_current_level")
 
         save_dir = (
-            f"{self.root}/{hierarchy[0]}" if create_sequences else asset_dir)
+            f"{self.root}/{first_parent_name}"
+            if create_sequences else asset_dir)
 
         if master_level:
             send_request("load_level", params={"level_path": master_level})

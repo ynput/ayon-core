@@ -20,8 +20,8 @@ from ayon_core.hosts.blender.api.pipeline import (
 class BlendLoader(plugin.AssetLoader):
     """Load assets from a .blend file."""
 
-    families = ["model", "rig", "layout", "camera"]
-    representations = ["blend"]
+    product_types = {"model", "rig", "layout", "camera"}
+    representations = {"blend"}
 
     label = "Append Blend"
     icon = "code-fork"
@@ -127,20 +127,22 @@ class BlendLoader(plugin.AssetLoader):
             options: Additional settings dictionary
         """
         libpath = self.filepath_from_context(context)
-        asset = context["asset"]["name"]
-        subset = context["subset"]["name"]
+        folder_name = context["folder"]["name"]
+        product_name = context["product"]["name"]
 
         try:
-            family = context["representation"]["context"]["family"]
+            product_type = context["product"]["productType"]
         except ValueError:
-            family = "model"
+            product_type = "model"
 
-        representation = str(context["representation"]["_id"])
+        representation = context["representation"]["id"]
 
-        asset_name = plugin.prepare_scene_name(asset, subset)
-        unique_number = plugin.get_unique_number(asset, subset)
-        group_name = plugin.prepare_scene_name(asset, subset, unique_number)
-        namespace = namespace or f"{asset}_{unique_number}"
+        asset_name = plugin.prepare_scene_name(folder_name, product_name)
+        unique_number = plugin.get_unique_number(folder_name, product_name)
+        group_name = plugin.prepare_scene_name(
+            folder_name, product_name, unique_number
+        )
+        namespace = namespace or f"{folder_name}_{unique_number}"
 
         avalon_container = bpy.data.collections.get(AVALON_CONTAINERS)
         if not avalon_container:
@@ -149,8 +151,8 @@ class BlendLoader(plugin.AssetLoader):
 
         container, members = self._process_data(libpath, group_name)
 
-        if family == "layout":
-            self._post_process_layout(container, asset, representation)
+        if product_type == "layout":
+            self._post_process_layout(container, folder_name, representation)
 
         avalon_container.objects.link(container)
 
@@ -160,11 +162,11 @@ class BlendLoader(plugin.AssetLoader):
             "name": name,
             "namespace": namespace or '',
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": context["representation"]["id"],
             "libpath": libpath,
             "asset_name": asset_name,
-            "parent": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
+            "parent": context["representation"]["versionId"],
+            "productType": context["product"]["productType"],
             "objectName": group_name,
             "members": members,
         }
@@ -179,13 +181,14 @@ class BlendLoader(plugin.AssetLoader):
         self[:] = objects
         return objects
 
-    def exec_update(self, container: Dict, representation: Dict):
+    def exec_update(self, container: Dict, context: Dict):
         """
         Update the loaded asset.
         """
+        repre_entity = context["representation"]
         group_name = container["objectName"]
         asset_group = bpy.data.objects.get(group_name)
-        libpath = Path(get_representation_path(representation)).as_posix()
+        libpath = Path(get_representation_path(repre_entity)).as_posix()
 
         assert asset_group, (
             f"The asset is not loaded: {container['objectName']}"
@@ -224,7 +227,7 @@ class BlendLoader(plugin.AssetLoader):
                     obj.animation_data_create()
                 obj.animation_data.action = actions[obj.name]
 
-        # Restore the old data, but reset memebers, as they don't exist anymore
+        # Restore the old data, but reset members, as they don't exist anymore
         # This avoids a crash, because the memory addresses of those members
         # are not valid anymore
         old_data["members"] = []
@@ -232,8 +235,8 @@ class BlendLoader(plugin.AssetLoader):
 
         new_data = {
             "libpath": libpath,
-            "representation": str(representation["_id"]),
-            "parent": str(representation["parent"]),
+            "representation": repre_entity["id"],
+            "parent": repre_entity["versionId"],
             "members": members,
         }
 

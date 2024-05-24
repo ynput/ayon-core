@@ -14,9 +14,9 @@ from ayon_core.hosts.max.api.lib import (
 class ModelAbcLoader(load.LoaderPlugin):
     """Loading model with the Alembic loader."""
 
-    families = ["model"]
+    product_types = {"model"}
     label = "Load Model with Alembic"
-    representations = ["abc"]
+    representations = {"abc"}
     order = -10
     icon = "code-fork"
     color = "orange"
@@ -70,10 +70,11 @@ class ModelAbcLoader(load.LoaderPlugin):
             namespace, loader=self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         from pymxs import runtime as rt
 
-        path = get_representation_path(representation)
+        repre_entity = context["representation"]
+        path = get_representation_path(repre_entity)
         node = rt.GetNodeByName(container["instance_node"])
         node_list = [n for n in get_previous_loaded_object(node)
                      if rt.ClassOf(n) == rt.AlembicContainer]
@@ -90,11 +91,11 @@ class ModelAbcLoader(load.LoaderPlugin):
                         abc_obj.source = path
         lib.imprint(
             container["instance_node"],
-            {"representation": str(representation["_id"])},
+            {"representation": repre_entity["id"]},
         )
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 
     def remove(self, container):
         from pymxs import runtime as rt

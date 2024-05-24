@@ -14,7 +14,7 @@ class CreateVRayScene(plugin.RenderlayerCreator):
 
     identifier = "io.openpype.creators.maya.vrayscene"
 
-    family = "vrayscene"
+    product_type = "vrayscene"
     label = "VRay Scene"
     icon = "cubes"
 
@@ -25,13 +25,13 @@ class CreateVRayScene(plugin.RenderlayerCreator):
     def apply_settings(cls, project_settings):
         cls.render_settings = project_settings["maya"]["render_settings"]
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         # Only allow a single render instance to exist
         if self._get_singleton_node():
             raise CreatorError("A Render instance already exists - only "
                                "one can be configured.")
 
-        super(CreateVRayScene, self).create(subset_name,
+        super(CreateVRayScene, self).create(product_name,
                                             instance_data,
                                             pre_create_data)
 

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
 <error id="main">
-<title>Subset not unique</title>
+<title>Product not unique</title>
 <description>
-## Clashing subset names found
+## Clashing product names found
 
-Multiples instances from your scene are set to publish into the same asset > subset.
+Multiples instances from your scene are set to publish into the same folder > product.
 
-    Non unique subset names: '{non_unique}'
+    Non unique product names: '{non_unique}'
 
 ### How to repair?
 

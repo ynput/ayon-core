@@ -28,10 +28,12 @@ class RenderInstance(object):
     time = attr.ib()  # time of instance creation (get_formatted_current_time)
     source = attr.ib()  # path to source scene file
     label = attr.ib()  # label to show in GUI
-    subset = attr.ib()  # subset name
-    task = attr.ib()  # task name
+    family = attr.ib()  # product type for pyblish filtering
+    productType = attr.ib()  # product type
+    productName = attr.ib()  # product name
     folderPath = attr.ib()  # folder path
-    attachTo = attr.ib()  # subset name to attach render to
+    task = attr.ib()  # task name
+    attachTo = attr.ib()  # product name to attach render to
     setMembers = attr.ib()  # list of nodes/members producing render output
     publish = attr.ib()  # bool, True to publish instance
     name = attr.ib()  # instance name
@@ -60,7 +62,7 @@ class RenderInstance(object):
     review = attr.ib(default=None)  # False - explicitly skip review
     priority = attr.ib(default=50)  # job priority on farm
 
-    family = attr.ib(default="renderlayer")
+    # family = attr.ib(default="renderlayer")
     families = attr.ib(default=["renderlayer"])  # list of families
     # True if should be rendered on farm, eg not integrate
     farm = attr.ib(default=False)
@@ -78,6 +80,9 @@ class RenderInstance(object):
     anatomyData = attr.ib(default=None)
     outputDir = attr.ib(default=None)
     context = attr.ib(default=None)
+
+    # The source instance the data of this render instance should merge into
+    source_instance = attr.ib(default=None, type=pyblish.api.Instance)
 
     @frameStart.validator
     def check_frame_start(self, _, value):
@@ -153,13 +158,13 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
             exp_files = self.get_expected_files(render_instance)
             assert exp_files, "no file names were generated, this is bug"
 
-            # if we want to attach render to subset, check if we have AOV's
+            # if we want to attach render to product, check if we have AOV's
             # in expectedFiles. If so, raise error as we cannot attach AOV
-            # (considered to be subset on its own) to another subset
+            # (considered to be product on its own) to another product
             if render_instance.attachTo:
                 assert isinstance(exp_files, list), (
                     "attaching multiple AOVs or renderable cameras to "
-                    "subset is not supported"
+                    "product is not supported"
                 )
 
             frame_start_render = int(render_instance.frameStart)
@@ -212,8 +217,11 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
             data = self.add_additional_data(data)
             render_instance_dict = attr.asdict(render_instance)
 
-            instance = context.create_instance(render_instance.name)
-            instance.data["label"] = render_instance.label
+            # Merge into source instance if provided, otherwise create instance
+            instance = render_instance_dict.pop("source_instance", None)
+            if instance is None:
+                instance = context.create_instance(render_instance.name)
+
             instance.data.update(render_instance_dict)
             instance.data.update(data)
 

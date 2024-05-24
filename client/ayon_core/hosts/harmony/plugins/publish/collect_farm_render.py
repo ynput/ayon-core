@@ -80,7 +80,7 @@ class CollectFarmRender(publish.AbstractCollectRender):
         for frame in range(start, end + 1):
             expected_files.append(
                 path / "{}-{}.{}".format(
-                    render_instance.subset,
+                    render_instance.productName,
                     str(frame).rjust(int(info[2]) + 1, "0"),
                     ext
                 )
@@ -89,7 +89,7 @@ class CollectFarmRender(publish.AbstractCollectRender):
         return expected_files
 
     def get_instances(self, context):
-        """Get instances per Write node in `renderFarm` family."""
+        """Get instances per Write node in `renderFarm` product type."""
         version = None
         if self.sync_workfile_version:
             version = context.data["version"]
@@ -111,7 +111,10 @@ class CollectFarmRender(publish.AbstractCollectRender):
             if "container" in data["id"]:
                 continue
 
-            if data["family"] != "renderFarm":
+            product_type = data.get("productType")
+            if product_type is None:
+                product_type = data.get("family")
+            if product_type != "renderFarm":
                 continue
 
             # 0 - filename / 1 - type / 2 - zeros / 3 - start / 4 - enabled
@@ -124,15 +127,14 @@ class CollectFarmRender(publish.AbstractCollectRender):
 
             # TODO: handle pixel aspect and frame step
             # TODO: set Deadline stuff (pools, priority, etc. by presets)
-            # because of using 'renderFarm' as a family, replace 'Farm' with
-            # capitalized task name - issue of avalon-core Creator app
-            subset_name = node.split("/")[1]
-            task_name = context.data["anatomyData"]["task"][
-                "name"].capitalize()
+            # because of using 'renderFarm' as a product type, replace 'Farm'
+            # with capitalized task name - issue of Creator tool
+            product_name = node.split("/")[1]
+            task_name = context.data["task"].capitalize()
             replace_str = ""
-            if task_name.lower() not in subset_name.lower():
+            if task_name.lower() not in product_name.lower():
                 replace_str = task_name
-            subset_name = subset_name.replace(
+            product_name = product_name.replace(
                 'Farm',
                 replace_str)
 
@@ -141,7 +143,7 @@ class CollectFarmRender(publish.AbstractCollectRender):
                 time=get_formatted_current_time(),
                 source=context.data["currentFile"],
                 label=node.split("/")[1],
-                subset=subset_name,
+                productName=product_name,
                 folderPath=folder_path,
                 task=task_name,
                 attachTo=False,
@@ -151,6 +153,7 @@ class CollectFarmRender(publish.AbstractCollectRender):
                 priority=50,
                 name=node.split("/")[1],
 
+                productType="render.farm",
                 family="render.farm",
                 families=["render.farm"],
                 farm=True,

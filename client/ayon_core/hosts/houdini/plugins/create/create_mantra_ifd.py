@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating pointcache alembics."""
 from ayon_core.hosts.houdini.api import plugin
-from ayon_core.pipeline import CreatedInstance
 from ayon_core.lib import BoolDef
 
 
@@ -9,10 +8,10 @@ class CreateMantraIFD(plugin.HoudiniCreator):
     """Mantra .ifd Archive"""
     identifier = "io.openpype.creators.houdini.mantraifd"
     label = "Mantra IFD"
-    family = "mantraifd"
+    product_type = "mantraifd"
     icon = "gears"
 
-    def create(self, subset_name, instance_data, pre_create_data):
+    def create(self, product_name, instance_data, pre_create_data):
         import hou
         instance_data.pop("active", None)
         instance_data.update({"node_type": "ifd"})
@@ -20,15 +19,15 @@ class CreateMantraIFD(plugin.HoudiniCreator):
             "creator_attributes", dict())
         creator_attributes["farm"] = pre_create_data["farm"]
         instance = super(CreateMantraIFD, self).create(
-            subset_name,
+            product_name,
             instance_data,
-            pre_create_data)  # type: CreatedInstance
+            pre_create_data)
 
         instance_node = hou.node(instance.get("instance_node"))
 
         filepath = "{}{}".format(
             hou.text.expandString("$HIP/pyblish/"),
-            "{}.$F4.ifd".format(subset_name))
+            "{}.$F4.ifd".format(product_name))
         parms = {
             # Render frame range
             "trange": 1,
@@ -40,7 +39,7 @@ class CreateMantraIFD(plugin.HoudiniCreator):
         instance_node.setParms(parms)
 
         # Lock any parameters in this list
-        to_lock = ["soho_outputmode", "family", "id"]
+        to_lock = ["soho_outputmode", "productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
     def get_instance_attr_defs(self):

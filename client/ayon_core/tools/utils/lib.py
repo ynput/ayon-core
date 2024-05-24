@@ -1,12 +1,12 @@
 import os
 import sys
 import contextlib
+from functools import partial
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core.style import (
-    get_default_entity_icon_color,
     get_objected_colors,
     get_app_icon_path,
 )
@@ -120,12 +120,13 @@ def paint_image_with_color(image, color):
     return pixmap
 
 
-def format_version(value, hero_version=False):
+def format_version(value):
     """Formats integer to displayable version name"""
-    label = "v{0:03d}".format(value)
-    if not hero_version:
-        return label
-    return "[{}]".format(label)
+    value = int(value)  # convert e.g. HeroVersionType to its version value
+    label = "v{0:03d}".format(abs(value))
+    if value < 0:
+        return "[{}]".format(label)
+    return label
 
 
 @contextlib.contextmanager
@@ -193,79 +194,6 @@ def get_ayon_qt_app():
 
 def get_openpype_qt_app():
     return get_ayon_qt_app()
-
-
-class _Cache:
-    icons = {}
-
-
-def get_qta_icon_by_name_and_color(icon_name, icon_color):
-    if not icon_name or not icon_color:
-        return None
-
-    full_icon_name = "{0}-{1}".format(icon_name, icon_color)
-    if full_icon_name in _Cache.icons:
-        return _Cache.icons[full_icon_name]
-
-    variants = [icon_name]
-    qta_instance = qtawesome._instance()
-    for key in qta_instance.charmap.keys():
-        variants.append("{0}.{1}".format(key, icon_name))
-
-    icon = None
-    used_variant = None
-    for variant in variants:
-        try:
-            icon = qtawesome.icon(variant, color=icon_color)
-            used_variant = variant
-            break
-        except Exception:
-            pass
-
-    if used_variant is None:
-        log.info("Didn't find icon \"{}\"".format(icon_name))
-
-    elif used_variant != icon_name:
-        log.debug("Icon \"{}\" was not found \"{}\" is used instead".format(
-            icon_name, used_variant
-        ))
-
-    _Cache.icons[full_icon_name] = icon
-    return icon
-
-
-def get_default_task_icon(color=None):
-    if color is None:
-        color = get_default_entity_icon_color()
-    return get_qta_icon_by_name_and_color("fa.male", color)
-
-
-def get_task_icon(project_doc, asset_doc, task_name):
-    """Get icon for a task.
-
-    Icon should be defined by task type which is stored on project.
-    """
-
-    color = get_default_entity_icon_color()
-
-    tasks_info = asset_doc.get("data", {}).get("tasks") or {}
-    task_info = tasks_info.get(task_name) or {}
-    task_icon = task_info.get("icon")
-    if task_icon:
-        icon = get_qta_icon_by_name_and_color(task_icon, color)
-        if icon is not None:
-            return icon
-
-    task_type = task_info.get("type")
-    task_types = project_doc["config"]["tasks"]
-
-    task_type_info = task_types.get(task_type) or {}
-    task_type_icon = task_type_info.get("icon")
-    if task_type_icon:
-        icon = get_qta_icon_by_name_and_color(task_icon, color)
-        if icon is not None:
-            return icon
-    return get_default_task_icon(color)
 
 
 def iter_model_rows(model, column, include_root=False):
@@ -485,3 +413,156 @@ def get_warning_pixmap(color=None):
         color = get_objected_colors("delete-btn-bg").get_qcolor()
 
     return paint_image_with_color(src_image, color)
+
+
+class RefreshThread(QtCore.QThread):
+    refresh_finished = QtCore.Signal(str)
+
+    def __init__(self, thread_id, func, *args, **kwargs):
+        super(RefreshThread, self).__init__()
+        self._id = thread_id
+        self._callback = partial(func, *args, **kwargs)
+        self._exception = None
+        self._result = None
+        self.finished.connect(self._on_finish_callback)
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def failed(self):
+        return self._exception is not None
+
+    def run(self):
+        try:
+            self._result = self._callback()
+        except Exception as exc:
+            self._exception = exc
+
+    def get_result(self):
+        return self._result
+
+    def _on_finish_callback(self):
+        """Trigger custom signal with thread id.
+
+        Listening for 'finished' signal we make sure that execution of thread
+            finished and QThread object can be safely deleted.
+        """
+
+        self.refresh_finished.emit(self.id)
+
+
+class _IconsCache:
+    """Cache for icons."""
+
+    _cache = {}
+    _default = None
+    _qtawesome_cache = {}
+
+    @classmethod
+    def _get_cache_key(cls, icon_def):
+        parts = []
+        icon_type = icon_def["type"]
+        if icon_type == "path":
+            parts = [icon_type, icon_def["path"]]
+
+        elif icon_type == "awesome-font":
+            parts = [icon_type, icon_def["name"], icon_def["color"]]
+        return "|".join(parts)
+
+    @classmethod
+    def get_icon(cls, icon_def):
+        if not icon_def:
+            return None
+        icon_type = icon_def["type"]
+        cache_key = cls._get_cache_key(icon_def)
+        cache = cls._cache.get(cache_key)
+        if cache is not None:
+            return cache
+
+        icon = None
+        if icon_type == "path":
+            path = icon_def["path"]
+            if os.path.exists(path):
+                icon = QtGui.QIcon(path)
+
+        elif icon_type == "awesome-font":
+            icon_name = icon_def["name"]
+            icon_color = icon_def["color"]
+            icon = cls.get_qta_icon_by_name_and_color(icon_name, icon_color)
+            if icon is None:
+                icon = cls.get_qta_icon_by_name_and_color(
+                    "fa.{}".format(icon_name), icon_color)
+        if icon is None:
+            icon = cls.get_default()
+        cls._cache[cache_key] = icon
+        return icon
+
+    @classmethod
+    def get_default(cls):
+        pix = QtGui.QPixmap(1, 1)
+        pix.fill(QtCore.Qt.transparent)
+        return QtGui.QIcon(pix)
+
+    @classmethod
+    def get_qta_icon_by_name_and_color(cls, icon_name, icon_color):
+        if not icon_name or not icon_color:
+            return None
+
+        full_icon_name = "{0}-{1}".format(icon_name, icon_color)
+        if full_icon_name in cls._qtawesome_cache:
+            return cls._qtawesome_cache[full_icon_name]
+
+        variants = [icon_name]
+        qta_instance = qtawesome._instance()
+        for key in qta_instance.charmap.keys():
+            variants.append("{0}.{1}".format(key, icon_name))
+
+        icon = None
+        used_variant = None
+        for variant in variants:
+            try:
+                icon = qtawesome.icon(variant, color=icon_color)
+                used_variant = variant
+                break
+            except Exception:
+                pass
+
+        if used_variant is None:
+            log.info("Didn't find icon \"{}\"".format(icon_name))
+
+        elif used_variant != icon_name:
+            log.debug("Icon \"{}\" was not found \"{}\" is used instead".format(
+                icon_name, used_variant
+            ))
+
+        cls._qtawesome_cache[full_icon_name] = icon
+        return icon
+
+
+def get_qt_icon(icon_def):
+    """Returns icon from cache or creates new one.
+
+    Args:
+        icon_def (dict[str, Any]): Icon definition.
+
+    Returns:
+        QtGui.QIcon: Icon.
+
+    """
+    return _IconsCache.get_icon(icon_def)
+
+
+def get_qta_icon_by_name_and_color(icon_name, icon_color):
+    """Returns icon from cache or creates new one.
+
+    Args:
+        icon_name (str): Icon name.
+        icon_color (str): Icon color.
+
+    Returns:
+        QtGui.QIcon: Icon.
+
+    """
+    return _IconsCache.get_qta_icon_by_name_and_color(icon_name, icon_color)

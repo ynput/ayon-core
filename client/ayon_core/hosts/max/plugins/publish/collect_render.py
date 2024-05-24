@@ -92,15 +92,17 @@ class CollectRender(pyblish.api.InstancePlugin):
         instance.data["attachTo"] = []
         renderer_class = get_current_renderer()
         renderer = str(renderer_class).split(":")[0]
+        product_type = "maxrender"
         # also need to get the render dir for conversion
         data = {
             "folderPath": instance.data["folderPath"],
-            "subset": str(instance.name),
+            "productName": str(instance.name),
             "publish": True,
             "maxversion": str(get_max_version()),
             "imageFormat": img_format,
-            "family": 'maxrender',
-            "families": ['maxrender'],
+            "productType": product_type,
+            "family": product_type,
+            "families": [product_type],
             "renderer": renderer,
             "source": filepath,
             "plugin": "3dsmax",

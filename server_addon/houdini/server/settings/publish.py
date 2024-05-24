@@ -53,6 +53,9 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=BasicValidateModel,
         title="Validate Latest Containers.",
         section="Validators")
+    ValidateInstanceInContextHoudini: BasicValidateModel = SettingsField(
+        default_factory=BasicValidateModel,
+        title="Validate Instance is in same Context.")
     ValidateMeshIsStatic: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Mesh is Static.")
@@ -80,6 +83,11 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "chunk_size": 999999
     },
     "ValidateContainers": {
+        "enabled": True,
+        "optional": True,
+        "active": True
+    },
+    "ValidateInstanceInContextHoudini": {
         "enabled": True,
         "optional": True,
         "active": True

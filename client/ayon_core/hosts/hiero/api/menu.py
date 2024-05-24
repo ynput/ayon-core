@@ -11,7 +11,7 @@ from ayon_core.tools.utils import host_tools
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_current_asset_name,
+    get_current_folder_path,
     get_current_task_name
 )
 
@@ -25,7 +25,7 @@ self._change_context_menu = None
 
 def get_context_label():
     return "{}, {}".format(
-        get_current_asset_name(),
+        get_current_folder_path(),
         get_current_task_name()
     )
 

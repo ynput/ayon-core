@@ -16,9 +16,9 @@ from ayon_core.hosts.unreal.api.pipeline import (
 class PointCacheAlembicLoader(UnrealBaseLoader):
     """Load Point Cache from Alembic"""
 
-    families = ["model", "pointcache"]
+    product_types = {"model", "pointcache"}
     label = "Import Alembic Point Cache"
-    representations = ["abc"]
+    representations = {"abc"}
     icon = "cube"
     color = "orange"
 
@@ -63,7 +63,7 @@ class PointCacheAlembicLoader(UnrealBaseLoader):
 
         Args:
             context (dict): application context
-            name (str): subset name
+            name (str): Product name
             namespace (str): in Unreal this is basically path to container.
                              This is not passed here, so namespace is set
                              by `containerise()` because only then we know
@@ -73,26 +73,32 @@ class PointCacheAlembicLoader(UnrealBaseLoader):
         """
         # Create directory for asset and Ayon container
         root = AYON_ASSET_DIR
-        asset = context.get('asset').get('name')
-        asset_name = f"{asset}_{name}" if asset else f"{name}"
-        version = context.get('version')
+        folder_entity = context["folder"]
+        folder_path = folder_entity["path"]
+        folder_name = folder_entity["name"]
+        folder_attributes = folder_entity["attrib"]
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
 
         default_conversion = options.get("default_conversion") or False
 
+        # Check if version is hero version and use different name
+        version = context["version"]["version"]
+        name_version = (
+            f"{name}_hero" if version < 0 else f"{name}_v{version:03d}"
+        )
         asset_dir, container_name = send_request(
             "create_unique_asset_name", params={
                 "root": root,
-                "asset": asset,
-                "name": name,
-                "version": version})
+                "folder_name": folder_name,
+                "name": name_version})
 
         if not send_request(
                 "does_directory_exist", params={"directory_path": asset_dir}):
             send_request(
                 "make_directory", params={"directory_path": asset_dir})
 
-            frame_start = context.get('asset').get('data').get('frameStart')
-            frame_end = context.get('asset').get('data').get('frameEnd')
+            frame_start = folder_attributes.get("frameStart")
+            frame_end = folder_attributes.get("frameEnd")
 
             # If frame start and end are the same, we increase the end frame by
             # one, otherwise Unreal will not import it
@@ -103,20 +109,25 @@ class PointCacheAlembicLoader(UnrealBaseLoader):
                 self.fname, asset_dir, asset_name, False,
                 frame_start, frame_end, default_conversion)
 
+        product_type = context["product"]["productType"]
+
         data = {
             "schema": "ayon:container-2.0",
             "id": AYON_CONTAINER_ID,
-            "asset": asset,
             "namespace": asset_dir,
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": self.__class__.__name__,
-            "representation_id": str(context["representation"]["_id"]),
-            "version_id": str(context["representation"]["parent"]),
-            "family": context["representation"]["context"]["family"],
-            "frame_start": context["asset"]["data"]["frameStart"],
-            "frame_end": context["asset"]["data"]["frameEnd"],
-            "default_conversion": default_conversion
+            "representation": str(context["representation"]["_id"]),
+            "parent": str(context["representation"]["parent"]),
+            "frame_start": frame_start,
+            "frame_end": frame_end,
+            "product_type": product_type,
+            "folder_path": folder_path,
+            "default_conversion": default_conversion,
+            # TODO these should be probably removed
+            "family": product_type,
+            "asset": folder_path,
         }
 
         containerise(asset_dir, container_name, data)
@@ -127,17 +138,15 @@ class PointCacheAlembicLoader(UnrealBaseLoader):
                 "recursive": True,
                 "include_folder": True})
 
-    def update(self, container, representation):
-        filename = get_representation_path(representation)
+    def update(self, container, context):
+        repre_entity = context["representation"]
+        filename = get_representation_path(repre_entity)
         asset_dir = container["namespace"]
         asset_name = container["asset_name"]
 
-        frame_start = container["frameStart"]
-        frame_end = container["frameStart"]
         default_conversion = container["default_conversion"]
 
         self._import_abc_task(
-            filename, asset_dir, asset_name, True,
-            frame_start, frame_end, default_conversion)
+            filename, asset_dir, asset_name, True, default_conversion)
 
-        super(UnrealBaseLoader, self).update(container, representation)
+        super(UnrealBaseLoader, self).update(container, context)

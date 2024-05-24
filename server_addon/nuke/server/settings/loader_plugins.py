@@ -42,7 +42,7 @@ class LoadClipModel(BaseSettingsModel):
     )
 
 
-class LoaderPuginsModel(BaseSettingsModel):
+class LoaderPluginsModel(BaseSettingsModel):
     LoadImage: LoadImageModel = SettingsField(
         default_factory=LoadImageModel,
         title="Load Image"

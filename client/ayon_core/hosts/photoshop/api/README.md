@@ -55,7 +55,7 @@ class CreateImage(photoshop.Creator):
 
     name = "imageDefault"
     label = "Image"
-    family = "image"
+    product_type = "image"
 
     def __init__(self, *args, **kwargs):
         super(CreateImage, self).__init__(*args, **kwargs)
@@ -114,7 +114,7 @@ class CollectInstances(pyblish.api.ContextPlugin):
             instance.append(layer)
             instance.data.update(layer_data)
             instance.data["families"] = self.families_mapping[
-                layer_data["family"]
+                layer_data["productType"]
             ]
             instance.data["publish"] = layer.visible
 
@@ -207,7 +207,7 @@ class ImageLoader(load.LoaderPlugin):
     """
 
     families = ["image"]
-    representations = ["*"]
+    representations = {"*"}
 
     def load(self, context, name=None, namespace=None, data=None):
         path = self.filepath_from_context(context)
@@ -224,23 +224,23 @@ class ImageLoader(load.LoaderPlugin):
             self.__class__.__name__
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         layer = container.pop("layer")
-
+        repre_entity = context["representation"]
         with photoshop.maintained_selection():
             stub.replace_smart_object(
-                layer, get_representation_path(representation)
+                layer, get_representation_path(repre_entity)
             )
 
         stub.imprint(
-            layer, {"representation": str(representation["_id"])}
+            layer, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):
         container["layer"].Delete()
 
-    def switch(self, container, representation):
-        self.update(container, representation)
+    def switch(self, container, context):
+        self.update(container, context)
 ```
 For easier debugging of Javascript:
 https://community.adobe.com/t5/download-install/adobe-extension-debuger-problem/td-p/10911704?page=1

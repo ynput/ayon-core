@@ -23,8 +23,8 @@ class TemplateLoader(load.LoaderPlugin):
 
     """
 
-    families = ["template", "workfile"]
-    representations = ["*"]
+    product_types = {"template", "workfile"}
+    representations = {"*"}
     label = "Load Template"
     icon = "gift"
 
@@ -52,8 +52,8 @@ class TemplateLoader(load.LoaderPlugin):
             {
                 "function": f"PypeHarmony.Loaders.{self_name}.loadContainer",
                 "args": [template_path,
-                         context["asset"]["name"],
-                         context["subset"]["name"],
+                         context["folder"]["name"],
+                         context["product"]["name"],
                          group_id]
             }
         )["result"]
@@ -70,19 +70,20 @@ class TemplateLoader(load.LoaderPlugin):
             self_name
         )
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update loaded containers.
 
         Args:
             container (dict): Container data.
-            representation (dict): Representation data.
+            context (dict): Representation context data.
 
         """
         node_name = container["name"]
         node = harmony.find_node_by_name(node_name, "GROUP")
         self_name = self.__class__.__name__
 
-        if is_representation_from_latest(representation):
+        repre_entity = context["representation"]
+        if is_representation_from_latest(repre_entity):
             self._set_green(node)
         else:
             self._set_red(node)
@@ -110,7 +111,7 @@ class TemplateLoader(load.LoaderPlugin):
                 None, container["data"])
 
         harmony.imprint(
-            node, {"representation": str(representation["_id"])}
+            node, {"representation": repre_entity["id"]}
         )
 
     def remove(self, container):
@@ -125,9 +126,9 @@ class TemplateLoader(load.LoaderPlugin):
             {"function": "PypeHarmony.deleteNode", "args": [node]}
         )
 
-    def switch(self, container, representation):
+    def switch(self, container, context):
         """Switch representation containers."""
-        self.update(container, representation)
+        self.update(container, context)
 
     def _set_green(self, node):
         """Set node color to green `rgba(0, 255, 0, 255)`."""
