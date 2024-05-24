@@ -1,6 +1,6 @@
+import hou
 import pyblish.api
 
-import hou
 from ayon_core.pipeline.publish import RepairAction
 from ayon_houdini.api import lib, plugin
 

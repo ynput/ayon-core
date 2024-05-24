@@ -1,8 +1,8 @@
 from collections import deque
 
 import pyblish.api
-from ayon_houdini.api import plugin
 from ayon_core.pipeline import registered_host
+from ayon_houdini.api import plugin
 
 
 def get_container_members(container):

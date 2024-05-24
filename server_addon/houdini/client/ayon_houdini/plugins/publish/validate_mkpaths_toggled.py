@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
-from ayon_houdini.api import plugin
+
 from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api import plugin
 
 
 class ValidateIntermediateDirectoriesChecked(plugin.HoudiniInstancePlugin):

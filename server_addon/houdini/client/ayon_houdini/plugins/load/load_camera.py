@@ -1,4 +1,6 @@
+import hou
 from ayon_core.pipeline import get_representation_path
+
 from ayon_houdini.api import (
     pipeline,
     plugin
@@ -7,8 +9,6 @@ from ayon_houdini.api.lib import (
     set_camera_resolution,
     get_camera_from_container
 )
-
-import hou
 
 
 ARCHIVE_EXPRESSION = ('__import__("_alembic_hom_extensions")'

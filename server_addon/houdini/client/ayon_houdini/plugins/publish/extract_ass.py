@@ -1,11 +1,10 @@
 import os
+import hou
 
 import pyblish.api
 
 from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
-
-import hou
 
 
 class ExtractAss(plugin.HoudiniInstancePlugin):

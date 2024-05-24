@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
 from pprint import pformat
+import hou
 import pyblish.api
 from ayon_houdini.api import plugin
-import hou
 
 
 class ExtractHDA(plugin.HoudiniInstancePlugin):

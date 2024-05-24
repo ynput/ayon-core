@@ -1,7 +1,8 @@
+import hou
+
 import pyblish.api
 
 from ayon_houdini.api import lib, plugin
-import hou
 
 
 class ValidateFrameToken(plugin.HoudiniInstancePlugin):

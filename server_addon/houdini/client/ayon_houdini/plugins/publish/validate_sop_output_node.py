@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import hou
+
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 
@@ -7,8 +9,6 @@ from ayon_houdini.api.action import (
     SelectInvalidAction,
     SelectROPAction,
 )
-
-import hou
 
 
 class ValidateSopOutputNode(plugin.HoudiniInstancePlugin):

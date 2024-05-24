@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
-from ayon_houdini.api import plugin
-from ayon_core.pipeline import PublishValidationError
 import hou
+
+import pyblish.api
+from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api import plugin
 
 
 class ValidateHoudiniNotApprenticeLicense(plugin.HoudiniInstancePlugin):

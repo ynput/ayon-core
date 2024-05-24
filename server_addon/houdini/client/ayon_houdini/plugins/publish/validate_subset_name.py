@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Validator for correct naming of Static Meshes."""
+import hou
+
 from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
@@ -8,11 +10,10 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     RepairAction,
 )
+
 from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectInvalidAction
 from ayon_core.pipeline.create import get_product_name
-
-import hou
 
 
 class FixProductNameAction(RepairAction):

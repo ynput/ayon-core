@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
 import hou
-from ayon_houdini.api import plugin
+
+import pyblish.api
 from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
 from ayon_core.pipeline.publish import RepairAction
+
+from ayon_houdini.api import plugin
 
 
 class ValidateWorkfilePaths(

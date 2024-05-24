@@ -1,7 +1,8 @@
 import pyblish.api
-from ayon_houdini.api import plugin
 
 from ayon_core.pipeline import registered_host
+
+from ayon_houdini.api import plugin
 
 
 class SaveCurrentScene(plugin.HoudiniContextPlugin):

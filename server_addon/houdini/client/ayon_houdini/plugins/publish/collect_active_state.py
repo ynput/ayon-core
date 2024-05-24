@@ -1,6 +1,7 @@
+import hou
+
 import pyblish.api
 from ayon_houdini.api import plugin
-import hou
 
 
 class CollectInstanceActiveState(plugin.HoudiniInstancePlugin):

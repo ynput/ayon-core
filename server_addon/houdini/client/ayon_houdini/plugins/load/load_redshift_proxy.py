@@ -1,13 +1,14 @@
 import os
 import re
+import hou
+
 from ayon_core.pipeline import get_representation_path
+from ayon_core.pipeline.load import LoadError
+
 from ayon_houdini.api import (
     pipeline,
     plugin
 )
-from ayon_core.pipeline.load import LoadError
-
-import hou
 
 
 class RedshiftProxyLoader(plugin.HoudiniLoader):

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Validator for correct naming of Static Meshes."""
+import hou
+
 from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
@@ -9,8 +11,6 @@ from ayon_core.pipeline.publish import ValidateContentsOrder
 from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectInvalidAction
 from ayon_houdini.api.lib import get_output_children
-
-import hou
 
 
 class ValidateUnrealStaticMeshName(plugin.HoudiniInstancePlugin,

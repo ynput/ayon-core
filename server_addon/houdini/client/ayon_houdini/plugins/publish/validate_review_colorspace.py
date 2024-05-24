@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import os
+import hou
+
 import pyblish.api
 from ayon_core.pipeline import (
     PublishValidationError,
@@ -9,11 +12,9 @@ from ayon_core.pipeline.publish import (
     get_plugin_settings,
     apply_plugin_settings_automatically
 )
+
 from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectROPAction
-
-import os
-import hou
 
 
 class ResetViewSpaceAction(RepairAction):

@@ -1,10 +1,8 @@
 import os
-
+import hou
 import pyblish.api
 from ayon_houdini.api import plugin
 import ayon_houdini.api.usd as usdlib
-
-import hou
 
 
 class CollectUsdLayers(plugin.HoudiniInstancePlugin):

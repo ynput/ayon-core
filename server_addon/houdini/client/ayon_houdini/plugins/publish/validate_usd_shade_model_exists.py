@@ -2,13 +2,13 @@
 import re
 
 import ayon_api
-from ayon_houdini.api import plugin
-
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     KnownPublishError,
     PublishValidationError,
 )
+
+from ayon_houdini.api import plugin
 
 
 class ValidateUSDShadeModelExists(plugin.HoudiniInstancePlugin):

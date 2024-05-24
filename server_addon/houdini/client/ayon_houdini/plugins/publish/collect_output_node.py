@@ -1,6 +1,6 @@
 import pyblish.api
-from ayon_houdini.api import plugin
 from ayon_core.pipeline.publish import KnownPublishError
+from ayon_houdini.api import plugin
 
 
 class CollectOutputSOPPath(plugin.HoudiniInstancePlugin):

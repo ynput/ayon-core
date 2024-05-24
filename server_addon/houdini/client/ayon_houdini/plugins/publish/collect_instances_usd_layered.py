@@ -1,8 +1,8 @@
 import hou
 import pyblish.api
+from ayon_core.pipeline import usdlib
 from ayon_houdini.api import lib, plugin
 import ayon_houdini.api.usd as hou_usdlib
-from ayon_core.pipeline import usdlib
 
 
 class CollectInstancesUsdLayered(plugin.HoudiniContextPlugin):

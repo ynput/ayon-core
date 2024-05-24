@@ -1,11 +1,11 @@
 import os
 import re
+import hou
 
 from ayon_houdini.api import (
     pipeline,
     plugin
 )
-import hou
 
 
 class FilePathLoader(plugin.HoudiniLoader):
