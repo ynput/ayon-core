@@ -55,9 +55,9 @@ def cli_main():
 def launch():
     """Launch TrayPublish tool UI."""
 
-    from ayon_core.tools import traypublisher
+    from ayon_traypublisher import ui
 
-    traypublisher.main()
+    ui.main()
 
 
 @cli_main.command()
