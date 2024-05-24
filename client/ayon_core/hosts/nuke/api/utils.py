@@ -189,7 +189,17 @@ def _submit_render_on_farm(node):
     # Used in pyblish plugins to determine whether to run or not.
     context.data["render_on_farm"] = True
 
-    context = pyblish.util.publish(context)
+    # Since we need to bypass version validation and incrementing, we need to
+    # remove the plugins from the list that are responsible for these tasks.
+    plugins = pyblish.api.discover()
+    blacklist = ["IncrementScriptVersion", "ValidateVersion"]
+    plugins = [
+        plugin
+        for plugin in plugins
+        if plugin.__name__ not in blacklist
+    ]
+
+    context = pyblish.util.publish(context, plugins=plugins)
 
     error_message = ""
     success = True
