@@ -47,9 +47,9 @@ class ProductsModel(QtGui.QStandardItemModel):
         "Product type",
         "Folder",
         "Version",
+        "Status",
         "Time",
         "Author",
-        "Status",
         "Frames",
         "Duration",
         "Handles",
@@ -77,9 +77,9 @@ class ProductsModel(QtGui.QStandardItemModel):
     product_type_col = column_labels.index("Product type")
     folders_label_col = column_labels.index("Folder")
     version_col = column_labels.index("Version")
+    status_col = column_labels.index("Status")
     published_time_col = column_labels.index("Time")
     author_col = column_labels.index("Author")
-    status_col = column_labels.index("Status")
     frame_range_col = column_labels.index("Frames")
     duration_col = column_labels.index("Duration")
     handles_col = column_labels.index("Handles")
@@ -91,9 +91,9 @@ class ProductsModel(QtGui.QStandardItemModel):
         product_type_col: PRODUCT_TYPE_ROLE,
         folders_label_col: FOLDER_LABEL_ROLE,
         version_col: VERSION_NAME_ROLE,
+        status_col: VERSION_STATUS_NAME_ROLE,
         published_time_col: VERSION_PUBLISH_TIME_ROLE,
         author_col: VERSION_AUTHOR_ROLE,
-        status_col: VERSION_STATUS_NAME_ROLE,
         frame_range_col: VERSION_FRAME_RANGE_ROLE,
         duration_col: VERSION_DURATION_ROLE,
         handles_col: VERSION_HANDLES_ROLE,
