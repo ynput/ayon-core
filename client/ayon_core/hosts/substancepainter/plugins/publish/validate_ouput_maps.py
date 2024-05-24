@@ -47,7 +47,7 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
                             tmp_export_channel.remove(channel)
                 if tmp_export_channel:
                     raise PublishValidationError(
-                        "No Channel(s) {} found in the texture set:{}".format(
+                        "No Channel(s){} found in the texture set:{}".format(
                             tmp_export_channel, instance.name
                         ))
 
