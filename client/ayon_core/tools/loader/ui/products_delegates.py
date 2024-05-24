@@ -6,6 +6,9 @@ from ayon_core.tools.utils.lib import format_version
 from .products_model import (
     PRODUCT_ID_ROLE,
     VERSION_NAME_EDIT_ROLE,
+    VERSION_STATUS_NAME_ROLE,
+    VERSION_STATUS_SHORT_ROLE,
+    VERSION_STATUS_COLOR_ROLE,
     VERSION_ID_ROLE,
     PRODUCT_IN_SCENE_ROLE,
     ACTIVE_SITE_ICON_ROLE,
@@ -192,6 +195,49 @@ class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):
         value = index.data(PRODUCT_IN_SCENE_ROLE)
         color = self._colors.get(value, self._default_color)
         option.palette.setBrush(QtGui.QPalette.Text, color)
+
+
+class StatusDelegate(QtWidgets.QStyledItemDelegate):
+    """Delegate showing status name and short name."""
+
+    def paint(self, painter, option, index):
+        if option.widget:
+            style = option.widget.style()
+        else:
+            style = QtWidgets.QApplication.style()
+
+        style.drawControl(
+            style.CE_ItemViewItem, option, painter, option.widget
+        )
+
+        painter.save()
+
+        text_rect = style.subElementRect(style.SE_ItemViewItemText, option)
+        text_margin = style.proxy().pixelMetric(
+            style.PM_FocusFrameHMargin, option, option.widget
+        ) + 1
+        padded_text_rect = text_rect.adjusted(
+            text_margin, 0, - text_margin, 0
+        )
+
+        fm = QtGui.QFontMetrics(option.font)
+        text = index.data(VERSION_STATUS_NAME_ROLE)
+        if padded_text_rect.width() < fm.width(text):
+            text = index.data(VERSION_STATUS_SHORT_ROLE)
+
+        status_color = index.data(VERSION_STATUS_COLOR_ROLE)
+        fg_color = QtGui.QColor(status_color)
+        pen = painter.pen()
+        pen.setColor(fg_color)
+        painter.setPen(pen)
+
+        painter.drawText(
+            padded_text_rect,
+            option.displayAlignment,
+            text
+        )
+
+        painter.restore()
 
 
 class SiteSyncDelegate(QtWidgets.QStyledItemDelegate):
