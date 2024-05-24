@@ -20,7 +20,7 @@ from ayon_traypublisher.api.plugin import TrayPublishCreator
 class OnlineCreator(TrayPublishCreator):
     """Creates instance from file and retains its original name."""
 
-    identifier = "io.openpype.creators.traypublisher.online"
+    identifier = "io.ayon.creators.traypublisher.online"
     label = "Online"
     product_type = "online"
     description = "Publish file retaining its original file name"

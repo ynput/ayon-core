@@ -29,8 +29,8 @@ class TrayPublishAddon(AYONAddon, IHostAddon, ITrayAction):
     def on_action_trigger(self):
         self.run_traypublisher()
 
-    def connect_with_addons(self, enabled_modules):
-        """Collect publish paths from other modules."""
+    def connect_with_addons(self, enabled_addons):
+        """Collect publish paths from other addons."""
         publish_paths = self.manager.collect_plugin_paths()["publish"]
         self.publish_paths.extend(publish_paths)
 
