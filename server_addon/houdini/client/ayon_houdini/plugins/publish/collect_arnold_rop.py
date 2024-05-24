@@ -6,7 +6,9 @@ import pyblish.api
 
 from ayon_houdini.api import colorspace, plugin
 from ayon_houdini.api.lib import (
-    evalParmNoFrame, get_color_management_preferences)
+    get_color_management_preferences,
+    evalParmNoFrame
+)
 
 
 class CollectArnoldROPRenderProducts(plugin.HoudiniInstancePlugin):

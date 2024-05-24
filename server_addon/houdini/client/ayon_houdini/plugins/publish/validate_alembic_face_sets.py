@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+import hou
 import pyblish.api
 from ayon_houdini.api import plugin
-import hou
+
 
 class ValidateAlembicROPFaceSets(plugin.HoudiniInstancePlugin):
     """Validate Face Sets are disabled for extraction to pointcache.

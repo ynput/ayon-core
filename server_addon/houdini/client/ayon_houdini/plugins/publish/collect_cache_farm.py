@@ -1,8 +1,10 @@
 import os
-import pyblish.api
 import hou
-from ayon_houdini.api import lib
-from ayon_houdini.api import plugin
+import pyblish.api
+from ayon_houdini.api import (
+    lib,
+    plugin
+)
 
 
 class CollectDataforCache(plugin.HoudiniInstancePlugin):

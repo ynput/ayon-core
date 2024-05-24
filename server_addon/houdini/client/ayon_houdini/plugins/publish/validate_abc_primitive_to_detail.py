@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
-from ayon_houdini.api import plugin
-
 from collections import defaultdict
+
+import pyblish.api
 from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api import plugin
 
 
 class ValidateAbcPrimitiveToDetail(plugin.HoudiniInstancePlugin):

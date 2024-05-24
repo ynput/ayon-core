@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
+
 import pyblish.api
-from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api import plugin
 
 
 class ValidateUSDRenderProductNames(plugin.HoudiniInstancePlugin):

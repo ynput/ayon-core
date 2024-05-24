@@ -1,11 +1,9 @@
 import os
+import hou
 
 import pyblish.api
 
-from ayon_houdini.api.lib import render_rop
 from ayon_houdini.api import lib, plugin
-
-import hou
 
 
 class ExtractBGEO(plugin.HoudiniInstancePlugin):
@@ -31,7 +29,7 @@ class ExtractBGEO(plugin.HoudiniInstancePlugin):
             file_name, staging_dir))
 
         # write files
-        render_rop(ropnode)
+        lib.render_rop(ropnode)
 
         output = instance.data["frames"]
 

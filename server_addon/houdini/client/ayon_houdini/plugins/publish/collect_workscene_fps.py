@@ -1,6 +1,6 @@
-from ayon_houdini.api import plugin
-import pyblish.api
 import hou
+import pyblish.api
+from ayon_houdini.api import plugin
 
 
 class CollectWorksceneFPS(plugin.HoudiniContextPlugin):

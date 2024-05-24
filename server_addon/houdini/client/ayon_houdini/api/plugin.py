@@ -7,6 +7,7 @@ from abc import (
 import six
 import hou
 
+import pyblish.api
 from ayon_core.pipeline import (
     CreatorError,
     LegacyCreator,
@@ -17,8 +18,8 @@ from ayon_core.pipeline import (
     load
 )
 from ayon_core.lib import BoolDef
+
 from .lib import imprint, read, lsattr, add_self_publish_button
-import pyblish.api
 
 
 SETTINGS_CATEGORY = "houdini"

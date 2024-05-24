@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import hou
+
 import pyblish.api
-from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 
-import hou
+from ayon_houdini.api import plugin
 
 
 class ValidateUsdShadeWorkspace(plugin.HoudiniInstancePlugin):

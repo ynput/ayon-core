@@ -1,5 +1,6 @@
 import os
 import re
+import hou
 
 from ayon_core.pipeline import (
     get_representation_path,
@@ -10,8 +11,6 @@ from ayon_houdini.api import (
     plugin,
     lib
 )
-
-import hou
 
 
 def get_image_avalon_container():

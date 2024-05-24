@@ -1,10 +1,9 @@
 import os
+import hou
 
 import pyblish.api
 
 from ayon_houdini.api import plugin
-
-import hou
 
 
 class ExtractMantraIFD(plugin.HoudiniInstancePlugin):

@@ -1,11 +1,11 @@
 # -*-coding: utf-8 -*-
-import pyblish.api
+import hou
 
-from ayon_houdini.api import lib, plugin
+import pyblish.api
 from ayon_core.pipeline.publish import RepairContextAction
 from ayon_core.pipeline import PublishValidationError
 
-import hou
+from ayon_houdini.api import lib, plugin
 
 
 class ValidateRemotePublishOutNode(plugin.HoudiniContextPlugin):

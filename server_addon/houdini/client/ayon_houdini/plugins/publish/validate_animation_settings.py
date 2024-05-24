@@ -1,8 +1,9 @@
-import pyblish.api
-
-from ayon_core.pipeline.publish import PublishValidationError
-from ayon_houdini.api import lib, plugin
 import hou
+
+import pyblish.api
+from ayon_core.pipeline.publish import PublishValidationError
+
+from ayon_houdini.api import lib, plugin
 
 
 class ValidateAnimationSettings(plugin.HoudiniInstancePlugin):

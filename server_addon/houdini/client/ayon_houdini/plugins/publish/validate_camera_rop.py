@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """Validator plugin for Houdini Camera ROP settings."""
 import pyblish.api
-from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api import plugin
 
 
 class ValidateCameraROP(plugin.HoudiniInstancePlugin):

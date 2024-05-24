@@ -1,8 +1,8 @@
 import pyblish.api
 import ayon_api
-from ayon_houdini.api import plugin
 from ayon_core.pipeline import usdlib, KnownPublishError
 
+from ayon_houdini.api import plugin
 
 class CollectUsdBootstrap(plugin.HoudiniInstancePlugin):
     """Collect special Asset/Shot bootstrap instances if those are needed.

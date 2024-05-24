@@ -1,10 +1,13 @@
 import pyblish.api
-from ayon_houdini.api import plugin
 
 from ayon_core.lib import version_up
 from ayon_core.pipeline import registered_host
-from ayon_core.pipeline.publish import get_errored_plugins_from_context
-from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.publish import (
+    get_errored_plugins_from_context,
+    KnownPublishError
+)
+
+from ayon_houdini.api import plugin
 
 
 class IncrementCurrentFile(plugin.HoudiniContextPlugin):
