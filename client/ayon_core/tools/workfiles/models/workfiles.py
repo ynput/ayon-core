@@ -6,6 +6,7 @@ import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
+from ayon_core.lib import get_ayon_username
 from ayon_core.pipeline.template_data import (
     get_template_data,
     get_task_template_data,
@@ -22,6 +23,8 @@ from ayon_core.tools.workfiles.abstract import (
     FileItem,
     WorkfileInfo,
 )
+
+_NOT_SET = object()
 
 
 class CommentMatcher(object):
@@ -445,6 +448,7 @@ class WorkfileEntitiesModel:
         self._controller = controller
         self._cache = {}
         self._items = {}
+        self._current_username = _NOT_SET
 
     def _get_workfile_info_identifier(
         self, folder_id, task_id, rootless_path
@@ -563,19 +567,29 @@ class WorkfileEntitiesModel:
 
         project_name = self._controller.get_current_project_name()
 
+        username = self._get_current_username()
         workfile_info = {
             "path": rootless_path,
             "taskId": task_id,
             "attrib": {
                 "extension": extension,
                 "description": note
-            }
+            },
+            # TODO remove 'createdBy' and 'updatedBy' fields when server is
+            #   or above 1.1.3 .
+            "createdBy": username,
+            "updatedBy": username,
         }
 
         session = OperationsSession()
         session.create_entity(project_name, "workfile", workfile_info)
         session.commit()
         return workfile_info
+
+    def _get_current_username(self):
+        if self._current_username is _NOT_SET:
+            self._current_username = get_ayon_username()
+        return self._current_username
 
 
 class PublishWorkfilesModel:
