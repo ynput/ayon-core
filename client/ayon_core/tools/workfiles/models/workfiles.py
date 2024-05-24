@@ -717,8 +717,8 @@ class PublishWorkfilesModel:
             file_item = self._file_item_from_representation(
                 repre_entity,
                 project_anatomy,
+                version_entity["author"],
                 task_name,
-                version_entity["author"]
             )
             if file_item is not None:
                 file_items.append(file_item)
