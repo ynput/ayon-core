@@ -22,12 +22,6 @@ class ValidateSceneSettingsModel(BaseSettingsModel):
     )
 
 
-class ValidateContainersModel(BaseSettingsModel):
-    enabled: bool = SettingsField(True, title="Enabled")
-    optional: bool = SettingsField(True, title="Optional")
-    active: bool = SettingsField(True, title="Active")
-
-
 class AfterEffectsPublishPlugins(BaseSettingsModel):
     CollectReview: CollectReviewPluginModel = SettingsField(
         default_factory=CollectReviewPluginModel,
@@ -36,10 +30,6 @@ class AfterEffectsPublishPlugins(BaseSettingsModel):
     ValidateSceneSettings: ValidateSceneSettingsModel = SettingsField(
         default_factory=ValidateSceneSettingsModel,
         title="Validate Scene Settings",
-    )
-    ValidateContainers: ValidateContainersModel = SettingsField(
-        default_factory=ValidateContainersModel,
-        title="Validate Containers",
     )
 
 
@@ -58,9 +48,4 @@ AE_PUBLISH_PLUGINS_DEFAULTS = {
             ".*"
         ]
     },
-    "ValidateContainers": {
-        "enabled": True,
-        "optional": True,
-        "active": True,
-    }
 }
