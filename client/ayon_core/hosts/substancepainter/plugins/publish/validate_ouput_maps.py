@@ -25,32 +25,17 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
     def process(self, instance):
 
         config = instance.data["exportConfig"]
-        creator_attrs = instance.data["creator_attributes"]
+
         # Substance Painter API does not allow to query the actual output maps
         # it will generate without actually exporting the files. So we try to
         # generate the smallest size / fastest export as possible
         config = copy.deepcopy(config)
-        export_channel = creator_attrs.get("exportChannel", [])
-        tmp_export_channel = copy.deepcopy(export_channel)
-        if export_channel:
-            for export_preset in config.get("exportPresets", {}):
-                if not export_preset.get("maps", {}):
-                    raise PublishValidationError(
-                        "No Texture Map Exported with texture set:{}.".format(
-                            instance.name)
-                    )
-                map_names = [channel_map["fileName"] for channel_map
-                                in export_preset["maps"]]
-                for channel in tmp_export_channel:
-                    for map_name in map_names:
-                        if channel in map_name:
-                            tmp_export_channel.remove(channel)
-                if tmp_export_channel:
-                    raise PublishValidationError(
-                        "No Channel(s){} found in the texture set:{}".format(
-                            tmp_export_channel, instance.name
-                        ))
-
+        invalid_channels = self.get_invalid_channels(instance, config)
+        if invalid_channels:
+            raise PublishValidationError(
+                "No Channel(s){} found in the texture set:{}".format(
+                    invalid_channels, instance.name
+                ))
         parameters = config["exportParameters"][0]["parameters"]
         parameters["sizeLog2"] = [1, 1]     # output 2x2 images (smallest)
         parameters["paddingAlgorithm"] = "passthrough"  # no dilation (faster)
@@ -128,3 +113,43 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
                 message=message,
                 title="Missing output maps"
             )
+
+
+    def get_invalid_channels(self, instance, config):
+        """Function to get invalid channel(s) from export channel
+        filtering
+
+        Args:
+            instance (pyblish.api.Instance): Instance
+            config (dict): export config
+
+        Raises:
+            PublishValidationError: raise Publish Validation
+                Error if any invalid channel(s) found
+
+        Returns:
+            list: invalid channel(s)
+        """
+        creator_attrs = instance.data["creator_attributes"]
+        export_channel = creator_attrs.get("exportChannel", [])
+        tmp_export_channel = copy.deepcopy(export_channel)
+        invalid_channel = []
+        if export_channel:
+            for export_preset in config.get("exportPresets", {}):
+                if not export_preset.get("maps", {}):
+                    raise PublishValidationError(
+                        "No Texture Map Exported with texture set:{}.".format(
+                            instance.name)
+                    )
+                map_names = [channel_map["fileName"] for channel_map
+                             in export_preset["maps"]]
+                for channel in tmp_export_channel:
+                    found = False
+                    for map_name in map_names:
+                        if channel in map_name:
+                            found = True
+                            break  # Exit the inner loop once a match is found
+                    if not found:
+                        invalid_channel.append(channel)
+
+        return invalid_channel
