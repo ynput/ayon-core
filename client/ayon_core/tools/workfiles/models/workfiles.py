@@ -538,18 +538,32 @@ class WorkfileEntitiesModel:
             self._items.pop(identifier, None)
             return
 
-        if note is None:
-            return
-
         old_note = workfile_info.get("attrib", {}).get("note")
 
         new_workfile_info = copy.deepcopy(workfile_info)
-        attrib = new_workfile_info.setdefault("attrib", {})
-        attrib["description"] = note
+        update_data = {}
+        if note is not None and old_note != note:
+            update_data["attrib"] = {"description": note}
+            attrib = new_workfile_info.setdefault("attrib", {})
+            attrib["description"] = note
+
+        username = self._get_current_username()
+        # Automatically fix 'createdBy' and 'updatedBy' fields
+        # NOTE both fields were not automatically filled by server
+        #   until 1.1.3 release.
+        if workfile_info.get("createdBy") is None:
+            update_data["createdBy"] = username
+            new_workfile_info["createdBy"] = username
+
+        if workfile_info.get("updatedBy") != username:
+            update_data["updatedBy"] = username
+            new_workfile_info["updatedBy"] = username
+
+        if not update_data:
+            return
+
         self._cache[identifier] = new_workfile_info
         self._items.pop(identifier, None)
-        if old_note == note:
-            return
 
         project_name = self._controller.get_current_project_name()
 
@@ -558,7 +572,7 @@ class WorkfileEntitiesModel:
             project_name,
             "workfile",
             workfile_info["id"],
-            {"attrib": {"description": note}},
+            update_data,
         )
         session.commit()
 
