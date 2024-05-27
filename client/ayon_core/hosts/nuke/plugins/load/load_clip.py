@@ -61,7 +61,8 @@ class LoadClip(plugin.NukeLoader):
     # option gui
     options_defaults = {
         "start_at_workfile": True,
-        "add_retime": True
+        "add_retime": True,
+        "deep_exr": False
     }
 
     node_name_template = "{class_name}_{ext}"
@@ -78,6 +79,11 @@ class LoadClip(plugin.NukeLoader):
                 "add_retime",
                 help="Load with retime",
                 default=cls.options_defaults["add_retime"]
+            ),
+            qargparse.Boolean(
+                "deep_exr",
+                help="Read with deep exr",
+                default=cls.options_defaults["deep_exr"]
             )
         ]
 
@@ -112,6 +118,9 @@ class LoadClip(plugin.NukeLoader):
 
         add_retime = options.get(
             "add_retime", self.options_defaults["add_retime"])
+
+        deep_exr = options.get(
+            "deep_exr", self.options_defaults["deep_exr"])
 
         repre_id = repre_entity["id"]
 
@@ -153,13 +162,21 @@ class LoadClip(plugin.NukeLoader):
             return
 
         read_name = self._get_node_name(context)
-
-        # Create the Loader with the filename path set
-        read_node = nuke.createNode(
-            "Read",
-            "name {}".format(read_name),
-            inpanel=False
-        )
+        read_node = None
+        if deep_exr:
+            # Create the Loader with the filename path set
+            read_node = nuke.createNode(
+                "DeepRead",
+                "name {}".format(read_name),
+                inpanel=False
+            )
+        else:
+            # Create the Loader with the filename path set
+            read_node = nuke.createNode(
+                "Read",
+                "name {}".format(read_name),
+                inpanel=False
+            )
 
         # get colorspace
         colorspace = (
