@@ -787,8 +787,8 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
     )
-    ValidateVersion: ValidateBaseModel = SettingsField(
-        default_factory=ValidateBaseModel,
+    ValidateVersion: PluginStateByHostModel = SettingsField(
+        default_factory=PluginStateByHostModel,
         title="Validate Version"
     )
     ValidateOutdatedContainers: PluginStateByHostModel = SettingsField(
@@ -876,9 +876,21 @@ DEFAULT_PUBLISH_VALUES = {
         "active": True
     },
     "ValidateVersion": {
-        "enabled": True,
-        "optional": False,
-        "active": True
+        "plugin_state_profiles": [
+            {
+                "host_names": [
+                    "aftereffects",
+                    "blender",
+                    "houdini",
+                    "maya",
+                    "nuke",
+                    "photoshop",
+                ],
+                "enabled": True,
+                "optional": False,
+                "active": True
+            }
+        ]
     },
     "ValidateOutdatedContainers": {
         "plugin_state_profiles": [
