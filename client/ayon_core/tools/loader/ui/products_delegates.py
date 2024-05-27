@@ -107,7 +107,10 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             style = QtWidgets.QApplication.style()
 
         style.drawControl(
-            style.CE_ItemViewItem, option, painter, option.widget
+            QtWidgets.QCommonStyle.CE_ItemViewItem,
+            option,
+            painter,
+            option.widget
         )
 
         painter.save()
@@ -207,7 +210,10 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
             style = QtWidgets.QApplication.style()
 
         style.drawControl(
-            style.CE_ItemViewItem, option, painter, option.widget
+            QtWidgets.QCommonStyle.CE_ItemViewItem,
+            option,
+            painter,
+            option.widget
         )
 
         painter.save()
