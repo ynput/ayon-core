@@ -34,6 +34,7 @@ class CollectDeadlinePools(pyblish.api.InstancePlugin,
         "max",
         "houdini",
         "nuke",
+        "unreal"
     ]
 
     families = [
