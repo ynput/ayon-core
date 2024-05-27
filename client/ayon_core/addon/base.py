@@ -54,6 +54,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "clockify": VersionInfo(0, 2, 0),
     "traypublisher": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
+    "nuke": VersionInfo(0, 2, 0),
 }
 
 # Inherit from `object` for Python 2 hosts
