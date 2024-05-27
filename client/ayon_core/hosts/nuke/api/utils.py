@@ -3,8 +3,14 @@ import re
 
 import nuke
 
-from ayon_core import resources
+import pyblish.util
+import pyblish.api
 from qtpy import QtWidgets
+
+from ayon_core import resources
+from ayon_core.pipeline import registered_host
+from ayon_core.tools.utils import show_message_dialog
+from ayon_core.pipeline.create import CreateContext
 
 
 def set_context_favorites(favorites=None):
@@ -142,3 +148,77 @@ def is_headless():
         bool: headless
     """
     return QtWidgets.QApplication.instance() is None
+
+
+def submit_render_on_farm(node):
+    # Ensure code is executed in root context.
+    if nuke.root() == nuke.thisNode():
+        _submit_render_on_farm(node)
+    else:
+        # If not in root context, move to the root context and then execute the
+        # code.
+        with nuke.root():
+            _submit_render_on_farm(node)
+
+
+def _submit_render_on_farm(node):
+    """Render on farm submission
+
+    This function prepares the context for farm submission, validates it,
+    extracts relevant data, copies the current workfile to a timestamped copy,
+    and submits the job to the farm.
+
+    Args:
+        node (Node): The node for which the farm submission is being made.
+    """
+
+    host = registered_host()
+    create_context = CreateContext(host)
+
+    # Ensure CreateInstance is enabled.
+    for instance in create_context.instances:
+        if node.name() != instance.transient_data["node"].name():
+            continue
+
+        instance.data["active"] = True
+
+    context = pyblish.api.Context()
+    context.data["create_context"] = create_context
+    # Used in pyblish plugin to determine which instance to publish.
+    context.data["node_name"] = node.name()
+    # Used in pyblish plugins to determine whether to run or not.
+    context.data["render_on_farm"] = True
+
+    # Since we need to bypass version validation and incrementing, we need to
+    # remove the plugins from the list that are responsible for these tasks.
+    plugins = pyblish.api.discover()
+    blacklist = ["IncrementScriptVersion", "ValidateVersion"]
+    plugins = [
+        plugin
+        for plugin in plugins
+        if plugin.__name__ not in blacklist
+    ]
+
+    context = pyblish.util.publish(context, plugins=plugins)
+
+    error_message = ""
+    success = True
+    for result in context.data["results"]:
+        if result["success"]:
+            continue
+
+        success = False
+
+        err = result["error"]
+        error_message += "\n"
+        error_message += err.formatted_traceback
+
+    if not success:
+        show_message_dialog(
+            "Publish Errors", error_message, level="critical"
+        )
+        return
+
+    show_message_dialog(
+        "Submission Successful", "Submission to the farm was successful."
+    )
