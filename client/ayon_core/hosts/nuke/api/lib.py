@@ -43,7 +43,9 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.context_tools import (
     get_current_context_custom_workfile_template
 )
-from ayon_core.pipeline.colorspace import get_imageio_config
+from ayon_core.pipeline.colorspace import (
+    get_current_context_imageio_config_preset
+)
 from ayon_core.pipeline.workfile import BuildWorkfile
 from . import gizmo_menu
 from .constants import ASSIST
@@ -1022,6 +1024,18 @@ def script_name():
     return nuke.root().knob("name").value()
 
 
+def add_button_render_on_farm(node):
+    name = "renderOnFarm"
+    label = "Render On Farm"
+    value = (
+        "from ayon_core.hosts.nuke.api.utils import submit_render_on_farm;"
+        "submit_render_on_farm(nuke.thisNode())"
+    )
+    knob = nuke.PyScript_Knob(name, label, value)
+    knob.clearFlag(nuke.STARTLINE)
+    node.addKnob(knob)
+
+
 def add_button_write_to_read(node):
     name = "createReadNode"
     label = "Read From Rendered"
@@ -1144,6 +1158,17 @@ def create_write_node(
     Return:
         node (obj): group node with avalon data as Knobs
     '''
+    # Ensure name does not contain any invalid characters.
+    special_chars = re.escape("!@#$%^&*()=[]{}|\\;',.<>/?~+-")
+    special_chars_regex = re.compile(f"[{special_chars}]")
+    found_special_characters = list(special_chars_regex.findall(name))
+
+    msg = (
+        f"Special characters found in name \"{name}\": "
+        f"{' '.join(found_special_characters)}"
+    )
+    assert not found_special_characters, msg
+
     prenodes = prenodes or []
 
     # filtering variables
@@ -1267,6 +1292,10 @@ def create_write_node(
                     link.setLabel("Render Local")
                 link.setFlag(0x1000)
                 GN.addKnob(link)
+
+    # Adding render farm submission button.
+    if data.get("render_on_farm", False):
+        add_button_render_on_farm(GN)
 
     # adding write to read button
     add_button_write_to_read(GN)
@@ -1495,18 +1524,28 @@ class WorkfileSettings(object):
 
         filter_knobs = [
             "viewerProcess",
-            "wipe_position"
+            "wipe_position",
+            "monitorOutOutputTransform"
         ]
 
+        display, viewer = get_viewer_config_from_string(
+            viewer_dict["viewerProcess"]
+        )
+        viewer_process = create_viewer_profile_string(
+            viewer, display, path_like=False
+        )
+        display, viewer = get_viewer_config_from_string(
+            viewer_dict["output_transform"]
+        )
+        output_transform = create_viewer_profile_string(
+            viewer, display, path_like=False
+        )
         erased_viewers = []
         for v in nuke.allNodes(filter="Viewer"):
             # set viewProcess to preset from settings
-            v["viewerProcess"].setValue(
-                str(viewer_dict["viewerProcess"])
-            )
+            v["viewerProcess"].setValue(viewer_process)
 
-            if str(viewer_dict["viewerProcess"]) \
-                    not in v["viewerProcess"].value():
+            if viewer_process not in v["viewerProcess"].value():
                 copy_inputs = v.dependencies()
                 copy_knobs = {k: v[k].value() for k in v.knobs()
                               if k not in filter_knobs}
@@ -1524,11 +1563,11 @@ class WorkfileSettings(object):
 
                 # set copied knobs
                 for k, v in copy_knobs.items():
-                    print(k, v)
                     nv[k].setValue(v)
 
                 # set viewerProcess
-                nv["viewerProcess"].setValue(str(viewer_dict["viewerProcess"]))
+                nv["viewerProcess"].setValue(viewer_process)
+                nv["monitorOutOutputTransform"].setValue(output_transform)
 
         if erased_viewers:
             log.warning(
@@ -1542,12 +1581,8 @@ class WorkfileSettings(object):
             imageio_host (dict): host colorspace configurations
 
         '''
-        config_data = get_imageio_config(
-            project_name=get_current_project_name(),
-            host_name="nuke"
-        )
+        config_data = get_current_context_imageio_config_preset()
 
-        viewer_process_settings = imageio_host["viewer"]["viewerProcess"]
         workfile_settings = imageio_host["workfile"]
         color_management = workfile_settings["color_management"]
         native_ocio_config = workfile_settings["native_ocio_config"]
@@ -1574,29 +1609,6 @@ class WorkfileSettings(object):
                     residual_path
                 ))
 
-        # get monitor lut from settings respecting Nuke version differences
-        monitor_lut = workfile_settings["thumbnail_space"]
-        monitor_lut_data = self._get_monitor_settings(
-            viewer_process_settings, monitor_lut
-        )
-        monitor_lut_data["workingSpaceLUT"] = (
-            workfile_settings["working_space"]
-        )
-
-        # then set the rest
-        for knob, value_ in monitor_lut_data.items():
-            # skip unfilled ocio config path
-            # it will be dict in value
-            if isinstance(value_, dict):
-                continue
-            # skip empty values
-            if not value_:
-                continue
-            if self._root_node[knob].value() not in value_:
-                self._root_node[knob].setValue(str(value_))
-                log.debug("nuke.root()['{}'] changed to: {}".format(
-                    knob, value_))
-
         # set ocio config path
         if config_data:
             config_path = config_data["path"].replace("\\", "/")
@@ -1610,6 +1622,31 @@ class WorkfileSettings(object):
             # if there's no mismatch between environment and settings
             if correct_settings:
                 self._set_ocio_config_path_to_workfile(config_data)
+
+        # get monitor lut from settings respecting Nuke version differences
+        monitor_lut_data = self._get_monitor_settings(
+            workfile_settings["monitor_out_lut"],
+            workfile_settings["monitor_lut"]
+        )
+        monitor_lut_data.update({
+            "workingSpaceLUT": workfile_settings["working_space"],
+            "int8Lut": workfile_settings["int_8_lut"],
+            "int16Lut": workfile_settings["int_16_lut"],
+            "logLut": workfile_settings["log_lut"],
+            "floatLut": workfile_settings["float_lut"]
+        })
+
+        # then set the rest
+        for knob, value_ in monitor_lut_data.items():
+            # skip unfilled ocio config path
+            # it will be dict in value
+            if isinstance(value_, dict):
+                continue
+            # skip empty values
+            if not value_:
+                continue
+            self._root_node[knob].setValue(str(value_))
+            log.debug("nuke.root()['{}'] changed to: {}".format(knob, value_))
 
     def _get_monitor_settings(self, viewer_lut, monitor_lut):
         """ Get monitor settings from viewer and monitor lut

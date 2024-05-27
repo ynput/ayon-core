@@ -45,6 +45,11 @@ class ValidateMeshNgons(pyblish.api.InstancePlugin,
         # Get all faces
         faces = ['{0}.f[*]'.format(node) for node in meshes]
 
+        # Skip meshes that for some reason have no faces, e.g. empty meshes
+        faces = cmds.ls(faces)
+        if not faces:
+            return []
+
         # Filter to n-sided polygon faces (ngons)
         invalid = lib.polyConstraint(faces,
                                      t=0x0008,  # type=face

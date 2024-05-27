@@ -8,6 +8,7 @@ from .lib import (
     sync_avalon_data_to_workfile,
     launch_workfiles_app,
     before_project_save,
+    apply_colorspace_project
 )
 from .tags import add_tags_to_workfile
 from .menu import update_menu_task_label
@@ -43,6 +44,8 @@ def afterNewProjectCreated(event):
         hiero.core.events.sendEvent("kStartWorkfiles", None)
         # reset workfiles startup not to open any more in session
         os.environ["WORKFILES_STARTUP"] = "0"
+
+    apply_colorspace_project()
 
 
 def beforeProjectLoad(event):
@@ -121,6 +124,7 @@ def register_hiero_events():
             "kStartWorkfiles", launch_workfiles_app)
     except RuntimeError:
         pass
+
 
 def register_events():
     """
