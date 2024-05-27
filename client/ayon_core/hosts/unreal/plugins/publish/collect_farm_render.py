@@ -154,7 +154,8 @@ class CollectUnrealRemoteRender(publish.AbstractCollectRender):
                 output_settings=output_settings,
                 config_path=config_path,
                 master_level=inst.data["master_level"],
-                render_queue_path=render_queue_path
+                render_queue_path=render_queue_path,
+                deadline=inst.data.get("deadline")
             )
             instance.farm = True
 
