@@ -52,9 +52,12 @@ IGNORED_MODULES_IN_AYON = set()
 MOVED_ADDON_MILESTONE_VERSIONS = {
     "applications": VersionInfo(0, 2, 0),
     "clockify": VersionInfo(0, 2, 0),
+    "traypublisher": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
+    "nuke": VersionInfo(0, 2, 0),
     "substancepainter": VersionInfo(0, 2, 0),
 }
+
 
 # Inherit from `object` for Python 2 hosts
 class _ModuleClass(object):
