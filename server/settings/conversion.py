@@ -44,9 +44,43 @@ def _convert_imageio_configs_0_3_1(overrides):
     ocio_config_profiles.append(base_value)
 
 
+def _convert_validate_version_0_3_3(publish_overrides):
+    """ValidateVersion plugin changed in 0.3.3."""
+    if "ValidateVersion" not in publish_overrides:
+        return
+
+    validate_version = publish_overrides["ValidateVersion"]
+    # Already new settings
+    if "plugin_state_profiles" in validate_version:
+        return
+
+    # Use new default profile as base
+    profile = copy.deepcopy(
+        DEFAULT_PUBLISH_VALUES["ValidateVersion"]["plugin_state_profiles"][0]
+    )
+    # Copy values from old overrides to new overrides
+    for key in {
+        "enabled",
+        "optional",
+        "active",
+    }:
+        if key not in validate_version:
+            continue
+        profile[key] = validate_version.pop(key)
+
+    validate_version["plugin_state_profiles"] = [profile]
+
+
+def _conver_publish_plugins(overrides):
+    if "publish" not in overrides:
+        return
+    _convert_validate_version_0_3_3(overrides["publish"])
+
+
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
     _convert_imageio_configs_0_3_1(overrides)
+    _conver_publish_plugins(overrides)
     return overrides
