@@ -8,7 +8,7 @@ from ayon_core.pipeline import (
 from ayon_core.lib import (
     BoolDef
 )
-from ayon_core.hosts.nuke import api as napi
+from ayon_nuke import api as napi
 from ayon_nuke.api.plugin import exposed_write_knobs
 
 

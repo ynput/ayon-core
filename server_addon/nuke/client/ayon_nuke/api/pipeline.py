@@ -28,7 +28,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
-from ayon_core.hosts.nuke import NUKE_ROOT_DIR
+from ayon_nuke import NUKE_ROOT_DIR
 from ayon_core.tools.workfile_template_build import open_template_ui
 
 from .lib import (

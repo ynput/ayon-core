@@ -4,7 +4,7 @@ import shutil
 import pyblish.api
 import clique
 import nuke
-from ayon_core.hosts.nuke import api as napi
+from ayon_nuke import api as napi
 from ayon_core.pipeline import publish
 from ayon_core.lib import collect_frames
 

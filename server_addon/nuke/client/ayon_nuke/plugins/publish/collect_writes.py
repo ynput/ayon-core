@@ -1,7 +1,7 @@
 import os
 import nuke
 import pyblish.api
-from ayon_core.hosts.nuke import api as napi
+from ayon_nuke import api as napi
 from ayon_core.pipeline import publish
 
 
