@@ -57,6 +57,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "nuke": VersionInfo(0, 2, 0),
 }
 
+
 # Inherit from `object` for Python 2 hosts
 class _ModuleClass(object):
     """Fake module class for storing AYON addons.
