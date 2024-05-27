@@ -10,6 +10,8 @@ from ayon_nuke.api import (
 class CreateBackdrop(NukeCreator):
     """Add Publishable Backdrop"""
 
+    settings_category = "nuke"
+
     identifier = "create_backdrop"
     label = "Nukenodes (backdrop)"
     product_type = "nukenodes"

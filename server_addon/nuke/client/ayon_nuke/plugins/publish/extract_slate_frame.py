@@ -27,6 +27,8 @@ class ExtractSlateFrame(publish.Extractor):
     families = ["slate"]
     hosts = ["nuke"]
 
+    settings_category = "nuke"
+
     # Settings values
     key_value_mapping = {
         "f_submission_note": {

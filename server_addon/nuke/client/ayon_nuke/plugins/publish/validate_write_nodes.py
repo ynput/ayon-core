@@ -59,6 +59,8 @@ class ValidateNukeWriteNode(
     actions = [RepairNukeWriteNodeAction]
     hosts = ["nuke"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         if not self.is_active(instance.data):
             return

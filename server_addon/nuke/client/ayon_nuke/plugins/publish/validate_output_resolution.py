@@ -27,6 +27,8 @@ class ValidateOutputResolution(
     hosts = ["nuke"]
     actions = [RepairAction]
 
+    settings_category = "nuke"
+
     missing_msg = "Missing Reformat node in render group node"
     resolution_msg = "Reformat is set to wrong format"
 

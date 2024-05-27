@@ -34,6 +34,8 @@ class ValidateCorrectAssetContext(
     ]
     optional = True
 
+    settings_category = "nuke"
+
     @classmethod
     def apply_settings(cls, project_settings):
         """Apply deprecated settings from project settings.

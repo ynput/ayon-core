@@ -25,6 +25,8 @@ class LoadGizmo(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"nk"}
 
+    settings_category = "nuke"
+
     label = "Load Gizmo"
     order = 0
     icon = "dropbox"

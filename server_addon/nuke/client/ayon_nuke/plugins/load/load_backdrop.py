@@ -25,6 +25,8 @@ class LoadBackdropNodes(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"nk"}
 
+    settings_category = "nuke"
+
     label = "Import Nuke Nodes"
     order = 0
     icon = "eye"

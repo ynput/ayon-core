@@ -23,6 +23,8 @@ class LoadEffectsInputProcess(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"json"}
 
+    settings_category = "nuke"
+
     label = "Load Effects - Input Process"
     order = 0
     icon = "eye"

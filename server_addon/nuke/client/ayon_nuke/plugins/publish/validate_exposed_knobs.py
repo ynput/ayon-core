@@ -52,6 +52,9 @@ class ValidateExposedKnobs(
     label = "Validate Exposed Knobs"
     actions = [RepairExposedKnobs]
     hosts = ["nuke"]
+
+    settings_category = "nuke"
+
     product_types_mapping = {
         "render": "CreateWriteRender",
         "prerender": "CreateWritePrerender",

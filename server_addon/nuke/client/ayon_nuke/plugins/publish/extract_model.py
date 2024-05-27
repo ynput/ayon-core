@@ -18,6 +18,8 @@ class ExtractModel(publish.Extractor):
     families = ["model"]
     hosts = ["nuke"]
 
+    settings_category = "nuke"
+
     # presets
     write_geo_knobs = [
         ("file_type", "abc"),

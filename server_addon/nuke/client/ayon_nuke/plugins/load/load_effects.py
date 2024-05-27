@@ -22,12 +22,13 @@ class LoadEffects(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"json"}
 
+    settings_category = "nuke"
+
     label = "Load Effects - nodes"
     order = 0
     icon = "cc"
     color = "white"
     ignore_attr = ["useLifetime"]
-
 
     def load(self, context, name, namespace, data):
         """

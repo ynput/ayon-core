@@ -11,7 +11,9 @@ class CreateOutputNode(pyblish.api.ContextPlugin):
     label = 'Output Node Create'
     order = pyblish.api.ExtractorOrder + 0.4
     families = ["workfile"]
-    hosts = ['nuke']
+    hosts = ["nuke"]
+
+    settings_category = "nuke"
 
     def process(self, context):
         # capture selection state

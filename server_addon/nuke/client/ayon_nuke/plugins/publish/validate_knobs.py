@@ -32,6 +32,8 @@ class ValidateKnobs(pyblish.api.ContextPlugin):
     actions = [RepairContextAction]
     optional = True
 
+    settings_category = "nuke"
+
     knobs = "{}"
 
     def process(self, context):

@@ -24,6 +24,8 @@ class AlembicCameraLoader(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"abc"}
 
+    settings_category = "nuke"
+
     label = "Load Alembic Camera"
     icon = "camera"
     color = "orange"

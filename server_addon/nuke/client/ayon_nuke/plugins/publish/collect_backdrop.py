@@ -13,6 +13,8 @@ class CollectBackdrops(pyblish.api.InstancePlugin):
     hosts = ["nuke"]
     families = ["nukenodes"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         self.log.debug(pformat(instance.data))
 

@@ -13,6 +13,9 @@ import nuke
 
 
 class WorkfileCreator(AutoCreator):
+
+    settings_category = "nuke"
+
     identifier = "workfile"
     product_type = "workfile"
 

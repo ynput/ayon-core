@@ -15,6 +15,8 @@ class ExtractRenderOnFarm(pyblish.api.InstancePlugin):
     hosts = ["nuke"]
     families = ["render_on_farm"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         if not instance.context.data.get("render_on_farm", False):
             return

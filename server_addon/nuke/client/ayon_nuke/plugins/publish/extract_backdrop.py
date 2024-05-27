@@ -25,6 +25,8 @@ class ExtractBackdropNode(publish.Extractor):
     hosts = ["nuke"]
     families = ["nukenodes"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         tmp_nodes = []
         child_nodes = instance.data["transientData"]["childNodes"]

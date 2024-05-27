@@ -9,6 +9,8 @@ from ayon_nuke.api import (
 class CreateModel(NukeCreator):
     """Add Publishable Camera"""
 
+    settings_category = "nuke"
+
     identifier = "create_model"
     label = "Model (3d)"
     product_type = "model"

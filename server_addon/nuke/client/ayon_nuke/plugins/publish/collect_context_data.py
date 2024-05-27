@@ -13,6 +13,8 @@ class CollectContextData(pyblish.api.ContextPlugin):
     label = "Collect context data"
     hosts = ['nuke']
 
+    settings_category = "nuke"
+
     def process(self, context):  # sourcery skip: avoid-builtin-shadow
         root_node = nuke.root()
 

@@ -22,6 +22,8 @@ class AlembicModelLoader(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"abc"}
 
+    settings_category = "nuke"
+
     label = "Load Alembic"
     icon = "cube"
     color = "orange"

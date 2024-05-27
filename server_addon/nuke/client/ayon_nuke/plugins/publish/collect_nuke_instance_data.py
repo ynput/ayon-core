@@ -11,6 +11,8 @@ class CollectInstanceData(pyblish.api.InstancePlugin):
     label = "Collect Nuke Instance Data"
     hosts = ["nuke", "nukeassist"]
 
+    settings_category = "nuke"
+
     # presets
     sync_workfile_version_on_families = []
 

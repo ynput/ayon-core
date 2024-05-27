@@ -10,6 +10,8 @@ class CollectSlate(pyblish.api.InstancePlugin):
     hosts = ["nuke"]
     families = ["render"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         node = instance.data["transientData"]["node"]
 

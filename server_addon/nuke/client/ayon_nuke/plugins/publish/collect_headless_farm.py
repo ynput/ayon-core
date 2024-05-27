@@ -13,6 +13,8 @@ class CollectRenderOnFarm(pyblish.api.ContextPlugin):
     label = "Collect Render On Farm"
     hosts = ["nuke"]
 
+    settings_category = "nuke"
+
     def process(self, context):
         if not context.data.get("render_on_farm", False):
             return

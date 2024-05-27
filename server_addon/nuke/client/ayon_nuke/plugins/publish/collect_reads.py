@@ -12,6 +12,8 @@ class CollectNukeReads(pyblish.api.InstancePlugin):
     hosts = ["nuke", "nukeassist"]
     families = ["source"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         self.log.debug("checking instance: {}".format(instance))
 

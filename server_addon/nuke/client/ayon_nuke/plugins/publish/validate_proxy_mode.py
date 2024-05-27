@@ -25,6 +25,8 @@ class ValidateProxyMode(pyblish.api.ContextPlugin):
     hosts = ["nuke"]
     actions = [FixProxyMode]
 
+    settings_category = "nuke"
+
     def process(self, context):
 
         rootNode = nuke.root()

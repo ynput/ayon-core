@@ -12,6 +12,8 @@ from ayon_nuke.api.lib import (
 class CreateCamera(NukeCreator):
     """Add Publishable Camera"""
 
+    settings_category = "nuke"
+
     identifier = "create_camera"
     label = "Camera (3d)"
     product_type = "camera"

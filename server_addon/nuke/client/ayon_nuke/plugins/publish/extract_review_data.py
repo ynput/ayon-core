@@ -16,6 +16,8 @@ class ExtractReviewData(publish.Extractor):
     families = ["review"]
     hosts = ["nuke"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         fpath = instance.data["path"]
         ext = os.path.splitext(fpath)[-1][1:]

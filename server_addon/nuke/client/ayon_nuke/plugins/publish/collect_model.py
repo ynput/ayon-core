@@ -11,6 +11,8 @@ class CollectModel(pyblish.api.InstancePlugin):
     hosts = ["nuke"]
     families = ["model"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
 
         geo_node = instance.data["transientData"]["node"]

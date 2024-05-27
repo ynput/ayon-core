@@ -20,6 +20,8 @@ class LinkAsGroup(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"nk"}
 
+    settings_category = "nuke"
+
     label = "Load Precomp"
     order = 0
     icon = "file"
