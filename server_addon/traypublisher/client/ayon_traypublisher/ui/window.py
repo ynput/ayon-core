@@ -13,7 +13,6 @@ import qtawesome
 
 from ayon_core.lib import AYONSettingsRegistry, is_running_from_build
 from ayon_core.pipeline import install_host
-from ayon_core.hosts.traypublisher.api import TrayPublisherHost
 from ayon_core.tools.publisher.control_qt import QtPublisherController
 from ayon_core.tools.publisher.window import PublisherWindow
 from ayon_core.tools.common_models import ProjectsModel
@@ -24,6 +23,7 @@ from ayon_core.tools.utils import (
     ProjectSortFilterProxy,
     PROJECT_NAME_ROLE,
 )
+from ayon_traypublisher.api import TrayPublisherHost
 
 
 class TrayPublisherRegistry(AYONSettingsRegistry):

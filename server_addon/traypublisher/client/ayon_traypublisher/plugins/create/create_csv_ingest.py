@@ -13,9 +13,7 @@ from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 )
 from ayon_core.pipeline.create import CreatorError
-from ayon_core.hosts.traypublisher.api.plugin import (
-    TrayPublishCreator
-)
+from ayon_traypublisher.api.plugin import TrayPublishCreator
 
 
 class IngestCSV(TrayPublishCreator):
