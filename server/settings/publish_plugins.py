@@ -77,6 +77,7 @@ class PluginStateByHostModel(BaseSettingsModel):
     plugin_state_profiles: list[PluginStateByHostModelProfile] = SettingsField(
         default_factory=list,
         title="Plugin enable state profiles",
+        description="Change plugin state based on host name."
     )
 
 
@@ -789,7 +790,11 @@ class PublishPuginsModel(BaseSettingsModel):
     )
     ValidateVersion: PluginStateByHostModel = SettingsField(
         default_factory=PluginStateByHostModel,
-        title="Validate Version"
+        title="Validate Version",
+        description=(
+            "Validate that product version to integrate"
+            " is newer than latest version in AYON."
+        )
     )
     ValidateOutdatedContainers: PluginStateByHostModel = SettingsField(
         default_factory=PluginStateByHostModel,
