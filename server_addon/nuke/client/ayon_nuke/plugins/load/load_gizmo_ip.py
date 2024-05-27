@@ -27,6 +27,8 @@ class LoadGizmoInputProcess(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"nk"}
 
+    settings_category = "nuke"
+
     label = "Load Gizmo - Input Process"
     order = 0
     icon = "eye"

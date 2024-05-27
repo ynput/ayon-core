@@ -23,6 +23,8 @@ class ValidateScriptAttributes(
     optional = True
     actions = [RepairAction]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         if not self.is_active(instance.data):
             return

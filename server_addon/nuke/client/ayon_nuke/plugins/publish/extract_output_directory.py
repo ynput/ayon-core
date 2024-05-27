@@ -10,7 +10,7 @@ class ExtractOutputDirectory(pyblish.api.InstancePlugin):
     label = "Output Directory"
     optional = True
 
-    # targets = ["process"]
+    settings_category = "nuke"
 
     def process(self, instance):
 

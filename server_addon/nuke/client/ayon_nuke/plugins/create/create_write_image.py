@@ -16,6 +16,9 @@ from ayon_nuke.api.plugin import exposed_write_knobs
 
 
 class CreateWriteImage(napi.NukeWriteCreator):
+
+    settings_category = "nuke"
+
     identifier = "create_write_image"
     label = "Image (write)"
     product_type = "image"

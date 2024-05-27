@@ -13,5 +13,7 @@ class CollectFramerate(pyblish.api.ContextPlugin):
         "nukeassist"
     ]
 
+    settings_category = "nuke"
+
     def process(self, context):
         context.data["fps"] = nuke.root()["fps"].getValue()

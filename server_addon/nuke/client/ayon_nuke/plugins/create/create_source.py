@@ -15,6 +15,8 @@ from ayon_core.pipeline import (
 class CreateSource(NukeCreator):
     """Add Publishable Read with source"""
 
+    settings_category = "nuke"
+
     identifier = "create_source"
     label = "Source (read)"
     product_type = "source"

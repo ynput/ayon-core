@@ -48,6 +48,8 @@ class LoadClip(plugin.NukeLoader):
         ext.lstrip(".") for ext in IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
     )
 
+    settings_category = "nuke"
+
     label = "Load Clip"
     order = -20
     icon = "file-video-o"

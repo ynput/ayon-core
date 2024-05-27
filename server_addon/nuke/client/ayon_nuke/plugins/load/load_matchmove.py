@@ -11,6 +11,8 @@ class MatchmoveLoader(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"py"}
 
+    settings_category = "nuke"
+
     defaults = ["Camera", "Object"]
 
     label = "Run matchmove script"

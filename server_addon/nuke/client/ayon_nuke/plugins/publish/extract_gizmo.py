@@ -23,6 +23,8 @@ class ExtractGizmo(publish.Extractor):
     hosts = ["nuke"]
     families = ["gizmo"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         tmp_nodes = []
         orig_grpn = instance.data["transientData"]["node"]

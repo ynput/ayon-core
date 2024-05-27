@@ -43,6 +43,8 @@ class ValidateGizmo(pyblish.api.InstancePlugin):
     hosts = ["nuke"]
     actions = [OpenFailedGroupNode]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         grpn = instance.data["transientData"]["node"]
 

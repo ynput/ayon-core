@@ -9,6 +9,8 @@ from ayon_nuke.api import (
 class CreateGizmo(NukeCreator):
     """Add Publishable Group as gizmo"""
 
+    settings_category = "nuke"
+
     identifier = "create_gizmo"
     label = "Gizmo (group)"
     product_type = "gizmo"

@@ -22,6 +22,8 @@ class ExtractReviewIntermediates(publish.Extractor):
     families = ["review"]
     hosts = ["nuke"]
 
+    settings_category = "nuke"
+
     # presets
     viewer_lut_raw = None
     outputs = {}

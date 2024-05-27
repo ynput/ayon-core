@@ -13,6 +13,9 @@ from ayon_nuke.api.plugin import exposed_write_knobs
 
 
 class CreateWriteRender(napi.NukeWriteCreator):
+
+    settings_category = "nuke"
+
     identifier = "create_write_render"
     label = "Render (write)"
     product_type = "render"

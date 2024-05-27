@@ -54,6 +54,8 @@ class ValidateRenderedFrames(pyblish.api.InstancePlugin):
     hosts = ["nuke", "nukestudio"]
     actions = [RepairCollectionActionToLocal, RepairCollectionActionToFarm]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         node = instance.data["transientData"]["node"]
 

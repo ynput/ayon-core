@@ -33,9 +33,9 @@ class LoadImage(load.LoaderPlugin):
         "image",
     }
     representations = {"*"}
-    extensions = set(
-        ext.lstrip(".") for ext in IMAGE_EXTENSIONS
-    )
+    extensions = set(ext.lstrip(".") for ext in IMAGE_EXTENSIONS)
+
+    settings_category = "nuke"
 
     label = "Load Image"
     order = -10

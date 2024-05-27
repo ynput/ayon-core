@@ -11,6 +11,8 @@ class CollectGizmo(pyblish.api.InstancePlugin):
     hosts = ["nuke"]
     families = ["gizmo"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
 
         gizmo_node = instance.data["transientData"]["node"]

@@ -24,6 +24,8 @@ class LoadOcioLookNodes(load.LoaderPlugin):
     representations = {"*"}
     extensions = {"json"}
 
+    settings_category = "nuke"
+
     label = "Load OcioLook [nodes]"
     order = 0
     icon = "cc"

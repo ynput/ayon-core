@@ -1,4 +1,3 @@
-
 import nuke
 import pyblish.api
 
@@ -10,7 +9,9 @@ class IncrementScriptVersion(pyblish.api.ContextPlugin):
     label = "Increment Script Version"
     optional = True
     families = ["workfile"]
-    hosts = ['nuke']
+    hosts = ["nuke"]
+
+    settings_category = "nuke"
 
     def process(self, context):
         if not context.data.get("increment_script_version", True):

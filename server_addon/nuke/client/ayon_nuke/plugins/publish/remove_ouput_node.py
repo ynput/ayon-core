@@ -9,7 +9,9 @@ class RemoveOutputNode(pyblish.api.ContextPlugin):
     label = 'Output Node Remove'
     order = pyblish.api.IntegratorOrder + 0.4
     families = ["workfile"]
-    hosts = ['nuke']
+    hosts = ["nuke"]
+
+    settings_category = "nuke"
 
     def process(self, context):
         try:

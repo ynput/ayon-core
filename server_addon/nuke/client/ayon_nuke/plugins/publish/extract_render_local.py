@@ -25,6 +25,8 @@ class NukeRenderLocal(publish.Extractor,
     hosts = ["nuke"]
     families = ["render.local", "prerender.local", "image.local"]
 
+    settings_category = "nuke"
+
     def process(self, instance):
         child_nodes = (
             instance.data.get("transientData", {}).get("childNodes")

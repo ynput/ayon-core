@@ -13,6 +13,9 @@ from ayon_nuke.api.plugin import exposed_write_knobs
 
 
 class CreateWritePrerender(napi.NukeWriteCreator):
+
+    settings_category = "nuke"
+
     identifier = "create_write_prerender"
     label = "Prerender (write)"
     product_type = "prerender"

@@ -17,6 +17,8 @@ class ExtractCamera(publish.Extractor):
     families = ["camera"]
     hosts = ["nuke"]
 
+    settings_category = "nuke"
+
     # presets
     write_geo_knobs = [
         ("file_type", "abc"),
