@@ -59,7 +59,7 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     )
 
 
-class ValidateOutdatedContainersProfile(BaseSettingsModel):
+class PluginStateByHostModelProfile(BaseSettingsModel):
     _layout = "expanded"
     # Filtering
     host_names: list[str] = SettingsField(
@@ -72,15 +72,9 @@ class ValidateOutdatedContainersProfile(BaseSettingsModel):
     active: bool = SettingsField(True, title="Active")
 
 
-class ValidateOutdatedContainersModel(BaseSettingsModel):
-    """Validate if Publishing intent was selected.
-
-    It is possible to disable validation for specific publishing context
-    with profiles.
-    """
-
+class PluginStateByHostModel(BaseSettingsModel):
     _isGroup = True
-    plugin_state_profiles: list[ValidateOutdatedContainersProfile] = SettingsField(
+    plugin_state_profiles: list[PluginStateByHostModelProfile] = SettingsField(
         default_factory=list,
         title="Plugin enable state profiles",
     )
@@ -797,8 +791,8 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidateBaseModel,
         title="Validate Version"
     )
-    ValidateOutdatedContainers: ValidateOutdatedContainersModel = SettingsField(
-        default_factory=ValidateOutdatedContainersModel,
+    ValidateOutdatedContainers: PluginStateByHostModel = SettingsField(
+        default_factory=PluginStateByHostModel,
         title="Validate Containers"
     )
     ValidateIntent: ValidateIntentModel = SettingsField(
