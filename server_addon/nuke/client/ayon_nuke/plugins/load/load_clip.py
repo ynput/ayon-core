@@ -63,7 +63,8 @@ class LoadClip(plugin.NukeLoader):
     # option gui
     options_defaults = {
         "start_at_workfile": True,
-        "add_retime": True
+        "add_retime": True,
+        "deep_exr": False
     }
 
     node_name_template = "{class_name}_{ext}"
@@ -80,6 +81,11 @@ class LoadClip(plugin.NukeLoader):
                 "add_retime",
                 help="Load with retime",
                 default=cls.options_defaults["add_retime"]
+            ),
+            qargparse.Boolean(
+                "deep_exr",
+                help="Read with deep exr",
+                default=cls.options_defaults["deep_exr"]
             )
         ]
 
@@ -114,6 +120,9 @@ class LoadClip(plugin.NukeLoader):
 
         add_retime = options.get(
             "add_retime", self.options_defaults["add_retime"])
+
+        deep_exr = options.get(
+            "deep_exr", self.options_defaults["deep_exr"])
 
         repre_id = repre_entity["id"]
 
@@ -155,13 +164,21 @@ class LoadClip(plugin.NukeLoader):
             return
 
         read_name = self._get_node_name(context)
-
-        # Create the Loader with the filename path set
-        read_node = nuke.createNode(
-            "Read",
-            "name {}".format(read_name),
-            inpanel=False
-        )
+        read_node = None
+        if deep_exr:
+            # Create the Loader with the filename path set
+            read_node = nuke.createNode(
+                "DeepRead",
+                "name {}".format(read_name),
+                inpanel=False
+            )
+        else:
+            # Create the Loader with the filename path set
+            read_node = nuke.createNode(
+                "Read",
+                "name {}".format(read_name),
+                inpanel=False
+            )
 
         # get colorspace
         colorspace = (
@@ -173,14 +190,14 @@ class LoadClip(plugin.NukeLoader):
         # we will switch off undo-ing
         with viewer_update_and_undo_stop():
             read_node["file"].setValue(filepath)
-
-            self.set_colorspace_to_node(
-                read_node,
-                filepath,
-                project_name,
-                version_entity,
-                repre_entity
-            )
+            if read_node.Class() == "Read":
+                self.set_colorspace_to_node(
+                    read_node,
+                    filepath,
+                    project_name,
+                    version_entity,
+                    repre_entity
+                )
 
             self._set_range_to_node(
                 read_node, first, last, start_at_workfile, slate_frames
@@ -330,13 +347,14 @@ class LoadClip(plugin.NukeLoader):
         # to avoid multiple undo steps for rest of process
         # we will switch off undo-ing
         with viewer_update_and_undo_stop():
-            self.set_colorspace_to_node(
-                read_node,
-                filepath,
-                project_name,
-                version_entity,
-                repre_entity
-            )
+            if read_node.Class() == "Read":
+                self.set_colorspace_to_node(
+                    read_node,
+                    filepath,
+                    project_name,
+                    version_entity,
+                    repre_entity
+                )
 
             self._set_range_to_node(read_node, first, last, start_at_workfile)
 
