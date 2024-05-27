@@ -6,7 +6,7 @@ from ayon_core.lib.attribute_definitions import FileDefItem
 from ayon_core.pipeline import install_host
 from ayon_core.pipeline.create import CreateContext
 
-from ayon_core.hosts.traypublisher.api import TrayPublisherHost
+from ayon_traypublisher.api import TrayPublisherHost
 
 
 def csvpublish(

@@ -6,7 +6,7 @@ log = Logger.get_logger(__name__)
 
 
 def initialize():
-    from ayon_core.hosts.traypublisher.api.plugin import SettingsCreator
+    from ayon_traypublisher.api.plugin import SettingsCreator
 
     project_name = os.environ["AYON_PROJECT_NAME"]
     project_settings = get_project_settings(project_name)
