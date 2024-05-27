@@ -13,6 +13,8 @@ class IncrementScriptVersion(pyblish.api.ContextPlugin):
     hosts = ['nuke']
 
     def process(self, context):
+        if not context.data.get("increment_script_version", True):
+            return
 
         assert all(result["success"] for result in context.data["results"]), (
             "Publishing not successful so version is not increased.")

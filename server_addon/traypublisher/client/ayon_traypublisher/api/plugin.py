@@ -22,7 +22,7 @@ from .pipeline import (
 )
 
 REVIEW_EXTENSIONS = set(IMAGE_EXTENSIONS) | set(VIDEO_EXTENSIONS)
-SHARED_DATA_KEY = "openpype.traypublisher.instances"
+SHARED_DATA_KEY = "ayon.traypublisher.instances"
 
 
 class HiddenTrayPublishCreator(HiddenCreator):
