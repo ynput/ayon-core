@@ -31,7 +31,8 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
              "nuke",
              "maya",
              "max",
-             "houdini"]
+             "houdini",
+             "unreal"]
 
     families = ["render",
                 "rendering",
