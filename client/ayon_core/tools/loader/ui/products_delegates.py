@@ -107,7 +107,10 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             style = QtWidgets.QApplication.style()
 
         style.drawControl(
-            style.CE_ItemViewItem, option, painter, option.widget
+            QtWidgets.QCommonStyle.CE_ItemViewItem,
+            option,
+            painter,
+            option.widget
         )
 
         painter.save()
@@ -119,9 +122,14 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         pen.setColor(fg_color)
         painter.setPen(pen)
 
-        text_rect = style.subElementRect(style.SE_ItemViewItemText, option)
+        text_rect = style.subElementRect(
+            QtWidgets.QCommonStyle.SE_ItemViewItemText,
+            option
+        )
         text_margin = style.proxy().pixelMetric(
-            style.PM_FocusFrameHMargin, option, option.widget
+            QtWidgets.QCommonStyle.PM_FocusFrameHMargin,
+            option,
+            option.widget
         ) + 1
 
         painter.drawText(
@@ -207,14 +215,22 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
             style = QtWidgets.QApplication.style()
 
         style.drawControl(
-            style.CE_ItemViewItem, option, painter, option.widget
+            QtWidgets.QCommonStyle.CE_ItemViewItem,
+            option,
+            painter,
+            option.widget
         )
 
         painter.save()
 
-        text_rect = style.subElementRect(style.SE_ItemViewItemText, option)
+        text_rect = style.subElementRect(
+            QtWidgets.QCommonStyle.SE_ItemViewItemText,
+            option
+        )
         text_margin = style.proxy().pixelMetric(
-            style.PM_FocusFrameHMargin, option, option.widget
+            QtWidgets.QCommonStyle.PM_FocusFrameHMargin,
+            option,
+            option.widget
         ) + 1
         padded_text_rect = text_rect.adjusted(
             text_margin, 0, - text_margin, 0
