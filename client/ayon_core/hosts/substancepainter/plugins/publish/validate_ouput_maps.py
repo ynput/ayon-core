@@ -31,7 +31,6 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
         # generate the smallest size / fastest export as possible
         config = copy.deepcopy(config)
         invalid_channels = self.get_invalid_channels(instance, config)
-        msg = []
         if invalid_channels:
             bullet_point_invalid_statement = "\n".join(
                 "- {}".format(message) for _, message
