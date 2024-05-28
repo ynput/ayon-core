@@ -32,6 +32,12 @@ class LoadEditorialPackage(load.LoaderPlugin):
 
         project = lib.get_current_project()
         media_pool = project.GetMediaPool()
+
+        # create versioned bin for editorial package
+        version_name = context["version"]["name"]
+        bin_name = f"{name}_{version_name}"
+        lib.create_bin(bin_name)
+
         import_options = {
             "timelineName": "Editorial Package Timeline",
             "importSourceClips": True,
