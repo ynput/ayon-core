@@ -1852,6 +1852,10 @@ class PublisherController(BasePublisherController):
 
         If no profile provided for current context, it shows all creators
         """
+        allowed_creator_identifiers = []
+        if self._create_context.host_name == "traypublisher":
+            # no real context known
+            return allowed_creator_identifiers
         proj_settings = get_project_settings(self.project_name)
         filter_creator_profiles = (
             proj_settings
@@ -1871,7 +1875,7 @@ class PublisherController(BasePublisherController):
             filtering_criteria,
             logger=self.log
         )
-        allowed_creator_identifiers = []
+
         if profile:
             allowed_creator_identifiers = profile["creator_identifiers"]
         return allowed_creator_identifiers
