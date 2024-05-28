@@ -9,11 +9,11 @@ from pathlib import Path
 from qtpy import QtCore
 
 from ayon_core import resources
+from ayon_core.lib import get_ayon_launcher_args
 from ayon_applications import (
     PreLaunchHook,
     ApplicationLaunchFailed,
     LaunchTypes,
-    get_openpype_execute_args
 )
 from ayon_core.pipeline.workfile import get_workfile_template_key
 import ayon_core.hosts.unreal.lib as unreal_lib
@@ -250,11 +250,12 @@ class UnrealPrelaunchHook(PreLaunchHook):
 
         self.launch_context.env["AYON_UNREAL_VERSION"] = engine_version
 
-        new_launch_args = get_openpype_execute_args(
+        # Prepare new launch arguments
+        new_launch_args = get_ayon_launcher_args(
             "run", self.launch_script_path(), executable,
         )
 
-        # Append as whole list as these areguments should not be separated
+        # Append as whole list as these arguments should not be separated
         self.launch_context.launch_args = new_launch_args
 
         # Append project file to launch arguments
@@ -262,6 +263,6 @@ class UnrealPrelaunchHook(PreLaunchHook):
             f"\"{project_file.as_posix()}\"")
 
     def launch_script_path(self):
-        from openpype.hosts.unreal.addon import get_launch_script_path
+        from ayon_core.hosts.unreal.addon import get_launch_script_path
 
         return get_launch_script_path()

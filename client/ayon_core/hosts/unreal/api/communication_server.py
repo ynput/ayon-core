@@ -18,7 +18,7 @@ from aiohttp_json_rpc.protocol import (
 )
 from aiohttp_json_rpc.exceptions import RpcError
 
-from openpype.lib import emit_event
+from ayon_core.lib import emit_event
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

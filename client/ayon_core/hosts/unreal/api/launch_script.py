@@ -8,13 +8,13 @@ import logging
 
 from Qt import QtCore, QtGui
 
-from openpype.hosts.unreal.api.communication_server import (
+from ayon_core.hosts.unreal.api.communication_server import (
     CommunicationWrapper
 )
-from openpype.hosts.unreal.api import UnrealHost
-from openpype.pipeline import install_host
-from openpype.tools.utils import get_openpype_qt_app
-from openpype import style
+from ayon_core.hosts.unreal.api import UnrealHost
+from ayon_core.pipeline import install_host
+from ayon_core.tools.utils import get_openpype_qt_app
+from ayon_core import style
 
 logging.basicConfig(level=logging.DEBUG)
 
