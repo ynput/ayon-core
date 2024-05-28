@@ -4,7 +4,12 @@ from maya import cmds
 
 from ayon_api import get_project, get_folder_by_path
 
-from ayon_core.pipeline import get_current_project_name, get_current_folder_path
+from ayon_core.pipeline import (
+    get_current_project_name,
+    get_current_folder_path,
+    registered_host
+)
+from ayon_core.lib import version_up
 
 
 class ToolWindows:
@@ -116,3 +121,14 @@ def reset_resolution():
 
     cmds.setAttr(width_attr_name, resolution_width)
     cmds.setAttr(height_attr_name, resolution_height)
+
+
+def version_up_workfile():
+    """Function to increment and save workfile
+    """
+    host = registered_host()
+    current_file = host.get_current_workfile()
+    if not current_file:
+        return None
+    filepath = version_up(current_file)
+    host.save_workfile(filepath)
