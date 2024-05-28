@@ -1299,7 +1299,7 @@ def is_visible(node,
             override_enabled = cmds.getAttr('{}.overrideEnabled'.format(node))
             override_visibility = cmds.getAttr('{}.overrideVisibility'.format(
                 node))
-            if override_enabled and override_visibility:
+            if override_enabled and not override_visibility:
                 return False
 
     if parentHidden:
