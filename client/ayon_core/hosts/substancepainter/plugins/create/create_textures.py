@@ -15,8 +15,7 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
     remove_instance
 )
 from ayon_core.hosts.substancepainter.api.lib import (
-    get_export_presets,
-    get_channel_map_enum
+    get_export_presets
 )
 
 import substance_painter
@@ -113,7 +112,36 @@ class CreateTextures(Creator):
                 for item in self.channel_mapping
             }
         else:
-            export_channel_enum = get_channel_map_enum()
+            export_channel_enum = {
+                "BaseColor": "Base Color",
+                "Metallic": "Metallic",
+                "Roughness": "Roughness",
+                "SpecularEdgeColor": "Specular Edge Color",
+                "Emissive": "Emissive",
+                "Opacity": "Opacity",
+                "Displacement": "Displacement",
+                "Glossiness": "Glossiness",
+                "Anisotropylevel": "Anisotropy Level",
+                "AO": "Ambient Occulsion",
+                "Anisotropyangle": "Anisotropy Angle",
+                "Transmissive": "Transmissive",
+                "Reflection": "Reflection",
+                "Diffuse": "Diffuse",
+                "Ior": "Index of Refraction",
+                "Specularlevel": "Specular Level",
+                "BlendingMask": "Blending Mask",
+                "Translucency": "Translucency",
+                "Scattering": "Scattering",
+                "ScatterColor": "Scatter Color",
+                "SheenOpacity": "Sheen Opacity",
+                "SheenRoughness": "Sheen Roughness",
+                "SheenColor": "Sheen Color",
+                "CoatOpacity": "Coat Opacity",
+                "CoatColor": "Coat Color",
+                "CoatRoughness": "Coat Roughness",
+                "CoatSpecularLevel": "Coat Specular Level",
+                "CoatNormal": "Coat Normal",
+            }
 
         return [
             EnumDef("exportChannel",
