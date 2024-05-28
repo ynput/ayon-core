@@ -17,21 +17,21 @@ class ValidateEditorialPackage(pyblish.api.InstancePlugin):
     order = pyblish.api.ValidatorOrder - 0.49
 
     hosts = ["traypublisher"]
-    families = ["editorial_pckg"]
+    families = ["editorial_pkg"]
 
     def process(self, instance):
-        editorial_pckg_data = instance.data.get("editorial_pckg")
-        if not editorial_pckg_data:
+        editorial_pkg_data = instance.data.get("editorial_pkg")
+        if not editorial_pkg_data:
             raise PublishValidationError("Editorial package not collected")
 
-        folder_path = editorial_pckg_data["folder_path"]
+        folder_path = editorial_pkg_data["folder_path"]
 
-        otio_path = editorial_pckg_data["otio_path"]
+        otio_path = editorial_pkg_data["otio_path"]
         if not otio_path:
             raise PublishValidationError(
                 f"Folder {folder_path} missing otio file")
 
-        resource_paths = editorial_pckg_data["resource_paths"]
+        resource_paths = editorial_pkg_data["resource_paths"]
 
         resource_file_names = {os.path.basename(path)
                                for path in resource_paths}
@@ -50,7 +50,7 @@ class ValidateEditorialPackage(pyblish.api.InstancePlugin):
                 f"Otio file contains missing files `{missing_files}`.\n\n"
                 f"Please add them to `{folder_path}` and republish.")
 
-        instance.data["editorial_pckg"]["otio_data"] = otio_data
+        instance.data["editorial_pkg"]["otio_data"] = otio_data
 
     def _get_all_target_urls(self, otio_data):
         target_urls = []
