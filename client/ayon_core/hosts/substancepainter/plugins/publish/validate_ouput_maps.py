@@ -114,7 +114,6 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
                 title="Missing output maps"
             )
 
-
     def get_invalid_channels(self, instance, config):
         """Function to get invalid channel(s) from export channel
         filtering
@@ -144,12 +143,11 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
                 map_names = [channel_map["fileName"] for channel_map
                              in export_preset["maps"]]
                 for channel in tmp_export_channel:
-                    found = False
+                    # Check if channel is found in at least one map
                     for map_name in map_names:
                         if channel in map_name:
-                            found = True
-                            break  # Exit the inner loop once a match is found
-                    if not found:
+                            break
+                    else:
                         invalid_channel.append(channel)
 
         return invalid_channel

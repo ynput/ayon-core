@@ -13,43 +13,6 @@ import substance_painter.export
 from qtpy import QtGui, QtWidgets, QtCore
 
 
-def get_channel_map_enum():
-    """Function to get channel map items value.
-    For backward compatibility only. Will be removed after
-    client addon migration
-    """
-    return {
-            "BaseColor": "Base Color",
-            "Metallic": "Metallic",
-            "Roughness": "Roughness",
-            "SpecularEdgeColor": "Specular Edge Color",
-            "Emissive": "Emissive",
-            "Opacity": "Opacity",
-            "Displacement": "Displacement",
-            "Glossiness": "Glossiness",
-            "Anisotropylevel": "Anisotropy Level",
-            "AO": "Ambient Occulsion",
-            "Anisotropyangle": "Anisotropy Angle",
-            "Transmissive": "Transmissive",
-            "Reflection": "Reflection",
-            "Diffuse": "Diffuse",
-            "Ior": "Index of Refraction",
-            "Specularlevel": "Specular Level",
-            "BlendingMask": "Blending Mask",
-            "Translucency": "Translucency",
-            "Scattering": "Scattering",
-            "ScatterColor": "Scatter Color",
-            "SheenOpacity": "Sheen Opacity",
-            "SheenRoughness": "Sheen Roughness",
-            "SheenColor": "Sheen Color",
-            "CoatOpacity": "Coat Opacity",
-            "CoatColor": "Coat Color",
-            "CoatRoughness": "Coat Roughness",
-            "CoatSpecularLevel": "Coat Specular Level",
-            "CoatNormal": "Coat Normal",
-    }
-
-
 def get_export_presets():
     """Return Export Preset resource URLs for all available Export Presets.
 
@@ -731,8 +694,9 @@ def set_layer_stack_opacity(node_ids, channel_types):
     """Function to set the opacity of the layer stack during
     context
     Args:
-        node_ids (list): A list of substance painter node ids
-        channel_types (list): A list of channel types
+        node_ids (list[int]): Substance painter root layer node ids
+        channel_types (list[str]): Channel type names as defined as
+            attributes in `substance_painter.textureset.ChannelType`
     """
     # Do nothing
     if not node_ids or not channel_types:
@@ -747,8 +711,11 @@ def set_layer_stack_opacity(node_ids, channel_types):
     for node_id in node_ids:
         node = substance_painter.layerstack.get_node_by_uid(int(node_id))
         all_selected_nodes.append(node)
-    excluded_nodes  = {node for node in stack_root_layers
-                       if node not in all_selected_nodes}
+    node_ids = set(node_ids)  # lookup
+    excluded_nodes = [
+        node for node in stack_root_layers
+        if node.uid() not in node_ids
+    ]
 
     original_opacity_values = []
     for node in excluded_nodes:
