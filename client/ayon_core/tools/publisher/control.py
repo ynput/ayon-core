@@ -1830,7 +1830,13 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
-        allowed_creator_identifiers = self._get_allowed_creator_identifiers()
+        allowed_creator_identifiers = self._get_allowed_creator_identifiers(
+            self.project_name,
+            self._create_context.host_name,
+            self.current_task_name,
+            get_current_task_entity()["taskType"],
+            self.log
+        )
         for identifier, creator in self._create_context.creators.items():
             try:
                 if (allowed_creator_identifiers and
@@ -1847,16 +1853,23 @@ class PublisherController(BasePublisherController):
 
         return output
 
-    def _get_allowed_creator_identifiers(self):
+    def _get_allowed_creator_identifiers(
+            self,
+            project_name,
+            host_name,
+            task_name,
+            task_type,
+            log=None
+    ):
         """Provide configured creator identifier in this context
 
         If no profile provided for current context, it shows all creators
         """
         allowed_creator_identifiers = []
-        if self._create_context.host_name == "traypublisher":
+        if host_name == "traypublisher":
             # no real context known
             return allowed_creator_identifiers
-        proj_settings = get_project_settings(self.project_name)
+        proj_settings = get_project_settings(project_name)
         filter_creator_profiles = (
             proj_settings
             ["core"]
@@ -1864,16 +1877,15 @@ class PublisherController(BasePublisherController):
             ["creator"]
             ["filter_creator_profiles"]
         )
-        task_type = get_current_task_entity()["taskType"]
         filtering_criteria = {
-            "task_names": self.current_task_name,
+            "task_names": task_name,
             "task_types": task_type,
-            "hosts": self._create_context.host_name
+            "hosts": host_name
         }
         profile = filter_profiles(
             filter_creator_profiles,
             filtering_criteria,
-            logger=self.log
+            logger=log
         )
 
         if profile:
