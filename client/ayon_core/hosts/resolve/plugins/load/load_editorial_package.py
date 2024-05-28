@@ -15,7 +15,7 @@ class LoadEditorialPackage(load.LoaderPlugin):
     and timeline structure.
     """
 
-    product_types = {"editorial_pckg"}
+    product_types = {"editorial_pkg"}
 
     representations = {"*"}
     extensions = {"otio"}
