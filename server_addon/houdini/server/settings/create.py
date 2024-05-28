@@ -67,6 +67,9 @@ class CreatePluginsModel(BaseSettingsModel):
     CreateMantraROP: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create Mantra ROP")
+    CreateModel: CreatorModel = SettingsField(
+        default_factory=CreatorModel,
+        title="Create Model")
     CreatePointCache: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create PointCache (Abc)")
@@ -131,6 +134,10 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
         "default_variants": ["Main"]
     },
     "CreateMantraROP": {
+        "enabled": True,
+        "default_variants": ["Main"]
+    },
+    "CreateModel": {
         "enabled": True,
         "default_variants": ["Main"]
     },
