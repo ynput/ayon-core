@@ -32,16 +32,10 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
         config = copy.deepcopy(config)
         invalid_channels = self.get_invalid_channels(instance, config)
         if invalid_channels:
-            bullet_point_invalid_statement = "\n".join(
-                "- {}".format(message) for _, message
-                in invalid_channels
-            )
-            report = (
-                "Invalid Channel Maps found.\n\n"
-                f"{bullet_point_invalid_statement}\n\n"
-            )
             raise PublishValidationError(
-                report, title="Invalid Channel Maps")
+                "No Channel(s): {} found in the texture set {}".format(
+                    invalid_channels, instance.name
+                ))
         parameters = config["exportParameters"][0]["parameters"]
         parameters["sizeLog2"] = [1, 1]     # output 2x2 images (smallest)
         parameters["paddingAlgorithm"] = "passthrough"  # no dilation (faster)
@@ -138,7 +132,6 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
         creator_attrs = instance.data["creator_attributes"]
         export_channel = creator_attrs.get("exportChannel", [])
         tmp_export_channel = copy.deepcopy(export_channel)
-        invalid_message = []
         invalid_channel = []
         if export_channel:
             for export_preset in config.get("exportPresets", {}):
@@ -155,9 +148,6 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
                         if channel in map_name:
                             break
                     else:
-                        invalid_message.append(
-                            f"Channel map {channel} found "
-                            "in the export_preset")
                         invalid_channel.append(channel)
 
-        return invalid_channel, invalid_message
+        return invalid_channel
