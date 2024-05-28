@@ -114,6 +114,7 @@ class VersionItem:
         thumbnail_id (Union[str, None]): Thumbnail id.
         published_time (Union[str, None]): Published time in format
             '%Y%m%dT%H%M%SZ'.
+        status (Union[str, None]): Status name.
         author (Union[str, None]): Author.
         frame_range (Union[str, None]): Frame range.
         duration (Union[int, None]): Duration.
@@ -132,6 +133,7 @@ class VersionItem:
         thumbnail_id,
         published_time,
         author,
+        status,
         frame_range,
         duration,
         handles,
@@ -146,6 +148,7 @@ class VersionItem:
         self.is_hero = is_hero
         self.published_time = published_time
         self.author = author
+        self.status = status
         self.frame_range = frame_range
         self.duration = duration
         self.handles = handles
@@ -185,6 +188,7 @@ class VersionItem:
             "is_hero": self.is_hero,
             "published_time": self.published_time,
             "author": self.author,
+            "status": self.status,
             "frame_range": self.frame_range,
             "duration": self.duration,
             "handles": self.handles,
@@ -484,6 +488,27 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[ProjectItem]: List of project items.
+        """
+
+        pass
+
+    @abstractmethod
+    def get_project_status_items(self, project_name, sender=None):
+        """Items for all projects available on server.
+
+        Triggers event topics "projects.statuses.refresh.started" and
+        "projects.statuses.refresh.finished" with data:
+            {
+                "sender": sender,
+                "project_name": project_name
+            }
+
+        Args:
+            project_name (Union[str, None]): Project name.
+            sender (Optional[str]): Sender who requested the items.
+
+        Returns:
+            list[StatusItem]: List of status items.
         """
 
         pass
