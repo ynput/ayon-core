@@ -92,6 +92,9 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
         # check ids against database
         project_name = context.data["projectName"]
         folder_entities = ayon_api.get_folders(project_name, fields={"id"})
+        if not folder_entities:
+            return {}
+
         folder_ids = {
             folder_entity["id"]
             for folder_entity in folder_entities

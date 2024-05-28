@@ -71,7 +71,6 @@ def test_create():
         instance_data = {x: instance.data[x] for x in instance_data_keys}
         instance_data["task"] = get_current_task_name()
         instance_data["folderPath"] = get_current_folder_path()
-
         hierarchy = {}
         if "instance_node" in instance.data:
             members = cmds.sets(instance.data["instance_node"], query=True)

@@ -90,7 +90,10 @@ class GenerateUUIDsOnInvalidAction(pyblish.api.Action):
             folder_entity = ayon_api.get_folder_by_path(
                 project_name, folder_path, fields={"id"}
             )
-
+            if not folder_entity:
+                self.log.debug(
+                    f"No folder entity found in the project {project_name}")
+                return
         for node, _id in lib.generate_ids(
             nodes, folder_id=folder_entity["id"]
         ):

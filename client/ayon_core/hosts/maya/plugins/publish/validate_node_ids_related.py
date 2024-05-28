@@ -61,11 +61,14 @@ class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
     @classmethod
     def get_invalid(cls, instance):
         """Return the member nodes that are invalid"""
+        invalid = list()
+        if not instance.data.get("folderEntity"):
+            return invalid
+
         folder_id = instance.data["folderEntity"]["id"]
 
         # We do want to check the referenced nodes as it might be
         # part of the end product
-        invalid = list()
         nodes_by_other_folder_ids = defaultdict(set)
         for node in instance:
             _id = lib.get_id(node)
