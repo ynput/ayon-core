@@ -19,6 +19,16 @@ class ExtractOpenGL(publish.Extractor,
     def process(self, instance):
         ropnode = hou.node(instance.data.get("instance_node"))
 
+        # This plugin is triggered when marking render as reviewable.
+        # Therefore, this plugin will run on over wrong instances.
+        # TODO: Don't run this plugin on wrong instances.
+        # This plugin should run only on review product type
+        # with instance node of opengl type.
+        if ropnode.type().name() != "opengl":
+            self.log.debug("Skipping OpenGl extraction. Rop node {} "
+                           "is not an OpenGl node.".format(ropnode.path()))
+            return
+
         output = ropnode.evalParm("picture")
         staging_dir = os.path.normpath(os.path.dirname(output))
         instance.data["stagingDir"] = staging_dir

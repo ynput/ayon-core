@@ -82,7 +82,10 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
         )
         instance.data["deadline"]["auth"] = None
 
-        if not require_authentication:
+        instance.data["deadline"]["verify"] = (
+            not deadline_info["not_verify_ssl"])
+
+        if not deadline_info["require_authentication"]:
             return
         # TODO import 'get_addon_site_settings' when available
         #   in public 'ayon_api'
