@@ -47,7 +47,7 @@ plugin_for = ["ayon_server"]
 """
 
 CLIENT_VERSION_CONTENT = '''# -*- coding: utf-8 -*-
-"""Package declaring AYON core addon version."""
+"""Package declaring AYON addon '{}' version."""
 __version__ = "{}"
 '''
 
@@ -183,6 +183,7 @@ def create_addon_zip(
 
 
 def prepare_client_code(
+    addon_name: str,
     addon_dir: Path,
     addon_output_dir: Path,
     addon_version: str
@@ -211,7 +212,9 @@ def prepare_client_code(
         version_path = subpath / "version.py"
         if version_path.exists():
             with open(version_path, "w") as stream:
-                stream.write(CLIENT_VERSION_CONTENT.format(addon_version))
+                stream.write(
+                    CLIENT_VERSION_CONTENT.format(addon_name, addon_version)
+                )
 
         zip_filepath = private_dir / "client.zip"
         with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -262,7 +265,9 @@ def create_addon_package(
         server_dir, addon_output_dir / "server", dirs_exist_ok=True
     )
 
-    prepare_client_code(addon_dir, addon_output_dir, addon_version)
+    prepare_client_code(
+        package.name, addon_dir, addon_output_dir, addon_version
+    )
 
     if create_zip:
         create_addon_zip(

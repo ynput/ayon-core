@@ -290,6 +290,34 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
         painter.drawPixmap(extender_x, extender_y, pix)
 
 
+class ActionsProxyModel(QtCore.QSortFilterProxyModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
+
+    def lessThan(self, left, right):
+        # Sort by action order and then by label
+        left_value = left.data(ACTION_SORT_ROLE)
+        right_value = right.data(ACTION_SORT_ROLE)
+
+        # Values are same -> use super sorting
+        if left_value == right_value:
+            # Default behavior is using DisplayRole
+            return super().lessThan(left, right)
+
+        # Validate 'None' values
+        if right_value is None:
+            return True
+        if left_value is None:
+            return False
+        # Sort values and handle incompatible types
+        try:
+            return left_value < right_value
+        except TypeError:
+            return True
+
+
 class ActionsWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent):
         super(ActionsWidget, self).__init__(parent)
@@ -316,10 +344,7 @@ class ActionsWidget(QtWidgets.QWidget):
 
         model = ActionsQtModel(controller)
 
-        proxy_model = QtCore.QSortFilterProxyModel()
-        proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
-        proxy_model.setSortRole(ACTION_SORT_ROLE)
-
+        proxy_model = ActionsProxyModel()
         proxy_model.setSourceModel(model)
         view.setModel(proxy_model)
 
@@ -359,7 +384,8 @@ class ActionsWidget(QtWidgets.QWidget):
     def _on_model_refresh(self):
         self._proxy_model.sort(0)
         # Force repaint all items
-        self._view.update()
+        viewport = self._view.viewport()
+        viewport.update()
 
     def _on_animation(self):
         time_now = time.time()
