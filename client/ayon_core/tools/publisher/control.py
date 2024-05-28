@@ -39,6 +39,9 @@ from ayon_core.pipeline.create.context import (
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
 from ayon_core.tools.common_models import HierarchyModel
+from ayon_core.settings import get_project_settings
+from ayon_core.lib.profiles_filtering import filter_profiles
+from ayon_core.pipeline.context_tools import get_current_task_entity
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
@@ -1827,8 +1830,13 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
+        allowed_creator_identifiers = self._get_allowed_creator_identifiers()
         for identifier, creator in self._create_context.creators.items():
             try:
+                if (allowed_creator_identifiers and
+                    identifier not in allowed_creator_identifiers):
+                    self.log.debug(f"{identifier} not allowed for context")
+                    continue
                 output[identifier] = CreatorItem.from_creator(creator)
             except Exception:
                 self.log.error(
@@ -1838,6 +1846,35 @@ class PublisherController(BasePublisherController):
                 )
 
         return output
+
+    def _get_allowed_creator_identifiers(self):
+        """Provide configured creator identifier in this context
+
+        If no profile provided for current context, it shows all creators
+        """
+        proj_settings = get_project_settings(self.project_name)
+        filter_creator_profiles = (
+            proj_settings
+            ["core"]
+            ["tools"]
+            ["creator"]
+            ["filter_creator_profiles"]
+        )
+        task_type = get_current_task_entity()["taskType"]
+        filtering_criteria = {
+            "task_names": self.current_task_name,
+            "task_types": task_type,
+            "hosts": self._create_context.host_name
+        }
+        profile = filter_profiles(
+            filter_creator_profiles,
+            filtering_criteria,
+            logger=self.log
+        )
+        allowed_creator_identifiers = []
+        if profile:
+            allowed_creator_identifiers = profile["creator_identifiers"]
+        return allowed_creator_identifiers
 
     def _reset_instances(self):
         """Reset create instances."""
