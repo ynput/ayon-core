@@ -335,9 +335,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def closeEvent(self, event):
         super(LoaderWindow, self).closeEvent(event)
-        # Deselect project so current context will be selected
-        #   on next 'showEvent'
-        self._controller.set_selected_project(None)
+
         self._reset_on_show = True
 
     def keyPressEvent(self, event):
