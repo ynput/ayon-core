@@ -572,8 +572,11 @@ class ExporterReview(object):
             self.fhead = self.fhead.replace("#", "")[:-1]
 
     def get_representation_data(
-        self, tags=None, range=False,
-        custom_tags=None, colorspace=None
+        self,
+        tags=None,
+        range=False,
+        custom_tags=None,
+        colorspace=None,
     ):
         """ Add representation data to self.data
 
@@ -584,6 +587,8 @@ class ExporterReview(object):
                                     Defaults to False.
             custom_tags (list[str], optional): user inputted custom tags.
                                                Defaults to None.
+            colorspace (str, optional): colorspace name.
+                                        Defaults to None.
         """
         add_tags = tags or []
         repre = {
@@ -591,7 +596,13 @@ class ExporterReview(object):
             "ext": self.ext,
             "files": self.file,
             "stagingDir": self.staging_dir,
-            "tags": [self.name.replace("_", "-")] + add_tags
+            "tags": [self.name.replace("_", "-")] + add_tags,
+            "data": {
+                # making sure that once intermediate file is published
+                # as representation, we will be able to then identify it
+                # from representation.data.isIntermediate
+                "isIntermediate": True
+            },
         }
 
         if custom_tags:
@@ -999,7 +1010,7 @@ class ExporterReviewMov(ExporterReview):
             tags=tags + add_tags,
             custom_tags=add_custom_tags,
             range=True,
-            colorspace=colorspace
+            colorspace=colorspace,
         )
 
         self.log.debug("Representation...   `{}`".format(self.data))
