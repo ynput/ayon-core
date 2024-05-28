@@ -1,5 +1,7 @@
 import os
 import opentimelineio
+from opentimelineio.exceptions import UnsupportedSchemaError
+
 
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
@@ -36,7 +38,16 @@ class ValidateEditorialPackage(pyblish.api.InstancePlugin):
         resource_file_names = {os.path.basename(path)
                                for path in resource_paths}
 
-        otio_data = opentimelineio.adapters.read_from_file(otio_path)
+        try:
+            otio_data = opentimelineio.adapters.read_from_file(otio_path)
+        except UnsupportedSchemaError as e:
+            raise PublishValidationError(
+                f"Unsupported schema in otio file '{otio_path}'."
+                "Version of your OpenTimelineIO library is too old."
+                "Please update it to the latest version."
+                f"Current version is '{opentimelineio.__version__}', "
+                "but required is at least 0.16.0."
+            ) from e
 
         target_urls = self._get_all_target_urls(otio_data)
         missing_files = set()
