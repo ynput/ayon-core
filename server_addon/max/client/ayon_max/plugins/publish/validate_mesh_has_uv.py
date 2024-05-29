@@ -1,6 +1,6 @@
 
 import pyblish.api
-from ayon_core.hosts.max.api.action import SelectInvalidAction
+from ayon_max.api.action import SelectInvalidAction
 from ayon_core.pipeline.publish import (
     ValidateMeshOrder,
     OptionalPyblishPluginMixin,
@@ -29,6 +29,8 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
     label = 'Validate Mesh Has UVs'
     actions = [SelectInvalidAction]
     optional = True
+
+    settings_category = "max"
 
     @classmethod
     def get_invalid(cls, instance):

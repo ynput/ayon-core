@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for model."""
-from ayon_core.hosts.max.api import plugin
+from ayon_max.api import plugin
 
 
 class CreateModel(plugin.MaxCreator):
@@ -9,3 +9,5 @@ class CreateModel(plugin.MaxCreator):
     label = "Model"
     product_type = "model"
     icon = "gear"
+
+    settings_category = "max"

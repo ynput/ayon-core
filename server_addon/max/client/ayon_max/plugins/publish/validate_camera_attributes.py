@@ -6,7 +6,7 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-from ayon_core.hosts.max.api.action import SelectInvalidAction
+from ayon_max.api.action import SelectInvalidAction
 
 
 class ValidateCameraAttributes(OptionalPyblishPluginMixin,
@@ -22,6 +22,8 @@ class ValidateCameraAttributes(OptionalPyblishPluginMixin,
     label = 'Validate Camera Attributes'
     actions = [SelectInvalidAction, RepairAction]
     optional = True
+
+    settings_category = "max"
 
     DEFAULTS = ["fov", "nearrange", "farrange",
                 "nearclip", "farclip"]

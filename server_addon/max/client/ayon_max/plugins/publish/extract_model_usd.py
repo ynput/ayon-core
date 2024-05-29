@@ -3,7 +3,7 @@ import os
 import pyblish.api
 from pymxs import runtime as rt
 
-from ayon_core.hosts.max.api import maintained_selection
+from ayon_max.api import maintained_selection
 from ayon_core.pipeline import OptionalPyblishPluginMixin, publish
 
 
@@ -16,6 +16,8 @@ class ExtractModelUSD(publish.Extractor,
     hosts = ["max"]
     families = ["model"]
     optional = True
+
+    settings_category = "max"
 
     def process(self, instance):
         if not self.is_active(instance.data):

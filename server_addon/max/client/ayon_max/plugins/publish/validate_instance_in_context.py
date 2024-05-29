@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.hosts.max.api.action import SelectInvalidAction
+from ayon_max.api.action import SelectInvalidAction
 from pymxs import runtime as rt
 
 
@@ -26,6 +26,8 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
     optional = True
     hosts = ["max"]
     actions = [SelectInvalidAction, RepairAction]
+
+    settings_category = "max"
 
     def process(self, instance):
         if not self.is_active(instance.data):

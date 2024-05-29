@@ -3,7 +3,7 @@ import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 from pymxs import runtime as rt
 from ayon_core.pipeline.publish import RepairAction
-from ayon_core.hosts.max.api.lib import get_current_renderer
+from ayon_max.api.lib import get_current_renderer
 
 
 class ValidateRendererRedshiftProxy(pyblish.api.InstancePlugin):

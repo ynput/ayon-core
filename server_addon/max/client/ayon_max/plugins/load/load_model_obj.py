@@ -1,13 +1,13 @@
 import os
 
-from ayon_core.hosts.max.api import lib
-from ayon_core.hosts.max.api.lib import (
+from ayon_max.api import lib
+from ayon_max.api.lib import (
     unique_namespace,
     get_namespace,
     maintained_selection,
     object_transform_set
 )
-from ayon_core.hosts.max.api.pipeline import (
+from ayon_max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
     update_custom_attribute_data,

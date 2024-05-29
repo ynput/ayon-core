@@ -5,7 +5,7 @@ from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.hosts.max.api.action import SelectInvalidAction
+from ayon_max.api.action import SelectInvalidAction
 
 
 def get_invalid_keys(obj):
@@ -38,6 +38,8 @@ class ValidateNoAnimation(pyblish.api.InstancePlugin,
     optional = True
     label = "Validate No Animation"
     actions = [SelectInvalidAction]
+
+    settings_category = "max"
 
     def process(self, instance):
         if not self.is_active(instance.data):

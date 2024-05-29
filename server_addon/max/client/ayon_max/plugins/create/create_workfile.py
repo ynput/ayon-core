@@ -3,8 +3,8 @@
 import ayon_api
 
 from ayon_core.pipeline import CreatedInstance, AutoCreator
-from ayon_core.hosts.max.api import plugin
-from ayon_core.hosts.max.api.lib import read, imprint
+from ayon_max.api import plugin
+from ayon_max.api.lib import read, imprint
 from pymxs import runtime as rt
 
 
@@ -16,6 +16,8 @@ class CreateWorkfile(plugin.MaxCreatorBase, AutoCreator):
     icon = "fa5.file"
 
     default_variant = "Main"
+
+    settings_category = "max"
 
     def create(self):
         variant = self.default_variant

@@ -61,6 +61,8 @@ class ValidateAttributes(OptionalPyblishPluginMixin,
     actions = [RepairContextAction]
     optional = True
 
+    settings_category = "max"
+
     @classmethod
     def get_invalid(cls, context):
         attributes = json.loads(

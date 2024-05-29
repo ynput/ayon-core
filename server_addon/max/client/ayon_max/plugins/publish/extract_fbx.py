@@ -2,8 +2,8 @@ import os
 import pyblish.api
 from ayon_core.pipeline import publish, OptionalPyblishPluginMixin
 from pymxs import runtime as rt
-from ayon_core.hosts.max.api import maintained_selection
-from ayon_core.hosts.max.api.lib import convert_unit_scale
+from ayon_max.api import maintained_selection
+from ayon_max.api.lib import convert_unit_scale
 
 
 class ExtractModelFbx(publish.Extractor, OptionalPyblishPluginMixin):

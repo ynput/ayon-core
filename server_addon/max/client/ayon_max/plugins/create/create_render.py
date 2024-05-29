@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating camera."""
 import os
-from ayon_core.hosts.max.api import plugin
+from ayon_max.api import plugin
 from ayon_core.lib import BoolDef
-from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
+from ayon_max.api.lib_rendersettings import RenderSettings
 
 
 class CreateRender(plugin.MaxCreator):
@@ -12,6 +12,8 @@ class CreateRender(plugin.MaxCreator):
     label = "Render"
     product_type = "maxrender"
     icon = "gear"
+
+    settings_category = "max"
 
     def create(self, product_name, instance_data, pre_create_data):
         from pymxs import runtime as rt

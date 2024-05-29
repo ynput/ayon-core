@@ -5,7 +5,7 @@ from qtpy import QtWidgets, QtCore
 from pymxs import runtime as rt
 
 from ayon_core.tools.utils import host_tools
-from ayon_core.hosts.max.api import lib
+from ayon_max.api import lib
 
 
 class AYONMenu(object):

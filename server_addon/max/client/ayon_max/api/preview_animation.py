@@ -3,7 +3,7 @@ import contextlib
 from pymxs import runtime as rt
 from .lib import get_max_version, render_resolution
 
-log = logging.getLogger("ayon_core.hosts.max")
+log = logging.getLogger("ayon_max")
 
 
 @contextlib.contextmanager

@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
+from ayon_max.api.lib_rendersettings import RenderSettings
 
 
 class ValidateRenderPasses(OptionalPyblishPluginMixin,
@@ -20,6 +20,8 @@ class ValidateRenderPasses(OptionalPyblishPluginMixin,
     hosts = ["max"]
     label = "Validate Render Passes"
     actions = [RepairAction]
+
+    settings_category = "max"
 
     def process(self, instance):
         invalid = self.get_invalid(instance)

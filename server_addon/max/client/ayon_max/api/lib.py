@@ -20,7 +20,7 @@ from pymxs import runtime as rt
 
 
 JSON_PREFIX = "JSON::"
-log = logging.getLogger("ayon_core.hosts.max")
+log = logging.getLogger("ayon_max")
 
 
 def get_main_window():

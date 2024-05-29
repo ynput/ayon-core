@@ -3,7 +3,7 @@ import os
 import pyblish.api
 from pymxs import runtime as rt
 
-from ayon_core.hosts.max.api import maintained_selection
+from ayon_max.api import maintained_selection
 from ayon_core.pipeline import publish
 
 

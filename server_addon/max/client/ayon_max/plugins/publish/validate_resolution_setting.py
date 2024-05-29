@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     PublishValidationError
 )
-from ayon_core.hosts.max.api.lib import (
+from ayon_max.api.lib import (
     reset_scene_resolution,
     imprint
 )

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating camera."""
-from ayon_core.hosts.max.api import plugin
+from ayon_max.api import plugin
 
 
 class CreateCamera(plugin.MaxCreator):
@@ -9,3 +9,5 @@ class CreateCamera(plugin.MaxCreator):
     label = "Camera"
     product_type = "camera"
     icon = "gear"
+
+    settings_category = "max"

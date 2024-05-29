@@ -2,8 +2,8 @@ import os
 import pyblish.api
 from ayon_core.pipeline import publish, OptionalPyblishPluginMixin
 from pymxs import runtime as rt
-from ayon_core.hosts.max.api import maintained_selection
-from ayon_core.hosts.max.api.lib import suspended_refresh
+from ayon_max.api import maintained_selection
+from ayon_max.api.lib import suspended_refresh
 from ayon_core.pipeline.publish import KnownPublishError
 
 
@@ -17,6 +17,8 @@ class ExtractModelObj(publish.Extractor, OptionalPyblishPluginMixin):
     hosts = ["max"]
     families = ["model"]
     optional = True
+
+    settings_category = "max"
 
     def process(self, instance):
         if not self.is_active(instance.data):

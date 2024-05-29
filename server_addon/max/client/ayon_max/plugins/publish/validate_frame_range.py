@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     KnownPublishError
 )
-from ayon_core.hosts.max.api.lib import get_frame_range, set_timeline
+from ayon_max.api.lib import get_frame_range, set_timeline
 
 
 class ValidateFrameRange(pyblish.api.InstancePlugin,
@@ -35,6 +35,8 @@ class ValidateFrameRange(pyblish.api.InstancePlugin,
     hosts = ["max"]
     optional = True
     actions = [RepairAction]
+
+    settings_category = "max"
 
     def process(self, instance):
         if not self.is_active(instance.data):
