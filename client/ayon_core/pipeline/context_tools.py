@@ -11,7 +11,7 @@ from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import HostBase
-from ayon_core.lib import is_in_tests, initialize_ayon_connection, emit_event
+from ayon_core.lib import is_in_tests, initialize_ayon_connection, emit_event, version_up
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -579,3 +579,14 @@ def get_process_id():
     if _process_id is None:
         _process_id = str(uuid.uuid4())
     return _process_id
+
+
+def version_up_workfile():
+    """Function to increment and save workfile
+    """
+    host = registered_host()
+    current_file = host.get_current_workfile()
+    if not current_file:
+        return None
+    filepath = version_up(current_file)
+    host.save_workfile(filepath)
