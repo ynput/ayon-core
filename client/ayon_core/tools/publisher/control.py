@@ -1891,7 +1891,7 @@ class PublisherController(BasePublisherController):
         filtering_criteria = {
             "task_names": task_name,
             "task_types": task_type,
-            "hosts": host_name
+            "host_names": host_name
         }
         profile = filter_profiles(
             filter_creator_profiles,
