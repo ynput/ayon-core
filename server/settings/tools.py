@@ -121,7 +121,8 @@ class WorkfilesLockProfile(BaseSettingsModel):
 class WorkfilesToolModel(BaseSettingsModel):
     version_up_workfile: bool = SettingsField(
         False,
-        title="Version Up Workfile"
+        title="Version Up Workfile",
+        description="Add 'Version Up Workfile' to AYON menu"
     )
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
