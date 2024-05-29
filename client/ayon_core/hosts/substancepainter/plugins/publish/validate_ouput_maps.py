@@ -30,11 +30,16 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
         # it will generate without actually exporting the files. So we try to
         # generate the smallest size / fastest export as possible
         config = copy.deepcopy(config)
+        invalid_channels = self.get_invalid_channels(instance, config)
+        if invalid_channels:
+            raise PublishValidationError(
+                "Invalid Channel(s): {} found in texture set {}".format(
+                    invalid_channels, instance.name
+                ))
         parameters = config["exportParameters"][0]["parameters"]
         parameters["sizeLog2"] = [1, 1]     # output 2x2 images (smallest)
         parameters["paddingAlgorithm"] = "passthrough"  # no dilation (faster)
         parameters["dithering"] = False     # no dithering (faster)
-
         result = substance_painter.export.export_project_textures(config)
         if result.status != substance_painter.export.ExportStatus.Success:
             raise PublishValidationError(
@@ -108,3 +113,41 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
                 message=message,
                 title="Missing output maps"
             )
+
+    def get_invalid_channels(self, instance, config):
+        """Function to get invalid channel(s) from export channel
+        filtering
+
+        Args:
+            instance (pyblish.api.Instance): Instance
+            config (dict): export config
+
+        Raises:
+            PublishValidationError: raise Publish Validation
+                Error if any invalid channel(s) found
+
+        Returns:
+            list: invalid channel(s)
+        """
+        creator_attrs = instance.data["creator_attributes"]
+        export_channel = creator_attrs.get("exportChannel", [])
+        tmp_export_channel = copy.deepcopy(export_channel)
+        invalid_channel = []
+        if export_channel:
+            for export_preset in config.get("exportPresets", {}):
+                if not export_preset.get("maps", {}):
+                    raise PublishValidationError(
+                        "No Texture Map Exported with texture set: {}.".format(
+                            instance.name)
+                    )
+                map_names = [channel_map["fileName"] for channel_map
+                             in export_preset["maps"]]
+                for channel in tmp_export_channel:
+                    # Check if channel is found in at least one map
+                    for map_name in map_names:
+                        if channel in map_name:
+                            break
+                    else:
+                        invalid_channel.append(channel)
+
+        return invalid_channel
