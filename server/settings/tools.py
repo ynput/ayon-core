@@ -119,6 +119,10 @@ class WorkfilesLockProfile(BaseSettingsModel):
 
 
 class WorkfilesToolModel(BaseSettingsModel):
+    version_up_workfile: bool = SettingsField(
+        False,
+        title="Version Up Workfile"
+    )
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
         title="Workfile template profiles"
@@ -407,6 +411,7 @@ DEFAULT_TOOLS_VALUES = {
         ]
     },
     "Workfiles": {
+        "version_up_workfile": False,
         "workfile_template_profiles": [
             {
                 "task_types": [],
