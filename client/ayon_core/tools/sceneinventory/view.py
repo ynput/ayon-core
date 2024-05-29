@@ -841,10 +841,17 @@ class SceneInventoryView(QtWidgets.QTreeView):
         containers_items_by_id = self._controller.get_container_items_by_id(
             item_ids
         )
-        product_ids = {
-            container_item.product_id
+        repre_ids = {
+            container_item.representation_id
             for container_item in containers_items_by_id.values()
-            if container_item.is_valid
+        }
+        repre_info_by_id = self._controller.get_representation_info_items(
+            repre_ids
+        )
+        product_ids = {
+            repre_info.product_id
+            for repre_info in repre_info_by_id.values()
+            if repre_info.is_valid
         }
         version_items_by_product_id = self._controller.get_version_items(
             product_ids
@@ -853,9 +860,11 @@ class SceneInventoryView(QtWidgets.QTreeView):
         update_containers = []
         update_versions = []
         for item_id, container_item in containers_items_by_id.items():
-            product_id = container_item.product_id
+            repre_id = container_item.representation_id
+            repre_info = repre_info_by_id[repre_id]
+            product_id = repre_info.product_id
             version_items_id = version_items_by_product_id[product_id]
-            version_item = version_items_id.get(container_item.version_id, {})
+            version_item = version_items_id.get(repre_info.version_id, {})
             if not version_item or not version_item.is_hero:
                 continue
             version = abs(version_item.version)
