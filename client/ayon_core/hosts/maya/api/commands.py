@@ -4,10 +4,7 @@ from maya import cmds
 
 from ayon_api import get_project, get_folder_by_path
 
-from ayon_core.pipeline import (
-    get_current_project_name,
-    get_current_folder_path
-)
+from ayon_core.pipeline import get_current_project_name, get_current_folder_path
 
 
 class ToolWindows:
