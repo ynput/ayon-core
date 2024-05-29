@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating point cloud."""
-from ayon_core.hosts.max.api import plugin
+from ayon_max.api import plugin
 
 
 class CreatePointCloud(plugin.MaxCreator):
@@ -9,3 +9,5 @@ class CreatePointCloud(plugin.MaxCreator):
     label = "Point Cloud"
     product_type = "pointcloud"
     icon = "gear"
+
+    settings_category = "max"

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating pointcache alembics."""
-from ayon_core.hosts.max.api import plugin
+from ayon_max.api import plugin
 
 
 class CreatePointCache(plugin.MaxCreator):
@@ -9,3 +9,5 @@ class CreatePointCache(plugin.MaxCreator):
     label = "Point Cache"
     product_type = "pointcache"
     icon = "gear"
+
+    settings_category = "max"

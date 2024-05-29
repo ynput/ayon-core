@@ -5,10 +5,10 @@ import pyblish.api
 
 from pymxs import runtime as rt
 from ayon_core.pipeline.publish import KnownPublishError
-from ayon_core.hosts.max.api import colorspace
-from ayon_core.hosts.max.api.lib import get_max_version, get_current_renderer
-from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
-from ayon_core.hosts.max.api.lib_renderproducts import RenderProducts
+from ayon_max.api import colorspace
+from ayon_max.api.lib import get_max_version, get_current_renderer
+from ayon_max.api.lib_rendersettings import RenderSettings
+from ayon_max.api.lib_renderproducts import RenderProducts
 
 
 class CollectRender(pyblish.api.InstancePlugin):

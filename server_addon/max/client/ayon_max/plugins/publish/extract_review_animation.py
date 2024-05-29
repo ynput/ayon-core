@@ -1,7 +1,7 @@
 import os
 import pyblish.api
 from ayon_core.pipeline import publish
-from ayon_core.hosts.max.api.preview_animation import (
+from ayon_max.api.preview_animation import (
     render_preview_animation
 )
 

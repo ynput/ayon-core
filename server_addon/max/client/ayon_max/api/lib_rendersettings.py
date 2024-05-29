@@ -5,7 +5,7 @@ from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline.context_tools import get_current_folder_entity
 
-from ayon_core.hosts.max.api.lib import (
+from ayon_max.api.lib import (
     set_render_frame_range,
     get_current_renderer,
     get_default_render_folder

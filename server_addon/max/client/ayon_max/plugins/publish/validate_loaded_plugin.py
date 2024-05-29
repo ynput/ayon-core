@@ -9,7 +9,7 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-from ayon_core.hosts.max.api.lib import get_plugins
+from ayon_max.api.lib import get_plugins
 
 
 class ValidateLoadedPlugin(OptionalPyblishPluginMixin,
@@ -24,6 +24,8 @@ class ValidateLoadedPlugin(OptionalPyblishPluginMixin,
     label = "Validate Loaded Plugins"
     optional = True
     actions = [RepairAction]
+
+    settings_category = "max"
 
     family_plugins_mapping = []
 

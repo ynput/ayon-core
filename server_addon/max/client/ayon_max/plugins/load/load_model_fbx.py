@@ -1,17 +1,17 @@
 import os
 from ayon_core.pipeline import load, get_representation_path
-from ayon_core.hosts.max.api.pipeline import (
+from ayon_max.api.pipeline import (
     containerise, get_previous_loaded_object,
     update_custom_attribute_data,
     remove_container_data
 )
-from ayon_core.hosts.max.api import lib
-from ayon_core.hosts.max.api.lib import (
+from ayon_max.api import lib
+from ayon_max.api.lib import (
     unique_namespace,
     get_namespace,
     object_transform_set
 )
-from ayon_core.hosts.max.api.lib import maintained_selection
+from ayon_max.api.lib import maintained_selection
 
 
 class FbxModelLoader(load.LoaderPlugin):

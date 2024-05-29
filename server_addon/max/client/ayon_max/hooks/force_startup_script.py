@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Pre-launch to force 3ds max startup script."""
 import os
-from ayon_core.hosts.max import MAX_HOST_DIR
+from ayon_max import MAX_HOST_DIR
 from ayon_applications import PreLaunchHook, LaunchTypes
 
 

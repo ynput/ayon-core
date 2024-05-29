@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating raw max scene."""
-from ayon_core.hosts.max.api import plugin
+from ayon_max.api import plugin
 
 
 class CreateMaxScene(plugin.MaxCreator):
@@ -9,3 +9,5 @@ class CreateMaxScene(plugin.MaxCreator):
     label = "Max Scene"
     product_type = "maxScene"
     icon = "gear"
+
+    settings_category = "max"

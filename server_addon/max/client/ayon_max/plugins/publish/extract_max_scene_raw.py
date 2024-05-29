@@ -15,6 +15,8 @@ class ExtractMaxSceneRaw(publish.Extractor, OptionalPyblishPluginMixin):
     families = ["camera", "maxScene", "model"]
     optional = True
 
+    settings_category = "max"
+
     def process(self, instance):
         if not self.is_active(instance.data):
             return

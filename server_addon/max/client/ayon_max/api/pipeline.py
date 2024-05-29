@@ -14,14 +14,14 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     AYON_CONTAINER_ID,
 )
-from ayon_core.hosts.max.api.menu import AYONMenu
-from ayon_core.hosts.max.api import lib
-from ayon_core.hosts.max.api.plugin import MS_CUSTOM_ATTRIB
-from ayon_core.hosts.max import MAX_HOST_DIR
+from ayon_max.api.menu import AYONMenu
+from ayon_max.api import lib
+from ayon_max.api.plugin import MS_CUSTOM_ATTRIB
+from ayon_max import MAX_HOST_DIR
 
 from pymxs import runtime as rt  # noqa
 
-log = logging.getLogger("ayon_core.hosts.max")
+log = logging.getLogger("ayon_max")
 
 PLUGINS_DIR = os.path.join(MAX_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

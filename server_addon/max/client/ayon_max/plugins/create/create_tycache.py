@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating TyCache."""
-from ayon_core.hosts.max.api import plugin
+from ayon_max.api import plugin
 
 
 class CreateTyCache(plugin.MaxCreator):
@@ -9,3 +9,5 @@ class CreateTyCache(plugin.MaxCreator):
     label = "TyCache"
     product_type = "tycache"
     icon = "gear"
+
+    settings_category = "max"

@@ -6,14 +6,14 @@ from ayon_core.pipeline import (
     get_representation_path
 )
 from ayon_core.pipeline.load import LoadError
-from ayon_core.hosts.max.api.pipeline import (
+from ayon_max.api.pipeline import (
     containerise,
     update_custom_attribute_data,
     get_previous_loaded_object,
     remove_container_data
 )
-from ayon_core.hosts.max.api import lib
-from ayon_core.hosts.max.api.lib import (
+from ayon_max.api import lib
+from ayon_max.api.lib import (
     unique_namespace,
     get_plugins
 )

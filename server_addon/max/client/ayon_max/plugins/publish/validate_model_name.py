@@ -4,7 +4,7 @@ import re
 
 import pyblish.api
 
-from ayon_core.hosts.max.api.action import SelectInvalidAction
+from ayon_max.api.action import SelectInvalidAction
 
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
@@ -39,6 +39,9 @@ class ValidateModelName(pyblish.api.InstancePlugin,
     families = ["model"]
     label = "Validate Model Name"
     actions = [SelectInvalidAction]
+
+    settings_category = "max"
+
     # defined by settings
     regex = r"(.*)_(?P<subset>.*)_(GEO)"
     # cache
