@@ -681,7 +681,7 @@ class PublishAttributeValues(AttributeValues):
 
     @property
     def parent(self):
-        self.publish_attributes.parent
+        return self.publish_attributes.parent
 
 
 class PublishAttributes:
