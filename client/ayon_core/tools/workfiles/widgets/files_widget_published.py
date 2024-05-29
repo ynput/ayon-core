@@ -192,6 +192,8 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
         self._remove_empty_item()
         self._remove_missing_context_item()
 
+        user_items_by_name = self._controller.get_user_items_by_name()
+
         items_to_remove = set(self._items_by_id.keys())
         new_items = []
         for file_item in file_items:
@@ -212,9 +214,15 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
             else:
                 flags = QtCore.Qt.NoItemFlags
 
+            author = file_item.created_by
+            user_item = user_items_by_name.get(author)
+            if user_item is not None and user_item.full_name:
+                author = user_item.full_name
+
             item.setFlags(flags)
+
             item.setData(file_item.filepath, FILEPATH_ROLE)
-            item.setData(file_item.created_by, AUTHOR_ROLE)
+            item.setData(author, AUTHOR_ROLE)
             item.setData(file_item.modified, DATE_MODIFIED_ROLE)
 
             self._items_by_id[repre_id] = item

@@ -193,6 +193,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             return
         self._remove_empty_item()
         self._remove_missing_context_item()
+        user_items_by_name = self._controller.get_user_items_by_name()
 
         items_to_remove = set(self._items_by_filename.keys())
         new_items = []
@@ -212,8 +213,13 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
                 item.setData(file_item.filename, QtCore.Qt.DisplayRole)
                 item.setData(file_item.filename, FILENAME_ROLE)
 
+            updated_by = file_item.updated_by
+            user_item = user_items_by_name.get(updated_by)
+            if user_item is not None and user_item.full_name:
+                updated_by = user_item.full_name
+
             item.setData(file_item.filepath, FILEPATH_ROLE)
-            item.setData(file_item.updated_by, AUTHOR_ROLE)
+            item.setData(updated_by, AUTHOR_ROLE)
             item.setData(file_item.modified, DATE_MODIFIED_ROLE)
 
             self._items_by_filename[file_item.filename] = item
