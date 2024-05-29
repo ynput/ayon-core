@@ -536,6 +536,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         pass
 
+    @abstractmethod
+    def get_user_items_by_name(self):
+        """Get user items available on AYON server.
+
+        Returns:
+            Dict[str, UserItem]: User items by username.
+
+        """
+        pass
+
     # Host information
     @abstractmethod
     def get_workfile_extensions(self):
