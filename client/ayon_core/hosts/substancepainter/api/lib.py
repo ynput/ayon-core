@@ -644,7 +644,7 @@ def prompt_new_file_with_mesh(mesh_filepath):
     return project_mesh
 
 
-def get_export_presets_by_filtering(export_preset_name, channel_type_names):
+def get_filtered_export_preset(export_preset_name, channel_type_names):
     """Return export presets included with specific channels
     requested by users.
 
