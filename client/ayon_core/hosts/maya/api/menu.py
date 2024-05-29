@@ -75,9 +75,8 @@ def install(project_settings):
 
         cmds.setParent("..", menu=True)
 
-        cmds.menuItem(divider=True)
-
         if project_settings["core"]["tools"]["Workfiles"].get("version_up_workfile"):
+            cmds.menuItem(divider=True)
             cmds.menuItem(
                 "Version Up Workfile",
                 command=lambda *args: version_up_workfile()
