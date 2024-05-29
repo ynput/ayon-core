@@ -16,6 +16,7 @@ class WorkfileInfo:
         creation_time (float): Creation time (timestamp).
         modification_time (float): Modification time (timestamp).
         created_by (Union[str, none]): User who created the file.
+        updated_by (Union[str, none]): User who last updated the file.
         note (str): Note.
     """
 
@@ -28,6 +29,7 @@ class WorkfileInfo:
         creation_time,
         modification_time,
         created_by,
+        updated_by,
         note,
     ):
         self.folder_id = folder_id
@@ -37,6 +39,7 @@ class WorkfileInfo:
         self.creation_time = creation_time
         self.modification_time = modification_time
         self.created_by = created_by
+        self.updated_by = updated_by
         self.note = note
 
     def to_data(self):
@@ -54,6 +57,7 @@ class WorkfileInfo:
             "creation_time": self.creation_time,
             "modification_time": self.modification_time,
             "created_by": self.created_by,
+            "updated_by": self.updated_by,
             "note": self.note,
         }
 
