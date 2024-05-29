@@ -1830,11 +1830,15 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
+        task_type = None
+        current_task_entity = get_current_task_entity()
+        if current_task_entity:
+            task_type = current_task_entity["taskType"]
         allowed_creator_identifiers = self._get_allowed_creator_identifiers(
             self.project_name,
             self._create_context.host_name,
             self.current_task_name,
-            get_current_task_entity()["taskType"],
+            task_type,
             self.log
         )
         for identifier, creator in self._create_context.creators.items():
@@ -1867,10 +1871,7 @@ class PublisherController(BasePublisherController):
 
         If no profile provided for current context, it shows all creators
         """
-        allowed_creator_identifiers = []
-        if host_name == "traypublisher":
-            # no real context known
-            return allowed_creator_identifiers
+        allowed_creator_identifiers = None
         proj_settings = get_project_settings(project_name)
         filter_creator_profiles = (
             proj_settings
