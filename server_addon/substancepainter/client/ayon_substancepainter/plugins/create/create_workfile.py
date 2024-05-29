@@ -16,7 +16,7 @@ import substance_painter.project
 
 class CreateWorkfile(AutoCreator):
     """Workfile auto-creator."""
-    identifier = "io.openpype.creators.substancepainter.workfile"
+    identifier = "io.ayon.creators.substancepainter.workfile"
     label = "Workfile"
     product_type = "workfile"
     icon = "document"
