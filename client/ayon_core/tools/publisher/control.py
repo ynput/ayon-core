@@ -39,7 +39,6 @@ from ayon_core.pipeline.create.context import (
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
 from ayon_core.tools.common_models import HierarchyModel
-from ayon_core.settings import get_project_settings
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.pipeline.context_tools import get_current_task_entity
 
@@ -1666,6 +1665,16 @@ class PublisherController(BasePublisherController):
         return self._create_context.get_current_task_name()
 
     @property
+    def current_project_settings(self):
+        """Current project settings.
+
+        Returns:
+            dict
+        """
+
+        return self._create_context.get_current_project_settings()
+
+    @property
     def host_context_has_changed(self):
         return self._create_context.context_has_changed
 
@@ -1835,7 +1844,7 @@ class PublisherController(BasePublisherController):
         if current_task_entity:
             task_type = current_task_entity["taskType"]
         allowed_creator_identifiers = self._get_allowed_creator_identifiers(
-            self.project_name,
+            self.current_project_settings,
             self._create_context.host_name,
             self.current_task_name,
             task_type,
@@ -1861,7 +1870,7 @@ class PublisherController(BasePublisherController):
 
     def _get_allowed_creator_identifiers(
         self,
-        project_name,
+        project_settings,
         host_name,
         task_name,
         task_type,
@@ -1872,9 +1881,8 @@ class PublisherController(BasePublisherController):
         If no profile provided for current context, it shows all creators
         """
         allowed_creator_identifiers = None
-        proj_settings = get_project_settings(project_name)
         filter_creator_profiles = (
-            proj_settings
+            project_settings
             ["core"]
             ["tools"]
             ["creator"]

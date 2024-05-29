@@ -1401,6 +1401,7 @@ class CreateContext:
         self._current_folder_path = None
         self._current_task_name = None
         self._current_workfile_path = None
+        self._current_project_settings = None
 
         self._current_project_anatomy = None
 
@@ -1571,6 +1572,17 @@ class CreateContext:
 
         return self._current_task_name
 
+    def get_current_task_entity(self):
+        """Task name which was used as current context on context reset.
+
+        Returns:
+            Union[str, None]: Task name.
+        """
+        task_name = self.get_current_task_name()
+        if self._current_task_entity is None and task_name:
+            self._current_task_entity = get_current_task_entity()
+        return self._current_task_entity
+
     def get_current_workfile_path(self):
         """Workfile path which was opened on context reset.
 
@@ -1591,6 +1603,12 @@ class CreateContext:
             self._current_project_anatomy = Anatomy(
                 self._current_project_name)
         return self._current_project_anatomy
+
+    def get_current_project_settings(self):
+        if self._current_project_settings is None:
+            self._current_project_settings = get_project_settings(
+                self.get_current_project_name())
+        return self._current_project_settings
 
     @property
     def context_has_changed(self):
