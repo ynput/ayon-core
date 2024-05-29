@@ -1,12 +1,12 @@
 import ayon_api
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.host import HostBase, ILoadHost
+from ayon_core.host import HostBase
 from ayon_core.pipeline import (
     registered_host,
     get_current_context,
 )
-from ayon_core.tools.common_models import HierarchyModel
+from ayon_core.tools.common_models import HierarchyModel, ProjectsModel
 
 from .models import SiteSyncModel, ContainersModel
 
@@ -32,6 +32,7 @@ class SceneInventoryController:
         self._sitesync_model = SiteSyncModel(self)
         # Switch dialog requirements
         self._hierarchy_model = HierarchyModel(self)
+        self._projects_model = ProjectsModel(self)
         self._event_system = self._create_event_system()
 
     def get_host(self) -> HostBase:
@@ -84,6 +85,12 @@ class SceneInventoryController:
         self._current_folder_id = folder_id
         self._current_folder_set = True
         return self._current_folder_id
+
+    def get_project_status_items(self):
+        project_name = self.get_current_project_name()
+        return self._projects_model.get_project_status_items(
+            project_name, None
+        )
 
     # Containers methods
     def get_containers(self):

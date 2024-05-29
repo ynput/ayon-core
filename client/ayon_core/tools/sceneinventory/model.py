@@ -23,20 +23,22 @@ VERSION_LABEL_ROLE = QtCore.Qt.UserRole + 7
 VERSION_COLOR_ROLE = QtCore.Qt.UserRole + 8
 STATUS_NAME_ROLE = QtCore.Qt.UserRole + 9
 STATUS_COLOR_ROLE = QtCore.Qt.UserRole + 10
-PRODUCT_ID_ROLE = QtCore.Qt.UserRole + 11
-PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 12
-PRODUCT_TYPE_ICON_ROLE = QtCore.Qt.UserRole + 13
-PRODUCT_GROUP_NAME_ROLE = QtCore.Qt.UserRole + 14
-PRODUCT_GROUP_ICON_ROLE = QtCore.Qt.UserRole + 15
-LOADER_NAME_ROLE = QtCore.Qt.UserRole + 16
-OBJECT_NAME_ROLE = QtCore.Qt.UserRole + 17
-ACTIVE_SITE_PROGRESS_ROLE = QtCore.Qt.UserRole + 18
-REMOTE_SITE_PROGRESS_ROLE = QtCore.Qt.UserRole + 19
-ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 20
-REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 21
+STATUS_SHORT_ROLE = QtCore.Qt.UserRole + 11
+STATUS_ICON_ROLE = QtCore.Qt.UserRole + 12
+PRODUCT_ID_ROLE = QtCore.Qt.UserRole + 13
+PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 14
+PRODUCT_TYPE_ICON_ROLE = QtCore.Qt.UserRole + 15
+PRODUCT_GROUP_NAME_ROLE = QtCore.Qt.UserRole + 16
+PRODUCT_GROUP_ICON_ROLE = QtCore.Qt.UserRole + 17
+LOADER_NAME_ROLE = QtCore.Qt.UserRole + 18
+OBJECT_NAME_ROLE = QtCore.Qt.UserRole + 19
+ACTIVE_SITE_PROGRESS_ROLE = QtCore.Qt.UserRole + 20
+REMOTE_SITE_PROGRESS_ROLE = QtCore.Qt.UserRole + 21
+ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 22
+REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 23
 # This value hold unique value of container that should be used to identify
 #     containers inbetween refresh.
-ITEM_UNIQUE_NAME_ROLE = QtCore.Qt.UserRole + 22
+ITEM_UNIQUE_NAME_ROLE = QtCore.Qt.UserRole + 24
 
 
 class InventoryModel(QtGui.QStandardItemModel):
@@ -45,6 +47,7 @@ class InventoryModel(QtGui.QStandardItemModel):
     column_labels = [
         "Name",
         "Version",
+        "Status",
         "Count",
         "Product type",
         "Group",
@@ -55,6 +58,7 @@ class InventoryModel(QtGui.QStandardItemModel):
     ]
     name_col = column_labels.index("Name")
     version_col = column_labels.index("Version")
+    status_col = column_labels.index("Status")
     count_col = column_labels.index("Count")
     product_type_col = column_labels.index("Product type")
     product_group_col = column_labels.index("Group")
@@ -65,8 +69,8 @@ class InventoryModel(QtGui.QStandardItemModel):
     display_role_by_column = {
         name_col: QtCore.Qt.DisplayRole,
         version_col: VERSION_LABEL_ROLE,
+        status_col: STATUS_NAME_ROLE,
         count_col: COUNT_ROLE,
-        # 3: STATUS_NAME_ROLE,
         product_type_col: PRODUCT_TYPE_ROLE,
         product_group_col: PRODUCT_GROUP_NAME_ROLE,
         loader_col: LOADER_NAME_ROLE,
@@ -82,12 +86,14 @@ class InventoryModel(QtGui.QStandardItemModel):
         remote_site_col: REMOTE_SITE_ICON_ROLE,
     }
     foreground_role_by_column = {
-        version_col: VERSION_COLOR_ROLE,
         name_col: NAME_COLOR_ROLE,
+        version_col: VERSION_COLOR_ROLE,
+        status_col: STATUS_COLOR_ROLE
     }
     width_by_column = {
         name_col: 250,
         version_col: 55,
+        status_col: 100,
         count_col: 55,
         product_type_col: 150,
         product_group_col: 120,
@@ -156,6 +162,10 @@ class InventoryModel(QtGui.QStandardItemModel):
                 self._controller.get_site_provider_icons().items()
             )
         }
+        status_items_by_name = {
+            status_item.name: status_item
+            for status_item in self._controller.get_project_status_items()
+        }
 
         group_item_icon = qtawesome.icon(
             "fa.folder", color=self._default_icon_color
@@ -187,6 +197,9 @@ class InventoryModel(QtGui.QStandardItemModel):
             version_color = None
             version_value = None
             is_latest = False
+            status_name = None
+            status_color = None
+            status_short = None
             if not repre_info.is_valid:
                 group_name = "< Entity N/A >"
                 item_icon = invalid_item_icon
@@ -210,6 +223,11 @@ class InventoryModel(QtGui.QStandardItemModel):
                 is_latest = version_item.is_latest
                 if not is_latest:
                     version_color = self.OUTDATED_COLOR
+                status_name = version_item.status
+                status_item = status_items_by_name.get(status_name)
+                if status_item:
+                    status_short = status_item.short
+                    status_color = status_item.color
 
             container_model_items = []
             for container_item in container_items:
@@ -255,6 +273,10 @@ class InventoryModel(QtGui.QStandardItemModel):
             group_item.setData(is_latest, VERSION_IS_LATEST_ROLE)
             group_item.setData(version_label, VERSION_LABEL_ROLE)
             group_item.setData(len(container_items), COUNT_ROLE)
+            group_item.setData(status_name, STATUS_NAME_ROLE)
+            group_item.setData(status_short, STATUS_SHORT_ROLE)
+            group_item.setData(status_color, STATUS_COLOR_ROLE)
+
             group_item.setData(
                 active_site_progress, ACTIVE_SITE_PROGRESS_ROLE
             )
