@@ -45,10 +45,12 @@ class FilterCreatorProfile(BaseSettingsModel):
         title="Task types",
         enum_resolver=task_types_enum
     )
-    task_names: list[str] = SettingsField(default_factory=list,
-                                          title="Task names")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names")
     creator_identifiers: list[str] = SettingsField(
-        "", title="Allowed Creator Identifiers")
+        default_factory=list,
+        title="Allowed Creator Identifiers")
 
 
 class CreatorToolModel(BaseSettingsModel):
