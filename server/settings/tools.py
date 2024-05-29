@@ -39,7 +39,9 @@ class FilterCreatorProfile(BaseSettingsModel):
     """Provide list of allowed Creator identifiers for context"""
 
     _layout = "expanded"
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
