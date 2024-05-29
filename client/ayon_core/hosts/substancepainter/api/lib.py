@@ -3,6 +3,8 @@ import re
 import json
 from collections import defaultdict
 
+import contextlib
+import substance_painter
 import substance_painter.project
 import substance_painter.resource
 import substance_painter.js
@@ -640,3 +642,88 @@ def prompt_new_file_with_mesh(mesh_filepath):
         return
 
     return project_mesh
+
+
+def get_filtered_export_preset(export_preset_name, channel_type_names):
+    """Return export presets included with specific channels
+    requested by users.
+
+    Args:
+        export_preset_name (str): Name of export preset
+        channel_type_list (list): A list of channel type requested by users
+
+    Returns:
+        dict: export preset data
+    """
+
+    target_maps = []
+
+    export_presets = get_export_presets()
+    export_preset_nice_name = export_presets[export_preset_name]
+    resource_presets = substance_painter.export.list_resource_export_presets()
+    preset = next(
+        (
+            preset for preset in resource_presets
+            if preset.resource_id.name == export_preset_nice_name
+        ), None
+    )
+    if preset is None:
+        return {}
+
+    maps = preset.list_output_maps()
+    for channel_map in maps:
+        for channel_name in channel_type_names:
+            if not channel_map.get("fileName"):
+                continue
+
+            if channel_name in channel_map["fileName"]:
+                target_maps.append(channel_map)
+    # Create a new preset
+    return {
+        "exportPresets": [
+            {
+                "name": export_preset_name,
+                "maps": target_maps
+            }
+        ],
+    }
+
+
+@contextlib.contextmanager
+def set_layer_stack_opacity(node_ids, channel_types):
+    """Function to set the opacity of the layer stack during
+    context
+    Args:
+        node_ids (list[int]): Substance painter root layer node ids
+        channel_types (list[str]): Channel type names as defined as
+            attributes in `substance_painter.textureset.ChannelType`
+    """
+    # Do nothing
+    if not node_ids or not channel_types:
+        yield
+        return
+
+    stack = substance_painter.textureset.get_active_stack()
+    stack_root_layers = (
+        substance_painter.layerstack.get_root_layer_nodes(stack)
+    )
+    node_ids = set(node_ids)  # lookup
+    excluded_nodes = [
+        node for node in stack_root_layers
+        if node.uid() not in node_ids
+    ]
+
+    original_opacity_values = []
+    for node in excluded_nodes:
+        for channel in channel_types:
+            chan = getattr(substance_painter.textureset.ChannelType, channel)
+            original_opacity_values.append((chan, node.get_opacity(chan)))
+    try:
+        for node in excluded_nodes:
+            for channel, _ in original_opacity_values:
+                node.set_opacity(0.0, channel)
+        yield
+    finally:
+        for node in excluded_nodes:
+            for channel, opacity in original_opacity_values:
+                node.set_opacity(opacity, channel)
