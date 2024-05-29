@@ -6,7 +6,7 @@ import ctypes
 import platform
 import logging
 
-from Qt import QtCore, QtGui
+from qtpy import QtCore, QtGui
 
 from ayon_core.hosts.unreal.api.communication_server import (
     CommunicationWrapper
