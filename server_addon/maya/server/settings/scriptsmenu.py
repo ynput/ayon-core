@@ -83,16 +83,6 @@ DEFAULT_SCRIPTSMENU_SETTINGS = {
                 "pipeline",
                 "shader"
             ]
-        },
-        {
-            "type": "action",
-            "command": "import openpype.hosts.maya.api.commands as op_cmds; op_cmds.version_up_workfile()",
-            "sourcetype": "python",
-            "title": "Version Up",
-            "tooltip": "Save workfile with upversioning",
-            "tags": [
-                "pipeline"
-            ]
         }
     ],
     "definition_json": "[]"

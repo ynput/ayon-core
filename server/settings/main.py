@@ -219,6 +219,11 @@ class CoreSettings(BaseSettingsModel):
         title="Project environments",
         section="---"
     )
+    version_up_workfile: bool = SettingsField(
+        False,
+        title="Version Up Workfile",
+        section="---"
+    )
 
     @validator(
         "environments",
@@ -313,5 +318,6 @@ DEFAULT_VALUES = {
     "project_environments": json.dumps(
         {},
         indent=4
-    )
+    ),
+    "version_up_workfile": False
 }
