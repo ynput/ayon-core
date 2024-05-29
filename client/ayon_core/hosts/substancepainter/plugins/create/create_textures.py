@@ -14,9 +14,7 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
     set_instances,
     remove_instance
 )
-from ayon_core.hosts.substancepainter.api.lib import (
-    get_export_presets
-)
+from ayon_core.hosts.substancepainter.api.lib import get_export_presets
 
 import substance_painter
 import substance_painter.project
