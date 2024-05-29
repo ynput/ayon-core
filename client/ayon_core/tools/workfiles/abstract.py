@@ -233,6 +233,7 @@ class FileItem:
         filename,
         modified,
         created_by=None,
+        updated_by=None,
         representation_id=None,
         filepath=None,
         exists=None
@@ -241,6 +242,7 @@ class FileItem:
         self.dirpath = dirpath
         self.modified = modified
         self.created_by = created_by
+        self.updated_by = updated_by
         self.representation_id = representation_id
         self._filepath = filepath
         self._exists = exists

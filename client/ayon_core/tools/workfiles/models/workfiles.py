@@ -199,7 +199,8 @@ class WorkareaModel:
                 workdir,
                 filename,
                 modified,
-                workfile_info.created_by
+                workfile_info.created_by,
+                workfile_info.updated_by,
             ))
         return items
 
@@ -675,6 +676,7 @@ class PublishWorkfilesModel:
             filename,
             created_at.float_timestamp,
             author,
+            None,
             repre_entity["id"]
         )
 
