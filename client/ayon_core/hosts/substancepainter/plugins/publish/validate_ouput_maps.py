@@ -33,7 +33,7 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
         invalid_channels = self.get_invalid_channels(instance, config)
         if invalid_channels:
             raise PublishValidationError(
-                "Invalid Channel(s): {} found in the texture set {}".format(
+                "Invalid Channel(s): {} found in texture set {}".format(
                     invalid_channels, instance.name
                 ))
         parameters = config["exportParameters"][0]["parameters"]
@@ -137,7 +137,7 @@ class ValidateOutputMaps(pyblish.api.InstancePlugin):
             for export_preset in config.get("exportPresets", {}):
                 if not export_preset.get("maps", {}):
                     raise PublishValidationError(
-                        "No Texture Map Exported with texture set:{}.".format(
+                        "No Texture Map Exported with texture set: {}.".format(
                             instance.name)
                     )
                 map_names = [channel_map["fileName"] for channel_map

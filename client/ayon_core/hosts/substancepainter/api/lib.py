@@ -645,7 +645,7 @@ def prompt_new_file_with_mesh(mesh_filepath):
 
 
 def get_export_presets_by_filtering(export_preset_name, channel_type_names):
-    """Function to get export presets included with specific channels
+    """Return export presets included with specific channels
     requested by users.
 
     Args:
@@ -707,10 +707,6 @@ def set_layer_stack_opacity(node_ids, channel_types):
     stack_root_layers = (
         substance_painter.layerstack.get_root_layer_nodes(stack)
     )
-    all_selected_nodes = []
-    for node_id in node_ids:
-        node = substance_painter.layerstack.get_node_by_uid(int(node_id))
-        all_selected_nodes.append(node)
     node_ids = set(node_ids)  # lookup
     excluded_nodes = [
         node for node in stack_root_layers
