@@ -147,13 +147,25 @@ class SidePanelWidget(QtWidgets.QWidget):
             workfile_info.creation_time)
         modification_time = datetime.datetime.fromtimestamp(
             workfile_info.modification_time)
+        created_lines = [
+            creation_time.strftime(datetime_format)
+        ]
+        if workfile_info.created_by:
+            created_lines.insert(0, workfile_info.created_by)
+
+        modified_lines = [
+            modification_time.strftime(datetime_format)
+        ]
+        if workfile_info.updated_by:
+            modified_lines.insert(0, workfile_info.updated_by)
+
         lines = (
             "<b>Size:</b>",
             size_value,
             "<b>Created:</b>",
-            creation_time.strftime(datetime_format),
+            "<br/>".join(created_lines),
             "<b>Modified:</b>",
-            modification_time.strftime(datetime_format)
+            "<br/>".join(modified_lines),
         )
         self._orig_note = note
         self._note_input.setPlainText(note)
