@@ -34,6 +34,7 @@ from .model import (
     STATUS_ICON_ROLE,
 )
 from .delegates import VersionDelegate
+from .select_version_dialog import SelectVersionDialog, VersionOption
 
 DEFAULT_COLOR = "#fb9c15"
 
@@ -708,42 +709,51 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         version_items = list(version_items_by_id.values())
         version_items.sort(key=version_sorter, reverse=True)
+        status_items_by_name = {
+            status_item.name: status_item
+            for status_item in self._controller.get_project_status_items()
+        }
 
-        versions_by_label = {}
-        labels = []
-        active_version_label = None
-        for version_item in version_items:
+        version_options = []
+        active_version_idx = 0
+        for idx, version_item in enumerate(version_items):
             version = version_item.version
             label = format_version(version)
             if version_item.version_id == active_version_id:
-                active_version_label = label
+                active_version_idx = idx
 
-            labels.append(label)
-            versions_by_label[label] = version
+            status_name = version_item.status
+            status_short = None
+            status_color = None
+            status_item = status_items_by_name.get(status_name)
+            if status_item:
+                status_short = status_item.short
+                status_color = status_item.color
+            version_options.append(
+                VersionOption(
+                    version,
+                    label,
+                    status_name,
+                    status_short,
+                    status_color,
+                )
+            )
 
-        index = 0
-        if active_version_label in labels:
-            index = labels.index(active_version_label)
-
-        label, state = QtWidgets.QInputDialog.getItem(
-            self,
-            "Set version..",
-            "Set version number to",
-            labels,
-            current=index,
-            editable=False
+        version_option = SelectVersionDialog.ask_for_version(
+            version_options,
+            active_version_idx,
+            parent=self
         )
-        if not state:
+        if version_option is None:
             return
 
-        if label:
-            version = versions_by_label[label]
-            if version < 0:
-                version = HeroVersionType(version)
+        version = version_option.version
+        if version < 0:
+            version = HeroVersionType(version)
 
-            self._update_containers_to_version(
-                filtered_container_item_ids, version
-            )
+        self._update_containers_to_version(
+            filtered_container_item_ids, version
+        )
 
     def _show_switch_dialog(self, item_ids):
         """Display Switch dialog"""
