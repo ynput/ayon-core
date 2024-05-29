@@ -470,9 +470,11 @@ class WorkfileEntitiesModel:
     ):
         note = ""
         created_by = None
+        updated_by = None
         if workfile_info:
             note = workfile_info["attrib"].get("description") or ""
             created_by = workfile_info.get("createdBy")
+            updated_by = workfile_info.get("updatedBy")
 
         filestat = os.stat(filepath)
         return WorkfileInfo(
@@ -483,6 +485,7 @@ class WorkfileEntitiesModel:
             creation_time=filestat.st_ctime,
             modification_time=filestat.st_mtime,
             created_by=created_by,
+            updated_by=updated_by,
             note=note
         )
 
@@ -494,7 +497,7 @@ class WorkfileEntitiesModel:
         for workfile_info in ayon_api.get_workfiles_info(
             self._controller.get_current_project_name(),
             task_ids=[task_id],
-            fields=["id", "path", "attrib", "createdBy"],
+            fields=["id", "path", "attrib", "createdBy", "updatedBy"],
         ):
             workfile_identifier = self._get_workfile_info_identifier(
                 folder_id, task_id, workfile_info["path"]

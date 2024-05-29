@@ -213,7 +213,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
                 item.setData(file_item.filename, FILENAME_ROLE)
 
             item.setData(file_item.filepath, FILEPATH_ROLE)
-            item.setData(file_item.created_by, AUTHOR_ROLE)
+            item.setData(file_item.updated_by, AUTHOR_ROLE)
             item.setData(file_item.modified, DATE_MODIFIED_ROLE)
 
             self._items_by_filename[file_item.filename] = item
