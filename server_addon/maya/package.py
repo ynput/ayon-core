@@ -1,3 +1,3 @@
 name = "maya"
 title = "Maya"
-version = "0.1.21"
+version = "0.1.20"
