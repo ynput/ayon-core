@@ -2,7 +2,7 @@ import collections
 import logging
 from functools import partial
 
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtWidgets, QtCore
 import qtawesome
 
 from ayon_core import style
