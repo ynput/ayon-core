@@ -1839,8 +1839,10 @@ class PublisherController(BasePublisherController):
         )
         for identifier, creator in self._create_context.creators.items():
             try:
-                if (allowed_creator_identifiers and
-                    identifier not in allowed_creator_identifiers):
+                if (
+                    allowed_creator_identifiers is not None
+                    and identifier not in allowed_creator_identifiers
+                ):
                     self.log.debug(f"{identifier} not allowed for context")
                     continue
                 output[identifier] = CreatorItem.from_creator(creator)
