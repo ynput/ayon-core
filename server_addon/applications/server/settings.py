@@ -214,7 +214,7 @@ class ApplicationsAddonSettings(BaseSettingsModel):
     only_available: bool = SettingsField(
         True,
         title="Show only available applications",
-        description="Enable to show only available applications in AYON Launcher"
+        description="Enable to show only applications in AYON Launcher"
                     " for which the executable paths are found on the running machine."
                     " This applies as an additional filter to the applications defined in a "
                     " project's anatomy settings to ignore unavailable applications."
