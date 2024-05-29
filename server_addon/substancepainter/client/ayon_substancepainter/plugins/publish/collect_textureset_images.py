@@ -8,6 +8,7 @@ import substance_painter.textureset
 from ayon_core.pipeline import publish
 from ayon_substancepainter.api.lib import (
     get_parsed_export_maps,
+    get_filtered_export_preset,
     strip_template
 )
 from ayon_core.pipeline.create import get_product_name
@@ -207,5 +208,8 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
             for key, value in dict(parameters).items():
                 if value is None:
                     parameters.pop(key)
-
+        channel_layer = creator_attrs.get("exportChannel", [])
+        if channel_layer:
+            maps = get_filtered_export_preset(preset_url, channel_layer)
+            config.update(maps)
         return config
