@@ -18,6 +18,7 @@ from ayon_core.tools.utils.lib import (
     preserve_expanded_rows,
     preserve_selection,
 )
+from ayon_core.tools.utils.delegates import StatusDelegate
 
 from .switch_dialog import SwitchAssetDialog
 from .model import (
@@ -27,6 +28,10 @@ from .model import (
     OBJECT_NAME_ROLE,
     ITEM_ID_ROLE,
     IS_CONTAINER_ITEM_ROLE,
+    STATUS_NAME_ROLE,
+    STATUS_SHORT_ROLE,
+    STATUS_COLOR_ROLE,
+    STATUS_ICON_ROLE,
 )
 from .delegates import VersionDelegate
 
@@ -56,7 +61,17 @@ class SceneInventoryView(QtWidgets.QTreeView):
         self.setModel(proxy_model)
 
         version_delegate = VersionDelegate()
-        self.setItemDelegateForColumn(model.version_col, version_delegate)
+        status_delegate = StatusDelegate(
+            STATUS_NAME_ROLE,
+            STATUS_SHORT_ROLE,
+            STATUS_COLOR_ROLE,
+            STATUS_ICON_ROLE,
+        )
+        for col, delegate in (
+            (model.version_col, version_delegate),
+            (model.status_col, status_delegate),
+        ):
+            self.setItemDelegateForColumn(col, delegate)
 
         # set some nice default widths for the view
         for col, width in model.width_by_column.items():
@@ -71,6 +86,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         self._model = model
         self._proxy_model = proxy_model
         self._version_delegate = version_delegate
+        self._status_delegate = status_delegate
 
         self._hierarchy_view = False
         self._selected = None
