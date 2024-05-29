@@ -48,7 +48,8 @@ class FilterCreatorProfile(BaseSettingsModel):
     task_names: list[str] = SettingsField(default_factory=list,
                                           title="Task names")
     creator_identifiers: list[str] = SettingsField(
-        "", title="Allowed Creator Identifiers")
+        default_factory=list,
+        title="Allowed Creator Identifiers")
 
 
 class CreatorToolModel(BaseSettingsModel):
