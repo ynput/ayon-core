@@ -118,11 +118,18 @@ class WorkfilesLockProfile(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
 
 
-class WorkfilesToolModel(BaseSettingsModel):
+class AyonMenuModel(BaseSettingsModel):
     version_up_workfile: bool = SettingsField(
         False,
         title="Version Up Workfile",
         description="Add 'Version Up Workfile' to AYON menu"
+    )
+
+
+class WorkfilesToolModel(BaseSettingsModel):
+    ayon_menu: AyonMenuModel = SettingsField(
+        default_factory=AyonMenuModel,
+        title="AYON Menu"
     )
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -412,7 +419,9 @@ DEFAULT_TOOLS_VALUES = {
         ]
     },
     "Workfiles": {
-        "version_up_workfile": False,
+        "ayon_menu": {
+            "version_up_workfile": False
+        },
         "workfile_template_profiles": [
             {
                 "task_types": [],

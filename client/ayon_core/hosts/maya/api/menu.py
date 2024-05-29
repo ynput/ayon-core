@@ -75,12 +75,13 @@ def install(project_settings):
 
         cmds.setParent("..", menu=True)
 
-        if project_settings["core"]["tools"]["Workfiles"].get("version_up_workfile"):
-            cmds.menuItem(divider=True)
-            cmds.menuItem(
-                "Version Up Workfile",
-                command=lambda *args: version_up_workfile()
-            )
+        if project_settings["core"]["tools"]["Workfiles"]["ayon_menu"].get(
+            "version_up_workfile"):
+                cmds.menuItem(divider=True)
+                cmds.menuItem(
+                    "Version Up Workfile",
+                    command=lambda *args: version_up_workfile()
+                )
 
         cmds.menuItem(divider=True)
 
