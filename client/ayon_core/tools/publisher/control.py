@@ -1856,12 +1856,12 @@ class PublisherController(BasePublisherController):
         return output
 
     def _get_allowed_creator_identifiers(
-            self,
-            project_name,
-            host_name,
-            task_name,
-            task_type,
-            log=None
+        self,
+        project_name,
+        host_name,
+        task_name,
+        task_type,
+        log=None
     ):
         """Provide configured creator identifier in this context
 
