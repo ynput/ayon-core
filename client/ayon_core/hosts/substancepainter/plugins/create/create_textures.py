@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating textures."""
-
 from ayon_core.pipeline import CreatedInstance, Creator, CreatorError
 from ayon_core.lib import (
     EnumDef,
@@ -17,6 +16,7 @@ from ayon_core.hosts.substancepainter.api.pipeline import (
 )
 from ayon_core.hosts.substancepainter.api.lib import get_export_presets
 
+import substance_painter
 import substance_painter.project
 
 
@@ -28,9 +28,16 @@ class CreateTextures(Creator):
     icon = "picture-o"
 
     default_variant = "Main"
+    channel_mapping = []
+
+    def apply_settings(self, project_settings):
+        settings = project_settings["substancepainter"].get("create", [])  # noqa
+        if settings:
+            self.channel_mapping = settings["CreateTextures"].get(
+                "channel_mapping", [])
+
 
     def create(self, product_name, instance_data, pre_create_data):
-
         if not substance_painter.project.is_open():
             raise CreatorError("Can't create a Texture Set instance without "
                                "an open project.")
@@ -42,10 +49,19 @@ class CreateTextures(Creator):
             "exportFileFormat",
             "exportSize",
             "exportPadding",
-            "exportDilationDistance"
+            "exportDilationDistance",
+            "useCustomExportPreset",
+            "exportChannel"
         ]:
             if key in pre_create_data:
                 creator_attributes[key] = pre_create_data[key]
+
+        if pre_create_data.get("use_selection"):
+            stack = substance_painter.textureset.get_active_stack()
+
+            instance_data["selected_node_id"] = [
+                node_number.uid() for node_number in
+                substance_painter.layerstack.get_selected_nodes(stack)]
 
         instance = self.create_instance_in_context(product_name,
                                                    instance_data)
@@ -88,8 +104,53 @@ class CreateTextures(Creator):
         return instance
 
     def get_instance_attr_defs(self):
+        if self.channel_mapping:
+            export_channel_enum = {
+                item["value"]: item["name"]
+                for item in self.channel_mapping
+            }
+        else:
+            export_channel_enum = {
+                "BaseColor": "Base Color",
+                "Metallic": "Metallic",
+                "Roughness": "Roughness",
+                "SpecularEdgeColor": "Specular Edge Color",
+                "Emissive": "Emissive",
+                "Opacity": "Opacity",
+                "Displacement": "Displacement",
+                "Glossiness": "Glossiness",
+                "Anisotropylevel": "Anisotropy Level",
+                "AO": "Ambient Occulsion",
+                "Anisotropyangle": "Anisotropy Angle",
+                "Transmissive": "Transmissive",
+                "Reflection": "Reflection",
+                "Diffuse": "Diffuse",
+                "Ior": "Index of Refraction",
+                "Specularlevel": "Specular Level",
+                "BlendingMask": "Blending Mask",
+                "Translucency": "Translucency",
+                "Scattering": "Scattering",
+                "ScatterColor": "Scatter Color",
+                "SheenOpacity": "Sheen Opacity",
+                "SheenRoughness": "Sheen Roughness",
+                "SheenColor": "Sheen Color",
+                "CoatOpacity": "Coat Opacity",
+                "CoatColor": "Coat Color",
+                "CoatRoughness": "Coat Roughness",
+                "CoatSpecularLevel": "Coat Specular Level",
+                "CoatNormal": "Coat Normal",
+            }
 
         return [
+            EnumDef("exportChannel",
+                    items=export_channel_enum,
+                    multiselection=True,
+                    default=None,
+                    label="Export Channel(s)",
+                    tooltip="Choose the channel which you "
+                            "want to solely export. The value "
+                            "is 'None' by default which exports "
+                            "all channels"),
             EnumDef("exportPresetUrl",
                     items=get_export_presets(),
                     label="Output Template"),
@@ -149,7 +210,6 @@ class CreateTextures(Creator):
                     },
                     default=None,
                     label="Size"),
-
             EnumDef("exportPadding",
                     items={
                         "passthrough": "No padding (passthrough)",
@@ -172,4 +232,10 @@ class CreateTextures(Creator):
 
     def get_pre_create_attr_defs(self):
         # Use same attributes as for instance attributes
-        return self.get_instance_attr_defs()
+        attr_defs = []
+        if  substance_painter.application.version_info()[0] >= 10:
+            attr_defs.append(
+                BoolDef("use_selection", label="Use selection",
+                        tooltip="Select Layer Stack(s) for exporting")
+            )
+        return attr_defs + self.get_instance_attr_defs()
