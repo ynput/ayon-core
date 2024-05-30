@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Create render node."""
-import ayon_core.hosts.harmony.api as harmony
-from ayon_core.hosts.harmony.api import plugin
+import ayon_harmony.api as harmony
+from ayon_harmony.api import plugin
 
 
 class CreateRender(plugin.Creator):

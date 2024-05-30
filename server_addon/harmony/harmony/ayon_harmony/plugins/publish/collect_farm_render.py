@@ -7,7 +7,7 @@ import attr
 from ayon_core.lib import get_formatted_current_time
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import RenderInstance
-import ayon_core.hosts.harmony.api as harmony
+import ayon_harmony.api as harmony
 
 
 @attr.s

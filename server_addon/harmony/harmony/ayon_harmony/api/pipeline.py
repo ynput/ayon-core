@@ -15,11 +15,11 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.load import get_outdated_containers
 from ayon_core.pipeline.context_tools import get_current_folder_entity
 
-from ayon_core.hosts.harmony import HARMONY_ADDON_ROOT
-import ayon_core.hosts.harmony.api as harmony
+from ayon_harmony import HARMONY_ADDON_ROOT
+import ayon_harmony.api as harmony
 
 
-log = logging.getLogger("ayon_core.hosts.harmony")
+log = logging.getLogger("ayon_harmony")
 
 PLUGINS_DIR = os.path.join(HARMONY_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

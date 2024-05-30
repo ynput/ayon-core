@@ -4,7 +4,7 @@ import json
 import re
 
 import pyblish.api
-import ayon_core.hosts.harmony.api as harmony
+import ayon_harmony.api as harmony
 
 
 class CollectPalettes(pyblish.api.ContextPlugin):

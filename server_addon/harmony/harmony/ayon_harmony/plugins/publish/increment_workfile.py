@@ -3,7 +3,7 @@ import os
 import pyblish.api
 from ayon_core.pipeline.publish import get_errored_plugins_from_context
 from ayon_core.lib import version_up
-import ayon_core.hosts.harmony.api as harmony
+import ayon_harmony.api as harmony
 
 
 class IncrementWorkfile(pyblish.api.InstancePlugin):

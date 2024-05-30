@@ -1,4 +1,4 @@
-from ayon_core.hosts.harmony.api import plugin
+from ayon_harmony.api import plugin
 
 
 class CreateTemplate(plugin.Creator):

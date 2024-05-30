@@ -3,7 +3,7 @@
 import os
 
 import pyblish.api
-import ayon_core.hosts.harmony.api as harmony
+import ayon_harmony.api as harmony
 
 
 class CollectScene(pyblish.api.ContextPlugin):

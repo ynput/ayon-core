@@ -7,7 +7,7 @@ from ayon_core.lib import (
     is_using_ayon_console,
 )
 from ayon_applications import PreLaunchHook, LaunchTypes
-from ayon_core.hosts.harmony import get_launch_script_path
+from ayon_harmony import get_launch_script_path
 
 
 def get_launch_kwargs(kwargs):

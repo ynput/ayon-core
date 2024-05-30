@@ -1,6 +1,6 @@
 import pyblish.api
 
-import ayon_core.hosts.harmony.api as harmony
+import ayon_harmony.api as harmony
 from ayon_core.pipeline import get_current_folder_path
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,

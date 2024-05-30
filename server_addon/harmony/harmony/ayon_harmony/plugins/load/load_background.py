@@ -6,7 +6,7 @@ from ayon_core.pipeline import (
     get_representation_path,
 )
 from ayon_core.pipeline.context_tools import is_representation_from_latest
-import ayon_core.hosts.harmony.api as harmony
+import ayon_harmony.api as harmony
 
 
 copy_files = """function copyFile(srcFilename, dstFilename)
