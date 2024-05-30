@@ -587,6 +587,7 @@ def version_up_workfile():
     host = registered_host()
     current_file = host.get_current_workfile()
     if not current_file:
+        log.debug("Current file not found.")
         return None
     filepath = version_up(current_file)
     host.save_workfile(filepath)
