@@ -40,7 +40,6 @@ from ayon_core.pipeline.create.context import (
 from ayon_core.pipeline.publish import get_publish_instance_label
 from ayon_core.tools.common_models import HierarchyModel
 from ayon_core.lib.profiles_filtering import filter_profiles
-from ayon_core.pipeline.context_tools import get_current_task_entity
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
