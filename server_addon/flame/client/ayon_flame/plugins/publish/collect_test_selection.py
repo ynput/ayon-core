@@ -1,8 +1,8 @@
 import os
 import pyblish.api
 import tempfile
-import ayon_core.hosts.flame.api as opfapi
-from ayon_core.hosts.flame.otio import flame_export as otio_export
+import ayon_flame.api as opfapi
+from ayon_flame.otio import flame_export as otio_export
 import opentimelineio as otio
 from pprint import pformat
 reload(otio_export)  # noqa
