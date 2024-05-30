@@ -246,6 +246,8 @@ class InventoryModel(QtGui.QStandardItemModel):
                 item.setData(container_item.item_id, ITEM_ID_ROLE)
                 item.setData(version_value, VERSION_VALUE_ROLE)
                 item.setData(version_label, VERSION_LABEL_ROLE)
+                item.setData(container_item.loader_name, LOADER_NAME_ROLE)
+                item.setData(container_item.object_name, OBJECT_NAME_ROLE)
                 item.setData(True, IS_CONTAINER_ITEM_ROLE)
                 item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
                 container_model_items.append(item)
