@@ -1,14 +1,14 @@
 import ayon_api
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.host import ILoadHost
+from ayon_core.host import HostBase
 from ayon_core.pipeline import (
     registered_host,
     get_current_context,
 )
-from ayon_core.tools.common_models import HierarchyModel
+from ayon_core.tools.common_models import HierarchyModel, ProjectsModel
 
-from .models import SiteSyncModel
+from .models import SiteSyncModel, ContainersModel
 
 
 class SceneInventoryController:
@@ -28,10 +28,15 @@ class SceneInventoryController:
         self._current_folder_id = None
         self._current_folder_set = False
 
+        self._containers_model = ContainersModel(self)
         self._sitesync_model = SiteSyncModel(self)
         # Switch dialog requirements
         self._hierarchy_model = HierarchyModel(self)
+        self._projects_model = ProjectsModel(self)
         self._event_system = self._create_event_system()
+
+    def get_host(self) -> HostBase:
+        return self._host
 
     def emit_event(self, topic, data=None, source=None):
         if data is None:
@@ -47,6 +52,7 @@ class SceneInventoryController:
         self._current_folder_id = None
         self._current_folder_set = False
 
+        self._containers_model.reset()
         self._sitesync_model.reset()
         self._hierarchy_model.reset()
 
@@ -80,13 +86,32 @@ class SceneInventoryController:
         self._current_folder_set = True
         return self._current_folder_id
 
+    def get_project_status_items(self):
+        project_name = self.get_current_project_name()
+        return self._projects_model.get_project_status_items(
+            project_name, None
+        )
+
+    # Containers methods
     def get_containers(self):
-        host = self._host
-        if isinstance(host, ILoadHost):
-            return list(host.get_containers())
-        elif hasattr(host, "ls"):
-            return list(host.ls())
-        return []
+        return self._containers_model.get_containers()
+
+    def get_containers_by_item_ids(self, item_ids):
+        return self._containers_model.get_containers_by_item_ids(item_ids)
+
+    def get_container_items(self):
+        return self._containers_model.get_container_items()
+
+    def get_container_items_by_id(self, item_ids):
+        return self._containers_model.get_container_items_by_id(item_ids)
+
+    def get_representation_info_items(self, representation_ids):
+        return self._containers_model.get_representation_info_items(
+            representation_ids
+        )
+
+    def get_version_items(self, product_ids):
+        return self._containers_model.get_version_items(product_ids)
 
     # Site Sync methods
     def is_sitesync_enabled(self):
