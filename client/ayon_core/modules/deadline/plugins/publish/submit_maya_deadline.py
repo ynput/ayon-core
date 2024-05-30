@@ -39,8 +39,8 @@ from ayon_core.lib import (
     EnumDef,
     is_in_tests,
 )
-from ayon_core.hosts.maya.api.lib_rendersettings import RenderSettings
-from ayon_core.hosts.maya.api.lib import get_attr_in_layer
+from ayon_maya.api.lib_rendersettings import RenderSettings
+from ayon_maya.api.lib import get_attr_in_layer
 
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
