@@ -42,6 +42,7 @@ class ValidateSceneSettings(pyblish.api.InstancePlugin):
     families = ["workfile"]
     hosts = ["harmony"]
     actions = [ValidateSceneSettingsRepair]
+    settings_category = "harmony"
     optional = True
 
     # skip frameEnd check if asset contains any of:
