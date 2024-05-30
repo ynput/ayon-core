@@ -1,6 +1,6 @@
 # from pprint import pformat
-from ayon_core.hosts.resolve.api import plugin, lib
-from ayon_core.hosts.resolve.api.lib import (
+from ayon_resolve.api import plugin, lib
+from ayon_resolve.api.lib import (
     get_video_track_names,
     create_bin,
 )

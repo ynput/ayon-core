@@ -5,7 +5,7 @@ from ayon_core.pipeline import (
     get_representation_path,
 )
 
-from ayon_core.hosts.resolve.api import lib
+from ayon_resolve.api import lib
 
 
 class LoadEditorialPackage(load.LoaderPlugin):
