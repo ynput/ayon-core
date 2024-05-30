@@ -15,11 +15,11 @@ from ayon_core.pipeline.publish.lib import (
     replace_with_published_scene_path
 )
 from ayon_core.pipeline.publish import KnownPublishError
-from ayon_core.hosts.max.api.lib import (
+from ayon_max.api.lib import (
     get_current_renderer,
     get_multipass_setting
 )
-from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
+from ayon_max.api.lib_rendersettings import RenderSettings
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 
@@ -205,11 +205,11 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
     def _use_published_name(self, data, project_settings):
         # Not all hosts can import these modules.
-        from ayon_core.hosts.max.api.lib import (
+        from ayon_max.api.lib import (
             get_current_renderer,
             get_multipass_setting
         )
-        from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
+        from ayon_max.api.lib_rendersettings import RenderSettings
 
         instance = self._instance
         job_info = copy.deepcopy(self.job_info)
