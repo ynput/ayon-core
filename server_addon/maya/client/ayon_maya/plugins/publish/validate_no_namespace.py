@@ -1,14 +1,12 @@
+import ayon_maya.api.action
 import maya.cmds as cmds
-
-import pyblish.api
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
 )
-
-import ayon_maya.api.action
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -25,12 +23,11 @@ def get_namespace(node_name):
     return node_name.rpartition(":")[0]
 
 
-class ValidateNoNamespace(pyblish.api.InstancePlugin,
+class ValidateNoNamespace(MayaInstancePlugin,
                           OptionalPyblishPluginMixin):
     """Ensure the nodes don't have a namespace"""
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['model']
     label = 'No Namespaces'
     actions = [ayon_maya.api.action.SelectInvalidAction,

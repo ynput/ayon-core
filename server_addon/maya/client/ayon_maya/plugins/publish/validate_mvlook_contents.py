@@ -1,18 +1,18 @@
 import os
-import pyblish.api
+
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateContentsOrder,
 )
-
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 COLOUR_SPACES = ['sRGB', 'linear', 'auto']
 MIPMAP_EXTENSIONS = ['tdl']
 
 
-class ValidateMvLookContents(pyblish.api.InstancePlugin,
+class ValidateMvLookContents(MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     order = ValidateContentsOrder
     families = ['mvLook']

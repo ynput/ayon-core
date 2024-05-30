@@ -1,9 +1,9 @@
+import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
 
-
-class CollectMayaHistory(pyblish.api.InstancePlugin):
+class CollectMayaHistory(MayaInstancePlugin):
     """Collect history for instances from the Maya scene
 
     Note:

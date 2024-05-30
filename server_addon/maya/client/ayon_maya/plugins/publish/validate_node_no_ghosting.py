@@ -1,16 +1,14 @@
-from maya import cmds
-
-import pyblish.api
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateNodeNoGhosting(pyblish.api.InstancePlugin,
+class ValidateNodeNoGhosting(MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Ensure nodes do not have ghosting enabled.
 
@@ -24,7 +22,6 @@ class ValidateNodeNoGhosting(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['model', 'rig']
     label = "No Ghosting"
     actions = [ayon_maya.api.action.SelectInvalidAction]

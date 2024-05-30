@@ -1,14 +1,14 @@
-import pyblish.api
-from ayon_maya.api import lib
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     RepairAction,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder,
 )
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin,
+class ValidateArnoldSceneSourceCbid(MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Validate Arnold Scene Source Cbid.
 
@@ -16,7 +16,6 @@ class ValidateArnoldSceneSourceCbid(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["assProxy"]
     label = "Validate Arnold Scene Source CBID"
     actions = [RepairAction]

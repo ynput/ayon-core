@@ -1,9 +1,9 @@
-import pyblish.api
-
 import maya.cmds as cmds
+import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
+class CollectAnimationOutputGeometry(MayaInstancePlugin):
     """Collect out hierarchy data for instance.
 
     Collect all hierarchy nodes which reside in the out_SET of the animation
@@ -18,7 +18,6 @@ class CollectAnimationOutputGeometry(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.4
     families = ["animation"]
     label = "Collect Animation Output Geometry"
-    hosts = ["maya"]
 
     ignore_type = ["constraints"]
 

@@ -1,14 +1,13 @@
-from maya import cmds
-import maya.api.OpenMaya as om2
-
-import pyblish.api
 import ayon_maya.api.action
+import maya.api.OpenMaya as om2
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateMeshOrder,
-    OptionalPyblishPluginMixin,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -18,7 +17,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateMeshNormalsUnlocked(pyblish.api.InstancePlugin,
+class ValidateMeshNormalsUnlocked(MayaInstancePlugin,
                                   OptionalPyblishPluginMixin):
     """Validate all meshes in the instance have unlocked normals
 
@@ -28,7 +27,6 @@ class ValidateMeshNormalsUnlocked(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Mesh Normals Unlocked'
     actions = [ayon_maya.api.action.SelectInvalidAction,

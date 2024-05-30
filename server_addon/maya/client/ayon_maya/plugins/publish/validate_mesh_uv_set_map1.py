@@ -1,18 +1,17 @@
 import inspect
 
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateMeshOrder,
-    OptionalPyblishPluginMixin,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
+class ValidateMeshUVSetMap1(MayaInstancePlugin,
                             OptionalPyblishPluginMixin):
     """Validate model's default set exists and is named 'map1'.
 
@@ -24,7 +23,6 @@ class ValidateMeshUVSetMap1(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     optional = True
     label = "Mesh has map1 UV Set"

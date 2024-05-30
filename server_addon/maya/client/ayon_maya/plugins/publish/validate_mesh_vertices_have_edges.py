@@ -1,17 +1,16 @@
-import pyblish.api
-from maya import cmds
-
 import ayon_maya.api.action
-from ayon_maya.api.lib import len_flattened
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     RepairAction,
     ValidateMeshOrder,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.lib import len_flattened
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateMeshVerticesHaveEdges(pyblish.api.InstancePlugin,
+class ValidateMeshVerticesHaveEdges(MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Validate meshes have only vertices that are connected to edges.
 
@@ -32,7 +31,6 @@ class ValidateMeshVerticesHaveEdges(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Mesh Vertices Have Edges'
     actions = [ayon_maya.api.action.SelectInvalidAction,

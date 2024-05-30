@@ -2,19 +2,14 @@
 """Create Unreal Static Mesh data to be extracted as FBX."""
 import os
 
+import pyblish.api
+from ayon_maya.api import fbx
+from ayon_maya.api.lib import maintained_selection, parent_nodes
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from maya import cmds  # noqa
 
-import pyblish.api
 
-from ayon_core.pipeline import publish
-from ayon_maya.api.lib import (
-    parent_nodes,
-    maintained_selection
-)
-from ayon_maya.api import fbx
-
-
-class ExtractUnrealStaticMesh(publish.Extractor):
+class ExtractUnrealStaticMesh(MayaExtractorPlugin):
     """Extract Unreal Static Mesh as FBX from Maya. """
 
     order = pyblish.api.ExtractorOrder - 0.1

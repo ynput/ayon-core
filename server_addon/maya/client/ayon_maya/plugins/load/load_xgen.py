@@ -1,20 +1,18 @@
 import os
 import shutil
 
+import ayon_maya.api.plugin
 import maya.cmds as cmds
 import xgenm
-
-from qtpy import QtWidgets
-
-import ayon_maya.api.plugin
-from ayon_maya.api.lib import (
-    maintained_selection,
-    get_container_members,
-    attribute_values,
-    write_xgen_file
-)
-from ayon_maya.api import current_file
 from ayon_core.pipeline import get_representation_path
+from ayon_maya.api import current_file
+from ayon_maya.api.lib import (
+    attribute_values,
+    get_container_members,
+    maintained_selection,
+    write_xgen_file,
+)
+from qtpy import QtWidgets
 
 
 class XgenLoader(ayon_maya.api.plugin.ReferenceLoader):

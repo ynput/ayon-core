@@ -1,20 +1,13 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds  # noqa
+from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import (
-    load,
-    get_representation_path
-)
-from ayon_maya.api.lib import (
-    maintained_selection,
-    namespaced,
-    unique_namespace
-)
+from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
 
 
-class VRaySceneLoader(load.LoaderPlugin):
+class VRaySceneLoader(Loader):
     """Load Vray scene"""
 
     product_types = {"vrayscene_layer"}

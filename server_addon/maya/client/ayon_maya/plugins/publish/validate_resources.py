@@ -1,14 +1,14 @@
 import os
 from collections import defaultdict
 
-import pyblish.api
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     ValidateContentsOrder,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateResources(pyblish.api.InstancePlugin):
+class ValidateResources(MayaInstancePlugin):
     """Validates mapped resources.
 
     These are external files to the current application, for example

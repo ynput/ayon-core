@@ -1,23 +1,16 @@
 # -*- coding: utf-8 -*-
-import maya.cmds as cmds
-from maya import mel
 import os
 
+import maya.cmds as cmds
 from ayon_api import get_representation_by_id
-
-from ayon_core.pipeline import (
-    load,
-    get_representation_path
-)
-from ayon_maya.api.lib import (
-    maintained_selection,
-    namespaced,
-    unique_namespace
-)
+from ayon_core.pipeline import get_representation_path
+from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
+from ayon_maya.api.plugin import Loader
+from maya import mel
 
 
-class MultiverseUsdLoader(load.LoaderPlugin):
+class MultiverseUsdLoader(Loader):
     """Read USD data in a Multiverse Compound"""
 
     product_types = {

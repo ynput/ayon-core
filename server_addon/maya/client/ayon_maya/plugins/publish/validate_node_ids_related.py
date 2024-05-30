@@ -1,13 +1,16 @@
 import inspect
 import uuid
 from collections import defaultdict
-import pyblish.api
 
 import ayon_maya.api.action
-from ayon_maya.api import lib
-from ayon_core.pipeline.publish import (
-    OptionalPyblishPluginMixin, PublishValidationError, ValidatePipelineOrder)
 from ayon_api import get_folders
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidatePipelineOrder,
+)
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
 def is_valid_uuid(value) -> bool:
@@ -19,13 +22,12 @@ def is_valid_uuid(value) -> bool:
     return True
 
 
-class ValidateNodeIDsRelated(pyblish.api.InstancePlugin,
+class ValidateNodeIDsRelated(MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validate nodes have a related `cbId` to the instance.data[folderPath]"""
 
     order = ValidatePipelineOrder
     label = 'Node Ids Related (ID)'
-    hosts = ['maya']
     families = ["model",
                 "look",
                 "rig"]

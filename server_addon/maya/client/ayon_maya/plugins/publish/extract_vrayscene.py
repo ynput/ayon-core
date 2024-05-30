@@ -3,18 +3,16 @@
 import os
 import re
 
-from ayon_core.pipeline import publish
-from ayon_maya.api.render_setup_tools import export_in_rs_layer
 from ayon_maya.api.lib import maintained_selection
-
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api.render_setup_tools import export_in_rs_layer
 from maya import cmds
 
 
-class ExtractVrayscene(publish.Extractor):
+class ExtractVrayscene(MayaExtractorPlugin):
     """Extractor for vrscene."""
 
     label = "VRay Scene (.vrscene)"
-    hosts = ["maya"]
     families = ["vrayscene_layer"]
 
     def process(self, instance):

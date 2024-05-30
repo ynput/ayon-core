@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class CollectGLTF(pyblish.api.InstancePlugin):
+class CollectGLTF(MayaInstancePlugin):
     """Collect Assets for GLTF/GLB export."""
 
     order = pyblish.api.CollectorOrder + 0.2

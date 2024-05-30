@@ -1,12 +1,11 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateMeshOrder,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    ValidateMeshOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -16,7 +15,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateMeshNoNegativeScale(pyblish.api.InstancePlugin,
+class ValidateMeshNoNegativeScale(MayaInstancePlugin,
                                   OptionalPyblishPluginMixin):
     """Ensure that meshes don't have a negative scale.
 
@@ -30,7 +29,6 @@ class ValidateMeshNoNegativeScale(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Mesh No Negative Scale'
     actions = [ayon_maya.api.action.SelectInvalidAction]

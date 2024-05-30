@@ -1,17 +1,15 @@
 import os
 
-from maya import cmds, mel
 import pyblish.api
-
-from ayon_core.pipeline import publish
 from ayon_maya.api import lib
 from ayon_maya.api.gltf import extract_gltf
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds, mel
 
 
-class ExtractGLB(publish.Extractor):
+class ExtractGLB(MayaExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
-    hosts = ["maya"]
     label = "Extract GLB"
     families = ["gltf"]
 

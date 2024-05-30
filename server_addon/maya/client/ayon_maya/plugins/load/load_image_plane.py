@@ -1,18 +1,14 @@
-from qtpy import QtWidgets, QtCore
-
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
-)
-from ayon_maya.api.pipeline import containerise
+from ayon_core.pipeline import get_representation_path
 from ayon_maya.api.lib import (
-    unique_namespace,
+    get_container_members,
     namespaced,
     pairwise,
-    get_container_members
+    unique_namespace,
 )
-
+from ayon_maya.api.pipeline import containerise
+from ayon_maya.api.plugin import Loader
 from maya import cmds
+from qtpy import QtCore, QtWidgets
 
 
 def disconnect_inputs(plug):
@@ -84,7 +80,7 @@ class CameraWindow(QtWidgets.QDialog):
         self.close()
 
 
-class ImagePlaneLoader(load.LoaderPlugin):
+class ImagePlaneLoader(Loader):
     """Specific loader of plate for image planes on selected camera."""
 
     product_types = {"image", "plate", "render"}

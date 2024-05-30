@@ -1,17 +1,16 @@
 from collections import defaultdict
 
-import pyblish.api
-from ayon_core.pipeline.publish import (
-    ValidatePipelineOrder,
-    PublishValidationError
-)
 import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    PublishValidationError,
+    ValidatePipelineOrder,
+)
 from ayon_maya.api import lib
-
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
 
-class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
+class ValidateNodeIdsUnique(MayaInstancePlugin):
     """Validate the nodes in the instance have a unique Colorbleed Id
 
     Here we ensure that what has been added to the instance is unique
@@ -19,7 +18,6 @@ class ValidateNodeIdsUnique(pyblish.api.InstancePlugin):
 
     order = ValidatePipelineOrder
     label = 'Non Duplicate Instance Members (ID)'
-    hosts = ['maya']
     families = ["model",
                 "look",
                 "rig",

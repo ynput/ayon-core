@@ -1,12 +1,12 @@
 import os
 
-from maya import cmds
-
 import pyblish.api
 from ayon_maya.api.lib import get_attribute_input
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class CollectXgen(pyblish.api.InstancePlugin):
+class CollectXgen(MayaInstancePlugin):
     """Collect Xgen"""
 
     order = pyblish.api.CollectorOrder + 0.499999

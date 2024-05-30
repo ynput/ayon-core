@@ -1,13 +1,13 @@
-import maya.api.OpenMaya as om
-import maya.api.OpenMayaUI as omui
-
-import pyblish.api
 import tempfile
 
+import maya.api.OpenMaya as om
+import maya.api.OpenMayaUI as omui
+import pyblish.api
 from ayon_maya.api.lib import IS_HEADLESS
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ExtractActiveViewThumbnail(pyblish.api.InstancePlugin):
+class ExtractActiveViewThumbnail(MayaInstancePlugin):
     """Set instance thumbnail to a screengrab of current active viewport.
 
     This makes it so that if an instance does not have a thumbnail set yet that
@@ -18,7 +18,6 @@ class ExtractActiveViewThumbnail(pyblish.api.InstancePlugin):
     order = pyblish.api.ExtractorOrder + 0.49
     label = "Active View Thumbnail"
     families = ["workfile"]
-    hosts = ["maya"]
 
     def process(self, instance):
         if IS_HEADLESS:

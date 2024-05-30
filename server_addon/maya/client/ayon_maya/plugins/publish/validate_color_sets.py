@@ -1,16 +1,15 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateMeshOrder,
     OptionalPyblishPluginMixin,
     PublishValidationError,
-    RepairAction
+    RepairAction,
+    ValidateMeshOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateColorSets(pyblish.api.InstancePlugin,
+class ValidateColorSets(MayaInstancePlugin,
                         OptionalPyblishPluginMixin):
     """Validate all meshes in the instance have unlocked normals
 
@@ -20,7 +19,6 @@ class ValidateColorSets(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Mesh ColorSets'
     actions = [

@@ -1,13 +1,12 @@
-import os
-import six
-import json
 import contextlib
-
-from maya import cmds
+import json
+import os
 
 import pyblish.api
-from ayon_core.pipeline import publish
+import six
 from ayon_maya.api.lib import maintained_selection
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
 @contextlib.contextmanager
@@ -112,14 +111,13 @@ def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
         dg_mod.undoIt()
 
 
-class ExtractMayaUsd(publish.Extractor):
+class ExtractMayaUsd(MayaExtractorPlugin):
     """Extractor for Maya USD Asset data.
 
     Upon publish a .usd (or .usdz) asset file will typically be written.
     """
 
     label = "Extract Maya USD Asset"
-    hosts = ["maya"]
     families = ["mayaUsd"]
 
     @property

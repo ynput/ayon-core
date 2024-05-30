@@ -1,16 +1,15 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateMeshOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateMeshOrder,
 )
 from ayon_maya.api.lib import len_flattened
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
+class ValidateMeshHasUVs(MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Validate the current mesh has UVs.
 
@@ -21,7 +20,6 @@ class ValidateMeshHasUVs(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Mesh Has UVs'
     actions = [ayon_maya.api.action.SelectInvalidAction]

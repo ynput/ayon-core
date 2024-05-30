@@ -1,7 +1,8 @@
 import pyblish.api
+from ayon_maya.api.plugin import MayaContextPlugin
 
 
-class IncrementCurrentFileDeadline(pyblish.api.ContextPlugin):
+class IncrementCurrentFileDeadline(MayaContextPlugin):
     """Increment the current file.
 
     Saves the current maya scene with an increased version number.
@@ -10,15 +11,14 @@ class IncrementCurrentFileDeadline(pyblish.api.ContextPlugin):
 
     label = "Increment current file"
     order = pyblish.api.IntegratorOrder + 9.0
-    hosts = ["maya"]
     families = ["workfile"]
     optional = True
 
     def process(self, context):
 
-        from maya import cmds
         from ayon_core.lib import version_up
         from ayon_core.pipeline.publish import get_errored_plugins_from_context
+        from maya import cmds
 
         errored_plugins = get_errored_plugins_from_context(context)
         if any(plugin.__name__ == "MayaSubmitDeadline"

@@ -1,15 +1,13 @@
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
     PublishValidationError,
-    ValidateContentsOrder
+    ValidateContentsOrder,
 )
-
-
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds  # noqa
 
 
-class ValidateLookContents(pyblish.api.InstancePlugin):
+class ValidateLookContents(MayaInstancePlugin):
     """Validate look instance contents
 
     Rules:
@@ -25,7 +23,6 @@ class ValidateLookContents(pyblish.api.InstancePlugin):
 
     order = ValidateContentsOrder
     families = ['look']
-    hosts = ['maya']
     label = 'Look Data Contents'
     actions = [ayon_maya.api.action.SelectInvalidAction]
 

@@ -2,17 +2,15 @@
 """Extract rig as Maya Scene."""
 import os
 
+from ayon_maya.api.lib import maintained_selection
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from maya import cmds
 
-from ayon_core.pipeline import publish
-from ayon_maya.api.lib import maintained_selection
 
-
-class ExtractRig(publish.Extractor):
+class ExtractRig(MayaExtractorPlugin):
     """Extract rig as Maya Scene."""
 
     label = "Extract Rig (Maya Scene)"
-    hosts = ["maya"]
     families = ["rig"]
     scene_type = "ma"
 

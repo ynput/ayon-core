@@ -1,16 +1,16 @@
 from collections import defaultdict
-from maya import cmds
 
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateLookIdReferenceEdits(pyblish.api.InstancePlugin):
+class ValidateLookIdReferenceEdits(MayaInstancePlugin):
     """Validate nodes in look have no reference edits to cbId.
 
     Note:
@@ -22,7 +22,6 @@ class ValidateLookIdReferenceEdits(pyblish.api.InstancePlugin):
 
     order = ValidateContentsOrder
     families = ['look']
-    hosts = ['maya']
     label = 'Look Id Reference Edits'
     actions = [ayon_maya.api.action.SelectInvalidAction,
                RepairAction]

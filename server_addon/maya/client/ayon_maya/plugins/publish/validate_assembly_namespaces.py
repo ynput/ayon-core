@@ -1,13 +1,15 @@
-import pyblish.api
 import ayon_maya.api.action
+import pyblish.api
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
-class ValidateAssemblyNamespaces(pyblish.api.InstancePlugin,
+
+class ValidateAssemblyNamespaces(MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
-    """Ensure namespaces are not nested
+    """Ensure namespaces are not nested.
 
     In the outliner an item in a normal namespace looks as following:
         props_desk_01_:modelDefault

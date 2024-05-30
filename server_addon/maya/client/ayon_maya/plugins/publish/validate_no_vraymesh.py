@@ -1,9 +1,11 @@
 import pyblish.api
-from maya import cmds
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
+
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
     """Return list as bullet point list for a report"""
@@ -12,7 +14,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateNoVRayMesh(pyblish.api.InstancePlugin,
+class ValidateNoVRayMesh(MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Validate there are no VRayMesh objects in the instance"""
 

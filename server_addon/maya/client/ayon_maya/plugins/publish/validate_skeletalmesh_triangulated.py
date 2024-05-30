@@ -1,24 +1,19 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
 
-from ayon_maya.api.action import (
-    SelectInvalidAction,
-)
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError
 )
-
-
+from ayon_maya.api.action import SelectInvalidAction
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
 
-class ValidateSkeletalMeshTriangulated(pyblish.api.InstancePlugin):
+class ValidateSkeletalMeshTriangulated(MayaInstancePlugin):
     """Validates that the geometry has been triangulated."""
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["skeletalMesh"]
     label = "Skeletal Mesh Triangulated"
     optional = True

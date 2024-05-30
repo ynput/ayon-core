@@ -4,12 +4,12 @@ import os
 from maya import cmds  # noqa
 import pyblish.api
 
-from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api import fbx
+from ayon_maya.api.plugin import MayaExtractorPlugin
 
 
-class ExtractSkeletonMesh(publish.Extractor,
+class ExtractSkeletonMesh(MayaExtractorPlugin,
                           OptionalPyblishPluginMixin):
     """Extract Rig in FBX format from Maya.
 
@@ -21,7 +21,6 @@ class ExtractSkeletonMesh(publish.Extractor,
     """
     order = pyblish.api.ExtractorOrder
     label = "Extract Skeleton Mesh"
-    hosts = ["maya"]
     families = ["rig.fbx"]
 
     def process(self, instance):

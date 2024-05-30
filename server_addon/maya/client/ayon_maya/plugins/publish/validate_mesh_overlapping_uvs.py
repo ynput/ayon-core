@@ -1,16 +1,15 @@
 import math
-from six.moves import xrange
-
-from maya import cmds
-import maya.api.OpenMaya as om
-import pyblish.api
 
 import ayon_maya.api.action
+import maya.api.OpenMaya as om
 from ayon_core.pipeline.publish import (
-    ValidateMeshOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateMeshOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
+from six.moves import xrange
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -236,7 +235,7 @@ class GetOverlappingUVs(object):
         return faces
 
 
-class ValidateMeshHasOverlappingUVs(pyblish.api.InstancePlugin,
+class ValidateMeshHasOverlappingUVs(MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """ Validate the current mesh overlapping UVs.
 
@@ -245,7 +244,6 @@ class ValidateMeshHasOverlappingUVs(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Mesh Has Overlapping UVs'
     actions = [ayon_maya.api.action.SelectInvalidAction]

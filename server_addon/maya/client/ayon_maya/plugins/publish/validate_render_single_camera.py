@@ -1,19 +1,18 @@
-import re
 import inspect
-
-import pyblish.api
-from maya import cmds
+import re
 
 import ayon_maya.api.action
-from ayon_maya.api.lib_rendersettings import RenderSettings
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder,
 )
+from ayon_maya.api.lib_rendersettings import RenderSettings
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateRenderSingleCamera(pyblish.api.InstancePlugin,
+class ValidateRenderSingleCamera(MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
     """Validate renderable camera count for layer and <Camera> token.
 
@@ -23,7 +22,6 @@ class ValidateRenderSingleCamera(pyblish.api.InstancePlugin,
 
     order = ValidateContentsOrder
     label = "Render Single Camera"
-    hosts = ['maya']
     families = ["renderlayer",
                 "vrayscene"]
     actions = [ayon_maya.api.action.SelectInvalidAction]

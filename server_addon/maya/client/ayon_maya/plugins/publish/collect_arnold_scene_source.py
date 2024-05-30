@@ -1,10 +1,10 @@
-from maya import cmds
-
 import pyblish.api
 from ayon_maya.api.lib import get_all_children
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class CollectArnoldSceneSource(pyblish.api.InstancePlugin):
+class CollectArnoldSceneSource(MayaInstancePlugin):
     """Collect Arnold Scene Source data."""
 
     # Offset to be after renderable camera collection.

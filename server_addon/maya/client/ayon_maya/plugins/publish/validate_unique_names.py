@@ -1,15 +1,14 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateUniqueNames(pyblish.api.InstancePlugin,
+class ValidateUniqueNames(MayaInstancePlugin,
                           OptionalPyblishPluginMixin):
     """transform names should be unique
 
@@ -18,7 +17,6 @@ class ValidateUniqueNames(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["model"]
     label = "Unique transform name"
     actions = [ayon_maya.api.action.SelectInvalidAction]

@@ -1,21 +1,17 @@
 import os
+
 import clique
-
 import maya.cmds as cmds
-
+from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import (
-    load,
-    get_representation_path
-)
 from ayon_maya.api.lib import (
-    unique_namespace,
     get_attribute_input,
+    get_fps_for_current_context,
     maintained_selection,
-    get_fps_for_current_context
+    unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
 
 
 def is_sequence(files):
@@ -26,7 +22,7 @@ def is_sequence(files):
     return sequence
 
 
-class ArnoldStandinLoader(load.LoaderPlugin):
+class ArnoldStandinLoader(Loader):
     """Load as Arnold standin"""
 
     product_types = {

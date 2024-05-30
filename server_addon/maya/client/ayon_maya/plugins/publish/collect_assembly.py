@@ -1,14 +1,20 @@
+"""Collect all relevant assembly items.
+
+Todo:
+    Publish of assembly need unique namespace for all assets, we should
+    create validator for this.
+
+"""
 from collections import defaultdict
 import pyblish.api
 
 from maya import cmds, mel
 from ayon_maya import api
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 
-# TODO : Publish of assembly: -unique namespace for all assets, VALIDATOR!
 
-
-class CollectAssembly(pyblish.api.InstancePlugin):
+class CollectAssembly(MayaInstancePlugin):
     """Collect all relevant assembly items
 
     Collected data:

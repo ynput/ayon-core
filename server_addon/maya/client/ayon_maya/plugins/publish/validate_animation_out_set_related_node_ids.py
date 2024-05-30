@@ -1,19 +1,18 @@
-import maya.cmds as cmds
-
-import pyblish.api
 import ayon_maya.api.action
-from ayon_maya.api import lib
+import maya.cmds as cmds
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishXmlValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishXmlValidationError,
-    OptionalPyblishPluginMixin,
+    apply_plugin_settings_automatically,
     get_plugin_settings,
-    apply_plugin_settings_automatically
 )
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateOutRelatedNodeIds(pyblish.api.InstancePlugin,
+class ValidateOutRelatedNodeIds(MayaInstancePlugin,
                                 OptionalPyblishPluginMixin):
     """Validate if deformed shapes have related IDs to the original shapes
 

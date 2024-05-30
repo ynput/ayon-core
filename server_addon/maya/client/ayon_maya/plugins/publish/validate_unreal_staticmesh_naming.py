@@ -2,17 +2,16 @@
 """Validator for correct naming of Static Meshes."""
 import re
 
-import pyblish.api
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
+class ValidateUnrealStaticMeshName(MayaInstancePlugin,
                                    OptionalPyblishPluginMixin):
     """Validate name of Unreal Static Mesh
 
@@ -55,7 +54,6 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
     """
     optional = True
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["staticMesh"]
     label = "Unreal Static Mesh Name"
     actions = [ayon_maya.api.action.SelectInvalidAction]

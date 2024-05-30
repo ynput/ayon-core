@@ -1,9 +1,9 @@
+import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
 
-
-class ResetXgenAttributes(pyblish.api.InstancePlugin):
+class ResetXgenAttributes(MayaInstancePlugin):
     """Reset Xgen attributes.
 
     When the incremental save of the workfile triggers, the Xgen attributes

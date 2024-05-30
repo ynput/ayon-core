@@ -1,11 +1,11 @@
-import pyblish.api
 import string
 
 import six
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     ValidateContentsOrder,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 # Allow only characters, numbers and underscore
 allowed = set(string.ascii_lowercase +
@@ -18,7 +18,7 @@ def validate_name(product_name):
     return all(x in allowed for x in product_name)
 
 
-class ValidateSubsetName(pyblish.api.InstancePlugin):
+class ValidateSubsetName(MayaInstancePlugin):
     """Validates product name has only valid characters"""
 
     order = ValidateContentsOrder

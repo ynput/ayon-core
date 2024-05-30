@@ -1,18 +1,17 @@
 import json
 
 import maya.cmds as cmds
-import xgenm
-
 import pyblish.api
+import xgenm
 from ayon_core.pipeline.publish import PublishValidationError
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateXgen(pyblish.api.InstancePlugin):
+class ValidateXgen(MayaInstancePlugin):
     """Validate Xgen data."""
 
     label = "Validate Xgen"
     order = pyblish.api.ValidatorOrder
-    host = ["maya"]
     families = ["xgen"]
 
     def process(self, instance):

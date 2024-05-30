@@ -1,21 +1,18 @@
-from maya import cmds
-
-import pyblish.api
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateRenderNoDefaultCameras(pyblish.api.InstancePlugin,
+class ValidateRenderNoDefaultCameras(MayaInstancePlugin,
                                      OptionalPyblishPluginMixin):
     """Ensure no default (startup) cameras are to be rendered."""
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['renderlayer']
     label = "No Default Cameras Renderable"
     actions = [ayon_maya.api.action.SelectInvalidAction]

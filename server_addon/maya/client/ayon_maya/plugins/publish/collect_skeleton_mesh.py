@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-from maya import cmds  # noqa
 import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds  # noqa
 
 
-class CollectSkeletonMesh(pyblish.api.InstancePlugin):
+class CollectSkeletonMesh(MayaInstancePlugin):
     """Collect Static Rig Data for FBX Extractor."""
 
     order = pyblish.api.CollectorOrder + 0.2
     label = "Collect Skeleton Mesh"
-    hosts = ["maya"]
     families = ["rig"]
 
     def process(self, instance):

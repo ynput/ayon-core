@@ -1,16 +1,15 @@
+import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateContentsOrder,
+)
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
-import ayon_maya.api.action
-from ayon_maya.api import lib
-from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    OptionalPyblishPluginMixin,
-    PublishValidationError
-)
 
-
-class ValidateMeshNgons(pyblish.api.InstancePlugin,
+class ValidateMeshNgons(MayaInstancePlugin,
                         OptionalPyblishPluginMixin):
     """Ensure that meshes don't have ngons
 
@@ -22,7 +21,6 @@ class ValidateMeshNgons(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["model"]
     label = "Mesh ngons"
     actions = [ayon_maya.api.action.SelectInvalidAction]

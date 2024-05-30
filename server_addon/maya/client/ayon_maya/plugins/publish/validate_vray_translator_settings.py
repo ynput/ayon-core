@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 """Validate VRay Translator settings."""
-import pyblish.api
 from ayon_core.pipeline.publish import (
-    context_plugin_should_run,
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairContextAction,
     ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
+    context_plugin_should_run,
 )
-
+from ayon_maya.api.plugin import MayaContextPlugin
 from maya import cmds
 
 
-class ValidateVRayTranslatorEnabled(pyblish.api.ContextPlugin,
+class ValidateVRayTranslatorEnabled(MayaContextPlugin,
                                     OptionalPyblishPluginMixin):
     """Validate VRay Translator settings for extracting vrscenes."""
 

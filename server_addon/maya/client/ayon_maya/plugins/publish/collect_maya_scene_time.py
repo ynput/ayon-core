@@ -1,9 +1,9 @@
+import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
 
-
-class CollectMayaSceneTime(pyblish.api.InstancePlugin):
+class CollectMayaSceneTime(MayaInstancePlugin):
     """Collect Maya Scene playback range
 
     This allows to reproduce the playback range for the content to be loaded.

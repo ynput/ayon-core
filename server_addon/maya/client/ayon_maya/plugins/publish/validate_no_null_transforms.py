@@ -1,13 +1,12 @@
-import maya.cmds as cmds
-
-import pyblish.api
 import ayon_maya.api.action
+import maya.cmds as cmds
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -33,7 +32,7 @@ def has_shape_children(node):
     return True
 
 
-class ValidateNoNullTransforms(pyblish.api.InstancePlugin,
+class ValidateNoNullTransforms(MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure no null transforms are in the scene.
 
@@ -46,7 +45,6 @@ class ValidateNoNullTransforms(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['model']
     label = 'No Empty/Null Transforms'
     actions = [RepairAction,

@@ -1,16 +1,16 @@
 import inspect
 
 import pyblish.api
-
-from maya import cmds
 from ayon_core.pipeline.publish import (
-    context_plugin_should_run,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    context_plugin_should_run,
 )
+from ayon_maya.api.plugin import MayaContextPlugin
+from maya import cmds
 
 
-class ValidateCurrentRenderLayerIsRenderable(pyblish.api.ContextPlugin,
+class ValidateCurrentRenderLayerIsRenderable(MayaContextPlugin,
                                              OptionalPyblishPluginMixin):
     """Validate if current render layer has a renderable camera.
 
@@ -25,7 +25,6 @@ class ValidateCurrentRenderLayerIsRenderable(pyblish.api.ContextPlugin,
 
     label = "Current Render Layer Has Renderable Camera"
     order = pyblish.api.ValidatorOrder
-    hosts = ["maya"]
     families = ["renderlayer"]
     optional = False
 

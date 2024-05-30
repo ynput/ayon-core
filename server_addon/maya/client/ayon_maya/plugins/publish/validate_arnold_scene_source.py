@@ -1,21 +1,20 @@
-from maya import cmds
-
 import pyblish.api
-
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder, PublishValidationError
+    PublishValidationError,
+    ValidateContentsOrder,
 )
 from ayon_maya.api.lib import is_visible
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateArnoldSceneSource(pyblish.api.InstancePlugin):
+class ValidateArnoldSceneSource(MayaInstancePlugin):
     """Validate Arnold Scene Source.
 
     Ensure no nodes are hidden.
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["ass", "assProxy"]
     label = "Validate Arnold Scene Source"
 

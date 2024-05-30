@@ -1,15 +1,14 @@
+import copy
 import os
 import shutil
-import copy
-
-from maya import cmds
 
 import pyblish.api
 from ayon_maya.api.alembic import extract_alembic
-from ayon_core.pipeline import publish
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
-class ExtractWorkfileXgen(publish.Extractor):
+class ExtractWorkfileXgen(MayaExtractorPlugin):
     """Extract Workfile Xgen.
 
     When submitting a render, we need to prep Xgen side car files.
@@ -19,7 +18,6 @@ class ExtractWorkfileXgen(publish.Extractor):
     order = pyblish.api.ExtractorOrder - 0.499
     label = "Extract Workfile Xgen"
     families = ["workfile"]
-    hosts = ["maya"]
 
     def get_render_max_frame_range(self, context):
         """Return start to end frame range including all renderlayers in

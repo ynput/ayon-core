@@ -1,15 +1,17 @@
+"""Load OpenVDB for Arnold in aiVolume.
+
+TODO:
+    `aiVolume` doesn't automatically set velocity fps correctly, set manual?
+
+"""
 import os
 
+from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import (
-    load,
-    get_representation_path
-)
-from ayon_maya.api.plugin import get_load_color_for_product_type
-# TODO aiVolume doesn't automatically set velocity fps correctly, set manual?
+from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
 
 
-class LoadVDBtoArnold(load.LoaderPlugin):
+class LoadVDBtoArnold(Loader):
     """Load OpenVDB for Arnold in aiVolume"""
 
     product_types = {"vdbcache"}
@@ -21,9 +23,9 @@ class LoadVDBtoArnold(load.LoaderPlugin):
 
     def load(self, context, name, namespace, data):
 
-        from maya import cmds
-        from ayon_maya.api.pipeline import containerise
         from ayon_maya.api.lib import unique_namespace
+        from ayon_maya.api.pipeline import containerise
+        from maya import cmds
 
         product_type = context["product"]["productType"]
 

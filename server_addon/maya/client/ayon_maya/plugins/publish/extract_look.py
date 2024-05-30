@@ -1,31 +1,29 @@
 # -*- coding: utf-8 -*-
 """Maya look extractor."""
-import os
-import sys
 import contextlib
 import json
 import logging
-import tempfile
+import os
 import platform
+import sys
+import tempfile
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
-import six
 import attr
 import pyblish.api
-
-from maya import cmds  # noqa
-
+import six
 from ayon_core.lib import (
-    find_executable,
-    source_hash,
-    run_subprocess,
-    get_oiio_tool_args,
     ToolNotFoundError,
+    find_executable,
+    get_oiio_tool_args,
+    run_subprocess,
+    source_hash,
 )
-
-from ayon_core.pipeline import publish, KnownPublishError
+from ayon_core.pipeline import KnownPublishError
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds  # noqa
 
 # Modes for transfer
 COPY = 1
@@ -407,7 +405,7 @@ class MakeTX(TextureProcessor):
             return False
 
 
-class ExtractLook(publish.Extractor):
+class ExtractLook(MayaExtractorPlugin):
     """Extract Look (Maya Scene + JSON)
 
     Only extracts the sets (shadingEngines and alike) alongside a .json file

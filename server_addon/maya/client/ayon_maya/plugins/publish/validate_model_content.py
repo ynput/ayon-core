@@ -1,18 +1,17 @@
 import inspect
 
+import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateContentsOrder,
+)
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
-import ayon_maya.api.action
-from ayon_maya.api import lib
-from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
-)
 
-
-class ValidateModelContent(pyblish.api.InstancePlugin,
+class ValidateModelContent(MayaInstancePlugin,
                            OptionalPyblishPluginMixin):
     """Adheres to the content of 'model' product type
 
@@ -21,7 +20,6 @@ class ValidateModelContent(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["model"]
     label = "Model Content"
     actions = [ayon_maya.api.action.SelectInvalidAction]

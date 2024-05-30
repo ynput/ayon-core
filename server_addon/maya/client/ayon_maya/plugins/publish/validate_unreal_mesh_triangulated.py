@@ -1,22 +1,19 @@
 # -*- coding: utf-8 -*-
-
-from maya import cmds
-import pyblish.api
-
-from ayon_core.pipeline.publish import (
-    ValidateMeshOrder,
-    OptionalPyblishPluginMixin,
-    PublishValidationError
-)
 import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateMeshOrder,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateUnrealMeshTriangulated(pyblish.api.InstancePlugin,
+class ValidateUnrealMeshTriangulated(MayaInstancePlugin,
                                      OptionalPyblishPluginMixin):
     """Validate if mesh is made of triangles for Unreal Engine"""
 
     order = ValidateMeshOrder
-    hosts = ["maya"]
     families = ["staticMesh"]
     label = "Mesh is Triangulated"
     actions = [ayon_maya.api.action.SelectInvalidAction]

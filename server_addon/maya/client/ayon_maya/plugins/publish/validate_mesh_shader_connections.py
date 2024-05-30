@@ -1,13 +1,12 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateMeshOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
 def pairs(iterable):
@@ -80,7 +79,7 @@ def disconnect(node_a, node_b):
             cmds.disconnectAttr(source, input)
 
 
-class ValidateMeshShaderConnections(pyblish.api.InstancePlugin,
+class ValidateMeshShaderConnections(MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Ensure mesh shading engine connections are valid.
 
@@ -93,7 +92,6 @@ class ValidateMeshShaderConnections(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = "Mesh Shader Connections"
     actions = [ayon_maya.api.action.SelectInvalidAction,

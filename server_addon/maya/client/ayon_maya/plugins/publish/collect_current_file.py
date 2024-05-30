@@ -1,15 +1,13 @@
-
 import pyblish.api
-
+from ayon_maya.api.plugin import MayaContextPlugin
 from maya import cmds
 
 
-class CollectCurrentFile(pyblish.api.ContextPlugin):
+class CollectCurrentFile(MayaContextPlugin):
     """Inject the current working file."""
 
     order = pyblish.api.CollectorOrder - 0.4
     label = "Maya Current File"
-    hosts = ['maya']
 
     def process(self, context):
         """Inject the current working file"""

@@ -1,17 +1,16 @@
-import difflib
 import contextlib
+import difflib
 
-from maya import cmds
 import qargparse
-
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import plugin
 from ayon_maya.api.lib import (
-    maintained_selection,
+    create_rig_animation_instance,
     get_container_members,
+    maintained_selection,
     parent_nodes,
-    create_rig_animation_instance
 )
+from maya import cmds
 
 
 @contextlib.contextmanager

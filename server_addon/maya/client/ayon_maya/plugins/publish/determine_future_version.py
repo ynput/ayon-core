@@ -1,13 +1,13 @@
 import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class DetermineFutureVersion(pyblish.api.InstancePlugin):
+class DetermineFutureVersion(MayaInstancePlugin):
     """
     This will determine version of product if we want render to be attached to.
     """
     label = "Determine Product Version"
     order = pyblish.api.IntegratorOrder
-    hosts = ["maya"]
     families = ["renderlayer"]
 
     def process(self, instance):

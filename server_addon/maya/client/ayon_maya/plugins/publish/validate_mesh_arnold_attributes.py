@@ -1,23 +1,22 @@
-from maya import cmds
-import pyblish.api
-
 import ayon_maya.api.action
-from ayon_maya.api.lib import (
-    maintained_selection,
-    delete_after,
-    undo_chunk,
-    get_attribute,
-    set_attribute
-)
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateMeshOrder,
-    PublishValidationError
 )
+from ayon_maya.api.lib import (
+    delete_after,
+    get_attribute,
+    maintained_selection,
+    set_attribute,
+    undo_chunk,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateMeshArnoldAttributes(pyblish.api.InstancePlugin,
+class ValidateMeshArnoldAttributes(MayaInstancePlugin,
                                    OptionalPyblishPluginMixin):
     """Validate the mesh has default Arnold attributes.
 

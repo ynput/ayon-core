@@ -1,13 +1,14 @@
-import pyblish.api
 import ayon_api
-
 import ayon_maya.api.action
-from ayon_maya.api import lib
 from ayon_core.pipeline.publish import (
-    PublishValidationError, ValidatePipelineOrder)
+    PublishValidationError,
+    ValidatePipelineOrder,
+)
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
+class ValidateNodeIdsInDatabase(MayaInstancePlugin):
     """Validate if the CB Id is related to an folder in the database
 
     All nodes with the `cbId` attribute will be validated to ensure that
@@ -20,7 +21,6 @@ class ValidateNodeIdsInDatabase(pyblish.api.InstancePlugin):
 
     order = ValidatePipelineOrder
     label = 'Node Ids in Database'
-    hosts = ['maya']
     families = ["*"]
 
     actions = [ayon_maya.api.action.SelectInvalidAction,

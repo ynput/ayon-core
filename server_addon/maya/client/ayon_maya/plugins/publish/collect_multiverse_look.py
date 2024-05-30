@@ -2,9 +2,10 @@ import glob
 import os
 import re
 
-from maya import cmds
 import pyblish.api
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 SHAPE_ATTRS = ["castsShadows",
                "receiveShadows",
@@ -251,7 +252,7 @@ def is_mipmap(fname):
     return False
 
 
-class CollectMultiverseLookData(pyblish.api.InstancePlugin):
+class CollectMultiverseLookData(MayaInstancePlugin):
     """Collect Multiverse Look
 
     Searches through the overrides finding all material overrides. From there

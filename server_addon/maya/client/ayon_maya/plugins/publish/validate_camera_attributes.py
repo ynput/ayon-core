@@ -1,15 +1,14 @@
-import pyblish.api
-from maya import cmds
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     ValidateContentsOrder,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateCameraAttributes(pyblish.api.InstancePlugin,
+class ValidateCameraAttributes(MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validates Camera has no invalid attribute keys or values.
 

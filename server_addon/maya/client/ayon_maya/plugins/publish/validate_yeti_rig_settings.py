@@ -1,12 +1,12 @@
 import pyblish.api
-
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateYetiRigSettings(pyblish.api.InstancePlugin,
+class ValidateYetiRigSettings(MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validate Yeti Rig Settings have collected input connections.
 

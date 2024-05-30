@@ -1,17 +1,16 @@
-import pyblish.api
-from maya import cmds
-
-from ayon_maya.api import lib
 from ayon_core.pipeline.publish import (
     KnownPublishError,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateVRayDistributedRendering(pyblish.api.InstancePlugin,
+class ValidateVRayDistributedRendering(MayaInstancePlugin,
                                        OptionalPyblishPluginMixin):
     """Validate V-Ray Distributed Rendering is ignored in batch mode.
 

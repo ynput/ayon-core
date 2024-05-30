@@ -1,16 +1,15 @@
-import pyblish.api
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     ValidateContentsOrder,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateSetdressRoot(pyblish.api.InstancePlugin):
+class ValidateSetdressRoot(MayaInstancePlugin):
     """Validate if set dress top root node is published."""
 
     order = ValidateContentsOrder
     label = "SetDress Root"
-    hosts = ["maya"]
     families = ["setdress"]
 
     def process(self, instance):

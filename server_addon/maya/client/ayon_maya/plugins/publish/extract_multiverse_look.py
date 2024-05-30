@@ -2,11 +2,11 @@ import os
 
 from maya import cmds
 
-from ayon_core.pipeline import publish
 from ayon_maya.api.lib import maintained_selection
+from ayon_maya.api.plugin import MayaExtractorPlugin
 
 
-class ExtractMultiverseLook(publish.Extractor):
+class ExtractMultiverseLook(MayaExtractorPlugin):
     """Extractor for Multiverse USD look data.
 
     This will extract:
@@ -34,7 +34,6 @@ class ExtractMultiverseLook(publish.Extractor):
     """
 
     label = "Extract Multiverse USD Look"
-    hosts = ["maya"]
     families = ["mvLook"]
     scene_type = "usda"
     file_formats = ["usda", "usd"]

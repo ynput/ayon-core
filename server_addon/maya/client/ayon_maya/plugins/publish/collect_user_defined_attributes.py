@@ -1,15 +1,14 @@
 from maya import cmds
-
+from ayon_maya.api.plugin import MayaInstancePlugin
 import pyblish.api
 
 
-class CollectUserDefinedAttributes(pyblish.api.InstancePlugin):
+class CollectUserDefinedAttributes(MayaInstancePlugin):
     """Collect user defined attributes for nodes in instance."""
 
     order = pyblish.api.CollectorOrder + 0.45
     families = ["pointcache", "animation", "usd"]
     label = "Collect User Defined Attributes"
-    hosts = ["maya"]
 
     def process(self, instance):
 

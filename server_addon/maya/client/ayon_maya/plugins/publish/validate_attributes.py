@@ -1,16 +1,18 @@
 import json
 from collections import defaultdict
 
-import pyblish.api
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    RepairAction,
+    ValidateContentsOrder,
+)
+from ayon_maya.api.lib import set_attribute
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-from ayon_maya.api.lib import set_attribute
-from ayon_core.pipeline.publish import (
-    OptionalPyblishPluginMixin, PublishValidationError, RepairAction,
-    ValidateContentsOrder)
 
-
-class ValidateAttributes(pyblish.api.InstancePlugin,
+class ValidateAttributes(MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Ensure attributes are consistent.
 
@@ -25,7 +27,6 @@ class ValidateAttributes(pyblish.api.InstancePlugin,
 
     order = ValidateContentsOrder
     label = "Validate Attributes"
-    hosts = ["maya"]
     actions = [RepairAction]
     optional = True
 

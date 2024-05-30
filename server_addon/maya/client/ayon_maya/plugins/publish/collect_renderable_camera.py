@@ -1,11 +1,10 @@
 import pyblish.api
-
+from ayon_maya.api.lib_rendersetup import get_attr_in_layer
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-from ayon_maya.api.lib_rendersetup import get_attr_in_layer
 
-
-class CollectRenderableCamera(pyblish.api.InstancePlugin):
+class CollectRenderableCamera(MayaInstancePlugin):
     """Collect the renderable camera(s) for the render layer"""
 
     # Offset to be after renderlayer collection.

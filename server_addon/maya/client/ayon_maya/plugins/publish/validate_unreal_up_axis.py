@@ -1,24 +1,21 @@
 # -*- coding: utf-8 -*-
-
-from maya import cmds
-import pyblish.api
-
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    RepairAction,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    RepairAction,
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaContextPlugin
+from maya import cmds
 
 
-class ValidateUnrealUpAxis(pyblish.api.ContextPlugin,
+class ValidateUnrealUpAxis(MayaContextPlugin,
                            OptionalPyblishPluginMixin):
     """Validate if Z is set as up axis in Maya"""
 
     optional = True
     active = False
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["staticMesh"]
     label = "Unreal Up-Axis check"
     actions = [RepairAction]

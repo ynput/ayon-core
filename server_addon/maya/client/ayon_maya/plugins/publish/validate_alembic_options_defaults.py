@@ -1,12 +1,13 @@
 import inspect
-import pyblish.api
 
+import pyblish.api
 from ayon_core.pipeline import OptionalPyblishPluginMixin
-from ayon_core.pipeline.publish import RepairAction, PublishValidationError
+from ayon_core.pipeline.publish import PublishValidationError, RepairAction
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
 class ValidateAlembicDefaultsPointcache(
-    pyblish.api.InstancePlugin, OptionalPyblishPluginMixin
+    MayaInstancePlugin, OptionalPyblishPluginMixin
 ):
     """Validate the attributes on the instance are defaults.
 
@@ -15,7 +16,6 @@ class ValidateAlembicDefaultsPointcache(
 
     order = pyblish.api.ValidatorOrder
     families = ["pointcache"]
-    hosts = ["maya"]
     label = "Validate Alembic Options Defaults"
     actions = [RepairAction]
     optional = True

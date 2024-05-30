@@ -1,23 +1,21 @@
 import re
 
-from maya import cmds
-
-import pyblish.api
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    RepairAction,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    RepairAction,
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
 def short_name(node):
     return node.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
-class ValidateShapeDefaultNames(pyblish.api.InstancePlugin,
+class ValidateShapeDefaultNames(MayaInstancePlugin,
                                 OptionalPyblishPluginMixin):
     """Validates that Shape names are using Maya's default format.
 

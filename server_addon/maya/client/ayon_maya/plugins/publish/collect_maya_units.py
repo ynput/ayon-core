@@ -1,15 +1,16 @@
 import maya.cmds as cmds
 import maya.mel as mel
+from ayon_maya.api.plugin import MayaContextPlugin
+
 
 import pyblish.api
 
 
-class CollectMayaUnits(pyblish.api.ContextPlugin):
+class CollectMayaUnits(MayaContextPlugin):
     """Collect Maya's scene units."""
 
     label = "Maya Units"
     order = pyblish.api.CollectorOrder
-    hosts = ["maya"]
 
     def process(self, context):
 

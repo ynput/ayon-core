@@ -1,18 +1,16 @@
-from maya import cmds
-
-import pyblish.api
-
 import ayon_maya.api.action
-from ayon_maya.api import lib
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateRigJointsHidden(pyblish.api.InstancePlugin,
+class ValidateRigJointsHidden(MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validate all joints are hidden visually.
 
@@ -25,7 +23,6 @@ class ValidateRigJointsHidden(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['rig']
     label = "Joints Hidden"
     actions = [ayon_maya.api.action.SelectInvalidAction,

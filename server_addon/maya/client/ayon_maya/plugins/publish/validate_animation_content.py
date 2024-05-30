@@ -1,13 +1,13 @@
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     ValidateContentsOrder,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateAnimationContent(pyblish.api.InstancePlugin,
+class ValidateAnimationContent(MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Adheres to the content of 'animation' product type
 
@@ -17,7 +17,6 @@ class ValidateAnimationContent(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["animation"]
     label = "Animation Content"
     actions = [ayon_maya.api.action.SelectInvalidAction]

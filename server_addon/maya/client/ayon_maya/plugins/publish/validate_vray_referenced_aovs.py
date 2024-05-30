@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 """Validate if there are AOVs pulled from references."""
-import pyblish.api
 import types
+
+import pyblish.api
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    RepairContextAction,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-from ayon_core.pipeline.publish import (
-    RepairContextAction,
-    OptionalPyblishPluginMixin,
-    PublishValidationError
-)
 
-
-class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin,
+class ValidateVrayReferencedAOVs(MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
     """Validate whether the V-Ray Render Elements (AOVs) include references.
 
@@ -23,7 +24,6 @@ class ValidateVrayReferencedAOVs(pyblish.api.InstancePlugin,
 
     order = pyblish.api.ValidatorOrder
     label = 'VRay Referenced AOVs'
-    hosts = ['maya']
     families = ['renderlayer']
     actions = [RepairContextAction]
     optional = False

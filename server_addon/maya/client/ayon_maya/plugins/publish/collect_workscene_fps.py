@@ -1,13 +1,13 @@
 import pyblish.api
+from ayon_maya.api.plugin import MayaContextPlugin
 from maya import mel
 
 
-class CollectWorksceneFPS(pyblish.api.ContextPlugin):
+class CollectWorksceneFPS(MayaContextPlugin):
     """Get the FPS of the work scene"""
 
     label = "Workscene FPS"
     order = pyblish.api.CollectorOrder
-    hosts = ["maya"]
 
     def process(self, context):
         fps = mel.eval('currentTimeUnitToFPS()')

@@ -1,15 +1,14 @@
-from maya import cmds
-
 import pyblish.api
 from ayon_core.pipeline.publish import PublishValidationError
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateVray(pyblish.api.InstancePlugin):
+class ValidateVray(MayaInstancePlugin):
     """Validate general Vray setup."""
 
     order = pyblish.api.ValidatorOrder
     label = 'VRay'
-    hosts = ["maya"]
     families = ["vrayproxy"]
 
     def process(self, instance):

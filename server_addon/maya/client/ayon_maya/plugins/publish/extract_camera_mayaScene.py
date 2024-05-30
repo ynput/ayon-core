@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 """Extract camera as Maya Scene."""
-import os
-import itertools
 import contextlib
+import itertools
+import os
 
-from maya import cmds
-
+from ayon_core.lib import BoolDef
 from ayon_core.pipeline import publish
 from ayon_maya.api import lib
-from ayon_core.lib import (
-    BoolDef
-)
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
 def massage_ma_file(path):
@@ -82,7 +80,7 @@ def unlock(plug):
             cmds.disconnectAttr(source, destination)
 
 
-class ExtractCameraMayaScene(publish.Extractor,
+class ExtractCameraMayaScene(MayaExtractorPlugin,
                              publish.OptionalPyblishPluginMixin):
     """Extract a Camera as Maya Scene.
 

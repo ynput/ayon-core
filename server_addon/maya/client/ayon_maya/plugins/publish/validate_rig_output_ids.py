@@ -1,16 +1,14 @@
 from collections import defaultdict
 
-from maya import cmds
-
-import pyblish.api
-
 import ayon_maya.api.action
-from ayon_maya.api.lib import get_id, set_id
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError
 )
+from ayon_maya.api.lib import get_id, set_id
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
 def get_basename(node):
@@ -18,7 +16,7 @@ def get_basename(node):
     return node.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
-class ValidateRigOutputIds(pyblish.api.InstancePlugin):
+class ValidateRigOutputIds(MayaInstancePlugin):
     """Validate rig output ids.
 
     Ids must share the same id as similarly named nodes in the scene. This is
@@ -27,7 +25,6 @@ class ValidateRigOutputIds(pyblish.api.InstancePlugin):
     """
     order = ValidateContentsOrder + 0.05
     label = "Rig Output Ids"
-    hosts = ["maya"]
     families = ["rig"]
     actions = [RepairAction,
                ayon_maya.api.action.SelectInvalidAction]

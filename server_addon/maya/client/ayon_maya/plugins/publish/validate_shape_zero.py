@@ -1,18 +1,16 @@
+import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    RepairAction,
+    ValidateContentsOrder,
+)
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
 
-import ayon_maya.api.action
-from ayon_maya.api import lib
-from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    RepairAction,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
-)
-
-
-class ValidateShapeZero(pyblish.api.InstancePlugin,
+class ValidateShapeZero(MayaInstancePlugin,
                         OptionalPyblishPluginMixin):
     """Shape components may not have any "tweak" values
 
@@ -21,7 +19,6 @@ class ValidateShapeZero(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["model"]
     label = "Shape Zero (Freeze)"
     actions = [

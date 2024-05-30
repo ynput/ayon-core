@@ -1,13 +1,13 @@
 import os
 import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class CollectWorkfileData(pyblish.api.InstancePlugin):
+class CollectWorkfileData(MayaInstancePlugin):
     """Inject data into Workfile instance"""
 
     order = pyblish.api.CollectorOrder - 0.01
     label = "Maya Workfile"
-    hosts = ['maya']
     families = ["workfile"]
 
     def process(self, instance):

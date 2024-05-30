@@ -1,4 +1,3 @@
-import pyblish.api
 from maya import cmds
 
 import ayon_maya.api.action
@@ -6,9 +5,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
     OptionalPyblishPluginMixin)
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateCameraContents(pyblish.api.InstancePlugin,
+class ValidateCameraContents(MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validates Camera instance contents.
 
@@ -21,7 +21,6 @@ class ValidateCameraContents(pyblish.api.InstancePlugin,
 
     order = ValidateContentsOrder
     families = ['camera']
-    hosts = ['maya']
     label = 'Camera Contents'
     actions = [ayon_maya.api.action.SelectInvalidAction]
     validate_shapes = True

@@ -1,17 +1,16 @@
 import inspect
 
-from maya import cmds
-import pyblish.api
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateTransformZero(pyblish.api.InstancePlugin,
+class ValidateTransformZero(MayaInstancePlugin,
                             OptionalPyblishPluginMixin):
     """Transforms can't have any values
 
@@ -22,7 +21,6 @@ class ValidateTransformZero(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["model"]
     label = "Transform Zero (Freeze)"
     actions = [ayon_maya.api.action.SelectInvalidAction]

@@ -1,11 +1,11 @@
-import pyblish.api
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     ValidateContentsOrder,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateSingleAssembly(pyblish.api.InstancePlugin):
+class ValidateSingleAssembly(MayaInstancePlugin):
     """Ensure the content of the instance is grouped in a single hierarchy
 
     The instance must have a single root node containing all the content.
@@ -21,7 +21,6 @@ class ValidateSingleAssembly(pyblish.api.InstancePlugin):
     """
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['rig']
     label = 'Single Assembly'
 

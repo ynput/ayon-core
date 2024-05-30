@@ -1,12 +1,12 @@
-import os
 import glob
+import os
 import tempfile
 
-from ayon_core.pipeline import publish
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaExtractorPlugin
 
 
-class ExtractThumbnail(publish.Extractor):
+class ExtractThumbnail(MayaExtractorPlugin):
     """Extract viewport thumbnail.
 
     Takes review camera and creates a thumbnail based on viewport
@@ -15,7 +15,6 @@ class ExtractThumbnail(publish.Extractor):
     """
 
     label = "Thumbnail"
-    hosts = ["maya"]
     families = ["review"]
 
     def process(self, instance):

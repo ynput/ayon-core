@@ -1,24 +1,17 @@
 import copy
 
 from ayon_core.lib import EnumDef
-from ayon_core.pipeline import (
-    load,
-    get_current_host_name,
+from ayon_core.pipeline import get_current_host_name
+from ayon_core.pipeline.colorspace import (
+    get_current_context_imageio_config_preset,
+    get_imageio_file_rules,
+    get_imageio_file_rules_colorspace_from_filepath,
 )
 from ayon_core.pipeline.load.utils import get_representation_path_from_context
-from ayon_core.pipeline.colorspace import (
-    get_imageio_file_rules_colorspace_from_filepath,
-    get_current_context_imageio_config_preset,
-    get_imageio_file_rules
-)
 from ayon_core.settings import get_project_settings
-
+from ayon_maya.api.lib import namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.lib import (
-    unique_namespace,
-    namespaced
-)
-
+from ayon_maya.api.plugin import Loader
 from maya import cmds
 
 
@@ -88,7 +81,7 @@ def create_stencil():
     return file, place, stencil, place_stencil
 
 
-class FileNodeLoader(load.LoaderPlugin):
+class FileNodeLoader(Loader):
     """File node loader."""
 
     product_types = {"image", "plate", "render"}
