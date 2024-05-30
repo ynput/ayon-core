@@ -1,11 +1,14 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 FLAME_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class FlameAddon(AYONAddon, IHostAddon):
     name = "flame"
+    version = __version__
     host_name = "flame"
 
     def add_implementation_envs(self, env, _app):
