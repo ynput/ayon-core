@@ -3,7 +3,7 @@ import copy
 from collections import OrderedDict
 from pprint import pformat
 import pyblish
-import ayon_core.hosts.flame.api as opfapi
+import ayon_flame.api as opfapi
 import ayon_core.pipeline as op_pipeline
 from ayon_core.pipeline.workfile import get_workdir
 
@@ -15,6 +15,8 @@ class IntegrateBatchGroup(pyblish.api.InstancePlugin):
     label = "Integrate Batch Groups"
     hosts = ["flame"]
     families = ["clip"]
+
+    settings_category = "flame"
 
     # settings
     default_loader = "LoadClip"

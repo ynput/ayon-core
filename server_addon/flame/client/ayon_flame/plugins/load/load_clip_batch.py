@@ -2,7 +2,7 @@ from copy import deepcopy
 import os
 import flame
 from pprint import pformat
-import ayon_core.hosts.flame.api as opfapi
+import ayon_flame.api as opfapi
 from ayon_core.lib import StringTemplate
 from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,

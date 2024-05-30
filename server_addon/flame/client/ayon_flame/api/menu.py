@@ -28,7 +28,7 @@ default_flame_export_presets = {
 
 
 def callback_selection(selection, function):
-    import ayon_core.hosts.flame.api as opfapi
+    import ayon_flame.api as opfapi
     opfapi.CTX.selection = selection
     print("Hook Selection: \n\t{}".format(
         pformat({

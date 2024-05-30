@@ -10,7 +10,7 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_applications import PreLaunchHook, LaunchTypes
-from ayon_core.hosts import flame as opflame
+from ayon_flame import FLAME_ADDON_ROOT
 
 
 class FlamePrelaunch(PreLaunchHook):
@@ -23,7 +23,8 @@ class FlamePrelaunch(PreLaunchHook):
     permissions = 0o777
 
     wtc_script_path = os.path.join(
-        opflame.HOST_DIR, "api", "scripts", "wiretap_com.py")
+        FLAME_ADDON_ROOT, "api", "scripts", "wiretap_com.py"
+    )
     launch_types = {LaunchTypes.local}
 
     def __init__(self, *args, **kwargs):
