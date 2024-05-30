@@ -1657,7 +1657,6 @@ DEFAULT_PUBLISH_SETTINGS = {
         "writeNormals": True,
         "writeUVSets": False,
         "writeVisibility": False
-        "active": True,
     },
     "ExtractMayaUsdModel": {
         "enabled": True,
