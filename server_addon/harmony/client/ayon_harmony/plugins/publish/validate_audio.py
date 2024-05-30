@@ -18,6 +18,7 @@ class ValidateAudio(pyblish.api.InstancePlugin):
     label = "Validate Audio"
     families = ["render"]
     hosts = ["harmony"]
+    settings_category = "harmony"
     optional = True
 
     def process(self, instance):
