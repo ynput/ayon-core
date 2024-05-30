@@ -1780,7 +1780,7 @@ class CreateContext:
 
     def _reset_creator_plugins(self):
         # Prepare settings
-        project_settings = get_project_settings(self.project_name)
+        project_settings = self.get_current_project_settings()
 
         # Discover and prepare creators
         creators = {}
