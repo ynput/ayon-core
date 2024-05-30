@@ -1,11 +1,14 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 CELACTION_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class CelactionAddon(AYONAddon, IHostAddon):
     name = "celaction"
+    version = __version__
     host_name = "celaction"
 
     def get_launch_hook_paths(self, app):
