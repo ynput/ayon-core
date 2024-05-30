@@ -19,6 +19,7 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
     ProjectsModel,
+    UsersModel,
 )
 
 from .abstract import (
@@ -161,6 +162,7 @@ class BaseWorkfileController(
         self._save_is_enabled = True
 
         # Expected selected folder and task
+        self._users_model = self._create_users_model()
         self._expected_selection = self._create_expected_selection_obj()
         self._selection_model = self._create_selection_model()
         self._projects_model = self._create_projects_model()
@@ -176,6 +178,12 @@ class BaseWorkfileController(
     def is_host_valid(self):
         return self._host_is_valid
 
+    def _create_users_model(self):
+        return UsersModel(self)
+
+    def _create_workfiles_model(self):
+        return WorkfilesModel(self)
+
     def _create_expected_selection_obj(self):
         return WorkfilesToolExpectedSelection(self)
 
@@ -187,9 +195,6 @@ class BaseWorkfileController(
 
     def _create_hierarchy_model(self):
         return HierarchyModel(self)
-
-    def _create_workfiles_model(self):
-        return WorkfilesModel(self)
 
     @property
     def event_system(self):
@@ -271,6 +276,9 @@ class BaseWorkfileController(
             "workfile_save_enable.changed",
             {"enabled": enabled}
         )
+
+    def get_user_items_by_name(self):
+        return self._users_model.get_user_items_by_name()
 
     # Host information
     def get_workfile_extensions(self):
