@@ -1,6 +1,6 @@
 import os
-import pyblish.api
 import copy
+import pyblish.api
 
 
 class CollectRenderPath(pyblish.api.InstancePlugin):
