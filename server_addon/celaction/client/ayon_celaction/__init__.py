@@ -1,3 +1,4 @@
+from .version import __version__
 from .addon import (
     CELACTION_ROOT_DIR,
     CelactionAddon,
@@ -5,6 +6,8 @@ from .addon import (
 
 
 __all__ = (
+    "__version__",
+
     "CELACTION_ROOT_DIR",
     "CelactionAddon",
 )
