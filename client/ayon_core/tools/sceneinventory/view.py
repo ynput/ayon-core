@@ -58,6 +58,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         model = InventoryModel(controller)
         proxy_model = FilterProxyModel()
         proxy_model.setSourceModel(model)
+        proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         self.setModel(proxy_model)
 
@@ -111,17 +112,17 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 self._model.refresh(**kwargs)
 
     def set_hierarchy_view(self, enabled):
-        self._proxy.set_hierarchy_view(enabled)
+        self._proxy_model.set_hierarchy_view(enabled)
         self._model.set_hierarchy_view(enabled)
 
     def set_text_filter(self, text_filter):
-        if hasattr(self._proxy, "setFilterRegularExpression"):
-            self._proxy.setFilterRegularExpression(text_filter)
+        if hasattr(self._proxy_model, "setFilterRegularExpression"):
+            self._proxy_model.setFilterRegularExpression(text_filter)
         else:
-            self._proxy.setFilterRegExp(text_filter)
+            self._proxy_model.setFilterRegExp(text_filter)
 
     def set_filter_outdated(self, enabled):
-        self._proxy.set_filter_outdated(enabled)
+        self._proxy_model.set_filter_outdated(enabled)
 
     def get_selected_indexes(self):
         """Get the selected rows"""
