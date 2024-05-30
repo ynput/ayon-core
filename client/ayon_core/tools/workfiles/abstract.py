@@ -13,8 +13,10 @@ class WorkfileInfo:
         task_id (str): Task id.
         filepath (str): Filepath.
         filesize (int): File size.
-        creation_time (int): Creation time (timestamp).
-        modification_time (int): Modification time (timestamp).
+        creation_time (float): Creation time (timestamp).
+        modification_time (float): Modification time (timestamp).
+        created_by (Union[str, none]): User who created the file.
+        updated_by (Union[str, none]): User who last updated the file.
         note (str): Note.
     """
 
@@ -26,6 +28,8 @@ class WorkfileInfo:
         filesize,
         creation_time,
         modification_time,
+        created_by,
+        updated_by,
         note,
     ):
         self.folder_id = folder_id
@@ -34,6 +38,8 @@ class WorkfileInfo:
         self.filesize = filesize
         self.creation_time = creation_time
         self.modification_time = modification_time
+        self.created_by = created_by
+        self.updated_by = updated_by
         self.note = note
 
     def to_data(self):
@@ -50,6 +56,8 @@ class WorkfileInfo:
             "filesize": self.filesize,
             "creation_time": self.creation_time,
             "modification_time": self.modification_time,
+            "created_by": self.created_by,
+            "updated_by": self.updated_by,
             "note": self.note,
         }
 
@@ -212,6 +220,7 @@ class FileItem:
         dirpath (str): Directory path of file.
         filename (str): Filename.
         modified (float): Modified timestamp.
+        created_by (Optional[str]): Username.
         representation_id (Optional[str]): Representation id of published
             workfile.
         filepath (Optional[str]): Prepared filepath.
@@ -223,6 +232,8 @@ class FileItem:
         dirpath,
         filename,
         modified,
+        created_by=None,
+        updated_by=None,
         representation_id=None,
         filepath=None,
         exists=None
@@ -230,6 +241,8 @@ class FileItem:
         self.filename = filename
         self.dirpath = dirpath
         self.modified = modified
+        self.created_by = created_by
+        self.updated_by = updated_by
         self.representation_id = representation_id
         self._filepath = filepath
         self._exists = exists
@@ -269,6 +282,7 @@ class FileItem:
             "filename": self.filename,
             "dirpath": self.dirpath,
             "modified": self.modified,
+            "created_by": self.created_by,
             "representation_id": self.representation_id,
             "filepath": self.filepath,
             "exists": self.exists,
@@ -520,6 +534,16 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
                 is triggered.
         """
 
+        pass
+
+    @abstractmethod
+    def get_user_items_by_name(self):
+        """Get user items available on AYON server.
+
+        Returns:
+            Dict[str, UserItem]: User items by username.
+
+        """
         pass
 
     # Host information
