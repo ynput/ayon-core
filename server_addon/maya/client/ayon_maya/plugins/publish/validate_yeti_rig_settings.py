@@ -3,10 +3,10 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateYetiRigSettings(MayaInstancePlugin,
+class ValidateYetiRigSettings(plugin.MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validate Yeti Rig Settings have collected input connections.
 

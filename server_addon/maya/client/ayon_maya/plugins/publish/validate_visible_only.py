@@ -5,10 +5,10 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api.lib import iter_visible_nodes_in_range
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateAlembicVisibleOnly(MayaInstancePlugin,
+class ValidateAlembicVisibleOnly(plugin.MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
     """Validates at least a single node is visible in frame range.
 

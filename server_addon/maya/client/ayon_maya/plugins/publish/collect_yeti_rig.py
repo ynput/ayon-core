@@ -4,7 +4,7 @@ import re
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 SETTINGS = {"renderDensity",
@@ -15,7 +15,7 @@ SETTINGS = {"renderDensity",
             "cbId"}
 
 
-class CollectYetiRig(MayaInstancePlugin):
+class CollectYetiRig(plugin.MayaInstancePlugin):
     """Collect all information of the Yeti Rig"""
 
     order = pyblish.api.CollectorOrder + 0.4

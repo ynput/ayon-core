@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class CollectFbxCamera(MayaInstancePlugin):
+class CollectFbxCamera(plugin.MayaInstancePlugin):
     """Collect Camera for FBX export."""
 
     order = pyblish.api.CollectorOrder + 0.2

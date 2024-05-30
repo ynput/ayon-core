@@ -4,10 +4,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateStepSize(MayaInstancePlugin,
+class ValidateStepSize(plugin.MayaInstancePlugin,
                        OptionalPyblishPluginMixin):
     """Validates the step size for the instance is in a valid range.
 

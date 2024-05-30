@@ -6,7 +6,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -23,7 +23,7 @@ def get_namespace(node_name):
     return node_name.rpartition(":")[0]
 
 
-class ValidateNoNamespace(MayaInstancePlugin,
+class ValidateNoNamespace(plugin.MayaInstancePlugin,
                           OptionalPyblishPluginMixin):
     """Ensure the nodes don't have a namespace"""
 

@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateRenderNoDefaultCameras(MayaInstancePlugin,
+class ValidateRenderNoDefaultCameras(plugin.MayaInstancePlugin,
                                      OptionalPyblishPluginMixin):
     """Ensure no default (startup) cameras are to be rendered."""
 

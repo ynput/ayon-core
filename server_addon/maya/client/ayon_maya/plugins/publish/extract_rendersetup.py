@@ -2,10 +2,10 @@ import json
 import os
 
 import maya.app.renderSetup.model.renderSetup as renderSetup
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 
 
-class ExtractRenderSetup(MayaExtractorPlugin):
+class ExtractRenderSetup(plugin.MayaExtractorPlugin):
     """
     Produce renderSetup template file
 

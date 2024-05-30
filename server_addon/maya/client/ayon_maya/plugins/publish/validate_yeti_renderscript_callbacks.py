@@ -3,11 +3,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateYetiRenderScriptCallbacks(MayaInstancePlugin,
+class ValidateYetiRenderScriptCallbacks(plugin.MayaInstancePlugin,
                                         OptionalPyblishPluginMixin):
     """Check if the render script callbacks will be used during the rendering
 

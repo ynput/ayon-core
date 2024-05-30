@@ -7,10 +7,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateLoadedPlugin(MayaInstancePlugin,
+class ValidateLoadedPlugin(plugin.MayaInstancePlugin,
                            OptionalPyblishPluginMixin):
     """Ensure there are no unauthorized loaded plugins"""
 
@@ -23,17 +23,17 @@ class ValidateLoadedPlugin(MayaInstancePlugin,
     def get_invalid(cls, context):
 
         invalid = []
-        loaded_plugin = cmds.pluginInfo(query=True, listPlugins=True)
+        loaded_plugins = cmds.pluginInfo(query=True, listPlugins=True)
         # get variable from AYON settings
         whitelist_native_plugins = cls.whitelist_native_plugins
         authorized_plugins = cls.authorized_plugins or []
 
-        for plugin in loaded_plugin:
+        for maya_plugin in loaded_plugins:
             if not whitelist_native_plugins and os.getenv('MAYA_LOCATION') \
-                    in cmds.pluginInfo(plugin, query=True, path=True):
+                    in cmds.pluginInfo(maya_plugin, query=True, path=True):
                 continue
-            if plugin not in authorized_plugins:
-                invalid.append(plugin)
+            if maya_plugin not in authorized_plugins:
+                invalid.append(maya_plugin)
 
         return invalid
 
@@ -50,6 +50,6 @@ class ValidateLoadedPlugin(MayaInstancePlugin,
     def repair(cls, context):
         """Unload forbidden plugins"""
 
-        for plugin in cls.get_invalid(context):
-            cmds.pluginInfo(plugin, edit=True, autoload=False)
-            cmds.unloadPlugin(plugin, force=True)
+        for maya_plugin in cls.get_invalid(context):
+            cmds.pluginInfo(maya_plugin, edit=True, autoload=False)
+            cmds.unloadPlugin(maya_plugin, force=True)

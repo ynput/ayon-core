@@ -9,11 +9,11 @@ from ayon_maya.api.lib import (
     maintained_selection,
     write_xgen_file,
 )
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractXgen(MayaExtractorPlugin):
+class ExtractXgen(plugin.MayaExtractorPlugin):
     """Extract Xgen
 
     Workflow:

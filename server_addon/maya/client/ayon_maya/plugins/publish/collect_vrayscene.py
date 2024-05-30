@@ -4,10 +4,10 @@ import pyblish.api
 
 from ayon_core.lib import get_formatted_current_time
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class CollectVrayScene(MayaInstancePlugin):
+class CollectVrayScene(plugin.MayaInstancePlugin):
     """Collect Vray Scene.
 
     If export on farm is checked, job is created to export it.

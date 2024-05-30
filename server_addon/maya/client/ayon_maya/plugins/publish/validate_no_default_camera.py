@@ -4,7 +4,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -15,7 +15,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateNoDefaultCameras(MayaInstancePlugin,
+class ValidateNoDefaultCameras(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure no default (startup) cameras are in the instance.
 

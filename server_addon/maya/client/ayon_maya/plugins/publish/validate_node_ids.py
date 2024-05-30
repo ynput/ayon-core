@@ -4,10 +4,10 @@ from ayon_core.pipeline.publish import (
 )
 import ayon_maya.api.action
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateNodeIDs(MayaInstancePlugin):
+class ValidateNodeIDs(plugin.MayaInstancePlugin):
     """Validate nodes have a Colorbleed Id.
 
     When IDs are missing from nodes *save your scene* and they should be

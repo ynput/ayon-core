@@ -5,10 +5,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateResources(MayaInstancePlugin):
+class ValidateResources(plugin.MayaInstancePlugin):
     """Validates mapped resources.
 
     These are external files to the current application, for example

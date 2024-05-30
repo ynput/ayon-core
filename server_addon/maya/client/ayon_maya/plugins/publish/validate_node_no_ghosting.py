@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateNodeNoGhosting(MayaInstancePlugin,
+class ValidateNodeNoGhosting(plugin.MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Ensure nodes do not have ghosting enabled.
 

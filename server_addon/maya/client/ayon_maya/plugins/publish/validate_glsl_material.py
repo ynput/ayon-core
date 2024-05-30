@@ -5,11 +5,11 @@ from ayon_core.pipeline import (
     PublishValidationError,
 )
 from ayon_core.pipeline.publish import RepairAction, ValidateContentsOrder
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateGLSLMaterial(MayaInstancePlugin,
+class ValidateGLSLMaterial(plugin.MayaInstancePlugin,
                            OptionalPyblishPluginMixin):
     """
     Validate if the asset uses GLSL Shader

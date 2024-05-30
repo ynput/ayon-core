@@ -6,11 +6,11 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateRenderImageRule(MayaInstancePlugin,
+class ValidateRenderImageRule(plugin.MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validates Maya Workpace "images" file rule matches project settings.
 

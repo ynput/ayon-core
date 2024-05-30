@@ -4,10 +4,10 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishValidationError
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateLookSets(MayaInstancePlugin):
+class ValidateLookSets(plugin.MayaInstancePlugin):
     """Validate if any sets relationships are not being collected.
 
     A shader can be assigned to a node that is missing a Colorbleed ID.

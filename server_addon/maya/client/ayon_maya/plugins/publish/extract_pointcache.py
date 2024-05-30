@@ -18,11 +18,11 @@ from ayon_maya.api.lib import (
     maintained_selection,
     suspended_refresh,
 )
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractAlembic(MayaExtractorPlugin, AYONPyblishPluginMixin):
+class ExtractAlembic(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals, uvs, creases are preserved, but nothing more,

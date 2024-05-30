@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateColorSets(MayaInstancePlugin,
+class ValidateColorSets(plugin.MayaInstancePlugin,
                         OptionalPyblishPluginMixin):
     """Validate all meshes in the instance have unlocked normals
 

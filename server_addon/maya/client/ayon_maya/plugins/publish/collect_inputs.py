@@ -7,7 +7,7 @@ import pyblish.api
 from ayon_core.pipeline import registered_host
 from ayon_maya.api.lib import get_container_members
 from ayon_maya.api.lib_rendersetup import get_shader_in_layer
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
 def iter_history(nodes,
@@ -94,7 +94,7 @@ def collect_input_containers(containers, nodes):
             if any(node in container["_members"] for node in nodes)]
 
 
-class CollectUpstreamInputs(MayaInstancePlugin):
+class CollectUpstreamInputs(plugin.MayaInstancePlugin):
     """Collect input source inputs for this publish.
 
     This will include `inputs` data of which loaded publishes were used in the

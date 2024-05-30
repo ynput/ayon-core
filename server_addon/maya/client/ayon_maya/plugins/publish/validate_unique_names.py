@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateUniqueNames(MayaInstancePlugin,
+class ValidateUniqueNames(plugin.MayaInstancePlugin,
                           OptionalPyblishPluginMixin):
     """transform names should be unique
 

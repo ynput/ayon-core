@@ -4,10 +4,10 @@ import maya.api.OpenMaya as om
 import maya.api.OpenMayaUI as omui
 import pyblish.api
 from ayon_maya.api.lib import IS_HEADLESS
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ExtractActiveViewThumbnail(MayaInstancePlugin):
+class ExtractActiveViewThumbnail(plugin.MayaInstancePlugin):
     """Set instance thumbnail to a screengrab of current active viewport.
 
     This makes it so that if an instance does not have a thumbnail set yet that

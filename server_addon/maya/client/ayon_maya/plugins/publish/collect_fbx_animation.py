@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
 from ayon_core.pipeline import OptionalPyblishPluginMixin
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class CollectFbxAnimation(MayaInstancePlugin,
+class CollectFbxAnimation(plugin.MayaInstancePlugin,
                           OptionalPyblishPluginMixin):
     """Collect Animated Rig Data for FBX Extractor."""
 

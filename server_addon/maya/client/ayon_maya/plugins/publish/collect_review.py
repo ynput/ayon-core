@@ -2,11 +2,11 @@ import ayon_api
 import pyblish.api
 from ayon_core.pipeline import KnownPublishError
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds, mel
 
 
-class CollectReview(MayaInstancePlugin):
+class CollectReview(plugin.MayaInstancePlugin):
     """Collect Review data
 
     """

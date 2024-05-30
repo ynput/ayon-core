@@ -1,10 +1,10 @@
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder, PublishValidationError
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateReview(MayaInstancePlugin):
+class ValidateReview(plugin.MayaInstancePlugin):
     """Validate review."""
 
     order = ValidateContentsOrder

@@ -1,7 +1,7 @@
 import os
 import shutil
 
-import ayon_maya.api.plugin
+from ayon_maya.api import plugin
 import maya.cmds as cmds
 import xgenm
 from ayon_core.pipeline import get_representation_path
@@ -15,7 +15,7 @@ from ayon_maya.api.lib import (
 from qtpy import QtWidgets
 
 
-class XgenLoader(ayon_maya.api.plugin.ReferenceLoader):
+class XgenLoader(plugin.ReferenceLoader):
     """Load Xgen as reference"""
 
     product_types = {"xgen"}

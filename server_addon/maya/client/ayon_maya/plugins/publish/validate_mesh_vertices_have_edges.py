@@ -6,11 +6,11 @@ from ayon_core.pipeline.publish import (
     ValidateMeshOrder,
 )
 from ayon_maya.api.lib import len_flattened
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateMeshVerticesHaveEdges(MayaInstancePlugin,
+class ValidateMeshVerticesHaveEdges(plugin.MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Validate meshes have only vertices that are connected to edges.
 

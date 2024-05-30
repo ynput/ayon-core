@@ -4,7 +4,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -15,7 +15,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateNoAnimation(MayaInstancePlugin,
+class ValidateNoAnimation(plugin.MayaInstancePlugin,
                           OptionalPyblishPluginMixin):
     """Ensure no keyframes on nodes in the Instance.
 

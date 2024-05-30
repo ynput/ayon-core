@@ -44,11 +44,11 @@ from ayon_maya.api.lib_renderproducts import (
     UnsupportedRendererException,
     get as get_layer_render_products,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class CollectMayaRender(MayaInstancePlugin):
+class CollectMayaRender(plugin.MayaInstancePlugin):
     """Gather all publishable render layers from renderSetup."""
 
     order = pyblish.api.CollectorOrder + 0.01

@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateMeshEmpty(MayaInstancePlugin):
+class ValidateMeshEmpty(plugin.MayaInstancePlugin):
     """Validate meshes have some vertices.
 
     Its possible to have meshes without any vertices. To replicate

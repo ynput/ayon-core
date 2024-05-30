@@ -9,10 +9,10 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateInstanceInContext(MayaInstancePlugin,
+class ValidateInstanceInContext(plugin.MayaInstancePlugin,
                                 OptionalPyblishPluginMixin):
     """Validator to check if instance asset match context asset.
 

@@ -1,9 +1,9 @@
 import pyblish.api
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 from maya import mel
 
 
-class CollectWorksceneFPS(MayaContextPlugin):
+class CollectWorksceneFPS(plugin.MayaContextPlugin):
     """Get the FPS of the work scene"""
 
     label = "Workscene FPS"

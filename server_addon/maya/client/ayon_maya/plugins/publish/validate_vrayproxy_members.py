@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateVrayProxyMembers(MayaInstancePlugin,
+class ValidateVrayProxyMembers(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validate whether the V-Ray Proxy instance has shape members"""
 

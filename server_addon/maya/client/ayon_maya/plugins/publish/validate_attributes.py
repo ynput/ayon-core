@@ -8,11 +8,11 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api.lib import set_attribute
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateAttributes(MayaInstancePlugin,
+class ValidateAttributes(plugin.MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Ensure attributes are consistent.
 

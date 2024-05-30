@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateCameraAttributes(MayaInstancePlugin,
+class ValidateCameraAttributes(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validates Camera has no invalid attribute keys or values.
 

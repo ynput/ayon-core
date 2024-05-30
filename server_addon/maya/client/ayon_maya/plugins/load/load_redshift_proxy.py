@@ -6,12 +6,13 @@ import clique
 import maya.cmds as cmds
 from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
+from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_type
 
 
-class RedshiftProxyLoader(Loader):
+class RedshiftProxyLoader(plugin.Loader):
     """Load Redshift proxy"""
 
     product_types = {"redshiftproxy"}

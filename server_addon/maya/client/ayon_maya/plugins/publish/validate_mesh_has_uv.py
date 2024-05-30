@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     ValidateMeshOrder,
 )
 from ayon_maya.api.lib import len_flattened
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateMeshHasUVs(MayaInstancePlugin,
+class ValidateMeshHasUVs(plugin.MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Validate the current mesh has UVs.
 

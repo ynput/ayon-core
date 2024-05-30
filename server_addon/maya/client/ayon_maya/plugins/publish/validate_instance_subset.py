@@ -5,7 +5,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 # Allow only characters, numbers and underscore
 allowed = set(string.ascii_lowercase +
@@ -18,7 +18,7 @@ def validate_name(product_name):
     return all(x in allowed for x in product_name)
 
 
-class ValidateSubsetName(MayaInstancePlugin):
+class ValidateSubsetName(plugin.MayaInstancePlugin):
     """Validates product name has only valid characters"""
 
     order = ValidateContentsOrder

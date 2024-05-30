@@ -4,11 +4,11 @@ import shutil
 
 import pyblish.api
 from ayon_maya.api.alembic import extract_alembic
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractWorkfileXgen(MayaExtractorPlugin):
+class ExtractWorkfileXgen(plugin.MayaExtractorPlugin):
     """Extract Workfile Xgen.
 
     When submitting a render, we need to prep Xgen side car files.

@@ -3,10 +3,10 @@ from ayon_core.pipeline import remove_container
 from ayon_maya.api import setdress
 from ayon_maya.api.lib import unique_namespace
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader
+from ayon_maya.api import plugin
 
 
-class AssemblyLoader(Loader):
+class AssemblyLoader(plugin.Loader):
 
     product_types = {"assembly"}
     representations = {"json"}

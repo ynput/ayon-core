@@ -1,10 +1,10 @@
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import registered_host
-from ayon_maya.api.plugin import Loader
+from ayon_maya.api import plugin
 from ayon_maya.api.workfile_template_builder import MayaTemplateBuilder
 
 
-class LoadAsTemplate(Loader):
+class LoadAsTemplate(plugin.Loader):
     """Load workfile as a template """
 
     product_types = {"workfile", "mayaScene"}

@@ -1,11 +1,11 @@
 import os
 
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractMultiverseUsdOverride(MayaExtractorPlugin):
+class ExtractMultiverseUsdOverride(plugin.MayaExtractorPlugin):
     """Extractor for Multiverse USD Override data.
 
     This will extract settings for a Multiverse Write Override operation:

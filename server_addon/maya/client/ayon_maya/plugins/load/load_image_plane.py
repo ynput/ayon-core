@@ -6,7 +6,7 @@ from ayon_maya.api.lib import (
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader
+from ayon_maya.api import plugin
 from maya import cmds
 from qtpy import QtCore, QtWidgets
 
@@ -80,7 +80,7 @@ class CameraWindow(QtWidgets.QDialog):
         self.close()
 
 
-class ImagePlaneLoader(Loader):
+class ImagePlaneLoader(plugin.Loader):
     """Specific loader of plate for image planes on selected camera."""
 
     product_types = {"image", "plate", "render"}

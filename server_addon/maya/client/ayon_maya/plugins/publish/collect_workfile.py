@@ -1,9 +1,9 @@
 import os
 import pyblish.api
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class CollectWorkfileData(MayaInstancePlugin):
+class CollectWorkfileData(plugin.MayaInstancePlugin):
     """Inject data into Workfile instance"""
 
     order = pyblish.api.CollectorOrder - 0.01

@@ -13,10 +13,11 @@ from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api.lib import maintained_selection, namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
+from ayon_maya.api import plugin
+from ayon_maya.api.plugin import get_load_color_for_product_type
 
 
-class VRayProxyLoader(Loader):
+class VRayProxyLoader(plugin.Loader):
     """Load VRay Proxy with Alembic or VrayMesh."""
 
     product_types = {"vrayproxy", "model", "pointcache", "animation"}

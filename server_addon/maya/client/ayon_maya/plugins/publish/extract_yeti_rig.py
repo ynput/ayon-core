@@ -6,7 +6,7 @@ import json
 import os
 
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -89,7 +89,7 @@ def yetigraph_attribute_values(assumed_destination, resources):
                 pass
 
 
-class ExtractYetiRig(MayaExtractorPlugin):
+class ExtractYetiRig(plugin.MayaExtractorPlugin):
     """Extract the Yeti rig to a Maya Scene and write the Yeti rig data."""
 
     label = "Extract Yeti Rig"

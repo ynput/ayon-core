@@ -11,7 +11,8 @@ from ayon_maya.api.lib import (
     unique_namespace,
 )
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
+from ayon_maya.api.plugin import get_load_color_for_product_type
+from ayon_maya.api import plugin
 
 
 def is_sequence(files):
@@ -22,7 +23,7 @@ def is_sequence(files):
     return sequence
 
 
-class ArnoldStandinLoader(Loader):
+class ArnoldStandinLoader(plugin.Loader):
     """Load as Arnold standin"""
 
     product_types = {

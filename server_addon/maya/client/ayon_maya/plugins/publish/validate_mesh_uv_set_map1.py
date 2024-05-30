@@ -7,11 +7,11 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateMeshUVSetMap1(MayaInstancePlugin,
+class ValidateMeshUVSetMap1(plugin.MayaInstancePlugin,
                             OptionalPyblishPluginMixin):
     """Validate model's default set exists and is named 'map1'.
 

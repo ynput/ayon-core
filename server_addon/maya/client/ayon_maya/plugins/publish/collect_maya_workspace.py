@@ -1,11 +1,11 @@
 import os
 
 import pyblish.api
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class CollectMayaWorkspace(MayaContextPlugin):
+class CollectMayaWorkspace(plugin.MayaContextPlugin):
     """Inject the current workspace into context"""
 
     order = pyblish.api.CollectorOrder - 0.5

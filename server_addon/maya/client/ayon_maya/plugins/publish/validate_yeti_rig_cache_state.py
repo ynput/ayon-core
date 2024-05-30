@@ -8,10 +8,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     RepairAction,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateYetiRigCacheState(MayaInstancePlugin,
+class ValidateYetiRigCacheState(plugin.MayaInstancePlugin,
                                 OptionalPyblishPluginMixin):
     """Validate the I/O attributes of the node
 

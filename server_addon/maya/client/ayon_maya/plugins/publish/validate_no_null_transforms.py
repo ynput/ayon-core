@@ -6,7 +6,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -32,7 +32,7 @@ def has_shape_children(node):
     return True
 
 
-class ValidateNoNullTransforms(MayaInstancePlugin,
+class ValidateNoNullTransforms(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure no null transforms are in the scene.
 

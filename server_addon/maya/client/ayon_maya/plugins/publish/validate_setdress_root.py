@@ -2,10 +2,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateSetdressRoot(MayaInstancePlugin):
+class ValidateSetdressRoot(plugin.MayaInstancePlugin):
     """Validate if set dress top root node is published."""
 
     order = ValidateContentsOrder

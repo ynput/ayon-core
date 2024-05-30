@@ -6,7 +6,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -17,7 +17,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateMeshNormalsUnlocked(MayaInstancePlugin,
+class ValidateMeshNormalsUnlocked(plugin.MayaInstancePlugin,
                                   OptionalPyblishPluginMixin):
     """Validate all meshes in the instance have unlocked normals
 

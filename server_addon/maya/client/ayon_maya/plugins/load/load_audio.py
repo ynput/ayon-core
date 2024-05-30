@@ -1,11 +1,11 @@
 from ayon_core.pipeline import get_representation_path
 from ayon_maya.api.lib import get_container_members, unique_namespace
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader
+from ayon_maya.api import plugin
 from maya import cmds, mel
 
 
-class AudioLoader(Loader):
+class AudioLoader(plugin.Loader):
     """Specific loader of audio."""
 
     product_types = {"audio"}

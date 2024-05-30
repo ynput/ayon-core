@@ -10,10 +10,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateAssRelativePaths(MayaInstancePlugin,
+class ValidateAssRelativePaths(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure exporting ass file has set relative texture paths"""
 

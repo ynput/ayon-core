@@ -3,10 +3,10 @@ from ayon_core.pipeline.workfile.lock_workfile import (
     is_workfile_lock_enabled,
     remove_workfile_lock,
 )
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 
 
-class SaveCurrentScene(MayaContextPlugin):
+class SaveCurrentScene(plugin.MayaContextPlugin):
     """Save current scene."""
 
     label = "Save current file"

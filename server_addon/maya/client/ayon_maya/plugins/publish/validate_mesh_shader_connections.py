@@ -5,7 +5,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -79,7 +79,7 @@ def disconnect(node_a, node_b):
             cmds.disconnectAttr(source, input)
 
 
-class ValidateMeshShaderConnections(MayaInstancePlugin,
+class ValidateMeshShaderConnections(plugin.MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Ensure mesh shading engine connections are valid.
 

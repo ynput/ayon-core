@@ -22,7 +22,7 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import KnownPublishError
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 # Modes for transfer
@@ -405,7 +405,7 @@ class MakeTX(TextureProcessor):
             return False
 
 
-class ExtractLook(MayaExtractorPlugin):
+class ExtractLook(plugin.MayaExtractorPlugin):
     """Extract Look (Maya Scene + JSON)
 
     Only extracts the sets (shadingEngines and alike) alongside a .json file

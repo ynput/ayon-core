@@ -5,7 +5,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidatePipelineOrder,
 )
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 
 
 def is_subdir(path, root_dir):
@@ -27,7 +27,7 @@ def is_subdir(path, root_dir):
         return True
 
 
-class ValidateSceneSetWorkspace(MayaContextPlugin):
+class ValidateSceneSetWorkspace(plugin.MayaContextPlugin):
     """Validate the scene is inside the currently set Maya workspace"""
 
     order = ValidatePipelineOrder

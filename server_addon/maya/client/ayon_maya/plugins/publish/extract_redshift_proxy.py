@@ -3,14 +3,14 @@
 import os
 
 from ayon_maya.api.lib import maintained_selection, renderlayer
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from ayon_maya.api.render_setup_tools import (
     allow_export_from_render_setup_layer,
 )
 from maya import cmds
 
 
-class ExtractRedshiftProxy(MayaExtractorPlugin):
+class ExtractRedshiftProxy(plugin.MayaExtractorPlugin):
     """Extract the content of the instance to a redshift proxy file."""
 
     label = "Redshift Proxy (.rs)"

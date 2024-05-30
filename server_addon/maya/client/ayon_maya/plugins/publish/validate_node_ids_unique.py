@@ -6,11 +6,11 @@ from ayon_core.pipeline.publish import (
     ValidatePipelineOrder,
 )
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateNodeIdsUnique(MayaInstancePlugin):
+class ValidateNodeIdsUnique(plugin.MayaInstancePlugin):
     """Validate the nodes in the instance have a unique Colorbleed Id
 
     Here we ensure that what has been added to the instance is unique

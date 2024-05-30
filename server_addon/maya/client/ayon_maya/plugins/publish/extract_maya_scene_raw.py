@@ -6,11 +6,11 @@ from ayon_core.lib import BoolDef
 from ayon_core.pipeline import AVALON_CONTAINER_ID, AYON_CONTAINER_ID
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractMayaSceneRaw(MayaExtractorPlugin, AYONPyblishPluginMixin):
+class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
     """Extract as Maya Scene (raw).
 
     This will preserve all references, construction history, etc.

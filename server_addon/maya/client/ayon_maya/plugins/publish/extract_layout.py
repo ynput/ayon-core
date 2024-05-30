@@ -3,12 +3,12 @@ import math
 import os
 
 from ayon_api import get_representation_by_id
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 from maya.api import OpenMaya as om
 
 
-class ExtractLayout(MayaExtractorPlugin):
+class ExtractLayout(plugin.MayaExtractorPlugin):
     """Extract a layout."""
 
     label = "Extract Layout"

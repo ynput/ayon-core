@@ -1,9 +1,9 @@
 import pyblish.api
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class CollectRigSets(MayaInstancePlugin):
+class CollectRigSets(plugin.MayaInstancePlugin):
     """Ensure rig contains pipeline-critical content
 
     Every rig must contain at least two object sets:

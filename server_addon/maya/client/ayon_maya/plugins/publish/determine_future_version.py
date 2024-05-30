@@ -1,8 +1,8 @@
 import pyblish.api
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class DetermineFutureVersion(MayaInstancePlugin):
+class DetermineFutureVersion(plugin.MayaInstancePlugin):
     """
     This will determine version of product if we want render to be attached to.
     """

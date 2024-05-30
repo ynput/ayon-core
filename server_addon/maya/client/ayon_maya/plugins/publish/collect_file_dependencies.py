@@ -1,9 +1,9 @@
 from maya import cmds
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 import pyblish.api
 
 
-class CollectFileDependencies(MayaContextPlugin):
+class CollectFileDependencies(plugin.MayaContextPlugin):
     """Gather all files referenced in this scene."""
 
     label = "Collect File Dependencies"

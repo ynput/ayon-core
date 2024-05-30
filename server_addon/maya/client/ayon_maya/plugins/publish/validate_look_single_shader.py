@@ -3,11 +3,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateSingleShader(MayaInstancePlugin):
+class ValidateSingleShader(plugin.MayaInstancePlugin):
     """Validate all nurbsSurfaces and meshes have exactly one shader assigned.
 
     This will error if a shape has no shaders or more than one shader.

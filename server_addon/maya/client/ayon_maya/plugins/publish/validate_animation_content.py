@@ -4,10 +4,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateAnimationContent(MayaInstancePlugin,
+class ValidateAnimationContent(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Adheres to the content of 'animation' product type
 

@@ -1,9 +1,9 @@
 import pyblish.api
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class CollectCurrentFile(MayaContextPlugin):
+class CollectCurrentFile(plugin.MayaContextPlugin):
     """Inject the current working file."""
 
     order = pyblish.api.CollectorOrder - 0.4

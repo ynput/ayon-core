@@ -1,11 +1,11 @@
 import json
 import os
 
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractYetiCache(MayaExtractorPlugin):
+class ExtractYetiCache(plugin.MayaExtractorPlugin):
     """Producing Yeti cache files using scene time range.
 
     This will extract Yeti cache file sequence and fur settings.

@@ -1,11 +1,11 @@
 import os
 
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractVRayProxy(MayaExtractorPlugin):
+class ExtractVRayProxy(plugin.MayaExtractorPlugin):
     """Extract the content of the instance to a vrmesh file
 
     Things to pay attention to:

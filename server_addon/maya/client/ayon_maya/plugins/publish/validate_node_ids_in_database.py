@@ -5,10 +5,10 @@ from ayon_core.pipeline.publish import (
     ValidatePipelineOrder,
 )
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateNodeIdsInDatabase(MayaInstancePlugin):
+class ValidateNodeIdsInDatabase(plugin.MayaInstancePlugin):
     """Validate if the CB Id is related to an folder in the database
 
     All nodes with the `cbId` attribute will be validated to ensure that

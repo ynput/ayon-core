@@ -1,8 +1,8 @@
 import pyblish.api
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 
 
-class CollectRemoveMarked(MayaContextPlugin):
+class CollectRemoveMarked(plugin.MayaContextPlugin):
     """Remove marked data
 
     Remove instances that have 'remove' in their instance.data

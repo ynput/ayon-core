@@ -4,12 +4,12 @@ import os
 import re
 
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from ayon_maya.api.render_setup_tools import export_in_rs_layer
 from maya import cmds
 
 
-class ExtractVrayscene(MayaExtractorPlugin):
+class ExtractVrayscene(plugin.MayaExtractorPlugin):
     """Extractor for vrscene."""
 
     label = "VRay Scene (.vrscene)"

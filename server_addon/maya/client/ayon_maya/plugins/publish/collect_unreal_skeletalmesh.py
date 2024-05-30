@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from maya import cmds  # noqa
 import pyblish.api
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class CollectUnrealSkeletalMesh(MayaInstancePlugin):
+class CollectUnrealSkeletalMesh(plugin.MayaInstancePlugin):
     """Collect Unreal Skeletal Mesh."""
 
     order = pyblish.api.CollectorOrder + 0.2

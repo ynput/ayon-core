@@ -1,10 +1,10 @@
 import pyblish.api
 from ayon_core.pipeline.publish import PublishValidationError
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateVray(MayaInstancePlugin):
+class ValidateVray(plugin.MayaInstancePlugin):
     """Validate general Vray setup."""
 
     order = pyblish.api.ValidatorOrder

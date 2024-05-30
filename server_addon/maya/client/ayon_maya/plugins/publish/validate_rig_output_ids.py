@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api.lib import get_id, set_id
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -16,7 +16,7 @@ def get_basename(node):
     return node.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
-class ValidateRigOutputIds(MayaInstancePlugin):
+class ValidateRigOutputIds(plugin.MayaInstancePlugin):
     """Validate rig output ids.
 
     Ids must share the same id as similarly named nodes in the scene. This is
