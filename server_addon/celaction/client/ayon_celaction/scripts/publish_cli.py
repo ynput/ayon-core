@@ -4,7 +4,7 @@ import sys
 import pyblish.api
 import pyblish.util
 
-import ayon_core.hosts.celaction
+from ayon_celaction import CELACTION_ROOT_DIR
 from ayon_core.lib import Logger
 from ayon_core.tools.utils import host_tools
 from ayon_core.pipeline import install_ayon_plugins
@@ -13,8 +13,7 @@ from ayon_core.pipeline import install_ayon_plugins
 log = Logger.get_logger("celaction")
 
 PUBLISH_HOST = "celaction"
-HOST_DIR = os.path.dirname(os.path.abspath(ayon_core.hosts.celaction.__file__))
-PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(CELACTION_ROOT_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 
 
