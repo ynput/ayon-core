@@ -3,7 +3,7 @@ import uuid
 
 from ayon_core.pipeline import load
 from ayon_core.pipeline.load import get_representation_path_from_context
-from ayon_core.hosts.maya.api.usdlib import (
+from ayon_maya.api.usdlib import (
     containerise_prim,
     iter_ufe_usd_selection
 )

@@ -1,4 +1,4 @@
-from ayon_core.hosts.maya.api import plugin
+from ayon_maya.api import plugin
 from ayon_core.lib import EnumDef
 
 

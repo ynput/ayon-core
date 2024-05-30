@@ -2,7 +2,7 @@
 import contextlib
 
 from ayon_core.pipeline import load
-from ayon_core.hosts.maya.api.usdlib import (
+from ayon_maya.api.usdlib import (
     containerise_prim,
     iter_ufe_usd_selection
 )
@@ -148,7 +148,7 @@ class MayaUsdProxyAddMayaReferenceLoader(load.LoaderPlugin):
         # type: (dict) -> None
         """Remove loaded container."""
 
-        from ayon_core.hosts.maya.api.usdlib import remove_spec
+        from ayon_maya.api.usdlib import remove_spec
 
         prim = container["prim"]
         with no_edit_mode(prim, restore_after=False):
