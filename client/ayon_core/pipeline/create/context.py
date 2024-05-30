@@ -1726,6 +1726,7 @@ class CreateContext:
         self._current_workfile_path = workfile_path
 
         self._current_project_anatomy = None
+        self._current_project_settings = None
 
     def reset_plugins(self, discover_publish_plugins=True):
         """Reload plugins.
