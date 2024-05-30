@@ -10,6 +10,8 @@ class CollectRenderPath(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.495
     families = ["render.farm"]
 
+    settings_category = "celaction"
+
     # Presets
     output_extension = "png"
     anatomy_template_key_render_files = None
