@@ -28,10 +28,15 @@ class ExtractAlembic(publish.Extractor):
         staging_dir = os.path.dirname(output)
         instance.data["stagingDir"] = staging_dir
 
-        file_name = os.path.basename(output)
+        if instance.data.get("frames"):
+            # list of files
+            files = instance.data["frames"]
+        else:
+            # single file
+            files = os.path.basename(output)
 
         # We run the render
-        self.log.info("Writing alembic '%s' to '%s'" % (file_name,
+        self.log.info("Writing alembic '%s' to '%s'" % (files,
                                                         staging_dir))
 
         render_rop(ropnode)
@@ -42,7 +47,7 @@ class ExtractAlembic(publish.Extractor):
         representation = {
             'name': 'abc',
             'ext': 'abc',
-            'files': file_name,
+            'files': files,
             "stagingDir": staging_dir,
         }
         instance.data["representations"].append(representation)
