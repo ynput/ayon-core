@@ -13,6 +13,7 @@ from ayon_core.pipeline import (
     deregister_creator_plugin_path,
     AVALON_CONTAINER_ID,
 )
+from ayon_flame import FLAME_ADDON_ROOT
 from .lib import (
     set_segment_data_marker,
     set_publish_attribute,
@@ -20,10 +21,8 @@ from .lib import (
     get_current_sequence,
     reset_segment_selection
 )
-from .. import HOST_DIR
 
-API_DIR = os.path.join(HOST_DIR, "api")
-PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(FLAME_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")

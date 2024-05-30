@@ -1,10 +1,10 @@
 from .addon import (
-    HOST_DIR,
+    FLAME_ADDON_ROOT,
     FlameAddon,
 )
 
 
 __all__ = (
-    "HOST_DIR",
+    "FLAME_ADDON_ROOT",
     "FlameAddon",
 )
