@@ -5,6 +5,8 @@ Flame utils for syncing scripts
 import os
 import shutil
 from ayon_core.lib import Logger
+from ayon_flame import FLAME_ADDON_ROOT
+
 log = Logger.get_logger(__name__)
 
 
@@ -16,7 +18,6 @@ def _sync_utility_scripts(env=None):
     `/opt/Autodesk/shared/python`. This will be always synchronizing those
     folders.
     """
-    from .. import HOST_DIR
 
     env = env or os.environ
 
@@ -26,7 +27,7 @@ def _sync_utility_scripts(env=None):
     flame_shared_dir = "/opt/Autodesk/shared/python"
 
     fsd_paths = [os.path.join(
-        HOST_DIR,
+        FLAME_ADDON_ROOT,
         "api",
         "utility_scripts"
     )]

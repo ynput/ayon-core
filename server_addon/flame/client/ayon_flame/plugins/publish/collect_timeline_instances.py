@@ -1,8 +1,8 @@
 import re
 from types import NoneType
 import pyblish
-import ayon_core.hosts.flame.api as opfapi
-from ayon_core.hosts.flame.otio import flame_export
+import ayon_flame.api as opfapi
+from ayon_flame.otio import flame_export
 from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 from ayon_core.pipeline.editorial import (
     is_overlapping_otio_ranges,
@@ -23,6 +23,8 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder - 0.09
     label = "Collect timeline Instances"
     hosts = ["flame"]
+
+    settings_category = "flame"
 
     audio_track_items = []
 

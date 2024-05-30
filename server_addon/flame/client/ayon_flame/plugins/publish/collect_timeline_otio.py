@@ -1,7 +1,7 @@
 import pyblish.api
 
-import ayon_core.hosts.flame.api as opfapi
-from ayon_core.hosts.flame.otio import flame_export
+import ayon_flame.api as opfapi
+from ayon_flame.otio import flame_export
 from ayon_core.pipeline.create import get_product_name
 
 
