@@ -6,9 +6,6 @@ import collections
 from qtpy import QtCore, QtGui
 import qtawesome
 
-from ayon_core.pipeline import (
-    HeroVersionType,
-)
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.lib import format_version
