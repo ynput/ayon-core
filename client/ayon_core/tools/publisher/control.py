@@ -1665,16 +1665,6 @@ class PublisherController(BasePublisherController):
         return self._create_context.get_current_task_name()
 
     @property
-    def current_project_settings(self):
-        """Current project settings.
-
-        Returns:
-            dict
-        """
-
-        return self._create_context.get_current_project_settings()
-
-    @property
     def host_context_has_changed(self):
         return self._create_context.context_has_changed
 
@@ -1697,6 +1687,15 @@ class PublisherController(BasePublisherController):
     def _publish_plugins(self):
         """Publish plugins."""
         return self._create_context.publish_plugins
+
+    def _get_current_project_settings(self):
+        """Current project settings.
+
+        Returns:
+            dict
+        """
+
+        return self._create_context.get_current_project_settings()
 
     # Hierarchy model
     def get_folder_items(self, project_name, sender=None):
@@ -1839,17 +1838,7 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
-        task_type = None
-        current_task_entity = get_current_task_entity()
-        if current_task_entity:
-            task_type = current_task_entity["taskType"]
-        allowed_creator_identifiers = self._get_allowed_creator_identifiers(
-            self.current_project_settings,
-            self._create_context.host_name,
-            self.current_task_name,
-            task_type,
-            self.log
-        )
+        allowed_creator_identifiers = self._get_allowed_creator_identifiers()
         for identifier, creator in self._create_context.creators.items():
             try:
                 if (
@@ -1868,18 +1857,15 @@ class PublisherController(BasePublisherController):
 
         return output
 
-    def _get_allowed_creator_identifiers(
-        self,
-        project_settings,
-        host_name,
-        task_name,
-        task_type,
-        log=None
-    ):
+    def _get_allowed_creator_identifiers(self):
         """Provide configured creator identifier in this context
 
         If no profile provided for current context, it shows all creators
         """
+
+        task_type = self._create_context.get_current_task_type()
+        project_settings = self._get_current_project_settings()
+
         allowed_creator_identifiers = None
         filter_creator_profiles = (
             project_settings
@@ -1889,14 +1875,14 @@ class PublisherController(BasePublisherController):
             ["filter_creator_profiles"]
         )
         filtering_criteria = {
-            "task_names": task_name,
+            "task_names": self.current_task_name,
             "task_types": task_type,
-            "host_names": host_name
+            "host_names": self._create_context.host_name
         }
         profile = filter_profiles(
             filter_creator_profiles,
             filtering_criteria,
-            logger=log
+            logger=self.log
         )
 
         if profile:
