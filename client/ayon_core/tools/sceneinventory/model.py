@@ -11,14 +11,14 @@ from ayon_core.pipeline import (
 )
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.lib import iter_model_rows, format_version
+from ayon_core.tools.utils.lib import format_version
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 NAME_COLOR_ROLE = QtCore.Qt.UserRole + 2
 COUNT_ROLE = QtCore.Qt.UserRole + 3
 IS_CONTAINER_ITEM_ROLE = QtCore.Qt.UserRole + 4
 VERSION_IS_LATEST_ROLE = QtCore.Qt.UserRole + 5
-VERSION_VALUE_ROLE = QtCore.Qt.UserRole + 6
+VERSION_IS_HERO_ROLE = QtCore.Qt.UserRole + 6
 VERSION_LABEL_ROLE = QtCore.Qt.UserRole + 7
 VERSION_COLOR_ROLE = QtCore.Qt.UserRole + 8
 STATUS_NAME_ROLE = QtCore.Qt.UserRole + 9
@@ -195,8 +195,8 @@ class InventoryModel(QtGui.QStandardItemModel):
             repre_info = repre_info_by_id[repre_id]
             version_label = "N/A"
             version_color = None
-            version_value = None
             is_latest = False
+            is_hero = False
             status_name = None
             status_color = None
             status_short = None
@@ -216,10 +216,8 @@ class InventoryModel(QtGui.QStandardItemModel):
                     version_items_by_product_id[repre_info.product_id]
                 )
                 version_item = version_items[repre_info.version_id]
-                version_value = version_item.version
-                if version_value < 0:
-                    version_value = HeroVersionType(version_value)
-                version_label = format_version(version_value)
+                version_label = format_version(version_item.version)
+                is_hero = version_item.version < 0
                 is_latest = version_item.is_latest
                 if not is_latest:
                     version_color = self.OUTDATED_COLOR
@@ -244,7 +242,6 @@ class InventoryModel(QtGui.QStandardItemModel):
                 item.setData(item_icon, QtCore.Qt.DecorationRole)
                 item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
                 item.setData(container_item.item_id, ITEM_ID_ROLE)
-                item.setData(version_value, VERSION_VALUE_ROLE)
                 item.setData(version_label, VERSION_LABEL_ROLE)
                 item.setData(container_item.loader_name, LOADER_NAME_ROLE)
                 item.setData(container_item.object_name, OBJECT_NAME_ROLE)
@@ -273,6 +270,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             group_item.setData(repre_info.product_type, PRODUCT_TYPE_ROLE)
             group_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
             group_item.setData(is_latest, VERSION_IS_LATEST_ROLE)
+            group_item.setData(is_hero, VERSION_IS_HERO_ROLE)
             group_item.setData(version_label, VERSION_LABEL_ROLE)
             group_item.setData(len(container_items), COUNT_ROLE)
             group_item.setData(status_name, STATUS_NAME_ROLE)
@@ -340,13 +338,17 @@ class InventoryModel(QtGui.QStandardItemModel):
         if state != self._hierarchy_view:
             self._hierarchy_view = state
 
-    def get_outdated_item_ids(self):
+    def get_outdated_item_ids(self, ignore_hero=True):
         outdated_item_ids = []
         root_item = self.invisibleRootItem()
         for row in range(root_item.rowCount()):
             group_item = root_item.child(row)
             if group_item.data(VERSION_IS_LATEST_ROLE):
                 continue
+
+            if ignore_hero and group_item.data(VERSION_IS_HERO_ROLE):
+                continue
+
             for idx in range(group_item.rowCount()):
                 item = group_item.child(idx)
                 outdated_item_ids.append(item.data(ITEM_ID_ROLE))
