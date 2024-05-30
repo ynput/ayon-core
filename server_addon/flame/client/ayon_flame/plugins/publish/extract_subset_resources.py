@@ -24,6 +24,8 @@ class ExtractProductResources(publish.Extractor):
     families = ["clip"]
     hosts = ["flame"]
 
+    settings_category = "flame"
+
     # plugin defaults
     keep_original_representation = False
 
