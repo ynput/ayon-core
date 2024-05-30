@@ -57,6 +57,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "traypublisher": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
     "nuke": VersionInfo(0, 2, 0),
+    "substancepainter": VersionInfo(0, 2, 0),
 }
 
 
