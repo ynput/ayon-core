@@ -69,6 +69,8 @@ class Server(threading.Thread):
         self.log.debug(
             f"[{self.timestamp()}] Processing request:\n{pretty}")
 
+        # TODO javascript should not define which module is imported and
+        #   which function is called. It should send predefined requests.
         try:
             module = importlib.import_module(request["module"])
             method = getattr(module, request["method"])
