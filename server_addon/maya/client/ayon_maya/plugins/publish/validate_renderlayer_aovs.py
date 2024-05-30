@@ -5,10 +5,10 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateRenderLayerAOVs(MayaInstancePlugin,
+class ValidateRenderLayerAOVs(plugin.MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validate created AOVs / RenderElement is registered in the database
 

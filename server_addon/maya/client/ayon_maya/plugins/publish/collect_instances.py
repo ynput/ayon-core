@@ -2,10 +2,10 @@ from maya import cmds
 
 import pyblish.api
 from ayon_maya.api.lib import get_all_children
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class CollectNewInstances(MayaInstancePlugin):
+class CollectNewInstances(plugin.MayaInstancePlugin):
     """Gather members for instances and pre-defined attribute
 
     This collector takes into account assets that are associated with

@@ -3,11 +3,11 @@ import os
 import pyblish.api
 from ayon_maya.api import lib
 from ayon_maya.api.gltf import extract_gltf
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds, mel
 
 
-class ExtractGLB(MayaExtractorPlugin):
+class ExtractGLB(plugin.MayaExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract GLB"

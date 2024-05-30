@@ -1,12 +1,12 @@
 import maya.cmds as cmds
 import maya.mel as mel
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 
 
 import pyblish.api
 
 
-class CollectMayaUnits(MayaContextPlugin):
+class CollectMayaUnits(plugin.MayaContextPlugin):
     """Collect Maya's scene units."""
 
     label = "Maya Units"

@@ -2,11 +2,11 @@ import json
 import os
 
 from ayon_maya.api.alembic import extract_alembic
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractAssembly(MayaExtractorPlugin):
+class ExtractAssembly(plugin.MayaExtractorPlugin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals are preserved, but nothing more,

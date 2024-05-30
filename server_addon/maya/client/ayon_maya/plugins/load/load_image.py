@@ -11,7 +11,7 @@ from ayon_core.pipeline.load.utils import get_representation_path_from_context
 from ayon_core.settings import get_project_settings
 from ayon_maya.api.lib import namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -81,7 +81,7 @@ def create_stencil():
     return file, place, stencil, place_stencil
 
 
-class FileNodeLoader(Loader):
+class FileNodeLoader(plugin.Loader):
     """File node loader."""
 
     product_types = {"image", "plate", "render"}

@@ -5,10 +5,10 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateAssemblyName(MayaInstancePlugin,
+class ValidateAssemblyName(plugin.MayaInstancePlugin,
                            OptionalPyblishPluginMixin):
     """ Ensure Assembly name ends with `GRP`
 

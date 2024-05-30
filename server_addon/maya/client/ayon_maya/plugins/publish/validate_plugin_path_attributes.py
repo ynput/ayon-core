@@ -7,11 +7,11 @@ from ayon_core.pipeline.publish import (
 )
 from ayon_maya.api.action import SelectInvalidAction
 from ayon_maya.api.lib import pairwise
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidatePluginPathAttributes(MayaInstancePlugin,
+class ValidatePluginPathAttributes(plugin.MayaInstancePlugin,
                                    OptionalPyblishPluginMixin):
     """
     Validate plug-in path attributes point to existing file paths.

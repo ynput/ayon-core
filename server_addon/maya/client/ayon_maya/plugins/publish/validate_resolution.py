@@ -6,11 +6,11 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.publish import RepairAction
 from ayon_maya.api import lib
 from ayon_maya.api.lib import reset_scene_resolution
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateResolution(MayaInstancePlugin,
+class ValidateResolution(plugin.MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Validate the render resolution setting aligned with DB"""
 

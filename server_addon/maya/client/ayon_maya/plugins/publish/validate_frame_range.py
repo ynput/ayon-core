@@ -5,12 +5,12 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api.lib_rendersetup import get_attr_in_layer, get_attr_overrides
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 from maya.app.renderSetup.model.override import AbsOverride
 
 
-class ValidateFrameRange(MayaInstancePlugin,
+class ValidateFrameRange(plugin.MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Validates the frame ranges.
 

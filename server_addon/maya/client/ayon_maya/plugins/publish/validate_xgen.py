@@ -4,10 +4,10 @@ import maya.cmds as cmds
 import pyblish.api
 import xgenm
 from ayon_core.pipeline.publish import PublishValidationError
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateXgen(MayaInstancePlugin):
+class ValidateXgen(plugin.MayaInstancePlugin):
     """Validate Xgen data."""
 
     label = "Validate Xgen"

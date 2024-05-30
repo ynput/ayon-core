@@ -6,11 +6,11 @@ from ayon_maya.api.lib import (
     maintained_selection,
     suspended_refresh,
 )
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractProxyAlembic(MayaExtractorPlugin):
+class ExtractProxyAlembic(plugin.MayaExtractorPlugin):
     """Produce an alembic for bounding box geometry
     """
 

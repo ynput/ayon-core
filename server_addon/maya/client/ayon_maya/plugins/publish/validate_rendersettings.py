@@ -11,7 +11,7 @@ from ayon_core.pipeline.publish import (
 )
 from ayon_maya.api import lib
 from ayon_maya.api.lib_rendersettings import RenderSettings
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds, mel
 
 
@@ -37,7 +37,7 @@ def get_redshift_image_format_labels():
     return mel.eval("{0}={0}".format(var))
 
 
-class ValidateRenderSettings(MayaInstancePlugin,
+class ValidateRenderSettings(plugin.MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validates the global render settings
 

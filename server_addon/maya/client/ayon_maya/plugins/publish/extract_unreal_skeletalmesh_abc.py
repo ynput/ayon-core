@@ -4,11 +4,11 @@ import os
 
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import maintained_selection, suspended_refresh
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractUnrealSkeletalMeshAbc(MayaExtractorPlugin):
+class ExtractUnrealSkeletalMeshAbc(plugin.MayaExtractorPlugin):
     """Extract Unreal Skeletal Mesh as FBX from Maya. """
 
     label = "Extract Unreal Skeletal Mesh - Alembic"

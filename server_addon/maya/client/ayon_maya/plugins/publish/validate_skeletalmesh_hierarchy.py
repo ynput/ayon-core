@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateSkeletalMeshHierarchy(MayaInstancePlugin,
+class ValidateSkeletalMeshHierarchy(plugin.MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Validates that nodes has common root."""
 

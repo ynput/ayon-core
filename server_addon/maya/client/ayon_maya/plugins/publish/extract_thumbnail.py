@@ -3,10 +3,10 @@ import os
 import tempfile
 
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 
 
-class ExtractThumbnail(MayaExtractorPlugin):
+class ExtractThumbnail(plugin.MayaExtractorPlugin):
     """Extract viewport thumbnail.
 
     Takes review camera and creates a thumbnail based on viewport

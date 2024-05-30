@@ -15,8 +15,8 @@ import six
 from ayon_core.lib import BoolDef, EnumDef
 from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import lib
+from ayon_maya.api import plugin
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader
 from maya import cmds
 
 
@@ -45,7 +45,7 @@ def mark_all_imported(enabled):
                     cmds.deleteAttr(plug)
 
 
-class RenderSetupLoader(Loader):
+class RenderSetupLoader(plugin.Loader):
     """Load json preset for RenderSetup overwriting current one."""
 
     product_types = {"rendersetup"}

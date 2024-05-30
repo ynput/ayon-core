@@ -12,11 +12,11 @@ from ayon_maya.api.lib import (
     set_attribute,
     undo_chunk,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateMeshArnoldAttributes(MayaInstancePlugin,
+class ValidateMeshArnoldAttributes(plugin.MayaInstancePlugin,
                                    OptionalPyblishPluginMixin):
     """Validate the mesh has default Arnold attributes.
 

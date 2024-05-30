@@ -6,10 +6,10 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateSkinclusterDeformerSet(MayaInstancePlugin,
+class ValidateSkinclusterDeformerSet(plugin.MayaInstancePlugin,
                                      OptionalPyblishPluginMixin):
     """Validate skinClusters on meshes have valid member relationships.
 

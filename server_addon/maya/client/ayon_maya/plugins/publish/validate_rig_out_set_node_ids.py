@@ -9,10 +9,10 @@ from ayon_core.pipeline.publish import (
     get_plugin_settings,
 )
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateRigOutSetNodeIds(MayaInstancePlugin,
+class ValidateRigOutSetNodeIds(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validate if deformed shapes have related IDs to the original shapes.
 

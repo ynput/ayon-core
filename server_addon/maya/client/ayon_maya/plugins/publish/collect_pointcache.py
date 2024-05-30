@@ -1,9 +1,9 @@
 import pyblish.api
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class CollectPointcache(MayaInstancePlugin):
+class CollectPointcache(plugin.MayaInstancePlugin):
     """Collect pointcache data for instance."""
 
     order = pyblish.api.CollectorOrder + 0.4

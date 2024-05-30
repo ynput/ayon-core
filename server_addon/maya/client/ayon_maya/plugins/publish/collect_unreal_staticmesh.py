@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 from maya import cmds  # noqa
 import pyblish.api
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from pprint import pformat
 
 
-class CollectUnrealStaticMesh(MayaInstancePlugin):
+class CollectUnrealStaticMesh(plugin.MayaInstancePlugin):
     """Collect Unreal Static Mesh."""
 
     order = pyblish.api.CollectorOrder + 0.2

@@ -1,9 +1,9 @@
 import pyblish.api
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class CollectModelData(MayaInstancePlugin):
+class CollectModelData(plugin.MayaInstancePlugin):
     """Collect model data
 
     Ensures always only a single frame is extracted (current frame).

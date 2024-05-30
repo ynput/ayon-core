@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -15,7 +15,7 @@ def short_name(node):
     return node.rsplit("|", 1)[-1].rsplit(":", 1)[-1]
 
 
-class ValidateShapeDefaultNames(MayaInstancePlugin,
+class ValidateShapeDefaultNames(plugin.MayaInstancePlugin,
                                 OptionalPyblishPluginMixin):
     """Validates that Shape names are using Maya's default format.
 

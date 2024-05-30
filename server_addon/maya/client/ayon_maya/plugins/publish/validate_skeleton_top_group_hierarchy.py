@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateSkeletonTopGroupHierarchy(MayaInstancePlugin,
+class ValidateSkeletonTopGroupHierarchy(plugin.MayaInstancePlugin,
                                         OptionalPyblishPluginMixin):
     """Validates top group hierarchy in the SETs
     Make sure the object inside the SETs are always top

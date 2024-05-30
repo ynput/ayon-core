@@ -6,10 +6,10 @@ import pyblish.api
 
 from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api import fbx
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 
 
-class ExtractSkeletonMesh(MayaExtractorPlugin,
+class ExtractSkeletonMesh(plugin.MayaExtractorPlugin,
                           OptionalPyblishPluginMixin):
     """Extract Rig in FBX format from Maya.
 

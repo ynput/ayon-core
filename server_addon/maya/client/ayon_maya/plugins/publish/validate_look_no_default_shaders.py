@@ -3,11 +3,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateLookNoDefaultShaders(MayaInstancePlugin):
+class ValidateLookNoDefaultShaders(plugin.MayaInstancePlugin):
     """Validate if any node has a connection to a default shader.
 
     This checks whether the look has any members of:

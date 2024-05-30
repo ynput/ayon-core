@@ -6,13 +6,13 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 COLOUR_SPACES = ['sRGB', 'linear', 'auto']
 MIPMAP_EXTENSIONS = ['tdl']
 
 
-class ValidateMvLookContents(MayaInstancePlugin,
+class ValidateMvLookContents(plugin.MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     order = ValidateContentsOrder
     families = ['mvLook']

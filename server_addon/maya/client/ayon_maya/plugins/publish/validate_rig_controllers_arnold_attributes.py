@@ -6,11 +6,11 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateRigControllersArnoldAttributes(MayaInstancePlugin,
+class ValidateRigControllersArnoldAttributes(plugin.MayaInstancePlugin,
                                              OptionalPyblishPluginMixin):
     """Validate rig control curves have no keyable arnold attributes.
 

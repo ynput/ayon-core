@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateYetiRigInputShapesInInstance(MayaInstancePlugin,
+class ValidateYetiRigInputShapesInInstance(plugin.MayaInstancePlugin,
                                            OptionalPyblishPluginMixin):
     """Validate if all input nodes are part of the instance's hierarchy"""
 

@@ -3,11 +3,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     RepairContextAction,
 )
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateLookDefaultShadersConnections(MayaContextPlugin):
+class ValidateLookDefaultShadersConnections(plugin.MayaContextPlugin):
     """Validate default shaders in the scene have their default connections.
 
     For example the standardSurface1 or lambert1 (maya 2023 and before) could

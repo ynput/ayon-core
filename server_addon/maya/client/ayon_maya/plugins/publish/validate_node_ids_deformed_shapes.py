@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateNodeIdsDeformedShape(MayaInstancePlugin):
+class ValidateNodeIdsDeformedShape(plugin.MayaInstancePlugin):
     """Validate if deformed shapes have related IDs to the original shapes.
 
     When a deformer is applied in the scene on a referenced mesh that already

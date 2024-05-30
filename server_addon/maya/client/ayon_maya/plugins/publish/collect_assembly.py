@@ -11,10 +11,10 @@ import pyblish.api
 from maya import cmds, mel
 from ayon_maya import api
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class CollectAssembly(MayaInstancePlugin):
+class CollectAssembly(plugin.MayaInstancePlugin):
     """Collect all relevant assembly items
 
     Collected data:

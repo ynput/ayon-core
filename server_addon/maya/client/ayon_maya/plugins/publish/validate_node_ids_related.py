@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import (
     ValidatePipelineOrder,
 )
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
 def is_valid_uuid(value) -> bool:
@@ -22,7 +22,7 @@ def is_valid_uuid(value) -> bool:
     return True
 
 
-class ValidateNodeIDsRelated(MayaInstancePlugin,
+class ValidateNodeIDsRelated(plugin.MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validate nodes have a related `cbId` to the instance.data[folderPath]"""
 

@@ -1,11 +1,11 @@
 import os
 
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractMultiverseUsdComposition(MayaExtractorPlugin):
+class ExtractMultiverseUsdComposition(plugin.MayaExtractorPlugin):
     """Extractor of Multiverse USD Composition data.
 
     This will extract settings for a Multiverse Write Composition operation:

@@ -4,10 +4,10 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateAssemblyNamespaces(MayaInstancePlugin,
+class ValidateAssemblyNamespaces(plugin.MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
     """Ensure namespaces are not nested.
 

@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api.lib import is_visible
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateArnoldSceneSource(MayaInstancePlugin):
+class ValidateArnoldSceneSource(plugin.MayaInstancePlugin):
     """Validate Arnold Scene Source.
 
     Ensure no nodes are hidden.

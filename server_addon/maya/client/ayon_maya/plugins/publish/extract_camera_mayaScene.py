@@ -7,7 +7,7 @@ import os
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import publish
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -80,7 +80,7 @@ def unlock(plug):
             cmds.disconnectAttr(source, destination)
 
 
-class ExtractCameraMayaScene(MayaExtractorPlugin,
+class ExtractCameraMayaScene(plugin.MayaExtractorPlugin,
                              publish.OptionalPyblishPluginMixin):
     """Extract a Camera as Maya Scene.
 

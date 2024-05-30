@@ -4,11 +4,11 @@ import os
 
 from ayon_core.pipeline import publish
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractModel(MayaExtractorPlugin,
+class ExtractModel(plugin.MayaExtractorPlugin,
                    publish.OptionalPyblishPluginMixin):
     """Extract as Model (Maya Scene).
 

@@ -3,10 +3,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateInstanceHasMembers(MayaInstancePlugin):
+class ValidateInstanceHasMembers(plugin.MayaInstancePlugin):
     """Validates instance objectSet has *any* members."""
 
     order = ValidateContentsOrder

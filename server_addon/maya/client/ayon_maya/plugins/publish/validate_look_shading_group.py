@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateShadingEngine(MayaInstancePlugin,
+class ValidateShadingEngine(plugin.MayaInstancePlugin,
                             OptionalPyblishPluginMixin):
     """Validate all shading engines are named after the surface material.
 

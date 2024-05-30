@@ -5,7 +5,7 @@ from contextlib import contextmanager
 
 import pyblish.api
 from ayon_maya.api import fbx
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
@@ -19,7 +19,7 @@ def renamed(original_name, renamed_name):
         cmds.rename(renamed_name, original_name)
 
 
-class ExtractUnrealSkeletalMeshFbx(MayaExtractorPlugin):
+class ExtractUnrealSkeletalMeshFbx(plugin.MayaExtractorPlugin):
     """Extract Unreal Skeletal Mesh as FBX from Maya. """
 
     order = pyblish.api.ExtractorOrder - 0.1

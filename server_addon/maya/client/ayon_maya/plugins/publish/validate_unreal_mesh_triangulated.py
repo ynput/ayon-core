@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateUnrealMeshTriangulated(MayaInstancePlugin,
+class ValidateUnrealMeshTriangulated(plugin.MayaInstancePlugin,
                                      OptionalPyblishPluginMixin):
     """Validate if mesh is made of triangles for Unreal Engine"""
 

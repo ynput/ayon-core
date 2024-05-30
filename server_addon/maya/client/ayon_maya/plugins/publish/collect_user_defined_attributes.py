@@ -1,9 +1,9 @@
 from maya import cmds
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 import pyblish.api
 
 
-class CollectUserDefinedAttributes(MayaInstancePlugin):
+class CollectUserDefinedAttributes(plugin.MayaInstancePlugin):
     """Collect user defined attributes for nodes in instance."""
 
     order = pyblish.api.CollectorOrder + 0.45

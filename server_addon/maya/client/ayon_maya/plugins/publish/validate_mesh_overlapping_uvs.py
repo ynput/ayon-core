@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 from six.moves import xrange
 
@@ -235,7 +235,7 @@ class GetOverlappingUVs(object):
         return faces
 
 
-class ValidateMeshHasOverlappingUVs(MayaInstancePlugin,
+class ValidateMeshHasOverlappingUVs(plugin.MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """ Validate the current mesh overlapping UVs.
 

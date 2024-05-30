@@ -6,11 +6,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     context_plugin_should_run,
 )
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateCurrentRenderLayerIsRenderable(MayaContextPlugin,
+class ValidateCurrentRenderLayerIsRenderable(plugin.MayaContextPlugin,
                                              OptionalPyblishPluginMixin):
     """Validate if current render layer has a renderable camera.
 

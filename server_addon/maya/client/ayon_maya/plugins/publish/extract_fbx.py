@@ -5,11 +5,11 @@ import maya.mel as mel  # noqa
 import pyblish.api
 from ayon_maya.api import fbx
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractFBX(MayaExtractorPlugin):
+class ExtractFBX(plugin.MayaExtractorPlugin):
     """Extract FBX from Maya.
 
     This extracts reproducible FBX exports ignoring any of the

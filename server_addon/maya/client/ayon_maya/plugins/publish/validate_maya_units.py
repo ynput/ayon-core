@@ -6,10 +6,10 @@ from ayon_core.pipeline.publish import (
     RepairContextAction,
     ValidateSceneOrder,
 )
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 
 
-class ValidateMayaUnits(MayaContextPlugin,
+class ValidateMayaUnits(plugin.MayaContextPlugin,
                         OptionalPyblishPluginMixin):
     """Check if the Maya units are set correct"""
 

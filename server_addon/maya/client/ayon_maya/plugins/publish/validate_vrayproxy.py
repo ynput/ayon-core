@@ -3,10 +3,10 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateVrayProxy(MayaInstancePlugin,
+class ValidateVrayProxy(plugin.MayaInstancePlugin,
                         OptionalPyblishPluginMixin):
 
     order = pyblish.api.ValidatorOrder

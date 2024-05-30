@@ -5,13 +5,13 @@ import maya.cmds as cmds
 import qargparse
 from ayon_api import get_representation_by_id
 from ayon_core.pipeline import get_representation_path
+from ayon_maya.api import plugin
 from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader
 from maya import mel
 
 
-class MultiverseUsdOverLoader(Loader):
+class MultiverseUsdOverLoader(plugin.Loader):
     """Reference file"""
 
     product_types = {"mvUsdOverride"}

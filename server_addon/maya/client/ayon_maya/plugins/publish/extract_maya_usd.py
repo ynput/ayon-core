@@ -5,7 +5,7 @@ import os
 import pyblish.api
 import six
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
@@ -111,7 +111,7 @@ def usd_export_attributes(nodes, attrs=None, attr_prefixes=None, mapping=None):
         dg_mod.undoIt()
 
 
-class ExtractMayaUsd(MayaExtractorPlugin):
+class ExtractMayaUsd(plugin.MayaExtractorPlugin):
     """Extractor for Maya USD Asset data.
 
     Upon publish a .usd (or .usdz) asset file will typically be written.

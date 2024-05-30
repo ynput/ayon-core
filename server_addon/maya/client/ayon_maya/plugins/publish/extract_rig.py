@@ -3,11 +3,11 @@
 import os
 
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractRig(MayaExtractorPlugin):
+class ExtractRig(plugin.MayaExtractorPlugin):
     """Extract rig as Maya Scene."""
 
     label = "Extract Rig (Maya Scene)"

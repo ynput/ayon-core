@@ -8,11 +8,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     RepairContextAction,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateVrayReferencedAOVs(MayaInstancePlugin,
+class ValidateVrayReferencedAOVs(plugin.MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
     """Validate whether the V-Ray Render Elements (AOVs) include references.
 

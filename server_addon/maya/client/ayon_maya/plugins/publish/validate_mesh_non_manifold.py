@@ -5,7 +5,7 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds, mel
 
 
@@ -100,7 +100,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateMeshNonManifold(MayaInstancePlugin,
+class ValidateMeshNonManifold(plugin.MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Ensure that meshes don't have non-manifold edges or vertices
 

@@ -7,11 +7,11 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     context_plugin_should_run,
 )
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateVRayTranslatorEnabled(MayaContextPlugin,
+class ValidateVRayTranslatorEnabled(plugin.MayaContextPlugin,
                                     OptionalPyblishPluginMixin):
     """Validate VRay Translator settings for extracting vrscenes."""
 

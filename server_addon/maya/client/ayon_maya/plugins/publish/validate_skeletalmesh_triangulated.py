@@ -6,11 +6,11 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api.action import SelectInvalidAction
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateSkeletalMeshTriangulated(MayaInstancePlugin):
+class ValidateSkeletalMeshTriangulated(plugin.MayaInstancePlugin):
     """Validates that the geometry has been triangulated."""
 
     order = ValidateContentsOrder

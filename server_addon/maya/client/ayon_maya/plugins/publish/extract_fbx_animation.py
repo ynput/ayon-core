@@ -4,11 +4,11 @@ import os
 import pyblish.api
 from ayon_maya.api import fbx
 from ayon_maya.api.lib import get_namespace, namespaced, strip_namespace
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractFBXAnimation(MayaExtractorPlugin):
+class ExtractFBXAnimation(plugin.MayaExtractorPlugin):
     """Extract Rig in FBX format from Maya.
 
     This extracts the rig in fbx with the constraints

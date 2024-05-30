@@ -3,10 +3,10 @@ import os
 from maya import cmds
 
 from ayon_maya.api.lib import maintained_selection
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 
 
-class ExtractMultiverseLook(MayaExtractorPlugin):
+class ExtractMultiverseLook(plugin.MayaExtractorPlugin):
     """Extractor for Multiverse USD look data.
 
     This will extract:

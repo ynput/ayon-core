@@ -8,10 +8,11 @@ import os
 
 from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
+from ayon_maya.api import plugin
+from ayon_maya.api.plugin import get_load_color_for_product_type
 
 
-class LoadVDBtoArnold(Loader):
+class LoadVDBtoArnold(plugin.Loader):
     """Load OpenVDB for Arnold in aiVolume"""
 
     product_types = {"vdbcache"}

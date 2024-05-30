@@ -5,11 +5,11 @@ import os
 import pyblish.api
 from ayon_maya.api import fbx
 from ayon_maya.api.lib import maintained_selection, parent_nodes
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 
-class ExtractUnrealStaticMesh(MayaExtractorPlugin):
+class ExtractUnrealStaticMesh(plugin.MayaExtractorPlugin):
     """Extract Unreal Static Mesh as FBX from Maya. """
 
     order = pyblish.api.ExtractorOrder - 0.1

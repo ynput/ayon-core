@@ -8,10 +8,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateUnrealStaticMeshName(MayaInstancePlugin,
+class ValidateUnrealStaticMeshName(plugin.MayaInstancePlugin,
                                    OptionalPyblishPluginMixin):
     """Validate name of Unreal Static Mesh
 

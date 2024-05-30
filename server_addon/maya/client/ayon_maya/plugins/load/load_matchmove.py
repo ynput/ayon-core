@@ -1,8 +1,8 @@
-from ayon_maya.api.plugin import Loader
+from ayon_maya.api import plugin
 from maya import mel
 
 
-class MatchmoveLoader(Loader):
+class MatchmoveLoader(plugin.Loader):
     """
     This will run matchmove script to create track in scene.
 

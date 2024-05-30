@@ -1,10 +1,10 @@
 import pyblish.api
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class CollectRenderLayerAOVS(MayaInstancePlugin):
+class CollectRenderLayerAOVS(plugin.MayaInstancePlugin):
     """Collect all render layer's AOVs / Render Elements that will render.
 
     This collector is important to be able to Extend Frames.

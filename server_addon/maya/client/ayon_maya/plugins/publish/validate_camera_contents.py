@@ -5,10 +5,10 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateContentsOrder,
     OptionalPyblishPluginMixin)
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 
 
-class ValidateCameraContents(MayaInstancePlugin,
+class ValidateCameraContents(plugin.MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validates Camera instance contents.
 

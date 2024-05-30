@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateUnrealUpAxis(MayaContextPlugin,
+class ValidateUnrealUpAxis(plugin.MayaContextPlugin,
                            OptionalPyblishPluginMixin):
     """Validate if Z is set as up axis in Maya"""
 

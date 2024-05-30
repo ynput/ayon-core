@@ -6,11 +6,11 @@ from ayon_core.pipeline.publish import (
     ValidateMeshOrder,
 )
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateMeshSingleUVSet(MayaInstancePlugin,
+class ValidateMeshSingleUVSet(plugin.MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Warn on multiple UV sets existing for each polygon mesh.
 

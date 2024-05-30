@@ -1,8 +1,8 @@
 import pyblish.api
-from ayon_maya.api.plugin import MayaContextPlugin
+from ayon_maya.api import plugin
 
 
-class IncrementCurrentFileDeadline(MayaContextPlugin):
+class IncrementCurrentFileDeadline(plugin.MayaContextPlugin):
     """Increment the current file.
 
     Saves the current maya scene with an increased version number.

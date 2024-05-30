@@ -6,11 +6,11 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateLookIdReferenceEdits(MayaInstancePlugin):
+class ValidateLookIdReferenceEdits(plugin.MayaInstancePlugin):
     """Validate nodes in look have no reference edits to cbId.
 
     Note:

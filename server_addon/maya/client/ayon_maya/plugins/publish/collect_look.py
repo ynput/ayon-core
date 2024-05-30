@@ -6,7 +6,7 @@ import re
 
 import pyblish.api
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds  # noqa
 
 SHAPE_ATTRS = {"castsShadows",
@@ -266,7 +266,7 @@ def get_file_node_files(node):
     return result
 
 
-class CollectLook(MayaInstancePlugin):
+class CollectLook(plugin.MayaInstancePlugin):
     """Collect look data for instance.
 
     For the shapes/transforms of the referenced object to collect look for

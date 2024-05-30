@@ -4,11 +4,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateMeshLaminaFaces(MayaInstancePlugin,
+class ValidateMeshLaminaFaces(plugin.MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validate meshes don't have lamina faces.
 

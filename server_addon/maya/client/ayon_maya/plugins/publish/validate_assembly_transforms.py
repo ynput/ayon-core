@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     RepairAction,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateAssemblyModelTransforms(MayaInstancePlugin,
+class ValidateAssemblyModelTransforms(plugin.MayaInstancePlugin,
                                       OptionalPyblishPluginMixin):
     """Verify only root nodes of the loaded asset have transformations.
 

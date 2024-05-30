@@ -1,11 +1,11 @@
 import json
 
 from ayon_core.pipeline import publish
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractGPUCache(MayaExtractorPlugin,
+class ExtractGPUCache(plugin.MayaExtractorPlugin,
                       publish.OptionalPyblishPluginMixin):
     """Extract the content of the instance to a GPU cache file."""
 

@@ -3,12 +3,11 @@ import os
 from collections import defaultdict
 
 import arnold
-from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import lib, plugin
 from maya import cmds
 
 
-class ExtractArnoldSceneSource(MayaExtractorPlugin):
+class ExtractArnoldSceneSource(plugin.MayaExtractorPlugin):
     """Extract the content of the instance to an Arnold Scene Source file."""
 
     label = "Extract Arnold Scene Source"

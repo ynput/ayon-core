@@ -8,7 +8,8 @@ from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
+from ayon_maya.api import plugin
+from ayon_maya.api.plugin import get_load_color_for_product_type
 from ayon_maya.api.yeti import create_yeti_variable
 from maya import cmds
 
@@ -40,7 +41,7 @@ def set_attribute(node, attr, value):
     lib.set_attribute(node, attr, value)
 
 
-class YetiCacheLoader(Loader):
+class YetiCacheLoader(plugin.Loader):
     """Load Yeti Cache with one or more Yeti nodes"""
 
     product_types = {"yeticache", "yetiRig"}

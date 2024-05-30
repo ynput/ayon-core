@@ -8,11 +8,11 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
 )
 from ayon_maya.api.lib_rendersettings import RenderSettings
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateRenderSingleCamera(MayaInstancePlugin,
+class ValidateRenderSingleCamera(plugin.MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
     """Validate renderable camera count for layer and <Camera> token.
 

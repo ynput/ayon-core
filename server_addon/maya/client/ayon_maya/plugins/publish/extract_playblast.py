@@ -2,11 +2,11 @@ import os
 
 import clique
 from ayon_maya.api import lib
-from ayon_maya.api.plugin import MayaExtractorPlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractPlayblast(MayaExtractorPlugin):
+class ExtractPlayblast(plugin.MayaExtractorPlugin):
     """Extract viewport playblast.
 
     Takes review camera and creates review Quicktime video based on viewport

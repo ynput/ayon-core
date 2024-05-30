@@ -5,11 +5,11 @@ from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateMeshOrder,
 )
-from ayon_maya.api.plugin import MayaInstancePlugin
+from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateShapeRenderStats(MayaInstancePlugin,
+class ValidateShapeRenderStats(plugin.MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure all render stats are set to the default values."""
 
