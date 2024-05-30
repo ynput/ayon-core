@@ -1,26 +1,23 @@
 import os
 
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateContentsOrder,
+)
+from ayon_maya.api.action import SelectInvalidAction
+from ayon_maya.api.lib import pairwise
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
 
-from ayon_maya.api.lib import pairwise
-from ayon_maya.api.action import SelectInvalidAction
-from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
-)
-
-
-class ValidatePluginPathAttributes(pyblish.api.InstancePlugin,
+class ValidatePluginPathAttributes(MayaInstancePlugin,
                                    OptionalPyblishPluginMixin):
     """
     Validate plug-in path attributes point to existing file paths.
     """
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ["workfile"]
     label = "Plug-in Path Attributes"
     actions = [SelectInvalidAction]

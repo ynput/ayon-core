@@ -1,17 +1,16 @@
 import pyblish.api
-
 from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateVrayProxy(pyblish.api.InstancePlugin,
+class ValidateVrayProxy(MayaInstancePlugin,
                         OptionalPyblishPluginMixin):
 
     order = pyblish.api.ValidatorOrder
     label = "VRay Proxy Settings"
-    hosts = ["maya"]
     families = ["vrayproxy"]
     optional = False
 

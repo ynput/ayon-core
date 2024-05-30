@@ -1,16 +1,12 @@
 import maya.cmds as cmds
-
-from ayon_core.pipeline import (
-    load,
-    remove_container
-)
-
-from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.lib import unique_namespace
+from ayon_core.pipeline import remove_container
 from ayon_maya.api import setdress
+from ayon_maya.api.lib import unique_namespace
+from ayon_maya.api.pipeline import containerise
+from ayon_maya.api.plugin import Loader
 
 
-class AssemblyLoader(load.LoaderPlugin):
+class AssemblyLoader(Loader):
 
     product_types = {"assembly"}
     representations = {"json"}

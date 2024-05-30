@@ -1,10 +1,8 @@
-from maya import cmds
-
 import pyblish.api
-
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 from ayon_maya.api.yeti import get_yeti_user_variables
-
+from maya import cmds
 
 SETTINGS = {
     # Preview
@@ -24,7 +22,7 @@ SETTINGS = {
 }
 
 
-class CollectYetiCache(pyblish.api.InstancePlugin):
+class CollectYetiCache(MayaInstancePlugin):
     """Collect all information of the Yeti caches
 
     The information contains the following attributes per Yeti node
@@ -41,7 +39,6 @@ class CollectYetiCache(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.45
     label = "Collect Yeti Cache"
     families = ["yetiRig", "yeticache", "yeticacheUE"]
-    hosts = ["maya"]
 
     def process(self, instance):
 

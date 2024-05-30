@@ -1,12 +1,11 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -16,7 +15,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateNoUnknownNodes(pyblish.api.InstancePlugin,
+class ValidateNoUnknownNodes(MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Checks to see if there are any unknown nodes in the instance.
 

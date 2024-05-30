@@ -1,12 +1,13 @@
-import pyblish.api
-from maya import cmds
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    PublishValidationError, ValidateContentsOrder)
+    PublishValidationError,
+    ValidateContentsOrder,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateSingleShader(pyblish.api.InstancePlugin):
+class ValidateSingleShader(MayaInstancePlugin):
     """Validate all nurbsSurfaces and meshes have exactly one shader assigned.
 
     This will error if a shape has no shaders or more than one shader.
@@ -15,7 +16,6 @@ class ValidateSingleShader(pyblish.api.InstancePlugin):
 
     order = ValidateContentsOrder
     families = ['look']
-    hosts = ['maya']
     label = 'Look Single Shader Per Shape'
     actions = [ayon_maya.api.action.SelectInvalidAction]
 

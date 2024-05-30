@@ -1,19 +1,16 @@
+import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    RepairAction,
+    ValidateContentsOrder,
+)
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
 
-from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    RepairAction,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
-)
-
-from ayon_maya.api import lib
-import ayon_maya.api.action
-
-
-class ValidateRigControllersArnoldAttributes(pyblish.api.InstancePlugin,
+class ValidateRigControllersArnoldAttributes(MayaInstancePlugin,
                                              OptionalPyblishPluginMixin):
     """Validate rig control curves have no keyable arnold attributes.
 
@@ -35,7 +32,6 @@ class ValidateRigControllersArnoldAttributes(pyblish.api.InstancePlugin,
     """
     order = ValidateContentsOrder + 0.05
     label = "Rig Controllers (Arnold Attributes)"
-    hosts = ["maya"]
     families = ["rig"]
     optional = False
     actions = [RepairAction,

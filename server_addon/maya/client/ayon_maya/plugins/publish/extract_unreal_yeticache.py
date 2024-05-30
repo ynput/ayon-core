@@ -1,18 +1,16 @@
 import os
 
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from maya import cmds
 
-from ayon_core.pipeline import publish
 
-
-class ExtractUnrealYetiCache(publish.Extractor):
+class ExtractUnrealYetiCache(MayaExtractorPlugin):
     """Producing Yeti cache files using scene time range.
 
     This will extract Yeti cache file sequence and fur settings.
     """
 
     label = "Extract Yeti Cache (Unreal)"
-    hosts = ["maya"]
     families = ["yeticacheUE"]
 
     def process(self, instance):

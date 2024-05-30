@@ -1,11 +1,11 @@
-import os
 import json
+import os
 
 import maya.app.renderSetup.model.renderSetup as renderSetup
-from ayon_core.pipeline import publish
+from ayon_maya.api.plugin import MayaExtractorPlugin
 
 
-class ExtractRenderSetup(publish.Extractor):
+class ExtractRenderSetup(MayaExtractorPlugin):
     """
     Produce renderSetup template file
 
@@ -13,7 +13,6 @@ class ExtractRenderSetup(publish.Extractor):
     """
 
     label = "Extract RenderSetup"
-    hosts = ["maya"]
     families = ["rendersetup"]
 
     def process(self, instance):

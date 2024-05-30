@@ -1,19 +1,13 @@
 # -*- coding: utf-8 -*-
 import maya.cmds as cmds
-
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
-)
+from ayon_core.pipeline import get_representation_path
 from ayon_core.pipeline.load import get_representation_path_from_context
-from ayon_maya.api.lib import (
-    namespaced,
-    unique_namespace
-)
+from ayon_maya.api.lib import namespaced, unique_namespace
 from ayon_maya.api.pipeline import containerise
+from ayon_maya.api.plugin import Loader
 
 
-class MayaUsdLoader(load.LoaderPlugin):
+class MayaUsdLoader(Loader):
     """Read USD data in a Maya USD Proxy"""
 
     product_types = {"model", "usd", "pointcache", "animation"}

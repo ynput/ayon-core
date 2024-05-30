@@ -1,18 +1,16 @@
 import os
 
-import pyblish.api
-
-from maya import cmds
-
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateRenderImageRule(pyblish.api.InstancePlugin,
+class ValidateRenderImageRule(MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validates Maya Workpace "images" file rule matches project settings.
 
@@ -24,7 +22,6 @@ class ValidateRenderImageRule(pyblish.api.InstancePlugin,
 
     order = ValidateContentsOrder
     label = "Images File Rule (Workspace)"
-    hosts = ["maya"]
     families = ["renderlayer"]
     actions = [RepairAction]
     optional = False

@@ -1,10 +1,11 @@
 import os
 
 import maya.cmds as cmds
-import pyblish.api
-
 from ayon_core.pipeline.publish import (
-    PublishValidationError, ValidatePipelineOrder)
+    PublishValidationError,
+    ValidatePipelineOrder,
+)
+from ayon_maya.api.plugin import MayaContextPlugin
 
 
 def is_subdir(path, root_dir):
@@ -26,11 +27,10 @@ def is_subdir(path, root_dir):
         return True
 
 
-class ValidateSceneSetWorkspace(pyblish.api.ContextPlugin):
+class ValidateSceneSetWorkspace(MayaContextPlugin):
     """Validate the scene is inside the currently set Maya workspace"""
 
     order = ValidatePipelineOrder
-    hosts = ['maya']
     label = 'Maya Workspace Set'
 
     def process(self, context):

@@ -32,24 +32,23 @@ Provides:
     instance    -> pixelAspect
 """
 
+import json
 import os
 import platform
-import json
-
-from maya import cmds
 
 import pyblish.api
-
-from ayon_core.pipeline import KnownPublishError
 from ayon_core.lib import get_formatted_current_time
-from ayon_maya.api.lib_renderproducts import (
-    get as get_layer_render_products,
-    UnsupportedRendererException
-)
+from ayon_core.pipeline import KnownPublishError
 from ayon_maya.api import lib
+from ayon_maya.api.lib_renderproducts import (
+    UnsupportedRendererException,
+    get as get_layer_render_products,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class CollectMayaRender(pyblish.api.InstancePlugin):
+class CollectMayaRender(MayaInstancePlugin):
     """Gather all publishable render layers from renderSetup."""
 
     order = pyblish.api.CollectorOrder + 0.01

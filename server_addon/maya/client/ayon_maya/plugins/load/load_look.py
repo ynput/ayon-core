@@ -3,15 +3,13 @@
 import json
 from collections import defaultdict
 
-from qtpy import QtWidgets
-from ayon_api import get_representation_by_name
-
-from ayon_core.pipeline import get_representation_path
 import ayon_maya.api.plugin
+from ayon_api import get_representation_by_name
+from ayon_core.pipeline import get_representation_path
+from ayon_core.tools.utils import ScrollMessageBox
 from ayon_maya.api import lib
 from ayon_maya.api.lib import get_reference_node
-
-from ayon_core.tools.utils import ScrollMessageBox
+from qtpy import QtWidgets
 
 
 class LookLoader(ayon_maya.api.plugin.ReferenceLoader):

@@ -1,13 +1,11 @@
 import os
 import re
 
-from maya import cmds
-
 import pyblish.api
-
-from ayon_maya.api import lib
 from ayon_core.pipeline.publish import KnownPublishError
-
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 SETTINGS = {"renderDensity",
             "renderWidth",
@@ -17,13 +15,12 @@ SETTINGS = {"renderDensity",
             "cbId"}
 
 
-class CollectYetiRig(pyblish.api.InstancePlugin):
+class CollectYetiRig(MayaInstancePlugin):
     """Collect all information of the Yeti Rig"""
 
     order = pyblish.api.CollectorOrder + 0.4
     label = "Collect Yeti Rig"
     families = ["yetiRig"]
-    hosts = ["maya"]
 
     def process(self, instance):
 

@@ -1,29 +1,28 @@
 import os
 from collections import OrderedDict
 
-from maya import cmds
-
-from ayon_core.pipeline import publish
+from ayon_core.lib import (
+    BoolDef,
+    EnumDef,
+    NumberDef,
+    TextDef,
+    UILabelDef,
+    UISeparatorDef,
+)
+from ayon_core.pipeline import KnownPublishError
+from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
     get_all_children,
-    suspended_refresh,
+    iter_visible_nodes_in_range,
     maintained_selection,
-    iter_visible_nodes_in_range
+    suspended_refresh,
 )
-from ayon_core.lib import (
-    BoolDef,
-    TextDef,
-    NumberDef,
-    EnumDef,
-    UISeparatorDef,
-    UILabelDef,
-)
-from ayon_core.pipeline.publish import AYONPyblishPluginMixin
-from ayon_core.pipeline import KnownPublishError
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
-class ExtractAlembic(publish.Extractor, AYONPyblishPluginMixin):
+class ExtractAlembic(MayaExtractorPlugin, AYONPyblishPluginMixin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals, uvs, creases are preserved, but nothing more,

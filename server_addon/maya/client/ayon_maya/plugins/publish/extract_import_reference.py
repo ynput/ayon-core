@@ -1,18 +1,16 @@
 import os
 import sys
-
-from maya import cmds
-
-import pyblish.api
 import tempfile
 
+import pyblish.api
 from ayon_core.lib import run_subprocess
-from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
-class ExtractImportReference(publish.Extractor,
+class ExtractImportReference(MayaExtractorPlugin,
                              OptionalPyblishPluginMixin):
     """
 
@@ -24,7 +22,6 @@ class ExtractImportReference(publish.Extractor,
 
     label = "Extract Import Reference"
     order = pyblish.api.ExtractorOrder - 0.48
-    hosts = ["maya"]
     families = ["renderlayer", "workfile"]
     optional = True
     tmp_format = "_tmp"

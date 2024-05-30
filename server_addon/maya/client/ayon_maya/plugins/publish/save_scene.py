@@ -1,18 +1,16 @@
 import pyblish.api
 from ayon_core.pipeline.workfile.lock_workfile import (
     is_workfile_lock_enabled,
-    remove_workfile_lock
+    remove_workfile_lock,
 )
+from ayon_maya.api.plugin import MayaContextPlugin
 
 
-class SaveCurrentScene(pyblish.api.ContextPlugin):
-    """Save current scene
-
-    """
+class SaveCurrentScene(MayaContextPlugin):
+    """Save current scene."""
 
     label = "Save current file"
     order = pyblish.api.ExtractorOrder - 0.49
-    hosts = ["maya"]
     families = ["renderlayer", "workfile"]
 
     def process(self, context):

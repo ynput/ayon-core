@@ -1,14 +1,13 @@
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateContentsOrder,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
-from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
-)
 
-
-class ValidateYetiRenderScriptCallbacks(pyblish.api.InstancePlugin,
+class ValidateYetiRenderScriptCallbacks(MayaInstancePlugin,
                                         OptionalPyblishPluginMixin):
     """Check if the render script callbacks will be used during the rendering
 
@@ -27,7 +26,6 @@ class ValidateYetiRenderScriptCallbacks(pyblish.api.InstancePlugin,
 
     order = ValidateContentsOrder
     label = "Yeti Render Script Callbacks"
-    hosts = ["maya"]
     families = ["renderlayer"]
     optional = False
 

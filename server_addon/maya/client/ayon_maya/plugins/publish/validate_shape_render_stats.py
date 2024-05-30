@@ -1,22 +1,19 @@
-import pyblish.api
-
-from maya import cmds
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateMeshOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateShapeRenderStats(pyblish.api.InstancePlugin,
+class ValidateShapeRenderStats(MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure all render stats are set to the default values."""
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Shape Default Render Stats'
     actions = [ayon_maya.api.action.SelectInvalidAction,

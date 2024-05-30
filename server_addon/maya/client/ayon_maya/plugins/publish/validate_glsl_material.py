@@ -1,15 +1,15 @@
 import os
+
+from ayon_core.pipeline import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+)
+from ayon_core.pipeline.publish import RepairAction, ValidateContentsOrder
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
-from ayon_core.pipeline.publish import (
-    RepairAction,
-    ValidateContentsOrder
-)
-from ayon_core.pipeline import PublishValidationError, OptionalPyblishPluginMixin
 
-
-class ValidateGLSLMaterial(pyblish.api.InstancePlugin,
+class ValidateGLSLMaterial(MayaInstancePlugin,
                            OptionalPyblishPluginMixin):
     """
     Validate if the asset uses GLSL Shader
@@ -17,7 +17,6 @@ class ValidateGLSLMaterial(pyblish.api.InstancePlugin,
 
     order = ValidateContentsOrder + 0.1
     families = ['gltf']
-    hosts = ['maya']
     label = 'GLSL Shader for GLTF'
     actions = [RepairAction]
     optional = True

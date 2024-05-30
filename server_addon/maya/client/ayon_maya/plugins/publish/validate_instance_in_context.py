@@ -2,17 +2,17 @@
 """Validate if instance asset is the same as context asset."""
 from __future__ import absolute_import
 
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateInstanceInContext(pyblish.api.InstancePlugin,
+class ValidateInstanceInContext(MayaInstancePlugin,
                                 OptionalPyblishPluginMixin):
     """Validator to check if instance asset match context asset.
 
@@ -26,7 +26,6 @@ class ValidateInstanceInContext(pyblish.api.InstancePlugin,
     order = ValidateContentsOrder
     label = "Instance in same Context"
     optional = True
-    hosts = ["maya"]
     actions = [
         ayon_maya.api.action.SelectInvalidAction, RepairAction
     ]

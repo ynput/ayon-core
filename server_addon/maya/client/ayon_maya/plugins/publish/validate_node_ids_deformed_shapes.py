@@ -1,13 +1,15 @@
-import pyblish.api
+import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    PublishValidationError,
+    RepairAction,
+    ValidateContentsOrder,
+)
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import ayon_maya.api.action
-from ayon_maya.api import lib
-from ayon_core.pipeline.publish import (
-    PublishValidationError, RepairAction, ValidateContentsOrder)
 
-
-class ValidateNodeIdsDeformedShape(pyblish.api.InstancePlugin):
+class ValidateNodeIdsDeformedShape(MayaInstancePlugin):
     """Validate if deformed shapes have related IDs to the original shapes.
 
     When a deformer is applied in the scene on a referenced mesh that already
@@ -19,7 +21,6 @@ class ValidateNodeIdsDeformedShape(pyblish.api.InstancePlugin):
 
     order = ValidateContentsOrder
     families = ['look']
-    hosts = ['maya']
     label = 'Deformed shape ids'
     actions = [
         ayon_maya.api.action.SelectInvalidAction,

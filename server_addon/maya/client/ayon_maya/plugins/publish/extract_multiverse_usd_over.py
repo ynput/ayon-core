@@ -1,12 +1,11 @@
 import os
 
-from ayon_core.pipeline import publish
 from ayon_maya.api.lib import maintained_selection
-
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from maya import cmds
 
 
-class ExtractMultiverseUsdOverride(publish.Extractor):
+class ExtractMultiverseUsdOverride(MayaExtractorPlugin):
     """Extractor for Multiverse USD Override data.
 
     This will extract settings for a Multiverse Write Override operation:
@@ -22,7 +21,6 @@ class ExtractMultiverseUsdOverride(publish.Extractor):
     """
 
     label = "Extract Multiverse USD Override"
-    hosts = ["maya"]
     families = ["mvUsdOverride"]
     scene_type = "usd"
     # Order of `fileFormat` must match create_multiverse_usd_over.py

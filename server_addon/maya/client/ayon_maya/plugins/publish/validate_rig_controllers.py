@@ -1,18 +1,16 @@
+import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    RepairAction,
+    ValidateContentsOrder,
+)
+from ayon_maya.api.lib import undo_chunk
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
 
-from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    RepairAction,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
-)
-import ayon_maya.api.action
-from ayon_maya.api.lib import undo_chunk
-
-
-class ValidateRigControllers(pyblish.api.InstancePlugin,
+class ValidateRigControllers(MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validate rig controllers.
 
@@ -33,7 +31,6 @@ class ValidateRigControllers(pyblish.api.InstancePlugin,
     """
     order = ValidateContentsOrder + 0.05
     label = "Rig Controllers"
-    hosts = ["maya"]
     families = ["rig"]
     optional = True
     actions = [RepairAction,

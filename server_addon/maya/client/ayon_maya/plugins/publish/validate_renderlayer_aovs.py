@@ -1,13 +1,14 @@
 import ayon_api
-import pyblish.api
-
 import ayon_maya.api.action
+import pyblish.api
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
-class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin,
+
+class ValidateRenderLayerAOVs(MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validate created AOVs / RenderElement is registered in the database
 
@@ -26,7 +27,6 @@ class ValidateRenderLayerAOVs(pyblish.api.InstancePlugin,
 
     order = pyblish.api.ValidatorOrder + 0.1
     label = "Render Passes / AOVs Are Registered"
-    hosts = ["maya"]
     families = ["renderlayer"]
     actions = [ayon_maya.api.action.SelectInvalidAction]
     optional = False

@@ -2,21 +2,16 @@
 """Create Unreal Skeletal Mesh data to be extracted as FBX."""
 import os
 
+from ayon_maya.api.alembic import extract_alembic
+from ayon_maya.api.lib import maintained_selection, suspended_refresh
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from maya import cmds  # noqa
 
-from ayon_core.pipeline import publish
-from ayon_maya.api.alembic import extract_alembic
-from ayon_maya.api.lib import (
-    suspended_refresh,
-    maintained_selection
-)
 
-
-class ExtractUnrealSkeletalMeshAbc(publish.Extractor):
+class ExtractUnrealSkeletalMeshAbc(MayaExtractorPlugin):
     """Extract Unreal Skeletal Mesh as FBX from Maya. """
 
     label = "Extract Unreal Skeletal Mesh - Alembic"
-    hosts = ["maya"]
     families = ["skeletalMesh"]
     optional = True
 

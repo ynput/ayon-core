@@ -1,12 +1,11 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
 def _as_report_list(values, prefix="- ", suffix="\n"):
@@ -16,7 +15,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateNoDefaultCameras(pyblish.api.InstancePlugin,
+class ValidateNoDefaultCameras(MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure no default (startup) cameras are in the instance.
 
@@ -26,7 +25,6 @@ class ValidateNoDefaultCameras(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['camera']
     label = "No Default Cameras"
     actions = [ayon_maya.api.action.SelectInvalidAction]

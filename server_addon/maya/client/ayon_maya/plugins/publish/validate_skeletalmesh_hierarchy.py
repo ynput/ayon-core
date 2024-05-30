@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
 
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
     PublishXmlValidationError,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder,
 )
-
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
 
-class ValidateSkeletalMeshHierarchy(pyblish.api.InstancePlugin,
+class ValidateSkeletalMeshHierarchy(MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Validates that nodes has common root."""
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["skeletalMesh"]
     label = "Skeletal Mesh Top Node"
     optional = False

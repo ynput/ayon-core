@@ -2,12 +2,12 @@ import os
 import json
 
 from maya import cmds
-
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from ayon_core.pipeline import publish
 from ayon_maya.api import lib
 
 
-class ExtractCameraAlembic(publish.Extractor,
+class ExtractCameraAlembic(MayaExtractorPlugin,
                            publish.OptionalPyblishPluginMixin):
     """Extract a Camera as Alembic.
 

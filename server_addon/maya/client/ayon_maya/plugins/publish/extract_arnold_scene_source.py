@@ -1,19 +1,17 @@
+import json
 import os
 from collections import defaultdict
-import json
 
-from maya import cmds
 import arnold
-
-from ayon_core.pipeline import publish
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
-class ExtractArnoldSceneSource(publish.Extractor):
+class ExtractArnoldSceneSource(MayaExtractorPlugin):
     """Extract the content of the instance to an Arnold Scene Source file."""
 
     label = "Extract Arnold Scene Source"
-    hosts = ["maya"]
     families = ["ass"]
     asciiAss = False
 

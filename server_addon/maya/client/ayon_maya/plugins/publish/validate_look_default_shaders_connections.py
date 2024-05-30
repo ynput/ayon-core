@@ -1,13 +1,13 @@
-from maya import cmds
-
 import pyblish.api
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     RepairContextAction,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaContextPlugin
+from maya import cmds
 
 
-class ValidateLookDefaultShadersConnections(pyblish.api.ContextPlugin):
+class ValidateLookDefaultShadersConnections(MayaContextPlugin):
     """Validate default shaders in the scene have their default connections.
 
     For example the standardSurface1 or lambert1 (maya 2023 and before) could
@@ -22,7 +22,6 @@ class ValidateLookDefaultShadersConnections(pyblish.api.ContextPlugin):
 
     order = pyblish.api.ValidatorOrder - 0.4999
     families = ['look']
-    hosts = ['maya']
     label = 'Look Default Shader Connections'
     actions = [RepairContextAction]
 

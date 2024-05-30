@@ -1,22 +1,20 @@
 import os
 
-from maya import cmds
-
-from ayon_core.pipeline import publish
 from ayon_maya.api.alembic import extract_alembic
 from ayon_maya.api.lib import (
-    suspended_refresh,
+    iter_visible_nodes_in_range,
     maintained_selection,
-    iter_visible_nodes_in_range
+    suspended_refresh,
 )
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
-class ExtractProxyAlembic(publish.Extractor):
+class ExtractProxyAlembic(MayaExtractorPlugin):
     """Produce an alembic for bounding box geometry
     """
 
     label = "Extract Proxy (Alembic)"
-    hosts = ["maya"]
     families = ["proxyAbc"]
 
     def process(self, instance):

@@ -1,16 +1,15 @@
+import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateMeshOrder,
+)
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
-import ayon_maya.api.action
-from ayon_maya.api import lib
-from ayon_core.pipeline.publish import (
-    ValidateMeshOrder,
-    OptionalPyblishPluginMixin,
-    PublishValidationError
-)
 
-
-class ValidateMeshNonZeroEdgeLength(pyblish.api.InstancePlugin,
+class ValidateMeshNonZeroEdgeLength(MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Validate meshes don't have edges with a zero length.
 
@@ -23,7 +22,6 @@ class ValidateMeshNonZeroEdgeLength(pyblish.api.InstancePlugin,
 
     order = ValidateMeshOrder
     families = ['model']
-    hosts = ['maya']
     label = 'Mesh Edge Length Non Zero'
     actions = [ayon_maya.api.action.SelectInvalidAction]
     optional = True

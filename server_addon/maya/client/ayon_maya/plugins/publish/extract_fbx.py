@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 import os
 
-from maya import cmds  # noqa
 import maya.mel as mel  # noqa
 import pyblish.api
-
-from ayon_core.pipeline import publish
-from ayon_maya.api.lib import maintained_selection
 from ayon_maya.api import fbx
+from ayon_maya.api.lib import maintained_selection
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds  # noqa
 
 
-class ExtractFBX(publish.Extractor):
+class ExtractFBX(MayaExtractorPlugin):
     """Extract FBX from Maya.
 
     This extracts reproducible FBX exports ignoring any of the

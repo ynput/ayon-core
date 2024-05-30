@@ -1,16 +1,15 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateShadingEngine(pyblish.api.InstancePlugin,
+class ValidateShadingEngine(MayaInstancePlugin,
                             OptionalPyblishPluginMixin):
     """Validate all shading engines are named after the surface material.
 
@@ -19,7 +18,6 @@ class ValidateShadingEngine(pyblish.api.InstancePlugin,
 
     order = ValidateContentsOrder
     families = ["look"]
-    hosts = ["maya"]
     label = "Look Shading Engine Naming"
     actions = [
         ayon_maya.api.action.SelectInvalidAction, RepairAction

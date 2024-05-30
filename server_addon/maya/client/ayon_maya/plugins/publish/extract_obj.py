@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import os
 
-from maya import cmds
 import pyblish.api
-from ayon_core.pipeline import publish
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
-class ExtractObj(publish.Extractor):
+class ExtractObj(MayaExtractorPlugin):
     """Extract OBJ from Maya.
 
     This extracts reproducible OBJ exports ignoring any of the settings
@@ -15,7 +15,6 @@ class ExtractObj(publish.Extractor):
 
     """
     order = pyblish.api.ExtractorOrder
-    hosts = ["maya"]
     label = "Extract OBJ"
     families = ["model"]
 

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Collect Vray Scene and prepare it for extraction and publishing."""
-
 import pyblish.api
 
 from ayon_core.lib import get_formatted_current_time
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class CollectVrayScene(pyblish.api.InstancePlugin):
+class CollectVrayScene(MayaInstancePlugin):
     """Collect Vray Scene.
 
     If export on farm is checked, job is created to export it.

@@ -1,17 +1,16 @@
 import os
 
 import pyblish.api
-
+from ayon_maya.api.plugin import MayaContextPlugin
 from maya import cmds
 
 
-class CollectMayaWorkspace(pyblish.api.ContextPlugin):
+class CollectMayaWorkspace(MayaContextPlugin):
     """Inject the current workspace into context"""
 
     order = pyblish.api.CollectorOrder - 0.5
     label = "Maya Workspace"
 
-    hosts = ['maya']
 
     def process(self, context):
         workspace = cmds.workspace(rootDirectory=True, query=True)

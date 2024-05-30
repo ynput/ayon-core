@@ -1,15 +1,14 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     RepairAction,
     ValidateMeshOrder,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateMeshEmpty(pyblish.api.InstancePlugin):
+class ValidateMeshEmpty(MayaInstancePlugin):
     """Validate meshes have some vertices.
 
     Its possible to have meshes without any vertices. To replicate
@@ -17,7 +16,6 @@ class ValidateMeshEmpty(pyblish.api.InstancePlugin):
     """
 
     order = ValidateMeshOrder
-    hosts = ["maya"]
     families = ["model"]
     label = "Mesh Empty"
     actions = [

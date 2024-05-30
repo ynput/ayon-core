@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Collect Vray Proxy."""
 import pyblish.api
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class CollectVrayProxy(pyblish.api.InstancePlugin):
+class CollectVrayProxy(MayaInstancePlugin):
     """Collect Vray Proxy instance.
 
     Add `pointcache` family for it.

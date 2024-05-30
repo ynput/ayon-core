@@ -1,11 +1,10 @@
-import pyblish.api
-
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder, PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateReview(pyblish.api.InstancePlugin):
+class ValidateReview(MayaInstancePlugin):
     """Validate review."""
 
     order = ValidateContentsOrder

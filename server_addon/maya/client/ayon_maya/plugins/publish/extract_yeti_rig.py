@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 """Extract Yeti rig."""
 
-import os
-import json
 import contextlib
+import json
+import os
 
-from maya import cmds
-
-from ayon_core.pipeline import publish
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
 @contextlib.contextmanager
@@ -90,11 +89,10 @@ def yetigraph_attribute_values(assumed_destination, resources):
                 pass
 
 
-class ExtractYetiRig(publish.Extractor):
+class ExtractYetiRig(MayaExtractorPlugin):
     """Extract the Yeti rig to a Maya Scene and write the Yeti rig data."""
 
     label = "Extract Yeti Rig"
-    hosts = ["maya"]
     families = ["yetiRig"]
     scene_type = "ma"
 

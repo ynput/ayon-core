@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """Maya look collector."""
-import re
-import os
 import glob
+import os
+import re
 
-from maya import cmds  # noqa
 import pyblish.api
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds  # noqa
 
 SHAPE_ATTRS = {"castsShadows",
                "receiveShadows",
@@ -265,7 +266,7 @@ def get_file_node_files(node):
     return result
 
 
-class CollectLook(pyblish.api.InstancePlugin):
+class CollectLook(MayaInstancePlugin):
     """Collect look data for instance.
 
     For the shapes/transforms of the referenced object to collect look for
@@ -286,7 +287,6 @@ class CollectLook(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.2
     families = ["look"]
     label = "Collect Look"
-    hosts = ["maya"]
 
     def process(self, instance):
         """Collect the Look in the instance with the correct layer settings"""
@@ -644,7 +644,6 @@ class CollectModelRenderSets(CollectLook):
     order = pyblish.api.CollectorOrder + 0.21
     families = ["model"]
     label = "Collect Model Render Sets"
-    hosts = ["maya"]
 
     def collect_sets(self, instance):
         """Collect all related objectSets except shadingEngines

@@ -4,21 +4,20 @@ import types
 import maya.cmds as cmds
 from mtoa.core import createOptions
 
-import pyblish.api
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateAssRelativePaths(pyblish.api.InstancePlugin,
+class ValidateAssRelativePaths(MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Ensure exporting ass file has set relative texture paths"""
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['ass']
     label = "ASS has relative texture paths"
     actions = [RepairAction]

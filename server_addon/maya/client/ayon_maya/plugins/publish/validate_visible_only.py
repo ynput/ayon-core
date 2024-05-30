@@ -1,15 +1,14 @@
-import pyblish.api
-
-from ayon_maya.api.lib import iter_visible_nodes_in_range
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder,
 )
+from ayon_maya.api.lib import iter_visible_nodes_in_range
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateAlembicVisibleOnly(pyblish.api.InstancePlugin,
+class ValidateAlembicVisibleOnly(MayaInstancePlugin,
                                  OptionalPyblishPluginMixin):
     """Validates at least a single node is visible in frame range.
 
@@ -19,7 +18,6 @@ class ValidateAlembicVisibleOnly(pyblish.api.InstancePlugin,
     """
     order = ValidateContentsOrder + 0.05
     label = "Alembic Visible Only"
-    hosts = ["maya"]
     families = ["pointcache", "animation"]
     actions = [ayon_maya.api.action.SelectInvalidAction]
     optional = False

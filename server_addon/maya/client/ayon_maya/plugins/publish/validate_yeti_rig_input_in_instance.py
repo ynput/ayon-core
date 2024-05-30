@@ -1,21 +1,18 @@
-from maya import cmds
-
-import pyblish.api
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateYetiRigInputShapesInInstance(pyblish.api.InstancePlugin,
+class ValidateYetiRigInputShapesInInstance(MayaInstancePlugin,
                                            OptionalPyblishPluginMixin):
     """Validate if all input nodes are part of the instance's hierarchy"""
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["yetiRig"]
     label = "Yeti Rig Input Shapes In Instance"
     actions = [ayon_maya.api.action.SelectInvalidAction]

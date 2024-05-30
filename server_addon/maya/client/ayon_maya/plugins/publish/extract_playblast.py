@@ -1,14 +1,12 @@
 import os
 
 import clique
-
-from ayon_core.pipeline import publish
 from ayon_maya.api import lib
-
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from maya import cmds
 
 
-class ExtractPlayblast(publish.Extractor):
+class ExtractPlayblast(MayaExtractorPlugin):
     """Extract viewport playblast.
 
     Takes review camera and creates review Quicktime video based on viewport
@@ -17,7 +15,6 @@ class ExtractPlayblast(publish.Extractor):
     """
 
     label = "Extract Playblast"
-    hosts = ["maya"]
     families = ["review"]
     optional = True
     capture_preset = {}

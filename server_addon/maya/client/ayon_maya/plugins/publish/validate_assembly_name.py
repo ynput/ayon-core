@@ -1,13 +1,14 @@
-import pyblish.api
-import maya.cmds as cmds
 import ayon_maya.api.action
+import maya.cmds as cmds
+import pyblish.api
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateAssemblyName(pyblish.api.InstancePlugin,
+class ValidateAssemblyName(MayaInstancePlugin,
                            OptionalPyblishPluginMixin):
     """ Ensure Assembly name ends with `GRP`
 

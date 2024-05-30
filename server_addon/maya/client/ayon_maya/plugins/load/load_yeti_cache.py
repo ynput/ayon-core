@@ -1,21 +1,16 @@
-import os
 import json
+import os
 import re
 from collections import defaultdict
 
 import clique
-from maya import cmds
-
+from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import (
-    load,
-    get_representation_path
-)
 from ayon_maya.api import lib
-from ayon_maya.api.yeti import create_yeti_variable
 from ayon_maya.api.pipeline import containerise
-from ayon_maya.api.plugin import get_load_color_for_product_type
-
+from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
+from ayon_maya.api.yeti import create_yeti_variable
+from maya import cmds
 
 # Do not reset these values on update but only apply on first load
 # to preserve any potential local overrides
@@ -45,7 +40,7 @@ def set_attribute(node, attr, value):
     lib.set_attribute(node, attr, value)
 
 
-class YetiCacheLoader(load.LoaderPlugin):
+class YetiCacheLoader(Loader):
     """Load Yeti Cache with one or more Yeti nodes"""
 
     product_types = {"yeticache", "yetiRig"}

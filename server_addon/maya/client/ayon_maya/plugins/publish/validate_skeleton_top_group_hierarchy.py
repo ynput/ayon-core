@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 """Plugin for validating naming conventions."""
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateContentsOrder,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import pyblish.api
 
-from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
-    OptionalPyblishPluginMixin,
-    PublishValidationError
-)
-
-
-class ValidateSkeletonTopGroupHierarchy(pyblish.api.InstancePlugin,
+class ValidateSkeletonTopGroupHierarchy(MayaInstancePlugin,
                                         OptionalPyblishPluginMixin):
     """Validates top group hierarchy in the SETs
     Make sure the object inside the SETs are always top

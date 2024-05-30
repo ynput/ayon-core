@@ -1,16 +1,17 @@
 import inspect
 
-import pyblish.api
-import maya.cmds as cmds
 import ayon_maya.api.action
+import maya.cmds as cmds
+import pyblish.api
 from ayon_core.pipeline.publish import (
-    RepairAction,
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
+    RepairAction,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateYetiRigCacheState(pyblish.api.InstancePlugin,
+class ValidateYetiRigCacheState(MayaInstancePlugin,
                                 OptionalPyblishPluginMixin):
     """Validate the I/O attributes of the node
 
@@ -22,7 +23,6 @@ class ValidateYetiRigCacheState(pyblish.api.InstancePlugin,
 
     order = pyblish.api.ValidatorOrder
     label = "Yeti Rig Cache State"
-    hosts = ["maya"]
     families = ["yetiRig"]
     actions = [RepairAction,
                ayon_maya.api.action.SelectInvalidAction]

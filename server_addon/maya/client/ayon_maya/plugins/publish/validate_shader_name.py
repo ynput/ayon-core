@@ -1,14 +1,16 @@
 import re
 
-import pyblish.api
-from maya import cmds
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    OptionalPyblishPluginMixin, PublishValidationError, ValidateContentsOrder)
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateContentsOrder,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateShaderName(pyblish.api.InstancePlugin,
+class ValidateShaderName(MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Validate shader name assigned.
 
@@ -18,7 +20,6 @@ class ValidateShaderName(pyblish.api.InstancePlugin,
     optional = True
     order = ValidateContentsOrder
     families = ["look"]
-    hosts = ['maya']
     label = 'Validate Shaders Name'
     actions = [ayon_maya.api.action.SelectInvalidAction]
     regex = r'(?P<asset>.*)_(.*)_SHD'

@@ -1,22 +1,19 @@
+import ayon_maya.api.action
 import pyblish.api
-
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+)
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import ayon_maya.api.action
-from ayon_core.pipeline.publish import (
-    PublishValidationError,
-    OptionalPyblishPluginMixin
-)
 
-
-
-class ValidateVrayProxyMembers(pyblish.api.InstancePlugin,
+class ValidateVrayProxyMembers(MayaInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validate whether the V-Ray Proxy instance has shape members"""
 
     order = pyblish.api.ValidatorOrder
     label = 'VRay Proxy Members'
-    hosts = ['maya']
     families = ['vrayproxy']
     actions = [ayon_maya.api.action.SelectInvalidAction]
     optional = False

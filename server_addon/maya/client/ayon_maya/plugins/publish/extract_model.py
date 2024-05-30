@@ -2,13 +2,13 @@
 """Extract model as Maya Scene."""
 import os
 
-from maya import cmds
-
 from ayon_core.pipeline import publish
 from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
-class ExtractModel(publish.Extractor,
+class ExtractModel(MayaExtractorPlugin,
                    publish.OptionalPyblishPluginMixin):
     """Extract as Model (Maya Scene).
 
@@ -25,7 +25,6 @@ class ExtractModel(publish.Extractor,
     """
 
     label = "Model (Maya Scene)"
-    hosts = ["maya"]
     families = ["model"]
     scene_type = "ma"
     optional = True

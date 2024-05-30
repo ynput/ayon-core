@@ -1,15 +1,14 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateMeshOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateMeshOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateMeshLaminaFaces(pyblish.api.InstancePlugin,
+class ValidateMeshLaminaFaces(MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Validate meshes don't have lamina faces.
 
@@ -18,7 +17,6 @@ class ValidateMeshLaminaFaces(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Mesh Lamina Faces'
     actions = [ayon_maya.api.action.SelectInvalidAction]

@@ -1,13 +1,12 @@
-import os
 import json
+import os
 
-from ayon_core.pipeline import publish
 from ayon_maya.api.alembic import extract_alembic
-
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from maya import cmds
 
 
-class ExtractAssembly(publish.Extractor):
+class ExtractAssembly(MayaExtractorPlugin):
     """Produce an alembic of just point positions and normals.
 
     Positions and normals are preserved, but nothing more,
@@ -16,7 +15,6 @@ class ExtractAssembly(publish.Extractor):
     """
 
     label = "Extract Assembly"
-    hosts = ["maya"]
     families = ["assembly"]
 
     def process(self, instance):

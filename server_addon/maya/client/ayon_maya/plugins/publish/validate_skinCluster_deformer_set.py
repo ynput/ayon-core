@@ -1,16 +1,15 @@
 from maya import cmds
 
-import pyblish.api
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin,
+class ValidateSkinclusterDeformerSet(MayaInstancePlugin,
                                      OptionalPyblishPluginMixin):
     """Validate skinClusters on meshes have valid member relationships.
 
@@ -21,7 +20,6 @@ class ValidateSkinclusterDeformerSet(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ['maya']
     families = ['fbx']
     label = "Skincluster Deformer Relationships"
     actions = [ayon_maya.api.action.SelectInvalidAction]

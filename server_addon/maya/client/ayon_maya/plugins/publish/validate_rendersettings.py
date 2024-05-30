@@ -3,17 +3,16 @@
 import re
 from collections import OrderedDict
 
-from maya import cmds, mel
-
-import pyblish.api
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateContentsOrder,
-    PublishValidationError,
-    OptionalPyblishPluginMixin
 )
 from ayon_maya.api import lib
 from ayon_maya.api.lib_rendersettings import RenderSettings
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds, mel
 
 
 def convert_to_int_or_float(string_value):
@@ -38,7 +37,7 @@ def get_redshift_image_format_labels():
     return mel.eval("{0}={0}".format(var))
 
 
-class ValidateRenderSettings(pyblish.api.InstancePlugin,
+class ValidateRenderSettings(MayaInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validates the global render settings
 

@@ -1,13 +1,15 @@
-import pyblish.api
+import ayon_maya.api.action
+from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
+    ValidateContentsOrder,
+)
+from ayon_maya.api.lib import maintained_selection
+from ayon_maya.api.plugin import MayaInstancePlugin
 from maya import cmds
 
-import ayon_maya.api.action
-from ayon_maya.api.lib import maintained_selection
-from ayon_core.pipeline.publish import (
-    OptionalPyblishPluginMixin, PublishValidationError, ValidateContentsOrder)
 
-
-class ValidateCycleError(pyblish.api.InstancePlugin,
+class ValidateCycleError(MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Validate nodes produce no cycle errors."""
 

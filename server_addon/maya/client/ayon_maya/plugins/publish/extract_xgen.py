@@ -1,17 +1,19 @@
-import os
 import copy
+import os
 import tempfile
 
-from maya import cmds
 import xgenm
-
-from ayon_core.pipeline import publish
 from ayon_maya.api.lib import (
-    maintained_selection, attribute_values, write_xgen_file, delete_after
+    attribute_values,
+    delete_after,
+    maintained_selection,
+    write_xgen_file,
 )
+from ayon_maya.api.plugin import MayaExtractorPlugin
+from maya import cmds
 
 
-class ExtractXgen(publish.Extractor):
+class ExtractXgen(MayaExtractorPlugin):
     """Extract Xgen
 
     Workflow:
@@ -23,7 +25,6 @@ class ExtractXgen(publish.Extractor):
     """
 
     label = "Extract Xgen"
-    hosts = ["maya"]
     families = ["xgen"]
     scene_type = "ma"
 

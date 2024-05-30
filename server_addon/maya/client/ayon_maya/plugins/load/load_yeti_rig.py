@@ -1,12 +1,9 @@
 from typing import List
 
 import maya.cmds as cmds
-
-from ayon_maya.api import plugin
-from ayon_maya.api import lib
-
 from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.create import CreateContext
+from ayon_maya.api import lib, plugin
 
 
 class YetiRigLoader(plugin.ReferenceLoader):

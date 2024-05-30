@@ -1,13 +1,12 @@
-from maya import cmds, mel
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateMeshOrder,
+    OptionalPyblishPluginMixin,
     PublishXmlValidationError,
     RepairAction,
-    OptionalPyblishPluginMixin
+    ValidateMeshOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds, mel
 
 
 def poly_cleanup(version=4,
@@ -101,7 +100,7 @@ def _as_report_list(values, prefix="- ", suffix="\n"):
     return prefix + (suffix + prefix).join(values)
 
 
-class ValidateMeshNonManifold(pyblish.api.InstancePlugin,
+class ValidateMeshNonManifold(MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Ensure that meshes don't have non-manifold edges or vertices
 
@@ -111,7 +110,6 @@ class ValidateMeshNonManifold(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model']
     label = 'Mesh Non-Manifold Edges/Vertices'
     actions = [ayon_maya.api.action.SelectInvalidAction,

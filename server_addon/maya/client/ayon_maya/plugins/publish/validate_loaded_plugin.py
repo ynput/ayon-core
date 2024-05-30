@@ -7,15 +7,15 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateLoadedPlugin(pyblish.api.ContextPlugin,
+class ValidateLoadedPlugin(MayaInstancePlugin,
                            OptionalPyblishPluginMixin):
     """Ensure there are no unauthorized loaded plugins"""
 
     label = "Loaded Plugin"
     order = pyblish.api.ValidatorOrder
-    host = ["maya"]
     actions = [RepairContextAction]
     optional = True
 

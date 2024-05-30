@@ -1,16 +1,15 @@
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     ValidateContentsOrder,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateInstanceHasMembers(pyblish.api.InstancePlugin):
+class ValidateInstanceHasMembers(MayaInstancePlugin):
     """Validates instance objectSet has *any* members."""
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     label = 'Instance has members'
     actions = [ayon_maya.api.action.SelectInvalidAction]
 

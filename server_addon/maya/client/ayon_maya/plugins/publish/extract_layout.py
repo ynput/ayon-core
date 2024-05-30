@@ -1,19 +1,17 @@
+import json
 import math
 import os
-import json
 
+from ayon_api import get_representation_by_id
+from ayon_maya.api.plugin import MayaExtractorPlugin
 from maya import cmds
 from maya.api import OpenMaya as om
-from ayon_api import get_representation_by_id
-
-from ayon_core.pipeline import publish
 
 
-class ExtractLayout(publish.Extractor):
+class ExtractLayout(MayaExtractorPlugin):
     """Extract a layout."""
 
     label = "Extract Layout"
-    hosts = ["maya"]
     families = ["layout"]
     project_container = "AVALON_CONTAINERS"
     optional = True

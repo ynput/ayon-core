@@ -1,14 +1,13 @@
 from maya import cmds
-
+from ayon_maya.api.plugin import MayaContextPlugin
 import pyblish.api
 
 
-class CollectFileDependencies(pyblish.api.ContextPlugin):
+class CollectFileDependencies(MayaContextPlugin):
     """Gather all files referenced in this scene."""
 
     label = "Collect File Dependencies"
     order = pyblish.api.CollectorOrder - 0.49
-    hosts = ["maya"]
     families = ["renderlayer"]
 
     @classmethod

@@ -1,14 +1,13 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    PublishValidationError,
     ValidateContentsOrder,
-    PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateLookNoDefaultShaders(pyblish.api.InstancePlugin):
+class ValidateLookNoDefaultShaders(MayaInstancePlugin):
     """Validate if any node has a connection to a default shader.
 
     This checks whether the look has any members of:
@@ -28,7 +27,6 @@ class ValidateLookNoDefaultShaders(pyblish.api.InstancePlugin):
 
     order = ValidateContentsOrder + 0.01
     families = ['look']
-    hosts = ['maya']
     label = 'Look No Default Shaders'
     actions = [ayon_maya.api.action.SelectInvalidAction]
 

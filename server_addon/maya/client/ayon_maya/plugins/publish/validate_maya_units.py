@@ -1,23 +1,20 @@
-import maya.cmds as cmds
-
-import pyblish.api
-
 import ayon_maya.api.lib as mayalib
+import maya.cmds as cmds
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishXmlValidationError,
     RepairContextAction,
     ValidateSceneOrder,
-    PublishXmlValidationError,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaContextPlugin
 
 
-class ValidateMayaUnits(pyblish.api.ContextPlugin,
+class ValidateMayaUnits(MayaContextPlugin,
                         OptionalPyblishPluginMixin):
     """Check if the Maya units are set correct"""
 
     order = ValidateSceneOrder
     label = "Maya Units"
-    hosts = ['maya']
     actions = [RepairContextAction]
 
     validate_linear_units = True

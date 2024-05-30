@@ -1,15 +1,15 @@
-import pyblish.api
-from maya import cmds
-
 import ayon_maya.api.action
+import pyblish.api
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     RepairAction,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateAssemblyModelTransforms(pyblish.api.InstancePlugin,
+class ValidateAssemblyModelTransforms(MayaInstancePlugin,
                                       OptionalPyblishPluginMixin):
     """Verify only root nodes of the loaded asset have transformations.
 
@@ -98,9 +98,8 @@ class ValidateAssemblyModelTransforms(pyblish.api.InstancePlugin,
 
         """
 
-        from qtpy import QtWidgets
-
         from ayon_maya.api import lib
+        from qtpy import QtWidgets
 
         # Store namespace in variable, cosmetics thingy
         choice = QtWidgets.QMessageBox.warning(

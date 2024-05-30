@@ -1,17 +1,16 @@
-from maya import cmds
-
-import pyblish.api
 import ayon_maya.api.action
-from ayon_maya.api import lib
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
+    PublishValidationError,
     RepairAction,
     ValidateMeshOrder,
-    OptionalPyblishPluginMixin,
-    PublishValidationError
 )
+from ayon_maya.api import lib
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateMeshSingleUVSet(pyblish.api.InstancePlugin,
+class ValidateMeshSingleUVSet(MayaInstancePlugin,
                               OptionalPyblishPluginMixin):
     """Warn on multiple UV sets existing for each polygon mesh.
 
@@ -22,7 +21,6 @@ class ValidateMeshSingleUVSet(pyblish.api.InstancePlugin,
     """
 
     order = ValidateMeshOrder
-    hosts = ['maya']
     families = ['model', 'pointcache']
     optional = True
     label = "Mesh Single UV Set"

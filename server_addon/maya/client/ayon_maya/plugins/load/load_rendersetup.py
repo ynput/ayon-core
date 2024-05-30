@@ -6,21 +6,18 @@ When this json is loaded, it will overwrite all settings on RenderSetup
 instance.
 """
 
+import contextlib
 import json
 import sys
-import six
-import contextlib
 
+import maya.app.renderSetup.model.renderSetup as renderSetup
+import six
 from ayon_core.lib import BoolDef, EnumDef
-from ayon_core.pipeline import (
-    load,
-    get_representation_path
-)
+from ayon_core.pipeline import get_representation_path
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
-
+from ayon_maya.api.plugin import Loader
 from maya import cmds
-import maya.app.renderSetup.model.renderSetup as renderSetup
 
 
 @contextlib.contextmanager
@@ -48,7 +45,7 @@ def mark_all_imported(enabled):
                     cmds.deleteAttr(plug)
 
 
-class RenderSetupLoader(load.LoaderPlugin):
+class RenderSetupLoader(Loader):
     """Load json preset for RenderSetup overwriting current one."""
 
     product_types = {"rendersetup"}

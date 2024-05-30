@@ -1,13 +1,13 @@
-import pyblish.api
 import ayon_maya.api.action
 from ayon_maya.api import lib
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishValidationError
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateLookSets(pyblish.api.InstancePlugin):
+class ValidateLookSets(MayaInstancePlugin):
     """Validate if any sets relationships are not being collected.
 
     A shader can be assigned to a node that is missing a Colorbleed ID.
@@ -42,7 +42,6 @@ class ValidateLookSets(pyblish.api.InstancePlugin):
 
     order = ValidateContentsOrder
     families = ['look']
-    hosts = ['maya']
     label = 'Look Sets'
     actions = [ayon_maya.api.action.SelectInvalidAction]
 

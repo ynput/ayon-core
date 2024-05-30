@@ -1,21 +1,21 @@
 import pyblish.api
 from ayon_core.pipeline import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
-    OptionalPyblishPluginMixin
 )
-from maya import cmds
 from ayon_core.pipeline.publish import RepairAction
 from ayon_maya.api import lib
 from ayon_maya.api.lib import reset_scene_resolution
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateResolution(pyblish.api.InstancePlugin,
+class ValidateResolution(MayaInstancePlugin,
                          OptionalPyblishPluginMixin):
     """Validate the render resolution setting aligned with DB"""
 
     order = pyblish.api.ValidatorOrder
     families = ["renderlayer"]
-    hosts = ["maya"]
     label = "Validate Resolution"
     actions = [RepairAction]
     optional = True

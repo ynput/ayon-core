@@ -1,12 +1,8 @@
 import os
 
+from ayon_core.pipeline import get_representation_path
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import (
-    load,
-    get_representation_path
-)
-from ayon_maya.api.plugin import get_load_color_for_product_type
-
+from ayon_maya.api.plugin import Loader, get_load_color_for_product_type
 from maya import cmds
 
 # List of 3rd Party Channels Mapping names for VRayVolumeGrid
@@ -74,7 +70,7 @@ def _fix_duplicate_vvg_callbacks():
                     matched.add(callback)
 
 
-class LoadVDBtoVRay(load.LoaderPlugin):
+class LoadVDBtoVRay(Loader):
     """Load OpenVDB in a V-Ray Volume Grid"""
 
     product_types = {"vdbcache"}
@@ -175,6 +171,7 @@ class LoadVDBtoVRay(load.LoaderPlugin):
             else:
                 # Sequence
                 import clique
+
                 # todo: check support for negative frames as input
                 collections, remainder = clique.assemble(files)
                 assert len(collections) == 1, (

@@ -2,40 +2,41 @@ import json
 import os
 from abc import ABCMeta
 
+import ayon_api
 import qargparse
 import six
-import ayon_api
-from maya import cmds
-from maya.app.renderSetup.model import renderSetup
 
 from ayon_core.lib import BoolDef, Logger
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
-    AYON_INSTANCE_ID,
-    AYON_CONTAINER_ID,
-    AVALON_INSTANCE_ID,
     AVALON_CONTAINER_ID,
+    AVALON_INSTANCE_ID,
+    AYON_CONTAINER_ID,
+    AYON_INSTANCE_ID,
     Anatomy,
-
+    AutoCreator,
     CreatedInstance,
     Creator as NewCreator,
-    AutoCreator,
-    HiddenCreator,
-
     CreatorError,
+    HiddenCreator,
     LegacyCreator,
     LoaderPlugin,
-    get_representation_path,
     get_current_project_name,
+    get_representation_path,
+    publish,
 )
-from ayon_core.pipeline.load import LoadError
 from ayon_core.pipeline.create import get_product_name
+from ayon_core.pipeline.load import LoadError
+from ayon_core.settings import get_project_settings
+from maya import cmds
+from maya.app.renderSetup.model import renderSetup
+from pyblish.api import ContextPlugin, InstancePlugin
 
 from . import lib
 from .lib import imprint, read
 from .pipeline import containerise
 
 log = Logger.get_logger()
+SETTINGS_CATEGORY = "maya"
 
 
 def _get_attr(node, attr, default=None):
@@ -652,7 +653,7 @@ def get_load_color_for_product_type(product_type, settings=None):
 
 class Loader(LoaderPlugin):
     hosts = ["maya"]
-
+    settings_category = SETTINGS_CATEGORY
     load_settings = {}  # defined in settings
 
     @classmethod
@@ -807,9 +808,8 @@ class ReferenceLoader(Loader):
         raise NotImplementedError("Must be implemented by subclass")
 
     def update(self, container, context):
-        from maya import cmds
-
         from ayon_maya.api.lib import get_container_members
+        from maya import cmds
 
         node = container["objectName"]
 
@@ -1025,3 +1025,30 @@ class ReferenceLoader(Loader):
                 AYON_CONTAINER_ID, AVALON_CONTAINER_ID
             }:
                 cmds.sets(node, forceElement=container)
+
+
+class MayaLoader(LoaderPlugin):
+    """Base class for loader plugins."""
+
+    settings_category = SETTINGS_CATEGORY
+
+
+class MayaInstancePlugin(InstancePlugin):
+    """Base class for instance publish plugins."""
+
+    settings_category = SETTINGS_CATEGORY
+    hosts = ["maya"]
+
+
+class MayaContextPlugin(ContextPlugin):
+    """Base class for context publish plugins."""
+
+    settings_category = SETTINGS_CATEGORY
+    hosts = ["maya"]
+
+
+class MayaExtractorPlugin(publish.Extractor):
+    """Base class for extract plugins."""
+
+    settings_category = SETTINGS_CATEGORY
+    hosts = ["maya"]

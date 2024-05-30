@@ -1,14 +1,13 @@
-import pyblish.api
-
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     ValidateContentsOrder,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
 
 
-class ValidateStepSize(pyblish.api.InstancePlugin,
+class ValidateStepSize(MayaInstancePlugin,
                        OptionalPyblishPluginMixin):
     """Validates the step size for the instance is in a valid range.
 

@@ -1,14 +1,14 @@
-import pyblish.api
-from maya import cmds
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
+    OptionalPyblishPluginMixin,
     PublishValidationError,
     ValidateContentsOrder,
-    OptionalPyblishPluginMixin
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateRigContents(pyblish.api.InstancePlugin,
+class ValidateRigContents(MayaInstancePlugin,
                           OptionalPyblishPluginMixin):
     """Ensure rig contains pipeline-critical content
 
@@ -20,7 +20,6 @@ class ValidateRigContents(pyblish.api.InstancePlugin,
 
     order = ValidateContentsOrder
     label = "Rig Contents"
-    hosts = ["maya"]
     families = ["rig"]
     action = [ayon_maya.api.action.SelectInvalidAction]
     optional = True

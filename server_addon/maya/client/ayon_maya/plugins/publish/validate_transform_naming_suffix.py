@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 """Plugin for validating naming conventions."""
 import json
-from maya import cmds
-
-import pyblish.api
 
 import ayon_maya.api.action
 from ayon_core.pipeline.publish import (
-    ValidateContentsOrder,
     OptionalPyblishPluginMixin,
-    PublishValidationError
+    PublishValidationError,
+    ValidateContentsOrder,
 )
+from ayon_maya.api.plugin import MayaInstancePlugin
+from maya import cmds
 
 
-class ValidateTransformNamingSuffix(pyblish.api.InstancePlugin,
+class ValidateTransformNamingSuffix(MayaInstancePlugin,
                                     OptionalPyblishPluginMixin):
     """Validates transform suffix based on the type of its children shapes.
 
@@ -36,7 +35,6 @@ class ValidateTransformNamingSuffix(pyblish.api.InstancePlugin,
     """
 
     order = ValidateContentsOrder
-    hosts = ["maya"]
     families = ["model"]
     optional = True
     label = "Suffix Naming Conventions"
