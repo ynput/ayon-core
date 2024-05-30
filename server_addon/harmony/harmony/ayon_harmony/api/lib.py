@@ -20,7 +20,7 @@ import collections
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib import is_using_ayon_console
-from ayon_core.tools.stdout_broker.app import StdOutBroker
+from ayon_core.tools.stdout_broker import StdOutBroker
 from ayon_core.tools.utils import host_tools
 from ayon_core import style
 
