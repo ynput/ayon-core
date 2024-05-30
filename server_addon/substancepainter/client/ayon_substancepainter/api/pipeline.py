@@ -27,11 +27,11 @@ from ayon_core.lib import (
     emit_event,
 )
 from ayon_core.pipeline.load import any_outdated_containers
-from ayon_core.hosts.substancepainter import SUBSTANCE_HOST_DIR
+from ayon_substancepainter import SUBSTANCE_HOST_DIR
 
 from . import lib
 
-log = logging.getLogger("ayon_core.hosts.substance")
+log = logging.getLogger("ayon_substancepainter")
 
 PLUGINS_DIR = os.path.join(SUBSTANCE_HOST_DIR, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")

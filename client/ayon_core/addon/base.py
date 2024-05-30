@@ -54,10 +54,12 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "celaction": VersionInfo(0, 2, 0),
     "clockify": VersionInfo(0, 2, 0),
     "flame": VersionInfo(0, 2, 0),
+    "max": VersionInfo(0, 2, 0),
     "traypublisher": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
     "maya": VersionInfo(0, 2, 0),
     "nuke": VersionInfo(0, 2, 0),
+    "substancepainter": VersionInfo(0, 2, 0),
 }
 
 
