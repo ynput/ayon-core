@@ -1,6 +1,6 @@
 import os
-import pyblish.api
 import copy
+import pyblish.api
 
 
 class CollectRenderPath(pyblish.api.InstancePlugin):
@@ -9,6 +9,8 @@ class CollectRenderPath(pyblish.api.InstancePlugin):
     label = "Collect Render Path"
     order = pyblish.api.CollectorOrder + 0.495
     families = ["render.farm"]
+
+    settings_category = "celaction"
 
     # Presets
     output_extension = "png"
