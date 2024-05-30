@@ -112,10 +112,6 @@ def on_pyblish_instance_toggled(instance, old_value, new_value):
     log.info("instance toggle: {}, old_value: {}, new_value:{} ".format(
         instance, old_value, new_value))
 
-    # from ayon_core.hosts.resolve import (
-    #     set_publish_attribute
-    # )
-
     # # Whether instances should be passthrough based on new value
     # timeline_item = instance.data["item"]
     # set_publish_attribute(timeline_item, new_value)
