@@ -8,13 +8,13 @@ from ayon_core.lib import (
     BoolDef
 )
 
-from ayon_core.hosts.substancepainter.api.pipeline import (
+from ayon_substancepainter.api.pipeline import (
     get_instances,
     set_instance,
     set_instances,
     remove_instance
 )
-from ayon_core.hosts.substancepainter.api.lib import get_export_presets
+from ayon_substancepainter.api.lib import get_export_presets
 
 import substance_painter
 import substance_painter.project
@@ -28,6 +28,7 @@ class CreateTextures(Creator):
     icon = "picture-o"
 
     default_variant = "Main"
+    settings_category = "substancepainter"
     channel_mapping = []
 
     def apply_settings(self, project_settings):

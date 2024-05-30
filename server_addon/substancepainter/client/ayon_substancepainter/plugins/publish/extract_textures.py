@@ -1,6 +1,6 @@
 import substance_painter.export
 from ayon_core.pipeline import KnownPublishError, publish
-from ayon_core.hosts.substancepainter.api.lib import set_layer_stack_opacity
+from ayon_substancepainter.api.lib import set_layer_stack_opacity
 
 
 class ExtractTextures(publish.Extractor,
