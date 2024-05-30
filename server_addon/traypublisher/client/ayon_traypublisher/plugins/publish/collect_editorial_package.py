@@ -1,10 +1,10 @@
-"""Produces instance.data["editorial_pckg"] data used during integration.
+"""Produces instance.data["editorial_pkg"] data used during integration.
 
 Requires:
     instance.data["creator_attributes"]["path"] - from creator
 
 Provides:
-    instance -> editorial_pckg (dict):
+    instance -> editorial_pkg (dict):
                     folder_path (str)
                     otio_path   (str) - from dragged folder
                     resource_paths (list)
@@ -24,7 +24,7 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder - 0.1
 
     hosts = ["traypublisher"]
-    families = ["editorial_pckg"]
+    families = ["editorial_pkg"]
 
     def process(self, instance):
         folder_path = instance.data["creator_attributes"]["folder_path"]
@@ -34,14 +34,14 @@ class CollectEditorialPackage(pyblish.api.InstancePlugin):
             ))
             return
 
-        instance.data["editorial_pckg"] = {}
-        instance.data["editorial_pckg"]["folder_path"] = folder_path
+        instance.data["editorial_pkg"] = {}
+        instance.data["editorial_pkg"]["folder_path"] = folder_path
 
         otio_path, resource_paths = (
             self._get_otio_and_resource_paths(folder_path))
 
-        instance.data["editorial_pckg"]["otio_path"] = otio_path
-        instance.data["editorial_pckg"]["resource_paths"] = resource_paths
+        instance.data["editorial_pkg"]["otio_path"] = otio_path
+        instance.data["editorial_pkg"]["resource_paths"] = resource_paths
 
     def _get_otio_and_resource_paths(self, folder_path):
         otio_path = None
