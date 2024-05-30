@@ -11,7 +11,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
-from ayon_core.tools.utils.lib import format_version
+from ayon_core.tools.utils.lib import iter_model_rows, format_version
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 NAME_COLOR_ROLE = QtCore.Qt.UserRole + 2
@@ -339,7 +339,16 @@ class InventoryModel(QtGui.QStandardItemModel):
             self._hierarchy_view = state
 
     def get_outdated_item_ids(self):
-        return set()
+        outdated_item_ids = []
+        root_item = self.invisibleRootItem()
+        for row in range(root_item.rowCount()):
+            group_item = root_item.child(row)
+            if group_item.data(VERSION_IS_LATEST_ROLE):
+                continue
+            for idx in range(group_item.rowCount()):
+                item = group_item.child(idx)
+                outdated_item_ids.append(item.data(ITEM_ID_ROLE))
+        return outdated_item_ids
 
     def _clear_items(self):
         root_item = self.invisibleRootItem()
