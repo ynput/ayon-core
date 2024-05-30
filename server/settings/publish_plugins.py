@@ -59,7 +59,7 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     )
 
 
-class ValidateOutdatedContainersProfile(BaseSettingsModel):
+class PluginStateByHostModelProfile(BaseSettingsModel):
     _layout = "expanded"
     # Filtering
     host_names: list[str] = SettingsField(
@@ -72,17 +72,12 @@ class ValidateOutdatedContainersProfile(BaseSettingsModel):
     active: bool = SettingsField(True, title="Active")
 
 
-class ValidateOutdatedContainersModel(BaseSettingsModel):
-    """Validate if Publishing intent was selected.
-
-    It is possible to disable validation for specific publishing context
-    with profiles.
-    """
-
+class PluginStateByHostModel(BaseSettingsModel):
     _isGroup = True
-    plugin_state_profiles: list[ValidateOutdatedContainersProfile] = SettingsField(
+    plugin_state_profiles: list[PluginStateByHostModelProfile] = SettingsField(
         default_factory=list,
         title="Plugin enable state profiles",
+        description="Change plugin state based on host name."
     )
 
 
@@ -563,7 +558,7 @@ class ExtractBurninProfile(BaseSettingsModel):
     _layout = "expanded"
     product_types: list[str] = SettingsField(
         default_factory=list,
-        title="Produt types"
+        title="Product types"
     )
     hosts: list[str] = SettingsField(
         default_factory=list,
@@ -793,12 +788,16 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
     )
-    ValidateVersion: ValidateBaseModel = SettingsField(
-        default_factory=ValidateBaseModel,
-        title="Validate Version"
+    ValidateVersion: PluginStateByHostModel = SettingsField(
+        default_factory=PluginStateByHostModel,
+        title="Validate Version",
+        description=(
+            "Validate that product version to integrate"
+            " is newer than latest version in AYON."
+        )
     )
-    ValidateOutdatedContainers: ValidateOutdatedContainersModel = SettingsField(
-        default_factory=ValidateOutdatedContainersModel,
+    ValidateOutdatedContainers: PluginStateByHostModel = SettingsField(
+        default_factory=PluginStateByHostModel,
         title="Validate Containers"
     )
     ValidateIntent: ValidateIntentModel = SettingsField(
@@ -882,9 +881,21 @@ DEFAULT_PUBLISH_VALUES = {
         "active": True
     },
     "ValidateVersion": {
-        "enabled": True,
-        "optional": False,
-        "active": True
+        "plugin_state_profiles": [
+            {
+                "host_names": [
+                    "aftereffects",
+                    "blender",
+                    "houdini",
+                    "maya",
+                    "nuke",
+                    "photoshop",
+                ],
+                "enabled": True,
+                "optional": False,
+                "active": True
+            }
+        ]
     },
     "ValidateOutdatedContainers": {
         "plugin_state_profiles": [
