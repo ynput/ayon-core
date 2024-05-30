@@ -558,7 +558,7 @@ class ExtractBurninProfile(BaseSettingsModel):
     _layout = "expanded"
     product_types: list[str] = SettingsField(
         default_factory=list,
-        title="Produt types"
+        title="Product types"
     )
     hosts: list[str] = SettingsField(
         default_factory=list,
