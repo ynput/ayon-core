@@ -6,7 +6,7 @@ import ayon_api
 
 import substance_painter.textureset
 from ayon_core.pipeline import publish
-from ayon_core.hosts.substancepainter.api.lib import (
+from ayon_substancepainter.api.lib import (
     get_parsed_export_maps,
     get_filtered_export_preset,
     strip_template
