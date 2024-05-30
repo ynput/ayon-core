@@ -186,7 +186,7 @@ def launch(application_path, *args):
 
     """
     from ayon_core.pipeline import install_host
-    from ayon_core.hosts.harmony import api as harmony
+    from ayon_harmony import api as harmony
 
     install_host(harmony)
 
@@ -486,7 +486,7 @@ def imprint(node_id, data, remove=False):
         remove (bool): Removes the data from the scene.
 
     Example:
-        >>> from ayon_core.hosts.harmony.api import lib
+        >>> from ayon_harmony.api import lib
         >>> node = "Top/Display"
         >>> data = {"str": "something", "int": 1, "float": 0.32, "bool": True}
         >>> lib.imprint(layer, data)

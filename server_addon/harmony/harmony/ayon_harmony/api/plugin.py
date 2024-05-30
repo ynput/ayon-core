@@ -1,5 +1,5 @@
 from ayon_core.pipeline import LegacyCreator
-import ayon_core.hosts.harmony.api as harmony
+import ayon_harmony.api as harmony
 
 
 class Creator(LegacyCreator):
