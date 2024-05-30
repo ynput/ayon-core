@@ -9,15 +9,6 @@ class RoyalRenderAddon(AYONAddon, IPluginPaths):
     """Class providing basic Royal Render implementation logic."""
     name = "royalrender"
 
-    # _rr_api = None
-    # @property
-    # def rr_api(self):
-    #     if not self._rr_api:
-    #         # import royal render modules
-    #         from .api import Api
-    #         self._rr_api = Api(self.settings)
-    #     return self._rr_api
-
     def initialize(self, studio_settings):
         # type: (dict) -> None
         self.enabled = False
