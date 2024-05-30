@@ -1,5 +1,5 @@
 from copy import deepcopy
-import ayon_core.hosts.flame.api as opfapi
+import ayon_flame.api as opfapi
 
 
 class CreateShotClip(opfapi.Creator):
