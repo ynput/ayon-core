@@ -1,7 +1,7 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
-HOST_DIR = os.path.dirname(os.path.abspath(__file__))
+FLAME_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class FlameAddon(AYONAddon, IHostAddon):
@@ -10,7 +10,7 @@ class FlameAddon(AYONAddon, IHostAddon):
 
     def add_implementation_envs(self, env, _app):
         # Add requirements to DL_PYTHON_HOOK_PATH
-        env["DL_PYTHON_HOOK_PATH"] = os.path.join(HOST_DIR, "startup")
+        env["DL_PYTHON_HOOK_PATH"] = os.path.join(FLAME_ADDON_ROOT, "startup")
         env.pop("QT_AUTO_SCREEN_SCALE_FACTOR", None)
 
         # Set default values if are not already set via settings
@@ -25,7 +25,7 @@ class FlameAddon(AYONAddon, IHostAddon):
         if app.host_name != self.host_name:
             return []
         return [
-            os.path.join(HOST_DIR, "hooks")
+            os.path.join(FLAME_ADDON_ROOT, "hooks")
         ]
 
     def get_workfile_extensions(self):
