@@ -24,6 +24,8 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
     label = "Collect timeline Instances"
     hosts = ["flame"]
 
+    settings_category = "flame"
+
     audio_track_items = []
 
     # settings

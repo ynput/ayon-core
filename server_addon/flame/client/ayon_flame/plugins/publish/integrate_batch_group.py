@@ -16,6 +16,8 @@ class IntegrateBatchGroup(pyblish.api.InstancePlugin):
     hosts = ["flame"]
     families = ["clip"]
 
+    settings_category = "flame"
+
     # settings
     default_loader = "LoadClip"
 
