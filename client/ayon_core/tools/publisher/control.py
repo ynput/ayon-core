@@ -1839,10 +1839,7 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
-        task_type = None
-        current_task_entity = get_current_task_entity()
-        if current_task_entity:
-            task_type = current_task_entity["taskType"]
+        task_type = self._create_context.get_current_task_type()
         allowed_creator_identifiers = self._get_allowed_creator_identifiers(
             self.current_project_settings,
             self._create_context.host_name,
