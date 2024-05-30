@@ -8,9 +8,7 @@ from ayon_celaction import CELACTION_ROOT_DIR
 
 
 class CelactionPrelaunchHook(PreLaunchHook):
-    """
-    Bootstrap celacion with pype
-    """
+    """Bootstrap celacion with AYON"""
     app_groups = {"celaction"}
     platforms = {"windows"}
     launch_types = {LaunchTypes.local}
@@ -39,7 +37,7 @@ class CelactionPrelaunchHook(PreLaunchHook):
             CELACTION_ROOT_DIR, "scripts", "publish_cli.py"
         )
         subprocess_args = get_ayon_launcher_args("run", path_to_cli)
-        openpype_executable = subprocess_args.pop(0)
+        executable = subprocess_args.pop(0)
         workfile_settings = self.get_workfile_settings()
 
         winreg.SetValueEx(
@@ -47,7 +45,7 @@ class CelactionPrelaunchHook(PreLaunchHook):
             "SubmitAppTitle",
             0,
             winreg.REG_SZ,
-            openpype_executable
+            executable
         )
 
         # add required arguments for workfile path

@@ -18,7 +18,7 @@ PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 
 
 def main():
-    # Registers pype's Global pyblish plugins
+    # Registers global pyblish plugins
     install_ayon_plugins()
 
     if os.path.exists(PUBLISH_PATH):
