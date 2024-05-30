@@ -212,7 +212,13 @@ class ApplicationsAddonSettings(BaseSettingsModel):
         scope=["studio"]
     )
     only_available: bool = SettingsField(
-        True, title="Show only available applications")
+        True,
+        title="Show only available applications",
+        description="Enable to show only applications in AYON Launcher"
+                    " for which the executable paths are found on the running machine."
+                    " This applies as an additional filter to the applications defined in a "
+                    " project's anatomy settings to ignore unavailable applications."
+    )
 
     @validator("tool_groups")
     def validate_unique_name(cls, value):
