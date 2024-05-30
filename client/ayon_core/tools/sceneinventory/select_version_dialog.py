@@ -207,9 +207,7 @@ class SelectVersionDialog(QtWidgets.QDialog):
     def _on_confirm(self):
         self._cancelled = False
         index = self._versions_combobox.currentIndex()
-        print(index)
         item_id = self._versions_combobox.itemData(index, ITEM_ID_ROLE)
-        print(item_id)
         self._selected_item = self._versions_combobox.get_item_by_id(item_id)
         self.accept()
 
