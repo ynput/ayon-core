@@ -20,7 +20,10 @@ class RoyalRenderAddon(AYONAddon, IPluginPaths):
 
     def initialize(self, studio_settings):
         # type: (dict) -> None
-        self.enabled = self.name in studio_settings
+        self.enabled = False
+        addon_settings = studio_settings.get(self.name)
+        if addon_settings:
+            self.enabled = addon_settings["enabled"]
 
     @staticmethod
     def get_plugin_paths():
