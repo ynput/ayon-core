@@ -2,7 +2,7 @@ import pyblish.api
 from ayon_core.lib import version_up
 from ayon_core.pipeline.publish import get_errored_plugins_from_context
 
-from ayon_core.hosts.aftereffects.api import get_stub
+from ayon_aftereffects.api import get_stub
 
 
 class IncrementWorkfile(pyblish.api.InstancePlugin):

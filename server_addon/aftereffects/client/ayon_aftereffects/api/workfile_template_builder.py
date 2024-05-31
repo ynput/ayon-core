@@ -12,7 +12,7 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     PlaceholderPlugin,
     PlaceholderItem
 )
-from ayon_core.hosts.aftereffects.api import get_stub
+from ayon_aftereffects.api import get_stub
 
 PLACEHOLDER_SET = "PLACEHOLDERS_SET"
 PLACEHOLDER_ID = "openpype.placeholder"

@@ -5,7 +5,7 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishXmlValidationError,
 )
-from ayon_core.hosts.aftereffects.api import get_stub
+from ayon_aftereffects.api import get_stub
 
 
 class ValidateInstanceFolderRepair(pyblish.api.Action):

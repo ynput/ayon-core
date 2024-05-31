@@ -1,5 +1,5 @@
 from ayon_core.pipeline import publish
-from ayon_core.hosts.aftereffects.api import get_stub
+from ayon_aftereffects.api import get_stub
 
 
 class RemovePublishHighlight(publish.Extractor):

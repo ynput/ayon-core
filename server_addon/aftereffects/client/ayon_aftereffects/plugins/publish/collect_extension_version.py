@@ -2,7 +2,7 @@ import os
 import re
 import pyblish.api
 
-from ayon_core.hosts.aftereffects.api import (
+from ayon_aftereffects.api import (
     get_stub,
     get_extension_manifest_path
 )
