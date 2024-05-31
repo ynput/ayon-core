@@ -1838,14 +1838,14 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
-        allowed_creator_identifiers = self._get_allowed_creator_identifiers()
+        allowed_creator_labels = self._get_allowed_creator_labels()
         for identifier, creator in self._create_context.creators.items():
             try:
                 if (
-                    allowed_creator_identifiers is not None
-                    and identifier not in allowed_creator_identifiers
+                    allowed_creator_labels is not None
+                    and creator.label not in allowed_creator_labels
                 ):
-                    self.log.debug(f"{identifier} not allowed for context")
+                    self.log.debug(f"{creator.label} not allowed for context")
                     continue
                 output[identifier] = CreatorItem.from_creator(creator)
             except Exception:
@@ -1857,16 +1857,16 @@ class PublisherController(BasePublisherController):
 
         return output
 
-    def _get_allowed_creator_identifiers(self):
-        """Provide configured creator identifier in this context
+    def _get_allowed_creator_labels(self):
+        """Provide configured creator label in this context
 
-        If no profile provided for current context, it shows all creators
+        If no profile matches current context, it shows all creators
         """
 
         task_type = self._create_context.get_current_task_type()
         project_settings = self._get_current_project_settings()
 
-        allowed_creator_identifiers = None
+        allowed_creator_labels = None
         filter_creator_profiles = (
             project_settings
             ["core"]
@@ -1886,8 +1886,8 @@ class PublisherController(BasePublisherController):
         )
 
         if profile:
-            allowed_creator_identifiers = profile["creator_identifiers"]
-        return allowed_creator_identifiers
+            allowed_creator_labels = profile["creator_labels"]
+        return allowed_creator_labels
 
     def _reset_instances(self):
         """Reset create instances."""
