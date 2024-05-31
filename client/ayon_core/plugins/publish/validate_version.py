@@ -3,9 +3,9 @@ import pyblish.api
 from ayon_core.lib import filter_profiles
 from ayon_core.pipeline.publish import (
     PublishValidationError,
-    OptionalPyblishPluginMixin,
-    get_current_host_name,
+    OptionalPyblishPluginMixin
 )
+from ayon_core.pipeline.context_tools import get_current_host_name
 
 
 class ValidateVersion(pyblish.api.InstancePlugin, OptionalPyblishPluginMixin):
