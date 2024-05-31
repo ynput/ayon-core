@@ -21,7 +21,6 @@ class ValidateAlembicROPFaceSets(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["abc"]
-    hosts = ["houdini"]
     label = "Validate Alembic ROP Face Sets"
 
     def process(self, instance):

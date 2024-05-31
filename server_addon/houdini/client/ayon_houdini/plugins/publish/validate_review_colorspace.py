@@ -31,14 +31,11 @@ class ValidateReviewColorspace(plugin.HoudiniInstancePlugin,
 
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["review"]
-    hosts = ["houdini"]
     label = "Validate Review Colorspace"
     actions = [ResetViewSpaceAction, SelectROPAction]
 
     optional = True
     review_color_space = ""
-
-    settings_category = "houdini"
 
     @classmethod
     def apply_settings(cls, project_settings):

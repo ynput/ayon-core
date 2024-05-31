@@ -27,13 +27,11 @@ class ValidateSubsetName(plugin.HoudiniInstancePlugin,
     """
 
     families = ["staticMesh"]
-    hosts = ["houdini"]
     label = "Validate Product Name"
     order = ValidateContentsOrder + 0.1
     actions = [FixProductNameAction, SelectInvalidAction]
 
     optional = True
-    settings_category = "houdini"
 
     def process(self, instance):
 

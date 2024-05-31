@@ -10,7 +10,6 @@ class CollectUsdLayers(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Layers"
-    hosts = ["houdini"]
     families = ["usd"]
 
     def process(self, instance):

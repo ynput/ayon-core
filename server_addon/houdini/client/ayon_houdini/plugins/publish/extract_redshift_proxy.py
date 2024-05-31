@@ -12,7 +12,6 @@ class ExtractRedshiftProxy(plugin.HoudiniInstancePlugin):
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Extract Redshift Proxy"
     families = ["redshiftproxy"]
-    hosts = ["houdini"]
     targets = ["local", "remote"]
 
     def process(self, instance):

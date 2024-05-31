@@ -10,7 +10,6 @@ class CollectPointcacheType(pyblish.api.InstancePlugin):
     """Collect data type for different instances."""
 
     order = pyblish.api.CollectorOrder
-    hosts = ["houdini"]
     families = ["pointcache", "model"]
     label = "Collect instances types"
 

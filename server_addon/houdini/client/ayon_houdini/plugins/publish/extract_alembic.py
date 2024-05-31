@@ -11,7 +11,6 @@ class ExtractAlembic(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Alembic"
-    hosts = ["houdini"]
     families = ["abc", "camera"]
     targets = ["local", "remote"]
 

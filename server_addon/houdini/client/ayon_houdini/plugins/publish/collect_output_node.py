@@ -19,7 +19,6 @@ class CollectOutputSOPPath(plugin.HoudiniInstancePlugin):
         "model"
     ]
 
-    hosts = ["houdini"]
     label = "Collect Output Node Path"
 
     def process(self, instance):

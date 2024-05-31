@@ -19,7 +19,6 @@ class ValidateCopOutputNode(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["imagesequence"]
-    hosts = ["houdini"]
     label = "Validate COP Output Node"
 
     def process(self, instance):

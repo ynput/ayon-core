@@ -47,7 +47,6 @@ class CollectRenderProducts(plugin.HoudiniInstancePlugin):
 
     label = "Collect Render Products"
     order = pyblish.api.CollectorOrder + 0.4
-    hosts = ["houdini"]
     families = ["usdrender"]
 
     def process(self, instance):

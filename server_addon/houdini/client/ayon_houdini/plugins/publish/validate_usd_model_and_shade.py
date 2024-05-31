@@ -26,7 +26,6 @@ class ValidateUsdModel(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usdModel"]
-    hosts = ["houdini"]
     label = "Validate USD Model"
     optional = True
 

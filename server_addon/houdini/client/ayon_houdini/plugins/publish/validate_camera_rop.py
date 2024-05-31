@@ -11,7 +11,6 @@ class ValidateCameraROP(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["camera"]
-    hosts = ["houdini"]
     label = "Camera ROP"
 
     def process(self, instance):

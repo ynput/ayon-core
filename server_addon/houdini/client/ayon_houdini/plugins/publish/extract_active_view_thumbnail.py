@@ -15,7 +15,6 @@ class ExtractActiveViewThumbnail(plugin.HoudiniInstancePlugin):
     order = pyblish.api.ExtractorOrder + 0.49
     label = "Extract Active View Thumbnail"
     families = ["workfile"]
-    hosts = ["houdini"]
 
     def process(self, instance):
         if IS_HEADLESS:

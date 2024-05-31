@@ -12,7 +12,6 @@ class ExtractAss(plugin.HoudiniInstancePlugin):
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Extract Ass"
     families = ["ass"]
-    hosts = ["houdini"]
     targets = ["local", "remote"]
 
     def process(self, instance):

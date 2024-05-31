@@ -16,7 +16,6 @@ class ValidateUsdShadeWorkspace(plugin.HoudiniInstancePlugin):
     """
 
     order = pyblish.api.ValidatorOrder
-    hosts = ["houdini"]
     families = ["usdShade"]
     label = "USD Shade Workspace"
 

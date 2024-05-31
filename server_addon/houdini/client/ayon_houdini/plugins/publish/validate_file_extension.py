@@ -20,7 +20,6 @@ class ValidateFileExtension(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["camera", "vdbcache"]
-    hosts = ["houdini"]
     label = "Output File Extension"
 
     family_extensions = {

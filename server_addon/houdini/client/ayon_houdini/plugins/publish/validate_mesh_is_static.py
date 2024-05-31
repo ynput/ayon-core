@@ -23,12 +23,9 @@ class ValidateMeshIsStatic(plugin.HoudiniInstancePlugin,
 
     families = ["staticMesh",
                 "model"]
-    hosts = ["houdini"]
     label = "Validate Mesh is Static"
     order = ValidateContentsOrder + 0.1
     actions = [SelectInvalidAction]
-
-    settings_category = "houdini"
 
     def process(self, instance):
 

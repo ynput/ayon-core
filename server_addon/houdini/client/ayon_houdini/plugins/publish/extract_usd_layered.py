@@ -156,7 +156,6 @@ class ExtractUSDLayered(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Layered USD"
-    hosts = ["houdini"]
     families = ["usdLayered", "usdShade"]
 
     # Force Output Processors so it will always save any file

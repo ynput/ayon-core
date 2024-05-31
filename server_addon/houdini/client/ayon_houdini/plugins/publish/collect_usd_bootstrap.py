@@ -21,7 +21,6 @@ class CollectUsdBootstrap(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Bootstrap"
-    hosts = ["houdini"]
     families = ["usd", "usd.layered"]
 
     def process(self, instance):

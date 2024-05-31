@@ -17,7 +17,6 @@ class ValidateAlembicInputNode(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["abc"]
-    hosts = ["houdini"]
     label = "Validate Input Node (Abc)"
 
     def process(self, instance):

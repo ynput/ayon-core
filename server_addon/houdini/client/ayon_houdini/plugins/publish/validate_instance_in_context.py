@@ -24,10 +24,7 @@ class ValidateInstanceInContextHoudini(plugin.HoudiniInstancePlugin,
     order = ValidateContentsOrder
     label = "Instance in same Context"
     optional = True
-    hosts = ["houdini"]
     actions = [SelectROPAction, RepairAction]
-
-    settings_category = "houdini"
 
     def process(self, instance):
         if not self.is_active(instance.data):

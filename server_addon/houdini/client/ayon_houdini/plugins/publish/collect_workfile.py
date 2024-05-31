@@ -8,7 +8,6 @@ class CollectWorkfile(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.CollectorOrder - 0.01
     label = "Houdini Workfile Data"
-    hosts = ["houdini"]
     families = ["workfile"]
 
     def process(self, instance):

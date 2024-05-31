@@ -32,7 +32,6 @@ class CollectInstancesUsdLayered(plugin.HoudiniContextPlugin):
 
     order = pyblish.api.CollectorOrder - 0.01
     label = "Collect Instances (USD Configured Layers)"
-    hosts = ["houdini"]
 
     def process(self, context):
 

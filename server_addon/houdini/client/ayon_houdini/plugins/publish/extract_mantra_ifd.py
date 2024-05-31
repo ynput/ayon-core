@@ -10,7 +10,6 @@ class ExtractMantraIFD(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Mantra ifd"
-    hosts = ["houdini"]
     families = ["mantraifd"]
     targets = ["local", "remote"]
 

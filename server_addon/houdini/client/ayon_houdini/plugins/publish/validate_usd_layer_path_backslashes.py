@@ -23,7 +23,6 @@ class ValidateUSDLayerPathBackslashes(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usdSetDress", "usdShade", "usd", "usdrender"]
-    hosts = ["houdini"]
     label = "USD Layer path backslashes"
     optional = True
 

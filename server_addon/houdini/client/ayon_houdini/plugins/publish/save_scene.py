@@ -10,7 +10,6 @@ class SaveCurrentScene(plugin.HoudiniContextPlugin):
 
     label = "Save current file"
     order = pyblish.api.ExtractorOrder - 0.49
-    hosts = ["houdini"]
 
     def process(self, context):
 
