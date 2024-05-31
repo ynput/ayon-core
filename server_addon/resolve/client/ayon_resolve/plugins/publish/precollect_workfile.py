@@ -3,8 +3,8 @@ from pprint import pformat
 
 from ayon_core.pipeline import get_current_folder_path
 
-from ayon_core.hosts.resolve import api as rapi
-from ayon_core.hosts.resolve.otio import davinci_export
+from ayon_resolve import api as rapi
+from ayon_resolve.otio import davinci_export
 
 
 class PrecollectWorkfile(pyblish.api.ContextPlugin):

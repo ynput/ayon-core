@@ -2,7 +2,7 @@ import os
 import shutil
 from ayon_core.lib import Logger, is_running_from_build
 
-RESOLVE_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+RESOLVE_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 def setup(env):
@@ -12,7 +12,7 @@ def setup(env):
     util_scripts_dir = env["RESOLVE_UTILITY_SCRIPTS_DIR"]
 
     util_scripts_paths = [os.path.join(
-        RESOLVE_ROOT_DIR,
+        RESOLVE_ADDON_ROOT,
         "utility_scripts"
     )]
 
