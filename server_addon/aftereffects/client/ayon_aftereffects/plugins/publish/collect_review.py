@@ -14,6 +14,7 @@ class CollectReview(pyblish.api.ContextPlugin):
     label = "Collect Review"
     hosts = ["aftereffects"]
     order = pyblish.api.CollectorOrder + 0.1
+    settings_category = "aftereffects"
 
     def process(self, context):
         for instance in context:
