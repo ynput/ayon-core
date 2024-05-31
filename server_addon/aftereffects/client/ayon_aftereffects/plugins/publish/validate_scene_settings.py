@@ -13,7 +13,7 @@ from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.hosts.aftereffects.api import get_folder_settings
+from ayon_aftereffects.api import get_folder_settings
 
 
 class ValidateSceneSettings(OptionalPyblishPluginMixin,

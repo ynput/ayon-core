@@ -14,8 +14,6 @@ from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
-import ayon_core.hosts.aftereffects
-
 from ayon_core.host import (
     HostBase,
     IWorkfileHost,
@@ -23,6 +21,7 @@ from ayon_core.host import (
     IPublishHost
 )
 from ayon_core.tools.utils import get_ayon_qt_app
+from ayon_aftereffects import AFTEREFFECTS_ADDON_ROOT
 
 from .launch_logic import get_stub
 from .ws_stub import ConnectionNotEstablishedYet
@@ -30,10 +29,7 @@ from .ws_stub import ConnectionNotEstablishedYet
 log = Logger.get_logger(__name__)
 
 
-HOST_DIR = os.path.dirname(
-    os.path.abspath(ayon_core.hosts.aftereffects.__file__)
-)
-PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(AFTEREFFECTS_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")

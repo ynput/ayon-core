@@ -2,8 +2,10 @@ from ayon_core.pipeline.workfile.workfile_template_builder import (
     LoadPlaceholderItem,
     PlaceholderLoadMixin
 )
-from ayon_core.hosts.aftereffects.api import get_stub
-import ayon_core.hosts.aftereffects.api.workfile_template_builder as wtb
+from ayon_aftereffects.api import (
+    get_stub,
+    workfile_template_builder as wtb,
+)
 
 
 class AEPlaceholderLoadPlugin(wtb.AEPlaceholderPlugin, PlaceholderLoadMixin):

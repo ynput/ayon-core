@@ -2,7 +2,7 @@ import os
 
 import pyblish.api
 
-from ayon_core.hosts.aftereffects.api import get_stub
+from ayon_aftereffects.api import get_stub
 
 
 class CollectAudio(pyblish.api.ContextPlugin):

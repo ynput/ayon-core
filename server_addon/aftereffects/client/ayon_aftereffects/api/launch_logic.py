@@ -35,7 +35,7 @@ def main(*subprocess_args):
     """Main entrypoint to AE launching, called from pre hook."""
     sys.excepthook = safe_excepthook
 
-    from ayon_core.hosts.aftereffects.api import AfterEffectsHost
+    from ayon_aftereffects.api import AfterEffectsHost
 
     host = AfterEffectsHost()
     install_host(host)
@@ -355,7 +355,7 @@ class AfterEffectsRoute(WebSocketRoute):
         return "nothing"
 
     def create_placeholder_route(self):
-        from ayon_core.hosts.aftereffects.api.workfile_template_builder import \
+        from ayon_aftereffects.api.workfile_template_builder import \
             create_placeholder
         partial_method = functools.partial(create_placeholder)
 
@@ -365,7 +365,7 @@ class AfterEffectsRoute(WebSocketRoute):
         return "nothing"
 
     def update_placeholder_route(self):
-        from ayon_core.hosts.aftereffects.api.workfile_template_builder import \
+        from ayon_aftereffects.api.workfile_template_builder import \
             update_placeholder
         partial_method = functools.partial(update_placeholder)
 
@@ -375,7 +375,7 @@ class AfterEffectsRoute(WebSocketRoute):
         return "nothing"
 
     def build_workfile_template_route(self):
-        from ayon_core.hosts.aftereffects.api.workfile_template_builder import \
+        from ayon_aftereffects.api.workfile_template_builder import \
             build_workfile_template
         partial_method = functools.partial(build_workfile_template)
 

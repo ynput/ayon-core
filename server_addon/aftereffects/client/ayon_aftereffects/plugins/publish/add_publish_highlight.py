@@ -1,6 +1,6 @@
 import pyblish.api
 
-from ayon_core.hosts.aftereffects.api import get_stub
+from ayon_aftereffects.api import get_stub
 
 
 class AddPublishHighlight(pyblish.api.InstancePlugin):

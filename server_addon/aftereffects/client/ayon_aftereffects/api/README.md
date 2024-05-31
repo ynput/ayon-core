@@ -25,7 +25,7 @@ download [Anastasiy’s Extension Manager](https://install.anastasiy.com/)
 The easiest way to get the server and After Effects launch is with:
 
 ```
-python -c ^"import ayon_core.hosts.photoshop;ayon_core.hosts.aftereffects.launch(""c:\Program Files\Adobe\Adobe After Effects 2020\Support Files\AfterFX.exe"")^"
+python -c ^"import ayon_core.hosts.photoshop;ayon_aftereffects.launch(""c:\Program Files\Adobe\Adobe After Effects 2020\Support Files\AfterFX.exe"")^"
 ```
 
 `avalon.aftereffects.launch` launches the application and server, and also closes the server when After Effects exists.

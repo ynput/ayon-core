@@ -1,11 +1,11 @@
 import ayon_api
 
-import ayon_core.hosts.aftereffects.api as api
 from ayon_core.pipeline import (
     AutoCreator,
     CreatedInstance
 )
-from ayon_core.hosts.aftereffects.api.pipeline import cache_and_get_instances
+from ayon_aftereffects import api
+from ayon_aftereffects.api.pipeline import cache_and_get_instances
 
 
 class AEWorkfileCreator(AutoCreator):

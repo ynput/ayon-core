@@ -8,7 +8,7 @@ workfile or others.
 import os
 import sys
 
-from ayon_core.hosts.aftereffects.api.launch_logic import main as host_main
+from ayon_aftereffects.api.launch_logic import main as host_main
 
 # Get current file to locate start point of sys.argv
 CURRENT_FILE = os.path.abspath(__file__)
