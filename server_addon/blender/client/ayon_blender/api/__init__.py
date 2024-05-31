@@ -15,7 +15,6 @@ from .pipeline import (
 
 from .plugin import (
     Creator,
-    Loader,
 )
 
 from .workio import (
@@ -51,7 +50,6 @@ __all__ = [
     "BlenderHost",
 
     "Creator",
-    "Loader",
 
     # Workfiles API
     "open_file",

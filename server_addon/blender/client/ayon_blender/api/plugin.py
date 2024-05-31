@@ -376,12 +376,6 @@ class BaseCreator(Creator):
         ]
 
 
-class Loader(LoaderPlugin):
-    """Base class for Loader plug-ins."""
-
-    hosts = ["blender"]
-
-
 class AssetLoader(LoaderPlugin):
     """A basic AssetLoader for Blender
 
