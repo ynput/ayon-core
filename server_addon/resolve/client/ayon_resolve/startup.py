@@ -11,7 +11,7 @@ This code runs in a separate process to the main Resolve process.
 """
 import os
 from ayon_core.lib import Logger
-import ayon_core.hosts.resolve.api
+import ayon_resolve.api
 
 log = Logger.get_logger(__name__)
 
@@ -27,7 +27,7 @@ def ensure_installed_host():
     if host:
         return host
 
-    host = ayon_core.hosts.resolve.api.ResolveHost()
+    host = ayon_resolve.api.ResolveHost()
     install_host(host)
     return registered_host()
 
@@ -35,7 +35,7 @@ def ensure_installed_host():
 def launch_menu():
     print("Launching Resolve AYON menu..")
     ensure_installed_host()
-    ayon_core.hosts.resolve.api.launch_ayon_menu()
+    ayon_resolve.api.launch_ayon_menu()
 
 
 def open_workfile(path):

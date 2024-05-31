@@ -8,7 +8,7 @@ log = Logger.get_logger(__name__)
 
 
 def main(env):
-    from ayon_core.hosts.resolve.api import ResolveHost, launch_ayon_menu
+    from ayon_resolve.api import ResolveHost, launch_ayon_menu
 
     # activate resolve from openpype
     host = ResolveHost()
