@@ -1,11 +1,14 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 BLENDER_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class BlenderAddon(AYONAddon, IHostAddon):
     name = "blender"
+    version = __version__
     host_name = "blender"
 
     def add_implementation_envs(self, env, _app):
