@@ -1889,6 +1889,7 @@ class PublisherController(BasePublisherController):
 
         if profile:
             allowed_creator_labels = profile["creator_labels"]
+            self.log.debug(f"Only allowed `{allowed_creator_labels}` creators")
         return allowed_creator_labels
 
     def _label_matches_allowed(self, label, allowed_labels):
