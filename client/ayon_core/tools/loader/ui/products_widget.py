@@ -6,7 +6,7 @@ from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     DeselectableTreeView,
 )
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.tools.utils.delegates import PrettyTimeDelegate, StatusDelegate
 
 from .products_model import (
     ProductsModel,
@@ -17,12 +17,15 @@ from .products_model import (
     FOLDER_ID_ROLE,
     PRODUCT_ID_ROLE,
     VERSION_ID_ROLE,
+    VERSION_STATUS_NAME_ROLE,
+    VERSION_STATUS_SHORT_ROLE,
+    VERSION_STATUS_COLOR_ROLE,
+    VERSION_STATUS_ICON_ROLE,
     VERSION_THUMBNAIL_ID_ROLE,
 )
 from .products_delegates import (
     VersionDelegate,
     LoadedInSceneDelegate,
-    StatusDelegate,
     SiteSyncDelegate,
 )
 from .actions_utils import show_actions_menu
@@ -131,7 +134,12 @@ class ProductsWidget(QtWidgets.QWidget):
 
         version_delegate = VersionDelegate()
         time_delegate = PrettyTimeDelegate()
-        status_delegate = StatusDelegate()
+        status_delegate = StatusDelegate(
+            VERSION_STATUS_NAME_ROLE,
+            VERSION_STATUS_SHORT_ROLE,
+            VERSION_STATUS_COLOR_ROLE,
+            VERSION_STATUS_ICON_ROLE,
+        )
         in_scene_delegate = LoadedInSceneDelegate()
         sitesync_delegate = SiteSyncDelegate()
 
