@@ -73,7 +73,7 @@ class CreatorToolModel(BaseSettingsModel):
     filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
         default_factory=list,
         title="Filter creator profiles",
-        description="White list of creator labels that will be only shown if "
+        description="Allowed list of creator labels that will be only shown if "
                     "profile matches context."
     )
 
