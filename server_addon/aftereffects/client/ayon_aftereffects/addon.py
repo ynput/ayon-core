@@ -2,11 +2,14 @@ import os
 
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 AFTEREFFECTS_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class AfterEffectsAddon(AYONAddon, IHostAddon):
     name = "aftereffects"
+    version = __version__
     host_name = "aftereffects"
 
     def add_implementation_envs(self, env, _app):
