@@ -3,7 +3,7 @@ import shutil
 import platform
 from pathlib import Path
 from ayon_fusion import (
-    FUSION_HOST_DIR,
+    FUSION_ADDON_ROOT,
     FUSION_VERSIONS_DICT,
     get_fusion_version,
 )
@@ -163,7 +163,7 @@ class FusionCopyPrefsPrelaunch(PreLaunchHook):
         master_prefs_variable = f"FUSION{profile_version}_MasterPrefs"
 
         master_prefs = Path(
-            FUSION_HOST_DIR, "deploy", "ayon", "fusion_shared.prefs")
+            FUSION_ADDON_ROOT, "deploy", "ayon", "fusion_shared.prefs")
 
         self.log.info(f"Setting {master_prefs_variable}: {master_prefs}")
         self.launch_context.env[master_prefs_variable] = str(master_prefs)

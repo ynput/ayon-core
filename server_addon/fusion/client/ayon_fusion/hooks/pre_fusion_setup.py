@@ -5,7 +5,7 @@ from ayon_applications import (
     ApplicationLaunchFailed,
 )
 from ayon_fusion import (
-    FUSION_HOST_DIR,
+    FUSION_ADDON_ROOT,
     FUSION_VERSIONS_DICT,
     get_fusion_version,
 )
@@ -67,5 +67,5 @@ class FusionPrelaunch(PreLaunchHook):
         # for hook installing PySide2
         self.data["fusion_python3_home"] = py3_dir
 
-        self.log.info(f"Setting AYON_FUSION_ROOT: {FUSION_HOST_DIR}")
-        self.launch_context.env["AYON_FUSION_ROOT"] = FUSION_HOST_DIR
+        self.log.info(f"Setting AYON_FUSION_ROOT: {FUSION_ADDON_ROOT}")
+        self.launch_context.env["AYON_FUSION_ROOT"] = FUSION_ADDON_ROOT
