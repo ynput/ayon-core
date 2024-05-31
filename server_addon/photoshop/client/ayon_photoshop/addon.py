@@ -1,11 +1,14 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 PHOTOSHOP_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class PhotoshopAddon(AYONAddon, IHostAddon):
     name = "photoshop"
+    version = __version__
     host_name = "photoshop"
 
     def add_implementation_envs(self, env, _app):
@@ -33,4 +36,3 @@ def get_launch_script_path():
     return os.path.join(
         PHOTOSHOP_ADDON_ROOT, "api", "launch_script.py"
     )
-
