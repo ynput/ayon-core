@@ -1,3 +1,4 @@
+from .version import __version__
 from .addon import (
     get_fusion_version,
     FusionAddon,
@@ -7,6 +8,8 @@ from .addon import (
 
 
 __all__ = (
+    "__version__",
+
     "get_fusion_version",
     "FusionAddon",
     "FUSION_ADDON_ROOT",

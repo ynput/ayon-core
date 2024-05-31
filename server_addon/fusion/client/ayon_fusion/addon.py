@@ -3,6 +3,8 @@ import re
 from ayon_core.addon import AYONAddon, IHostAddon
 from ayon_core.lib import Logger
 
+from .version import __version__
+
 FUSION_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # FUSION_VERSIONS_DICT is used by the pre-launch hooks
@@ -50,6 +52,7 @@ def get_fusion_version(app_name):
 
 class FusionAddon(AYONAddon, IHostAddon):
     name = "fusion"
+    version = __version__
     host_name = "fusion"
 
     def get_launch_hook_paths(self, app):
