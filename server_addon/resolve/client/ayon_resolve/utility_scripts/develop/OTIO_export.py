@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from ayon_core.hosts.resolve.otio import davinci_export as otio_export
+from ayon_resolve.otio import davinci_export as otio_export
 
 resolve = bmd.scriptapp("Resolve")  # noqa
 fu = resolve.Fusion()

@@ -3,7 +3,7 @@ from pprint import pformat
 import pyblish
 
 from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
-from ayon_core.hosts.resolve.api.lib import (
+from ayon_resolve.api.lib import (
     get_current_timeline_items,
     get_timeline_item_pype_tag,
     publish_clip_color,
