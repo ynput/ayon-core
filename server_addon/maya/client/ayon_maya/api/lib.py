@@ -1731,9 +1731,6 @@ def is_valid_reference_node(reference_node):
         bool: Whether reference node is a valid reference
 
     """
-    sel = OpenMaya.MSelectionList()
-    sel.add(reference_node)
-    depend_node = sel.getDependNode(0)
     # maya 2022 is missing `isValidReference` so the check needs to be
     # done in different way.
     if cmds.about(version=True) < 2023:
@@ -1742,6 +1739,9 @@ def is_valid_reference_node(reference_node):
             return True
         except RuntimeError:
             return False
+    sel = OpenMaya.MSelectionList()
+    sel.add(reference_node)
+    depend_node = sel.getDependNode(0)
 
     return OpenMaya.MFnReference(depend_node).isValidReference()
 
