@@ -16,6 +16,7 @@ class ValidateNamingRepair(pyblish.api.Action):
     label = "Repair"
     icon = "wrench"
     on = "failed"
+    settings_category = "photoshop"
 
     def process(self, context, plugin):
 
