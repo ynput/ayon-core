@@ -358,18 +358,21 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
 
 class HoudiniLoader(load.LoaderPlugin):
-    """Base class for most of the Houdini load plugins."""
+    """Base class for Houdini load plugins."""
 
+    hosts = ["houdini"]
     settings_category = SETTINGS_CATEGORY
 
 
 class HoudiniInstancePlugin(pyblish.api.InstancePlugin):
-    """Base class for most of the Houdini instance publish plugins."""
+    """Base class for Houdini instance publish plugins."""
 
+    hosts = ["houdini"]
     settings_category = SETTINGS_CATEGORY
 
 
 class HoudiniContextPlugin(pyblish.api.ContextPlugin):
-    """Base class for most of the Houdini context publish plugins."""
+    """Base class for Houdini context publish plugins."""
 
+    hosts = ["houdini"]
     settings_category = SETTINGS_CATEGORY
