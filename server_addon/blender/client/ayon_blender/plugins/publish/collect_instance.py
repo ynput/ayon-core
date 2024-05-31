@@ -3,10 +3,11 @@ import bpy
 import pyblish.api
 
 from ayon_core.pipeline.publish import KnownPublishError
+from ayon_blender.api import plugin
 from ayon_blender.api.pipeline import AVALON_PROPERTY
 
 
-class CollectBlenderInstanceData(pyblish.api.InstancePlugin):
+class CollectBlenderInstanceData(plugin.BlenderInstancePlugin):
     """Validator to verify that the instance is not empty"""
 
     order = pyblish.api.CollectorOrder

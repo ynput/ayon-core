@@ -6,7 +6,9 @@ from ayon_core.pipeline import publish
 from ayon_blender.api import plugin
 
 
-class ExtractCameraABC(publish.Extractor, publish.OptionalPyblishPluginMixin):
+class ExtractCameraABC(
+    plugin.BlenderExtractor, publish.OptionalPyblishPluginMixin
+):
     """Extract camera as ABC."""
 
     label = "Extract Camera (ABC)"

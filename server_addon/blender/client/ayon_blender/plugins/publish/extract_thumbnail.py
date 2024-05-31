@@ -3,14 +3,13 @@ import glob
 import json
 
 import pyblish.api
-from ayon_core.pipeline import publish
-from ayon_blender.api import capture
+from ayon_blender.api import capture, plugin
 from ayon_blender.api.lib import maintained_time
 
 import bpy
 
 
-class ExtractThumbnail(publish.Extractor):
+class ExtractThumbnail(plugin.BlenderExtractor):
     """Extract viewport thumbnail.
 
     Takes review camera and creates a thumbnail based on viewport

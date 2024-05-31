@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from pyblish.api import InstancePlugin, CollectorOrder
+from pyblish.api import CollectorOrder
+from ayon_blender.api import plugin
 
 
-class CollectWorkfile(InstancePlugin):
+class CollectWorkfile(plugin.BlenderInstancePlugin):
     """Inject workfile data into its instance."""
 
     order = CollectorOrder

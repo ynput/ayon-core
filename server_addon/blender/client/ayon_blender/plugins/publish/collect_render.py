@@ -5,12 +5,12 @@ import os
 import re
 
 import bpy
-
-from ayon_blender.api import colorspace
 import pyblish.api
 
+from ayon_blender.api import colorspace, plugin
 
-class CollectBlenderRender(pyblish.api.InstancePlugin):
+
+class CollectBlenderRender(plugin.BlenderInstancePlugin):
     """Gather all publishable render instances."""
 
     order = pyblish.api.CollectorOrder + 0.01

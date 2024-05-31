@@ -4,8 +4,6 @@ from typing import List
 import mathutils
 import bpy
 
-import pyblish.api
-
 from ayon_blender.api import plugin, lib
 import ayon_blender.api.action
 from ayon_core.pipeline.publish import (
@@ -16,8 +14,10 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateTransformZero(pyblish.api.InstancePlugin,
-                            OptionalPyblishPluginMixin):
+class ValidateTransformZero(
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin
+):
     """Transforms can't have any values"""
 
     order = ValidateContentsOrder

@@ -2,9 +2,8 @@ from typing import List
 
 import bpy
 
-import pyblish.api
-
 import ayon_blender.api.action
+from ayon_blender.api import plugin
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     PublishValidationError,
@@ -12,8 +11,10 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateCameraZeroKeyframe(pyblish.api.InstancePlugin,
-                                 OptionalPyblishPluginMixin):
+class ValidateCameraZeroKeyframe(
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin
+):
     """Camera must have a keyframe at frame 0.
 
     Unreal shifts the first keyframe to frame 0. Forcing the camera to have

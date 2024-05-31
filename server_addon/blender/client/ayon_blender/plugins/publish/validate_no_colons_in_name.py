@@ -2,9 +2,8 @@ from typing import List
 
 import bpy
 
-import pyblish.api
-
 import ayon_blender.api.action
+from ayon_blender.api import plugin
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
@@ -12,8 +11,10 @@ from ayon_core.pipeline.publish import (
 )
 
 
-class ValidateNoColonsInName(pyblish.api.InstancePlugin,
-                             OptionalPyblishPluginMixin):
+class ValidateNoColonsInName(
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin
+):
     """There cannot be colons in names
 
     Object or bone names cannot include colons. Other software do not

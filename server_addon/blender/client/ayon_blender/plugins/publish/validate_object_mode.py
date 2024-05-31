@@ -8,11 +8,12 @@ from ayon_core.pipeline.publish import (
     PublishValidationError
 )
 import ayon_blender.api.action
+from ayon_blender.api import plugin
 
 
 class ValidateObjectIsInObjectMode(
-        pyblish.api.InstancePlugin,
-        OptionalPyblishPluginMixin,
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin,
 ):
     """Validate that the objects in the instance are in Object Mode."""
 

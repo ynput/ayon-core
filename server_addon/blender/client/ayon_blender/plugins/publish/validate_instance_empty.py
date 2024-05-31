@@ -1,8 +1,9 @@
 import pyblish.api
 from ayon_core.pipeline.publish import PublishValidationError
+from ayon_blender.api import plugin
 
 
-class ValidateInstanceEmpty(pyblish.api.InstancePlugin):
+class ValidateInstanceEmpty(plugin.BlenderInstancePlugin):
     """Validator to verify that the instance is not empty"""
 
     order = pyblish.api.ValidatorOrder - 0.01

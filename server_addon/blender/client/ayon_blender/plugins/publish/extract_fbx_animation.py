@@ -42,8 +42,8 @@ def get_highest_root(objects):
 
 
 class ExtractAnimationFBX(
-        publish.Extractor,
-        publish.OptionalPyblishPluginMixin,
+    plugin.BlenderExtractor,
+    publish.OptionalPyblishPluginMixin,
 ):
     """Extract as animation."""
 

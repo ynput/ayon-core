@@ -3,9 +3,12 @@ import os
 import bpy
 
 from ayon_core.pipeline import publish
+from ayon_blender.api import plugin
 
 
-class ExtractBlend(publish.Extractor, publish.OptionalPyblishPluginMixin):
+class ExtractBlend(
+    plugin.BlenderExtractor, publish.OptionalPyblishPluginMixin
+):
     """Extract a blend file."""
 
     label = "Extract Blend"

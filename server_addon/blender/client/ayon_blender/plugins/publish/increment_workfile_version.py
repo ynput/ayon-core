@@ -1,11 +1,12 @@
 import pyblish.api
 from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
 from ayon_blender.api.workio import save_file
+from ayon_blender.api import plugin
 
 
 class IncrementWorkfileVersion(
-        pyblish.api.ContextPlugin,
-        OptionalPyblishPluginMixin
+    plugin.BlenderContextPlugin,
+    OptionalPyblishPluginMixin
 ):
     """Increment current workfile version."""
 

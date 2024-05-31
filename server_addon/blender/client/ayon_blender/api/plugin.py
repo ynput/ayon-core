@@ -4,6 +4,7 @@ import itertools
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import pyblish.api
 import bpy
 
 from ayon_core.pipeline import (
@@ -13,6 +14,7 @@ from ayon_core.pipeline import (
     AVALON_INSTANCE_ID,
     AYON_INSTANCE_ID,
 )
+from ayon_core.pipeline.publish import Extractor
 from ayon_core.lib import BoolDef
 
 from .pipeline import (
@@ -161,10 +163,23 @@ def deselect_all():
     bpy.context.view_layer.objects.active = active
 
 
+class BlenderInstancePlugin(pyblish.api.InstancePlugin):
+    settings_category = "blender"
+
+
+class BlenderContextPlugin(pyblish.api.ContextPlugin):
+    settings_category = "blender"
+
+
+class BlenderExtractor(Extractor):
+    settings_category = "blender"
+
+
 class BaseCreator(Creator):
     """Base class for Blender Creator plug-ins."""
     defaults = ['Main']
 
+    settings_category = "blender"
     create_as_asset_group = False
 
     @staticmethod
@@ -386,6 +401,7 @@ class AssetLoader(LoaderPlugin):
     it's different for different types (e.g. model, rig, animation,
     etc.).
     """
+    settings_category = "blender"
 
     @staticmethod
     def _get_instance_empty(instance_name: str, nodes: List) -> Optional[bpy.types.Object]:

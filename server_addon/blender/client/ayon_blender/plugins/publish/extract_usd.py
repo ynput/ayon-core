@@ -2,11 +2,11 @@ import os
 
 import bpy
 
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import KnownPublishError
 from ayon_blender.api import plugin, lib
 
 
-class ExtractUSD(publish.Extractor):
+class ExtractUSD(plugin.BlenderExtractor):
     """Extract as USD."""
 
     label = "Extract USD"
@@ -40,7 +40,7 @@ class ExtractUSD(publish.Extractor):
         root = lib.get_highest_root(objects=instance[:])
         if not root:
             instance_node = instance.data["transientData"]["instance_node"]
-            raise publish.KnownPublishError(
+            raise KnownPublishError(
                 f"No root object found in instance: {instance_node.name}"
             )
         self.log.debug(f"Exporting using active root: {root.name}")
