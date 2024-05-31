@@ -2,7 +2,7 @@ import os
 import re
 import pyblish.api
 
-from ayon_core.hosts.photoshop import api as photoshop
+from ayon_photoshop import api as photoshop
 
 
 class CollectExtensionVersion(pyblish.api.ContextPlugin):

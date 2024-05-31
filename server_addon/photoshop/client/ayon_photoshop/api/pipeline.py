@@ -21,8 +21,8 @@ from ayon_core.host import (
 )
 
 from ayon_core.pipeline.load import any_outdated_containers
-from ayon_core.hosts.photoshop import PHOTOSHOP_ADDON_ROOT
 from ayon_core.tools.utils import get_ayon_qt_app
+from ayon_photoshop import PHOTOSHOP_ADDON_ROOT
 
 from . import lib
 

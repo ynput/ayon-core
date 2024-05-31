@@ -1,7 +1,7 @@
 import ayon_api
 
-import ayon_core.hosts.photoshop.api as api
-from ayon_core.hosts.photoshop.lib import PSAutoCreator, clean_product_name
+from ayon_photoshop import api
+from ayon_photoshop.lib import PSAutoCreator, clean_product_name
 from ayon_core.lib import BoolDef, prepare_template_data
 from ayon_core.pipeline.create import get_product_name, CreatedInstance
 

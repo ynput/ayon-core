@@ -19,7 +19,7 @@ def safe_excepthook(*args):
 
 
 def main(*subprocess_args):
-    from ayon_core.hosts.photoshop.api import PhotoshopHost
+    from ayon_photoshop.api import PhotoshopHost
 
     host = PhotoshopHost()
     install_host(host)
