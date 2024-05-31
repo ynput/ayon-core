@@ -30,6 +30,7 @@ class ImageSequenceLoader(load.LoaderPlugin):
     }
     representations = {"*"}
     extensions = {"jpeg", "png", "jpg"}
+    settings_category = "harmony"
 
     def load(self, context, name=None, namespace=None, data=None):
         """Plugin entry point.
