@@ -6,10 +6,10 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.tools.utils import host_tools
 from ayon_core.style import load_stylesheet
 from ayon_core.lib import register_event_callback
-from ayon_core.hosts.fusion.scripts import (
+from ayon_fusion.scripts import (
     duplicate_with_inputs,
 )
-from ayon_core.hosts.fusion.api.lib import (
+from ayon_fusion.api.lib import (
     set_current_context_framerange,
     set_current_context_resolution,
 )

@@ -1,6 +1,6 @@
 from ayon_core.lib import NumberDef
 
-from ayon_core.hosts.fusion.api.plugin import GenericCreateSaver
+from ayon_fusion.api.plugin import GenericCreateSaver
 
 
 class CreateImageSaver(GenericCreateSaver):

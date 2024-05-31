@@ -27,7 +27,7 @@ class FusionSetFrameRangeLoader(load.LoaderPlugin):
 
     def load(self, context, name, namespace, data):
 
-        from ayon_core.hosts.fusion.api import lib
+        from ayon_fusion.api import lib
 
         version_attributes = context["version"]["attrib"]
 
@@ -63,7 +63,7 @@ class FusionSetFrameRangeWithHandlesLoader(load.LoaderPlugin):
 
     def load(self, context, name, namespace, data):
 
-        from ayon_core.hosts.fusion.api import lib
+        from ayon_fusion.api import lib
 
         version_attributes = context["version"]["attrib"]
         start = version_attributes.get("frameStart", None)

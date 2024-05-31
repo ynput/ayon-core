@@ -1,6 +1,6 @@
 import os
 from ayon_applications import PreLaunchHook
-from ayon_core.hosts.fusion import FUSION_HOST_DIR
+from ayon_fusion import FUSION_HOST_DIR
 
 
 class FusionLaunchMenuHook(PreLaunchHook):

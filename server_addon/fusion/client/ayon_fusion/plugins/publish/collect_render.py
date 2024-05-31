@@ -4,7 +4,7 @@ import pyblish.api
 
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import RenderInstance
-from ayon_core.hosts.fusion.api.lib import get_frame_path
+from ayon_fusion.api.lib import get_frame_path
 
 
 @attr.s

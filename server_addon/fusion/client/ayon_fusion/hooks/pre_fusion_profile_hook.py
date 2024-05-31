@@ -2,7 +2,7 @@ import os
 import shutil
 import platform
 from pathlib import Path
-from ayon_core.hosts.fusion import (
+from ayon_fusion import (
     FUSION_HOST_DIR,
     FUSION_VERSIONS_DICT,
     get_fusion_version,

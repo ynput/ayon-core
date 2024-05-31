@@ -4,8 +4,8 @@ from ayon_core.pipeline import (
     OptionalPyblishPluginMixin,
 )
 
-from ayon_core.hosts.fusion.api.action import SelectInvalidAction
-from ayon_core.hosts.fusion.api import comp_lock_and_undo_chunk
+from ayon_fusion.api.action import SelectInvalidAction
+from ayon_fusion.api import comp_lock_and_undo_chunk
 
 
 class ValidateSaverResolution(

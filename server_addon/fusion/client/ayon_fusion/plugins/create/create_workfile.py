@@ -1,6 +1,6 @@
 import ayon_api
 
-from ayon_core.hosts.fusion.api import (
+from ayon_fusion.api import (
     get_current_comp
 )
 from ayon_core.pipeline import (

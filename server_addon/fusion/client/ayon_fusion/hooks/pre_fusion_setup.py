@@ -4,7 +4,7 @@ from ayon_applications import (
     LaunchTypes,
     ApplicationLaunchFailed,
 )
-from ayon_core.hosts.fusion import (
+from ayon_fusion import (
     FUSION_HOST_DIR,
     FUSION_VERSIONS_DICT,
     get_fusion_version,

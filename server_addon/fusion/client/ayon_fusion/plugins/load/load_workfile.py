@@ -5,7 +5,7 @@ is no update or reload function added for this plugin
 
 from ayon_core.pipeline import load
 
-from ayon_core.hosts.fusion.api import (
+from ayon_fusion.api import (
     get_current_comp,
     get_bmd_library,
 )
