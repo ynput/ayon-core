@@ -7,10 +7,8 @@ import hou
 import ayon_api
 import pyblish.api
 
-from ayon_core.pipeline import (
-    get_representation_path,
-    publish,
-)
+from ayon_core.pipeline import get_representation_path
+from ayon_houdini.api import plugin
 import ayon_houdini.api.usd as hou_usdlib
 from ayon_houdini.api.lib import render_rop
 
@@ -154,11 +152,10 @@ def parm_values(overrides):
                 parm.set(value)
 
 
-class ExtractUSDLayered(publish.Extractor):
+class ExtractUSDLayered(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Layered USD"
-    hosts = ["houdini"]
     families = ["usdLayered", "usdShade"]
 
     # Force Output Processors so it will always save any file
@@ -312,3 +309,14 @@ class ExtractUSDLayered(publish.Extractor):
             return False
 
         return filecmp.cmp(old_file, new_file)
+
+    def staging_dir(self, instance):
+        """Provide a temporary directory in which to store extracted files
+
+        Upon calling this method the staging directory is stored inside
+        the instance.data['stagingDir']
+        """
+
+        from ayon_core.pipeline.publish import get_instance_staging_dir
+
+        return get_instance_staging_dir(instance)

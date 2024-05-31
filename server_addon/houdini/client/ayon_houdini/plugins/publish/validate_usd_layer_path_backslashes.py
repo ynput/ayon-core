@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
-
-import ayon_houdini.api.usd as hou_usdlib
-from ayon_core.pipeline import PublishValidationError
-
 import hou
 
+import pyblish.api
+from ayon_core.pipeline import PublishValidationError
 
-class ValidateUSDLayerPathBackslashes(pyblish.api.InstancePlugin):
+from ayon_houdini.api import plugin
+import ayon_houdini.api.usd as hou_usdlib
+
+
+class ValidateUSDLayerPathBackslashes(plugin.HoudiniInstancePlugin):
     """Validate USD loaded paths have no backslashes.
 
     This is a crucial validation for HUSK USD rendering as Houdini's
@@ -22,7 +23,6 @@ class ValidateUSDLayerPathBackslashes(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usdSetDress", "usdShade", "usd", "usdrender"]
-    hosts = ["houdini"]
     label = "USD Layer path backslashes"
     optional = True
 

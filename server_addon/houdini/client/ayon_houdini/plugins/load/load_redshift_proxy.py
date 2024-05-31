@@ -1,16 +1,17 @@
 import os
 import re
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
-)
-from ayon_houdini.api import pipeline
-from ayon_core.pipeline.load import LoadError
-
 import hou
 
+from ayon_core.pipeline import get_representation_path
+from ayon_core.pipeline.load import LoadError
 
-class RedshiftProxyLoader(load.LoaderPlugin):
+from ayon_houdini.api import (
+    pipeline,
+    plugin
+)
+
+
+class RedshiftProxyLoader(plugin.HoudiniLoader):
     """Load Redshift Proxy"""
 
     product_types = {"redshiftproxy"}

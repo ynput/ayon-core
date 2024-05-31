@@ -5,6 +5,7 @@ import hou
 import pxr.UsdRender
 
 import pyblish.api
+from ayon_houdini.api import plugin
 
 
 def get_var_changed(variable=None):
@@ -41,12 +42,11 @@ def get_var_changed(variable=None):
     return changed
 
 
-class CollectRenderProducts(pyblish.api.InstancePlugin):
+class CollectRenderProducts(plugin.HoudiniInstancePlugin):
     """Collect USD Render Products."""
 
     label = "Collect Render Products"
     order = pyblish.api.CollectorOrder + 0.4
-    hosts = ["houdini"]
     families = ["usdrender"]
 
     def process(self, instance):

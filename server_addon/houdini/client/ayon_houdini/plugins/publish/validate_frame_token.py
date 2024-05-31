@@ -1,10 +1,11 @@
-import pyblish.api
-
-from ayon_houdini.api import lib
 import hou
 
+import pyblish.api
 
-class ValidateFrameToken(pyblish.api.InstancePlugin):
+from ayon_houdini.api import lib, plugin
+
+
+class ValidateFrameToken(plugin.HoudiniInstancePlugin):
     """Validate if the unexpanded string contains the frame ('$F') token.
 
     This validator will *only* check the output parameter of the node if

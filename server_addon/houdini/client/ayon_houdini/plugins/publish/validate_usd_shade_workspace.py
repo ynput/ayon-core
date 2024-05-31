@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
+import hou
+
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 
-import hou
+from ayon_houdini.api import plugin
 
 
-class ValidateUsdShadeWorkspace(pyblish.api.InstancePlugin):
+class ValidateUsdShadeWorkspace(plugin.HoudiniInstancePlugin):
     """Validate USD Shading Workspace is correct version.
 
     There have been some issues with outdated/erroneous Shading Workspaces
@@ -14,7 +16,6 @@ class ValidateUsdShadeWorkspace(pyblish.api.InstancePlugin):
     """
 
     order = pyblish.api.ValidatorOrder
-    hosts = ["houdini"]
     families = ["usdShade"]
     label = "USD Shade Workspace"
 

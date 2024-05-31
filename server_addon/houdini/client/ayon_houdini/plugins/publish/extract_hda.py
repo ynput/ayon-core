@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
 import os
 from pprint import pformat
-import pyblish.api
-from ayon_core.pipeline import publish
 import hou
+import pyblish.api
+from ayon_houdini.api import plugin
 
 
-class ExtractHDA(publish.Extractor):
+class ExtractHDA(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract HDA"
-    hosts = ["houdini"]
     families = ["hda"]
 
     def process(self, instance):

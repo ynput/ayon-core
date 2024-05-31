@@ -1,18 +1,16 @@
 import os
+import hou
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
-import hou
 
-
-class ExtractAlembic(publish.Extractor):
+class ExtractAlembic(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Alembic"
-    hosts = ["houdini"]
     families = ["abc", "camera"]
     targets = ["local", "remote"]
 

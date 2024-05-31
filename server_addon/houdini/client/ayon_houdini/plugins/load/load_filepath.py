@@ -1,13 +1,14 @@
 import os
 import re
-
-from ayon_core.pipeline import load
-from ayon_houdini.api import pipeline
-
 import hou
 
+from ayon_houdini.api import (
+    pipeline,
+    plugin
+)
 
-class FilePathLoader(load.LoaderPlugin):
+
+class FilePathLoader(plugin.HoudiniLoader):
     """Load a managed filepath to a null node.
 
     This is useful if for a particular workflow there is no existing loader

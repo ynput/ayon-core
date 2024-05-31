@@ -2,13 +2,14 @@ import pyblish.api
 
 from ayon_core.pipeline import registered_host
 
+from ayon_houdini.api import plugin
 
-class SaveCurrentScene(pyblish.api.ContextPlugin):
+
+class SaveCurrentScene(plugin.HoudiniContextPlugin):
     """Save current scene"""
 
     label = "Save current file"
     order = pyblish.api.ExtractorOrder - 0.49
-    hosts = ["houdini"]
 
     def process(self, context):
 

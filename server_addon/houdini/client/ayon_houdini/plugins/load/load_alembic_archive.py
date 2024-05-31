@@ -1,13 +1,13 @@
 
 import os
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
+from ayon_core.pipeline import get_representation_path
+from ayon_houdini.api import (
+    pipeline,
+    plugin
 )
-from ayon_houdini.api import pipeline
 
 
-class AbcArchiveLoader(load.LoaderPlugin):
+class AbcArchiveLoader(plugin.HoudiniLoader):
     """Load Alembic as full geometry network hierarchy """
 
     product_types = {"model", "animation", "pointcache", "gpuCache"}

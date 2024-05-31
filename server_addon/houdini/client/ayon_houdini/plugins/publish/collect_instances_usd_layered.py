@@ -1,11 +1,11 @@
 import hou
 import pyblish.api
-from ayon_houdini.api import lib
-import ayon_houdini.api.usd as hou_usdlib
 from ayon_core.pipeline import usdlib
+from ayon_houdini.api import lib, plugin
+import ayon_houdini.api.usd as hou_usdlib
 
 
-class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
+class CollectInstancesUsdLayered(plugin.HoudiniContextPlugin):
     """Collect Instances from a ROP Network and its configured layer paths.
 
     The output nodes of the ROP node will only be published when *any* of the
@@ -32,7 +32,6 @@ class CollectInstancesUsdLayered(pyblish.api.ContextPlugin):
 
     order = pyblish.api.CollectorOrder - 0.01
     label = "Collect Instances (USD Configured Layers)"
-    hosts = ["houdini"]
 
     def process(self, context):
 

@@ -3,13 +3,14 @@
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 
+from ayon_houdini.api import plugin
 
-class ValidateCameraROP(pyblish.api.InstancePlugin):
+
+class ValidateCameraROP(plugin.HoudiniInstancePlugin):
     """Validate Camera ROP settings."""
 
     order = pyblish.api.ValidatorOrder
     families = ["camera"]
-    hosts = ["houdini"]
     label = "Camera ROP"
 
     def process(self, instance):

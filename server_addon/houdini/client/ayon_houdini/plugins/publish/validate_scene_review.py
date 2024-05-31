@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
-from ayon_core.pipeline import PublishValidationError
 import hou
 
+import pyblish.api
+from ayon_core.pipeline import PublishValidationError
 
-class ValidateSceneReview(pyblish.api.InstancePlugin):
+from ayon_houdini.api import plugin
+
+
+class ValidateSceneReview(plugin.HoudiniInstancePlugin):
     """Validator Some Scene Settings before publishing the review
         1. Scene Path
         2. Resolution
@@ -12,7 +15,6 @@ class ValidateSceneReview(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["review"]
-    hosts = ["houdini"]
     label = "Scene Setting for review"
 
     def process(self, instance):

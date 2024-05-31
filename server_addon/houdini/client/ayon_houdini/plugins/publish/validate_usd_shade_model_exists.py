@@ -2,20 +2,19 @@
 import re
 
 import ayon_api
-import pyblish.api
-
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     KnownPublishError,
     PublishValidationError,
 )
 
+from ayon_houdini.api import plugin
 
-class ValidateUSDShadeModelExists(pyblish.api.InstancePlugin):
+
+class ValidateUSDShadeModelExists(plugin.HoudiniInstancePlugin):
     """Validate the Instance has no current cooking errors."""
 
     order = ValidateContentsOrder
-    hosts = ["houdini"]
     families = ["usdShade"]
     label = "USD Shade model exists"
 

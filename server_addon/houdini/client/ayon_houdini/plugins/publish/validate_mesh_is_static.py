@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """Validator for correct naming of Static Meshes."""
-import pyblish.api
 from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
 from ayon_core.pipeline.publish import ValidateContentsOrder
 
+from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectInvalidAction
 from ayon_houdini.api.lib import get_output_children
 
 
-class ValidateMeshIsStatic(pyblish.api.InstancePlugin,
+class ValidateMeshIsStatic(plugin.HoudiniInstancePlugin,
                            OptionalPyblishPluginMixin):
     """Validate mesh is static.
 
@@ -23,12 +23,9 @@ class ValidateMeshIsStatic(pyblish.api.InstancePlugin,
 
     families = ["staticMesh",
                 "model"]
-    hosts = ["houdini"]
     label = "Validate Mesh is Static"
     order = ValidateContentsOrder + 0.1
     actions = [SelectInvalidAction]
-
-    settings_category = "houdini"
 
     def process(self, instance):
 

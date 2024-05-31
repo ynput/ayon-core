@@ -1,10 +1,12 @@
 import os
 
-from ayon_core.pipeline import load
-from ayon_houdini.api import pipeline
+from ayon_houdini.api import (
+    pipeline,
+    plugin
+)
 
 
-class SopUsdImportLoader(load.LoaderPlugin):
+class SopUsdImportLoader(plugin.HoudiniLoader):
     """Load USD to SOPs via `usdimport`"""
 
     label = "Load USD to SOPs"

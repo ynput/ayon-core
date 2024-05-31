@@ -18,7 +18,6 @@ class ValidateSingleFrame(pyblish.api.InstancePlugin,
     """
 
     families = ["model"]
-    hosts = ["houdini"]
     label = "Validate Single Frame"
     order = ValidateContentsOrder + 0.1
     actions = [SelectInvalidAction]

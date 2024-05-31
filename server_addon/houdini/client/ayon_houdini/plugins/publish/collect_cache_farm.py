@@ -1,10 +1,13 @@
 import os
-import pyblish.api
 import hou
-from ayon_houdini.api import lib
+import pyblish.api
+from ayon_houdini.api import (
+    lib,
+    plugin
+)
 
 
-class CollectDataforCache(pyblish.api.InstancePlugin):
+class CollectDataforCache(plugin.HoudiniInstancePlugin):
     """Collect data for caching to Deadline."""
 
     # Run after Collect Frames
@@ -12,7 +15,6 @@ class CollectDataforCache(pyblish.api.InstancePlugin):
     families = ["ass", "pointcache",
                 "mantraifd", "redshiftproxy",
                 "vdbcache", "model"]
-    hosts = ["houdini"]
     targets = ["local", "remote"]
     label = "Collect Data for Cache"
 

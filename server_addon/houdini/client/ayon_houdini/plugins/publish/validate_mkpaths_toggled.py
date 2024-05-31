@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
+
 from ayon_core.pipeline import PublishValidationError
 
+from ayon_houdini.api import plugin
 
-class ValidateIntermediateDirectoriesChecked(pyblish.api.InstancePlugin):
+
+class ValidateIntermediateDirectoriesChecked(plugin.HoudiniInstancePlugin):
     """Validate Create Intermediate Directories is enabled on ROP node."""
 
     order = pyblish.api.ValidatorOrder
     families = ["pointcache", "camera", "vdbcache", "model"]
-    hosts = ["houdini"]
     label = "Create Intermediate Directories Checked"
 
     def process(self, instance):

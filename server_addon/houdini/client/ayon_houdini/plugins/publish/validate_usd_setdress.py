@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
-
-import ayon_houdini.api.usd as hou_usdlib
 from ayon_core.pipeline import PublishValidationError
 
+from ayon_houdini.api import plugin
+import ayon_houdini.api.usd as hou_usdlib
 
-class ValidateUsdSetDress(pyblish.api.InstancePlugin):
+
+class ValidateUsdSetDress(plugin.HoudiniInstancePlugin):
     """Validate USD Set Dress.
 
     Must only have references or payloads. May not generate new mesh or
@@ -15,14 +16,13 @@ class ValidateUsdSetDress(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usdSetDress"]
-    hosts = ["houdini"]
     label = "Validate USD Set Dress"
     optional = True
 
     def process(self, instance):
 
-        from pxr import UsdGeom
         import hou
+        from pxr import UsdGeom
 
         rop = hou.node(instance.data.get("instance_node"))
         lop_path = hou_usdlib.get_usd_rop_loppath(rop)

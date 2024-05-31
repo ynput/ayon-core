@@ -1,20 +1,19 @@
 import os
+import hou
 
 import pyblish.api
 
 from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
-import hou
 
-
-class ExtractOpenGL(publish.Extractor,
+class ExtractOpenGL(plugin.HoudiniExtractorPlugin,
                     publish.ColormanagedPyblishPluginMixin):
 
     order = pyblish.api.ExtractorOrder - 0.01
     label = "Extract OpenGL"
     families = ["review"]
-    hosts = ["houdini"]
 
     def process(self, instance):
         ropnode = hou.node(instance.data.get("instance_node"))

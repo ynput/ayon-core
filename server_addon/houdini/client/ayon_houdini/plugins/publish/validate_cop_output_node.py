@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import hou
-import pyblish.api
 
+import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 
+from ayon_houdini.api import plugin
 
-class ValidateCopOutputNode(pyblish.api.InstancePlugin):
+
+class ValidateCopOutputNode(plugin.HoudiniInstancePlugin):
     """Validate the instance COP Output Node.
 
     This will ensure:
@@ -17,7 +19,6 @@ class ValidateCopOutputNode(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["imagesequence"]
-    hosts = ["houdini"]
     label = "Validate COP Output Node"
 
     def process(self, instance):

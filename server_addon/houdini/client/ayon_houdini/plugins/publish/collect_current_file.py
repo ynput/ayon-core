@@ -2,14 +2,14 @@ import os
 import hou
 
 import pyblish.api
+from ayon_houdini.api import plugin
 
 
-class CollectHoudiniCurrentFile(pyblish.api.ContextPlugin):
+class CollectHoudiniCurrentFile(plugin.HoudiniContextPlugin):
     """Inject the current working file into context"""
 
     order = pyblish.api.CollectorOrder - 0.1
     label = "Houdini Current File"
-    hosts = ["houdini"]
 
     def process(self, context):
         """Inject the current working file"""

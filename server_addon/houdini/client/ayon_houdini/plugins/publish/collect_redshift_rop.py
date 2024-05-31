@@ -9,11 +9,12 @@ from ayon_houdini.api.lib import (
     get_color_management_preferences
 )
 from ayon_houdini.api import (
-    colorspace
+    colorspace,
+    plugin
 )
 
 
-class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
+class CollectRedshiftROPRenderProducts(plugin.HoudiniInstancePlugin):
     """Collect USD Render Products
 
     Collects the instance.data["files"] for the render products.
@@ -27,7 +28,6 @@ class CollectRedshiftROPRenderProducts(pyblish.api.InstancePlugin):
     # This specific order value is used so that
     # this plugin runs after CollectFrames
     order = pyblish.api.CollectorOrder + 0.11
-    hosts = ["houdini"]
     families = ["redshift_rop"]
 
     def process(self, instance):

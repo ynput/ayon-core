@@ -4,12 +4,14 @@ import re
 import hou
 import pyblish.api
 
-from ayon_houdini.api import colorspace
+from ayon_houdini.api import colorspace, plugin
 from ayon_houdini.api.lib import (
-    evalParmNoFrame, get_color_management_preferences)
+    get_color_management_preferences,
+    evalParmNoFrame
+)
 
 
-class CollectArnoldROPRenderProducts(pyblish.api.InstancePlugin):
+class CollectArnoldROPRenderProducts(plugin.HoudiniInstancePlugin):
     """Collect Arnold ROP Render Products
 
     Collects the instance.data["files"] for the render products.
@@ -23,7 +25,6 @@ class CollectArnoldROPRenderProducts(pyblish.api.InstancePlugin):
     # This specific order value is used so that
     # this plugin runs after CollectFrames
     order = pyblish.api.CollectorOrder + 0.11
-    hosts = ["houdini"]
     families = ["arnold_rop"]
 
     def process(self, instance):

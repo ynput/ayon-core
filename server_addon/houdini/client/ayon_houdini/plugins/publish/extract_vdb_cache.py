@@ -1,19 +1,17 @@
 import os
+import hou
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
-import hou
 
-
-class ExtractVDBCache(publish.Extractor):
+class ExtractVDBCache(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Extract VDB Cache"
     families = ["vdbcache"]
-    hosts = ["houdini"]
 
     def process(self, instance):
         if instance.data.get("farm"):

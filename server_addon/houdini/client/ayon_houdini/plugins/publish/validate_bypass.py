@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+import hou
+
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 
-import hou
+from ayon_houdini.api import plugin
 
-class ValidateBypassed(pyblish.api.InstancePlugin):
+
+class ValidateBypassed(plugin.HoudiniInstancePlugin):
     """Validate all primitives build hierarchy from attribute when enabled.
 
     The name of the attribute must exist on the prims and have the same name
@@ -15,7 +18,6 @@ class ValidateBypassed(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder - 0.1
     families = ["*"]
-    hosts = ["houdini"]
     label = "Validate ROP Bypass"
 
     def process(self, instance):
