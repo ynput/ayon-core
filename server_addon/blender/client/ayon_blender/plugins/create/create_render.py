@@ -2,9 +2,9 @@
 import bpy
 
 from ayon_core.lib import version_up
-from ayon_core.hosts.blender.api import plugin
-from ayon_core.hosts.blender.api.render_lib import prepare_rendering
-from ayon_core.hosts.blender.api.workio import save_file
+from ayon_blender.api import plugin
+from ayon_blender.api.render_lib import prepare_rendering
+from ayon_blender.api.workio import save_file
 
 
 class CreateRenderlayer(plugin.BaseCreator):

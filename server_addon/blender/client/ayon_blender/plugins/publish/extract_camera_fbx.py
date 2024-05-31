@@ -3,7 +3,7 @@ import os
 import bpy
 
 from ayon_core.pipeline import publish
-from ayon_core.hosts.blender.api import plugin
+from ayon_blender.api import plugin
 
 
 class ExtractCamera(publish.Extractor, publish.OptionalPyblishPluginMixin):

@@ -1,5 +1,5 @@
 from ayon_core.pipeline import install_host
-from ayon_core.hosts.blender.api import BlenderHost
+from ayon_blender.api import BlenderHost
 
 
 def register():

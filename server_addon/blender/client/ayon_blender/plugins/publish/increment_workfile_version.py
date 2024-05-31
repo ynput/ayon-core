@@ -1,6 +1,6 @@
 import pyblish.api
 from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
-from ayon_core.hosts.blender.api.workio import save_file
+from ayon_blender.api.workio import save_file
 
 
 class IncrementWorkfileVersion(

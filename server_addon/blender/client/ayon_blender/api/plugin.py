@@ -496,7 +496,7 @@ class AssetLoader(LoaderPlugin):
         # Only containerise if it's not already a collection from a .blend file.
         # representation = context["representation"]["name"]
         # if representation != "blend":
-        #     from ayon_core.hosts.blender.api.pipeline import containerise
+        #     from ayon_blender.api.pipeline import containerise
         #     return containerise(
         #         name=name,
         #         namespace=namespace,

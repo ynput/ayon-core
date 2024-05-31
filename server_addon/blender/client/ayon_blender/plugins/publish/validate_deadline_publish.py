@@ -9,7 +9,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.hosts.blender.api.render_lib import prepare_rendering
+from ayon_blender.api.render_lib import prepare_rendering
 
 
 class ValidateDeadlinePublish(pyblish.api.InstancePlugin,

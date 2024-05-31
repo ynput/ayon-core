@@ -9,7 +9,7 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-import ayon_core.hosts.blender.api.action
+import ayon_blender.api.action
 
 
 class ValidateMeshNoNegativeScale(pyblish.api.InstancePlugin,
@@ -20,7 +20,7 @@ class ValidateMeshNoNegativeScale(pyblish.api.InstancePlugin,
     hosts = ["blender"]
     families = ["model"]
     label = "Mesh No Negative Scale"
-    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_blender.api.action.SelectInvalidAction]
 
     @staticmethod
     def get_invalid(instance) -> List:

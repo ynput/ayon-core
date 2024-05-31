@@ -2,8 +2,8 @@ import bpy
 import ayon_api
 
 from ayon_core.pipeline import CreatedInstance, AutoCreator
-from ayon_core.hosts.blender.api.plugin import BaseCreator
-from ayon_core.hosts.blender.api.pipeline import (
+from ayon_blender.api.plugin import BaseCreator
+from ayon_blender.api.pipeline import (
     AVALON_PROPERTY,
     AVALON_CONTAINERS
 )

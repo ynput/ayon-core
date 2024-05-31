@@ -5,9 +5,6 @@ from typing import Callable, Dict, Iterator, List, Optional
 
 import bpy
 
-from . import lib
-from . import ops
-
 import pyblish.api
 import ayon_api
 
@@ -33,8 +30,12 @@ from ayon_core.lib import (
     register_event_callback,
     emit_event
 )
-import ayon_core.hosts.blender
 from ayon_core.settings import get_project_settings
+from ayon_blender import BLENDER_ADDON_ROOT
+
+from . import lib
+from . import ops
+
 from .workio import (
     open_file,
     save_file,
@@ -44,9 +45,7 @@ from .workio import (
     work_root,
 )
 
-
-HOST_DIR = os.path.dirname(os.path.abspath(ayon_core.hosts.blender.__file__))
-PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(BLENDER_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")

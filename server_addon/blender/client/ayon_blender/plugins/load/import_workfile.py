@@ -1,6 +1,6 @@
 import bpy
 
-from ayon_core.hosts.blender.api import plugin
+from ayon_blender.api import plugin
 
 
 def append_workfile(context, fname, do_import):

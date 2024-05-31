@@ -6,8 +6,8 @@ import bpy
 
 import pyblish.api
 
-from ayon_core.hosts.blender.api import plugin, lib
-import ayon_core.hosts.blender.api.action
+from ayon_blender.api import plugin, lib
+import ayon_blender.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
@@ -24,7 +24,7 @@ class ValidateTransformZero(pyblish.api.InstancePlugin,
     hosts = ["blender"]
     families = ["model"]
     label = "Transform Zero"
-    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction,
+    actions = [ayon_blender.api.action.SelectInvalidAction,
                RepairAction]
 
     _identity = mathutils.Matrix()

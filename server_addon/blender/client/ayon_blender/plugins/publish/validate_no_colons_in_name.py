@@ -4,7 +4,7 @@ import bpy
 
 import pyblish.api
 
-import ayon_core.hosts.blender.api.action
+import ayon_blender.api.action
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
@@ -25,7 +25,7 @@ class ValidateNoColonsInName(pyblish.api.InstancePlugin,
     hosts = ["blender"]
     families = ["model", "rig"]
     label = "No Colons in names"
-    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_blender.api.action.SelectInvalidAction]
 
     @staticmethod
     def get_invalid(instance) -> List:
