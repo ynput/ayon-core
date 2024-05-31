@@ -60,6 +60,7 @@ class ValidateSceneSettings(OptionalPyblishPluginMixin,
     label = "Validate Scene Settings"
     families = ["render.farm", "render.local", "render"]
     hosts = ["aftereffects"]
+    settings_category = "aftereffects"
     optional = True
 
     skip_timelines_check = [".*"]  # * >> skip for all
