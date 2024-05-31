@@ -18,7 +18,6 @@ class ValidateUSDOutputNode(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usd"]
-    hosts = ["houdini"]
     label = "Validate Output Node (USD)"
 
     def process(self, instance):

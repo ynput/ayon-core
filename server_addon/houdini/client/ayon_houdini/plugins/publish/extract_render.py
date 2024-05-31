@@ -11,7 +11,6 @@ class ExtractRender(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Render"
-    hosts = ["houdini"]
     families = ["mantra_rop",
                 "karma_rop",
                 "redshift_rop",

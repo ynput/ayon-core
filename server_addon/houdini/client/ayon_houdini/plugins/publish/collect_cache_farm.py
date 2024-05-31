@@ -15,7 +15,6 @@ class CollectDataforCache(plugin.HoudiniInstancePlugin):
     families = ["ass", "pointcache",
                 "mantraifd", "redshiftproxy",
                 "vdbcache", "model"]
-    hosts = ["houdini"]
     targets = ["local", "remote"]
     label = "Collect Data for Cache"
 

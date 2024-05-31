@@ -15,7 +15,6 @@ class ValidateSceneReview(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["review"]
-    hosts = ["houdini"]
     label = "Scene Setting for review"
 
     def process(self, instance):

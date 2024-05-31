@@ -13,7 +13,6 @@ class ValidateRemotePublishOutNode(plugin.HoudiniContextPlugin):
 
     order = pyblish.api.ValidatorOrder - 0.4
     families = ["*"]
-    hosts = ["houdini"]
     targets = ["deadline"]
     label = "Remote Publish ROP node"
     actions = [RepairContextAction]

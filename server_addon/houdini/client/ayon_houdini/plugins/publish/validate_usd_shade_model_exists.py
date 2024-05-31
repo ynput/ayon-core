@@ -15,7 +15,6 @@ class ValidateUSDShadeModelExists(plugin.HoudiniInstancePlugin):
     """Validate the Instance has no current cooking errors."""
 
     order = ValidateContentsOrder
-    hosts = ["houdini"]
     families = ["usdShade"]
     label = "USD Shade model exists"
 

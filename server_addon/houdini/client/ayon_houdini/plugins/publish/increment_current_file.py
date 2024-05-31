@@ -19,7 +19,6 @@ class IncrementCurrentFile(plugin.HoudiniContextPlugin):
 
     label = "Increment current file"
     order = pyblish.api.IntegratorOrder + 9.0
-    hosts = ["houdini"]
     families = ["workfile",
                 "usdrender",
                 "mantra_rop",

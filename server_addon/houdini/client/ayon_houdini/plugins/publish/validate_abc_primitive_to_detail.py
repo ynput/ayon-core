@@ -20,7 +20,6 @@ class ValidateAbcPrimitiveToDetail(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["abc"]
-    hosts = ["houdini"]
     label = "Validate Primitive to Detail (Abc)"
 
     def process(self, instance):

@@ -23,16 +23,12 @@ class CollectAssetHandles(plugin.HoudiniInstancePlugin,
     the exclusive frame range and actual handle ranges.
     """
 
-    hosts = ["houdini"]
-
     # This specific order value is used so that
     # this plugin runs after CollectAnatomyInstanceData
     order = pyblish.api.CollectorOrder + 0.499
 
     label = "Collect Folder Handles"
     use_asset_handles = True
-
-    settings_category = "houdini"
 
     def process(self, instance):
         # Only process instances without already existing handles data

@@ -8,7 +8,6 @@ from ayon_houdini.api import plugin
 class CollectStaticMeshType(plugin.HoudiniInstancePlugin):
     """Collect data type for fbx instance."""
 
-    hosts = ["houdini"]
     families = ["staticMesh"]
     label = "Collect type of staticMesh"
 

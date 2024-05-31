@@ -18,7 +18,6 @@ class ValidateBypassed(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder - 0.1
     families = ["*"]
-    hosts = ["houdini"]
     label = "Validate ROP Bypass"
 
     def process(self, instance):

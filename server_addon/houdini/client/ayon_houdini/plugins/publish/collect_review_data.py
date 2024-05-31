@@ -11,7 +11,6 @@ class CollectHoudiniReviewData(plugin.HoudiniInstancePlugin):
     # this plugin runs after CollectRopFrameRange
     # Also after CollectLocalRenderInstances
     order = pyblish.api.CollectorOrder + 0.13
-    hosts = ["houdini"]
     families = ["review"]
 
     def process(self, instance):

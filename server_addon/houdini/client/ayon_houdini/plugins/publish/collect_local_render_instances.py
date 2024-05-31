@@ -23,10 +23,7 @@ class CollectLocalRenderInstances(plugin.HoudiniInstancePlugin):
                 "arnold_rop",
                 "vray_rop"]
 
-    hosts = ["houdini"]
     label = "Collect local render instances"
-
-    settings_category = "houdini"
 
     use_deadline_aov_filter = False
     aov_filter = {"host_name": "houdini",

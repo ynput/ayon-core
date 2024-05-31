@@ -8,7 +8,6 @@ class CollectWorksceneFPS(plugin.HoudiniContextPlugin):
 
     label = "Workscene FPS"
     order = pyblish.api.CollectorOrder
-    hosts = ["houdini"]
 
     def process(self, context):
         fps = hou.fps()

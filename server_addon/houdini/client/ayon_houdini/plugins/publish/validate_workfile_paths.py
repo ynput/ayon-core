@@ -17,15 +17,12 @@ class ValidateWorkfilePaths(
 
     order = pyblish.api.ValidatorOrder
     families = ["workfile"]
-    hosts = ["houdini"]
     label = "Validate Workfile Paths"
     actions = [RepairAction]
     optional = True
 
     node_types = ["file", "alembic"]
     prohibited_vars = ["$HIP", "$JOB"]
-
-    settings_category = "houdini"
 
     def process(self, instance):
         if not self.is_active(instance.data):

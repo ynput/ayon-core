@@ -91,7 +91,6 @@ class CollectUpstreamInputs(plugin.HoudiniInstancePlugin):
 
     label = "Collect Inputs"
     order = pyblish.api.CollectorOrder + 0.4
-    hosts = ["houdini"]
 
     def process(self, instance):
         # We can't get the "inputAncestors" directly from the ROP

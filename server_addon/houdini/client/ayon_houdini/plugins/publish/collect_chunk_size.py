@@ -12,12 +12,9 @@ class CollectChunkSize(plugin.HoudiniInstancePlugin,
     families = ["ass", "pointcache",
                 "vdbcache", "mantraifd",
                 "redshiftproxy", "model"]
-    hosts = ["houdini"]
     targets = ["local", "remote"]
     label = "Collect Chunk Size"
     chunk_size = 999999
-
-    settings_category = "houdini"
 
     def process(self, instance):
         # need to get the chunk size info from the setting

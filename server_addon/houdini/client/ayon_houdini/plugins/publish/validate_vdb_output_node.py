@@ -82,7 +82,6 @@ class ValidateVDBOutputNode(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["vdbcache"]
-    hosts = ["houdini"]
     label = "Validate Output Node (VDB)"
     actions = [SelectInvalidAction]
 

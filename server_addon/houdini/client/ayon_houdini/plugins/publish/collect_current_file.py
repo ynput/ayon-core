@@ -10,7 +10,6 @@ class CollectHoudiniCurrentFile(plugin.HoudiniContextPlugin):
 
     order = pyblish.api.CollectorOrder - 0.1
     label = "Houdini Current File"
-    hosts = ["houdini"]
 
     def process(self, context):
         """Inject the current working file"""

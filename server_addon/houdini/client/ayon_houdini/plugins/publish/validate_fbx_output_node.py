@@ -23,7 +23,6 @@ class ValidateFBXOutputNode(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["fbx"]
-    hosts = ["houdini"]
     label = "Validate FBX Output Node"
     actions = [SelectROPAction, SelectInvalidAction]
 

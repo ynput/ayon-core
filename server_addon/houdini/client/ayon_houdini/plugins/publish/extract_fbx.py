@@ -12,7 +12,6 @@ class ExtractFBX(plugin.HoudiniInstancePlugin):
 
     label = "Extract FBX"
     families = ["fbx"]
-    hosts = ["houdini"]
 
     order = pyblish.api.ExtractorOrder + 0.1
 

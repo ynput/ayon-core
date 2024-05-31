@@ -10,7 +10,6 @@ class ExtractBGEO(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract BGEO"
-    hosts = ["houdini"]
     families = ["bgeo"]
 
     def process(self, instance):

@@ -12,7 +12,6 @@ class ValidateUSDRenderProductNames(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usdrender"]
-    hosts = ["houdini"]
     label = "Validate USD Render Product Names"
     optional = True
 

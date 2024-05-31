@@ -14,7 +14,6 @@ class ExtractOpenGL(plugin.HoudiniInstancePlugin,
     order = pyblish.api.ExtractorOrder - 0.01
     label = "Extract OpenGL"
     families = ["review"]
-    hosts = ["houdini"]
 
     def process(self, instance):
         ropnode = hou.node(instance.data.get("instance_node"))

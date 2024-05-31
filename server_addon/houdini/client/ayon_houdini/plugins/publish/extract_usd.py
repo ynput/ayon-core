@@ -11,7 +11,6 @@ class ExtractUSD(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract USD"
-    hosts = ["houdini"]
     families = ["usd",
                 "usdModel",
                 "usdSetDress"]

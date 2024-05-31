@@ -10,7 +10,6 @@ class CollectRemotePublishSettings(plugin.HoudiniContextPlugin):
 
     order = pyblish.api.CollectorOrder
     families = ["*"]
-    hosts = ["houdini"]
     targets = ["deadline"]
     label = "Remote Publish Submission Settings"
     actions = [RepairAction]

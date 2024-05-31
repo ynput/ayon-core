@@ -16,7 +16,6 @@ class ValidateUsdSetDress(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usdSetDress"]
-    hosts = ["houdini"]
     label = "Validate USD Set Dress"
     optional = True
 

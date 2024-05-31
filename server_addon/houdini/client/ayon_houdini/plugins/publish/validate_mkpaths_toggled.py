@@ -11,7 +11,6 @@ class ValidateIntermediateDirectoriesChecked(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["pointcache", "camera", "vdbcache", "model"]
-    hosts = ["houdini"]
     label = "Create Intermediate Directories Checked"
 
     def process(self, instance):

@@ -29,7 +29,6 @@ class ValidateUnrealStaticMeshName(plugin.HoudiniInstancePlugin,
     """
 
     families = ["staticMesh"]
-    hosts = ["houdini"]
     label = "Unreal Static Mesh Name (FBX)"
     order = ValidateContentsOrder + 0.1
     actions = [SelectInvalidAction]
@@ -37,8 +36,6 @@ class ValidateUnrealStaticMeshName(plugin.HoudiniInstancePlugin,
     optional = True
     collision_prefixes = []
     static_mesh_prefix = ""
-
-    settings_category = "houdini"
 
     @classmethod
     def apply_settings(cls, project_settings):

@@ -10,7 +10,6 @@ class ExtractHDA(plugin.HoudiniInstancePlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract HDA"
-    hosts = ["houdini"]
     families = ["hda"]
 
     def process(self, instance):
