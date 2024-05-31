@@ -8,7 +8,7 @@ from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
 
-class ExtractFBX(plugin.HoudiniInstancePlugin):
+class ExtractFBX(plugin.HoudiniExtractorPlugin):
 
     label = "Extract FBX"
     families = ["fbx"]

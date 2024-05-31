@@ -6,7 +6,7 @@ import pyblish.api
 from ayon_houdini.api import lib, plugin
 
 
-class ExtractBGEO(plugin.HoudiniInstancePlugin):
+class ExtractBGEO(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract BGEO"

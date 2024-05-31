@@ -152,7 +152,7 @@ def parm_values(overrides):
                 parm.set(value)
 
 
-class ExtractUSDLayered(plugin.HoudiniInstancePlugin):
+class ExtractUSDLayered(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Layered USD"

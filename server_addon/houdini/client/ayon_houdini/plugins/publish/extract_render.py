@@ -7,7 +7,7 @@ from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
 
-class ExtractRender(plugin.HoudiniInstancePlugin):
+class ExtractRender(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Render"

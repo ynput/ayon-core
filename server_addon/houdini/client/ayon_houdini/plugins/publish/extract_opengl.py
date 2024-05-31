@@ -8,7 +8,7 @@ from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
 
-class ExtractOpenGL(plugin.HoudiniInstancePlugin,
+class ExtractOpenGL(plugin.HoudiniExtractorPlugin,
                     publish.ColormanagedPyblishPluginMixin):
 
     order = pyblish.api.ExtractorOrder - 0.01

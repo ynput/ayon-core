@@ -4,7 +4,7 @@ from ayon_houdini.api import lib, plugin
 from ayon_houdini.api.pipeline import IS_HEADLESS
 
 
-class ExtractActiveViewThumbnail(plugin.HoudiniInstancePlugin):
+class ExtractActiveViewThumbnail(plugin.HoudiniExtractorPlugin):
     """Set instance thumbnail to a screengrab of current active viewport.
 
     This makes it so that if an instance does not have a thumbnail set yet that
