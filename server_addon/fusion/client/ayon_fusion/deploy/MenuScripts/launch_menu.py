@@ -26,8 +26,8 @@ def main(env):
     # However the contents of that folder can conflict with Qt library dlls
     # so we make sure to move out of it to avoid DLL Load Failed errors.
     os.chdir("..")
-    from ayon_core.hosts.fusion.api import FusionHost
-    from ayon_core.hosts.fusion.api import menu
+    from ayon_fusion.api import FusionHost
+    from ayon_fusion.api import menu
 
     # activate resolve from pype
     install_host(FusionHost())

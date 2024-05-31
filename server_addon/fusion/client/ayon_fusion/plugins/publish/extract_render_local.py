@@ -5,8 +5,8 @@ import collections
 import pyblish.api
 
 from ayon_core.pipeline import publish
-from ayon_core.hosts.fusion.api import comp_lock_and_undo_chunk
-from ayon_core.hosts.fusion.api.lib import get_frame_path, maintained_comp_range
+from ayon_fusion.api import comp_lock_and_undo_chunk
+from ayon_fusion.api.lib import get_frame_path, maintained_comp_range
 
 log = logging.getLogger(__name__)
 

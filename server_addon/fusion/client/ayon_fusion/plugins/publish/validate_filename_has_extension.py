@@ -3,7 +3,7 @@ import os
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 
-from ayon_core.hosts.fusion.api.action import SelectInvalidAction
+from ayon_fusion.api.action import SelectInvalidAction
 
 
 class ValidateFilenameHasExtension(pyblish.api.InstancePlugin):

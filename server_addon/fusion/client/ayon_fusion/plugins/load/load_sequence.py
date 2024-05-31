@@ -1,7 +1,7 @@
 import contextlib
 
 import ayon_core.pipeline.load as load
-from ayon_core.hosts.fusion.api import (
+from ayon_fusion.api import (
     imprint_container,
     get_current_comp,
     comp_lock_and_undo_chunk,

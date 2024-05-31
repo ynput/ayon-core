@@ -1,4 +1,4 @@
-from ayon_core.hosts.fusion.api import (
+from ayon_fusion.api import (
     comp_lock_and_undo_chunk,
     get_current_comp
 )

@@ -4,8 +4,8 @@ from ayon_core.lib import (
     EnumDef
 )
 
-from ayon_core.hosts.fusion.api.plugin import GenericCreateSaver
-from ayon_core.hosts.fusion.api.lib import get_current_comp
+from ayon_fusion.api.plugin import GenericCreateSaver
+from ayon_fusion.api.lib import get_current_comp
 
 
 class CreateSaver(GenericCreateSaver):

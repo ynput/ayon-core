@@ -22,9 +22,9 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
 )
 from ayon_core.pipeline.load import any_outdated_containers
-from ayon_core.hosts.fusion import FUSION_HOST_DIR
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 from ayon_core.tools.utils import host_tools
+from ayon_fusion import FUSION_HOST_DIR
 
 
 from .lib import (
@@ -80,7 +80,7 @@ class FusionHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         and loaders into fusion.
 
         It is called automatically when installing via
-        `ayon_core.pipeline.install_host(ayon_core.hosts.fusion.api)`
+        `ayon_core.pipeline.install_host(ayon_fusion.api)`
 
         See the Maya equivalent for inspiration on how to implement this.
 
@@ -127,7 +127,7 @@ class FusionHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
 
     def open_workfile(self, filepath):
         # Hack to get fusion, see
-        #   ayon_core.hosts.fusion.api.pipeline.get_current_comp()
+        #   ayon_fusion.api.pipeline.get_current_comp()
         fusion = getattr(sys.modules["__main__"], "fusion", None)
 
         return fusion.LoadComp(filepath)

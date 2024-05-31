@@ -2,7 +2,7 @@
 """Validate if instance context is the same as publish context."""
 
 import pyblish.api
-from ayon_core.hosts.fusion.api.action import SelectToolAction
+from ayon_fusion.api.action import SelectToolAction
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,

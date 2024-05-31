@@ -1,6 +1,6 @@
 import pyblish.api
 
-from ayon_core.hosts.fusion.api import get_current_comp
+from ayon_fusion.api import get_current_comp
 
 
 class CollectCurrentCompFusion(pyblish.api.ContextPlugin):

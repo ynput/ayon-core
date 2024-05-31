@@ -1,7 +1,7 @@
 from copy import deepcopy
 import os
 
-from ayon_core.hosts.fusion.api import (
+from ayon_fusion.api import (
     get_current_comp,
     comp_lock_and_undo_chunk,
 )
