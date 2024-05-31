@@ -6,7 +6,7 @@ import pyblish.api
 from ayon_houdini.api import plugin
 
 
-class ExtractHDA(plugin.HoudiniInstancePlugin):
+class ExtractHDA(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract HDA"

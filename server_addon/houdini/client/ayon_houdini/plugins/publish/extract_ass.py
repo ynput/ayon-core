@@ -7,7 +7,7 @@ from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
 
-class ExtractAss(plugin.HoudiniInstancePlugin):
+class ExtractAss(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Extract Ass"

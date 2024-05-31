@@ -15,7 +15,8 @@ from ayon_core.pipeline import (
     CreatedInstance,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
-    load
+    load,
+    publish
 )
 from ayon_core.lib import BoolDef
 
@@ -373,6 +374,21 @@ class HoudiniInstancePlugin(pyblish.api.InstancePlugin):
 
 class HoudiniContextPlugin(pyblish.api.ContextPlugin):
     """Base class for Houdini context publish plugins."""
+
+    hosts = ["houdini"]
+    settings_category = SETTINGS_CATEGORY
+
+
+class HoudiniExtractorPlugin(publish.Extractor):
+    """Base class for Houdini extract plugins.
+
+    Note:
+        The `HoudiniExtractorPlugin` is a subclass of `publish.Extractor`,
+            which in turn is a subclass of `pyblish.api.InstancePlugin`.
+        Should there be a requirement to create an extractor that operates
+            as a context plugin, it would be beneficial to incorporate
+            the functionalities present in `publish.Extractor`.
+    """
 
     hosts = ["houdini"]
     settings_category = SETTINGS_CATEGORY

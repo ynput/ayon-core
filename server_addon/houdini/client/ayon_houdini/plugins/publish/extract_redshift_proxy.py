@@ -7,7 +7,7 @@ from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
 
-class ExtractRedshiftProxy(plugin.HoudiniInstancePlugin):
+class ExtractRedshiftProxy(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Extract Redshift Proxy"

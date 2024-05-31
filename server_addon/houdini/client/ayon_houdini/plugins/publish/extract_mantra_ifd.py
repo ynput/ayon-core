@@ -6,7 +6,7 @@ import pyblish.api
 from ayon_houdini.api import plugin
 
 
-class ExtractMantraIFD(plugin.HoudiniInstancePlugin):
+class ExtractMantraIFD(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Mantra ifd"

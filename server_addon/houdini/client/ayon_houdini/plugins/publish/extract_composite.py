@@ -7,7 +7,7 @@ from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop, splitext
 
 
-class ExtractComposite(plugin.HoudiniInstancePlugin,
+class ExtractComposite(plugin.HoudiniExtractorPlugin,
                        publish.ColormanagedPyblishPluginMixin):
 
     order = pyblish.api.ExtractorOrder
