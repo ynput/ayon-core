@@ -5,7 +5,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.pipeline.context_tools import get_current_host_name
+from ayon_core.pipeline import get_current_host_name
 
 
 class ValidateVersion(pyblish.api.InstancePlugin, OptionalPyblishPluginMixin):
