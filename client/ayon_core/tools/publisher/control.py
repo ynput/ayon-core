@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import inspect
 from abc import ABCMeta, abstractmethod
+import re
 
 import six
 import arrow
@@ -1843,7 +1844,8 @@ class PublisherController(BasePublisherController):
             try:
                 if (
                     allowed_creator_labels is not None
-                    and creator.label not in allowed_creator_labels
+                    and not self._label_matches_allowed(
+                        creator.label, allowed_creator_labels)
                 ):
                     self.log.debug(f"{creator.label} not allowed for context")
                     continue
@@ -1888,6 +1890,13 @@ class PublisherController(BasePublisherController):
         if profile:
             allowed_creator_labels = profile["creator_labels"]
         return allowed_creator_labels
+
+    def _label_matches_allowed(self, label, allowed_labels):
+        """Implement regex support for allowed labels."""
+        for allowed in allowed_labels:
+            if re.match(allowed, label):
+                return True
+        return False
 
     def _reset_instances(self):
         """Reset create instances."""
