@@ -1,7 +1,7 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
-BLENDER_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+BLENDER_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class BlenderAddon(AYONAddon, IHostAddon):
@@ -12,7 +12,7 @@ class BlenderAddon(AYONAddon, IHostAddon):
         """Modify environments to contain all required for implementation."""
         # Prepare path to implementation script
         implementation_user_script_path = os.path.join(
-            BLENDER_ROOT_DIR,
+            BLENDER_ADDON_ROOT,
             "blender_addon"
         )
 
@@ -61,7 +61,7 @@ class BlenderAddon(AYONAddon, IHostAddon):
         if app.host_name != self.host_name:
             return []
         return [
-            os.path.join(BLENDER_ROOT_DIR, "hooks")
+            os.path.join(BLENDER_ADDON_ROOT, "hooks")
         ]
 
     def get_workfile_extensions(self):

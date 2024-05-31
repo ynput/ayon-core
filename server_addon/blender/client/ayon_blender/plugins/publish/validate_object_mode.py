@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-import ayon_core.hosts.blender.api.action
+import ayon_blender.api.action
 
 
 class ValidateObjectIsInObjectMode(
@@ -20,7 +20,7 @@ class ValidateObjectIsInObjectMode(
     hosts = ["blender"]
     families = ["model", "rig", "layout"]
     label = "Validate Object Mode"
-    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_blender.api.action.SelectInvalidAction]
     optional = False
 
     @staticmethod

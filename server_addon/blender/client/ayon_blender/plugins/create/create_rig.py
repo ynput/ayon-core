@@ -2,7 +2,7 @@
 
 import bpy
 
-from ayon_core.hosts.blender.api import plugin, lib
+from ayon_blender.api import plugin, lib
 
 
 class CreateRig(plugin.BaseCreator):

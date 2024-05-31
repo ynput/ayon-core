@@ -11,7 +11,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     RepairAction
 )
-import ayon_core.hosts.blender.api.action
+import ayon_blender.api.action
 
 
 class ValidateModelMeshUvMap1(
@@ -27,7 +27,7 @@ class ValidateModelMeshUvMap1(
     hosts = ["blender"]
     families = ["model"]
     label = "Mesh UVs named map1"
-    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction,
+    actions = [ayon_blender.api.action.SelectInvalidAction,
                RepairAction]
     optional = True
     enabled = False

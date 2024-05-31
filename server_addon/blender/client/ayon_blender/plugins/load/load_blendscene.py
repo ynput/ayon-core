@@ -7,9 +7,9 @@ from ayon_core.pipeline import (
     get_representation_path,
     AVALON_CONTAINER_ID,
 )
-from ayon_core.hosts.blender.api import plugin
-from ayon_core.hosts.blender.api.lib import imprint
-from ayon_core.hosts.blender.api.pipeline import (
+from ayon_blender.api import plugin
+from ayon_blender.api.lib import imprint
+from ayon_blender.api.pipeline import (
     AVALON_CONTAINERS,
     AVALON_PROPERTY,
 )

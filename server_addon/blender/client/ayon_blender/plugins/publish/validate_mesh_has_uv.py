@@ -9,7 +9,7 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
-import ayon_core.hosts.blender.api.action
+import ayon_blender.api.action
 
 
 class ValidateMeshHasUvs(
@@ -22,7 +22,7 @@ class ValidateMeshHasUvs(
     hosts = ["blender"]
     families = ["model"]
     label = "Mesh Has UVs"
-    actions = [ayon_core.hosts.blender.api.action.SelectInvalidAction]
+    actions = [ayon_blender.api.action.SelectInvalidAction]
     optional = True
 
     @staticmethod

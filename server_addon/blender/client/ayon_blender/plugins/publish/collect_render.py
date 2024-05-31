@@ -6,7 +6,7 @@ import re
 
 import bpy
 
-from ayon_core.hosts.blender.api import colorspace
+from ayon_blender.api import colorspace
 import pyblish.api
 
 

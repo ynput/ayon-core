@@ -7,8 +7,8 @@ import pyblish.api
 import bpy
 
 from ayon_core.pipeline import publish
-from ayon_core.hosts.blender.api import capture
-from ayon_core.hosts.blender.api.lib import maintained_time
+from ayon_blender.api import capture
+from ayon_blender.api.lib import maintained_time
 
 
 class ExtractPlayblast(publish.Extractor, publish.OptionalPyblishPluginMixin):

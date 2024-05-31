@@ -7,8 +7,8 @@ from typing import Dict, List, Optional
 
 import bpy
 from ayon_core.pipeline import get_representation_path
-from ayon_core.hosts.blender.api import plugin
-from ayon_core.hosts.blender.api.pipeline import (
+from ayon_blender.api import plugin
+from ayon_blender.api.pipeline import (
     containerise_existing,
     AVALON_PROPERTY,
 )

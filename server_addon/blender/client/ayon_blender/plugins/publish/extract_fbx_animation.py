@@ -6,8 +6,8 @@ import bpy_extras
 import bpy_extras.anim_utils
 
 from ayon_core.pipeline import publish
-from ayon_core.hosts.blender.api import plugin
-from ayon_core.hosts.blender.api.pipeline import AVALON_PROPERTY
+from ayon_blender.api import plugin
+from ayon_blender.api.pipeline import AVALON_PROPERTY
 
 
 def get_all_parents(obj):
