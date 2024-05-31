@@ -17,7 +17,7 @@ ExManCmd /install {path to addon}/api/extension.zxp
 The easiest way to get the server and Photoshop launch is with:
 
 ```
-python -c ^"import ayon_core.hosts.photoshop;ayon_core.hosts.photoshop.launch(""C:\Program Files\Adobe\Adobe Photoshop 2020\Photoshop.exe"")^"
+python -c ^"import ayon_photoshop;ayon_photoshop.launch(""C:\Program Files\Adobe\Adobe Photoshop 2020\Photoshop.exe"")^"
 ```
 
 `avalon.photoshop.launch` launches the application and server, and also closes the server when Photoshop exists.
