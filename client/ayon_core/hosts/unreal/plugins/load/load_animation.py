@@ -26,32 +26,11 @@ class AnimationFBXLoader(plugin.Loader):
     icon = "cube"
     color = "orange"
 
-    def _process(self, path, asset_dir, asset_name, instance_name):
-        automated = False
-        actor = None
-
+    def _import_animation(
+        self, path, asset_dir, asset_name, skeleton, automated
+    ):
         task = unreal.AssetImportTask()
         task.options = unreal.FbxImportUI()
-
-        if instance_name:
-            automated = True
-            # Old method to get the actor
-            # actor_name = 'PersistentLevel.' + instance_name
-            # actor = unreal.EditorLevelLibrary.get_actor_reference(actor_name)
-            actors = unreal.EditorLevelLibrary.get_all_level_actors()
-            for a in actors:
-                if a.get_class().get_name() != "SkeletalMeshActor":
-                    continue
-                if a.get_actor_label() == instance_name:
-                    actor = a
-                    break
-            if not actor:
-                raise Exception(f"Could not find actor {instance_name}")
-            skeleton = actor.skeletal_mesh_component.skeletal_mesh.skeleton
-            task.options.set_editor_property('skeleton', skeleton)
-
-        if not actor:
-            return None
 
         folder_entity = get_current_folder_entity(fields=["attrib.fps"])
 
@@ -72,6 +51,7 @@ class AnimationFBXLoader(plugin.Loader):
         task.options.set_editor_property('import_mesh', False)
         task.options.set_editor_property('import_animations', True)
         task.options.set_editor_property('override_full_name', True)
+        task.options.set_editor_property('skeleton', skeleton)
 
         task.options.anim_sequence_import_data.set_editor_property(
             'animation_length',
@@ -108,6 +88,34 @@ class AnimationFBXLoader(plugin.Loader):
                 animation = imported_asset
                 break
 
+        return animation
+
+    def _process(self, path, asset_dir, asset_name, instance_name):
+        automated = False
+        actor = None
+
+        if instance_name:
+            automated = True
+            # Old method to get the actor
+            # actor_name = 'PersistentLevel.' + instance_name
+            # actor = unreal.EditorLevelLibrary.get_actor_reference(actor_name)
+            actors = unreal.EditorLevelLibrary.get_all_level_actors()
+            for a in actors:
+                if a.get_class().get_name() != "SkeletalMeshActor":
+                    continue
+                if a.get_actor_label() == instance_name:
+                    actor = a
+                    break
+            if not actor:
+                raise Exception(f"Could not find actor {instance_name}")
+            skeleton = actor.skeletal_mesh_component.skeletal_mesh.skeleton
+
+        if not actor:
+            return None
+
+        animation = self._import_animation(
+            path, asset_dir, asset_name, skeleton, automated)
+
         if animation:
             animation.set_editor_property('enable_root_motion', True)
             actor.skeletal_mesh_component.set_editor_property(
@@ -117,72 +125,9 @@ class AnimationFBXLoader(plugin.Loader):
 
         return animation
 
-    def load(self, context, name, namespace, options=None):
-        """
-        Load and containerise representation into Content Browser.
-
-        This is two step process. First, import FBX to temporary path and
-        then call `containerise()` on it - this moves all content to new
-        directory and then it will create AssetContainer there and imprint it
-        with metadata. This will mark this path as container.
-
-        Args:
-            context (dict): application context
-            name (str): Product name
-            namespace (str): in Unreal this is basically path to container.
-                             This is not passed here, so namespace is set
-                             by `containerise()` because only then we know
-                             real path.
-            data (dict): Those would be data to be imprinted. This is not used
-                         now, data are imprinted by `containerise()`.
-
-        Returns:
-            list(str): list of container content
-        """
-        # Create directory for asset and Ayon container
-        root = "/Game/Ayon"
-        folder_path = context["folder"]["path"]
-        hierarchy = folder_path.lstrip("/").split("/")
-        folder_name = hierarchy.pop(-1)
-        product_type = context["product"]["productType"]
-
-        suffix = "_CON"
-        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
-        tools = unreal.AssetToolsHelpers().get_asset_tools()
-        asset_dir, container_name = tools.create_unique_asset_name(
-            f"{root}/Animations/{folder_name}/{name}", suffix="")
-
-        ar = unreal.AssetRegistryHelpers.get_asset_registry()
-
-        _filter = unreal.ARFilter(
-            class_names=["World"],
-            package_paths=[f"{root}/{hierarchy[0]}"],
-            recursive_paths=False)
-        levels = ar.get_assets(_filter)
-        master_level = levels[0].get_asset().get_path_name()
-
-        hierarchy_dir = root
-        for h in hierarchy:
-            hierarchy_dir = f"{hierarchy_dir}/{h}"
-        hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
-
-        _filter = unreal.ARFilter(
-            class_names=["World"],
-            package_paths=[f"{hierarchy_dir}/"],
-            recursive_paths=True)
-        levels = ar.get_assets(_filter)
-        level = levels[0].get_asset().get_path_name()
-
-        unreal.EditorLevelLibrary.save_all_dirty_levels()
-        unreal.EditorLevelLibrary.load_level(level)
-
-        container_name += suffix
-
-        EditorAssetLibrary.make_directory(asset_dir)
-
-        path = self.filepath_from_context(context)
-        libpath = path.replace(".fbx", ".json")
-
+    def _load_from_json(
+        self, libpath, path, asset_dir, asset_name, hierarchy_dir
+    ):
         with open(libpath, "r") as fp:
             data = json.load(fp)
 
@@ -222,6 +167,93 @@ class AnimationFBXLoader(plugin.Loader):
                     for s in sections:
                         s.params.set_editor_property('animation', animation)
 
+    def _load_standalone_animation(self, path, asset_dir, asset_name):
+        selection = unreal.EditorUtilityLibrary.get_selected_assets()
+        if not selection:
+            raise ValueError("No skeleton selected.")
+
+        skeleton = selection[0]
+        if skeleton.get_class() != unreal.Skeleton.static_class():
+            raise ValueError("Selected asset is not a skeleton.")
+
+        animation = self._import_animation(
+            path, asset_dir, asset_name, skeleton, True)
+
+        return animation
+
+    def load(self, context, name, namespace, options=None):
+        """
+        Load and containerise representation into Content Browser.
+
+        This is two step process. First, import FBX to temporary path and
+        then call `containerise()` on it - this moves all content to new
+        directory and then it will create AssetContainer there and imprint it
+        with metadata. This will mark this path as container.
+
+        Args:
+            context (dict): application context
+            name (str): Product name
+            namespace (str): in Unreal this is basically path to container.
+                             This is not passed here, so namespace is set
+                             by `containerise()` because only then we know
+                             real path.
+            data (dict): Those would be data to be imprinted. This is not used
+                         now, data are imprinted by `containerise()`.
+
+        Returns:
+            list(str): list of container content
+        """
+        # Create directory for asset and Ayon container
+        root = "/Game/Ayon"
+        folder_path = context["folder"]["path"]
+        hierarchy = folder_path.lstrip("/").split("/")
+        folder_name = hierarchy.pop(-1)
+        product_type = context["product"]["productType"]
+
+        suffix = "_CON"
+        asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
+        tools = unreal.AssetToolsHelpers().get_asset_tools()
+        asset_dir, container_name = tools.create_unique_asset_name(
+            f"{root}/Animations/{folder_name}/{name}", suffix="")
+
+        path = self.filepath_from_context(context)
+        libpath = path.replace(".fbx", ".json")
+
+        # check if json file exists.
+        if os.path.exists(libpath):
+            ar = unreal.AssetRegistryHelpers.get_asset_registry()
+
+            _filter = unreal.ARFilter(
+                class_names=["World"],
+                package_paths=[f"{root}/{hierarchy[0]}"],
+                recursive_paths=False)
+            levels = ar.get_assets(_filter)
+            master_level = levels[0].get_asset().get_path_name()
+
+            hierarchy_dir = root
+            for h in hierarchy:
+                hierarchy_dir = f"{hierarchy_dir}/{h}"
+            hierarchy_dir = f"{hierarchy_dir}/{folder_name}"
+
+            _filter = unreal.ARFilter(
+                class_names=["World"],
+                package_paths=[f"{hierarchy_dir}/"],
+                recursive_paths=True)
+            levels = ar.get_assets(_filter)
+            level = levels[0].get_asset().get_path_name()
+
+            unreal.EditorLevelLibrary.save_all_dirty_levels()
+            unreal.EditorLevelLibrary.load_level(level)
+
+            container_name += suffix
+
+            EditorAssetLibrary.make_directory(asset_dir)
+
+            self._load_from_json(
+                libpath, path, asset_dir, asset_name, hierarchy_dir)
+        else:
+            self._load_standalone_animation(path, asset_dir, asset_name)
+
         # Create Asset Container
         unreal_pipeline.create_container(
             container=container_name, path=asset_dir)
@@ -249,8 +281,9 @@ class AnimationFBXLoader(plugin.Loader):
         for a in imported_content:
             EditorAssetLibrary.save_asset(a)
 
-        unreal.EditorLevelLibrary.save_current_level()
-        unreal.EditorLevelLibrary.load_level(master_level)
+        if master_level:
+            unreal.EditorLevelLibrary.save_current_level()
+            unreal.EditorLevelLibrary.load_level(master_level)
 
     def update(self, container, context):
         repre_entity = context["representation"]
