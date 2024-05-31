@@ -1,6 +1,6 @@
 import os
 from ayon_applications import PreLaunchHook
-from ayon_fusion import FUSION_HOST_DIR
+from ayon_fusion import FUSION_ADDON_ROOT
 
 
 class FusionLaunchMenuHook(PreLaunchHook):
@@ -28,7 +28,7 @@ class FusionLaunchMenuHook(PreLaunchHook):
                   "Validation for Fusion version 18+ for /execute "
                   "prelaunch argument skipped.")
 
-        path = os.path.join(FUSION_HOST_DIR,
+        path = os.path.join(FUSION_ADDON_ROOT,
                             "deploy",
                             "MenuScripts",
                             "launch_menu.py").replace("\\", "/")

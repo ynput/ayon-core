@@ -3,7 +3,7 @@ import re
 from ayon_core.addon import AYONAddon, IHostAddon
 from ayon_core.lib import Logger
 
-FUSION_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
+FUSION_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 # FUSION_VERSIONS_DICT is used by the pre-launch hooks
 # The keys correspond to all currently supported Fusion versions
@@ -55,7 +55,7 @@ class FusionAddon(AYONAddon, IHostAddon):
     def get_launch_hook_paths(self, app):
         if app.host_name != self.host_name:
             return []
-        return [os.path.join(FUSION_HOST_DIR, "hooks")]
+        return [os.path.join(FUSION_ADDON_ROOT, "hooks")]
 
     def add_implementation_envs(self, env, app):
         # Set default values if are not already set via settings
