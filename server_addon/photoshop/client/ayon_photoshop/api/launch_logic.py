@@ -22,9 +22,9 @@ from ayon_core.pipeline.workfile import (
 )
 from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.tools.utils import host_tools
-from ayon_core.tools.adobe_webserver.app import WebServerTool
 from ayon_core.pipeline.context_tools import change_current_context
 
+from .webserver import WebServerTool
 from .ws_stub import PhotoshopServerStub
 
 log = Logger.get_logger(__name__)
