@@ -18,8 +18,8 @@ from ayon_core.lib import Logger, is_in_tests
 from ayon_core.pipeline import install_host
 from ayon_core.addon import AddonsManager
 from ayon_core.tools.utils import host_tools, get_ayon_qt_app
-from ayon_core.tools.adobe_webserver.app import WebServerTool
 
+from .webserver import WebServerTool
 from .ws_stub import get_stub
 from .lib import set_settings
 
