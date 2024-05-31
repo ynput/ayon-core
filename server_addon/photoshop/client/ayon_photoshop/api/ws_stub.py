@@ -6,7 +6,7 @@ import json
 import attr
 from wsrpc_aiohttp import WebSocketAsync
 
-from ayon_core.tools.adobe_webserver.app import WebServerTool
+from .webserver import WebServerTool
 
 
 @attr.s
