@@ -3,7 +3,7 @@
 from ayon_blender.api import plugin, lib
 
 
-class CreatePointcache(plugin.BaseCreator):
+class CreatePointcache(plugin.BlenderCreator):
     """Polygonal static geometry."""
 
     identifier = "io.openpype.creators.blender.pointcache"

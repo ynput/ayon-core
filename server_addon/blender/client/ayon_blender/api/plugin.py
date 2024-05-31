@@ -175,7 +175,7 @@ class BlenderExtractor(Extractor):
     settings_category = "blender"
 
 
-class BaseCreator(Creator):
+class BlenderCreator(Creator):
     """Base class for Blender Creator plug-ins."""
     defaults = ['Main']
 
@@ -280,7 +280,7 @@ class BaseCreator(Creator):
         return instance_node
 
     def collect_instances(self):
-        """Override abstract method from BaseCreator.
+        """Override abstract method from BlenderCreator.
         Collect existing instances related to this creator plugin."""
 
         # Cache instances in shared data
@@ -307,7 +307,7 @@ class BaseCreator(Creator):
             self._add_instance_to_context(instance)
 
     def update_instances(self, update_list):
-        """Override abstract method from BaseCreator.
+        """Override abstract method from BlenderCreator.
         Store changes of existing instances so they can be recollected.
 
         Args:
@@ -391,7 +391,7 @@ class BaseCreator(Creator):
         ]
 
 
-class AssetLoader(LoaderPlugin):
+class BlenderLoader(LoaderPlugin):
     """A basic AssetLoader for Blender
 
     This will implement the basic logic for linking/appending assets

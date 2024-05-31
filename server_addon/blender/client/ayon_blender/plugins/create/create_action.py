@@ -5,7 +5,7 @@ import bpy
 from ayon_blender.api import lib, plugin
 
 
-class CreateAction(plugin.BaseCreator):
+class CreateAction(plugin.BlenderCreator):
     """Action output for character rigs."""
 
     identifier = "io.openpype.creators.blender.action"

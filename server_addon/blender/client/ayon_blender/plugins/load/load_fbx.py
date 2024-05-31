@@ -17,7 +17,7 @@ from ayon_blender.api.pipeline import (
 )
 
 
-class FbxModelLoader(plugin.AssetLoader):
+class FbxModelLoader(plugin.BlenderLoader):
     """Load FBX models.
 
     Stores the imported asset in an empty named after the asset.

@@ -5,7 +5,7 @@ import bpy
 from ayon_blender.api import plugin, lib
 
 
-class CreateBlendScene(plugin.BaseCreator):
+class CreateBlendScene(plugin.BlenderCreator):
     """Generic group of assets."""
 
     identifier = "io.openpype.creators.blender.blendscene"

@@ -5,7 +5,7 @@ import bpy
 from ayon_blender.api import plugin, lib
 
 
-class CreateModel(plugin.BaseCreator):
+class CreateModel(plugin.BlenderCreator):
     """Polygonal static geometry."""
 
     identifier = "io.openpype.creators.blender.model"

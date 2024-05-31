@@ -34,7 +34,7 @@ def append_workfile(context, fname, do_import):
                 collection.children.link(coll)
 
 
-class AppendBlendLoader(plugin.AssetLoader):
+class AppendBlendLoader(plugin.BlenderLoader):
     """Append workfile in Blender (unmanaged)
 
     Warning:
@@ -59,7 +59,7 @@ class AppendBlendLoader(plugin.AssetLoader):
         return
 
 
-class ImportBlendLoader(plugin.AssetLoader):
+class ImportBlendLoader(plugin.BlenderLoader):
     """Import workfile in the current Blender scene (unmanaged)
 
     Warning:

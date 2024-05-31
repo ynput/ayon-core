@@ -15,7 +15,7 @@ from ayon_blender.api.pipeline import (
 )
 
 
-class BlendSceneLoader(plugin.AssetLoader):
+class BlendSceneLoader(plugin.BlenderLoader):
     """Load assets from a .blend file."""
 
     product_types = {"blendScene"}

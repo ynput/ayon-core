@@ -3,7 +3,7 @@
 from ayon_blender.api import plugin, lib
 
 
-class CreateReview(plugin.BaseCreator):
+class CreateReview(plugin.BlenderCreator):
     """Single baked camera."""
 
     identifier = "io.openpype.creators.blender.review"

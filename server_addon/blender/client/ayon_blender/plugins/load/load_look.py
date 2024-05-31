@@ -16,7 +16,7 @@ from ayon_blender.api.pipeline import (
 )
 
 
-class BlendLookLoader(plugin.AssetLoader):
+class BlendLookLoader(plugin.BlenderLoader):
     """Load models from a .blend file.
 
     Because they come from a .blend file we can simply link the collection that

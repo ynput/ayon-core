@@ -6,7 +6,7 @@ from ayon_blender.api import plugin, lib
 from ayon_blender.api.pipeline import AVALON_INSTANCES
 
 
-class CreateCamera(plugin.BaseCreator):
+class CreateCamera(plugin.BlenderCreator):
     """Polygonal static geometry."""
 
     identifier = "io.openpype.creators.blender.camera"

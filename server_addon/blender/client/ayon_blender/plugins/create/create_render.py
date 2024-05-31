@@ -7,7 +7,7 @@ from ayon_blender.api.render_lib import prepare_rendering
 from ayon_blender.api.workio import save_file
 
 
-class CreateRenderlayer(plugin.BaseCreator):
+class CreateRenderlayer(plugin.BlenderCreator):
     """Single baked camera."""
 
     identifier = "io.openpype.creators.blender.render"

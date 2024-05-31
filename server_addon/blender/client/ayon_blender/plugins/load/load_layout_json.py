@@ -23,7 +23,7 @@ from ayon_blender.api.pipeline import (
 from ayon_blender.api import plugin
 
 
-class JsonLayoutLoader(plugin.AssetLoader):
+class JsonLayoutLoader(plugin.BlenderLoader):
     """Load layout published from Unreal."""
 
     product_types = {"layout"}
