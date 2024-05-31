@@ -42,7 +42,7 @@ class BlenderLegacyConvertor(ProductConvertorPlugin):
         parameter on them.
 
         This is using cached entries done in
-        :py:meth:`~BaseCreator.cache_instance_data()`
+        :py:meth:`~BlenderCreator.cache_instance_data()`
 
         """
         self.legacy_instances = self.collection_shared_data.get(

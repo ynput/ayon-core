@@ -17,7 +17,7 @@ from ayon_blender.api.pipeline import (
 )
 
 
-class FbxCameraLoader(plugin.AssetLoader):
+class FbxCameraLoader(plugin.BlenderLoader):
     """Load a camera from FBX.
 
     Stores the imported asset in an empty named after the asset.

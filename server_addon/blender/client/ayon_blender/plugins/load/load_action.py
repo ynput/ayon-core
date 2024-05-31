@@ -16,7 +16,7 @@ from ayon_blender.api.pipeline import (
 logger = logging.getLogger("ayon").getChild("blender").getChild("load_action")
 
 
-class BlendActionLoader(plugin.AssetLoader):
+class BlendActionLoader(plugin.BlenderLoader):
     """Load action from a .blend file.
 
     Warning:

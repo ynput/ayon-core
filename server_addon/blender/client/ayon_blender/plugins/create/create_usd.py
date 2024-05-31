@@ -3,7 +3,7 @@
 from ayon_blender.api import plugin, lib
 
 
-class CreateUSD(plugin.BaseCreator):
+class CreateUSD(plugin.BlenderCreator):
     """Create USD Export"""
 
     identifier = "io.openpype.creators.blender.usd"

@@ -8,7 +8,7 @@ from ayon_blender.api import plugin
 from ayon_blender.api.pipeline import AVALON_PROPERTY
 
 
-class BlendAnimationLoader(plugin.AssetLoader):
+class BlendAnimationLoader(plugin.BlenderLoader):
     """Load animations from a .blend file.
 
     Warning:

@@ -2,14 +2,14 @@ import bpy
 import ayon_api
 
 from ayon_core.pipeline import CreatedInstance, AutoCreator
-from ayon_blender.api.plugin import BaseCreator
+from ayon_blender.api.plugin import BlenderCreator
 from ayon_blender.api.pipeline import (
     AVALON_PROPERTY,
     AVALON_CONTAINERS
 )
 
 
-class CreateWorkfile(BaseCreator, AutoCreator):
+class CreateWorkfile(BlenderCreator, AutoCreator):
     """Workfile auto-creator.
 
     The workfile instance stores its data on the `AVALON_CONTAINERS` collection

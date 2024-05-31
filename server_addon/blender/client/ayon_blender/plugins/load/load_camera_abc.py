@@ -17,7 +17,7 @@ from ayon_blender.api.pipeline import (
 )
 
 
-class AbcCameraLoader(plugin.AssetLoader):
+class AbcCameraLoader(plugin.BlenderLoader):
     """Load a camera from Alembic file.
 
     Stores the imported asset in an empty named after the asset.

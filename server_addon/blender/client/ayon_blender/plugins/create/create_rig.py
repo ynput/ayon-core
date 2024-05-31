@@ -5,7 +5,7 @@ import bpy
 from ayon_blender.api import plugin, lib
 
 
-class CreateRig(plugin.BaseCreator):
+class CreateRig(plugin.BlenderCreator):
     """Artist-friendly rig with controls to direct motion."""
 
     identifier = "io.openpype.creators.blender.rig"

@@ -305,7 +305,7 @@ class LaunchCreator(LaunchQtApp):
 
 
 class LaunchLoader(LaunchQtApp):
-    """Launch Avalon Loader."""
+    """Launch AYON Loader."""
 
     bl_idname = "wm.avalon_loader"
     bl_label = "Load..."

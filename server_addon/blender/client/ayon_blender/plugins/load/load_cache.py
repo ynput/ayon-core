@@ -18,7 +18,7 @@ from ayon_blender.api.pipeline import (
 from ayon_blender.api import plugin, lib
 
 
-class CacheModelLoader(plugin.AssetLoader):
+class CacheModelLoader(plugin.BlenderLoader):
     """Load cache models.
 
     Stores the imported asset in a collection named after the asset.
