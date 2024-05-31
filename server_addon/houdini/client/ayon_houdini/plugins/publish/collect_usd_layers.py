@@ -1,17 +1,15 @@
 import os
-
+import hou
 import pyblish.api
+from ayon_houdini.api import plugin
 import ayon_houdini.api.usd as usdlib
 
-import hou
 
-
-class CollectUsdLayers(pyblish.api.InstancePlugin):
+class CollectUsdLayers(plugin.HoudiniInstancePlugin):
     """Collect the USD Layers that have configured save paths."""
 
     order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Layers"
-    hosts = ["houdini"]
     families = ["usd"]
 
     def process(self, instance):

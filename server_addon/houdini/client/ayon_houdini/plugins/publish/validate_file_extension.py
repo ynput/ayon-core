@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import os
-import pyblish.api
-
-from ayon_houdini.api import lib
-from ayon_core.pipeline import PublishValidationError
-
 import hou
 
+import pyblish.api
+from ayon_core.pipeline import PublishValidationError
 
-class ValidateFileExtension(pyblish.api.InstancePlugin):
+from ayon_houdini.api import lib, plugin
+
+
+class ValidateFileExtension(plugin.HoudiniInstancePlugin):
     """Validate the output file extension fits the output family.
 
     File extensions:
@@ -20,7 +20,6 @@ class ValidateFileExtension(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["camera", "vdbcache"]
-    hosts = ["houdini"]
     label = "Output File Extension"
 
     family_extensions = {

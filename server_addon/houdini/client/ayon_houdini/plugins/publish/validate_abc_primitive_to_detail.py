@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
-
 from collections import defaultdict
+
+import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 
+from ayon_houdini.api import plugin
 
-class ValidateAbcPrimitiveToDetail(pyblish.api.InstancePlugin):
+
+class ValidateAbcPrimitiveToDetail(plugin.HoudiniInstancePlugin):
     """Validate Alembic ROP Primitive to Detail attribute is consistent.
 
     The Alembic ROP crashes Houdini whenever an attribute in the "Primitive to
@@ -18,7 +20,6 @@ class ValidateAbcPrimitiveToDetail(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["abc"]
-    hosts = ["houdini"]
     label = "Validate Primitive to Detail (Abc)"
 
     def process(self, instance):

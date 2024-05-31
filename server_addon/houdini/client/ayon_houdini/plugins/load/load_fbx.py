@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Fbx Loader for houdini. """
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
+from ayon_core.pipeline import get_representation_path
+from ayon_houdini.api import (
+    pipeline,
+    plugin
 )
-from ayon_houdini.api import pipeline
 
 
-class FbxLoader(load.LoaderPlugin):
+class FbxLoader(plugin.HoudiniLoader):
     """Load fbx files. """
 
     label = "Load FBX"

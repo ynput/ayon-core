@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+import hou
+
 import pyblish.api
 from ayon_core.pipeline import PublishValidationError
 from ayon_core.pipeline.publish import RepairAction
-from ayon_houdini.api.action import SelectInvalidAction
 
-import hou
+from ayon_houdini.api.action import SelectInvalidAction
+from ayon_houdini.api import plugin
+
 
 
 class DisableUseFolderHandlesAction(RepairAction):
@@ -12,7 +15,7 @@ class DisableUseFolderHandlesAction(RepairAction):
     icon = "mdi.toggle-switch-off"
 
 
-class ValidateFrameRange(pyblish.api.InstancePlugin):
+class ValidateFrameRange(plugin.HoudiniInstancePlugin):
     """Validate Frame Range.
 
     Due to the usage of start and end handles,
@@ -21,7 +24,6 @@ class ValidateFrameRange(pyblish.api.InstancePlugin):
     """
 
     order = pyblish.api.ValidatorOrder - 0.1
-    hosts = ["houdini"]
     label = "Validate Frame Range"
     actions = [DisableUseFolderHandlesAction, SelectInvalidAction]
 

@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """Validate if instance asset is the same as context asset."""
-
-import pyblish.api
-from ayon_houdini.api.action import SelectROPAction
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
@@ -10,8 +7,11 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin
 )
 
+from ayon_houdini.api import plugin
+from ayon_houdini.api.action import SelectROPAction
 
-class ValidateInstanceInContextHoudini(pyblish.api.InstancePlugin,
+
+class ValidateInstanceInContextHoudini(plugin.HoudiniInstancePlugin,
                                        OptionalPyblishPluginMixin):
     """Validator to check if instance asset match context asset.
 
@@ -24,10 +24,7 @@ class ValidateInstanceInContextHoudini(pyblish.api.InstancePlugin,
     order = ValidateContentsOrder
     label = "Instance in same Context"
     optional = True
-    hosts = ["houdini"]
     actions = [SelectROPAction, RepairAction]
-
-    settings_category = "houdini"
 
     def process(self, instance):
         if not self.is_active(instance.data):

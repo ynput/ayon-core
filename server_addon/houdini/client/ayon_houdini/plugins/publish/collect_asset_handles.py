@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """Collector plugin for frames data on ROP instances."""
-import hou  # noqa
 import pyblish.api
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import AYONPyblishPluginMixin
+from ayon_houdini.api import plugin
 
 
-class CollectAssetHandles(pyblish.api.InstancePlugin,
+class CollectAssetHandles(plugin.HoudiniInstancePlugin,
                           AYONPyblishPluginMixin):
     """Apply folder handles.
 
@@ -23,16 +23,12 @@ class CollectAssetHandles(pyblish.api.InstancePlugin,
     the exclusive frame range and actual handle ranges.
     """
 
-    hosts = ["houdini"]
-
     # This specific order value is used so that
     # this plugin runs after CollectAnatomyInstanceData
     order = pyblish.api.CollectorOrder + 0.499
 
     label = "Collect Folder Handles"
     use_asset_handles = True
-
-    settings_category = "houdini"
 
     def process(self, instance):
         # Only process instances without already existing handles data

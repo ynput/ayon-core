@@ -2,10 +2,10 @@
 
 """
 
-from ayon_core.pipeline import load
+from ayon_houdini.api import plugin
 
 
-class SetFrameRangeLoader(load.LoaderPlugin):
+class SetFrameRangeLoader(plugin.HoudiniLoader):
     """Set frame range excluding pre- and post-handles"""
 
     product_types = {
@@ -42,7 +42,7 @@ class SetFrameRangeLoader(load.LoaderPlugin):
         hou.playbar.setPlaybackRange(start, end)
 
 
-class SetFrameRangeWithHandlesLoader(load.LoaderPlugin):
+class SetFrameRangeWithHandlesLoader(plugin.HoudiniLoader):
     """Set frame range including pre- and post-handles"""
 
     product_types = {

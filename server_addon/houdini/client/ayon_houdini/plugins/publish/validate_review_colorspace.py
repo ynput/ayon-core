@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import os
+import hou
+
 import pyblish.api
 from ayon_core.pipeline import (
     PublishValidationError,
@@ -9,10 +12,9 @@ from ayon_core.pipeline.publish import (
     get_plugin_settings,
     apply_plugin_settings_automatically
 )
-from ayon_houdini.api.action import SelectROPAction
 
-import os
-import hou
+from ayon_houdini.api import plugin
+from ayon_houdini.api.action import SelectROPAction
 
 
 class ResetViewSpaceAction(RepairAction):
@@ -20,7 +22,7 @@ class ResetViewSpaceAction(RepairAction):
     icon = "mdi.monitor"
 
 
-class ValidateReviewColorspace(pyblish.api.InstancePlugin,
+class ValidateReviewColorspace(plugin.HoudiniInstancePlugin,
                                OptionalPyblishPluginMixin):
     """Validate Review Colorspace parameters.
 
@@ -29,14 +31,11 @@ class ValidateReviewColorspace(pyblish.api.InstancePlugin,
 
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["review"]
-    hosts = ["houdini"]
     label = "Validate Review Colorspace"
     actions = [ResetViewSpaceAction, SelectROPAction]
 
     optional = True
     review_color_space = ""
-
-    settings_category = "houdini"
 
     @classmethod
     def apply_settings(cls, project_settings):

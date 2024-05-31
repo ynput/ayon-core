@@ -9,11 +9,12 @@ from ayon_houdini.api.lib import (
     get_color_management_preferences
 )
 from ayon_houdini.api import (
-    colorspace
+    colorspace,
+    plugin
 )
 
 
-class CollectKarmaROPRenderProducts(pyblish.api.InstancePlugin):
+class CollectKarmaROPRenderProducts(plugin.HoudiniInstancePlugin):
     """Collect Karma Render Products
 
     Collects the instance.data["files"] for the multipart render product.
@@ -27,7 +28,6 @@ class CollectKarmaROPRenderProducts(pyblish.api.InstancePlugin):
     # This specific order value is used so that
     # this plugin runs after CollectFrames
     order = pyblish.api.CollectorOrder + 0.11
-    hosts = ["houdini"]
     families = ["karma_rop"]
 
     def process(self, instance):

@@ -1,14 +1,14 @@
 import os
 import re
 
-from ayon_core.pipeline import (
-    load,
-    get_representation_path,
+from ayon_core.pipeline import get_representation_path
+from ayon_houdini.api import (
+    pipeline,
+    plugin
 )
-from ayon_houdini.api import pipeline
 
 
-class AssLoader(load.LoaderPlugin):
+class AssLoader(plugin.HoudiniLoader):
     """Load .ass with Arnold Procedural"""
 
     product_types = {"ass"}

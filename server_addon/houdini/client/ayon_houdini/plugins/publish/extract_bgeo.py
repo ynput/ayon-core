@@ -1,19 +1,15 @@
 import os
+import hou
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
-from ayon_houdini.api.lib import render_rop
-from ayon_houdini.api import lib
-
-import hou
+from ayon_houdini.api import lib, plugin
 
 
-class ExtractBGEO(publish.Extractor):
+class ExtractBGEO(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract BGEO"
-    hosts = ["houdini"]
     families = ["bgeo"]
 
     def process(self, instance):
@@ -32,7 +28,7 @@ class ExtractBGEO(publish.Extractor):
             file_name, staging_dir))
 
         # write files
-        render_rop(ropnode)
+        lib.render_rop(ropnode)
 
         output = instance.data["frames"]
 

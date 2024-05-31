@@ -1,9 +1,9 @@
 import pyblish.api
-
 from ayon_core.pipeline.publish import KnownPublishError
+from ayon_houdini.api import plugin
 
 
-class CollectOutputSOPPath(pyblish.api.InstancePlugin):
+class CollectOutputSOPPath(plugin.HoudiniInstancePlugin):
     """Collect the out node's SOP/COP Path value."""
 
     order = pyblish.api.CollectorOrder
@@ -19,7 +19,6 @@ class CollectOutputSOPPath(pyblish.api.InstancePlugin):
         "model"
     ]
 
-    hosts = ["houdini"]
     label = "Collect Output Node Path"
 
     def process(self, instance):

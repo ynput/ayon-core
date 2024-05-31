@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
 import hou
+
+import pyblish.api
 from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api import plugin
 
 
 def cook_in_range(node, start, end):
@@ -26,11 +29,10 @@ def get_errors(node):
     return node.errors()
 
 
-class ValidateNoErrors(pyblish.api.InstancePlugin):
+class ValidateNoErrors(plugin.HoudiniInstancePlugin):
     """Validate the Instance has no current cooking errors."""
 
     order = pyblish.api.ValidatorOrder
-    hosts = ["houdini"]
     label = "Validate no errors"
 
     def process(self, instance):

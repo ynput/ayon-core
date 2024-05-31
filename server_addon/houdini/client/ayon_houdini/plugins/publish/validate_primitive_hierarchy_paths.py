@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
+import hou
+
+from ayon_houdini.api import plugin
 from ayon_core.pipeline import PublishValidationError
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     RepairAction,
 )
-
-import hou
 
 
 class AddDefaultPathAction(RepairAction):
@@ -14,7 +14,7 @@ class AddDefaultPathAction(RepairAction):
     icon = "mdi.pencil-plus-outline"
 
 
-class ValidatePrimitiveHierarchyPaths(pyblish.api.InstancePlugin):
+class ValidatePrimitiveHierarchyPaths(plugin.HoudiniInstancePlugin):
     """Validate all primitives build hierarchy from attribute when enabled.
 
     The name of the attribute must exist on the prims and have the same name
@@ -25,7 +25,6 @@ class ValidatePrimitiveHierarchyPaths(pyblish.api.InstancePlugin):
 
     order = ValidateContentsOrder + 0.1
     families = ["abc"]
-    hosts = ["houdini"]
     label = "Validate Prims Hierarchy Path"
     actions = [AddDefaultPathAction]
 

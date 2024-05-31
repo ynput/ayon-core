@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import pyblish.api
+
 from ayon_core.pipeline import PublishValidationError
 
+from ayon_houdini.api import plugin
 
-class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
+
+class ValidateUSDOutputNode(plugin.HoudiniInstancePlugin):
     """Validate the instance USD LOPs Output Node.
 
     This will ensure:
@@ -15,7 +18,6 @@ class ValidateUSDOutputNode(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usd"]
-    hosts = ["houdini"]
     label = "Validate Output Node (USD)"
 
     def process(self, instance):

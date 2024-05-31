@@ -1,8 +1,9 @@
 import hou
 import pyblish.api
+from ayon_houdini.api import plugin
 
 
-class CollectHoudiniReviewData(pyblish.api.InstancePlugin):
+class CollectHoudiniReviewData(plugin.HoudiniInstancePlugin):
     """Collect Review Data."""
 
     label = "Collect Review Data"
@@ -10,7 +11,6 @@ class CollectHoudiniReviewData(pyblish.api.InstancePlugin):
     # this plugin runs after CollectRopFrameRange
     # Also after CollectLocalRenderInstances
     order = pyblish.api.CollectorOrder + 0.13
-    hosts = ["houdini"]
     families = ["review"]
 
     def process(self, instance):

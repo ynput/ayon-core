@@ -1,17 +1,15 @@
 import os
+import hou
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
-
-import hou
+from ayon_houdini.api import plugin
 
 
-class ExtractMantraIFD(publish.Extractor):
+class ExtractMantraIFD(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Mantra ifd"
-    hosts = ["houdini"]
     families = ["mantraifd"]
     targets = ["local", "remote"]
 

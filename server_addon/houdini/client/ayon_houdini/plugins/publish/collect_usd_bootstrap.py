@@ -1,10 +1,10 @@
 import pyblish.api
 import ayon_api
-
 from ayon_core.pipeline import usdlib, KnownPublishError
 
+from ayon_houdini.api import plugin
 
-class CollectUsdBootstrap(pyblish.api.InstancePlugin):
+class CollectUsdBootstrap(plugin.HoudiniInstancePlugin):
     """Collect special Asset/Shot bootstrap instances if those are needed.
 
     Some specific products are intended to be part of the default structure
@@ -21,7 +21,6 @@ class CollectUsdBootstrap(pyblish.api.InstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Bootstrap"
-    hosts = ["houdini"]
     families = ["usd", "usd.layered"]
 
     def process(self, instance):

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
-
-import ayon_houdini.api.usd as hou_usdlib
-from ayon_core.pipeline import PublishValidationError
-
+import hou
 from pxr import UsdShade, UsdRender, UsdLux
 
-import hou
+import pyblish.api
+from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api import plugin
+import ayon_houdini.api.usd as hou_usdlib
 
 
 def fullname(o):
@@ -17,7 +17,7 @@ def fullname(o):
     return module + "." + o.__name__
 
 
-class ValidateUsdModel(pyblish.api.InstancePlugin):
+class ValidateUsdModel(plugin.HoudiniInstancePlugin):
     """Validate USD Model.
 
     Disallow Shaders, Render settings, products and vars and Lux lights.
@@ -26,7 +26,6 @@ class ValidateUsdModel(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder
     families = ["usdModel"]
-    hosts = ["houdini"]
     label = "Validate USD Model"
     optional = True
 

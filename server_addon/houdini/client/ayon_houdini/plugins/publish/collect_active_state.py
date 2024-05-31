@@ -1,8 +1,10 @@
-import pyblish.api
 import hou
 
+import pyblish.api
+from ayon_houdini.api import plugin
 
-class CollectInstanceActiveState(pyblish.api.InstancePlugin):
+
+class CollectInstanceActiveState(plugin.HoudiniInstancePlugin):
     """Collect default active state for instance from its node bypass state.
 
     This is done at the very end of the CollectorOrder so that any required
@@ -14,7 +16,6 @@ class CollectInstanceActiveState(pyblish.api.InstancePlugin):
 
     order = pyblish.api.CollectorOrder + 0.299
     families = ["*"]
-    hosts = ["houdini"]
     label = "Instance Active State"
 
     def process(self, instance):

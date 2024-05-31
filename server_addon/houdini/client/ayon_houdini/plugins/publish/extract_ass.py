@@ -1,19 +1,17 @@
 import os
+import hou
 
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 
-import hou
 
-
-class ExtractAss(publish.Extractor):
+class ExtractAss(plugin.HoudiniExtractorPlugin):
 
     order = pyblish.api.ExtractorOrder + 0.1
     label = "Extract Ass"
     families = ["ass"]
-    hosts = ["houdini"]
     targets = ["local", "remote"]
 
     def process(self, instance):

@@ -6,9 +6,10 @@ from ayon_core.pipeline.publish import (
     get_plugin_settings,
     apply_plugin_settings_automatically
 )
+from ayon_houdini.api import plugin
 
 
-class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
+class CollectLocalRenderInstances(plugin.HoudiniInstancePlugin):
     """Collect instances for local render.
 
     Agnostic Local Render Collector.
@@ -22,10 +23,7 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 "arnold_rop",
                 "vray_rop"]
 
-    hosts = ["houdini"]
     label = "Collect local render instances"
-
-    settings_category = "houdini"
 
     use_deadline_aov_filter = False
     aov_filter = {"host_name": "houdini",

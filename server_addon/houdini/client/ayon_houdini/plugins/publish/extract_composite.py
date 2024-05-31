@@ -1,18 +1,17 @@
 import os
+import hou
 import pyblish.api
 
 from ayon_core.pipeline import publish
+from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop, splitext
 
-import hou
 
-
-class ExtractComposite(publish.Extractor,
+class ExtractComposite(plugin.HoudiniExtractorPlugin,
                        publish.ColormanagedPyblishPluginMixin):
 
     order = pyblish.api.ExtractorOrder
     label = "Extract Composite (Image Sequence)"
-    hosts = ["houdini"]
     families = ["imagesequence"]
 
     def process(self, instance):

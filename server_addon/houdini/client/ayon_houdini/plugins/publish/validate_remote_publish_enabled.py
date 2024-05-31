@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
-
 import hou
+
+import pyblish.api
 from ayon_core.pipeline.publish import RepairContextAction
 from ayon_core.pipeline import PublishValidationError
 
+from ayon_houdini.api import plugin
 
-class ValidateRemotePublishEnabled(pyblish.api.ContextPlugin):
+
+class ValidateRemotePublishEnabled(plugin.HoudiniContextPlugin):
     """Validate the remote publish node is *not* bypassed."""
 
     order = pyblish.api.ValidatorOrder - 0.39
     families = ["*"]
-    hosts = ["houdini"]
     targets = ["deadline"]
     label = "Remote Publish ROP enabled"
     actions = [RepairContextAction]

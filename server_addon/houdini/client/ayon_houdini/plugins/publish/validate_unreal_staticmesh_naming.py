@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """Validator for correct naming of Static Meshes."""
-import pyblish.api
+import hou
+
 from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
 from ayon_core.pipeline.publish import ValidateContentsOrder
 
+from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectInvalidAction
 from ayon_houdini.api.lib import get_output_children
 
-import hou
 
-
-class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
+class ValidateUnrealStaticMeshName(plugin.HoudiniInstancePlugin,
                                    OptionalPyblishPluginMixin):
     """Validate name of Unreal Static Mesh.
 
@@ -29,7 +29,6 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
     """
 
     families = ["staticMesh"]
-    hosts = ["houdini"]
     label = "Unreal Static Mesh Name (FBX)"
     order = ValidateContentsOrder + 0.1
     actions = [SelectInvalidAction]
@@ -37,8 +36,6 @@ class ValidateUnrealStaticMeshName(pyblish.api.InstancePlugin,
     optional = True
     collision_prefixes = []
     static_mesh_prefix = ""
-
-    settings_category = "houdini"
 
     @classmethod
     def apply_settings(cls, project_settings):

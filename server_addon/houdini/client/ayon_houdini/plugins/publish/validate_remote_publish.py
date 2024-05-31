@@ -1,19 +1,18 @@
 # -*-coding: utf-8 -*-
-import pyblish.api
+import hou
 
-from ayon_houdini.api import lib
+import pyblish.api
 from ayon_core.pipeline.publish import RepairContextAction
 from ayon_core.pipeline import PublishValidationError
 
-import hou
+from ayon_houdini.api import lib, plugin
 
 
-class ValidateRemotePublishOutNode(pyblish.api.ContextPlugin):
+class ValidateRemotePublishOutNode(plugin.HoudiniContextPlugin):
     """Validate the remote publish out node exists for Deadline to trigger."""
 
     order = pyblish.api.ValidatorOrder - 0.4
     families = ["*"]
-    hosts = ["houdini"]
     targets = ["deadline"]
     label = "Remote Publish ROP node"
     actions = [RepairContextAction]

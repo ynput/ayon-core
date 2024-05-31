@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-import pyblish.api
 import hou
+import pyblish.api
+from ayon_houdini.api import plugin
 
-class ValidateAlembicROPFaceSets(pyblish.api.InstancePlugin):
+
+class ValidateAlembicROPFaceSets(plugin.HoudiniInstancePlugin):
     """Validate Face Sets are disabled for extraction to pointcache.
 
     When groups are saved as Face Sets with the Alembic these show up
@@ -19,7 +21,6 @@ class ValidateAlembicROPFaceSets(pyblish.api.InstancePlugin):
 
     order = pyblish.api.ValidatorOrder + 0.1
     families = ["abc"]
-    hosts = ["houdini"]
     label = "Validate Alembic ROP Face Sets"
 
     def process(self, instance):

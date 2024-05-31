@@ -1,9 +1,10 @@
 import pyblish.api
 from ayon_core.lib import NumberDef
 from ayon_core.pipeline import AYONPyblishPluginMixin
+from ayon_houdini.api import plugin
 
 
-class CollectChunkSize(pyblish.api.InstancePlugin,
+class CollectChunkSize(plugin.HoudiniInstancePlugin,
                        AYONPyblishPluginMixin):
     """Collect chunk size for cache submission to Deadline."""
 
@@ -11,12 +12,9 @@ class CollectChunkSize(pyblish.api.InstancePlugin,
     families = ["ass", "pointcache",
                 "vdbcache", "mantraifd",
                 "redshiftproxy", "model"]
-    hosts = ["houdini"]
     targets = ["local", "remote"]
     label = "Collect Chunk Size"
     chunk_size = 999999
-
-    settings_category = "houdini"
 
     def process(self, instance):
         # need to get the chunk size info from the setting

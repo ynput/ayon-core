@@ -1,12 +1,14 @@
 from ayon_core.pipeline import (
-    load,
     get_representation_path,
     AVALON_CONTAINER_ID,
 )
-from ayon_houdini.api import lib
+from ayon_houdini.api import (
+    plugin,
+    lib
+)
 
 
-class USDSublayerLoader(load.LoaderPlugin):
+class USDSublayerLoader(plugin.HoudiniLoader):
     """Sublayer USD file in Solaris"""
 
     product_types = {

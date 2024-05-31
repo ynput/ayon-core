@@ -1,8 +1,8 @@
 from collections import deque
 
 import pyblish.api
-
 from ayon_core.pipeline import registered_host
+from ayon_houdini.api import plugin
 
 
 def get_container_members(container):
@@ -80,7 +80,7 @@ def iter_upstream(node):
             collected.update(ancestors)
 
 
-class CollectUpstreamInputs(pyblish.api.InstancePlugin):
+class CollectUpstreamInputs(plugin.HoudiniInstancePlugin):
     """Collect source input containers used for this publish.
 
     This will include `inputs` data of which loaded publishes were used in the
@@ -91,7 +91,6 @@ class CollectUpstreamInputs(pyblish.api.InstancePlugin):
 
     label = "Collect Inputs"
     order = pyblish.api.CollectorOrder + 0.4
-    hosts = ["houdini"]
 
     def process(self, instance):
         # We can't get the "inputAncestors" directly from the ROP
