@@ -1,7 +1,7 @@
 import ayon_api
 
-from ayon_core.hosts.resolve.api import lib, plugin
-from ayon_core.hosts.resolve.api.pipeline import (
+from ayon_resolve.api import lib, plugin
+from ayon_resolve.api.pipeline import (
     containerise,
     update_container,
 )
