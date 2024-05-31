@@ -29,6 +29,7 @@ class ExtractReview(publish.Extractor):
     label = "Extract Review"
     hosts = ["photoshop"]
     families = ["review"]
+    settings_category = "photoshop"
 
     # Extract Options
     jpg_options = None
