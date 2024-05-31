@@ -1893,9 +1893,9 @@ class PublisherController(BasePublisherController):
 
     def _label_matches_allowed(self, label, allowed_labels):
         """Implement regex support for allowed labels."""
-        for allowed in allowed_labels:
-            if re.match(allowed, label):
-                return True
+        allowed_patterns = re.compile("|".join(allowed_labels))
+        if allowed_patterns.match(label):
+            return True
         return False
 
     def _reset_instances(self):
