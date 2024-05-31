@@ -50,9 +50,11 @@ class FilterCreatorProfile(BaseSettingsModel):
     task_names: list[str] = SettingsField(
         default_factory=list,
         title="Task names")
-    creator_identifiers: list[str] = SettingsField(
+    creator_labels: list[str] = SettingsField(
         default_factory=list,
-        title="Allowed Creator Identifiers")
+        title="Allowed Creator Labels",
+        description="Copy creator label from Publisher, regex supported."
+    )
 
 
 class CreatorToolModel(BaseSettingsModel):
@@ -70,7 +72,9 @@ class CreatorToolModel(BaseSettingsModel):
 
     filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
         default_factory=list,
-        title="Filter creator profiles"
+        title="Filter creator profiles",
+        description="White list of creator labels that will be only shown if "
+                    "profile matches context."
     )
 
     @validator("product_types_smart_select")
