@@ -6,8 +6,8 @@ from ayon_core.pipeline import install_host
 
 
 def main(env):
-    from ayon_core.hosts.resolve.utils import setup
-    import ayon_core.hosts.resolve.api as bmdvr
+    from ayon_resolve.utils import setup
+    import ayon_resolve.api as bmdvr
     # Registers openpype's Global pyblish plugins
     install_host(bmdvr)
     setup(env)
