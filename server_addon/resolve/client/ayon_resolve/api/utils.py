@@ -13,11 +13,11 @@ log = Logger.get_logger(__name__)
 
 
 def get_resolve_module():
-    from ayon_core.hosts.resolve import api
+    from ayon_resolve import api
     # dont run if already loaded
     if api.bmdvr:
         log.info(("resolve module is assigned to "
-                  f"`ayon_core.hosts.resolve.api.bmdvr`: {api.bmdvr}"))
+                  f"`ayon_resolve.api.bmdvr`: {api.bmdvr}"))
         return api.bmdvr
     try:
         """
@@ -78,6 +78,6 @@ def get_resolve_module():
     api.bmdvr = bmdvr
     api.bmdvf = bmdvf
     log.info(("Assigning resolve module to "
-              f"`ayon_core.hosts.resolve.api.bmdvr`: {api.bmdvr}"))
+              f"`ayon_resolve.api.bmdvr`: {api.bmdvr}"))
     log.info(("Assigning resolve module to "
-              f"`ayon_core.hosts.resolve.api.bmdvf`: {api.bmdvf}"))
+              f"`ayon_resolve.api.bmdvf`: {api.bmdvf}"))

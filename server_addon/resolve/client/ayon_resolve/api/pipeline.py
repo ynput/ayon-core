@@ -57,7 +57,7 @@ class ResolveHost(HostBase, IWorkfileHost, ILoadHost):
 
         """
 
-        log.info("ayon_core.hosts.resolve installed")
+        log.info("ayon_resolve installed")
 
         pyblish.register_host(self.name)
         pyblish.register_plugin_path(PUBLISH_PATH)
@@ -246,9 +246,7 @@ def on_pyblish_instance_toggled(instance, old_value, new_value):
     log.info("instance toggle: {}, old_value: {}, new_value:{} ".format(
         instance, old_value, new_value))
 
-    from ayon_core.hosts.resolve.api import (
-        set_publish_attribute
-    )
+    from ayon_resolve.api import set_publish_attribute
 
     # Whether instances should be passthrough based on new value
     timeline_item = instance.data["item"]
