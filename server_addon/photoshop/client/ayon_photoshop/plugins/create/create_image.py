@@ -1,6 +1,5 @@
 import re
 
-from ayon_core.hosts.photoshop import api
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import (
     Creator,
@@ -9,8 +8,9 @@ from ayon_core.pipeline import (
 )
 from ayon_core.lib import prepare_template_data
 from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
-from ayon_core.hosts.photoshop.api.pipeline import cache_and_get_instances
-from ayon_core.hosts.photoshop.lib import clean_product_name
+from ayon_photoshop import api
+from ayon_photoshop.api.pipeline import cache_and_get_instances
+from ayon_photoshop.lib import clean_product_name
 
 
 class ImageCreator(Creator):

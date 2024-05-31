@@ -2,7 +2,7 @@ import re
 
 import pyblish.api
 
-from ayon_core.hosts.photoshop import api as photoshop
+from ayon_photoshop import api as photoshop
 from ayon_core.pipeline.create import PRODUCT_NAME_ALLOWED_SYMBOLS
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,

@@ -1,4 +1,4 @@
-from ayon_core.hosts.photoshop.lib import PSAutoCreator
+from ayon_photoshop.lib import PSAutoCreator
 
 
 class ReviewCreator(PSAutoCreator):

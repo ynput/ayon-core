@@ -2,7 +2,7 @@
 """Close PS after publish. For Webpublishing only."""
 import pyblish.api
 
-from ayon_core.hosts.photoshop import api as photoshop
+from ayon_photoshop import api as photoshop
 
 
 class ClosePS(pyblish.api.ContextPlugin):
