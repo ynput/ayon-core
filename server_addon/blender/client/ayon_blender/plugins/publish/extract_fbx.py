@@ -6,7 +6,9 @@ from ayon_core.pipeline import publish
 from ayon_blender.api import plugin
 
 
-class ExtractFBX(publish.Extractor, publish.OptionalPyblishPluginMixin):
+class ExtractFBX(
+    plugin.BlenderExtractor, publish.OptionalPyblishPluginMixin
+):
     """Extract as FBX."""
 
     label = "Extract FBX"

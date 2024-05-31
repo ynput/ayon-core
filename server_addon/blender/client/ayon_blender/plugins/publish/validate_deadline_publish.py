@@ -2,18 +2,20 @@ import os
 
 import bpy
 
-import pyblish.api
 from ayon_core.pipeline.publish import (
     RepairAction,
     ValidateContentsOrder,
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
+from ayon_blender.api import plugin
 from ayon_blender.api.render_lib import prepare_rendering
 
 
-class ValidateDeadlinePublish(pyblish.api.InstancePlugin,
-                              OptionalPyblishPluginMixin):
+class ValidateDeadlinePublish(
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin
+):
     """Validates Render File Directory is
     not the same in every submission
     """

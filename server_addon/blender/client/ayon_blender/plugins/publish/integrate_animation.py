@@ -2,11 +2,12 @@ import json
 
 import pyblish.api
 from ayon_core.pipeline.publish import OptionalPyblishPluginMixin
+from ayon_blender.api import plugin
 
 
 class IntegrateAnimation(
-        pyblish.api.InstancePlugin,
-        OptionalPyblishPluginMixin,
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin,
 ):
     """Generate a JSON file for animation."""
 

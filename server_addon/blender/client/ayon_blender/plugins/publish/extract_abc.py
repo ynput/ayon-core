@@ -7,7 +7,7 @@ from ayon_core.pipeline import publish
 from ayon_blender.api import plugin
 
 
-class ExtractABC(publish.Extractor, publish.OptionalPyblishPluginMixin):
+class ExtractABC(plugin.BlenderExtractor, publish.OptionalPyblishPluginMixin):
     """Extract as ABC."""
 
     label = "Extract ABC"

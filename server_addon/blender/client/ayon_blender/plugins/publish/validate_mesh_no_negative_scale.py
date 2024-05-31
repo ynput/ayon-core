@@ -2,18 +2,19 @@ from typing import List
 
 import bpy
 
-import pyblish.api
-
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
 import ayon_blender.api.action
+from ayon_blender.api import plugin
 
 
-class ValidateMeshNoNegativeScale(pyblish.api.InstancePlugin,
-                                  OptionalPyblishPluginMixin):
+class ValidateMeshNoNegativeScale(
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin
+):
     """Ensure that meshes don't have a negative scale."""
 
     order = ValidateContentsOrder

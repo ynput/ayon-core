@@ -7,8 +7,8 @@ from ayon_blender.api import plugin
 
 
 class ExtractAnimationABC(
-        publish.Extractor,
-        publish.OptionalPyblishPluginMixin,
+    plugin.BlenderExtractor,
+    publish.OptionalPyblishPluginMixin,
 ):
     """Extract as ABC."""
 

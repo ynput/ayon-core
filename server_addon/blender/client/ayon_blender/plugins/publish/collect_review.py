@@ -1,9 +1,9 @@
 import bpy
-
 import pyblish.api
+from ayon_blender.api import plugin
 
 
-class CollectReview(pyblish.api.InstancePlugin):
+class CollectReview(plugin.BlenderInstancePlugin):
     """Collect Review data
 
     """

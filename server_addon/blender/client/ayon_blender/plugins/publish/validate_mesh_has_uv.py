@@ -2,19 +2,18 @@ from typing import List
 
 import bpy
 
-import pyblish.api
-
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
 import ayon_blender.api.action
+from ayon_blender.api import plugin
 
 
 class ValidateMeshHasUvs(
-        pyblish.api.InstancePlugin,
-        OptionalPyblishPluginMixin,
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin,
 ):
     """Validate that the current mesh has UV's."""
 

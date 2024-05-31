@@ -12,11 +12,12 @@ from ayon_core.pipeline.publish import (
     RepairAction
 )
 import ayon_blender.api.action
+from ayon_blender.api import plugin
 
 
 class ValidateModelMeshUvMap1(
-        pyblish.api.InstancePlugin,
-        OptionalPyblishPluginMixin,
+    plugin.BlenderInstancePlugin,
+    OptionalPyblishPluginMixin,
 ):
     """Validate model mesh uvs are named `map1`.
 

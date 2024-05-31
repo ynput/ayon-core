@@ -6,6 +6,7 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin,
     PublishValidationError
 )
+from ayon_blender.api import plugin
 
 
 class SaveWorkfileAction(pyblish.api.Action):
@@ -18,8 +19,10 @@ class SaveWorkfileAction(pyblish.api.Action):
         bpy.ops.wm.avalon_workfiles()
 
 
-class ValidateFileSaved(pyblish.api.ContextPlugin,
-                        OptionalPyblishPluginMixin):
+class ValidateFileSaved(
+    plugin.BlenderContextPlugin,
+    OptionalPyblishPluginMixin
+):
     """Validate that the workfile has been saved."""
 
     order = pyblish.api.ValidatorOrder - 0.01
