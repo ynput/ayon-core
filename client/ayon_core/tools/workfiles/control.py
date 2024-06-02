@@ -231,6 +231,16 @@ class BaseWorkfileController(
         return self._projects_model.get_project_entity(
             project_name)
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
     def get_folder_entity(self, project_name, folder_id):
         return self._hierarchy_model.get_folder_entity(
             project_name, folder_id)
