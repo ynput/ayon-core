@@ -1725,14 +1725,14 @@ class PublisherController(BasePublisherController):
             return folder_item.entity_id
         return None
 
-    def get_task_names_by_folder_paths(self, folder_paths):
+    def get_task_items_by_folder_paths(self, folder_paths):
         if not folder_paths:
             return {}
         folder_items = self._hierarchy_model.get_folder_items_by_paths(
             self.project_name, folder_paths
         )
         output = {
-            folder_path: set()
+            folder_path: []
             for folder_path in folder_paths
         }
         project_name = self.project_name
@@ -1740,10 +1740,7 @@ class PublisherController(BasePublisherController):
             task_items = self._hierarchy_model.get_task_items(
                 project_name, folder_item.entity_id, None
             )
-            output[folder_item.path] = {
-                task_item.name
-                for task_item in task_items
-            }
+            output[folder_item.path] = task_items
 
         return output
 
