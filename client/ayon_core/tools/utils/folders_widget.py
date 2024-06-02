@@ -235,7 +235,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             folder_item (FolderItem): Folder item.
 
         """
-        icon = self._get_default_folder_icon()
         icon = self._get_folder_item_icon(
             folder_item,
             folder_type_item_by_name,
