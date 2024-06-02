@@ -139,22 +139,22 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
 
         painter.save()
 
-        text_rect = style.subElementRect(
+        content_rect = style.subElementRect(
             QtWidgets.QCommonStyle.SE_ItemViewItemText,
             option
         )
-        text_margin = style.proxy().pixelMetric(
+        content_margin = style.proxy().pixelMetric(
             QtWidgets.QCommonStyle.PM_FocusFrameHMargin,
             option,
             option.widget
         ) + 1
-        padded_text_rect = text_rect.adjusted(
-            text_margin, 0, - text_margin, 0
+        padded_content_rect = content_rect.adjusted(
+            content_margin, 0, - content_margin, 0
         )
 
         fm = QtGui.QFontMetrics(option.font)
         text = self._get_status_name(index)
-        if padded_text_rect.width() < fm.width(text):
+        if padded_content_rect.width() < fm.width(text):
             text = self._get_status_short_name(index)
 
         fg_color = self._get_status_color(index)
@@ -163,7 +163,7 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
         painter.setPen(pen)
 
         painter.drawText(
-            padded_text_rect,
+            padded_content_rect,
             option.displayAlignment,
             text
         )
