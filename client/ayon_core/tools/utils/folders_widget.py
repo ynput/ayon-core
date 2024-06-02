@@ -3,6 +3,7 @@ import collections
 from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
@@ -25,8 +26,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-    """
 
+    """
+    _default_folder_icon = None
     refreshed = QtCore.Signal()
 
     def __init__(self, controller):
@@ -149,6 +151,16 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         thread.refresh_finished.connect(self._on_refresh_thread)
         thread.start()
 
+    @classmethod
+    def _get_default_folder_icon(cls):
+        if cls._default_folder_icon is None:
+            cls._default_folder_icon = get_qt_icon({
+                "type": "awesome-font",
+                "name": "fa.folder",
+                "color": get_default_entity_icon_color()
+            })
+        return cls._default_folder_icon
+
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
 
@@ -179,9 +191,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         Args:
             item (QtGui.QStandardItem): Item to fill data.
             folder_item (FolderItem): Folder item.
-        """
 
-        icon = get_qt_icon(folder_item.icon)
+        """
+        icon = self._get_default_folder_icon()
         item.setData(folder_item.entity_id, FOLDER_ID_ROLE)
         item.setData(folder_item.name, FOLDER_NAME_ROLE)
         item.setData(folder_item.path, FOLDER_PATH_ROLE)

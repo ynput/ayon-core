@@ -1,6 +1,9 @@
 from qtpy import QtWidgets, QtGui, QtCore
 
-from ayon_core.style import get_disabled_entity_icon_color
+from ayon_core.style import (
+    get_disabled_entity_icon_color,
+    get_default_entity_icon_color,
+)
 
 from .views import DeselectableTreeView
 from .lib import RefreshThread, get_qt_icon
@@ -17,8 +20,9 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-    """
 
+    """
+    _default_task_icon = None
     refreshed = QtCore.Signal()
 
     def __init__(self, controller):
@@ -185,6 +189,16 @@ class TasksQtModel(QtGui.QStandardItemModel):
         thread.refresh_finished.connect(self._on_refresh_thread)
         thread.start()
 
+    @classmethod
+    def _get_default_task_icon(cls):
+        if cls._default_task_icon is None:
+            cls._default_task_icon = get_qt_icon({
+                "type": "awesome-font",
+                "name": "fa.male",
+                "color": get_default_entity_icon_color()
+            })
+        return cls._default_task_icon
+
     def _fill_data_from_thread(self, thread):
         task_items = thread.get_result()
         # Task items are refreshed
@@ -209,8 +223,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 new_items.append(item)
                 self._items_by_name[name] = item
 
-            # TODO cache locally
-            icon = get_qt_icon(task_item.icon)
+            icon = self._get_default_task_icon()
             item.setData(task_item.label, QtCore.Qt.DisplayRole)
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
