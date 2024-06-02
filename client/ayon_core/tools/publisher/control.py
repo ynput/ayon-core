@@ -38,7 +38,7 @@ from ayon_core.pipeline.create.context import (
     ConvertorsOperationFailed,
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
-from ayon_core.tools.common_models import HierarchyModel
+from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
@@ -1630,6 +1630,7 @@ class PublisherController(BasePublisherController):
         self._resetting_instances = False
 
         # Cacher of avalon documents
+        self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
 
     @property
@@ -1685,6 +1686,16 @@ class PublisherController(BasePublisherController):
     def _publish_plugins(self):
         """Publish plugins."""
         return self._create_context.publish_plugins
+
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
 
     # Hierarchy model
     def get_folder_items(self, project_name, sender=None):
