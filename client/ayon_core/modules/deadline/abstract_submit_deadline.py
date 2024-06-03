@@ -29,15 +29,11 @@ from ayon_core.pipeline.publish.lib import (
 JSONDecodeError = getattr(json.decoder, "JSONDecodeError", ValueError)
 
 
-# TODO both 'requests_post' and 'requests_get' should not set 'verify' based
-#   on environment variable. This should be done in a more controlled way,
-#   e.g. each deadline url could have checkbox to enabled/disable
-#   ssl verification.
 def requests_post(*args, **kwargs):
     """Wrap request post method.
 
-    Disabling SSL certificate validation if ``DONT_VERIFY_SSL`` environment
-    variable is found. This is useful when Deadline server is
+    Disabling SSL certificate validation if ``verify`` kwarg is set to False.
+    This is useful when Deadline server is
     running with self-signed certificates and its certificate is not
     added to trusted certificates on client machines.
 
@@ -46,9 +42,9 @@ def requests_post(*args, **kwargs):
         of defense SSL is providing, and it is not recommended.
 
     """
-    if 'verify' not in kwargs:
-        kwargs['verify'] = False if os.getenv("OPENPYPE_DONT_VERIFY_SSL",
-                                              True) else True  # noqa
+    auth = kwargs.get("auth")
+    if auth:
+        kwargs["auth"] = tuple(auth)  # explicit cast to tuple
     # add 10sec timeout before bailing out
     kwargs['timeout'] = 10
     return requests.post(*args, **kwargs)
@@ -57,8 +53,8 @@ def requests_post(*args, **kwargs):
 def requests_get(*args, **kwargs):
     """Wrap request get method.
 
-    Disabling SSL certificate validation if ``DONT_VERIFY_SSL`` environment
-    variable is found. This is useful when Deadline server is
+    Disabling SSL certificate validation if ``verify`` kwarg is set to False.
+    This is useful when Deadline server is
     running with self-signed certificates and its certificate is not
     added to trusted certificates on client machines.
 
@@ -67,9 +63,9 @@ def requests_get(*args, **kwargs):
         of defense SSL is providing, and it is not recommended.
 
     """
-    if 'verify' not in kwargs:
-        kwargs['verify'] = False if os.getenv("OPENPYPE_DONT_VERIFY_SSL",
-                                              True) else True  # noqa
+    auth = kwargs.get("auth")
+    if auth:
+        kwargs["auth"] = tuple(auth)
     # add 10sec timeout before bailing out
     kwargs['timeout'] = 10
     return requests.get(*args, **kwargs)
@@ -434,9 +430,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
         """Plugin entry point."""
         self._instance = instance
         context = instance.context
-        self._deadline_url = context.data.get("defaultDeadline")
-        self._deadline_url = instance.data.get(
-            "deadlineUrl", self._deadline_url)
+        self._deadline_url = instance.data["deadline"]["url"]
 
         assert self._deadline_url, "Requires Deadline Webservice URL"
 
@@ -460,7 +454,9 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
         self.plugin_info = self.get_plugin_info()
         self.aux_files = self.get_aux_files()
 
-        job_id = self.process_submission()
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
+        job_id = self.process_submission(auth, verify)
         self.log.info("Submitted job to Deadline: {}.".format(job_id))
 
         # TODO: Find a way that's more generic and not render type specific
@@ -473,10 +469,10 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
                 job_info=render_job_info,
                 plugin_info=render_plugin_info
             )
-            render_job_id = self.submit(payload)
+            render_job_id = self.submit(payload, auth, verify)
             self.log.info("Render job id: %s", render_job_id)
 
-    def process_submission(self):
+    def process_submission(self, auth=None, verify=True):
         """Process data for submission.
 
         This takes Deadline JobInfo, PluginInfo, AuxFile, creates payload
@@ -487,7 +483,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
 
         """
         payload = self.assemble_payload()
-        return self.submit(payload)
+        return self.submit(payload, auth, verify)
 
     @abstractmethod
     def get_job_info(self):
@@ -577,7 +573,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
             "AuxFiles": aux_files or self.aux_files
         }
 
-    def submit(self, payload):
+    def submit(self, payload, auth, verify):
         """Submit payload to Deadline API end-point.
 
         This takes payload in the form of JSON file and POST it to
@@ -585,6 +581,8 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
 
         Args:
             payload (dict): dict to become json in deadline submission.
+            auth (tuple): (username, password)
+            verify (bool): verify SSL certificate if present
 
         Returns:
             str: resulting Deadline job id.
@@ -594,7 +592,8 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
 
         """
         url = "{}/api/jobs".format(self._deadline_url)
-        response = requests_post(url, json=payload)
+        response = requests_post(
+            url, json=payload, auth=auth, verify=verify)
         if not response.ok:
             self.log.error("Submission failed!")
             self.log.error(response.status_code)

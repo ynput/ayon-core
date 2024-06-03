@@ -22,18 +22,22 @@ VERSION_HERO_ROLE = QtCore.Qt.UserRole + 11
 VERSION_NAME_ROLE = QtCore.Qt.UserRole + 12
 VERSION_NAME_EDIT_ROLE = QtCore.Qt.UserRole + 13
 VERSION_PUBLISH_TIME_ROLE = QtCore.Qt.UserRole + 14
-VERSION_AUTHOR_ROLE = QtCore.Qt.UserRole + 15
-VERSION_FRAME_RANGE_ROLE = QtCore.Qt.UserRole + 16
-VERSION_DURATION_ROLE = QtCore.Qt.UserRole + 17
-VERSION_HANDLES_ROLE = QtCore.Qt.UserRole + 18
-VERSION_STEP_ROLE = QtCore.Qt.UserRole + 19
-VERSION_AVAILABLE_ROLE = QtCore.Qt.UserRole + 20
-VERSION_THUMBNAIL_ID_ROLE = QtCore.Qt.UserRole + 21
-ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 22
-REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 23
-REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 24
-SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 25
-SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 26
+VERSION_STATUS_NAME_ROLE = QtCore.Qt.UserRole + 15
+VERSION_STATUS_SHORT_ROLE = QtCore.Qt.UserRole + 16
+VERSION_STATUS_COLOR_ROLE = QtCore.Qt.UserRole + 17
+VERSION_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 18
+VERSION_AUTHOR_ROLE = QtCore.Qt.UserRole + 19
+VERSION_FRAME_RANGE_ROLE = QtCore.Qt.UserRole + 20
+VERSION_DURATION_ROLE = QtCore.Qt.UserRole + 21
+VERSION_HANDLES_ROLE = QtCore.Qt.UserRole + 22
+VERSION_STEP_ROLE = QtCore.Qt.UserRole + 23
+VERSION_AVAILABLE_ROLE = QtCore.Qt.UserRole + 24
+VERSION_THUMBNAIL_ID_ROLE = QtCore.Qt.UserRole + 25
+ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 26
+REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 27
+REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 28
+SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 29
+SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 30
 
 
 class ProductsModel(QtGui.QStandardItemModel):
@@ -44,6 +48,7 @@ class ProductsModel(QtGui.QStandardItemModel):
         "Product type",
         "Folder",
         "Version",
+        "Status",
         "Time",
         "Author",
         "Frames",
@@ -69,11 +74,35 @@ class ProductsModel(QtGui.QStandardItemModel):
         ]
     ]
 
-    version_col = column_labels.index("Version")
-    published_time_col = column_labels.index("Time")
+    product_name_col = column_labels.index("Product name")
+    product_type_col = column_labels.index("Product type")
     folders_label_col = column_labels.index("Folder")
+    version_col = column_labels.index("Version")
+    status_col = column_labels.index("Status")
+    published_time_col = column_labels.index("Time")
+    author_col = column_labels.index("Author")
+    frame_range_col = column_labels.index("Frames")
+    duration_col = column_labels.index("Duration")
+    handles_col = column_labels.index("Handles")
+    step_col = column_labels.index("Step")
     in_scene_col = column_labels.index("In scene")
     sitesync_avail_col = column_labels.index("Availability")
+    _display_role_mapping = {
+        product_name_col: QtCore.Qt.DisplayRole,
+        product_type_col: PRODUCT_TYPE_ROLE,
+        folders_label_col: FOLDER_LABEL_ROLE,
+        version_col: VERSION_NAME_ROLE,
+        status_col: VERSION_STATUS_NAME_ROLE,
+        published_time_col: VERSION_PUBLISH_TIME_ROLE,
+        author_col: VERSION_AUTHOR_ROLE,
+        frame_range_col: VERSION_FRAME_RANGE_ROLE,
+        duration_col: VERSION_DURATION_ROLE,
+        handles_col: VERSION_HANDLES_ROLE,
+        step_col: VERSION_STEP_ROLE,
+        in_scene_col: PRODUCT_IN_SCENE_ROLE,
+        sitesync_avail_col: VERSION_AVAILABLE_ROLE,
+
+    }
 
     def __init__(self, controller):
         super(ProductsModel, self).__init__()
@@ -96,6 +125,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         self._last_project_name = None
         self._last_folder_ids = []
+        self._last_project_statuses = {}
 
     def get_product_item_indexes(self):
         return [
@@ -141,6 +171,15 @@ class ProductsModel(QtGui.QStandardItemModel):
         if not index.isValid():
             return None
 
+        if role in (VERSION_STATUS_SHORT_ROLE, VERSION_STATUS_COLOR_ROLE):
+            status_name = self.data(index, VERSION_STATUS_NAME_ROLE)
+            status_item = self._last_project_statuses.get(status_name)
+            if status_item is None:
+                return ""
+            if role == VERSION_STATUS_SHORT_ROLE:
+                return status_item.short
+            return status_item.color
+
         col = index.column()
         if col == 0:
             return super(ProductsModel, self).data(index, role)
@@ -168,29 +207,8 @@ class ProductsModel(QtGui.QStandardItemModel):
         if role == QtCore.Qt.DisplayRole:
             if not index.data(PRODUCT_ID_ROLE):
                 return None
-            if col == self.version_col:
-                role = VERSION_NAME_ROLE
-            elif col == 1:
-                role = PRODUCT_TYPE_ROLE
-            elif col == 2:
-                role = FOLDER_LABEL_ROLE
-            elif col == 4:
-                role = VERSION_PUBLISH_TIME_ROLE
-            elif col == 5:
-                role = VERSION_AUTHOR_ROLE
-            elif col == 6:
-                role = VERSION_FRAME_RANGE_ROLE
-            elif col == 7:
-                role = VERSION_DURATION_ROLE
-            elif col == 8:
-                role = VERSION_HANDLES_ROLE
-            elif col == 9:
-                role = VERSION_STEP_ROLE
-            elif col == 10:
-                role = PRODUCT_IN_SCENE_ROLE
-            elif col == 11:
-                role = VERSION_AVAILABLE_ROLE
-            else:
+            role = self._display_role_mapping.get(col)
+            if role is None:
                 return None
 
         index = self.index(index.row(), 0, index.parent())
@@ -312,6 +330,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             version_item.published_time, VERSION_PUBLISH_TIME_ROLE
         )
         model_item.setData(version_item.author, VERSION_AUTHOR_ROLE)
+        model_item.setData(version_item.status, VERSION_STATUS_NAME_ROLE)
         model_item.setData(version_item.frame_range, VERSION_FRAME_RANGE_ROLE)
         model_item.setData(version_item.duration, VERSION_DURATION_ROLE)
         model_item.setData(version_item.handles, VERSION_HANDLES_ROLE)
@@ -393,6 +412,11 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         self._last_project_name = project_name
         self._last_folder_ids = folder_ids
+        status_items = self._controller.get_project_status_items(project_name)
+        self._last_project_statuses = {
+            status_item.name: status_item
+            for status_item in status_items
+        }
 
         active_site_icon_def = self._controller.get_active_site_icon_def(
             project_name
