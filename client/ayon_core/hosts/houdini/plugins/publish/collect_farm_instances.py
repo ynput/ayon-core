@@ -9,7 +9,8 @@ class CollectFarmInstances(pyblish.api.InstancePlugin):
                 "karma_rop",
                 "redshift_rop",
                 "arnold_rop",
-                "vray_rop"]
+                "vray_rop",
+                "generic"]
 
     hosts = ["houdini"]
     targets = ["local", "remote"]
