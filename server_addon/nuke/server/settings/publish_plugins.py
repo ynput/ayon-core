@@ -125,6 +125,7 @@ class ReformatNodesConfigModel(BaseSettingsModel):
 
 class IntermediateOutputModel(BaseSettingsModel):
     name: str = SettingsField(title="Output name")
+    publish: bool = SettingsField(title="Publish")
     filter: BakingStreamFilterModel = SettingsField(
         title="Filter", default_factory=BakingStreamFilterModel)
     read_raw: bool = SettingsField(
@@ -230,10 +231,6 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=OptionalPluginModel,
         section="Validators"
     )
-    ValidateContainers: OptionalPluginModel = SettingsField(
-        title="Validate Containers",
-        default_factory=OptionalPluginModel
-    )
     ValidateKnobs: ValidateKnobsModel = SettingsField(
         title="Validate Knobs",
         default_factory=ValidateKnobsModel
@@ -299,11 +296,6 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
         "optional": True,
         "active": True
     },
-    "ValidateContainers": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
     "ValidateKnobs": {
         "enabled": False,
         "knobs": "\n".join([
@@ -346,6 +338,7 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
         "outputs": [
             {
                 "name": "baking",
+                "publish": False,
                 "filter": {
                     "task_types": [],
                     "product_types": [],
@@ -401,6 +394,7 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
         "outputs": [
             {
                 "name": "baking",
+                "publish": False,
                 "filter": {
                     "task_types": [],
                     "product_types": [],

@@ -151,6 +151,10 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=ExtractPlayblastModel,
         title="Extract Playblast"
     )
+    ExtractModelUSD: ValidatePluginModel = SettingsField(
+        default_factory=ValidatePluginModel,
+        title="Extract Model USD"
+    )
 
 
 DEFAULT_BLENDER_PUBLISH_SETTINGS = {
@@ -348,5 +352,10 @@ DEFAULT_BLENDER_PUBLISH_SETTINGS = {
             },
             indent=4
         )
+    },
+    "ExtractModelUSD": {
+        "enabled": True,
+        "optional": True,
+        "active": True
     }
 }
