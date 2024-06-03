@@ -60,7 +60,10 @@ class AssignLookPlaceholderPlugin(MayaPlaceholderPlugin):
                 "recurse",
                 label="Recursive",
                 tooltip="Assign look also to potential sub containers / "
-                        "placeholders loaded from the load placeholder.",
+                        "placeholders loaded from the load placeholder.\n"
+                        "This will make sure that any placeholder contained "
+                        "that itself loaded new geometry will recursively "
+                        "also get the look assignment triggered.",
                 default=options.get("recurse", False)
             ),
         ]
