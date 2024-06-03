@@ -8,7 +8,6 @@ import inspect
 import logging
 import threading
 import collections
-import warnings
 from uuid import uuid4
 from abc import ABCMeta, abstractmethod
 
@@ -598,8 +597,9 @@ class AYONAddon(object):
         """
         if not self.__class__._missing_version_warned:
             self.__class__._missing_version_warned = True
-            warnings.warn(
-                f"Addon '{self.name}' does not have defined version."
+            print(
+                f"DEV WARNING: Addon '{self.name}' does not have"
+                f" defined version."
             )
         return "0.0.0"
 
