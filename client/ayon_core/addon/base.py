@@ -64,6 +64,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "nuke": VersionInfo(0, 2, 0),
     "resolve": VersionInfo(0, 2, 0),
     "substancepainter": VersionInfo(0, 2, 0),
+    "houdini": VersionInfo(0, 3, 0),
 }
 
 
