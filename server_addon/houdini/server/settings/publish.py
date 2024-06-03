@@ -120,7 +120,8 @@ class PublishPluginsModel(BaseSettingsModel):
     )
     ValidateInstanceInContextHoudini: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Instance is in same Context.")
+        title="Validate Instance is in same Context.",
+        section="Validators")
     ValidateMeshIsStatic: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
         title="Validate Mesh is Static.")
