@@ -11,7 +11,12 @@ from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import HostBase
-from ayon_core.lib import is_in_tests, initialize_ayon_connection, emit_event, version_up
+from ayon_core.lib import (
+    is_in_tests,
+    initialize_ayon_connection,
+    emit_event,
+    version_up
+)
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -21,6 +26,8 @@ from .template_data import get_template_data_with_names
 from .workfile import (
     get_workdir,
     get_custom_workfile_template_by_string_context,
+    get_workfile_template_key_from_context,
+    get_last_workfile
 )
 from . import (
     register_loader_plugin_path,
@@ -581,15 +588,37 @@ def get_process_id():
     return _process_id
 
 
-def version_up_workfile():
+def version_up_current_workfile():
     """Function to increment and save workfile
     """
     host = registered_host()
-    current_file = host.get_current_workfile()
-    if not current_file:
-        log.debug(
-            "Current file is unsaved and can't be versioned up. "
-            "Please save your file first.")
-        return None
-    filepath = version_up(current_file)
-    host.save_workfile(filepath)
+    project_name = get_current_project_name()
+    folder_path = get_current_folder_path()
+    task_name = get_current_task_name()
+    host_name = get_current_host_name()
+
+    template_key = get_workfile_template_key_from_context(
+        project_name,
+        folder_path,
+        task_name,
+        host_name,
+    )
+    anatomy = Anatomy(project_name)
+
+    data = get_template_data_with_names(
+        project_name, folder_path, task_name, host_name
+    )
+    data["root"] = anatomy.roots
+
+    work_template = anatomy.get_template_item("work", template_key)
+
+    # Define saving file extension
+    extensions = host.get_workfile_extensions()
+
+    work_root = work_template["directory"].format_strict(data)
+    file_template = work_template["file"].template
+    last_workfile_path = get_last_workfile(
+        work_root, file_template, data, extensions, True
+    )
+    current_workfile_path = version_up(last_workfile_path)
+    host.save_workfile(current_workfile_path)
