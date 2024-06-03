@@ -15,11 +15,11 @@ from ayon_core.pipeline.publish.lib import (
     replace_with_published_scene_path
 )
 from ayon_core.pipeline.publish import KnownPublishError
-from ayon_core.hosts.max.api.lib import (
+from ayon_max.api.lib import (
     get_current_renderer,
     get_multipass_setting
 )
-from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
+from ayon_max.api.lib_rendersettings import RenderSettings
 from openpype_modules.deadline import abstract_submit_deadline
 from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
 
@@ -181,27 +181,35 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
         self.log.debug("Submitting 3dsMax render..")
         project_settings = instance.context.data["project_settings"]
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
         if instance.data.get("multiCamera"):
             self.log.debug("Submitting jobs for multiple cameras..")
             payload = self._use_published_name_for_multiples(
                 payload_data, project_settings)
             job_infos, plugin_infos = payload
             for job_info, plugin_info in zip(job_infos, plugin_infos):
-                self.submit(self.assemble_payload(job_info, plugin_info),
-                            instance.data["deadline"]["auth"])
+                self.submit(
+                    self.assemble_payload(job_info, plugin_info),
+                    auth=auth,
+                    verify=verify
+                )
         else:
             payload = self._use_published_name(payload_data, project_settings)
             job_info, plugin_info = payload
-            self.submit(self.assemble_payload(job_info, plugin_info),
-                        instance.data["deadline"]["auth"])
+            self.submit(
+                self.assemble_payload(job_info, plugin_info),
+                auth=auth,
+                verify=verify
+            )
 
     def _use_published_name(self, data, project_settings):
         # Not all hosts can import these modules.
-        from ayon_core.hosts.max.api.lib import (
+        from ayon_max.api.lib import (
             get_current_renderer,
             get_multipass_setting
         )
-        from ayon_core.hosts.max.api.lib_rendersettings import RenderSettings
+        from ayon_max.api.lib_rendersettings import RenderSettings
 
         instance = self._instance
         job_info = copy.deepcopy(self.job_info)

@@ -83,14 +83,6 @@ class CollectVersionPlugin(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
 
 
-class ValidateContainersPlugin(BaseSettingsModel):
-    """Check that workfile contains latest version of loaded items"""  # noqa
-    _isGroup = True
-    enabled: bool = True
-    optional: bool = SettingsField(False, title="Optional")
-    active: bool = SettingsField(True, title="Active")
-
-
 class ValidateNamingPlugin(BaseSettingsModel):
     """Validate naming of products and layers"""  # noqa
     invalid_chars: str = SettingsField(
@@ -154,11 +146,6 @@ class PhotoshopPublishPlugins(BaseSettingsModel):
         default_factory=CollectVersionPlugin,
     )
 
-    ValidateContainers: ValidateContainersPlugin = SettingsField(
-        title="Validate Containers",
-        default_factory=ValidateContainersPlugin,
-    )
-
     ValidateNaming: ValidateNamingPlugin = SettingsField(
         title="Validate naming of products and layers",
         default_factory=ValidateNamingPlugin,
@@ -186,11 +173,6 @@ DEFAULT_PUBLISH_SETTINGS = {
     },
     "CollectVersion": {
         "enabled": False
-    },
-    "ValidateContainers": {
-        "enabled": True,
-        "optional": True,
-        "active": True
     },
     "ValidateNaming": {
         "invalid_chars": "[ \\\\/+\\*\\?\\(\\)\\[\\]\\{\\}:,;]",
