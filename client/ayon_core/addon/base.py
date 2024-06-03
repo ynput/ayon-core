@@ -918,10 +918,6 @@ class AddonsManager:
                 name_alias = getattr(addon, "openpype_alias", None)
                 if name_alias:
                     aliased_names.append((name_alias, addon))
-                enabled_str = "X" if addon.enabled else " "
-                self.log.debug(
-                    f"[{enabled_str}] {addon.name} ({addon.version})"
-                )
 
                 now = time.time()
                 report[addon.__class__.__name__] = now - prev_start_time
@@ -931,6 +927,13 @@ class AddonsManager:
                 self.log.warning(
                     "Initialization of addon '{}' failed.".format(name),
                     exc_info=True
+                )
+
+            for addon_name in sorted(self._addons_by_name.keys()):
+                addon = self._addons_by_name[addon_name]
+                enabled_str = "X" if addon.enabled else " "
+                self.log.debug(
+                    f"[{enabled_str}] {addon.name} ({addon.version})"
                 )
 
         for item in aliased_names:
