@@ -79,7 +79,7 @@ class FusionSubmitDeadline(
         else:
             context.data[key] = True
 
-        from ayon_core.hosts.fusion.api.lib import get_frame_path
+        from ayon_fusion.api.lib import get_frame_path
 
         deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
