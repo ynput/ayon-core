@@ -1841,11 +1841,8 @@ class PublisherController(BasePublisherController):
         allowed_creator_labels = self._get_allowed_creator_labels()
         for identifier, creator in self._create_context.creators.items():
             try:
-                if (
-                    allowed_creator_labels is not None
-                    and not self._label_matches_allowed(
-                        creator.label, allowed_creator_labels)
-                ):
+                if (not self._label_matches_allowed(
+                        creator.label, allowed_creator_labels)):
                     self.log.debug(f"{creator.label} not allowed for context")
                     continue
                 output[identifier] = CreatorItem.from_creator(creator)
@@ -1893,9 +1890,10 @@ class PublisherController(BasePublisherController):
 
     def _label_matches_allowed(self, label, allowed_labels):
         """Implement regex support for allowed labels."""
-        allowed_patterns = re.compile("|".join(allowed_labels))
-        if allowed_patterns.match(label):
-            return True
+        if allowed_labels:
+            allowed_patterns = re.compile("|".join(allowed_labels))
+            if allowed_patterns.match(label):
+                return True
         return False
 
     def _reset_instances(self):
