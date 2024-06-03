@@ -4,7 +4,7 @@ from ayon_core.addon import AYONAddon, IHostAddon
 
 from .version import __version__
 
-HIERO_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+HIERO_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class HieroAddon(AYONAddon, IHostAddon):
@@ -15,7 +15,7 @@ class HieroAddon(AYONAddon, IHostAddon):
     def add_implementation_envs(self, env, _app):
         # Add requirements to HIERO_PLUGIN_PATH
         new_hiero_paths = [
-            os.path.join(HIERO_ROOT_DIR, "api", "startup")
+            os.path.join(HIERO_ADDON_ROOT, "api", "startup")
         ]
         old_hiero_path = env.get("HIERO_PLUGIN_PATH") or ""
         for path in old_hiero_path.split(os.pathsep):
@@ -39,7 +39,7 @@ class HieroAddon(AYONAddon, IHostAddon):
         python_path_parts = []
         if python_path:
             python_path_parts = python_path.split(os.pathsep)
-        vendor_path = os.path.join(HIERO_ROOT_DIR, "vendor")
+        vendor_path = os.path.join(HIERO_ADDON_ROOT, "vendor")
         python_path_parts.insert(0, vendor_path)
         env["PYTHONPATH"] = os.pathsep.join(python_path_parts)
 
