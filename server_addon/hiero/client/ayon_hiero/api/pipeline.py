@@ -308,9 +308,9 @@ def reload_config():
     import importlib
 
     for module in (
-        "ayon_core.hosts.hiero.lib",
-        "ayon_core.hosts.hiero.menu",
-        "ayon_core.hosts.hiero.tags"
+        "ayon_hiero.lib",
+        "ayon_hiero.menu",
+        "ayon_hiero.tags"
     ):
         log.info("Reloading module: {}...".format(module))
         try:
@@ -328,7 +328,7 @@ def on_pyblish_instance_toggled(instance, old_value, new_value):
     log.info("instance toggle: {}, old_value: {}, new_value:{} ".format(
         instance, old_value, new_value))
 
-    from ayon_core.hosts.hiero.api import (
+    from ayon_hiero.api import (
         get_trackitem_openpype_tag,
         set_publish_attribute
     )

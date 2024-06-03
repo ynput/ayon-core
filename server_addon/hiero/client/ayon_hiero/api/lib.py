@@ -453,19 +453,19 @@ def get_track_openpype_data(track, container_name=None):
     )
 
 
-@deprecated("ayon_core.hosts.hiero.api.lib.get_trackitem_openpype_tag")
+@deprecated("ayon_hiero.api.lib.get_trackitem_openpype_tag")
 def get_track_item_pype_tag(track_item):
     # backward compatibility alias
     return get_trackitem_openpype_tag(track_item)
 
 
-@deprecated("ayon_core.hosts.hiero.api.lib.set_trackitem_openpype_tag")
+@deprecated("ayon_hiero.api.lib.set_trackitem_openpype_tag")
 def set_track_item_pype_tag(track_item, data=None):
     # backward compatibility alias
     return set_trackitem_openpype_tag(track_item, data)
 
 
-@deprecated("ayon_core.hosts.hiero.api.lib.get_trackitem_openpype_data")
+@deprecated("ayon_hiero.api.lib.get_trackitem_openpype_data")
 def get_track_item_pype_data(track_item):
     # backward compatibility alias
     return get_trackitem_openpype_data(track_item)
@@ -802,7 +802,7 @@ class PublishAction(QtWidgets.QAction):
 #
 #     '''
 #     import hiero.core
-#     from ayon_core.hosts.nuke.api.lib import (
+#     from ayon_nuke.api.lib import (
 #         BuildWorkfile,
 #         imprint
 #     )
