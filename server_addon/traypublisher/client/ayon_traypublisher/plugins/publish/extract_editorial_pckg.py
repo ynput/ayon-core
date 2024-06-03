@@ -20,27 +20,27 @@ class ExtractEditorialPckgConversion(publish.Extractor):
     label = "Extract Editorial Package"
     order = pyblish.api.ExtractorOrder - 0.45
     hosts = ["traypublisher"]
-    families = ["editorial_pckg"]
+    families = ["editorial_pkg"]
 
     def process(self, instance):
-        editorial_pckg_data = instance.data.get("editorial_pckg")
+        editorial_pkg_data = instance.data.get("editorial_pkg")
 
-        otio_path = editorial_pckg_data["otio_path"]
+        otio_path = editorial_pkg_data["otio_path"]
         otio_basename = os.path.basename(otio_path)
         staging_dir = self.staging_dir(instance)
 
-        editorial_pckg_repre = {
-            'name': "editorial_pckg",
+        editorial_pkg_repre = {
+            'name': "editorial_pkg",
             'ext': "otio",
             'files': otio_basename,
             "stagingDir": staging_dir,
         }
         otio_staging_path = os.path.join(staging_dir, otio_basename)
 
-        instance.data["representations"].append(editorial_pckg_repre)
+        instance.data["representations"].append(editorial_pkg_repre)
 
         publish_resource_folder = self._get_publish_resource_folder(instance)
-        resource_paths = editorial_pckg_data["resource_paths"]
+        resource_paths = editorial_pkg_data["resource_paths"]
         transfers = self._get_transfers(resource_paths,
                                         publish_resource_folder)
 
@@ -61,13 +61,13 @@ class ExtractEditorialPckgConversion(publish.Extractor):
         source_to_rootless = self._get_resource_path_mapping(instance,
                                                              transfers)
 
-        otio_data = editorial_pckg_data["otio_data"]
+        otio_data = editorial_pkg_data["otio_data"]
         otio_data = self._replace_target_urls(otio_data, source_to_rootless)
 
         opentimelineio.adapters.write_to_file(otio_data, otio_staging_path)
 
         self.log.info("Added Editorial Package representation: {}".format(
-            editorial_pckg_repre))
+            editorial_pkg_repre))
 
     def _get_publish_resource_folder(self, instance):
         """Calculates publish folder and create it."""
