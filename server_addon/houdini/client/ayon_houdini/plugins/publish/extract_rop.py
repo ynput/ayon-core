@@ -1,6 +1,6 @@
 import pyblish.api
 from ayon_core.pipeline import publish
-from ayon_core.hosts.houdini.api import lib
+from ayon_houdini.api import lib
 
 import hou
 

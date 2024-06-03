@@ -13,7 +13,7 @@
             </context>
             <scriptCode>
 <![CDATA[
-from ayon_core.hosts.houdini.api.creator_node_shelves import create_interactive
+from ayon_houdini.api.creator_node_shelves import create_interactive
 
 node = kwargs["node"]
 node.setSelected(True)

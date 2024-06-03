@@ -1,7 +1,4 @@
-import os
 import pyblish.api
-import hou
-from ayon_core.hosts.houdini.api import lib
 
 
 class CollectNoProductTypeFamilyGeneric(pyblish.api.InstancePlugin):

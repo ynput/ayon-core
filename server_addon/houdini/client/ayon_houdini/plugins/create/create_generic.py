@@ -1,5 +1,5 @@
-from ayon_core.hosts.houdini.api import plugin
-from ayon_core.hosts.houdini.api.lib import (
+from ayon_houdini.api import plugin
+from ayon_houdini.api.lib import (
     lsattr, read
 )
 from ayon_core.pipeline.create import (
