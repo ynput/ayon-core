@@ -25,7 +25,7 @@ from .workfile_template_builder import (
     build_workfile_template,
     update_workfile_template
 )
-from ayon_core.pipeline.context_tools import version_up_workfile
+from ayon_core.pipeline.context_tools import version_up_current_workfile
 from ayon_core.tools.workfile_template_build import open_template_ui
 from .workfile_template_builder import MayaTemplateBuilder
 
@@ -75,12 +75,12 @@ def install(project_settings):
 
         cmds.setParent("..", menu=True)
 
-        if project_settings["core"]["tools"]["Workfiles"]["ayon_menu"].get(
-            "version_up_workfile"):
+        if project_settings["core"]["tools"]["ayon_menu"].get(
+            "version_up_current_workfile"):
                 cmds.menuItem(divider=True)
                 cmds.menuItem(
                     "Version Up Workfile",
-                    command=lambda *args: version_up_workfile()
+                    command=lambda *args: version_up_current_workfile()
                 )
 
         cmds.menuItem(divider=True)
