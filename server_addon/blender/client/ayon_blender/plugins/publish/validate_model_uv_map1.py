@@ -3,8 +3,6 @@ from typing import List
 
 import bpy
 
-import pyblish.api
-
 from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     OptionalPyblishPluginMixin,
