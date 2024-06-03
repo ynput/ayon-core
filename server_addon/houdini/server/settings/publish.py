@@ -61,6 +61,7 @@ def product_types_enum():
         {"value": "redshift_rop", "label": "Redshift ROP"},
         {"value": "karma_rop", "label": "Karma ROP"},
         {"value": "vray_rop", "label": "VRay ROP"},
+        {"value": "model", "label": "Model"},
     ]
 
 
