@@ -4,8 +4,8 @@ import re
 import hou
 import pyblish.api
 
-from ayon_core.hosts.houdini.api import colorspace
-from ayon_core.hosts.houdini.api.lib import (
+from ayon_houdini.api import colorspace
+from ayon_houdini.api.lib import (
     evalParmNoFrame,
     get_color_management_preferences
 )

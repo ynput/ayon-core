@@ -3,7 +3,7 @@ import inspect
 
 import pyblish.api
 
-from ayon_core.hosts.houdini.api.action import SelectROPAction
+from ayon_houdini.api.action import SelectROPAction
 from ayon_core.pipeline import PublishValidationError
 
 import hou

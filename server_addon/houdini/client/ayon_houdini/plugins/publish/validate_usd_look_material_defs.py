@@ -7,8 +7,8 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.hosts.houdini.api.action import SelectROPAction
-from ayon_core.hosts.houdini.api.usd import get_schema_type_names
+from ayon_houdini.api.action import SelectROPAction
+from ayon_houdini.api.usd import get_schema_type_names
 
 import hou
 from pxr import Sdf, UsdShade

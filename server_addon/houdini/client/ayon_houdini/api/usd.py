@@ -286,7 +286,7 @@ def setup_lop_python_layer(layer, node, savepath=None,
 @contextlib.contextmanager
 def remap_paths(rop_node, mapping):
     """Enable the AyonRemapPaths output processor with provided `mapping`"""
-    from ayon_core.hosts.houdini.api.lib import parm_values
+    from ayon_houdini.api.lib import parm_values
 
     if not mapping:
         # Do nothing
