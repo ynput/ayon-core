@@ -343,7 +343,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
                 [plugin.__name__]
             )
         except KeyError:
-            log.warning((
+            log.debug((
                 "Couldn't find plugin '{}' settings"
                 " under settings category '{}'"
             ).format(plugin.__name__, settings_category))
