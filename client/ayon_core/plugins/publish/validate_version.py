@@ -1,8 +1,14 @@
 import pyblish.api
-from ayon_core.pipeline.publish import PublishValidationError
+
+from ayon_core.lib import filter_profiles
+from ayon_core.pipeline.publish import (
+    PublishValidationError,
+    OptionalPyblishPluginMixin
+)
+from ayon_core.pipeline import get_current_host_name
 
 
-class ValidateVersion(pyblish.api.InstancePlugin):
+class ValidateVersion(pyblish.api.InstancePlugin, OptionalPyblishPluginMixin):
     """Validate instance version.
 
     AYON does not allow overwriting previously published versions.
@@ -11,13 +17,39 @@ class ValidateVersion(pyblish.api.InstancePlugin):
     order = pyblish.api.ValidatorOrder
 
     label = "Validate Version"
-    hosts = ["nuke", "maya", "houdini", "blender",
-             "photoshop", "aftereffects"]
 
     optional = False
     active = True
 
+    @classmethod
+    def apply_settings(cls, settings):
+        # Disable if no profile is found for the current host
+        profiles = (
+            settings
+            ["core"]
+            ["publish"]
+            ["ValidateVersion"]
+            ["plugin_state_profiles"]
+        )
+        profile = filter_profiles(
+            profiles, {"host_names": get_current_host_name()}
+        )
+        if not profile:
+            cls.enabled = False
+            return
+
+        # Apply settings from profile
+        for attr_name in {
+            "enabled",
+            "optional",
+            "active",
+        }:
+            setattr(cls, attr_name, profile[attr_name])
+
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
+
         version = instance.data.get("version")
         latest_version = instance.data.get("latestVersion")
 

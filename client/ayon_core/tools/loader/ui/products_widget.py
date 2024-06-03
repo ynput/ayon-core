@@ -6,7 +6,7 @@ from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     DeselectableTreeView,
 )
-from ayon_core.tools.utils.delegates import PrettyTimeDelegate
+from ayon_core.tools.utils.delegates import PrettyTimeDelegate, StatusDelegate
 
 from .products_model import (
     ProductsModel,
@@ -17,12 +17,16 @@ from .products_model import (
     FOLDER_ID_ROLE,
     PRODUCT_ID_ROLE,
     VERSION_ID_ROLE,
+    VERSION_STATUS_NAME_ROLE,
+    VERSION_STATUS_SHORT_ROLE,
+    VERSION_STATUS_COLOR_ROLE,
+    VERSION_STATUS_ICON_ROLE,
     VERSION_THUMBNAIL_ID_ROLE,
 )
 from .products_delegates import (
     VersionDelegate,
     LoadedInSceneDelegate,
-    SiteSyncDelegate
+    SiteSyncDelegate,
 )
 from .actions_utils import show_actions_menu
 
@@ -89,6 +93,7 @@ class ProductsWidget(QtWidgets.QWidget):
         90,   # Product type
         130,  # Folder label
         60,   # Version
+        100,   # Status
         125,  # Time
         75,   # Author
         75,   # Frames
@@ -128,20 +133,24 @@ class ProductsWidget(QtWidgets.QWidget):
             products_view.setColumnWidth(idx, width)
 
         version_delegate = VersionDelegate()
-        products_view.setItemDelegateForColumn(
-            products_model.version_col, version_delegate)
-
         time_delegate = PrettyTimeDelegate()
-        products_view.setItemDelegateForColumn(
-            products_model.published_time_col, time_delegate)
-
+        status_delegate = StatusDelegate(
+            VERSION_STATUS_NAME_ROLE,
+            VERSION_STATUS_SHORT_ROLE,
+            VERSION_STATUS_COLOR_ROLE,
+            VERSION_STATUS_ICON_ROLE,
+        )
         in_scene_delegate = LoadedInSceneDelegate()
-        products_view.setItemDelegateForColumn(
-            products_model.in_scene_col, in_scene_delegate)
-
         sitesync_delegate = SiteSyncDelegate()
-        products_view.setItemDelegateForColumn(
-            products_model.sitesync_avail_col, sitesync_delegate)
+
+        for col, delegate in (
+            (products_model.version_col, version_delegate),
+            (products_model.published_time_col, time_delegate),
+            (products_model.status_col, status_delegate),
+            (products_model.in_scene_col, in_scene_delegate),
+            (products_model.sitesync_avail_col, sitesync_delegate),
+        ):
+            products_view.setItemDelegateForColumn(col, delegate)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -175,6 +184,7 @@ class ProductsWidget(QtWidgets.QWidget):
 
         self._version_delegate = version_delegate
         self._time_delegate = time_delegate
+        self._status_delegate = status_delegate
         self._in_scene_delegate = in_scene_delegate
         self._sitesync_delegate = sitesync_delegate
 
