@@ -930,12 +930,12 @@ class AddonsManager:
                     exc_info=True
                 )
 
-            for addon_name in sorted(self._addons_by_name.keys()):
-                addon = self._addons_by_name[addon_name]
-                enabled_str = "X" if addon.enabled else " "
-                self.log.debug(
-                    f"[{enabled_str}] {addon.name} ({addon.version})"
-                )
+        for addon_name in sorted(self._addons_by_name.keys()):
+            addon = self._addons_by_name[addon_name]
+            enabled_str = "X" if addon.enabled else " "
+            self.log.debug(
+                f"[{enabled_str}] {addon.name} ({addon.version})"
+            )
 
         for item in aliased_names:
             name_alias, addon = item
