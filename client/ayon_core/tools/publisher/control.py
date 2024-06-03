@@ -1864,7 +1864,6 @@ class PublisherController(BasePublisherController):
         task_type = self._create_context.get_current_task_type()
         project_settings = self._get_current_project_settings()
 
-        allowed_creator_labels = None
         filter_creator_profiles = (
             project_settings
             ["core"]
@@ -1883,6 +1882,7 @@ class PublisherController(BasePublisherController):
             logger=self.log
         )
 
+        allowed_creator_labels = None
         if profile:
             allowed_creator_labels = profile["creator_labels"]
             self.log.debug(f"Only allowed `{allowed_creator_labels}` creators")
