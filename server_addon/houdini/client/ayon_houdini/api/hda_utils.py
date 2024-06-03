@@ -20,7 +20,7 @@ from ayon_core.pipeline.load import (
 )
 from ayon_core.pipeline.context_tools import get_current_project_name
 
-from ayon_core.hosts.houdini.api import lib
+from ayon_houdini.api import lib
 
 import hou
 
@@ -399,7 +399,7 @@ def keep_background_images_linked(node, old_name):
     """Reconnect background images to node from old name.
 
      Used as callback on node name changes to keep thumbnails linked."""
-    from ayon_core.hosts.houdini.api.lib import (
+    from ayon_houdini.api.lib import (
         get_background_images,
         set_background_images
     )
