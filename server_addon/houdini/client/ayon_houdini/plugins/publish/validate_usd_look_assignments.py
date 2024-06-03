@@ -7,7 +7,7 @@ from ayon_core.pipeline.publish import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.hosts.houdini.api.action import SelectROPAction
+from ayon_houdini.api.action import SelectROPAction
 
 import hou
 from pxr import Usd, UsdShade, UsdGeom

@@ -2,7 +2,7 @@
 """Creator plugin for creating USD looks with textures."""
 import inspect
 
-from ayon_core.hosts.houdini.api import plugin
+from ayon_houdini.api import plugin
 
 import hou
 
