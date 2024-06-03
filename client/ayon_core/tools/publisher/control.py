@@ -1856,9 +1856,13 @@ class PublisherController(BasePublisherController):
         return output
 
     def _get_allowed_creator_labels(self):
-        """Provide configured creator label in this context
+        """Provide configured creator labels in this context
 
-        If no profile matches current context, it shows all creators
+        If no profile matches current context, it shows all creators.
+        Support usage of regular expressions for configured values.
+        Returns:
+            (str): None or regex compiled patterns into single one
+                ('Render|Image.*')
         """
 
         task_type = self._create_context.get_current_task_type()
@@ -1890,14 +1894,20 @@ class PublisherController(BasePublisherController):
                 if label
             }
             self.log.debug(f"Only allowed `{allowed_creator_labels}` creators")
+            allowed_creator_labels = (
+                re.compile("|".join(allowed_creator_labels)))
         return allowed_creator_labels
 
-    def _is_label_allowed(self, label, allowed_labels):
-        """Implement regex support for allowed labels."""
-        if not allowed_labels:
+    def _is_label_allowed(self, label, allowed_label_regexes):
+        """Implement regex support for allowed labels.
+
+        Args:
+            label (str): Label of creator - shown in Publisher
+            allowed_label_regexes (str): compiled regular expression
+        """
+        if not allowed_label_regexes:
             return True
-        allowed_patterns = re.compile("|".join(allowed_labels))
-        return bool(allowed_patterns.match(label))
+        return bool(allowed_label_regexes.match(label))
 
     def _reset_instances(self):
         """Reset create instances."""
