@@ -2,11 +2,14 @@ import os
 import platform
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 HIERO_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class HieroAddon(AYONAddon, IHostAddon):
     name = "hiero"
+    version = __version__
     host_name = "hiero"
 
     def add_implementation_envs(self, env, _app):
