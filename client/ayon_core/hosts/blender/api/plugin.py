@@ -26,7 +26,8 @@ from .ops import (
 )
 from .lib import imprint
 
-VALID_EXTENSIONS = [".blend", ".json", ".abc", ".fbx"]
+VALID_EXTENSIONS = [".blend", ".json", ".abc", ".fbx",
+                    ".usd", ".usdc", ".usda"]
 
 
 def prepare_scene_name(
@@ -143,13 +144,19 @@ def deselect_all():
         if obj.mode != 'OBJECT':
             modes.append((obj, obj.mode))
             bpy.context.view_layer.objects.active = obj
-            bpy.ops.object.mode_set(mode='OBJECT')
+            context_override = create_blender_context(active=obj)
+            with bpy.context.temp_override(**context_override):
+                bpy.ops.object.mode_set(mode='OBJECT')
 
-    bpy.ops.object.select_all(action='DESELECT')
+    context_override = create_blender_context()
+    with bpy.context.temp_override(**context_override):
+        bpy.ops.object.select_all(action='DESELECT')
 
     for p in modes:
         bpy.context.view_layer.objects.active = p[0]
-        bpy.ops.object.mode_set(mode=p[1])
+        context_override = create_blender_context(active=p[0])
+        with bpy.context.temp_override(**context_override):
+            bpy.ops.object.mode_set(mode=p[1])
 
     bpy.context.view_layer.objects.active = active
 

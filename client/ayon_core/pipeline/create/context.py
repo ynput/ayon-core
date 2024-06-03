@@ -681,7 +681,7 @@ class PublishAttributeValues(AttributeValues):
 
     @property
     def parent(self):
-        self.publish_attributes.parent
+        return self.publish_attributes.parent
 
 
 class PublishAttributes:
@@ -2053,7 +2053,7 @@ class CreateContext:
             exc_info = sys.exc_info()
             self.log.warning(error_message.format(identifier, exc_info[1]))
 
-        except:
+        except:  # noqa: E722
             add_traceback = True
             exc_info = sys.exc_info()
             self.log.warning(
@@ -2163,7 +2163,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2197,7 +2197,7 @@ class CreateContext:
             try:
                 convertor.find_instances()
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor.identifier, sys.exc_info()
@@ -2373,7 +2373,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2440,7 +2440,7 @@ class CreateContext:
                     error_message.format(identifier, exc_info[1])
                 )
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2546,7 +2546,7 @@ class CreateContext:
             try:
                 self.run_convertor(convertor_identifier)
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor_identifier, sys.exc_info()

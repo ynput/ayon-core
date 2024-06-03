@@ -79,7 +79,7 @@ class FusionSubmitDeadline(
         else:
             context.data[key] = True
 
-        from ayon_core.hosts.fusion.api.lib import get_frame_path
+        from ayon_fusion.api.lib import get_frame_path
 
         deadline_url = instance.data["deadline"]["url"]
         assert deadline_url, "Requires Deadline Webservice URL"
@@ -242,7 +242,8 @@ class FusionSubmitDeadline(
         # E.g. http://192.168.0.1:8082/api/jobs
         url = "{}/api/jobs".format(deadline_url)
         auth = instance.data["deadline"]["auth"]
-        response = requests_post(url, json=payload, auth=auth)
+        verify = instance.data["deadline"]["verify"]
+        response = requests_post(url, json=payload, auth=auth, verify=verify)
         if not response.ok:
             raise Exception(response.text)
 
