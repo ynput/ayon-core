@@ -1,5 +1,5 @@
 from ayon_core.pipeline import load
-from ayon_core.hosts.houdini.api.lib import find_active_network
+from ayon_houdini.api.lib import find_active_network
 
 import hou
 
