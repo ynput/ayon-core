@@ -2,10 +2,10 @@ import pyblish.api
 import os
 import re
 from ayon_core.pipeline import AYONPyblishPluginMixin
-from ayon_houdini.api import lib
+from ayon_houdini.api import lib, plugin
 
 
-class CollectFilesForCleaningUp(pyblish.api.InstancePlugin,
+class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
                                 AYONPyblishPluginMixin):
     """Collect Files For Cleaning Up.
 
