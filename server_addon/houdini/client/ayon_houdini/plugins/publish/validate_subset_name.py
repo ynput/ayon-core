@@ -103,7 +103,13 @@ class ValidateSubsetName(plugin.HoudiniInstancePlugin,
             instance.context.data["hostName"],
             instance.data["productType"],
             variant=instance.data["variant"],
-            dynamic_data={"asset": folder_entity["name"]}
+            dynamic_data={
+                "asset": folder_entity["name"],
+                "folder": {
+                            "label": folder_entity["label"],
+                            "name": folder_entity["name"]
+                            }
+                }
         )
 
         instance.data["productName"] = product_name
