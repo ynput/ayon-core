@@ -600,7 +600,7 @@ class Creator(LegacyCreator):
 
     def __init__(self, *args, **kwargs):
         super(Creator, self).__init__(*args, **kwargs)
-        import ayon_core.hosts.hiero.api as phiero
+        import ayon_hiero.api as phiero
         self.presets = get_current_project_settings()[
             "hiero"]["create"].get(self.__class__.__name__, {})
 

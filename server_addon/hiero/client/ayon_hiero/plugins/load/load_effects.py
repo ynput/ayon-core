@@ -7,7 +7,7 @@ from ayon_core.pipeline import (
     load,
     get_representation_path,
 )
-from ayon_core.hosts.hiero import api as phiero
+from ayon_hiero import api as phiero
 from ayon_core.lib import Logger
 
 
