@@ -8,7 +8,7 @@ import inspect
 import logging
 import threading
 import collections
-
+import warnings
 from uuid import uuid4
 from abc import ABCMeta, abstractmethod
 
@@ -551,6 +551,9 @@ class AYONAddon(object):
     enabled = True
     _id = None
 
+    # Temporary variable for 'version' property
+    _missing_version_warned = False
+
     def __init__(self, manager, settings):
         self.manager = manager
 
@@ -580,6 +583,25 @@ class AYONAddon(object):
         """
 
         pass
+
+    @property
+    def version(self):
+        """Addon version.
+
+        Todo:
+            Should be abstract property (required). Introduced in
+                ayon-core 0.3.3 .
+
+        Returns:
+            str: Addon version as semver compatible string.
+
+        """
+        if not self.__class__._missing_version_warned:
+            self.__class__._missing_version_warned = True
+            warnings.warn(
+                f"Addon '{self.name}' does not have defined version."
+            )
+        return "0.0.0"
 
     def initialize(self, settings):
         """Initialization of addon attributes.
