@@ -3,13 +3,11 @@
 import os
 import logging
 from operator import attrgetter
-import errno
 import json
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
 import pyblish.api
 from ayon_core.pipeline import (
-    get_current_project_name,
     register_creator_plugin_path,
     register_loader_plugin_path,
     AVALON_CONTAINER_ID,
@@ -20,7 +18,6 @@ from ayon_max.api.menu import AYONMenu
 from ayon_max.api import lib
 from ayon_max.api.plugin import MS_CUSTOM_ATTRIB
 from ayon_max import MAX_HOST_DIR
-from ayon_max.lib import create_workspace_mxp
 
 from pymxs import runtime as rt  # noqa
 
