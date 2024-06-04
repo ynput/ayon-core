@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import inspect
-
+import hou
+from pxr import Sdf, UsdShade
 import pyblish.api
 
 from ayon_core.pipeline.publish import (
@@ -9,12 +10,10 @@ from ayon_core.pipeline.publish import (
 )
 from ayon_houdini.api.action import SelectROPAction
 from ayon_houdini.api.usd import get_schema_type_names
-
-import hou
-from pxr import Sdf, UsdShade
+from ayon_houdini.api import plugin
 
 
-class ValidateLookShaderDefs(pyblish.api.InstancePlugin,
+class ValidateLookShaderDefs(plugin.HoudiniInstancePlugin,
                              OptionalPyblishPluginMixin):
     """Validate Material primitives are defined types instead of overs"""
 
