@@ -1,5 +1,5 @@
 from ayon_applications import PreLaunchHook, LaunchTypes
-from ayon_core.hosts.max.mxp import create_workspace_mxp
+from ayon_max.mxp import create_workspace_mxp
 
 
 class PreCopyMxp(PreLaunchHook):
