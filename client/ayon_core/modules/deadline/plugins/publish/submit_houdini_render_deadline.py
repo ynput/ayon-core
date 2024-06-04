@@ -71,6 +71,7 @@ class HuskStandalonePluginInfo():
     PostFrame = attr.ib(default="")
     PostRender = attr.ib(default="")
     RestartDelegate = attr.ib(default="")
+    Version = attr.ib(default="")
 
 
 class HoudiniSubmitDeadline(
@@ -326,7 +327,8 @@ class HoudiniSubmitDeadline(
                     ))
 
             elif product_type == "usdrender":
-                plugin_info = self._get_husk_standalone_plugin_info(instance)
+                plugin_info = self._get_husk_standalone_plugin_info(
+                    instance, hou_major_minor)
 
             else:
                 self.log.error(
@@ -358,7 +360,7 @@ class HoudiniSubmitDeadline(
         output_dir = os.path.dirname(instance.data["files"][0])
         instance.data["outputDir"] = output_dir
 
-    def _get_husk_standalone_plugin_info(self, instance):
+    def _get_husk_standalone_plugin_info(self, instance, hou_major_minor):
         # Not all hosts can import this module.
         import hou
 
@@ -388,7 +390,8 @@ class HoudiniSubmitDeadline(
             PreFrame=rop_node.evalParm("husk_preframe"),
             PostFrame=rop_node.evalParm("husk_postframe"),
             PostRender=rop_node.evalParm("husk_postrender"),
-            RestartDelegate=restart_delegate
+            RestartDelegate=restart_delegate,
+            Version=hou_major_minor
         )
 
 
