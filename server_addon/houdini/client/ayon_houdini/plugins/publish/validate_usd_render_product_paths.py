@@ -6,8 +6,10 @@ import pyblish.api
 
 from ayon_core.pipeline import PublishValidationError
 
+from ayon_houdini.api import plugin
 
-class ValidateUSDRenderProductPaths(pyblish.api.InstancePlugin):
+
+class ValidateUSDRenderProductPaths(plugin.HoudiniInstancePlugin):
     """Validate USD Render Settings refer to a valid render camera.
 
     The publishing logic uses a metadata `.json` in the render output images'
