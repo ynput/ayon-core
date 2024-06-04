@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 import inspect
-
-import pyblish.api
-
-from ayon_houdini.api.action import SelectROPAction
-from ayon_core.pipeline import PublishValidationError
-
 import hou
 from pxr import Sdf
+import pyblish.api
+
+from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api.action import SelectROPAction
+from ayon_houdini.api import plugin
 
 
-class ValidateUSDRopDefaultPrim(pyblish.api.InstancePlugin):
+class ValidateUSDRopDefaultPrim(plugin.HoudiniInstancePlugin):
     """Validate the default prim exists if
      """
 

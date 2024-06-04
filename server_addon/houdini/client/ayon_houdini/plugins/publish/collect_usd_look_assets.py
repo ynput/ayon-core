@@ -9,6 +9,8 @@ import pyblish.api
 import hou
 from pxr import Sdf
 
+from ayon_houdini.api import plugin
+
 
 # Colorspace attributes differ per renderer implementation in the USD data
 # Some have dedicated input names like Arnold and Redshift, whereas others like
@@ -46,7 +48,7 @@ def get_layer_property_paths(layer: Sdf.Layer) -> List[Sdf.Path]:
     return paths
 
 
-class CollectUsdLookAssets(pyblish.api.InstancePlugin):
+class CollectUsdLookAssets(plugin.HoudiniInstancePlugin):
     """Collect all assets introduced by the look.
 
     We are looking to collect e.g. all texture resources so we can transfer
@@ -218,7 +220,7 @@ class CollectUsdLookAssets(pyblish.api.InstancePlugin):
                 return colorspace_spec.default
 
 
-class CollectUsdLookResourceTransfers(pyblish.api.InstancePlugin):
+class CollectUsdLookResourceTransfers(plugin.HoudiniInstancePlugin):
     """Define the publish direct file transfers for any found resources.
 
     This ensures that any source texture will end up in the published look
