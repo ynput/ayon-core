@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+<error id="main">
+<title>Shape IDs mismatch original shape</title>
+<description>## Shapes mismatch IDs with original shape
+
+Meshes are detected in the **rig** where the (deformed) mesh has a different
+`cbId` than the same mesh in its deformation history.
+These should normally be the same.
+
+### How to repair?
+
+By using the repair action the IDs from the shape in history will be
+copied to the deformed shape. For rig instances, in many cases the
+correct fix is to use the repair action **unless** you explicitly tried
+to update the `cbId` values on the meshes - in that case you actually want
+to do to the reverse and copy the IDs from the deformed mesh to the history
+mesh instead.
+
+</description>
+<detail>
+### How does this happen?
+
+When a deformer is applied in the scene on a referenced mesh that had no
+deformers then Maya will create a new shape node for the mesh that
+does not have the original id. Then on scene save new ids get created for the
+meshes lacking a `cbId` and thus the mesh then has a different `cbId` than
+the mesh in the deformation history.
+
+</detail>
+</error>
+</root>
