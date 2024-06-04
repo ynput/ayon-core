@@ -3,6 +3,7 @@ from ayon_core.addon import AYONAddon, ITrayAddon
 
 class LoaderAddon(AYONAddon, ITrayAddon):
     name = "loader_tool"
+    version = "1.0.0"
 
     def initialize(self, settings):
         # Tray attributes
