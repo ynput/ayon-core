@@ -9,6 +9,7 @@ class CollectClipEffects(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder - 0.078
     label = "Collect Clip Effects Instances"
     families = ["clip"]
+    settings_category = "hiero"
 
     effect_categories = []
 
