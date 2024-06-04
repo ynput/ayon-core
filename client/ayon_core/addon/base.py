@@ -8,7 +8,6 @@ import inspect
 import logging
 import threading
 import collections
-
 from uuid import uuid4
 from abc import ABCMeta, abstractmethod
 
@@ -51,10 +50,20 @@ IGNORED_MODULES_IN_AYON = set()
 # - this is used to log the missing addon
 MOVED_ADDON_MILESTONE_VERSIONS = {
     "applications": VersionInfo(0, 2, 0),
+    "celaction": VersionInfo(0, 2, 0),
     "clockify": VersionInfo(0, 2, 0),
+    "flame": VersionInfo(0, 2, 0),
+    "fusion": VersionInfo(0, 2, 0),
+    "hiero": VersionInfo(0, 2, 0),
+    "max": VersionInfo(0, 2, 0),
+    "photoshop": VersionInfo(0, 2, 0),
     "traypublisher": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
+    "maya": VersionInfo(0, 2, 0),
     "nuke": VersionInfo(0, 2, 0),
+    "resolve": VersionInfo(0, 2, 0),
+    "substancepainter": VersionInfo(0, 2, 0),
+    "houdini": VersionInfo(0, 3, 0),
 }
 
 
@@ -543,6 +552,9 @@ class AYONAddon(object):
     enabled = True
     _id = None
 
+    # Temporary variable for 'version' property
+    _missing_version_warned = False
+
     def __init__(self, manager, settings):
         self.manager = manager
 
@@ -572,6 +584,26 @@ class AYONAddon(object):
         """
 
         pass
+
+    @property
+    def version(self):
+        """Addon version.
+
+        Todo:
+            Should be abstract property (required). Introduced in
+                ayon-core 0.3.3 .
+
+        Returns:
+            str: Addon version as semver compatible string.
+
+        """
+        if not self.__class__._missing_version_warned:
+            self.__class__._missing_version_warned = True
+            print(
+                f"DEV WARNING: Addon '{self.name}' does not have"
+                f" defined version."
+            )
+        return "0.0.0"
 
     def initialize(self, settings):
         """Initialization of addon attributes.
@@ -686,6 +718,30 @@ class OpenPypeModule(AYONAddon):
 class OpenPypeAddOn(OpenPypeModule):
     # Enable Addon by default
     enabled = True
+
+
+class _AddonReportInfo:
+    def __init__(
+        self, class_name, name, version, report_value_by_label
+    ):
+        self.class_name = class_name
+        self.name = name
+        self.version = version
+        self.report_value_by_label = report_value_by_label
+
+    @classmethod
+    def from_addon(cls, addon, report):
+        class_name = addon.__class__.__name__
+        report_value_by_label = {
+            label: reported.get(class_name)
+            for label, reported in report.items()
+        }
+        return cls(
+            addon.__class__.__name__,
+            addon.name,
+            addon.version,
+            report_value_by_label
+        )
 
 
 class AddonsManager:
@@ -864,10 +920,6 @@ class AddonsManager:
                 name_alias = getattr(addon, "openpype_alias", None)
                 if name_alias:
                     aliased_names.append((name_alias, addon))
-                enabled_str = "X"
-                if not addon.enabled:
-                    enabled_str = " "
-                self.log.debug("[{}] {}".format(enabled_str, name))
 
                 now = time.time()
                 report[addon.__class__.__name__] = now - prev_start_time
@@ -878,6 +930,13 @@ class AddonsManager:
                     "Initialization of addon '{}' failed.".format(name),
                     exc_info=True
                 )
+
+        for addon_name in sorted(self._addons_by_name.keys()):
+            addon = self._addons_by_name[addon_name]
+            enabled_str = "X" if addon.enabled else " "
+            self.log.debug(
+                f"[{enabled_str}] {addon.name} ({addon.version})"
+            )
 
         for item in aliased_names:
             name_alias, addon = item
@@ -1167,39 +1226,55 @@ class AddonsManager:
             available_col_names |= set(addon_names.keys())
 
         # Prepare ordered dictionary for columns
-        cols = collections.OrderedDict()
-        # Add addon names to first columnt
-        cols["Addon name"] = list(sorted(
-            addon.__class__.__name__
+        addons_info = [
+            _AddonReportInfo.from_addon(addon, self._report)
             for addon in self.addons
             if addon.__class__.__name__ in available_col_names
-        ))
+        ]
+        addons_info.sort(key=lambda x: x.name)
+
+        addon_name_rows = [
+            addon_info.name
+            for addon_info in addons_info
+        ]
+        addon_version_rows = [
+            addon_info.version
+            for addon_info in addons_info
+        ]
+
         # Add total key (as last addon)
-        cols["Addon name"].append(self._report_total_key)
+        addon_name_rows.append(self._report_total_key)
+        addon_version_rows.append(f"({len(addons_info)})")
+
+        cols = collections.OrderedDict()
+        # Add addon names to first columnt
+        cols["Addon name"] = addon_name_rows
+        cols["Version"] = addon_version_rows
 
         # Add columns from report
+        total_by_addon = {
+            row: 0
+            for row in addon_name_rows
+        }
         for label in self._report.keys():
-            cols[label] = []
-
-        total_addon_times = {}
-        for addon_name in cols["Addon name"]:
-            total_addon_times[addon_name] = 0
-
-        for label, reported in self._report.items():
-            for addon_name in cols["Addon name"]:
-                col_time = reported.get(addon_name)
-                if col_time is None:
-                    cols[label].append("N/A")
+            rows = []
+            col_total = 0
+            for addon_info in addons_info:
+                value = addon_info.report_value_by_label.get(label)
+                if value is None:
+                    rows.append("N/A")
                     continue
-                cols[label].append("{:.3f}".format(col_time))
-                total_addon_times[addon_name] += col_time
-
+                rows.append("{:.3f}".format(value))
+                total_by_addon[addon_info.name] += value
+                col_total += value
+            total_by_addon[self._report_total_key] += col_total
+            rows.append("{:.3f}".format(col_total))
+            cols[label] = rows
         # Add to also total column that should sum the row
-        cols[self._report_total_key] = []
-        for addon_name in cols["Addon name"]:
-            cols[self._report_total_key].append(
-                "{:.3f}".format(total_addon_times[addon_name])
-            )
+        cols[self._report_total_key] = [
+            "{:.3f}".format(total_by_addon[addon_name])
+            for addon_name in cols["Addon name"]
+        ]
 
         # Prepare column widths and total row count
         # - column width is by
@@ -1326,7 +1401,7 @@ class TrayAddonsManager(AddonsManager):
         self.doubleclick_callback = None
 
     def add_doubleclick_callback(self, addon, callback):
-        """Register doubleclick callbacks on tray icon.
+        """Register double-click callbacks on tray icon.
 
         Currently, there is no way how to determine which is launched. Name of
         callback can be defined with `doubleclick_callback` attribute.

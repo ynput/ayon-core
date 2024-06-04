@@ -16,13 +16,13 @@ class EditorialPackageCreator(TrayPublishCreator):
     """Creates instance for OTIO file from published folder.
 
     Folder contains OTIO file and exported .mov files. Process should publish
-    whole folder as single `editorial_pckg` product type and (possibly) convert
+    whole folder as single `editorial_pkg` product type and (possibly) convert
     .mov files into different format and copy them into `publish` `resources`
     subfolder.
     """
-    identifier = "editorial_pckg"
+    identifier = "editorial_pkg"
     label = "Editorial package"
-    product_type = "editorial_pckg"
+    product_type = "editorial_pkg"
     description = "Publish folder with OTIO file and resources"
 
     # Position batch creator after simple creators
@@ -89,8 +89,8 @@ class EditorialPackageCreator(TrayPublishCreator):
     def get_detail_description(self):
         return """# Publish folder with OTIO file and video clips
 
-        Folder contains OTIO file and exported .mov files. Process should 
-        publish whole folder as single `editorial_pckg` product type and 
-        (possibly) convert .mov files into different format and copy them into 
+        Folder contains OTIO file and exported .mov files. Process should
+        publish whole folder as single `editorial_pkg` product type and
+        (possibly) convert .mov files into different format and copy them into
         `publish` `resources` subfolder.
         """
