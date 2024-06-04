@@ -391,7 +391,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             anatomy_data.update(folder_data)
             return
 
-        if instance.data.get("newAssetPublishing"):
+        if (
+            instance.data.get("newHierarchyIntegration")
+            # Backwards compatible
+            or instance.data.get("newAssetPublishing")
+        ):
             hierarchy = instance.data["hierarchy"]
             anatomy_data["hierarchy"] = hierarchy
 
@@ -409,7 +413,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     "path": instance.data["folderPath"],
                     # TODO get folder type from hierarchy
                     #   Using 'Shot' is current default behavior of editorial
-                    #   (or 'newAssetPublishing') publishing.
+                    #   (or 'newHierarchyIntegration') publishing.
                     "type": "Shot",
                 },
             })
@@ -432,15 +436,22 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         if task_data:
             # Fill task data
             # - if we're in editorial, make sure the task type is filled
-            if (
-                not instance.data.get("newAssetPublishing")
-                or task_data["type"]
-            ):
+            new_hierarchy = (
+                instance.data.get("newHierarchyIntegration")
+                # Backwards compatible
+                or instance.data.get("newAssetPublishing")
+            )
+            if not new_hierarchy or task_data["type"]:
                 anatomy_data["task"] = task_data
                 return
 
         # New hierarchy is not created, so we can only skip rest of the logic
-        if not instance.data.get("newAssetPublishing"):
+        new_hierarchy = (
+            instance.data.get("newHierarchyIntegration")
+            # Backwards compatible
+            or instance.data.get("newAssetPublishing")
+        )
+        if not new_hierarchy:
             return
 
         # Try to find task data based on hierarchy context and folder path
