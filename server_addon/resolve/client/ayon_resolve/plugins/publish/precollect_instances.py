@@ -101,6 +101,8 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 "fps": context.data["fps"],
                 "handleStart": handle_start,
                 "handleEnd": handle_end,
+                "newHierarchyIntegration": True,
+                # Backwards compatible
                 "newAssetPublishing": True,
                 "families": ["clip"],
                 "productType": product_type,
