@@ -29,11 +29,21 @@ class CreateUSDRender(plugin.HoudiniCreator):
     icon = "magic"
     description = "Create USD Render"
 
-    split_render = True
     default_renderer = "Karma CPU"
+
+    # Default render target
+    render_target = "farm_split"
 
     def create(self, product_name, instance_data, pre_create_data):
         import hou  # noqa
+
+        # Transfer settings from pre create to instance
+        creator_attributes = instance_data.setdefault(
+            "creator_attributes", dict())
+
+        for key in ["render_target", "review"]:
+            if key in pre_create_data:
+                creator_attributes[key] = pre_create_data[key]
 
         # TODO: Support creation in /stage if wanted by user
         # pre_create_data["parent"] = "/stage"
@@ -67,7 +77,7 @@ class CreateUSDRender(plugin.HoudiniCreator):
         if self.selected_nodes:
             parms["loppath"] = self.selected_nodes[0].path()
 
-        if pre_create_data.get("split_render", self.split_render):
+        if pre_create_data.get("render_target") == "farm_split":
             # Do not trigger the husk render, only trigger the USD export
             parms["runcommand"] = False
             # By default, the render ROP writes out the render file to a
@@ -103,6 +113,31 @@ class CreateUSDRender(plugin.HoudiniCreator):
         to_lock = ["productType", "id"]
         self.lock_parameters(instance_node, to_lock)
 
+    def get_instance_attr_defs(self):
+        """get instance attribute definitions.
+
+        Attributes defined in this method are exposed in
+            publish tab in the publisher UI.
+        """
+
+        render_target_items = {
+            "local": "Local machine rendering",
+            "local_no_render": "Use existing frames (local)",
+            "farm": "Farm Rendering",
+            "farm_split": "Farm Rendering - Split export & render jobs",
+        }
+
+        return [
+            BoolDef("review",
+                    label="Review",
+                    tooltip="Mark as reviewable",
+                    default=True),
+            EnumDef("render_target",
+                    items=render_target_items,
+                    label="Render target",
+                    default=self.render_target)
+        ]
+
     def get_pre_create_attr_defs(self):
 
         # Retrieve available renderers and convert default renderer to
@@ -123,12 +158,10 @@ class CreateUSDRender(plugin.HoudiniCreator):
                 default_renderer = None
 
         attrs = super(CreateUSDRender, self).get_pre_create_attr_defs()
-        return attrs + [
+        attrs += [
             EnumDef("renderer",
                     label="Renderer",
                     default=default_renderer,
                     items=renderer_plugin_to_display_name),
-            BoolDef("split_render",
-                    label="Split export and render jobs",
-                    default=self.split_render),
         ]
+        return attrs + self.get_instance_attr_defs()

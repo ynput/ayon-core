@@ -35,10 +35,7 @@ class CollectUsdRender(pyblish.api.InstancePlugin):
 
         rop = hou.node(instance.data.get("instance_node"))
 
-        # Store whether we are splitting the render job in an export + render
-        split_render = not rop.parm("runcommand").eval()
-        instance.data["splitRender"] = split_render
-        if split_render:
+        if instance.data["splitRender"]:
             # USD file output
             lop_output = evalParmNoFrame(
                 rop, "lopoutput", pad_character="#"
@@ -75,7 +72,7 @@ class CollectUsdRender(pyblish.api.InstancePlugin):
             if "$F" not in export_file:
                 instance.data["splitRenderFrameDependent"] = False
 
-        instance.data["farm"] = True  # always submit to farm
+        # instance.data["farm"] = True  # always submit to farm
 
         # update the colorspace data
         colorspace_data = get_color_management_preferences()

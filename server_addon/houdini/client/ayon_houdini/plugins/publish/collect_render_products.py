@@ -25,7 +25,7 @@ class CollectRenderProducts(plugin.HoudiniInstancePlugin):
     """
 
     label = "Collect Render Products"
-    order = pyblish.api.CollectorOrder + 0.4
+    order = pyblish.api.CollectorOrder + 0.04
     families = ["usdrender"]
 
     def process(self, instance):
@@ -44,6 +44,7 @@ class CollectRenderProducts(plugin.HoudiniInstancePlugin):
 
         filenames = []
         files_by_product = {}
+
         stage = node.stage()
         for prim_path in self.get_render_products(rop_node, stage):
             prim = stage.GetPrimAtPath(prim_path)
@@ -131,12 +132,16 @@ class CollectRenderProducts(plugin.HoudiniInstancePlugin):
             self.log.debug("Render Product %s%s", aov_label, prim_path)
             self.log.debug("Product name: %s", filename)
 
+
+        # As long as we have one AOV then multipartExr should be True.
+        instance.data["multipartExr"] = len(files_by_product) <= 1
+
         # Filenames for Deadline
         instance.data["files"] = filenames
         instance.data.setdefault("expectedFiles", []).append(files_by_product)
 
     def get_aov_identifier(self, render_product):
-        """Return the AOV identfier for a Render Product
+        """Return the AOV identifier for a Render Product
 
         A Render Product does not really define what 'AOV' it is, it
         defines the product name (output path) and the render vars to

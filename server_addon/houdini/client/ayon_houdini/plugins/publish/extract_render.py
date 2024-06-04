@@ -15,7 +15,8 @@ class ExtractRender(plugin.HoudiniExtractorPlugin):
                 "karma_rop",
                 "redshift_rop",
                 "arnold_rop",
-                "vray_rop"]
+                "vray_rop",
+                "usdrender"]
 
     def process(self, instance):
         creator_attribute = instance.data["creator_attributes"]
@@ -32,6 +33,8 @@ class ExtractRender(plugin.HoudiniExtractorPlugin):
                 rop_node.setParms({"RS_archive_enable": 1})
             elif product_type == "vray_rop":
                 rop_node.setParms({"render_export_mode": "2"})
+            elif product_type == "usdrender":
+                rop_node.setParms({"runcommand": 0})
         else:
             if product_type == "arnold_rop":
                 rop_node.setParms({"ar_ass_export_enable": 0})
@@ -41,6 +44,8 @@ class ExtractRender(plugin.HoudiniExtractorPlugin):
                 rop_node.setParms({"RS_archive_enable": 0})
             elif product_type == "vray_rop":
                 rop_node.setParms({"render_export_mode": "1"})
+            elif product_type == "usdrender":
+                rop_node.setParms({"runcommand": 1})
 
         if instance.data.get("farm"):
             self.log.debug("Render should be processed on farm, skipping local render.")

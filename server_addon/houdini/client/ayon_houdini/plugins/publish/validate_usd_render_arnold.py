@@ -35,7 +35,7 @@ class ValidateUSDRenderSingleFile(pyblish.api.InstancePlugin):
         )
         render_chunk_size = submission_data.get("chunk", 1)
         export_chunk_size = submission_data.get("export_chunk", 1)
-        usd_file_per_frame = "$F" in instance.data["ifdFile"]
+        usd_file_per_frame = instance.data["farm"]
         frame_start_handle = instance.data["frameStartHandle"]
         frame_end_handle = instance.data["frameEndHandle"]
         num_frames = frame_end_handle - frame_start_handle + 1
