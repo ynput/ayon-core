@@ -28,8 +28,12 @@ class CollectSequenceFrameData(
             return
 
         # editorial would fail since they might not be in database yet
-        new_folder_publishing = instance.data.get("newAssetPublishing")
-        if new_folder_publishing:
+        new_hierarchy = (
+            instance.data.get("newHierarchyIntegration")
+            # Backwards compatible
+            or instance.data.get("newAssetPublishing")
+        )
+        if new_hierarchy:
             self.log.debug("Instance is creating new folders. Skipping.")
             return
 
