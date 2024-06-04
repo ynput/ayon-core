@@ -7,6 +7,8 @@ import six
 from ayon_core.lib import Logger
 from ayon_core.modules import AYONAddon, IPluginPaths
 
+from .version import __version__
+
 
 class DeadlineWebserviceError(Exception):
     """
@@ -16,6 +18,7 @@ class DeadlineWebserviceError(Exception):
 
 class DeadlineModule(AYONAddon, IPluginPaths):
     name = "deadline"
+    version = __version__
 
     def initialize(self, studio_settings):
         # This module is always enabled
