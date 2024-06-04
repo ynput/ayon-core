@@ -58,7 +58,7 @@ class CreateTextures(Creator):
             "exportPadding",
             "exportDilationDistance",
             "useCustomExportPreset",
-            "exportChannel"
+            "exportChannel",
         ]:
             if key in pre_create_data:
                 creator_attributes[key] = pre_create_data[key]
@@ -153,9 +153,6 @@ class CreateTextures(Creator):
             }
 
         return [
-            BoolDef("follow_workfile_version",
-                    label="Follow Workfile Version",
-                    default=self.follow_workfile_version),
             EnumDef("exportChannel",
                     items=export_channel_enum,
                     multiselection=True,
@@ -247,9 +244,15 @@ class CreateTextures(Creator):
     def get_pre_create_attr_defs(self):
         # Use same attributes as for instance attributes
         attr_defs = []
-        if  substance_painter.application.version_info()[0] >= 10:
+        if substance_painter.application.version_info()[0] >= 10:
             attr_defs.append(
                 BoolDef("use_selection", label="Use selection",
-                        tooltip="Select Layer Stack(s) for exporting")
+                        tooltip="Select Layer Stack(s) for exporting"),
+
             )
+
+        attr_defs.append(BoolDef("follow_workfile_version",
+                                 label="Follow Workfile Version",
+                                 default=self.follow_workfile_version))
+
         return attr_defs + self.get_instance_attr_defs()
