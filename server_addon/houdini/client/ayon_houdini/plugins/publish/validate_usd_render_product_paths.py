@@ -26,6 +26,7 @@ class ValidateUSDRenderProductPaths(pyblish.api.InstancePlugin):
     hosts = ["houdini"]
     label = "Validate USD Render Product Paths"
     optional = True
+    enabled = False
 
     def process(self, instance):
 
