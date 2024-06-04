@@ -592,6 +592,10 @@ def version_up_current_workfile():
     """Function to increment and save workfile
     """
     host = registered_host()
+    if not host.has_unsaved_changes():
+        print("No unsaved changes, skipping file save..")
+        return
+
     project_name = get_current_project_name()
     folder_path = get_current_folder_path()
     task_name = get_current_task_name()
@@ -614,11 +618,14 @@ def version_up_current_workfile():
 
     # Define saving file extension
     extensions = host.get_workfile_extensions()
+    current_file = host.get_current_workfile()
+    if current_file:
+        extensions = [os.path.splitext(current_file)[-1]]
 
     work_root = work_template["directory"].format_strict(data)
     file_template = work_template["file"].template
     last_workfile_path = get_last_workfile(
         work_root, file_template, data, extensions, True
     )
-    current_workfile_path = version_up(last_workfile_path)
-    host.save_workfile(current_workfile_path)
+    new_workfile_path = version_up(last_workfile_path)
+    host.save_workfile(new_workfile_path)
