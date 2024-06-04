@@ -92,7 +92,8 @@ class HoudiniSubmitDeadline(
     label = "Submit Render to Deadline"
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
-    families = ["redshift_rop",
+    families = ["usdrender",
+                "redshift_rop",
                 "arnold_rop",
                 "mantra_rop",
                 "karma_rop",
