@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 import inspect
-
-import pyblish.api
-
-from ayon_core.pipeline.publish import PublishValidationError, RepairAction
-from ayon_houdini.api.action import SelectROPAction
-from ayon_houdini.api.usd import get_usd_render_rop_rendersettings
-
 import hou
 import pxr
 from pxr import UsdRender
+import pyblish.api
+
+from ayon_core.pipeline.publish import PublishValidationError, RepairAction
+
+from ayon_houdini.api.action import SelectROPAction
+from ayon_houdini.api.usd import get_usd_render_rop_rendersettings
+from ayon_houdini.api import plugin
 
 
-class ValidateUSDRenderSingleFile(pyblish.api.InstancePlugin):
+class ValidateUSDRenderSingleFile(plugin.HoudiniInstancePlugin):
     """Validate the writing of a single USD Render Output file.
 
      When writing to single file with USD Render ROP make sure to write the
@@ -129,7 +129,7 @@ class ValidateUSDRenderSingleFile(pyblish.api.InstancePlugin):
         )
 
 
-class ValidateUSDRenderArnoldSettings(pyblish.api.InstancePlugin):
+class ValidateUSDRenderArnoldSettings(plugin.HoudiniInstancePlugin):
     """Validate USD Render Product names are correctly set absolute paths."""
 
     order = pyblish.api.ValidatorOrder
@@ -188,7 +188,7 @@ class ValidateUSDRenderArnoldSettings(pyblish.api.InstancePlugin):
             )
 
 
-class ValidateUSDRenderCamera(pyblish.api.InstancePlugin):
+class ValidateUSDRenderCamera(plugin.HoudiniInstancePlugin):
     """Validate USD Render Settings refer to a valid render camera.
 
     The render camera is defined in priority by this order:

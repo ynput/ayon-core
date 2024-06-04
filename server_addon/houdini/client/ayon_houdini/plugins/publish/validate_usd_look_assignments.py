@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import inspect
+import hou
+from pxr import Usd, UsdShade, UsdGeom
 
 import pyblish.api
 
@@ -8,9 +10,7 @@ from ayon_core.pipeline.publish import (
     OptionalPyblishPluginMixin
 )
 from ayon_houdini.api.action import SelectROPAction
-
-import hou
-from pxr import Usd, UsdShade, UsdGeom
+from ayon_houdini.api import plugin
 
 
 def has_material(prim: Usd.Prim,
@@ -34,7 +34,7 @@ def has_material(prim: Usd.Prim,
     return False
 
 
-class ValidateUsdLookAssignments(pyblish.api.InstancePlugin,
+class ValidateUsdLookAssignments(plugin.HoudiniInstancePlugin,
                                  OptionalPyblishPluginMixin):
     """Validate all geometry prims have a material binding.
 

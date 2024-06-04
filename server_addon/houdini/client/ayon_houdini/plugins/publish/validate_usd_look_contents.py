@@ -3,14 +3,14 @@ import inspect
 from typing import List, Union
 from functools import partial
 
+import hou
+from pxr import Sdf
 import pyblish.api
 
 from ayon_core.pipeline.publish import PublishValidationError
 from ayon_houdini.api.action import SelectROPAction
 from ayon_houdini.api.usd import get_schema_type_names
-
-import hou
-from pxr import Sdf
+from ayon_houdini.api import plugin
 
 
 def get_applied_items(list_proxy) -> List[Union[Sdf.Reference, Sdf.Payload]]:
@@ -18,7 +18,7 @@ def get_applied_items(list_proxy) -> List[Union[Sdf.Reference, Sdf.Payload]]:
     return list_proxy.ApplyEditsToList([])
 
 
-class ValidateUsdLookContents(pyblish.api.InstancePlugin):
+class ValidateUsdLookContents(plugin.HoudiniInstancePlugin):
     """Validate no meshes are defined in the look.
 
     Usually, a published look should not contain generated meshes in the output

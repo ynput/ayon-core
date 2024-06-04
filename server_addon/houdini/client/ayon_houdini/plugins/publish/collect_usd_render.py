@@ -4,14 +4,17 @@ import re
 import hou
 import pyblish.api
 
-from ayon_houdini.api import colorspace
+from ayon_houdini.api import (
+    colorspace,
+    plugin
+)
 from ayon_houdini.api.lib import (
     evalParmNoFrame,
     get_color_management_preferences
 )
 
 
-class CollectUsdRender(pyblish.api.InstancePlugin):
+class CollectUsdRender(plugin.HoudiniInstancePlugin):
     """Collect publishing data for USD Render ROP.
 
     If `rendercommand` parm is disabled (and thus no rendering triggers by the

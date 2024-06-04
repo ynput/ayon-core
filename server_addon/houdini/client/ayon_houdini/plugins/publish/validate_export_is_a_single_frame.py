@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """Validator for checking that export is a single frame."""
-import pyblish.api
 from ayon_core.pipeline import (
     PublishValidationError,
     OptionalPyblishPluginMixin
 )
 from ayon_core.pipeline.publish import ValidateContentsOrder
 from ayon_houdini.api.action import SelectInvalidAction
+from ayon_houdini.api import plugin
 
 
-class ValidateSingleFrame(pyblish.api.InstancePlugin,
+class ValidateSingleFrame(plugin.HoudiniInstancePlugin,
                            OptionalPyblishPluginMixin):
     """Validate Export is a Single Frame.
 
