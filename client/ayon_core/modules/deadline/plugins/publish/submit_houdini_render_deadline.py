@@ -71,6 +71,7 @@ class HuskStandalonePluginInfo():
     PostFrame = attr.ib(default="")
     PostRender = attr.ib(default="")
     RestartDelegate = attr.ib(default="")
+    Version = attr.ib(default="")
 
 
 class HoudiniSubmitDeadline(
@@ -289,7 +290,7 @@ class HoudiniSubmitDeadline(
         instance = self._instance
         context = instance.context
 
-        hou_major_minor = hou.applicationVersionString().rsplit(".", 1)[0]
+        self.hou_major_minor = hou.applicationVersionString().rsplit(".", 1)[0]
 
         # Output driver to render
         if job_type == "render":
@@ -301,7 +302,7 @@ class HoudiniSubmitDeadline(
             elif product_type == "mantra_rop":
                 plugin_info = MantraRenderDeadlinePluginInfo(
                     SceneFile=instance.data["ifdFile"],
-                    Version=hou_major_minor,
+                    Version=self.hou_major_minor,
                 )
             elif product_type == "vray_rop":
                 plugin_info = VrayRenderPluginInfo(
@@ -340,7 +341,7 @@ class HoudiniSubmitDeadline(
             plugin_info = DeadlinePluginInfo(
                 SceneFile=context.data["currentFile"],
                 OutputDriver=driver.path(),
-                Version=hou_major_minor,
+                Version=self.hou_major_minor,
                 IgnoreInputs=True
             )
 
@@ -389,7 +390,8 @@ class HoudiniSubmitDeadline(
             PreFrame=rop_node.evalParm("husk_preframe"),
             PostFrame=rop_node.evalParm("husk_postframe"),
             PostRender=rop_node.evalParm("husk_postrender"),
-            RestartDelegate=restart_delegate
+            RestartDelegate=restart_delegate,
+            Version=self.hou_major_minor
         )
 
 
