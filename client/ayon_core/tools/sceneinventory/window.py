@@ -2,17 +2,10 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
-from ayon_core.tools.utils.lib import (
-    preserve_expanded_rows,
-    preserve_selection,
-)
+from ayon_core.tools.utils import PlaceholderLineEdit
+
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
-from .delegates import VersionDelegate
-from .model import (
-    InventoryModel,
-    FilterProxyModel
-)
 from .view import SceneInventoryView
 
 
@@ -20,7 +13,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
     """Scene Inventory window"""
 
     def __init__(self, controller=None, parent=None):
-        super(SceneInventoryWindow, self).__init__(parent)
+        super().__init__(parent)
 
         if controller is None:
             controller = SceneInventoryController()
@@ -33,10 +26,9 @@ class SceneInventoryWindow(QtWidgets.QDialog):
 
         self.resize(1100, 480)
 
-        # region control
-
         filter_label = QtWidgets.QLabel("Search", self)
-        text_filter = QtWidgets.QLineEdit(self)
+        text_filter = PlaceholderLineEdit(self)
+        text_filter.setPlaceholderText("Filter by name...")
 
         outdated_only_checkbox = QtWidgets.QCheckBox(
             "Filter to outdated", self
@@ -44,52 +36,30 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         outdated_only_checkbox.setToolTip("Show outdated files only")
         outdated_only_checkbox.setChecked(False)
 
-        icon = qtawesome.icon("fa.arrow-up", color="white")
+        update_all_icon = qtawesome.icon("fa.arrow-up", color="white")
         update_all_button = QtWidgets.QPushButton(self)
         update_all_button.setToolTip("Update all outdated to latest version")
-        update_all_button.setIcon(icon)
+        update_all_button.setIcon(update_all_icon)
 
-        icon = qtawesome.icon("fa.refresh", color="white")
+        refresh_icon = qtawesome.icon("fa.refresh", color="white")
         refresh_button = QtWidgets.QPushButton(self)
         refresh_button.setToolTip("Refresh")
-        refresh_button.setIcon(icon)
+        refresh_button.setIcon(refresh_icon)
 
-        control_layout = QtWidgets.QHBoxLayout()
-        control_layout.addWidget(filter_label)
-        control_layout.addWidget(text_filter)
-        control_layout.addWidget(outdated_only_checkbox)
-        control_layout.addWidget(update_all_button)
-        control_layout.addWidget(refresh_button)
-
-        model = InventoryModel(controller)
-        proxy = FilterProxyModel()
-        proxy.setSourceModel(model)
-        proxy.setDynamicSortFilter(True)
-        proxy.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        headers_widget = QtWidgets.QWidget(self)
+        headers_layout = QtWidgets.QHBoxLayout(headers_widget)
+        headers_layout.setContentsMargins(0, 0, 0, 0)
+        headers_layout.addWidget(filter_label, 0)
+        headers_layout.addWidget(text_filter, 1)
+        headers_layout.addWidget(outdated_only_checkbox, 0)
+        headers_layout.addWidget(update_all_button, 0)
+        headers_layout.addWidget(refresh_button, 0)
 
         view = SceneInventoryView(controller, self)
-        view.setModel(proxy)
 
-        sync_enabled = controller.is_sitesync_enabled()
-        view.setColumnHidden(model.active_site_col, not sync_enabled)
-        view.setColumnHidden(model.remote_site_col, not sync_enabled)
-
-        # set some nice default widths for the view
-        view.setColumnWidth(0, 250)  # name
-        view.setColumnWidth(1, 55)   # version
-        view.setColumnWidth(2, 55)   # count
-        view.setColumnWidth(3, 150)  # product type
-        view.setColumnWidth(4, 120)  # group
-        view.setColumnWidth(5, 150)  # loader
-
-        # apply delegates
-        version_delegate = VersionDelegate(controller, self)
-        column = model.Columns.index("version")
-        view.setItemDelegateForColumn(column, version_delegate)
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addLayout(control_layout)
-        layout.addWidget(view)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.addWidget(headers_widget, 0)
+        main_layout.addWidget(view, 1)
 
         show_timer = QtCore.QTimer()
         show_timer.setInterval(0)
@@ -114,12 +84,8 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._update_all_button = update_all_button
         self._outdated_only_checkbox = outdated_only_checkbox
         self._view = view
-        self._model = model
-        self._proxy = proxy
-        self._version_delegate = version_delegate
 
         self._first_show = True
-        self._first_refresh = True
 
     def showEvent(self, event):
         super(SceneInventoryWindow, self).showEvent(event)
@@ -139,29 +105,16 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         whilst trying to name an instance.
 
         """
+        pass
 
     def _on_refresh_request(self):
         """Signal callback to trigger 'refresh' without any arguments."""
 
         self.refresh()
 
-    def refresh(self, containers=None):
-        self._first_refresh = False
+    def refresh(self):
         self._controller.reset()
-        with preserve_expanded_rows(
-            tree_view=self._view,
-            role=self._model.UniqueRole
-        ):
-            with preserve_selection(
-                tree_view=self._view,
-                role=self._model.UniqueRole,
-                current_index=False
-            ):
-                kwargs = {"containers": containers}
-                # TODO do not touch view's inner attribute
-                if self._view._hierarchy_view:
-                    kwargs["selected"] = self._view._selected
-                self._model.refresh(**kwargs)
+        self._view.refresh()
 
     def _on_show_timer(self):
         if self._show_counter < 3:
@@ -171,17 +124,13 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self.refresh()
 
     def _on_hierarchy_view_change(self, enabled):
-        self._proxy.set_hierarchy_view(enabled)
-        self._model.set_hierarchy_view(enabled)
+        self._view.set_hierarchy_view(enabled)
 
     def _on_text_filter_change(self, text_filter):
-        if hasattr(self._proxy, "setFilterRegExp"):
-            self._proxy.setFilterRegExp(text_filter)
-        else:
-            self._proxy.setFilterRegularExpression(text_filter)
+        self._view.set_text_filter(text_filter)
 
     def _on_outdated_state_change(self):
-        self._proxy.set_filter_outdated(
+        self._view.set_filter_outdated(
             self._outdated_only_checkbox.isChecked()
         )
 
