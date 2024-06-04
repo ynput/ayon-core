@@ -890,6 +890,7 @@ DEFAULT_PUBLISH_VALUES = {
                     "maya",
                     "nuke",
                     "photoshop",
+                    "substancepainter"
                 ],
                 "enabled": True,
                 "optional": False,

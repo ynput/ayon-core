@@ -30,12 +30,18 @@ class CreateTextures(Creator):
     default_variant = "Main"
     settings_category = "substancepainter"
     channel_mapping = []
+    follow_workfile_version = False
 
     def apply_settings(self, project_settings):
         settings = project_settings["substancepainter"].get("create", [])  # noqa
         if settings:
             self.channel_mapping = settings["CreateTextures"].get(
                 "channel_mapping", [])
+        core_setting = project_settings["core"]["publish"].get(
+            "CollectAnatomyInstanceData", [])
+        if core_setting:
+            self.follow_workfile_version = core_setting.get(
+                "follow_workfile_version", False)
 
 
     def create(self, product_name, instance_data, pre_create_data):
@@ -56,6 +62,10 @@ class CreateTextures(Creator):
         ]:
             if key in pre_create_data:
                 creator_attributes[key] = pre_create_data[key]
+
+        if pre_create_data.get("follow_workfile_version"):
+            instance_data["follow_workfile_version"] = pre_create_data.get(
+                "follow_workfile_version")
 
         if pre_create_data.get("use_selection"):
             stack = substance_painter.textureset.get_active_stack()
@@ -143,6 +153,9 @@ class CreateTextures(Creator):
             }
 
         return [
+            BoolDef("follow_workfile_version",
+                    label="Follow Workfile Version",
+                    default=self.follow_workfile_version),
             EnumDef("exportChannel",
                     items=export_channel_enum,
                     multiselection=True,
