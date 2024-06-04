@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 import inspect
-
-import pyblish.api
-from ayon_core.pipeline import PublishValidationError
-from ayon_houdini.api.action import SelectROPAction
-
 import hou
+import pyblish.api
+
+from ayon_core.pipeline import PublishValidationError
+
+from ayon_houdini.api.action import SelectROPAction
+from ayon_houdini.api import plugin
 
 
-class ValidateUsdRenderProducts(pyblish.api.InstancePlugin):
+class ValidateUsdRenderProducts(plugin.HoudiniInstancePlugin):
     """Validate at least one render product is present"""
 
     order = pyblish.api.ValidatorOrder
