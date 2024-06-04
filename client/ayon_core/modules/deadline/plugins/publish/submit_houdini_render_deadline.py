@@ -171,16 +171,14 @@ class HoudiniSubmitDeadline(
 
         job_type = "[RENDER]"
         if split_render_job and not is_export_job:
-            # Convert from family to Deadline plugin name
-            # i.e., arnold_rop -> Arnold
-            family = instance.data["family"]
+            product_type = instance.data["productType"]
             plugin = {
                 "usdrender": "HuskStandalone",
-            }.get(family)
+            }.get(product_type)
             if not plugin:
-                # Convert from family to Deadline plugin name
+                # Convert from product type to Deadline plugin name
                 # i.e., arnold_rop -> Arnold
-                plugin = family.replace("_rop", "").capitalize()
+                plugin = product_type.replace("_rop", "").capitalize()
         else:
             plugin = "Houdini"
             if split_render_job:
