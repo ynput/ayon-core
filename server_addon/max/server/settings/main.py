@@ -90,7 +90,7 @@ DEFAULT_MXP_WORKSPACE_SETTINGS = "\n".join((
     'MaxStart=./',
     'Previews=./previews',
     'RenderAssets=./sceneassets/renderassets',
-    'RenderOutput= ./renders/3dsmax'
+    'RenderOutput= ./renders/3dsmax',
     'Scenes=./',
     'Sounds=./sceneassets/sounds',
     '[XReferenceDirs]',
