@@ -10,6 +10,7 @@ from ayon_core.addon import (
 )
 from ayon_core.lib.events import register_event_callback
 
+from .version import __version__
 from .exceptions import InvalidContextError
 
 TIMER_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -96,6 +97,7 @@ class TimersManager(
     See `ExampleTimersManagerConnector`.
     """
     name = "timers_manager"
+    version = __version__
     label = "Timers Service"
 
     _required_methods = (
