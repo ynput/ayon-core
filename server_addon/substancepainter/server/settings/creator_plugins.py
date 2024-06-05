@@ -8,6 +8,8 @@ class ChannelMappingItemModel(BaseSettingsModel):
 
 
 class CreateTextureModel(BaseSettingsModel):
+    follow_workfile_version: bool = SettingsField(
+        False, title="follow_workfile_version")
     channel_mapping: list[ChannelMappingItemModel] = SettingsField(
         default_factory=list, title="Channel Mapping")
 
@@ -21,6 +23,7 @@ class CreatorsModel(BaseSettingsModel):
 
 DEFAULT_CREATOR_SETTINGS = {
     "CreateTextures": {
+        "follow_workfile_version": False,
         "channel_mapping": [
             {"name": "Base Color", "value": "BaseColor"},
             {"name": "Metallic", "value": "Metallic"},
