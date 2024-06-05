@@ -55,6 +55,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "clockify": VersionInfo(0, 2, 0),
     "flame": VersionInfo(0, 2, 0),
     "fusion": VersionInfo(0, 2, 0),
+    "harmony": VersionInfo(0, 2, 0),
     "hiero": VersionInfo(0, 2, 0),
     "max": VersionInfo(0, 2, 0),
     "photoshop": VersionInfo(0, 2, 0),
