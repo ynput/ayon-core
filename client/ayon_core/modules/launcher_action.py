@@ -7,6 +7,7 @@ from ayon_core.addon import AYONAddon, ITrayAction
 class LauncherAction(AYONAddon, ITrayAction):
     label = "Launcher"
     name = "launcher_tool"
+    version = "1.0.0"
 
     def initialize(self, settings):
 
