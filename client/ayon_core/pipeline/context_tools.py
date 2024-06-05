@@ -624,10 +624,9 @@ def version_up_current_workfile():
 
     work_root = work_template["directory"].format_strict(data)
     file_template = work_template["file"].template
-    last_workfile_path = get_last_workfile(
+    workfile_path = get_last_workfile(
         work_root, file_template, data, extensions, True
     )
-    new_workfile_path = version_up(last_workfile_path)
-    if os.path.exists(new_workfile_path):
-        new_workfile_path = version_up(new_workfile_path)
-    host.save_workfile(new_workfile_path)
+    if os.path.exists(workfile_path):
+        workfile_path = version_up(workfile_path)
+    host.save_workfile(workfile_path)
