@@ -37,9 +37,6 @@ class CreateTextures(Creator):
         if settings:
             creator_setting = settings["CreateTextures"]
             self.channel_mapping = creator_setting.get("channel_mapping", [])
-            self.follow_workfile_version = creator_setting.get(
-                "follow_workfile_version", False)
-
 
     def create(self, product_name, instance_data, pre_create_data):
         if not substance_painter.project.is_open():
@@ -66,9 +63,6 @@ class CreateTextures(Creator):
             instance_data["selected_node_id"] = [
                 node_number.uid() for node_number in
                 substance_painter.layerstack.get_selected_nodes(stack)]
-
-        if self.follow_workfile_version:
-            instance_data["followWorkfileVersion"] = True
 
         instance = self.create_instance_in_context(product_name,
                                                    instance_data)
