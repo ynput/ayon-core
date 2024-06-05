@@ -35,8 +35,8 @@ class CreateTextures(Creator):
     def apply_settings(self, project_settings):
         settings = project_settings["substancepainter"].get("create", [])  # noqa
         if settings:
-            creator_setting = settings["CreateTextures"]
-            self.channel_mapping = creator_setting.get("channel_mapping", [])
+            self.channel_mapping = settings["CreateTextures"].get(
+                "channel_mapping", [])
 
     def create(self, product_name, instance_data, pre_create_data):
         if not substance_painter.project.is_open():
