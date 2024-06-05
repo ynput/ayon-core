@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from collections import defaultdict
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -211,9 +212,8 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             version = self._version_by_representation_id[
                 representation["id"]
             ]
-            name = "{}/{}".format(
-                self._version_path_by_id[version["id"]],
-                representation["name"]
+            name = f'{self._version_path_by_id[version["id"]]}/{representation["name"]}'.replace(
+                "/", "_"
             )
 
             clips_data[name] = {
@@ -247,6 +247,8 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         # Get path to representation with correct frame number
         repre_path = get_representation_path_with_anatomy(
             representation, anatomy)
+        repre_path = Path(repre_path)
+
         first_frame = representation["context"].get("frame")
         if first_frame is None:
             range = self.OTIO.opentime.TimeRange(
@@ -255,7 +257,8 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             )
             # Use 'repre_path' as single file
             media_reference = self.OTIO.schema.ExternalReference(
-                available_range=range, target_url=repre_path
+                available_range=range,
+                target_url=repre_path.as_uri()
             )
         else:
             # This is sequence
@@ -269,11 +272,13 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             frame_repre_path = get_representation_path_with_anatomy(
                 representation, anatomy
             )
-            repre_dir, repre_filename = os.path.split(frame_repre_path)
+            frame_repre_path = Path(frame_repre_path)
+            repre_dir, repre_filename = (
+                frame_repre_path.parent, frame_repre_path.name)
             # Get sequence prefix and suffix
             file_prefix, file_suffix = repre_filename.split(FRAME_SPLITTER)
             # Get frame number from path as string to get frame padding
-            frame_str = repre_path[len(file_prefix):][:len(file_suffix)]
+            frame_str = str(repre_path)[len(file_prefix):][:len(file_suffix)]
             frame_padding = len(frame_str)
 
             range = self.OTIO.opentime.TimeRange(
@@ -287,7 +292,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
                 start_frame=int(first_frame),
                 frame_step=1,
                 rate=framerate,
-                target_url_base=repre_dir,
+                target_url_base=f"{repre_dir.as_uri()}/",
                 name_prefix=file_prefix,
                 name_suffix=file_suffix,
                 frame_zero_padding=frame_padding,
