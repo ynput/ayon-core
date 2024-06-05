@@ -4,10 +4,13 @@ import os
 
 from ayon_core.addon import AYONAddon, IPluginPaths
 
+from .version import __version__
+
 
 class RoyalRenderAddon(AYONAddon, IPluginPaths):
     """Class providing basic Royal Render implementation logic."""
     name = "royalrender"
+    version = __version__
 
     # _rr_api = None
     # @property

@@ -44,9 +44,12 @@ import platform
 from ayon_core.addon import AYONAddon, click_wrap
 from ayon_core.settings import get_studio_settings
 
+from .version import __version__
+
 
 class JobQueueAddon(AYONAddon):
     name = "job_queue"
+    version = __version__
 
     def initialize(self, studio_settings):
         addon_settings = studio_settings.get(self.name) or {}
