@@ -254,6 +254,8 @@ class AnimationFBXLoader(plugin.Loader):
         path = self.filepath_from_context(context)
         libpath = path.replace(".fbx", ".json")
 
+        master_level = None
+
         # check if json file exists.
         if os.path.exists(libpath):
             ar = unreal.AssetRegistryHelpers.get_asset_registry()
