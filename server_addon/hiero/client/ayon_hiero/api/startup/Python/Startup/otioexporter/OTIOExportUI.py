@@ -22,7 +22,7 @@ except ImportError:
 
     FormLayout = QFormLayout  # lint:ok
 
-from ayon_core.hosts.hiero.api.otio import hiero_export
+from ayon_hiero.api.otio import hiero_export
 
 class OTIOExportUI(hiero.ui.TaskUIBase):
     def __init__(self, preset):

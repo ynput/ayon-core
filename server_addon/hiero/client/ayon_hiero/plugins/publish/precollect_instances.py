@@ -3,8 +3,8 @@ import pyblish
 from ayon_core.pipeline import AYON_INSTANCE_ID, AVALON_INSTANCE_ID
 from ayon_core.pipeline.editorial import is_overlapping_otio_ranges
 
-from ayon_core.hosts.hiero import api as phiero
-from ayon_core.hosts.hiero.api.otio import hiero_export
+from ayon_hiero import api as phiero
+from ayon_hiero.api.otio import hiero_export
 
 import hiero
 # # developer reload modules
