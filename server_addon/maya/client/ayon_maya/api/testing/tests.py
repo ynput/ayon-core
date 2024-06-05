@@ -10,10 +10,10 @@ from ayon_core.pipeline import (
     get_current_task_name
 )
 from ayon_core.pipeline.create import CreateContext
-from ayon_core.hosts.maya.api.workfile_template_builder import (
+from ayon_maya.api.workfile_template_builder import (
     MayaTemplateBuilder
 )
-from ayon_core.hosts.maya.api.lib import set_attribute
+from ayon_maya.api.lib import set_attribute
 
 from . import lib
 
