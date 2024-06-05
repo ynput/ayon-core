@@ -193,9 +193,11 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
         self.expected_files(instance, render_path)
         self.log.debug("__ expectedFiles: `{}`".format(
             instance.data["expectedFiles"]))
-
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
         response = requests_post(self.deadline_url, json=payload,
-                                 auth=instance.data["deadline"]["require_authentication"])
+                                 auth=auth,
+                                 verify=verify)
 
         if not response.ok:
             self.log.error(

@@ -58,6 +58,7 @@ def version_item_from_entity(version):
         thumbnail_id=version["thumbnailId"],
         published_time=published_time,
         author=author,
+        status=version["status"],
         frame_range=frame_range,
         duration=duration,
         handles=handles,
@@ -526,8 +527,11 @@ class ProductsModel:
         products = list(ayon_api.get_products(project_name, **kwargs))
         product_ids = {product["id"] for product in products}
 
+        # Add 'status' to fields -> fixed in ayon-python-api 1.0.4
+        fields = ayon_api.get_default_fields_for_type("version")
+        fields.add("status")
         versions = ayon_api.get_versions(
-            project_name, product_ids=product_ids
+            project_name, product_ids=product_ids, fields=fields
         )
 
         return self._create_product_items(
