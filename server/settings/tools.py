@@ -118,6 +118,15 @@ class WorkfilesLockProfile(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
 
 
+class AYONMenuModel(BaseSettingsModel):
+    _layout = "expanded"
+    version_up_current_workfile: bool = SettingsField(
+        False,
+        title="Version Up Workfile",
+        description="Add 'Version Up Workfile' to AYON menu"
+    )
+
+
 class WorkfilesToolModel(BaseSettingsModel):
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -268,6 +277,10 @@ class PublishToolModel(BaseSettingsModel):
 
 
 class GlobalToolsModel(BaseSettingsModel):
+    ayon_menu: AYONMenuModel = SettingsField(
+        default_factory=AYONMenuModel,
+        title="AYON Menu"
+    )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,
         title="Creator"
@@ -287,6 +300,9 @@ class GlobalToolsModel(BaseSettingsModel):
 
 
 DEFAULT_TOOLS_VALUES = {
+    "ayon_menu": {
+        "version_up_current_workfile": False
+    },
     "creator": {
         "product_types_smart_select": [
             {
