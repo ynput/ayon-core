@@ -9,20 +9,16 @@ from qtpy import QtWidgets
 from ayon_core.addon import ITrayService
 from ayon_core.tools.stdout_broker.window import ConsoleDialog
 
+from .structures import HostMsgAction
+
 log = logging.getLogger(__name__)
 
 
+# Host listener icon type
 class IconType:
     IDLE = "idle"
     RUNNING = "running"
     FAILED = "failed"
-
-
-class MsgAction:
-    CONNECTING = "connecting"
-    INITIALIZED = "initialized"
-    ADD = "add"
-    CLOSE = "close"
 
 
 class HostListener:
@@ -96,22 +92,22 @@ class HostListener:
                 if msg.type == aiohttp.WSMsgType.TEXT:
                     host_name, action, text = self._parse_message(msg)
 
-                    if action == MsgAction.CONNECTING:
+                    if action == HostMsgAction.CONNECTING:
                         self._action_per_id[host_name] = None
                         # must be sent to main thread, or action wont trigger
                         self.module.execute_in_main_thread(
                             lambda: self._host_is_connecting(host_name, text))
-                    elif action == MsgAction.CLOSE:
+                    elif action == HostMsgAction.CLOSE:
                         # clean close
                         self._close(host_name)
                         await ws.close()
-                    elif action == MsgAction.INITIALIZED:
+                    elif action == HostMsgAction.INITIALIZED:
                         self.module.execute_in_main_thread(
                             # must be queued as _host_is_connecting might not
                             # be triggered/finished yet
                             lambda: self._set_host_icon(host_name,
                                                         IconType.RUNNING))
-                    elif action == MsgAction.ADD:
+                    elif action == HostMsgAction.ADD:
                         self.module.execute_in_main_thread(
                             lambda: self._add_text(host_name, text))
                 elif msg.type == aiohttp.WSMsgType.ERROR:
