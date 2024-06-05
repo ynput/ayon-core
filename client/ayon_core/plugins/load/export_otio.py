@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -7,6 +8,9 @@ from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.tools.utils import show_message_dialog
+
+
+FRAME_SPLITTER = "__frame_splitter__"
 
 
 class ExportOTIO(load.ProductLoaderPlugin):
@@ -37,8 +41,8 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
     def __init__(self, contexts, log=None, parent=None):
         # Not all hosts have OpenTimelineIO available.
-        import opentimelineio as otio
-        self.otio = otio
+        import opentimelineio as OTIO
+        self.OTIO = OTIO
 
         super(ExportOTIOOptionsDialog, self).__init__(parent=parent)
 
@@ -141,8 +145,8 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         layout = QtWidgets.QHBoxLayout(widget)
         self.button_output_path = QtWidgets.QPushButton("Output Path:")
         layout.addWidget(self.button_output_path)
-        self.lineedit_output_path = QtWidgets.QLineEdit()
-        layout.addWidget(self.lineedit_output_path)
+        self.line_edit_output_path = QtWidgets.QLineEdit()
+        layout.addWidget(self.line_edit_output_path)
         export_layout.addWidget(widget)
 
         self.button_export = QtWidgets.QPushButton("Export")
@@ -165,10 +169,10 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             None, "Save OTIO file.", "", "OTIO Files (*.otio)"
         )
         if file_path:
-            self.lineedit_output_path.setText(file_path)
+            self.line_edit_output_path.setText(file_path)
 
     def export(self):
-        output_path = self.lineedit_output_path.text()
+        output_path = self.line_edit_output_path.text()
 
         # Validate output path is not empty.
         if not output_path:
@@ -211,15 +215,15 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
                 self._version_path_by_id[version["id"]],
                 representation["name"]
             )
+
             clips_data[name] = {
-                "path": get_representation_path_with_anatomy(
-                    representation, anatomy
-                ),
+                "representation": representation,
+                "anatomy": anatomy,
                 "frames": (
-                    version["attrib"]["frameEnd"] -
-                    version["attrib"]["frameStart"]
+                    version["attrib"]["frameEnd"]
+                    - version["attrib"]["frameStart"]
                 ),
-                "framerate": version["attrib"]["fps"]
+                "framerate": version["attrib"]["fps"],
             }
 
         self.export_otio(clips_data, output_path)
@@ -234,31 +238,71 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         self.close()
 
-    def create_clip(self, path, name, frames, framerate):
-        range = self.otio.opentime.TimeRange(
-            start_time=self.otio.opentime.RationalTime(0, framerate),
-            duration=self.otio.opentime.RationalTime(frames, framerate)
-        )
+    def create_clip(self, name, clip_data):
+        representation = clip_data["representation"]
+        anatomy = clip_data["anatomy"]
+        frames = clip_data["frames"]
+        framerate = clip_data["framerate"]
 
-        media_reference = self.otio.schema.ExternalReference(
-            available_range=range,
-            target_url=path
-        )
+        # Get path to representation with correct frame number
+        repre_path = get_representation_path_with_anatomy(
+            representation, anatomy)
+        first_frame = representation["context"].get("frame")
+        if first_frame is None:
+            range = self.OTIO.opentime.TimeRange(
+                start_time=self.OTIO.opentime.RationalTime(0, framerate),
+                duration=self.OTIO.opentime.RationalTime(frames, framerate),
+            )
+            # Use 'repre_path' as single file
+            media_reference = self.OTIO.schema.ExternalReference(
+                available_range=range, target_url=repre_path
+            )
+        else:
+            # This is sequence
+            repre_files = [
+                file["path"].format(root=anatomy.roots)
+                for file in representation["files"]
+            ]
+            # Change frame in representation context to get path with frame
+            #   splitter.
+            representation["context"]["frame"] = FRAME_SPLITTER
+            frame_repre_path = get_representation_path_with_anatomy(
+                representation, anatomy
+            )
+            repre_dir, repre_filename = os.path.split(frame_repre_path)
+            # Get sequence prefix and suffix
+            file_prefix, file_suffix = repre_filename.split(FRAME_SPLITTER)
+            # Get frame number from path as string to get frame padding
+            frame_str = repre_path[len(file_prefix):][:len(file_suffix)]
+            frame_padding = len(frame_str)
 
-        return self.otio.schema.Clip(
+            range = self.OTIO.opentime.TimeRange(
+                start_time=self.OTIO.opentime.RationalTime(0, framerate),
+                duration=self.OTIO.opentime.RationalTime(
+                    len(repre_files), framerate)
+            )
+
+            media_reference = self.OTIO.schema.ImageSequenceReference(
+                available_range=range,
+                start_frame=int(first_frame),
+                frame_step=1,
+                rate=framerate,
+                target_url_base=repre_dir,
+                name_prefix=file_prefix,
+                name_suffix=file_suffix,
+                frame_zero_padding=frame_padding,
+            )
+
+        return self.OTIO.schema.Clip(
             name=name,
             media_reference=media_reference,
             source_range=range
         )
 
     def export_otio(self, clips_data, output_path):
-        clips = []
-        for name, data in clips_data.items():
-            clips.append(
-                self.create_clip(
-                    data["path"], name, data["frames"], data["framerate"]
-                )
-            )
-
-        timeline = self.otio.schema.timeline_from_clips(clips)
-        self.otio.adapters.write_to_file(timeline, output_path)
+        clips = [
+            self.create_clip(name, clip_data)
+            for name, clip_data in clips_data.items()
+        ]
+        timeline = self.OTIO.schema.timeline_from_clips(clips)
+        self.OTIO.adapters.write_to_file(timeline, output_path)
