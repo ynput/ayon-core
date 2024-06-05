@@ -447,8 +447,10 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def initialize_addons(self):
         self._initializing_addons = True
-        self.tray_man.initialize_addons()
-        self._initializing_addons = False
+        try:
+            self.tray_man.initialize_addons()
+        finally:
+            self._initializing_addons = False
 
     def _click_timer_timeout(self):
         self._click_timer.stop()
