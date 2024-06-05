@@ -9,7 +9,7 @@ class ChannelMappingItemModel(BaseSettingsModel):
 
 class CreateTextureModel(BaseSettingsModel):
     follow_workfile_version: bool = SettingsField(
-        False, title="follow_workfile_version")
+        False, title="Follow Workfile Version")
     channel_mapping: list[ChannelMappingItemModel] = SettingsField(
         default_factory=list, title="Channel Mapping")
 
