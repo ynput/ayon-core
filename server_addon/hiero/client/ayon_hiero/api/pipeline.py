@@ -130,7 +130,7 @@ def ls():
     all_items = lib.get_track_items()
 
     # append all video tracks
-    for track in lib.get_current_sequence():
+    for track in (lib.get_current_sequence() or []):
         if type(track) != hiero.core.VideoTrack:
             continue
         all_items.append(track)
