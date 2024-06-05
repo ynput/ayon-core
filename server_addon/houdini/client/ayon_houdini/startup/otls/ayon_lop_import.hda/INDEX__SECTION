@@ -1,5 +1,5 @@
 Operator:     ayon::lop_import::1.0
-Label:        Load Asset
+Label:        AYON Load Asset
 Path:         oplib:/ayon::Lop/lop_import::1.0?ayon::Lop/lop_import::1.0
 Icon:         opdef:/ayon::Lop/lop_import::1.0?IconImage
 Table:        Lop
@@ -10,5 +10,5 @@ Inputs:       0 to 1
 Subnet:       true
 Python:       false
 Empty:        false
-Modified:     Mon Jun  3 23:54:46 2024
+Modified:     Thu Jun  6 01:31:52 2024
 
