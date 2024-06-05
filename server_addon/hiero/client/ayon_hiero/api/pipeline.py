@@ -6,7 +6,9 @@ import os
 import contextlib
 from collections import OrderedDict
 
+import hiero
 from pyblish import api as pyblish
+
 from ayon_core.lib import Logger
 from ayon_core.pipeline import (
     schema,
@@ -18,15 +20,14 @@ from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
 )
 from ayon_core.tools.utils import host_tools
+from ayon_hiero import HIERO_ADDON_ROOT
+
 from . import lib, menu, events
-import hiero
 
 log = Logger.get_logger(__name__)
 
 # plugin paths
-API_DIR = os.path.dirname(os.path.abspath(__file__))
-HOST_DIR = os.path.dirname(API_DIR)
-PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(HIERO_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish").replace("\\", "/")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load").replace("\\", "/")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create").replace("\\", "/")
@@ -308,9 +309,9 @@ def reload_config():
     import importlib
 
     for module in (
-        "ayon_core.hosts.hiero.lib",
-        "ayon_core.hosts.hiero.menu",
-        "ayon_core.hosts.hiero.tags"
+        "ayon_hiero.lib",
+        "ayon_hiero.menu",
+        "ayon_hiero.tags"
     ):
         log.info("Reloading module: {}...".format(module))
         try:
@@ -328,7 +329,7 @@ def on_pyblish_instance_toggled(instance, old_value, new_value):
     log.info("instance toggle: {}, old_value: {}, new_value:{} ".format(
         instance, old_value, new_value))
 
-    from ayon_core.hosts.hiero.api import (
+    from ayon_hiero.api import (
         get_trackitem_openpype_tag,
         set_publish_attribute
     )

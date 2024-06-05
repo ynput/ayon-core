@@ -550,7 +550,8 @@ class ClipLoader:
         log.debug("__ self.timeline_out: {}".format(self.timeline_out))
 
         # check if slate is included
-        slate_on = "slate" in self.context["version"]["data"]["families"]
+        slate_on = "slate" in self.context["version"]["data"].get(
+            "families", [])
         log.debug("__ slate_on: {}".format(slate_on))
 
         # if slate is on then remove the slate frame from beginning
@@ -600,7 +601,7 @@ class Creator(LegacyCreator):
 
     def __init__(self, *args, **kwargs):
         super(Creator, self).__init__(*args, **kwargs)
-        import ayon_core.hosts.hiero.api as phiero
+        import ayon_hiero.api as phiero
         self.presets = get_current_project_settings()[
             "hiero"]["create"].get(self.__class__.__name__, {})
 

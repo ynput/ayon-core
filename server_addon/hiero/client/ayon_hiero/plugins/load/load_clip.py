@@ -5,7 +5,7 @@ from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,
     IMAGE_EXTENSIONS
 )
-import ayon_core.hosts.hiero.api as phiero
+import ayon_hiero.api as phiero
 
 
 class LoadClip(phiero.SequenceLoader):

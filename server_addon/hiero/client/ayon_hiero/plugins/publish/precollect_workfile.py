@@ -7,7 +7,7 @@ from qtpy.QtGui import QPixmap
 
 import hiero.ui
 
-from ayon_core.hosts.hiero.api.otio import hiero_export
+from ayon_hiero.api.otio import hiero_export
 
 
 class PrecollectWorkfile(pyblish.api.ContextPlugin):

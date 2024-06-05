@@ -1,4 +1,3 @@
-# from ayon_core import plugins
 import os
 import json
 import pyblish.api
