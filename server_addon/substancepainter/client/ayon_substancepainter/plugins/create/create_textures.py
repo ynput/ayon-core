@@ -30,18 +30,12 @@ class CreateTextures(Creator):
     default_variant = "Main"
     settings_category = "substancepainter"
     channel_mapping = []
-    follow_workfile_version = False
 
     def apply_settings(self, project_settings):
         settings = project_settings["substancepainter"].get("create", [])  # noqa
         if settings:
             self.channel_mapping = settings["CreateTextures"].get(
                 "channel_mapping", [])
-        core_setting = project_settings["core"]["publish"].get(
-            "CollectAnatomyInstanceData", [])
-        if core_setting:
-            self.follow_workfile_version = core_setting.get(
-                "follow_workfile_version", False)
 
 
     def create(self, product_name, instance_data, pre_create_data):
@@ -58,14 +52,10 @@ class CreateTextures(Creator):
             "exportPadding",
             "exportDilationDistance",
             "useCustomExportPreset",
-            "exportChannel",
+            "exportChannel"
         ]:
             if key in pre_create_data:
                 creator_attributes[key] = pre_create_data[key]
-
-        if pre_create_data.get("follow_workfile_version"):
-            instance_data["follow_workfile_version"] = pre_create_data.get(
-                "follow_workfile_version")
 
         if pre_create_data.get("use_selection"):
             stack = substance_painter.textureset.get_active_stack()
@@ -244,15 +234,9 @@ class CreateTextures(Creator):
     def get_pre_create_attr_defs(self):
         # Use same attributes as for instance attributes
         attr_defs = []
-        if substance_painter.application.version_info()[0] >= 10:
+        if  substance_painter.application.version_info()[0] >= 10:
             attr_defs.append(
                 BoolDef("use_selection", label="Use selection",
-                        tooltip="Select Layer Stack(s) for exporting"),
-
+                        tooltip="Select Layer Stack(s) for exporting")
             )
-
-        attr_defs.append(BoolDef("follow_workfile_version",
-                                 label="Follow Workfile Version",
-                                 default=self.follow_workfile_version))
-
         return attr_defs + self.get_instance_attr_defs()
