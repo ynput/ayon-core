@@ -8,9 +8,11 @@ from unreal import EditorAssetLibrary
 from unreal import MovieSceneSkeletalAnimationTrack
 from unreal import MovieSceneSkeletalAnimationSection
 
+import ayon_api
 from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.pipeline import (
     get_representation_path,
+    get_current_project_name,
     AYON_CONTAINER_ID
 )
 from ayon_core.hosts.unreal.api import plugin
@@ -165,12 +167,49 @@ class AnimationFBXLoader(plugin.Loader):
                     for s in sections:
                         s.params.set_editor_property('animation', animation)
 
-    def _load_standalone_animation(self, path, asset_dir, asset_name):
+    def _load_standalone_animation(
+        self, path, asset_dir, asset_name, version_id
+    ):
         selection = unreal.EditorUtilityLibrary.get_selected_assets()
-        if not selection:
-            raise ValueError("No skeleton selected.")
+        skeleton = None
+        if selection:
+            skeleton = selection[0]
+        else:
+            # If no skeleton is selected, we try to find the skeleton by
+            # checking linked rigs.
+            project_name = get_current_project_name()
+            server = ayon_api.get_server_api_connection()
 
-        skeleton = selection[0]
+            v_links = server.get_version_links(
+                project_name, version_id=version_id)
+            entities = [v_link["entityId"] for v_link in v_links]
+            linked_versions = list(server.get_versions(project_name, entities))
+
+            rigs = [
+                version["id"] for version in linked_versions
+                if "rig" in version["attrib"]["families"]]
+
+            containers = unreal_pipeline.ls()
+
+            ar = unreal.AssetRegistryHelpers.get_asset_registry()
+
+            for container in containers:
+                if container["representation"] in rigs:
+                    namespace = container["namespace"]
+
+                    _filter = unreal.ARFilter(
+                        class_names=["Skeleton"],
+                        package_paths=[namespace],
+                        recursive_paths=False)
+                    skeletons = ar.get_assets(_filter)
+
+                    if skeletons:
+                        skeleton = skeletons[0].get_asset()
+                        break
+
+        if not skeleton:
+            raise ValueError("No skeleton found.")
+
         if skeleton.get_class() != unreal.Skeleton.static_class():
             raise ValueError("Selected asset is not a skeleton.")
 
@@ -248,7 +287,9 @@ class AnimationFBXLoader(plugin.Loader):
             self._load_from_json(
                 libpath, path, asset_dir, asset_name, hierarchy_dir)
         else:
-            self._load_standalone_animation(path, asset_dir, asset_name)
+            version_id = context["representation"]["versionId"]
+            self._load_standalone_animation(
+                path, asset_dir, asset_name, version_id)
 
         # Create Asset Container
         unreal_pipeline.create_container(
