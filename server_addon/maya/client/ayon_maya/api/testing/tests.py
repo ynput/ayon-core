@@ -112,7 +112,7 @@ def test_create():
             for key, value in data["creator_attributes"].items():
                 set_attribute(key, value, instance.data["instance_node"])
 
-    print("Create was successfull!")
+    print("Create was successful!")
 
 
 def test_publish():
@@ -133,7 +133,7 @@ def test_publish():
 
     assert success, lib.create_error_report(context)
 
-    print("Publish was successfull!")
+    print("Publish was successful!")
 
 
 def test_load():
@@ -194,4 +194,4 @@ def test_load():
 
     assert success, error_message
 
-    print("Load was successfull!")
+    print("Load was successful!")

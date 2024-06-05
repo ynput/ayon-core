@@ -132,6 +132,7 @@ class ValidateRenderSettings(plugin.MayaInstancePlugin,
 
         renderer = instance.data['renderer']
         layer = instance.data['renderlayer']
+        cameras = instance.data.get("cameras", [])
 
         # Prefix attribute can return None when a value was never set
         prefix = lib.get_attr_in_layer(cls.ImagePrefixes[renderer],
@@ -159,6 +160,13 @@ class ValidateRenderSettings(plugin.MayaInstancePlugin,
             cls.log.error("Wrong image prefix [ {} ] - "
                           "doesn't have: '<renderlayer>' or "
                           "'<layer>' token".format(prefix))
+
+        if len(cameras) > 1 and not re.search(cls.R_CAMERA_TOKEN, prefix):
+            invalid = True
+            cls.log.error("Wrong image prefix [ {} ] - "
+                          "doesn't have: '<Camera>' token".format(prefix))
+            cls.log.error(
+                "Note that to needs to have capital 'C' at the beginning")
 
         # renderer specific checks
         if renderer == "vray":
@@ -436,29 +444,3 @@ class ValidateRenderSettings(plugin.MayaInstancePlugin,
                         "redshiftOptions.imageFormat", asString=True)
                     cmds.setAttr(
                         "{}.fileFormat".format(aov), default_ext)
-
-
-class ValidateCameraToken(ValidateRenderSettings):
-    """Validates the camera token."""
-
-    label = "Camera Token"
-    actions = []
-
-    def process(self, instance):
-        renderer = instance.data["renderer"]
-        layer = instance.data["renderlayer"]
-        cameras = instance.data.get("cameras", [])
-        prefix = lib.get_attr_in_layer(
-            self.ImagePrefixes[renderer], layer=layer
-        ) or ""
-        msg = (
-            "Multiple renderable cameras found, but no camera token.\n"
-            "Wrong image prefix [ {} ] - doesn't have: '<Camera>' token.\n"
-            "Note that to needs to have capital 'C' at the "
-            "beginning.".format(prefix)
-        )
-
-        if len(cameras) > 1 and not re.search(self.R_CAMERA_TOKEN, prefix):
-            raise PublishValidationError(
-                title="Invalid Render Settings", message=msg
-            )

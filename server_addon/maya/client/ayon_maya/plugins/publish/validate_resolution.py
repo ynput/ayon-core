@@ -84,14 +84,11 @@ class ValidateResolution(plugin.MayaInstancePlugin,
 
     @classmethod
     def get_folder_resolution(cls, instance):
-        if instance.data.get("taskEntity"):
-            task_attributes = instance.data["taskEntity"]["attrib"]
-            width = task_attributes["resolutionWidth"]
-            height = task_attributes["resolutionHeight"]
-            pixel_aspect = task_attributes["pixelAspect"]
-            return int(width), int(height), float(pixel_aspect)
-        else:
-            return 1920, 1080, 1.0
+        task_attributes = instance.data["taskEntity"]["attrib"]
+        width = task_attributes["resolutionWidth"]
+        height = task_attributes["resolutionHeight"]
+        pixel_aspect = task_attributes["pixelAspect"]
+        return int(width), int(height), float(pixel_aspect)
 
     @classmethod
     def repair(cls, instance):

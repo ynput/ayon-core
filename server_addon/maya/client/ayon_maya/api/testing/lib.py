@@ -66,7 +66,7 @@ def _save_repository_workfile():
 
 
 def recursive_validate(valid_action_names):
-    """ Recursively validate until until it is either successfull or there are
+    """Recursively validate until it is either successful or there are
     no more approved actions to run in which case its failing.
     """
     context = pyblish.api.Context()
@@ -145,7 +145,7 @@ def run_tests():
     except Exception as e:
         traceback.print_exc()
         raise(e)
-    print("Testing was successfull!")
+    print("Testing was successful!")
 
 
 def run_tests_on_repository_workfile():

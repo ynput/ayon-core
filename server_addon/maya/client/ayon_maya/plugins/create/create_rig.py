@@ -1,6 +1,6 @@
 from maya import cmds
 
-from ayon_maya.api import plugin
+from ayon_maya.api import plugin, lib
 
 
 class CreateRig(plugin.MayaCreator):
@@ -10,6 +10,12 @@ class CreateRig(plugin.MayaCreator):
     label = "Rig"
     product_type = "rig"
     icon = "wheelchair"
+    set_suffixes = [
+        "_controls_SET",
+        "_out_SET",
+        "_skeletonAnim_SET",
+        "_skeletonMesh_SET"
+    ]
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -20,13 +26,23 @@ class CreateRig(plugin.MayaCreator):
         instance_node = instance.get("instance_node")
 
         self.log.info("Creating Rig instance set up ...")
-        # TODO：change name (_controls_SET -> _rigs_SET)
-        controls = cmds.sets(name=product_name + "_controls_SET", empty=True)
-        # TODO：change name (_out_SET -> _geo_SET)
-        pointcache = cmds.sets(name=product_name + "_out_SET", empty=True)
-        skeleton = cmds.sets(
-            name=product_name + "_skeletonAnim_SET", empty=True)
-        skeleton_mesh = cmds.sets(
-            name=product_name + "_skeletonMesh_SET", empty=True)
-        cmds.sets([controls, pointcache,
-                   skeleton, skeleton_mesh], forceElement=instance_node)
+        sets = []
+        for suffix in self.set_suffixes:
+            name = product_name + suffix
+            cmds.sets(name=name, empty=True)
+            sets.append(name)
+        cmds.sets(sets, forceElement=instance_node)
+
+        for node, id in lib.generate_ids(sets):
+            lib.set_id(node, id, overwrite=True)
+
+        return instance
+
+    def remove_instances(self, instances):
+        for instance in instances:
+            nodes = [instance.data.get("instance_node")]
+            for suffix in self.set_suffixes:
+                nodes.append(instance.data.get("instance_node") + suffix)
+
+            cmds.delete(cmds.ls(nodes))
+            self._remove_instance_from_context(instance)

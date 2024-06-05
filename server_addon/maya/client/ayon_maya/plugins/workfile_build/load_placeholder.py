@@ -102,11 +102,6 @@ class MayaPlaceholderLoadPlugin(MayaPlaceholderPlugin, PlaceholderLoadMixin):
             container_root = parent
         roots = [container_root]
 
-        # Some loaded containers do not produce any DAG nodes, for example
-        # rendersetup.
-        if not container_root:
-            return
-
         # Add the loaded roots to the holding sets if they exist
         holding_sets = cmds.listSets(object=placeholder.scene_identifier) or []
         for holding_set in holding_sets:

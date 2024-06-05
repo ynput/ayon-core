@@ -44,10 +44,7 @@ class ValidateRenderLayerAOVs(plugin.MayaInstancePlugin,
         invalid = []
 
         project_name = instance.context.data["projectName"]
-        folder_entity = instance.data.get("folderEntity")
-        if not folder_entity:
-            return invalid
-
+        folder_entity = instance.data["folderEntity"]
         render_passes = instance.data.get("renderPasses", [])
         for render_pass in render_passes:
             is_valid = self.validate_product_registered(

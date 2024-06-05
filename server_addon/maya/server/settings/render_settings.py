@@ -462,7 +462,7 @@ DEFAULT_RENDER_SETTINGS = {
     "reset_current_frame": False,
     "remove_aovs": False,
     "arnold_renderer": {
-        "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>",
+        "image_prefix": "<Scene>/<RenderLayer>/<RenderLayer>_<RenderPass>",
         "image_format": "exr",
         "multilayer_exr": True,
         "tiled": True,
