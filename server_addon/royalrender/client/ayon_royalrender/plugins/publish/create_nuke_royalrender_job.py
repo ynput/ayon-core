@@ -2,7 +2,7 @@
 """Submitting render job to RoyalRender."""
 import re
 
-from ayon_core.modules.royalrender import lib
+from ayon_royalrender import lib
 
 
 class CreateNukeRoyalRenderJob(lib.BaseCreateRoyalRenderJob):

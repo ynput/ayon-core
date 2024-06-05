@@ -4,7 +4,7 @@ import os
 
 from maya.OpenMaya import MGlobal  # noqa: F401
 
-from ayon_core.modules.royalrender import lib
+from ayon_royalrender import lib
 from ayon_core.pipeline.farm.tools import iter_expected_files
 
 
