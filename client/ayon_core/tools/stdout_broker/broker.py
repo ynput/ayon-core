@@ -8,7 +8,7 @@ from datetime import datetime
 import websocket
 
 from ayon_core.lib import Logger
-from ayon_core.modules.webserver.host_console_listener import MsgAction
+from ayon_core.modules.webserver import HostMsgAction
 
 log = Logger.get_logger(__name__)
 
@@ -65,7 +65,7 @@ class StdOutBroker:
 
         payload = {
             "host": self.host_id,
-            "action": MsgAction.INITIALIZED,
+            "action": HostMsgAction.INITIALIZED,
             "text": "Integration with {}".format(
                 str.capitalize(self.host_name))
         }
@@ -99,7 +99,7 @@ class StdOutBroker:
 
         payload = {
             "host": self.host_id,
-            "action": MsgAction.CONNECTING,
+            "action": HostMsgAction.CONNECTING,
             "text": "Integration with {}".format(
                 str.capitalize(self.host_name))
         }
@@ -113,7 +113,7 @@ class StdOutBroker:
 
         payload = {
             "host": self.host_id,
-            "action": MsgAction.CLOSE,
+            "action": HostMsgAction.CLOSE,
             "text": "Integration with {}".format(
                 str.capitalize(self.host_name))
         }
@@ -157,7 +157,7 @@ class StdOutBroker:
         if lines:
             payload = {
                 "host": self.host_id,
-                "action": MsgAction.ADD,
+                "action": HostMsgAction.ADD,
                 "text": "\n".join(lines)
             }
 
