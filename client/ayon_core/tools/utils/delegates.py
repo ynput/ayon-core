@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 import logging
 
-from qtpy import QtWidgets, QtGui
+from qtpy import QtWidgets, QtGui, QtCore
 
 log = logging.getLogger(__name__)
 
@@ -136,12 +136,34 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
             painter,
             option.widget
         )
-
         painter.save()
+        mode = QtGui.QIcon.Normal
+        if not (option.state & QtWidgets.QStyle.State_Enabled):
+            mode = QtGui.QIcon.Disabled
+        elif option.state & QtWidgets.QStyle.State_Selected:
+            mode = QtGui.QIcon.Selected
+        state = QtGui.QIcon.Off
+        if option.state & QtWidgets.QStyle.State_Open:
+            state = QtGui.QIcon.On
+        icon = self._get_status_icon(index)
+        if icon is not None and not icon.isNull():
+            option.features |= QtWidgets.QStyleOptionViewItem.HasDecoration
+            option.icon = icon
+            act_size = icon.actualSize(option.decorationSize, mode, state)
+            option.decorationSize = QtCore.QSize(
+                min(option.decorationSize.width(), act_size.width()),
+                min(option.decorationSize.height(), act_size.height())
+            )
 
+        icon_rect = style.subElementRect(
+            QtWidgets.QCommonStyle.SE_ItemViewItemDecoration,
+            option,
+            option.widget
+        )
         content_rect = style.subElementRect(
             QtWidgets.QCommonStyle.SE_ItemViewItemText,
-            option
+            option,
+            option.widget
         )
         content_margin = style.proxy().pixelMetric(
             QtWidgets.QCommonStyle.PM_FocusFrameHMargin,
@@ -151,11 +173,19 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
         padded_content_rect = content_rect.adjusted(
             content_margin, 0, - content_margin, 0
         )
-
+        option.icon.paint(
+            painter,
+            icon_rect,
+            option.decorationAlignment,
+            mode,
+            state
+        )
         fm = QtGui.QFontMetrics(option.font)
         text = self._get_status_name(index)
         if padded_content_rect.width() < fm.width(text):
             text = self._get_status_short_name(index)
+            if padded_content_rect.width() < fm.width(text):
+                text = ""
 
         fg_color = self._get_status_color(index)
         pen = painter.pen()
