@@ -348,10 +348,18 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             return set()
 
         if not self._loaded_products_cache.is_valid:
-            if isinstance(self._host, ILoadHost):
-                containers = self._host.get_containers()
-            else:
-                containers = self._host.ls()
+            try:
+                if isinstance(self._host, ILoadHost):
+                    containers = self._host.get_containers()
+                else:
+                    containers = self._host.ls()
+
+            except BaseException:
+                self.log.error(
+                    "Falied to collect loaded products.", exc_info=True
+                )
+                containers = []
+
             repre_ids = set()
             for container in containers:
                 repre_id = container.get("representation")
