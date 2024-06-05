@@ -278,6 +278,7 @@ class ProductsModel(QtGui.QStandardItemModel):
                 "name": status_item.icon,
                 "color": status_item.color,
             })
+
         if icon is None:
             icon = QtGui.QIcon()
 
@@ -357,7 +358,6 @@ class ProductsModel(QtGui.QStandardItemModel):
         )
         model_item.setData(version_item.author, VERSION_AUTHOR_ROLE)
         model_item.setData(version_item.status, VERSION_STATUS_NAME_ROLE)
-        model_item.setData(version_item.status_short, VERSION_STATUS_ICON_ROLE)
         model_item.setData(version_item.frame_range, VERSION_FRAME_RANGE_ROLE)
         model_item.setData(version_item.duration, VERSION_DURATION_ROLE)
         model_item.setData(version_item.handles, VERSION_HANDLES_ROLE)
