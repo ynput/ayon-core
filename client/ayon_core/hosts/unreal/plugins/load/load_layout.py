@@ -580,7 +580,7 @@ class LayoutLoader(UnrealBaseLoader):
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": str(self.__class__.__name__),
-            "representation": str(context["representation"]["_id"]),
+            "representation": str(context["representation"]["id"]),
             "parent": str(context["representation"]["versionId"]),
             "family": context["product"]["productType"],
             "loaded_assets": loaded_assets

@@ -112,8 +112,8 @@ class StaticMeshAlembicLoader(UnrealBaseLoader):
             "container_name": container_name,
             "asset_name": asset_name,
             "loader": self.__class__.__name__,
-            "representation": str(context["representation"]["_id"]),
-            "parent": str(context["representation"]["parent"]),
+            "representation": str(context["representation"]["id"]),
+            "parent": str(context["representation"]["versionId"]),
             "default_conversion": default_conversion,
             "product_type": product_type,
             # TODO these should be probably removed
