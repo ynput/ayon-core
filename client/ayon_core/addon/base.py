@@ -37,13 +37,7 @@ IGNORED_DEFAULT_FILENAMES = (
     "base.py",
     "interfaces.py",
     "click_wrap.py",
-    "example_addons",
-    "default_modules",
 )
-IGNORED_HOSTS_IN_AYON = {
-    "flame",
-    "harmony",
-}
 IGNORED_MODULES_IN_AYON = set()
 
 # When addon was moved from ayon-core codebase
