@@ -21,8 +21,8 @@ from ayon_core.pipeline import (
     get_current_project_name,
 )
 from ayon_core.tools.utils import host_tools
-import ayon_core.hosts.unreal
 from ayon_core.host import HostBase, ILoadHost, IPublishHost
+from ayon_unreal import UNREAL_ADDON_ROOT
 
 import unreal  # noqa
 
@@ -36,8 +36,7 @@ UNREAL_VERSION = semver.VersionInfo(
     *os.getenv("AYON_UNREAL_VERSION").split(".")
 )
 
-HOST_DIR = os.path.dirname(os.path.abspath(ayon_core.hosts.unreal.__file__))
-PLUGINS_DIR = os.path.join(HOST_DIR, "plugins")
+PLUGINS_DIR = os.path.join(UNREAL_ADDON_ROOT, "plugins")
 PUBLISH_PATH = os.path.join(PLUGINS_DIR, "publish")
 LOAD_PATH = os.path.join(PLUGINS_DIR, "load")
 CREATE_PATH = os.path.join(PLUGINS_DIR, "create")
