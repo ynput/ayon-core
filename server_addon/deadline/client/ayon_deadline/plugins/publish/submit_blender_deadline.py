@@ -15,8 +15,8 @@ from ayon_core.lib import (
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 from ayon_core.pipeline.farm.tools import iter_expected_files
 
-from openpype_modules.deadline import abstract_submit_deadline
-from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
+from ayon_deadline import abstract_submit_deadline
+from ayon_deadline.abstract_submit_deadline import DeadlineJobInfo
 
 
 @attr.s

@@ -10,8 +10,8 @@ from datetime import datetime
 import attr
 import pyblish.api
 
-from openpype_modules.deadline import abstract_submit_deadline
-from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
+from ayon_deadline import abstract_submit_deadline
+from ayon_deadline.abstract_submit_deadline import DeadlineJobInfo
 from ayon_core.lib import is_in_tests
 
 
