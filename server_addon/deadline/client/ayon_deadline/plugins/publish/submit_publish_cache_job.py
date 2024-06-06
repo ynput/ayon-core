@@ -8,11 +8,9 @@ from copy import deepcopy
 import ayon_api
 import pyblish.api
 
-from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
-
 from ayon_core.pipeline.farm.pyblish_functions import (
     create_skeleton_instance_cache,
     create_instances_for_cache,
@@ -20,6 +18,7 @@ from ayon_core.pipeline.farm.pyblish_functions import (
     prepare_cache_representations,
     create_metadata_path
 )
+from ayon_deadline.abstract_submit_deadline import requests_post
 
 
 class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,

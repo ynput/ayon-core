@@ -4,7 +4,7 @@ import getpass
 
 import pyblish.api
 
-from openpype_modules.deadline.abstract_submit_deadline import requests_post
+from ayon_deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
