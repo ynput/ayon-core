@@ -798,7 +798,7 @@ class PublishPuginsModel(BaseSettingsModel):
     )
     ValidateOutdatedContainers: PluginStateByHostModel = SettingsField(
         default_factory=PluginStateByHostModel,
-        title="Validate Containers"
+        title="Validate Outdated Containers"
     )
     ValidateIntent: ValidateIntentModel = SettingsField(
         default_factory=ValidateIntentModel,
