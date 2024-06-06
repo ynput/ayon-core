@@ -95,6 +95,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                 "arnold_rop", "mantra_rop",
                 "karma_rop", "vray_rop",
                 "redshift_rop"]
+    settings_category = "deadline"
 
     aov_filter = [
         {

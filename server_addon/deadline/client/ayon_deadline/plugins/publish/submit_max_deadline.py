@@ -39,6 +39,7 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
     hosts = ["max"]
     families = ["maxrender"]
     targets = ["local"]
+    settings_category = "deadline"
 
     use_published = True
     priority = 50

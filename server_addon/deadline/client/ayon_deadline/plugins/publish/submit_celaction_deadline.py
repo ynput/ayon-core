@@ -18,6 +18,7 @@ class CelactionSubmitDeadline(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder + 0.1
     hosts = ["celaction"]
     families = ["render.farm"]
+    settings_category = "deadline"
 
     deadline_department = ""
     deadline_priority = 50

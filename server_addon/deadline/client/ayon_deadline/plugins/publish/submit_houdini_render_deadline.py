@@ -76,6 +76,7 @@ class HoudiniSubmitDeadline(
                 "karma_rop",
                 "vray_rop"]
     targets = ["local"]
+    settings_category = "deadline"
     use_published = True
 
     # presets

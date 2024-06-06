@@ -54,6 +54,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
     label = "Submit cache jobs to Deadline"
     order = pyblish.api.IntegratorOrder + 0.2
     icon = "tractor"
+    settings_category = "deadline"
 
     targets = ["local"]
 
