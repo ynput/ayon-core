@@ -16,7 +16,7 @@ class DeadlineWebserviceError(Exception):
     """
 
 
-class DeadlineModule(AYONAddon, IPluginPaths):
+class DeadlineAddon(AYONAddon, IPluginPaths):
     name = "deadline"
     version = __version__
 
