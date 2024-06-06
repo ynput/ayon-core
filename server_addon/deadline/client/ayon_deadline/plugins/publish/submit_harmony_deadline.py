@@ -240,6 +240,7 @@ class HarmonySubmitDeadline(
     hosts = ["harmony"]
     families = ["render.farm"]
     targets = ["local"]
+    settings_category = "deadline"
 
     optional = True
     use_published = False

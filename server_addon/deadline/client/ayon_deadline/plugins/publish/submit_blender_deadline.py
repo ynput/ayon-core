@@ -31,6 +31,7 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
     label = "Submit Render to Deadline"
     hosts = ["blender"]
     families = ["render"]
+    settings_category = "deadline"
 
     use_published = True
     priority = 50

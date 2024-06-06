@@ -32,6 +32,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
     families = ["render", "prerender"]
     optional = True
     targets = ["local"]
+    settings_category = "deadline"
 
     # presets
     priority = 50

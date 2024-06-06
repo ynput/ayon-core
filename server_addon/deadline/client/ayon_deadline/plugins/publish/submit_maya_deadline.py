@@ -105,6 +105,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
     hosts = ["maya"]
     families = ["renderlayer"]
     targets = ["local"]
+    settings_category = "deadline"
 
     tile_assembler_plugin = "OpenPypeTileAssembler"
     priority = 50

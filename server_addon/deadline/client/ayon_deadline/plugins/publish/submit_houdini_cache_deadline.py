@@ -43,6 +43,7 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
     hosts = ["houdini"]
     families = ["publish.hou"]
     targets = ["local"]
+    settings_category = "deadline"
 
     priority = 50
     chunk_size = 999999

@@ -27,6 +27,7 @@ class FusionSubmitDeadline(
     hosts = ["fusion"]
     families = ["render"]
     targets = ["local"]
+    settings_category = "deadline"
 
     # presets
     plugin = None
