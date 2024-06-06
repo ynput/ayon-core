@@ -487,9 +487,6 @@ def _load_addons_in_core(
 
 
 def _load_addons():
-    # Support to use 'openpype' imports
-    sys.modules["openpype"] = sys.modules["ayon_core"]
-
     # Key under which will be modules imported in `sys.modules`
     modules_key = "openpype_modules"
 
