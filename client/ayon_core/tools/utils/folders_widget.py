@@ -438,6 +438,8 @@ class FoldersWidget(QtWidgets.QWidget):
         """
 
         self._folders_proxy_model.setFilterFixedString(name)
+        if name:
+            self._folders_view.expandAll()
 
     def refresh(self):
         """Refresh folders model.
