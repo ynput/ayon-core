@@ -13,8 +13,7 @@ Provides:
 import pyblish.api
 
 from ayon_api import get_server_api_connection
-from ayon_core.modules.deadline.deadline_module import DeadlineModule
-from ayon_core.modules.deadline import __version__
+from ayon_deadline import __version__, DeadlineModule
 
 
 class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):

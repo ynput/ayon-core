@@ -5,7 +5,7 @@ import requests
 import six
 
 from ayon_core.lib import Logger
-from ayon_core.modules import AYONAddon, IPluginPaths
+from ayon_core.addon import AYONAddon, IPluginPaths
 
 from .version import __version__
 
