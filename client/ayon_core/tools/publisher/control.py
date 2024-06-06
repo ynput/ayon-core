@@ -1898,16 +1898,16 @@ class PublisherController(BasePublisherController):
                 re.compile("|".join(allowed_creator_labels)))
         return allowed_creator_labels
 
-    def _is_label_allowed(self, label, allowed_label_regexes):
+    def _is_label_allowed(self, label, allowed_labels_regex):
         """Implement regex support for allowed labels.
 
         Args:
             label (str): Label of creator - shown in Publisher
-            allowed_label_regexes (str): compiled regular expression
+            allowed_labels_regex (re.Pattern): compiled regular expression
         """
-        if not allowed_label_regexes:
+        if not allowed_labels_regex:
             return True
-        return bool(allowed_label_regexes.match(label))
+        return bool(allowed_labels_regex.match(label))
 
     def _reset_instances(self):
         """Reset create instances."""
