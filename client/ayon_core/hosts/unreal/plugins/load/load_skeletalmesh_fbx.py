@@ -83,7 +83,6 @@ class SkeletalMeshFBXLoader(UnrealBaseLoader):
         folder_name = context["folder"]["name"]
         if options and options.get("asset_dir"):
             root = options["asset_dir"]
-        asset = context.get('asset').get('name')
         asset_name = f"{folder_name}_{name}" if folder_name else f"{name}"
         version = context["version"]["version"]
 
