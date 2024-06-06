@@ -4,7 +4,7 @@ from ayon_core.addon import AYONAddon, IHostAddon
 
 from .version import __version__
 
-UNREAL_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+UNREAL_ADDON_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 
 class UnrealAddon(AYONAddon, IHostAddon):
@@ -14,7 +14,7 @@ class UnrealAddon(AYONAddon, IHostAddon):
 
     def get_global_environments(self):
         return {
-            "AYON_UNREAL_ROOT": UNREAL_ROOT_DIR,
+            "AYON_UNREAL_ROOT": UNREAL_ADDON_ROOT,
         }
 
     def add_implementation_envs(self, env, app):
@@ -43,11 +43,11 @@ class UnrealAddon(AYONAddon, IHostAddon):
 
         ue_version = app.name.replace("-", ".")
         unreal_plugin_path = os.path.join(
-            UNREAL_ROOT_DIR, "integration", "UE_{}".format(ue_version), "Ayon"
+            UNREAL_ADDON_ROOT, "integration", "UE_{}".format(ue_version), "Ayon"
         )
         if not Path(unreal_plugin_path).exists():
             compatible_versions = get_compatible_integration(
-                ue_version, Path(UNREAL_ROOT_DIR) / "integration"
+                ue_version, Path(UNREAL_ADDON_ROOT) / "integration"
             )
             if compatible_versions:
                 unreal_plugin_path = compatible_versions[-1] / "Ayon"
@@ -70,7 +70,7 @@ class UnrealAddon(AYONAddon, IHostAddon):
         if app.host_name != self.host_name:
             return []
         return [
-            os.path.join(UNREAL_ROOT_DIR, "hooks")
+            os.path.join(UNREAL_ADDON_ROOT, "hooks")
         ]
 
     def get_workfile_extensions(self):
