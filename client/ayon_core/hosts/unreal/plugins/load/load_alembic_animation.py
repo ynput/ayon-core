@@ -24,14 +24,19 @@ class AnimationAlembicLoader(UnrealBaseLoader):
 
     @staticmethod
     def _import_abc_task(
-        filename, destination_path, destination_name, replace
+        filename, destination_path, destination_name, replace,
+        default_conversion
     ):
-        conversion = {
-            "flip_u": False,
-            "flip_v": False,
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [1.0, 1.0, -1.0],
-        }
+        conversion = (
+            None
+            if default_conversion
+            else {
+                "flip_u": False,
+                "flip_v": False,
+                "rotation": [0.0, 0.0, 0.0],
+                "scale": [1.0, 1.0, -1.0],
+            }
+        )
 
         params = {
             "filename": filename,
@@ -82,13 +87,15 @@ class AnimationAlembicLoader(UnrealBaseLoader):
                 "name": name,
                 "version": version})
 
+        default_conversion = options.get("default_conversion") or False
+
         if not send_request(
                 "does_directory_exist", params={"directory_path": asset_dir}):
             send_request(
                 "make_directory", params={"directory_path": asset_dir})
 
             self._import_abc_task(
-                self.fname, asset_dir, asset_name, False)
+                self.fname, asset_dir, asset_name, False, default_conversion)
 
         data = {
             "schema": "ayon:container-2.0",
@@ -100,6 +107,7 @@ class AnimationAlembicLoader(UnrealBaseLoader):
             "loader": self.__class__.__name__,
             "representation_id": str(context["representation"]["id"]),
             "version_id": str(context["representation"]["versionId"]),
+            "default_conversion": default_conversion,
             "product_type": product_type,
             # TODO these should be probably removed
             "asset": folder_path,
@@ -120,6 +128,9 @@ class AnimationAlembicLoader(UnrealBaseLoader):
         asset_dir = container["namespace"]
         asset_name = container["asset_name"]
 
-        self._import_abc_task(filename, asset_dir, asset_name, True)
+        default_conversion = container["default_conversion"]
+
+        self._import_abc_task(
+            filename, asset_dir, asset_name, True, default_conversion)
 
         super(UnrealBaseLoader, self).update(container, context)
