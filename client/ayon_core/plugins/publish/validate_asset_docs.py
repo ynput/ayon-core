@@ -26,7 +26,7 @@ class ValidateFolderEntities(pyblish.api.InstancePlugin):
 
         elif (
             instance.data.get("newHierarchyIntegration")
-            # Backwards compatible
+            # Backwards compatible (Deprecated since 24/06/06)
             or instance.data.get("newAssetPublishing")
         ):
             # skip if it is editorial

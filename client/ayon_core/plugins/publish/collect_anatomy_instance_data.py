@@ -393,7 +393,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         if (
             instance.data.get("newHierarchyIntegration")
-            # Backwards compatible
+            # Backwards compatible (Deprecated since 24/06/06)
             or instance.data.get("newAssetPublishing")
         ):
             hierarchy = instance.data["hierarchy"]
@@ -438,7 +438,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             # - if we're in editorial, make sure the task type is filled
             new_hierarchy = (
                 instance.data.get("newHierarchyIntegration")
-                # Backwards compatible
+                # Backwards compatible (Deprecated since 24/06/06)
                 or instance.data.get("newAssetPublishing")
             )
             if not new_hierarchy or task_data["type"]:
@@ -448,7 +448,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         # New hierarchy is not created, so we can only skip rest of the logic
         new_hierarchy = (
             instance.data.get("newHierarchyIntegration")
-            # Backwards compatible
+            # Backwards compatible (Deprecated since 24/06/06)
             or instance.data.get("newAssetPublishing")
         )
         if not new_hierarchy:

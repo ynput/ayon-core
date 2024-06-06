@@ -153,7 +153,7 @@ class CollectTimelineInstances(pyblish.api.ContextPlugin):
                     for task in self.add_tasks},
                 "representations": [],
                 "newHierarchyIntegration": True,
-                # Backwards compatible
+                # Backwards compatible (Deprecated since 24/06/06)
                 "newAssetPublishing": True,
             })
             self.log.debug("__ inst_data: {}".format(pformat(inst_data)))

@@ -141,7 +141,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 # add all additional tags
                 "tags": phiero.get_track_item_tags(track_item),
                 "newHierarchyIntegration": True,
-                # Backwards compatible
+                # Backwards compatible (Deprecated since 24/06/06)
                 "newAssetPublishing": True,
             })
 
