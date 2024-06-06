@@ -4,7 +4,6 @@ from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_deadline import DeadlineModule
 
 
 class ValidateDeadlinePools(OptionalPyblishPluginMixin,
@@ -38,8 +37,13 @@ class ValidateDeadlinePools(OptionalPyblishPluginMixin,
             return
 
         deadline_url = instance.data["deadline"]["url"]
-        pools = self.get_pools(deadline_url,
-                               instance.data["deadline"].get("auth"))
+        addons_manager = instance.context.data["ayonAddonsManager"]
+        deadline_addon = addons_manager["deadline"]
+        pools = self.get_pools(
+            deadline_addon,
+            deadline_url,
+            instance.data["deadline"].get("auth")
+        )
 
         invalid_pools = {}
         primary_pool = instance.data.get("primaryPool")
@@ -62,15 +66,15 @@ class ValidateDeadlinePools(OptionalPyblishPluginMixin,
                 formatting_data={"pools_str": ", ".join(pools)}
             )
 
-    def get_pools(self, deadline_url, auth):
+    def get_pools(self, deadline_addon, deadline_url, auth):
         if deadline_url not in self.pools_per_url:
             self.log.debug(
                 "Querying available pools for Deadline url: {}".format(
                     deadline_url)
             )
-            pools = DeadlineModule.get_deadline_pools(deadline_url,
-                                                      auth=auth,
-                                                      log=self.log)
+            pools = deadline_addon.get_deadline_pools(
+                deadline_url, auth=auth, log=self.log
+            )
             # some DL return "none" as a pool name
             if "none" not in pools:
                 pools.append("none")
