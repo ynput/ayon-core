@@ -8,7 +8,7 @@ Provides:
 import os.path
 
 import pyblish.api
-from ayon_core.modules.royalrender.rr_job import get_rr_platform
+from ayon_royalrender.rr_job import get_rr_platform
 
 
 class CollectRRPathFromInstance(pyblish.api.InstancePlugin):

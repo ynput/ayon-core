@@ -6,7 +6,7 @@ import json
 
 import pyblish.api
 
-from ayon_core.modules.royalrender.rr_job import (
+from ayon_royalrender.rr_job import (
     RRJob,
     RREnvList,
     get_rr_platform
