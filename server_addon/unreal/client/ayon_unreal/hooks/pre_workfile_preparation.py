@@ -15,12 +15,12 @@ from ayon_applications import (
     LaunchTypes,
 )
 from ayon_core.pipeline.workfile import get_workfile_template_key
-import ayon_core.hosts.unreal.lib as unreal_lib
-from ayon_core.hosts.unreal.ue_workers import (
+import ayon_unreal.lib as unreal_lib
+from ayon_unreal.ue_workers import (
     UEProjectGenerationWorker,
     UEPluginInstallWorker
 )
-from ayon_core.hosts.unreal.ui import SplashScreen
+from ayon_unreal.ui import SplashScreen
 
 
 class UnrealPrelaunchHook(PreLaunchHook):

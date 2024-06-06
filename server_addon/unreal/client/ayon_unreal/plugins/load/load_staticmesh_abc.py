@@ -6,8 +6,8 @@ from ayon_core.pipeline import (
     get_representation_path,
     AYON_CONTAINER_ID
 )
-from ayon_core.hosts.unreal.api import plugin
-from ayon_core.hosts.unreal.api.pipeline import (
+from ayon_unreal.api import plugin
+from ayon_unreal.api.pipeline import (
     AYON_ASSET_DIR,
     create_container,
     imprint,

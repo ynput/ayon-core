@@ -4,7 +4,7 @@ from pathlib import Path
 import unreal
 
 from ayon_core.pipeline import CreatorError
-from ayon_core.hosts.unreal.api.plugin import (
+from ayon_unreal.api.plugin import (
     UnrealAssetCreator,
 )
 

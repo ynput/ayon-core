@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ayon_core.hosts.unreal.api.plugin import (
+from ayon_unreal.api.plugin import (
     UnrealActorCreator,
 )
 

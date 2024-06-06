@@ -5,7 +5,7 @@ import pyblish.api
 
 from ayon_core.pipeline import get_current_project_name
 from ayon_core.pipeline import Anatomy
-from ayon_core.hosts.unreal.api import pipeline
+from ayon_unreal.api import pipeline
 
 
 class CollectRenderInstances(pyblish.api.InstancePlugin):

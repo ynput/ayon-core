@@ -27,8 +27,8 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.context_tools import get_current_folder_entity
 from ayon_core.settings import get_current_project_settings
-from ayon_core.hosts.unreal.api import plugin
-from ayon_core.hosts.unreal.api.pipeline import (
+from ayon_unreal.api import plugin
+from ayon_unreal.api.pipeline import (
     generate_sequence,
     set_sequence_hierarchy,
     create_container,

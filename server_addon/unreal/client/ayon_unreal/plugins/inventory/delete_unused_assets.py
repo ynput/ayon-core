@@ -1,7 +1,7 @@
 import unreal
 
-from ayon_core.hosts.unreal.api.tools_ui import qt_app_context
-from ayon_core.hosts.unreal.api.pipeline import delete_asset_if_unused
+from ayon_unreal.api.tools_ui import qt_app_context
+from ayon_unreal.api.pipeline import delete_asset_if_unused
 from ayon_core.pipeline import InventoryAction
 
 

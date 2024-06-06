@@ -323,7 +323,7 @@ def show_tools_popup():
 
     Popup will disappear on click or losing focus.
     """
-    from ayon_core.hosts.unreal.api import tools_ui
+    from ayon_unreal.api import tools_ui
 
     tools_ui.show_tools_popup()
 
@@ -333,7 +333,7 @@ def show_tools_dialog():
 
     Dialog will stay visible.
     """
-    from ayon_core.hosts.unreal.api import tools_ui
+    from ayon_unreal.api import tools_ui
 
     tools_ui.show_tools_dialog()
 
