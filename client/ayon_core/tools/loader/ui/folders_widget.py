@@ -321,6 +321,8 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         """
 
         self._folders_proxy_model.setFilterFixedString(name)
+        if name:
+            self._folders_view.expandAll()
 
     def set_merged_products_selection(self, items):
         """
