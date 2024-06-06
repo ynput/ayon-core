@@ -345,7 +345,7 @@ class UEPluginInstallWorker(UEWorker):
         uat_path: Path = ue_lib.get_path_to_uat(self.engine_path)
         src_plugin_dir = Path(self.env.get("AYON_UNREAL_PLUGIN", ""))
 
-        if not os.path.isdir(src_plugin_dir):
+        if not src_plugin_dir.is_dir():
             msg = "Path to the integration plugin is null!"
             self.failed.emit(msg, 1)
             raise RuntimeError(msg)
