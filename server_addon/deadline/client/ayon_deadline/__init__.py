@@ -1,4 +1,4 @@
-from .deadline_module import DeadlineAddon
+from .addon import DeadlineAddon
 from .version import __version__
 
 
