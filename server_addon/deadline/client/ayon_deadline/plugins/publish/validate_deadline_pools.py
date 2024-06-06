@@ -4,7 +4,7 @@ from ayon_core.pipeline import (
     PublishXmlValidationError,
     OptionalPyblishPluginMixin
 )
-from ayon_core.modules.deadline.deadline_module import DeadlineModule
+from ayon_deadline import DeadlineModule
 
 
 class ValidateDeadlinePools(OptionalPyblishPluginMixin,
