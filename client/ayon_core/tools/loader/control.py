@@ -356,7 +356,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
             except BaseException:
                 self.log.error(
-                    "Falied to collect loaded products.", exc_info=True
+                    "Failed to collect loaded products.", exc_info=True
                 )
                 containers = []
 
