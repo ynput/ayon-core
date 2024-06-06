@@ -3,7 +3,7 @@
 import tempfile
 
 import pyblish.api
-from ayon_core.modules.royalrender.api import (
+from ayon_royalrender.api import (
     RRJob,
     Api as rrApi,
     SubmitterParameter
