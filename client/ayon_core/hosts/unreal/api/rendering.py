@@ -1,7 +1,5 @@
 import os
 
-import unreal
-
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.tools.utils import show_message_dialog
