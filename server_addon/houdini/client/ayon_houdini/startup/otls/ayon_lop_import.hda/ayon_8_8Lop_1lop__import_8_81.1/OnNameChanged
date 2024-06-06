@@ -1,0 +1,8 @@
+from ayon_houdini.api.hda_utils import (
+    keep_background_images_linked
+)
+
+
+node = kwargs["node"]
+old_name = kwargs["old_name"]
+keep_background_images_linked(node, old_name)
