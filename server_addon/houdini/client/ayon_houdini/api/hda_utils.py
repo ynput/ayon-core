@@ -18,7 +18,10 @@ from ayon_core.pipeline.load import (
     get_representation_context,
     get_representation_path_from_context
 )
-from ayon_core.pipeline.context_tools import get_current_project_name
+from ayon_core.pipeline.context_tools import (
+    get_current_project_name,
+    get_current_folder_path
+)
 
 from ayon_houdini.api import lib
 
@@ -418,3 +421,74 @@ def keep_background_images_linked(node, old_name):
 
     if changes:
         set_background_images(parent, images)
+
+
+def get_products_menu_items(node):
+    """Return products menu items
+
+    It gets a list of available products of the specified product types
+      within the specified folder path with in the specified project.
+
+    Users can specify those in the HDA parameters.
+
+    Returns:
+        List[str]: Product options for Products menu.
+    """
+    project_name = node.evalParm("project_name")
+    folder_path = node.evalParm("folder_path")
+    representation_name = node.evalParm("representation_name")
+
+    folder_entity = ayon_api.get_folder_by_path(project_name,
+                                                folder_path,
+                                                fields={"id"})
+    if not folder_entity:
+        return []
+
+    products = ayon_api.get_products(
+        project_name,
+        folder_ids=[folder_entity["id"]],
+        product_types=[representation_name]
+    )
+
+    items = []
+    for product in products:
+        items.append(product["name"])
+        items.append(product["name"])
+
+    return(items)
+
+
+def select_folder_path(node):
+    """select folder path.
+
+    When triggered it opens a dialog shows the available
+      folder paths within a given project.
+
+    Users can specify that in the HDA parameters.
+
+    Note:
+        This function should be refactored.
+        It currently shows the available
+          folder paths within the current project only.
+    """
+    from ayon_core.tools.publisher.widgets.folders_dialog import FoldersDialog
+    from ayon_core.tools.utils.host_tools import get_tool_by_name
+
+    main_window = lib.get_main_window()
+    publisher_window = get_tool_by_name( tool_name="publisher", parent=main_window)
+
+    # TODO: A dedicated Dialog should be implement using `SimpleFoldersWidget`.
+    #       we should avoid using `FoldersDialog` because It's highly recommend to
+    #         never use inner widgets of any tool...
+    # Note: The following dialog doesn't support changing `the project_name`
+    #         But, having a semi-functional dialog is better than nothing.
+    dialog = FoldersDialog(publisher_window.controller, main_window)
+    dialog.exec_()
+
+    selected_folder_path = dialog.get_selected_folder_path()
+
+    if not selected_folder_path or \
+          selected_folder_path == get_current_folder_path():
+        selected_folder_path = '$AYON_FOLDER_PATH'
+
+    node.parm("folder_path").set(selected_folder_path)
