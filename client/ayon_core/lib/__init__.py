@@ -122,6 +122,7 @@ from .transcoding import (
     convert_ffprobe_fps_value,
     convert_ffprobe_fps_to_float,
     get_rescaled_command_arguments,
+    get_image_info_metadata,
 )
 
 from .plugin_tools import (
@@ -159,15 +160,11 @@ __all__ = [
     "get_local_site_id",
     "get_ayon_username",
     "get_openpype_username",
-
     "initialize_ayon_connection",
-
     "CacheItem",
     "NestedCacheItem",
-
     "emit_event",
     "register_event_callback",
-
     "get_ayon_launcher_args",
     "get_openpype_execute_args",
     "get_linux_launcher_args",
@@ -178,10 +175,8 @@ __all__ = [
     "run_openpype_process",
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
-
     "env_value_to_bool",
     "get_paths_from_environ",
-
     "ToolNotFoundError",
     "find_executable",
     "get_oiio_tools_path",
@@ -189,13 +184,10 @@ __all__ = [
     "get_ffmpeg_tool_path",
     "get_ffmpeg_tool_args",
     "is_oiio_supported",
-
     "AbstractAttrDef",
-
     "UIDef",
     "UISeparatorDef",
     "UILabelDef",
-
     "UnknownDef",
     "NumberDef",
     "TextDef",
@@ -203,14 +195,12 @@ __all__ = [
     "BoolDef",
     "FileDef",
     "FileDefItem",
-
     "import_filepath",
     "modules_from_path",
     "recursive_bases_from_class",
     "classes_from_module",
     "import_module_from_dirpath",
     "is_func_signature_supported",
-
     "get_transcode_temp_directory",
     "should_convert_for_ffmpeg",
     "convert_for_ffmpeg",
@@ -222,33 +212,26 @@ __all__ = [
     "convert_ffprobe_fps_value",
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
+    "get_image_info_metadata",
 
     "compile_list_of_regexes",
-
     "filter_profiles",
-
     "prepare_template_data",
     "source_hash",
-
     "format_file_size",
     "collect_frames",
     "create_hard_link",
     "version_up",
     "get_version_from_path",
     "get_last_version_from_path",
-
     "TemplateUnsolved",
     "StringTemplate",
     "FormatObject",
-
     "terminal",
-
     "get_datetime_data",
     "get_timestamp",
     "get_formatted_current_time",
-
     "Logger",
-
     "is_in_ayon_launcher_process",
     "is_running_from_build",
     "is_using_ayon_console",

@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from collections import defaultdict
 
@@ -6,6 +5,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_api import get_representations
 from ayon_core.pipeline import load, Anatomy
+from ayon_core.lib import get_image_info_metadata
 from ayon_core import resources, style
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.tools.utils import show_message_dialog
@@ -44,6 +44,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         # Not all hosts have OpenTimelineIO available.
         import opentimelineio as OTIO
         self.OTIO = OTIO
+        self.log = log
 
         super(ExportOTIOOptionsDialog, self).__init__(parent=parent)
 
@@ -247,12 +248,23 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         # Get path to representation with correct frame number
         repre_path = get_representation_path_with_anatomy(
             representation, anatomy)
+
+        timecode_start_frame = 0
+        if file_metadata := get_image_info_metadata(
+            repre_path, ["timecode"], self.log
+        ):
+            # use otio to convert timecode into frame number
+            timecode_start_frame = self.OTIO.opentime.from_timecode(
+                file_metadata["timecode"], framerate)
+
         repre_path = Path(repre_path)
 
         first_frame = representation["context"].get("frame")
         if first_frame is None:
             range = self.OTIO.opentime.TimeRange(
-                start_time=self.OTIO.opentime.RationalTime(0, framerate),
+                start_time=self.OTIO.opentime.RationalTime(
+                    timecode_start_frame, framerate
+                ),
                 duration=self.OTIO.opentime.RationalTime(frames, framerate),
             )
             # Use 'repre_path' as single file
@@ -282,9 +294,11 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             frame_padding = len(frame_str)
 
             range = self.OTIO.opentime.TimeRange(
-                start_time=self.OTIO.opentime.RationalTime(0, framerate),
+                start_time=self.OTIO.opentime.RationalTime(
+                    timecode_start_frame.to_frames(), float(framerate)
+                ),
                 duration=self.OTIO.opentime.RationalTime(
-                    len(repre_files), framerate)
+                    len(repre_files), framerate),
             )
 
             media_reference = self.OTIO.schema.ImageSequenceReference(
