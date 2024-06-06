@@ -1838,11 +1838,11 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
-        allowed_creator_labels = self._get_allowed_creator_labels()
+        allowed_creator_pattern = self._get_allowed_creators_pattern()
         for identifier, creator in self._create_context.creators.items():
             try:
                 if (not self._is_label_allowed(
-                        creator.label, allowed_creator_labels)):
+                        creator.label, allowed_creator_pattern)):
                     self.log.debug(f"{creator.label} not allowed for context")
                     continue
                 output[identifier] = CreatorItem.from_creator(creator)
@@ -1855,14 +1855,14 @@ class PublisherController(BasePublisherController):
 
         return output
 
-    def _get_allowed_creator_labels(self):
-        """Provide configured creator labels in this context
+    def _get_allowed_creators_pattern(self):
+        """Provide regex pattern for configured creator labels in this context
 
         If no profile matches current context, it shows all creators.
         Support usage of regular expressions for configured values.
         Returns:
-            (str): None or regex compiled patterns into single one
-                ('Render|Image.*')
+            (re.Pattern)[optional]: None or regex compiled patterns
+                into single one ('Render|Image.*')
         """
 
         task_type = self._create_context.get_current_task_type()
@@ -1886,7 +1886,7 @@ class PublisherController(BasePublisherController):
             logger=self.log
         )
 
-        allowed_creator_labels = None
+        allowed_creator_pattern = None
         if profile:
             allowed_creator_labels = {
                 label
@@ -1894,9 +1894,9 @@ class PublisherController(BasePublisherController):
                 if label
             }
             self.log.debug(f"Only allowed `{allowed_creator_labels}` creators")
-            allowed_creator_labels = (
+            allowed_creator_pattern = (
                 re.compile("|".join(allowed_creator_labels)))
-        return allowed_creator_labels
+        return allowed_creator_pattern
 
     def _is_label_allowed(self, label, allowed_labels_regex):
         """Implement regex support for allowed labels.
