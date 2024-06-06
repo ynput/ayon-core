@@ -1,6 +1,6 @@
 import unreal
 
-from ayon_core.hosts.unreal.api.pipeline import (
+from ayon_unreal.api.pipeline import (
     ls,
     replace_static_mesh_actors,
     replace_skeletal_mesh_actors,

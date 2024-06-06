@@ -11,7 +11,7 @@ from typing import List, Union
 
 from qtpy import QtCore
 
-import ayon_core.hosts.unreal.lib as ue_lib
+import ayon_unreal.lib as ue_lib
 from ayon_core.settings import get_project_settings
 
 

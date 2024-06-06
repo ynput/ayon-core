@@ -3,12 +3,12 @@ from pathlib import Path
 
 import unreal
 
-from ayon_core.hosts.unreal.api.pipeline import (
+from ayon_unreal.api.pipeline import (
     UNREAL_VERSION,
     create_folder,
     get_subsequences,
 )
-from ayon_core.hosts.unreal.api.plugin import (
+from ayon_unreal.api.plugin import (
     UnrealAssetCreator
 )
 from ayon_core.lib import (

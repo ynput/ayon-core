@@ -5,7 +5,7 @@ import os
 import unreal
 
 from ayon_core.pipeline import publish
-from ayon_core.hosts.unreal.api.pipeline import UNREAL_VERSION
+from ayon_unreal.api.pipeline import UNREAL_VERSION
 
 
 class ExtractCamera(publish.Extractor):

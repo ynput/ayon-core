@@ -7,7 +7,7 @@ from ayon_core import (
 )
 from ayon_core.tools.utils import host_tools
 from ayon_core.tools.utils.lib import qt_app_context
-from ayon_core.hosts.unreal.api import rendering
+from ayon_unreal.api import rendering
 
 
 class ToolsBtnsWidget(QtWidgets.QWidget):

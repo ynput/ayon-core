@@ -16,8 +16,8 @@ from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
 )
-from ayon_core.hosts.unreal.api import plugin
-from ayon_core.hosts.unreal.api.pipeline import (
+from ayon_unreal.api import plugin
+from ayon_unreal.api.pipeline import (
     generate_sequence,
     set_sequence_hierarchy,
     create_container,
