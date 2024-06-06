@@ -38,7 +38,6 @@ IGNORED_DEFAULT_FILENAMES = (
     "interfaces.py",
     "click_wrap.py",
 )
-IGNORED_MODULES_IN_AYON = set()
 
 # When addon was moved from ayon-core codebase
 # - this is used to log the missing addon
@@ -412,12 +411,6 @@ def _load_addons_in_core(
     hosts_dir = os.path.join(AYON_CORE_ROOT, "hosts")
     modules_dir = os.path.join(AYON_CORE_ROOT, "modules")
 
-    ignored_host_names = set(IGNORED_HOSTS_IN_AYON)
-    ignored_module_dir_filenames = (
-        set(IGNORED_DEFAULT_FILENAMES)
-        | IGNORED_MODULES_IN_AYON
-    )
-
     for dirpath in {hosts_dir, modules_dir}:
         if not os.path.exists(dirpath):
             log.warning((
@@ -426,10 +419,9 @@ def _load_addons_in_core(
             continue
 
         is_in_modules_dir = dirpath == modules_dir
+        ignored_filenames = set()
         if is_in_modules_dir:
-            ignored_filenames = ignored_module_dir_filenames
-        else:
-            ignored_filenames = ignored_host_names
+            ignored_filenames = set(IGNORED_DEFAULT_FILENAMES)
 
         for filename in os.listdir(dirpath):
             # Ignore filenames
