@@ -677,7 +677,7 @@ or updating already created. Publishing will create OTIO file.
             "variant": variant_name,
             "task": None,
             "newHierarchyIntegration": True,
-            # Backwards compatible
+            # Backwards compatible (Deprecated since 24/06/06)
             "newAssetPublishing": True,
             "trackStartFrame": track_start_frame,
             "timelineOffset": timeline_offset,

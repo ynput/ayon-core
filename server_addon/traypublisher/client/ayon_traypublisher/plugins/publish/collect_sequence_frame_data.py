@@ -30,7 +30,7 @@ class CollectSequenceFrameData(
         # editorial would fail since they might not be in database yet
         new_hierarchy = (
             instance.data.get("newHierarchyIntegration")
-            # Backwards compatible
+            # Backwards compatible (Deprecated since 24/06/06)
             or instance.data.get("newAssetPublishing")
         )
         if new_hierarchy:

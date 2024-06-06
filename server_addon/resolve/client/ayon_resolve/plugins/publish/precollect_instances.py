@@ -102,7 +102,7 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
                 "handleStart": handle_start,
                 "handleEnd": handle_end,
                 "newHierarchyIntegration": True,
-                # Backwards compatible
+                # Backwards compatible (Deprecated since 24/06/06)
                 "newAssetPublishing": True,
                 "families": ["clip"],
                 "productType": product_type,
