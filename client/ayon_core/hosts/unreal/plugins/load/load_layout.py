@@ -4,8 +4,11 @@ import json
 import collections
 from pathlib import Path
 
-from ayon_core.client import get_assets, get_asset_by_name
-import ayon_api
+from ayon_api import (
+    get_folder_by_name,
+    get_folders,
+    get_representations,
+)
 from ayon_core.pipeline import (
     discover_loader_plugins,
     loaders_from_representation,
@@ -75,7 +78,7 @@ class LayoutLoader(UnrealBaseLoader):
     @staticmethod
     def _get_frame_info(h_dir):
         project_name = get_current_project_name()
-        asset_data = get_asset_by_name(
+        asset_data = get_folder_by_name(
             project_name,
             h_dir.split('/')[-1],
             fields=["_id", "data.fps"]
@@ -84,7 +87,7 @@ class LayoutLoader(UnrealBaseLoader):
         start_frames = []
         end_frames = []
 
-        elements = list(get_assets(
+        elements = list(get_folders(
             project_name,
             parent_ids=[asset_data["_id"]],
             fields=["_id", "data.clipIn", "data.clipOut"]
@@ -93,7 +96,7 @@ class LayoutLoader(UnrealBaseLoader):
             start_frames.append(e.get('data').get('clipIn'))
             end_frames.append(e.get('data').get('clipOut'))
 
-            elements.extend(get_assets(
+            elements.extend(get_folders(
                 project_name,
                 parent_ids=[e["_id"]],
                 fields=["_id", "data.clipIn", "data.clipOut"]
@@ -189,8 +192,8 @@ class LayoutLoader(UnrealBaseLoader):
 
         anim_path = f"{asset_dir}/animations/{anim_file_name}"
 
-        asset_doc = get_current_project_asset(fields=["data.fps"])
-        fps = asset_doc.get("data", {}).get("fps")
+        folder_entity = get_current_folder_entity()
+        fps = folder_entity.get("attrib", {}).get("fps")
 
         options_properties = [
             ["automated_import_should_detect_type", "False"],
@@ -292,7 +295,7 @@ class LayoutLoader(UnrealBaseLoader):
             return output
 
         project_name = get_current_project_name()
-        repre_entities = ayon_api.get_representations(
+        repre_entities = get_representations(
             project_name,
             representation_names={"fbx", "abc"},
             version_ids=version_ids,
@@ -545,7 +548,7 @@ class LayoutLoader(UnrealBaseLoader):
                 hierarchy_dir_list, hierarchy)
 
             project_name = get_current_project_name()
-            data = get_asset_by_name(project_name, folder_name)["data"]
+            data = get_folder_by_name(project_name, folder_name)["data"]
 
             shot = send_request(
                 "generate_layout_sequence",

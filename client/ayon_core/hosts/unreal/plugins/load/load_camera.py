@@ -2,9 +2,11 @@
 """Load camera from FBX."""
 from pathlib import Path
 
-import ayon_api
-
-from ayon_core.client import get_assets, get_asset_by_name
+from ayon_api import (
+    get_folder_by_name,
+    get_folder_by_path,
+    get_folders,
+)
 from ayon_core.pipeline import (
     AYON_CONTAINER_ID,
     get_current_project_name,
@@ -59,7 +61,7 @@ class CameraLoader(UnrealBaseLoader):
     @staticmethod
     def _get_frame_info(h_dir):
         project_name = get_current_project_name()
-        asset_data = get_asset_by_name(
+        asset_data = get_folder_by_name(
             project_name,
             h_dir.split('/')[-1],
             fields=["_id", "data.fps"]
@@ -68,7 +70,7 @@ class CameraLoader(UnrealBaseLoader):
         start_frames = []
         end_frames = []
 
-        elements = list(get_assets(
+        elements = list(get_folders(
             project_name,
             parent_ids=[asset_data["_id"]],
             fields=["_id", "data.clipIn", "data.clipOut"]
@@ -77,7 +79,7 @@ class CameraLoader(UnrealBaseLoader):
             start_frames.append(e.get('data').get('clipIn'))
             end_frames.append(e.get('data').get('clipOut'))
 
-            elements.extend(get_assets(
+            elements.extend(get_folders(
                 project_name,
                 parent_ids=[e["_id"]],
                 fields=["_id", "data.clipIn", "data.clipOut"]
@@ -283,7 +285,7 @@ class CameraLoader(UnrealBaseLoader):
         folder_path = container.get("folder_path")
         if folder_path is None:
             folder_path = container.get("asset")
-        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        folder_entity = get_folder_by_path(project_name, folder_path)
         folder_attributes = folder_entity["attrib"]
 
         clip_in = folder_attributes["clipIn"]
