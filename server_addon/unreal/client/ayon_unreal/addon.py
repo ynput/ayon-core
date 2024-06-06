@@ -2,11 +2,14 @@ import os
 import re
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 UNREAL_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class UnrealAddon(AYONAddon, IHostAddon):
     name = "unreal"
+    version = __version__
     host_name = "unreal"
 
     def get_global_environments(self):
