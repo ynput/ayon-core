@@ -1,8 +1,8 @@
-from .deadline_module import DeadlineModule
+from .deadline_module import DeadlineAddon
 from .version import __version__
 
 
 __all__ = (
-    "DeadlineModule",
+    "DeadlineAddon",
     "__version__"
 )
