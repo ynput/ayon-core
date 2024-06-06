@@ -12,18 +12,12 @@ class RoyalRenderAddon(AYONAddon, IPluginPaths):
     name = "royalrender"
     version = __version__
 
-    # _rr_api = None
-    # @property
-    # def rr_api(self):
-    #     if not self._rr_api:
-    #         # import royal render modules
-    #         from .api import Api
-    #         self._rr_api = Api(self.settings)
-    #     return self._rr_api
-
     def initialize(self, studio_settings):
         # type: (dict) -> None
-        self.enabled = self.name in studio_settings
+        self.enabled = False
+        addon_settings = studio_settings.get(self.name)
+        if addon_settings:
+            self.enabled = addon_settings["enabled"]
 
     @staticmethod
     def get_plugin_paths():
