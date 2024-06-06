@@ -16,8 +16,8 @@ from ayon_core.lib import (
     is_in_tests,
 )
 from ayon_core.lib.execute import run_ayon_launcher_process
-from ayon_core.modules.royalrender.api import Api as rrApi
-from ayon_core.modules.royalrender.rr_job import (
+from ayon_royalrender.api import Api as rrApi
+from ayon_royalrender.rr_job import (
     CustomAttribute,
     RRJob,
     RREnvList,
