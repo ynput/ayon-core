@@ -7,13 +7,6 @@ from ayon_server.settings import (
 )
 
 
-class CollectInstanceVersionModel(BaseSettingsModel):
-    enabled: bool = SettingsField(
-        True,
-        title="Enabled"
-    )
-
-
 class CollectClipEffectsDefModel(BaseSettingsModel):
     _layout = "expanded"
     name: str = SettingsField("", title="Name")
@@ -27,9 +20,19 @@ class CollectClipEffectsDefModel(BaseSettingsModel):
         return normalize_name(value)
 
 
+class CollectClipEffectsTracksModel(BaseSettingsModel):
+    _layout = "expanded"
+    name: str = SettingsField("", title="Name")
+    track_names: list[str] = SettingsField("", title="Track Names")
+
+
 class CollectClipEffectsModel(BaseSettingsModel):
     effect_categories: list[CollectClipEffectsDefModel] = SettingsField(
         default_factory=list, title="Effect Categories"
+    )
+
+    effect_tracks: list[CollectClipEffectsTracksModel] = SettingsField(
+        default_factory=list, title="Effect Tracks"
     )
 
     @validator("effect_categories")
@@ -38,47 +41,16 @@ class CollectClipEffectsModel(BaseSettingsModel):
         return value
 
 
-class ExtractReviewCutUpVideoModel(BaseSettingsModel):
-    enabled: bool = SettingsField(
-        True,
-        title="Enabled"
-    )
-    tags_addition: list[str] = SettingsField(
-        default_factory=list,
-        title="Additional tags"
-    )
-
-
 class PublishPluginsModel(BaseSettingsModel):
-    CollectInstanceVersion: CollectInstanceVersionModel = SettingsField(
-        default_factory=CollectInstanceVersionModel,
-        title="Collect Instance Version"
-    )
     CollectClipEffects: CollectClipEffectsModel = SettingsField(
         default_factory=CollectClipEffectsModel,
         title="Collect Clip Effects"
     )
-    """# TODO: enhance settings with host api:
-    Rename class name and plugin name
-    to match title (it makes more sense)
-    """
-    ExtractReviewCutUpVideo: ExtractReviewCutUpVideoModel = SettingsField(
-        default_factory=ExtractReviewCutUpVideoModel,
-        title="Exctract Review Trim"
-    )
 
 
 DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
-    "CollectInstanceVersion": {
-        "enabled": False,
-    },
-    "ExtractReviewCutUpVideo": {
-        "enabled": True,
-        "tags_addition": [
-            "review"
-        ]
-    },
     "CollectClipEffectsModel": {
-        "effect_categories": []
+        "effect_categories": [],
+        "effect_tracks": []
     }
 }
