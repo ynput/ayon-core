@@ -321,7 +321,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 use_context_version = instance.data["followWorkfileVersion"]
 
             if use_context_version:
-                    version_number = context.data("version")
+                version_number = context.data("version")
 
             # Even if 'follow_workfile_version' is enabled, it may not be set
             #   because workfile version was not collected to 'context.data'
