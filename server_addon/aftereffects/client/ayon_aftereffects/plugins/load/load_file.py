@@ -2,7 +2,7 @@ import re
 
 from ayon_core.pipeline import get_representation_path
 from ayon_aftereffects import api
-from ayon_aftereffects.api.lib import get_unique_layer_name, maintained_selection
+from ayon_aftereffects.api.lib import get_unique_layer_name
 
 
 class FileLoader(api.AfterEffectsLoader):
@@ -35,6 +35,7 @@ class FileLoader(api.AfterEffectsLoader):
                 context["folder"]["name"], name
             )
         )
+
         import_options = {}
 
         path = self.filepath_from_context(context)
