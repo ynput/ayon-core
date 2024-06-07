@@ -1,5 +1,5 @@
 import re
-
+import os
 from ayon_core.pipeline import get_representation_path
 from ayon_aftereffects import api
 from ayon_aftereffects.api.lib import get_unique_layer_name
@@ -91,6 +91,9 @@ class FileLoader(api.AfterEffectsLoader):
         else:  # switching version - keep same name
             layer_name = container["namespace"]
         path = get_representation_path(repre_entity)
+
+        if len(repre_entity["files"]) > 1:
+           path = os.path.dirname(path)
         # with aftereffects.maintained_selection():  # TODO
         stub.replace_item(layer.id, path, stub.LOADED_ICON + layer_name)
         stub.imprint(
