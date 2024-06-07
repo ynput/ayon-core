@@ -86,7 +86,7 @@ class CollectDeadlinePools(pyblish.api.InstancePlugin,
         #       but the Deadline server URL can be dynamic and
         #       can be set per render instance. Since get_attribute_defs
         #       can't be dynamic unfortunately EnumDef isn't possible (yet?)
-        # pool_names = self.deadline_module.get_deadline_pools(deadline_url,
+        # pool_names = self.deadline_addon.get_deadline_pools(deadline_url,
         #                                                      self.log)
         # secondary_pool_names = ["-"] + pool_names
 
