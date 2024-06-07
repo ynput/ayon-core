@@ -10,12 +10,15 @@ from ayon_core.addon import (
     IHostAddon,
 )
 
+from .version import __version__
+
 TRAYPUBLISH_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TrayPublishAddon(AYONAddon, IHostAddon, ITrayAction):
     label = "Publisher"
     name = "traypublisher"
+    version = __version__
     host_name = "traypublisher"
 
     def initialize(self, settings):

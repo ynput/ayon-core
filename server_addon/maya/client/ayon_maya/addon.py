@@ -1,11 +1,14 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 MAYA_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class MayaAddon(AYONAddon, IHostAddon):
     name = "maya"
+    version = __version__
     host_name = "maya"
 
     def add_implementation_envs(self, env, _app):
