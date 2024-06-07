@@ -265,12 +265,18 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             representation, anatomy)
 
         media_start_frame = clip_start_frame = 0
+        media_framerate = framerate
         if file_metadata := get_image_info_metadata(
-            repre_path, ["timecode", "duration"], self.log
+            repre_path, ["timecode", "duration", "framerate"], self.log
         ):
-            framerate = float(f"{timeline_framerate:.3f}")
+            # get media framerate and convert to float with 3 decimal places
+            media_framerate = file_metadata["framerate"]
+            media_framerate = float(f"{media_framerate:.4f}")
+            framerate = float(f"{timeline_framerate:.4f}")
+
             media_start_frame = self.get_timecode_start_frame(
-                framerate, file_metadata)
+                media_framerate, file_metadata
+            )
             clip_start_frame = self.get_timecode_start_frame(
                 timeline_framerate, file_metadata
             )
@@ -284,9 +290,10 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         if first_frame is None:
             media_range = self.OTIO.opentime.TimeRange(
                 start_time=self.OTIO.opentime.RationalTime(
-                    media_start_frame, framerate
+                    media_start_frame, media_framerate
                 ),
-                duration=self.OTIO.opentime.RationalTime(frames, framerate),
+                duration=self.OTIO.opentime.RationalTime(
+                    frames, media_framerate),
             )
             clip_range = self.OTIO.opentime.TimeRange(
                 start_time=self.OTIO.opentime.RationalTime(
@@ -324,10 +331,11 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
             media_range = self.OTIO.opentime.TimeRange(
                 start_time=self.OTIO.opentime.RationalTime(
-                    media_start_frame, float(framerate)
+                    media_start_frame, media_framerate
                 ),
                 duration=self.OTIO.opentime.RationalTime(
-                    len(repre_files), framerate),
+                    len(repre_files), media_framerate
+                ),
             )
             clip_range = self.OTIO.opentime.TimeRange(
                 start_time=self.OTIO.opentime.RationalTime(
@@ -367,7 +375,6 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         return path.as_posix()
 
-
     def get_timecode_start_frame(self, framerate, file_metadata):
         # use otio to convert timecode into frame number
         timecode_start_frame = self.OTIO.opentime.from_timecode(
@@ -384,7 +391,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
                 timeline_framerate = framerate
 
         # reduce decimal places to 3 - otio does not like more
-        timeline_framerate = float(f"{timeline_framerate:.3f}")
+        timeline_framerate = float(f"{timeline_framerate:.4f}")
 
         # create clips from the representations
         clips = [
