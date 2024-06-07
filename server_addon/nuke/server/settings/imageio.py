@@ -207,8 +207,9 @@ class ImageIOSettings(BaseSettingsModel):
     baking: ViewProcessModel = SettingsField(
         default_factory=ViewProcessModel,
         title="Baking",
-        description="""Baking profile is used during
-        publishing baked colorspace data at knob viewerProcess"""
+        description="""[DEPRECATED - use 'Baking Target Colorspace' instead]
+        Baking profile is used during
+        publishing baked colorspace data at knob viewerProcess""",
     )
 
     workfile: WorkfileColorspaceSettings = SettingsField(
