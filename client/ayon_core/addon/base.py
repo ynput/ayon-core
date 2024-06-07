@@ -63,6 +63,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "royalrender": VersionInfo(0, 2, 0),
     "substancepainter": VersionInfo(0, 2, 0),
     "houdini": VersionInfo(0, 3, 0),
+    "unreal": VersionInfo(0, 2, 0),
 }
 
 
