@@ -5,7 +5,7 @@ import requests
 import six
 
 from ayon_core.lib import Logger
-from ayon_core.modules import AYONAddon, IPluginPaths
+from ayon_core.addon import AYONAddon, IPluginPaths
 
 from .version import __version__
 
@@ -16,28 +16,23 @@ class DeadlineWebserviceError(Exception):
     """
 
 
-class DeadlineModule(AYONAddon, IPluginPaths):
+class DeadlineAddon(AYONAddon, IPluginPaths):
     name = "deadline"
     version = __version__
 
     def initialize(self, studio_settings):
-        # This module is always enabled
-        deadline_servers_info = {}
-        enabled = self.name in studio_settings
-        if enabled:
-            deadline_settings = studio_settings[self.name]
-            deadline_servers_info = {
-                url_item["name"]: url_item
-                for url_item in deadline_settings["deadline_urls"]
-            }
+        deadline_settings = studio_settings[self.name]
+        deadline_servers_info = {
+            url_item["name"]: url_item
+            for url_item in deadline_settings["deadline_urls"]
+        }
 
-        if enabled and not deadline_servers_info:
-            enabled = False
+        if not deadline_servers_info:
+            self.enabled = False
             self.log.warning((
                 "Deadline Webservice URLs are not specified. Disabling addon."
             ))
 
-        self.enabled = enabled
         self.deadline_servers_info = deadline_servers_info
 
     def get_plugin_paths(self):
