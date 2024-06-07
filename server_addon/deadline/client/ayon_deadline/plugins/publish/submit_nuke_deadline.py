@@ -6,7 +6,6 @@ from datetime import datetime
 
 import pyblish.api
 
-from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline.publish import (
     AYONPyblishPluginMixin
 )
@@ -15,6 +14,7 @@ from ayon_core.lib import (
     BoolDef,
     NumberDef
 )
+from ayon_deadline.abstract_submit_deadline import requests_post
 
 
 class NukeSubmitDeadline(pyblish.api.InstancePlugin,
@@ -32,6 +32,7 @@ class NukeSubmitDeadline(pyblish.api.InstancePlugin,
     families = ["render", "prerender"]
     optional = True
     targets = ["local"]
+    settings_category = "deadline"
 
     # presets
     priority = 50
