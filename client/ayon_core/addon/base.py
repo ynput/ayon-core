@@ -37,14 +37,7 @@ IGNORED_DEFAULT_FILENAMES = (
     "base.py",
     "interfaces.py",
     "click_wrap.py",
-    "example_addons",
-    "default_modules",
 )
-IGNORED_HOSTS_IN_AYON = {
-    "flame",
-    "harmony",
-}
-IGNORED_MODULES_IN_AYON = set()
 
 # When addon was moved from ayon-core codebase
 # - this is used to log the missing addon
@@ -61,6 +54,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "hiero": VersionInfo(0, 2, 0),
     "max": VersionInfo(0, 2, 0),
     "photoshop": VersionInfo(0, 2, 0),
+    "timers_manager": VersionInfo(0, 2, 0),
     "traypublisher": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
     "maya": VersionInfo(0, 2, 0),
@@ -419,12 +413,6 @@ def _load_addons_in_core(
     hosts_dir = os.path.join(AYON_CORE_ROOT, "hosts")
     modules_dir = os.path.join(AYON_CORE_ROOT, "modules")
 
-    ignored_host_names = set(IGNORED_HOSTS_IN_AYON)
-    ignored_module_dir_filenames = (
-        set(IGNORED_DEFAULT_FILENAMES)
-        | IGNORED_MODULES_IN_AYON
-    )
-
     for dirpath in {hosts_dir, modules_dir}:
         if not os.path.exists(dirpath):
             log.warning((
@@ -433,10 +421,9 @@ def _load_addons_in_core(
             continue
 
         is_in_modules_dir = dirpath == modules_dir
+        ignored_filenames = set()
         if is_in_modules_dir:
-            ignored_filenames = ignored_module_dir_filenames
-        else:
-            ignored_filenames = ignored_host_names
+            ignored_filenames = set(IGNORED_DEFAULT_FILENAMES)
 
         for filename in os.listdir(dirpath):
             # Ignore filenames
@@ -502,9 +489,6 @@ def _load_addons_in_core(
 
 
 def _load_addons():
-    # Support to use 'openpype' imports
-    sys.modules["openpype"] = sys.modules["ayon_core"]
-
     # Key under which will be modules imported in `sys.modules`
     modules_key = "openpype_modules"
 
