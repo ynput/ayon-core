@@ -13,7 +13,6 @@ from ayon_core.pipeline.create import CreateContext
 from ayon_maya.api.workfile_template_builder import (
     MayaTemplateBuilder
 )
-from ayon_maya.api.lib import set_attribute
 
 from . import lib
 
