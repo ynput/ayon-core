@@ -1,6 +1,8 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 TVPAINT_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -14,6 +16,7 @@ def get_launch_script_path():
 
 class TVPaintAddon(AYONAddon, IHostAddon):
     name = "tvpaint"
+    version = __version__
     host_name = "tvpaint"
 
     def add_implementation_envs(self, env, _app):

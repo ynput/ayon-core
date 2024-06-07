@@ -4,6 +4,7 @@ from ayon_core.addon import AYONAddon, ITrayAction
 class PythonInterpreterAction(AYONAddon, ITrayAction):
     label = "Console"
     name = "python_interpreter"
+    version = "1.0.0"
     admin_action = True
 
     def initialize(self, settings):
