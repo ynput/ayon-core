@@ -12,7 +12,6 @@ six = "^1.15"
 qtawesome = "0.7.3"
 
 [ayon.runtimeDependencies]
-aiohttp_json_rpc = "*" # TVPaint server
 aiohttp-middlewares = "^2.0.0"
 Click = "^8"
 OpenTimelineIO = "0.16.0"
