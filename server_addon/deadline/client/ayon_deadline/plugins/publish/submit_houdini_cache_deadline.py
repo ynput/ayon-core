@@ -12,8 +12,8 @@ from ayon_core.lib import (
 from ayon_core.pipeline import (
     AYONPyblishPluginMixin
 )
-from openpype_modules.deadline import abstract_submit_deadline
-from openpype_modules.deadline.abstract_submit_deadline import DeadlineJobInfo
+from ayon_deadline import abstract_submit_deadline
+from ayon_deadline.abstract_submit_deadline import DeadlineJobInfo
 
 
 @attr.s
@@ -43,6 +43,7 @@ class HoudiniCacheSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline
     hosts = ["houdini"]
     families = ["publish.hou"]
     targets = ["local"]
+    settings_category = "deadline"
 
     priority = 50
     chunk_size = 999999
