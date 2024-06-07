@@ -9,7 +9,6 @@ import clique
 import ayon_api
 import pyblish.api
 
-from openpype_modules.deadline.abstract_submit_deadline import requests_post
 from ayon_core.pipeline import publish
 from ayon_core.lib import EnumDef, is_in_tests
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -21,6 +20,7 @@ from ayon_core.pipeline.farm.pyblish_functions import (
     prepare_representations,
     create_metadata_path
 )
+from ayon_deadline.abstract_submit_deadline import requests_post
 
 
 def get_resource_files(resources, frame_range=None):
@@ -95,6 +95,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                 "arnold_rop", "mantra_rop",
                 "karma_rop", "vray_rop",
                 "redshift_rop"]
+    settings_category = "deadline"
 
     aov_filter = [
         {
