@@ -49,11 +49,16 @@ IGNORED_MODULES_IN_AYON = set()
 # When addon was moved from ayon-core codebase
 # - this is used to log the missing addon
 MOVED_ADDON_MILESTONE_VERSIONS = {
+    "aftereffects": VersionInfo(0, 2, 0),
     "applications": VersionInfo(0, 2, 0),
+    "blender": VersionInfo(0, 2, 0),
     "celaction": VersionInfo(0, 2, 0),
     "clockify": VersionInfo(0, 2, 0),
+    "deadline": VersionInfo(0, 2, 0),
     "flame": VersionInfo(0, 2, 0),
     "fusion": VersionInfo(0, 2, 0),
+    "harmony": VersionInfo(0, 2, 0),
+    "hiero": VersionInfo(0, 2, 0),
     "max": VersionInfo(0, 2, 0),
     "photoshop": VersionInfo(0, 2, 0),
     "traypublisher": VersionInfo(0, 2, 0),
@@ -61,6 +66,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "maya": VersionInfo(0, 2, 0),
     "nuke": VersionInfo(0, 2, 0),
     "resolve": VersionInfo(0, 2, 0),
+    "royalrender": VersionInfo(0, 2, 0),
     "substancepainter": VersionInfo(0, 2, 0),
     "houdini": VersionInfo(0, 3, 0),
 }
