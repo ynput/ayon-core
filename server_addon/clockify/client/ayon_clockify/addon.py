@@ -4,11 +4,13 @@ import time
 
 from ayon_core.addon import AYONAddon, ITrayAddon, IPluginPaths
 
+from .version import __version__
 from .constants import CLOCKIFY_FTRACK_USER_PATH, CLOCKIFY_FTRACK_SERVER_PATH
 
 
 class ClockifyAddon(AYONAddon, ITrayAddon, IPluginPaths):
     name = "clockify"
+    version = __version__
 
     def initialize(self, studio_settings):
         enabled = self.name in studio_settings
