@@ -4,7 +4,7 @@ import requests
 import pyblish.api
 
 from ayon_core.lib import collect_frames
-from openpype_modules.deadline.abstract_submit_deadline import requests_get
+from ayon_deadline.abstract_submit_deadline import requests_get
 
 
 class ValidateExpectedFiles(pyblish.api.InstancePlugin):

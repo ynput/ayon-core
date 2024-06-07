@@ -2,7 +2,7 @@ import pyblish.api
 
 from ayon_core.pipeline import PublishXmlValidationError
 
-from openpype_modules.deadline.abstract_submit_deadline import requests_get
+from ayon_deadline.abstract_submit_deadline import requests_get
 
 
 class ValidateDeadlineConnection(pyblish.api.InstancePlugin):
