@@ -6,8 +6,10 @@ from ayon_server.settings import (
     ensure_unique_names,
 )
 
-from .common import KnobModel
-
+from .common import (
+    KnobModel,
+    ColorspaceConfigurationModel,
+)
 
 class NodesModel(BaseSettingsModel):
     _layout = "expanded"
@@ -198,12 +200,10 @@ class ImageIOSettings(BaseSettingsModel):
         Creation of new viewer node at knob viewerProcess"""
     )
 
-    """# TODO: enhance settings with host api:
-    to restructure settings for simplification.
-
-    now: nuke/imageio/baking/viewerProcess
-    future: nuke/imageio/baking
-    """
+    baking_target: ColorspaceConfigurationModel = SettingsField(
+        default_factory=ColorspaceConfigurationModel,
+        title="Baking Target Colorspace"
+    )
     baking: ViewProcessModel = SettingsField(
         default_factory=ViewProcessModel,
         title="Baking",
@@ -234,6 +234,11 @@ DEFAULT_IMAGEIO_SETTINGS = {
     "viewer": {
         "viewerProcess": "ACES/sRGB",
         "output_transform": "ACES/sRGB"
+    },
+    "baking_target": {
+        "enabled": False,
+        "type": "colorspace",
+        "colorspace": ""
     },
     "baking": {
         "viewerProcess": "ACES/Rec.709",
