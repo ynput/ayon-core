@@ -849,7 +849,10 @@ def get_image_info_metadata(
     Args:
         path_to_file (str): Path to image file.
         keys (list[str]): List of keys that should be returned. If None then
-            all keys are returned.
+            all keys are returned. Keys are expected all lowercase.
+            Additional keys are:
+            - "framerate" - will be created from "r_frame_rate" or
+                "framespersecond" and evaluated to float value.
         logger (logging.Logger): Logger used for logging.
     """
     if logger is None:
@@ -905,6 +908,25 @@ def get_image_info_metadata(
 
     if keys is None:
         return metadata_stream
+
+    # create framerate key from available ffmpeg:r_frame_rate
+    # or oiiotool:framespersecond and evaluate its string expression
+    # value into flaot value
+    if (
+        "r_frame_rate" in metadata_stream
+        or "framespersecond" in metadata_stream
+    ):
+        rate_info = metadata_stream.get("r_frame_rate")
+        if rate_info is None:
+            rate_info = metadata_stream.get("framespersecond")
+
+        try:
+            metadata_stream["framerate"] = eval(str(rate_info))
+        except Exception as e:
+            logger.warning(
+                "Failed to evaluate '{}' value to framerate. Error: {}".format(
+                    rate_info, e)
+            )
 
     output = {}
     for key in keys:

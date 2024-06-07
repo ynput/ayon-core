@@ -15,8 +15,8 @@ logger = logging.getLogger('test_transcoding')
             / "lib"
             / "transcoding"
             / "a01vfxd_sh010_plateP01_v002.1013.exr",
-            ["timecode"],
-            {"timecode": "01:00:06:03"},
+            ["timecode", "framerate"],
+            {"timecode": "01:00:06:03", "framerate": 23.976023976023978},
             "test_01",
         ),
         (
@@ -47,6 +47,6 @@ def test_get_image_info_metadata_happy_path(
     path_to_file = resources_path_factory.as_posix()
 
     returned_data = get_image_info_metadata(path_to_file, metadata, logger)
-    logger.debug(f"Returned data: {returned_data}")
+    logger.info(f"Returned data: {returned_data}")
 
     assert returned_data == expected
