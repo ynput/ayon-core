@@ -30,7 +30,6 @@ class CreateTextures(Creator):
     default_variant = "Main"
     settings_category = "substancepainter"
     channel_mapping = []
-    follow_workfile_version = False
 
     def apply_settings(self, project_settings):
         settings = project_settings["substancepainter"].get("create", [])  # noqa
