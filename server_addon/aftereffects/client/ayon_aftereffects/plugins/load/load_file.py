@@ -55,7 +55,6 @@ class FileLoader(api.AfterEffectsLoader):
 
         comp = stub.import_file(path, stub.LOADED_ICON + comp_name,
                                 import_options)
-        print("comp", comp)
         if not comp:
             self.log.warning(
                 "Representation `{}` is failing to load".format(path))
