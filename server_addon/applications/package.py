@@ -4,8 +4,6 @@ version = "0.2.3"
 
 client_dir = "ayon_applications"
 
-client_dir = "ayon_applications"
-
 ayon_server_version = ">=1.0.7"
 ayon_launcher_version = ">=1.0.2"
 ayon_required_addons = {
