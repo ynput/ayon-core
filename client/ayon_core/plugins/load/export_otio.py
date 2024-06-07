@@ -145,10 +145,25 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(widget)
+
+        layout.addWidget(QtWidgets.QLabel("URI paths:"))
+        self.uri_path_format = QtWidgets.QCheckBox()
+        self.uri_path_format.setToolTip(
+            'Use URI paths (file:///) instead of absolute paths. '
+            'This is useful when the OTIO file will be used on Foundry Hiero.'
+        )
+        layout.addWidget(self.uri_path_format)
+
         self.button_output_path = QtWidgets.QPushButton("Output Path:")
+        self.button_output_path.setToolTip(
+            "Click to select the output path for the OTIO file."
+        )
         layout.addWidget(self.button_output_path)
-        self.line_edit_output_path = QtWidgets.QLineEdit()
+        self.line_edit_output_path = QtWidgets.QLineEdit(
+            (Path.home() / f"{self._project_name}.otio").as_posix()
+        )
         layout.addWidget(self.line_edit_output_path)
+
         export_layout.addWidget(widget)
 
         self.button_export = QtWidgets.QPushButton("Export")
@@ -244,9 +259,6 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         anatomy = clip_data["anatomy"]
         frames = clip_data["frames"]
         framerate = clip_data["framerate"]
-        print("_" * 50)
-        print(f"{name}")
-        print(f"{framerate}")
 
         # Get path to representation with correct frame number
         repre_path = get_representation_path_with_anatomy(
@@ -256,7 +268,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         if file_metadata := get_image_info_metadata(
             repre_path, ["timecode", "duration"], self.log
         ):
-            framerate = round(framerate, 3)
+            framerate = float(f"{timeline_framerate:.3f}")
             media_start_frame = self.get_timecode_start_frame(
                 framerate, file_metadata)
             clip_start_frame = self.get_timecode_start_frame(
@@ -283,9 +295,11 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
                 duration=self.OTIO.opentime.RationalTime(
                     frames, timeline_framerate),
             )
+
             # Use 'repre_path' as single file
             media_reference = self.OTIO.schema.ExternalReference(
-                available_range=media_range, target_url=repre_path.as_posix()
+                available_range=media_range,
+                target_url=self.convert_to_uri_or_posix(repre_path),
             )
         else:
             # This is sequence
@@ -323,12 +337,13 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
                     len(repre_files), timeline_framerate
                 ),
             )
+
             media_reference = self.OTIO.schema.ImageSequenceReference(
                 available_range=media_range,
                 start_frame=int(first_frame),
                 frame_step=1,
                 rate=framerate,
-                target_url_base=f"{repre_dir.as_posix()}/",
+                target_url_base=f"{self.convert_to_uri_or_posix(repre_dir)}/",
                 name_prefix=file_prefix,
                 name_suffix=file_suffix,
                 frame_zero_padding=frame_padding,
@@ -338,10 +353,25 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             name=name, media_reference=media_reference, source_range=clip_range
         )
 
+    def convert_to_uri_or_posix(self, path: Path) -> str:
+        """Convert path to URI or Posix path.
+
+        Args:
+            path (Path): Path to convert.
+
+        Returns:
+            str: Path as URI or Posix path.
+        """
+        if self.uri_path_format.isChecked():
+            return path.as_uri()
+
+        return path.as_posix()
+
+
     def get_timecode_start_frame(self, framerate, file_metadata):
         # use otio to convert timecode into frame number
         timecode_start_frame = self.OTIO.opentime.from_timecode(
-                file_metadata["timecode"], framerate)
+            file_metadata["timecode"], framerate)
         return timecode_start_frame.to_frames()
 
     def export_otio(self, clips_data, output_path):
@@ -353,12 +383,16 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             if framerate > timeline_framerate:
                 timeline_framerate = framerate
 
-        timeline_framerate = round(timeline_framerate, 3)
+        # reduce decimal places to 3 - otio does not like more
+        timeline_framerate = float(f"{timeline_framerate:.3f}")
+
+        # create clips from the representations
         clips = [
             self.create_clip(name, clip_data, timeline_framerate)
             for name, clip_data in clips_data.items()
         ]
         timeline = self.OTIO.schema.timeline_from_clips(clips)
+
         # set the timeline framerate to the highest framerate
         timeline.global_start_time = self.OTIO.opentime.RationalTime(
             0, timeline_framerate)
