@@ -61,6 +61,7 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "hiero": VersionInfo(0, 2, 0),
     "max": VersionInfo(0, 2, 0),
     "photoshop": VersionInfo(0, 2, 0),
+    "timers_manager": VersionInfo(0, 2, 0),
     "traypublisher": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
     "maya": VersionInfo(0, 2, 0),
