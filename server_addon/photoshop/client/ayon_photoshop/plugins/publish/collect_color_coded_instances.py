@@ -33,6 +33,7 @@ class CollectColorCodedInstances(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder
     hosts = ["photoshop"]
     targets = ["automated"]
+    settings_category = "photoshop"
 
     # configurable by Settings
     color_code_mapping = []
