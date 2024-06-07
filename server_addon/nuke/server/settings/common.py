@@ -153,7 +153,10 @@ class DisplayAndViewProfileModel(BaseSettingsModel):
     view: str = SettingsField(
         "",
         title="View",
-        description="What view to use",
+        description=(
+            "What view to use. Anatomy context tokens can "
+            "be used to dynamically set the value."
+        ),
     )
 
 
@@ -175,7 +178,10 @@ class ColorspaceConfigurationModel(BaseSettingsModel):
     colorspace: str = SettingsField(
         "",
         title="Colorspace",
-        description="What colorspace name to use",
+        description=(
+            "What colorspace name to use. Anatomy context tokens can "
+            "be used to dynamically set the value."
+        ),
     )
 
     display_view: DisplayAndViewProfileModel = SettingsField(
