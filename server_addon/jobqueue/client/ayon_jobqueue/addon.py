@@ -36,10 +36,12 @@ workstations know where to send or receive jobs.
     passed (this is added mainly for developing purposes)
 """
 
-import sys
 import json
 import copy
 import platform
+from urllib.parse import urlsplit, urlunsplit
+
+import requests
 
 from ayon_core.addon import AYONAddon, click_wrap
 from ayon_core.settings import get_studio_settings
@@ -48,7 +50,7 @@ from .version import __version__
 
 
 class JobQueueAddon(AYONAddon):
-    name = "job_queue"
+    name = "jobqueue"
     version = __version__
 
     def initialize(self, studio_settings):
@@ -85,11 +87,6 @@ class JobQueueAddon(AYONAddon):
 
     @staticmethod
     def url_conversion(url, ws=False):
-        if sys.version_info[0] == 2:
-            from urlparse import urlsplit, urlunsplit
-        else:
-            from urllib.parse import urlsplit, urlunsplit
-
         if not url:
             return url
 
@@ -136,8 +133,6 @@ class JobQueueAddon(AYONAddon):
         return self._server_url
 
     def send_job(self, host_name, job_data):
-        import requests
-
         job_data = job_data or {}
         job_data["host_name"] = host_name
         api_path = "{}/api/jobs".format(self._server_url)
@@ -145,8 +140,6 @@ class JobQueueAddon(AYONAddon):
         return str(post_request.content.decode())
 
     def get_job_status(self, job_id):
-        import requests
-
         api_path = "{}/api/jobs/{}".format(self._server_url, job_id)
         return requests.get(api_path).json()
 
@@ -170,7 +163,6 @@ class JobQueueAddon(AYONAddon):
 
     @classmethod
     def start_worker(cls, app_name, server_url=None):
-        import requests
         from ayon_applications import ApplicationManager
 
         if not server_url:
@@ -199,7 +191,7 @@ class JobQueueAddon(AYONAddon):
 
     @classmethod
     def _start_tvpaint_worker(cls, app, server_url):
-        from ayon_core.hosts.tvpaint.worker import main
+        from ayon_tvpaint.worker import main
 
         executable = app.find_executable()
         if not executable:
