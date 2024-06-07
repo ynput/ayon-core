@@ -155,18 +155,6 @@ class IntermediateOutputModel(BaseSettingsModel):
         title="Custom tags", default_factory=list)
 
 
-class ExtractReviewDataMovModel(BaseSettingsModel):
-    """[deprecated] use Extract Review Data Baking
-    Streams instead.
-    """
-    enabled: bool = SettingsField(title="Enabled")
-    viewer_lut_raw: bool = SettingsField(title="Viewer lut raw")
-    outputs: list[IntermediateOutputModel] = SettingsField(
-        default_factory=list,
-        title="Baking streams"
-    )
-
-
 class ExtractReviewIntermediatesModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     viewer_lut_raw: bool = SettingsField(title="Viewer lut raw")
@@ -259,10 +247,6 @@ class PublishPluginsModel(BaseSettingsModel):
         title="Extract Review Data Lut",
         default_factory=ExtractReviewDataLutModel
     )
-    ExtractReviewDataMov: ExtractReviewDataMovModel = SettingsField(
-        title="Extract Review Data Mov",
-        default_factory=ExtractReviewDataMovModel
-    )
     ExtractReviewIntermediates: ExtractReviewIntermediatesModel = (
         SettingsField(
             title="Extract Review Intermediates",
@@ -331,62 +315,6 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
     },
     "ExtractReviewDataLut": {
         "enabled": False
-    },
-    "ExtractReviewDataMov": {
-        "enabled": False,
-        "viewer_lut_raw": False,
-        "outputs": [
-            {
-                "name": "baking",
-                "publish": False,
-                "filter": {
-                    "task_types": [],
-                    "product_types": [],
-                    "product_names": []
-                },
-                "read_raw": False,
-                "viewer_process_override": "",
-                "bake_viewer_process": True,
-                "bake_viewer_input_process": True,
-                "reformat_nodes_config": {
-                    "enabled": False,
-                    "reposition_nodes": [
-                        {
-                            "node_class": "Reformat",
-                            "knobs": [
-                                {
-                                    "type": "text",
-                                    "name": "type",
-                                    "text": "to format"
-                                },
-                                {
-                                    "type": "text",
-                                    "name": "format",
-                                    "text": "HD_1080"
-                                },
-                                {
-                                    "type": "text",
-                                    "name": "filter",
-                                    "text": "Lanczos6"
-                                },
-                                {
-                                    "type": "boolean",
-                                    "name": "black_outside",
-                                    "boolean": True
-                                },
-                                {
-                                    "type": "boolean",
-                                    "name": "pbb",
-                                    "boolean": False
-                                }
-                            ]
-                        }
-                    ]
-                },
-                "extension": "mov",
-                "add_custom_tags": []
-            }
-        ]
     },
     "ExtractReviewIntermediates": {
         "enabled": True,
