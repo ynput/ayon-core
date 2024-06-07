@@ -62,8 +62,6 @@ def test_create():
         if instance.data[product_type_key_name] == "workfile":
             continue
 
-        creator_plugin = context.creators[instance.data["creator_identifier"]]
-
         instance_data_keys = [
             "variant",
             product_type_key_name
@@ -83,16 +81,11 @@ def test_create():
         creator_attributes = {}
         for key, value in instance.data["creator_attributes"].items():
             creator_attributes[key] = value
-
+        creator_identifier = instance.data["creator_identifier"]
         create_data.append(
             {
-                "plugin": creator_plugin,
+                "creator_identifier": creator_identifier,
                 "hierarchy": hierarchy,
-                "args": [
-                    instance.data[product_key_name],
-                    instance_data,
-                    {"use_selection": False}
-                ],
                 "creator_attributes": creator_attributes
             }
         )
@@ -102,16 +95,21 @@ def test_create():
     context.remove_instances(instances_to_remove)
 
     for data in create_data:
-        instance = data["plugin"].create(*data["args"])
+        created_instance = context.create(
+            creator_identifier=creator_identifier,
+            variant="Main",
+            pre_create_data={"use_selection": True}
+        )
         for set, nodes in data["hierarchy"].items():
             if not nodes:
                 continue
 
             cmds.sets(nodes, forceElement=set)
-        if instance:
-            for key, value in data["creator_attributes"].items():
-                set_attribute(key, value, instance.data["instance_node"])
+        if created_instance:
+            for key, value in data.creator_attributes:
+               created_instance.creator_attributes[key] = value
 
+        context.save_changes()
     print("Create was successful!")
 
 

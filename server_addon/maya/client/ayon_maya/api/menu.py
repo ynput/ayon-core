@@ -17,7 +17,6 @@ from ayon_core.pipeline.workfile import BuildWorkfile
 from ayon_core.tools.utils import host_tools
 from ayon_maya.api import lib, lib_rendersettings
 from ayon_core.settings import get_project_settings
-from ayon_core.tools.workfile_template_build import open_template_ui
 from ayon_core.pipeline import get_current_project_name
 
 from .lib import get_main_window, IS_HEADLESS
