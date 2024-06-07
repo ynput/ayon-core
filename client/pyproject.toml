@@ -19,4 +19,3 @@ Click = "^8"
 OpenTimelineIO = "0.16.0"
 opencolorio = "2.2.1"
 Pillow = "9.5.0"
-pynput = "^1.7.2" # Timers manager - TODO remove
