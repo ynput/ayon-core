@@ -76,6 +76,7 @@ class CollectSequencesFromJob(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder
     targets = ["rr_control"]
     label = "Collect Rendered Frames"
+    settings_category = "royalrender"
     review = True
 
     def process(self, context):
