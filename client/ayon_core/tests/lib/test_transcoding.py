@@ -4,7 +4,6 @@ from pathlib import Path
 from ayon_core.lib.transcoding import get_image_info_metadata
 
 logger = logging.getLogger('test_transcoding')
-logger.setLevel(logging.DEBUG)
 
 
 @pytest.mark.parametrize(
