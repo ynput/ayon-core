@@ -5,7 +5,11 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum
 )
-from .common import KnobModel, validate_json_dict
+from .common import (
+    KnobModel,
+    ColorspaceConfigurationModel,
+    validate_json_dict,
+)
 
 
 def nuke_render_publish_types_enum():
@@ -130,19 +134,30 @@ class IntermediateOutputModel(BaseSettingsModel):
         title="Filter", default_factory=BakingStreamFilterModel)
     read_raw: bool = SettingsField(
         False,
-        title="Read raw switch"
-    )
-    viewer_process_override: str = SettingsField(
-        "",
-        title="Viewer process override"
+        title="Input read node RAW switch"
     )
     bake_viewer_process: bool = SettingsField(
         True,
-        title="Bake viewer process"
+        title="Bake viewer process",
+        section="Baking target",
+    )
+    colorspace_override: ColorspaceConfigurationModel = SettingsField(
+        title="Target baking colorspace override",
+        description="Override Baking target with colorspace or display/view",
+        default_factory=ColorspaceConfigurationModel
+    )
+    viewer_process_override: str = SettingsField(
+        "",
+        title="Viewer process override",
+        description=(
+            "[DEPRECATED - use 'Target baking colorspace override'] "
+            "Override viewer process node (LUT)"
+        ),
     )
     bake_viewer_input_process: bool = SettingsField(
         True,
-        title="Bake viewer input process node (LUT)"
+        title="Bake viewer input process node (LUT)",
+        section="Baking additional",
     )
     reformat_nodes_config: ReformatNodesConfigModel = SettingsField(
         default_factory=ReformatNodesConfigModel,
@@ -330,6 +345,15 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
                 },
                 "read_raw": False,
                 "viewer_process_override": "",
+                "colorspace_override": {
+                    "enabled": False,
+                    "type": "colorspace",
+                    "colorspace": "",
+                    "display_view": {
+                        "display": "",
+                        "view": ""
+                    }
+                },
                 "bake_viewer_process": True,
                 "bake_viewer_input_process": True,
                 "reformat_nodes_config": {
