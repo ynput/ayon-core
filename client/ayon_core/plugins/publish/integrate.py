@@ -380,29 +380,29 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         data = {
             "families": get_instance_families(instance)
         }
-        attribibutes = {}
+        attributes = {}
 
         product_group = instance.data.get("productGroup")
         if product_group:
-            attribibutes["productGroup"] = product_group
+            attributes["productGroup"] = product_group
         elif existing_product_entity:
             # Preserve previous product group if new version does not set it
             product_group = existing_product_entity.get("attrib", {}).get(
                 "productGroup"
             )
             if product_group is not None:
-                attribibutes["productGroup"] = product_group
+                attributes["productGroup"] = product_group
 
         product_id = None
         if existing_product_entity:
             product_id = existing_product_entity["id"]
-
+        
         product_entity = new_product_entity(
             product_name,
             product_type,
             folder_entity["id"],
             data=data,
-            attribs=attribibutes,
+            attribs=attributes,
             entity_id=product_id
         )
 
@@ -464,6 +464,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             version_number,
             product_entity["id"],
             task_id=task_id,
+            author=instance.context.data.get("user"),
+            status=instance.data.get("status"),
             data=version_data,
             attribs=version_attributes,
             entity_id=version_id,
