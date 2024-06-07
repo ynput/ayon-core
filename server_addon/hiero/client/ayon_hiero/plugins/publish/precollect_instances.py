@@ -237,7 +237,8 @@ class PrecollectInstances(pyblish.api.ContextPlugin):
             "productName": product_name,
             "productType": product_type,
             "family": product_type,
-            "families": [product_type]
+            "families": [product_type],
+            "integrate": False,
         })
 
         instance = context.create_instance(**data)

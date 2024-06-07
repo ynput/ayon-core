@@ -1,5 +1,5 @@
 import re
-
+import os
 from ayon_core.pipeline import get_representation_path
 from ayon_aftereffects import api
 from ayon_aftereffects.api.lib import get_unique_layer_name
@@ -24,6 +24,10 @@ class FileLoader(api.AfterEffectsLoader):
 
     def load(self, context, name=None, namespace=None, data=None):
         stub = self.get_stub()
+        selected_folders = stub.get_selected_items(
+            comps=False, folders=True, footages=False)
+        if selected_folders:
+            stub.select_items([folder.id for folder in selected_folders])
         layers = stub.get_items(comps=True, folders=True, footages=True)
         existing_layers = [layer.name for layer in layers]
         comp_name = get_unique_layer_name(
@@ -51,7 +55,6 @@ class FileLoader(api.AfterEffectsLoader):
 
         comp = stub.import_file(path, stub.LOADED_ICON + comp_name,
                                 import_options)
-
         if not comp:
             self.log.warning(
                 "Representation `{}` is failing to load".format(path))
@@ -60,7 +63,6 @@ class FileLoader(api.AfterEffectsLoader):
 
         self[:] = [comp]
         namespace = namespace or comp_name
-
         return api.containerise(
             name,
             namespace,
@@ -91,6 +93,9 @@ class FileLoader(api.AfterEffectsLoader):
         else:  # switching version - keep same name
             layer_name = container["namespace"]
         path = get_representation_path(repre_entity)
+
+        if len(repre_entity["files"]) > 1:
+           path = os.path.dirname(path)
         # with aftereffects.maintained_selection():  # TODO
         stub.replace_item(layer.id, path, stub.LOADED_ICON + layer_name)
         stub.imprint(
