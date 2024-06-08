@@ -726,10 +726,12 @@ class SceneInventoryView(QtWidgets.QTreeView):
             status_name = version_item.status
             status_short = None
             status_color = None
+            status_icon = None
             status_item = status_items_by_name.get(status_name)
             if status_item:
                 status_short = status_item.short
                 status_color = status_item.color
+                status_icon = status_item.icon
             version_options.append(
                 VersionOption(
                     version,
@@ -737,6 +739,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     status_name,
                     status_short,
                     status_color,
+                    status_icon,
                 )
             )
 

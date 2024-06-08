@@ -2,6 +2,7 @@ import uuid
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import StatusDelegate
 
 from .model import (
@@ -20,13 +21,15 @@ class VersionOption:
         label,
         status_name,
         status_short,
-        status_color
+        status_color,
+        status_icon,
     ):
         self.version = version
         self.label = label
         self.status_name = status_name
         self.status_short = status_short
         self.status_color = status_color
+        self.status_icon = status_icon
 
 
 class SelectVersionModel(QtGui.QStandardItemModel):
@@ -130,7 +133,17 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
         root_item.removeRows(0, root_item.rowCount())
 
         new_items = []
+        icons_by_name = {}
         for version_option in version_options:
+            icon = icons_by_name.get(version_option.status_icon)
+            if icon is None:
+                icon = get_qt_icon({
+                    "type": "material-symbols",
+                    "name": version_option.status_icon,
+                    "color": QtGui.QColor(version_option.status_color)
+                })
+                icons_by_name[version_option.status_icon] = icon
+
             item_id = uuid.uuid4().hex
             item = QtGui.QStandardItem(version_option.label)
             item.setColumnCount(root_item.columnCount())
@@ -143,6 +156,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             item.setData(
                 version_option.status_color, STATUS_COLOR_ROLE
             )
+            item.setData(icon, STATUS_ICON_ROLE)
             item.setData(item_id, ITEM_ID_ROLE)
 
             new_items.append(item)
