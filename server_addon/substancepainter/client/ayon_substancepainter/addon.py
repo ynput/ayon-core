@@ -1,11 +1,14 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 SUBSTANCE_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class SubstanceAddon(AYONAddon, IHostAddon):
     name = "substancepainter"
+    version = __version__
     host_name = "substancepainter"
 
     def add_implementation_envs(self, env, _app):
