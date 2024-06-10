@@ -441,11 +441,12 @@ def select_folder_path(node):
     from ayon_core.tools.utils.host_tools import get_tool_by_name
 
     main_window = lib.get_main_window()
-    publisher_window = get_tool_by_name( tool_name="publisher", parent=main_window)
+    publisher_window = get_tool_by_name(tool_name="publisher",
+                                        parent=main_window)
 
     # TODO: A dedicated Dialog should be implement using `SimpleFoldersWidget`.
-    #       we should avoid using `FoldersDialog` because It's highly recommend to
-    #         never use inner widgets of any tool...
+    #       we should avoid using `FoldersDialog` because It's highly
+    #       recommended to never use inner widgets of any tool.
     # Note: The following dialog doesn't support changing `the project_name`
     #         But, having a semi-functional dialog is better than nothing.
     dialog = FoldersDialog(publisher_window.controller, main_window)
