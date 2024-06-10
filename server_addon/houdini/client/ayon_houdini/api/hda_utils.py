@@ -429,7 +429,8 @@ def get_products_menu_items(node):
     It gets a list of available products of the specified product types
       within the specified folder path with in the specified project.
 
-    Users can specify those in the HDA parameters.
+    Args:
+        node (hou.OpNode): The HDA node.
 
     Returns:
         List[str]: Product options for Products menu.
@@ -459,17 +460,18 @@ def get_products_menu_items(node):
 
 
 def select_folder_path(node):
-    """select folder path.
+    """Show dialog to select folder path.
 
-    When triggered it opens a dialog shows the available
-      folder paths within a given project.
-
-    Users can specify that in the HDA parameters.
+    When triggered it opens a dialog that shows the available
+    folder paths within a given project.
 
     Note:
         This function should be refactored.
         It currently shows the available
           folder paths within the current project only.
+
+    Args:
+        node (hou.OpNode): The HDA node.
     """
     from ayon_core.tools.publisher.widgets.folders_dialog import FoldersDialog
     from ayon_core.tools.utils.host_tools import get_tool_by_name
