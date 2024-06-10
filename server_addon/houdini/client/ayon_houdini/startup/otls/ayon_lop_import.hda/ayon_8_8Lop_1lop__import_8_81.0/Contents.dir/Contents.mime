@@ -11,7 +11,7 @@ Lop
 Content-Disposition: attachment; filename="hdaroot.init"
 Content-Type: text/plain
 
-type = ayon::lop_import::1.1
+type = ayon::lop_import::1.0
 matchesdef = 0
 
 --HOUDINIMIMEBOUNDARY0xD3ADD339-0x00000F49-0x56B122C9-0x00000001HOUDINIMIMEBOUNDARY
