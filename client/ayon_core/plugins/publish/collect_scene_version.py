@@ -28,6 +28,7 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
         "photoshop",
         "resolve",
         "tvpaint",
+        "motionbuilder",
         "substancepainter"
     ]
 
