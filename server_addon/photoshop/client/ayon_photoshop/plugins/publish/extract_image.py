@@ -22,6 +22,7 @@ class ExtractImage(pyblish.api.ContextPlugin):
 
     families = ["image", "background"]
     formats = ["png", "jpg"]
+    settings_category = "photoshop"
 
     def process(self, context):
         stub = photoshop.stub()
