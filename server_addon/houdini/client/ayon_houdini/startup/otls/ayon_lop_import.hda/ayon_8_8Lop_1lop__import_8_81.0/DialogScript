@@ -1,7 +1,7 @@
-# Dialog script for ayon::lop_import::1.1 automatically generated
+# Dialog script for ayon::lop_import::1.0 automatically generated
 
 {
-    name	ayon::lop_import::1.1
+    name	ayon::lop_import::1.0
     script	load_asset::1.0
     label	"Load Asset"
 
