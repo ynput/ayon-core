@@ -18,7 +18,10 @@ from ayon_core.pipeline.load import (
     get_representation_context,
     get_representation_path_from_context
 )
-from ayon_core.pipeline.context_tools import get_current_project_name
+from ayon_core.pipeline.context_tools import (
+    get_current_project_name,
+    get_current_folder_path
+)
 
 from ayon_houdini.api import lib
 
@@ -418,3 +421,40 @@ def keep_background_images_linked(node, old_name):
 
     if changes:
         set_background_images(parent, images)
+
+
+def select_folder_path(node):
+    """Show dialog to select folder path.
+
+    When triggered it opens a dialog that shows the available
+    folder paths within a given project.
+
+    Note:
+        This function should be refactored.
+        It currently shows the available
+          folder paths within the current project only.
+
+    Args:
+        node (hou.OpNode): The HDA node.
+    """
+    from ayon_core.tools.publisher.widgets.folders_dialog import FoldersDialog
+    from ayon_core.tools.utils.host_tools import get_tool_by_name
+
+    main_window = lib.get_main_window()
+    publisher_window = get_tool_by_name( tool_name="publisher", parent=main_window)
+
+    # TODO: A dedicated Dialog should be implement using `SimpleFoldersWidget`.
+    #       we should avoid using `FoldersDialog` because It's highly recommend to
+    #         never use inner widgets of any tool...
+    # Note: The following dialog doesn't support changing `the project_name`
+    #         But, having a semi-functional dialog is better than nothing.
+    dialog = FoldersDialog(publisher_window.controller, main_window)
+    dialog.exec_()
+
+    selected_folder_path = dialog.get_selected_folder_path()
+
+    if not selected_folder_path or \
+          selected_folder_path == get_current_folder_path():
+        selected_folder_path = '$AYON_FOLDER_PATH'
+
+    node.parm("folder_path").set(selected_folder_path)

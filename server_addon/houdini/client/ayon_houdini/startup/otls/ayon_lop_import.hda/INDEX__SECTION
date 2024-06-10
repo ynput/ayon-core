@@ -3,12 +3,11 @@ Label:        AYON Load Asset
 Path:         oplib:/ayon::Lop/lop_import::1.0?ayon::Lop/lop_import::1.0
 Icon:         opdef:/ayon::Lop/lop_import::1.0?IconImage
 Table:        Lop
-License:      
-Extra:        
-User:         
+License:
+Extra:
+User:
 Inputs:       0 to 1
 Subnet:       true
 Python:       false
 Empty:        false
-Modified:     Thu Jun  6 01:31:52 2024
-
+Modified:     Thu Jun  10 16:44:00 2024
