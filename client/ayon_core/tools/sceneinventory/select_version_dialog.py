@@ -83,27 +83,47 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             return
 
         painter.save()
-        text_field_rect = self.style().subControlRect(
+
+        status_icon = self.itemData(idx, STATUS_ICON_ROLE)
+        content_field_rect = self.style().subControlRect(
             QtWidgets.QStyle.CC_ComboBox,
             option,
             QtWidgets.QStyle.SC_ComboBoxEditField
-        )
-        adj_rect = text_field_rect.adjusted(1, 0, -1, 0)
+        ).adjusted(1, 0, -1, 0)
+
+        metrics = QtGui.QFontMetrics(self.font())
+        version_text_width = metrics.width(option.currentText)
+        version_text_rect = QtCore.QRect(content_field_rect)
+        version_text_rect.setWidth(version_text_width)
+
         painter.drawText(
-            adj_rect,
+            version_text_rect,
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
             option.currentText
         )
-        metrics = QtGui.QFontMetrics(self.font())
-        text_width = metrics.width(option.currentText)
-        x_offset = text_width + 2
-        diff_width = adj_rect.width() - x_offset
-        if diff_width <= 0:
+
+        status_text_rect = QtCore.QRect(content_field_rect)
+        status_text_rect.setLeft(version_text_rect.right() + 2)
+        if status_icon is not None and not status_icon.isNull():
+            icon_rect = QtCore.QRect(status_text_rect)
+            icon_rect.adjust(0, 2, 0, -2)
+            icon_rect.setWidth(icon_rect.height())
+            status_icon.paint(
+                painter,
+                icon_rect,
+                QtCore.Qt.AlignCenter,
+                QtGui.QIcon.Normal,
+                QtGui.QIcon.On
+            )
+            status_text_rect.setLeft(icon_rect.right() + 2)
+
+        if status_text_rect.width() <= 0:
             return
 
-        status_rect = adj_rect.adjusted(x_offset + 2, 0, 0, 0)
-        if diff_width < metrics.width(status_name):
+        if status_text_rect.width() < metrics.width(status_name):
             status_name = self.itemData(idx, STATUS_SHORT_ROLE)
+            if status_text_rect.width() < metrics.width(status_name):
+                status_name = ""
 
         color = QtGui.QColor(self.itemData(idx, STATUS_COLOR_ROLE))
 
@@ -111,7 +131,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
         pen.setColor(color)
         painter.setPen(pen)
         painter.drawText(
-            status_rect,
+            status_text_rect,
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
             status_name
         )
