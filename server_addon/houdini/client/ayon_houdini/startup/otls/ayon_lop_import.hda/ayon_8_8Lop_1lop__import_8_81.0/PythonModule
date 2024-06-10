@@ -4,6 +4,5 @@ from ayon_houdini.api.hda_utils import (
     on_representation_id_changed,
     on_representation_parms_changed,
     setup_flag_changed_callback,
-    get_available_versions,
-    get_products_menu_items
+    get_available_versions
 )
