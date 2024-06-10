@@ -448,7 +448,6 @@ def select_folder_path(node):
     class PickDialog(QtWidgets.QDialog):
         def __init__(self, parent=None):
             super(PickDialog, self).__init__(parent)
-            # TODO: Add pick project field
             self.setWindowTitle("Select folder..")
 
             filter_widget = QtWidgets.QLineEdit()
