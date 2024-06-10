@@ -463,7 +463,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             version_number,
             product_entity["id"],
             task_id=task_id,
-            author=instance.context.data.get("user"),
             status=instance.data.get("status"),
             data=version_data,
             attribs=version_attributes,
