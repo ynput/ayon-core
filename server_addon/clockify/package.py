@@ -1,6 +1,6 @@
 name = "clockify"
 title = "Clockify"
-version = "0.2.0"
+version = "0.2.1"
 client_dir = "ayon_clockify"
 
 ayon_required_addons = {

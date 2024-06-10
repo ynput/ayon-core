@@ -3,6 +3,7 @@ import json
 
 from ayon_core.addon import AYONAddon, IPluginPaths, click_wrap
 
+from .version import __version__
 from .constants import APPLICATIONS_ADDON_ROOT
 from .defs import LaunchTypes
 from .manager import ApplicationManager
@@ -10,6 +11,7 @@ from .manager import ApplicationManager
 
 class ApplicationsAddon(AYONAddon, IPluginPaths):
     name = "applications"
+    version = __version__
 
     def initialize(self, settings):
         # TODO remove when addon is removed from ayon-core
