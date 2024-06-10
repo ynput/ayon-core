@@ -50,10 +50,6 @@
             label   "Product"
             type    string
             default { "usdAsset" }
-            menureplace {
-                [ "hou.phm().get_products_menu_items(kwargs['node'])" ]
-                language python
-            }
             parmtag { "script_callback" "hou.phm().on_representation_parms_changed(kwargs['node'])" }
             parmtag { "script_callback_language" "python" }
         }

@@ -423,42 +423,6 @@ def keep_background_images_linked(node, old_name):
         set_background_images(parent, images)
 
 
-def get_products_menu_items(node):
-    """Return products menu items
-
-    It gets a list of available products of the specified product types
-      within the specified folder path with in the specified project.
-
-    Args:
-        node (hou.OpNode): The HDA node.
-
-    Returns:
-        List[str]: Product options for Products menu.
-    """
-    project_name = node.evalParm("project_name")
-    folder_path = node.evalParm("folder_path")
-    representation_name = node.evalParm("representation_name")
-
-    folder_entity = ayon_api.get_folder_by_path(project_name,
-                                                folder_path,
-                                                fields={"id"})
-    if not folder_entity:
-        return []
-
-    products = ayon_api.get_products(
-        project_name,
-        folder_ids=[folder_entity["id"]],
-        product_types=[representation_name]
-    )
-
-    items = []
-    for product in products:
-        items.append(product["name"])
-        items.append(product["name"])
-
-    return(items)
-
-
 def select_folder_path(node):
     """Show dialog to select folder path.
 
