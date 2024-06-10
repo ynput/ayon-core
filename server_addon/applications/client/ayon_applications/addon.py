@@ -162,6 +162,47 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
             server_url, "addons", self.name, self.version, "icons", icon_name
         ])
 
+    def get_applications_action_classes(self):
+        """Get application action classes for launcher tool.
+
+        This method should be used only by launcher tool. Please do not use it
+        in other places as its implementation is not optimal, and might
+        change or be removed.
+
+        Returns:
+            list[ApplicationAction]: List of application action classes.
+
+        """
+        from .action import ApplicationAction
+
+        actions = []
+
+        manager = self.get_applications_manager()
+        for full_name, application in manager.applications.items():
+            if not application.enabled:
+                continue
+
+            icon = self.get_app_icon_path(application.icon)
+
+            action = type(
+                "app_{}".format(full_name),
+                (ApplicationAction,),
+                {
+                    "identifier": "application.{}".format(full_name),
+                    "application": application,
+                    "name": application.name,
+                    "label": application.group.label,
+                    "label_variant": application.label,
+                    "group": None,
+                    "icon": icon,
+                    "color": getattr(application, "color", None),
+                    "order": getattr(application, "order", None) or 0,
+                    "data": {}
+                }
+            )
+            actions.append(action)
+        return actions
+
     def launch_application(
         self, app_name, project_name, folder_path, task_name
     ):
