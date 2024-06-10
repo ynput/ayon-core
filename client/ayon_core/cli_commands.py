@@ -36,7 +36,7 @@ class Commands:
                 log.warning(
                     "Failed to add cli command for module \"{}\"".format(
                         addon.name
-                    )
+                    ), exc_info=True
                 )
         return click_func
 
