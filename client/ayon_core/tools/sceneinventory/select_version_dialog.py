@@ -140,7 +140,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
                 icon = get_qt_icon({
                     "type": "material-symbols",
                     "name": version_option.status_icon,
-                    "color": QtGui.QColor(version_option.status_color)
+                    "color": version_option.status_color
                 })
                 icons_by_name[version_option.status_icon] = icon
 
