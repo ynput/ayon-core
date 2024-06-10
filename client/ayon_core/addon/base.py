@@ -438,8 +438,8 @@ def _load_addons_in_core(
             if not os.path.exists(init_path):
                 log.debug((
                     "Addon directory does not contain __init__.py"
-                    " file {}"
-                ).format(fullpath))
+                    f" file {fullpath}"
+                ))
                 continue
 
         elif ext not in (".py", ):
@@ -449,9 +449,9 @@ def _load_addons_in_core(
         # - check manifest and content of manifest
         try:
             # Don't import dynamically current directory modules
-            new_import_str = "{}.{}".format(modules_key, basename)
+            new_import_str = f"{modules_key}.{basename}"
 
-            import_str = "ayon_core.modules.{}".format(basename)
+            import_str = f"ayon_core.modules.{basename}"
             default_module = __import__(import_str, fromlist=("", ))
             sys.modules[new_import_str] = default_module
             setattr(openpype_modules, basename, default_module)
