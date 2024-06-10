@@ -442,7 +442,7 @@ def _load_addons_in_core(
                 ))
                 continue
 
-        elif ext not in (".py", ):
+        elif ext != ".py":
             continue
 
         # TODO add more logic how to define if folder is addon or not
