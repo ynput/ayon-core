@@ -8,6 +8,8 @@ attribute or using default server if that attribute doesn't exists.
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
 
+from ayon_deadline.lib import FARM_FAMILIES
+
 
 class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
     """Collect Deadline Webservice URL from instance."""
@@ -17,13 +19,7 @@ class CollectDeadlineServerFromInstance(pyblish.api.InstancePlugin):
     label = "Deadline Webservice from the Instance"
     targets = ["local"]
 
-    families = ["render", "render.farm", "render.frames_farm",
-                "prerender", "prerender.farm", "prerender.frames_farm",
-                "renderlayer", "imagesequence", "image",
-                "vrayscene", "maxrender",
-                "arnold_rop", "mantra_rop",
-                "karma_rop", "vray_rop", "redshift_rop",
-                "renderFarm", "usrender", "publish.hou"]
+    families = FARM_FAMILIES
 
     def process(self, instance):
         if not instance.data.get("farm"):
