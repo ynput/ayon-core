@@ -132,6 +132,18 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
             task_name=task_name,
         )
 
+    def webserver_initialization(self, manager):
+        """Initialize webserver.
+
+        Args:
+            manager (WebServerManager): Webserver manager.
+
+        """
+        static_prefix = f"/addons/{self.name}/{self.version}/icons"
+        manager.add_static(
+            static_prefix, os.path.join(APPLICATIONS_ADDON_ROOT, "icons")
+        )
+
     # --- CLI ---
     def cli(self, addon_click_group):
         main_group = click_wrap.group(
