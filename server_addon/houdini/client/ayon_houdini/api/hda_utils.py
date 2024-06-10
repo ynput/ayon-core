@@ -22,9 +22,12 @@ from ayon_core.pipeline.context_tools import (
     get_current_project_name,
     get_current_folder_path
 )
+from ayon_core.tools.utils import SimpleFoldersWidget
+from ayon_core.style import load_stylesheet
 
 from ayon_houdini.api import lib
 
+from qtpy import QtWidgets
 import hou
 
 
@@ -437,19 +440,47 @@ def select_folder_path(node):
     Args:
         node (hou.OpNode): The HDA node.
     """
-    from ayon_core.tools.publisher.widgets.folders_dialog import FoldersDialog
-    from ayon_core.tools.utils.host_tools import get_tool_by_name
-
     main_window = lib.get_main_window()
-    publisher_window = get_tool_by_name(tool_name="publisher",
-                                        parent=main_window)
 
-    # TODO: A dedicated Dialog should be implement using `SimpleFoldersWidget`.
-    #       we should avoid using `FoldersDialog` because It's highly
-    #       recommended to never use inner widgets of any tool.
+    project_name = node.evalParm("project_name")
+    folder_path = node.evalParm("folder_path")
+
+    class PickDialog(QtWidgets.QDialog):
+        def __init__(self, parent=None):
+            super(PickDialog, self).__init__(parent)
+            # TODO: Add pick project field
+            self.setWindowTitle("Select folder..")
+
+            filter_widget = QtWidgets.QLineEdit()
+            filter_widget.setPlaceholderText("Filter folders..")
+            folder_widget = SimpleFoldersWidget(parent=self)
+            accept_button = QtWidgets.QPushButton("Accept")
+
+            layout = QtWidgets.QVBoxLayout(self)
+            layout.addWidget(filter_widget)
+            layout.addWidget(folder_widget)
+            layout.addWidget(accept_button)
+
+            filter_widget.textChanged.connect(folder_widget.set_name_filter)
+
+            folder_widget.double_clicked.connect(self.on_confirm)
+            accept_button.clicked.connect(self.on_confirm)
+
+            self.folder_widget = folder_widget
+
+        def get_selected_folder_path(self):
+            return self.folder_widget.get_selected_folder_path()
+
+        def on_confirm(self):
+            self.close()
+
     # Note: The following dialog doesn't support changing `the project_name`
     #         But, having a semi-functional dialog is better than nothing.
-    dialog = FoldersDialog(publisher_window.controller, main_window)
+    dialog = PickDialog(parent=main_window)
+    dialog.folder_widget.set_project_name(project_name)
+    if folder_path:
+        dialog.folder_widget.set_selected_folder_path(folder_path)
+    dialog.setStyleSheet(load_stylesheet())
     dialog.exec_()
 
     selected_folder_path = dialog.get_selected_folder_path()
