@@ -396,7 +396,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         product_id = None
         if existing_product_entity:
             product_id = existing_product_entity["id"]
-        
         product_entity = new_product_entity(
             product_name,
             product_type,
