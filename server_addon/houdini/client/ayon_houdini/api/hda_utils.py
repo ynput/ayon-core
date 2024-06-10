@@ -479,6 +479,9 @@ def select_folder_path(node):
     dialog = PickDialog(parent=main_window)
     dialog.folder_widget.set_project_name(project_name)
     if folder_path:
+        # TODO: This does not work because project is refreshed in a thread
+        #       and thus the setting of folder path occurs before the project
+        #       refresh
         dialog.folder_widget.set_selected_folder_path(folder_path)
     dialog.setStyleSheet(load_stylesheet())
     dialog.exec_()
