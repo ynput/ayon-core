@@ -12,4 +12,3 @@ def on_duplicate():
 
 if not hou.hipFile.isLoadingHipFile():
     on_duplicate()
-    
