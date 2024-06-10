@@ -95,11 +95,12 @@ class TaskItem:
         name (str): Name of task.
         task_type (str): Type of task.
         parent_id (str): Parent folder id.
+        assignees (list[str]): List of users assigned to task.
         icon (Union[dict[str, Any], None]): Icon definitions.
     """
 
     def __init__(
-        self, task_id, name, task_type, parent_id, icon
+        self, task_id, name, task_type, parent_id, icon, assignees=None
     ):
         self.task_id = task_id
         self.name = name
@@ -112,6 +113,10 @@ class TaskItem:
                 "color": get_default_entity_icon_color()
             }
         self.icon = icon
+        
+        if not assignees:
+            assignees = []
+        self.assignees = assignees
 
         self._label = None
 
@@ -150,6 +155,7 @@ class TaskItem:
             "parent_id": self.parent_id,
             "task_type": self.task_type,
             "icon": self.icon,
+            "assignees": self.assignees,
         }
 
     @classmethod
@@ -181,7 +187,8 @@ def _get_task_items_from_tasks(tasks):
             task["name"],
             task["type"],
             folder_id,
-            None
+            None,
+            assignees=task.get("assignees")
         ))
     return output
 
@@ -596,6 +603,6 @@ class HierarchyModel(object):
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
-            fields={"id", "name", "label", "folderId", "type"}
+            fields={"id", "name", "label", "folderId", "type", "assignees"}
         ))
         return _get_task_items_from_tasks(tasks)

@@ -1,5 +1,7 @@
 from qtpy import QtWidgets, QtGui, QtCore
 
+import ayon_api
+
 from ayon_core.style import get_disabled_entity_icon_color
 
 from .views import DeselectableTreeView
@@ -97,8 +99,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         return self._last_folder_id
 
-    def set_selected_project(self, project_name):
-        self._selected_project_name = project_name
+    def set_project_name(self, project_name):
+        self._last_project_name = project_name
 
     def _get_invalid_selection_item(self):
         if self._invalid_selection_item is None:
@@ -291,6 +293,47 @@ class TasksQtModel(QtGui.QStandardItemModel):
         )
 
 
+class AssignedFilterProxyModel(QtCore.QSortFilterProxyModel):
+    def __init__(self, assigned_task_names=None, parent=None):
+        super(AssignedFilterProxyModel, self).__init__(parent)
+        if not assigned_task_names:
+            assigned_task_names = []
+        self._active = True
+        self._assigned_task_names = assigned_task_names
+
+    @property
+    def active(self):
+        return self._active
+
+    @active.setter
+    def active(self, value):
+        if self._active != value:
+            self._active = value
+            self.invalidateFilter()
+
+    @property
+    def assigned_task_names(self):
+        return self._assigned_task_names
+
+    @assigned_task_names.setter
+    def assigned_task_names(self, value):
+        if self._assigned_task_names != value:
+            self._assigned_task_names = value
+            self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row, source_parent):
+        if not self._active:
+            return True
+        
+        model = self.sourceModel()
+        index = model.index(source_row, 0, source_parent)
+        task_name = model.data(index, ITEM_NAME_ROLE)
+        # Check if the task_name is in the assigned_task_names list
+        if task_name in self._assigned_task_names:
+            return True
+        return False
+
+
 class TasksWidget(QtWidgets.QWidget):
     """Tasks widget.
 
@@ -316,12 +359,19 @@ class TasksWidget(QtWidgets.QWidget):
         tasks_proxy_model.setSourceModel(tasks_model)
         tasks_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
-        tasks_view.setModel(tasks_proxy_model)
+        assigned_proxy_model = AssignedFilterProxyModel()
+        assigned_proxy_model.setSourceModel(tasks_proxy_model)
+
+        tasks_view.setModel(assigned_proxy_model)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(tasks_view, 1)
 
+        controller.register_event_callback(
+            "selection.project.changed",
+            self._on_project_selection_change,
+        )
         controller.register_event_callback(
             "tasks.refresh.finished",
             self._on_tasks_refresh_finished
@@ -344,6 +394,7 @@ class TasksWidget(QtWidgets.QWidget):
         self._tasks_view = tasks_view
         self._tasks_model = tasks_model
         self._tasks_proxy_model = tasks_proxy_model
+        self._assigned_proxy_model = assigned_proxy_model
 
         self._selected_folder_id = None
 
@@ -438,6 +489,31 @@ class TasksWidget(QtWidgets.QWidget):
         )
         return True
 
+    def set_project_name(self, project_name):
+        """Set project name.
+
+        Do not use this method when controller is handling selection of
+        project using 'selection.project.changed' event.
+
+        Args:
+            project_name (str): Project name.
+        """
+
+        self._tasks_model.set_project_name(project_name)
+
+    def set_assigned_only(self, state):
+        """Set whether to filter folders by assignment or not.
+
+        Args:
+            state (bool): Whether to filter folders by assignment or not
+        """
+
+        self._assigned_proxy_model.active = state
+
+    def _on_project_selection_change(self, event):
+        project_name = event["project_name"]
+        self.set_project_name(project_name)
+
     def _on_tasks_refresh_finished(self, event):
         """Tasks were refreshed in controller.
 
@@ -460,6 +536,15 @@ class TasksWidget(QtWidgets.QWidget):
 
     def _folder_selection_changed(self, event):
         self._selected_folder_id = event["folder_id"]
+        task_items = self._controller.get_task_items(
+            self._tasks_model.get_last_project_name(), self._selected_folder_id
+        )
+        assigned_task_names = set()
+        assignee = ayon_api.get_user()["name"]
+        for task_item in task_items:
+            if assignee in task_item.assignees:
+                assigned_task_names.add(task_item.name)
+        self._assigned_proxy_model.assigned_task_names = assigned_task_names
         self._tasks_model.set_context(
             event["project_name"], self._selected_folder_id
         )

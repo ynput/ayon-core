@@ -112,3 +112,4 @@ class HierarchyPage(QtWidgets.QWidget):
 
     def _on_assigned_state_changed(self, state):
         self._folders_widget.set_assigned_only(state)
+        self._tasks_widget.set_assigned_only(state)
