@@ -262,12 +262,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
 
 class AssignedFilterProxyModel(QtCore.QSortFilterProxyModel):
-    def __init__(self, assigned_folder_names=None, parent=None):
+    def __init__(self, assigned_folder_paths=None, parent=None):
         super(AssignedFilterProxyModel, self).__init__(parent)
-        if not assigned_folder_names:
-            assigned_folder_names = []
+        if not assigned_folder_paths:
+            assigned_folder_paths = []
         self._active = True
-        self._assigned_folder_names = assigned_folder_names
+        self._assigned_folder_paths = assigned_folder_paths
 
     @property
     def active(self):
@@ -280,13 +280,13 @@ class AssignedFilterProxyModel(QtCore.QSortFilterProxyModel):
             self.invalidateFilter()
 
     @property
-    def assigned_folder_names(self):
-        return self._assigned_folder_names
+    def assigned_folder_paths(self):
+        return self._assigned_folder_paths
 
-    @assigned_folder_names.setter
-    def assigned_folder_names(self, value):
-        if self._assigned_folder_names != value:
-            self._assigned_folder_names = value
+    @assigned_folder_paths.setter
+    def assigned_folder_paths(self, value):
+        if self._assigned_folder_paths != value:
+            self._assigned_folder_paths = value
             self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row, source_parent):
@@ -295,9 +295,9 @@ class AssignedFilterProxyModel(QtCore.QSortFilterProxyModel):
         
         model = self.sourceModel()
         index = model.index(source_row, 0, source_parent)
-        folder_name = model.data(index, FOLDER_NAME_ROLE)
-        # Check if the folder_name is in the assigned_folder_names list
-        if folder_name in self._assigned_folder_names:
+        folder_path = model.data(index, FOLDER_PATH_ROLE)
+        # Check if the folder_path is in the assigned_folder_paths list
+        if folder_path in self._assigned_folder_paths:
             return True
         return False
 
@@ -563,12 +563,15 @@ class FoldersWidget(QtWidgets.QWidget):
     def _on_project_selection_change(self, event):
         project_name = event["project_name"]
         assigned_folder_items = self._controller.get_assigned_folder_items(project_name)
-        assigned_folder_names = set()
+        assigned_folder_paths = set()
         if assigned_folder_items:
             for folder_item in assigned_folder_items:
-                assigned_folder_names.update(folder_item.path.split("/"))
-            assigned_folder_names.discard("")
-        self._assigned_proxy_model.assigned_folder_names = assigned_folder_names
+                folder_path = folder_item.path
+                # Add all parent hierarchy as individual entries so they don't get hidden
+                while "/" in folder_path:
+                    assigned_folder_paths.add(folder_path)
+                    folder_path, _ = folder_path.rsplit("/", 1)
+        self._assigned_proxy_model.assigned_folder_paths = assigned_folder_paths
         self.set_project_name(project_name)
 
     def _on_folders_refresh_finished(self, event):
