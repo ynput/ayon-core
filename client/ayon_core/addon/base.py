@@ -413,9 +413,9 @@ def _load_addons_in_core(
     #   - has small differences in import logic
     modules_dir = os.path.join(AYON_CORE_ROOT, "modules")
     if not os.path.exists(modules_dir):
-        log.warning((
-            "Could not find path when loading AYON addons \"{}\""
-        ).format(modules_dir))
+        log.warning(
+            f"Could not find path when loading AYON addons \"{modules_dir}\""
+        )
         return
 
     ignored_filenames = IGNORED_FILENAMES | IGNORED_DEFAULT_FILENAMES
