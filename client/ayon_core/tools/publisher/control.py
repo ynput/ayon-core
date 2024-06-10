@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import inspect
 from abc import ABCMeta, abstractmethod
+import re
 
 import six
 import arrow
@@ -39,6 +40,7 @@ from ayon_core.pipeline.create.context import (
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
 from ayon_core.tools.common_models import HierarchyModel
+from ayon_core.lib.profiles_filtering import filter_profiles
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
@@ -1686,6 +1688,15 @@ class PublisherController(BasePublisherController):
         """Publish plugins."""
         return self._create_context.publish_plugins
 
+    def _get_current_project_settings(self):
+        """Current project settings.
+
+        Returns:
+            dict
+        """
+
+        return self._create_context.get_current_project_settings()
+
     # Hierarchy model
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
@@ -1827,8 +1838,13 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
+        allowed_creator_pattern = self._get_allowed_creators_pattern()
         for identifier, creator in self._create_context.creators.items():
             try:
+                if (not self._is_label_allowed(
+                        creator.label, allowed_creator_pattern)):
+                    self.log.debug(f"{creator.label} not allowed for context")
+                    continue
                 output[identifier] = CreatorItem.from_creator(creator)
             except Exception:
                 self.log.error(
@@ -1838,6 +1854,60 @@ class PublisherController(BasePublisherController):
                 )
 
         return output
+
+    def _get_allowed_creators_pattern(self):
+        """Provide regex pattern for configured creator labels in this context
+
+        If no profile matches current context, it shows all creators.
+        Support usage of regular expressions for configured values.
+        Returns:
+            (re.Pattern)[optional]: None or regex compiled patterns
+                into single one ('Render|Image.*')
+        """
+
+        task_type = self._create_context.get_current_task_type()
+        project_settings = self._get_current_project_settings()
+
+        filter_creator_profiles = (
+            project_settings
+            ["core"]
+            ["tools"]
+            ["creator"]
+            ["filter_creator_profiles"]
+        )
+        filtering_criteria = {
+            "task_names": self.current_task_name,
+            "task_types": task_type,
+            "host_names": self._create_context.host_name
+        }
+        profile = filter_profiles(
+            filter_creator_profiles,
+            filtering_criteria,
+            logger=self.log
+        )
+
+        allowed_creator_pattern = None
+        if profile:
+            allowed_creator_labels = {
+                label
+                for label in profile["creator_labels"]
+                if label
+            }
+            self.log.debug(f"Only allowed `{allowed_creator_labels}` creators")
+            allowed_creator_pattern = (
+                re.compile("|".join(allowed_creator_labels)))
+        return allowed_creator_pattern
+
+    def _is_label_allowed(self, label, allowed_labels_regex):
+        """Implement regex support for allowed labels.
+
+        Args:
+            label (str): Label of creator - shown in Publisher
+            allowed_labels_regex (re.Pattern): compiled regular expression
+        """
+        if not allowed_labels_regex:
+            return True
+        return bool(allowed_labels_regex.match(label))
 
     def _reset_instances(self):
         """Reset create instances."""

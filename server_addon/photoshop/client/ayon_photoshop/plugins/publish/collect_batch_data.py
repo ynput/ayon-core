@@ -17,7 +17,7 @@ import os
 
 import pyblish.api
 
-from openpype_modules.webpublisher.lib import (
+from ayon_webpublisher.lib import (
     get_batch_context_info,
     parse_json
 )
