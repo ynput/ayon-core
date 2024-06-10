@@ -28,16 +28,16 @@ from .interfaces import (
 )
 
 # Files that will be always ignored on addons import
-IGNORED_FILENAMES = (
+IGNORED_FILENAMES = {
     "__pycache__",
-)
+}
 # Files ignored on addons import from "./ayon_core/modules"
-IGNORED_DEFAULT_FILENAMES = (
+IGNORED_DEFAULT_FILENAMES = {
     "__init__.py",
     "base.py",
     "interfaces.py",
     "click_wrap.py",
-)
+}
 
 # When addon was moved from ayon-core codebase
 # - this is used to log the missing addon
@@ -418,11 +418,11 @@ def _load_addons_in_core(
         ).format(modules_dir))
         return
 
-    ignored_filenames = set(IGNORED_DEFAULT_FILENAMES)
+    ignored_filenames = IGNORED_FILENAMES | IGNORED_DEFAULT_FILENAMES
 
     for filename in os.listdir(modules_dir):
         # Ignore filenames
-        if filename in IGNORED_FILENAMES or filename in ignored_filenames:
+        if filename in ignored_filenames:
             continue
 
         fullpath = os.path.join(modules_dir, filename)
