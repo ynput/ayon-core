@@ -40,6 +40,8 @@
             label   "Folder Path"
             type    string
             default { "$AYON_FOLDER_PATH" }
+            parmtag { "script_action" "from ayon_houdini.api.hda_utils import select_folder_path;select_folder_path(kwargs['node'])" }
+            parmtag { "script_action_icon" "BUTTONS_reselect" }
             parmtag { "script_callback" "hou.phm().on_representation_parms_changed(kwargs['node'])" }
             parmtag { "script_callback_language" "python" }
         }

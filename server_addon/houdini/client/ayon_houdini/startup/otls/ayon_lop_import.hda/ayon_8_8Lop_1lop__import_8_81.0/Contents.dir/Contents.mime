@@ -19,9 +19,9 @@ Content-Disposition: attachment; filename="hdaroot.def"
 Content-Type: text/plain
 
 comment ""
-position -8.53722 4.22263
+position -1.67827 1.26636
 connectornextid 0
-flags =  lock off model off template off footprint off xray off bypass off display off render off highlight off unload off savedata off compress on colordefault on exposed on debug off
+flags =  lock off model off template off footprint off xray off bypass off display on render on highlight off unload off savedata off compress on colordefault on exposed on debug off
 outputsNamed3
 {
 }
@@ -35,10 +35,10 @@ stat
 {
   create -1
   modify -1
-  author User@HP-Z820-03
+  author Mustafa_Taher@Major-Kalawy
   access 0777
 }
-color UT_Color RGB 0.8 0.8 0.8 
+color UT_Color RGB 0.8 0.8 0.8
 delscript ""
 exprlanguage hscript
 end
@@ -98,7 +98,7 @@ stat
   author Maqina-05@Maqina-05
   access 0777
 }
-color UT_Color RGB 0.8 0.8 0.8 
+color UT_Color RGB 0.8 0.8 0.8
 delscript ""
 exprlanguage hscript
 end
@@ -158,7 +158,7 @@ stat
   author Maqina-05@Maqina-05
   access 0777
 }
-color UT_Color RGB 0.8 0.8 0.8 
+color UT_Color RGB 0.8 0.8 0.8
 delscript ""
 exprlanguage hscript
 end
@@ -324,7 +324,7 @@ stat
   author User@HP-Z820-03
   access 0777
 }
-color UT_Color RGB 0.8 0.8 0.8 
+color UT_Color RGB 0.8 0.8 0.8
 delscript ""
 exprlanguage hscript
 end
