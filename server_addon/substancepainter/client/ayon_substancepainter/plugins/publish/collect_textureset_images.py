@@ -124,7 +124,6 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         staging_dir = os.path.dirname(first_filepath)
         representation["tags"] = ["review"]
         representation["stagingDir"] = staging_dir
-
         # Clone the instance
         product_type = "image"
         image_instance = context.create_instance(image_product_name)
@@ -136,6 +135,9 @@ class CollectTextureSet(pyblish.api.InstancePlugin):
         image_instance.data["productType"] = product_type
         image_instance.data["family"] = product_type
         image_instance.data["families"] = [product_type, "textures"]
+        if instance.data["creator_attributes"].get("review"):
+            image_instance.data["families"].append("review")
+
         image_instance.data["representations"] = [representation]
 
         # Group the textures together in the loader
