@@ -454,8 +454,11 @@ def select_folder_path(node):
 
     selected_folder_path = dialog.get_selected_folder_path()
 
-    if not selected_folder_path or \
-          selected_folder_path == get_current_folder_path():
+    if not selected_folder_path:
+        # Do nothing if user picked nothing
+        return
+
+    if selected_folder_path == get_current_folder_path():
         selected_folder_path = '$AYON_FOLDER_PATH'
 
     node.parm("folder_path").set(selected_folder_path)
