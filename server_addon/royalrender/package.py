@@ -1,6 +1,6 @@
 name = "royalrender"
 title = "Royal Render"
-version = "0.2.0"
+version = "0.2.1"
 
 client_dir = "ayon_royalrender"
 
