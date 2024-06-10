@@ -1,0 +1,33 @@
+[About]
+Type=label
+Label=About
+Category=About Plugin
+CategoryOrder=-1
+Index=0
+Default=Unreal Engine 5 Plugin for Deadline
+Description=Not configurable
+
+[ConcurrentTasks]
+Type=label
+Label=ConcurrentTasks
+Category=About Plugin
+CategoryOrder=-1
+Index=0
+Default=True
+Description=Not configurable
+
+[Executable]
+Type=String
+Label=Executable to test job submission
+Category=Options
+Index=1
+Default=C:\Windows\System32\cmd.exe
+Description=Unreal Executable to process the job
+
+[RPCWaitTime]
+Type=Integer
+Label=RPC Process Wait time
+Category=Options
+Index=2
+Default=300
+Description=The amount of seconds the RPC process should wait for a connection from Unreal

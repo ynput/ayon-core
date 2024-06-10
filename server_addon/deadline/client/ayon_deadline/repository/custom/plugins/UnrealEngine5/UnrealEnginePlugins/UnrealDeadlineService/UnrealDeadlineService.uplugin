@@ -1,0 +1,35 @@
+{
+	"FileVersion": 1,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Unreal Deadline Service",
+	"Description": "Plugin to interact with Thinkbox Deadline renderfarm. Allows job submissions, queries, and job state updates.",
+	"Category": "AWS Thinkbox Deadline",
+	"CreatedBy": "Epic Games, Inc.",
+	"CreatedByURL" : "http://www.epicgames.com",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Plugins":
+	[
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "EditorScriptingUtilities",
+			"Enabled": true
+		}
+	],
+	"Modules":
+	[
+		{
+			"Name": "DeadlineService",
+			"Type" : "UncookedOnly"
+		}
+	]
+}
