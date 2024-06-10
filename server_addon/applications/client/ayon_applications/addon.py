@@ -1,6 +1,8 @@
 import os
 import json
 
+import ayon_api
+
 from ayon_core.addon import AYONAddon, IPluginPaths, click_wrap
 
 from .version import __version__
@@ -111,6 +113,54 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
                 os.path.join(APPLICATIONS_ADDON_ROOT, "plugins", "publish")
             ]
         }
+
+    def get_app_icon_path(self, icon_filename):
+        """Get icon path.
+
+        Args:
+            icon_filename (str): Icon filename.
+
+        Returns:
+            Union[str, None]: Icon path or None if not found.
+
+        """
+        if not icon_filename:
+            return None
+        icon_name = os.path.basename(icon_filename)
+        path = os.path.join(APPLICATIONS_ADDON_ROOT, "icons", icon_name)
+        if os.path.exists(path):
+            return path
+        return None
+
+    def get_app_icon_url(self, icon_filename, server=False):
+        """Get icon path.
+
+        Method does not validate if icon filename exist on server.
+
+        Args:
+            icon_filename (str): Icon name.
+            server (Optional[bool]): Return url to AYON server.
+
+        Returns:
+            Union[str, None]: Icon path or None is server url is not
+                available.
+
+        """
+        if not icon_filename:
+            return None
+        icon_name = os.path.basename(icon_filename)
+        if server:
+            base_url = ayon_api.get_base_url()
+            return (
+                f"{base_url}/addons/{self.name}/{self.version}"
+                f"/public/icons/{icon_name}"
+            )
+        server_url = os.getenv("AYON_WEBSERVER_URL")
+        if not server_url:
+            return None
+        return "/".join([
+            server_url, "addons", self.name, self.version, "icons", icon_name
+        ])
 
     def launch_application(
         self, app_name, project_name, folder_path, task_name
