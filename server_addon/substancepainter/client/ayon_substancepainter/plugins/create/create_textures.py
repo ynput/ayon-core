@@ -46,6 +46,7 @@ class CreateTextures(Creator):
         creator_attributes = instance_data.setdefault(
             "creator_attributes", dict())
         for key in [
+            "review",
             "exportPresetUrl",
             "exportFileFormat",
             "exportSize",
@@ -143,6 +144,10 @@ class CreateTextures(Creator):
             }
 
         return [
+            BoolDef("review",
+                    label="Review",
+                    tooltip="Mark as reviewable",
+                    default=True),
             EnumDef("exportChannel",
                     items=export_channel_enum,
                     multiselection=True,
