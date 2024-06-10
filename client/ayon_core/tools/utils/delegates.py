@@ -202,7 +202,13 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
         )
 
         if option.state & QtWidgets.QStyle.State_HasFocus:
-            focus_opt = QtWidgets.QStyleOptionFocusRect(option)
+            focus_opt = QtWidgets.QStyleOptionFocusRect()
+            focus_opt.state = option.state
+            focus_opt.direction = option.direction
+            focus_opt.rect = option.rect
+            focus_opt.fontMetrics = option.fontMetrics
+            focus_opt.palette = option.palette
+
             focus_opt.rect = style.subElementRect(
                 QtWidgets.QCommonStyle.SE_ItemViewItemFocusRect,
                 option,
