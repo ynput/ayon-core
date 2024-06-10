@@ -5,6 +5,7 @@ from qtpy import QtWidgets, QtGui, QtCore
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import (
+    ProjectsModel,
     HierarchyModel,
     HierarchyExpectedSelection,
 )
@@ -687,6 +688,7 @@ class SimpleSelectionModel(object):
 class SimpleFoldersController(object):
     def __init__(self):
         self._event_system = self._create_event_system()
+        self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._selection_model = SimpleSelectionModel(self)
         self._expected_selection = HierarchyExpectedSelection(
@@ -706,6 +708,11 @@ class SimpleFoldersController(object):
     # Model functions
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
+
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
 
     def set_selected_project(self, project_name):
         self._selection_model.set_selected_project(project_name)
