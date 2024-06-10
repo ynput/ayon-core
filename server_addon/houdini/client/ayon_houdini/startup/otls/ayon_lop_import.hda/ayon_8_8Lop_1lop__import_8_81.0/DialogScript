@@ -1,7 +1,7 @@
-# Dialog script for ayon::lop_import::1.0 automatically generated
+# Dialog script for ayon::lop_import::1.1 automatically generated
 
 {
-    name	ayon::lop_import::1.0
+    name	ayon::lop_import::1.1
     script	load_asset::1.0
     label	"Load Asset"
 
@@ -40,6 +40,8 @@
             label   "Folder Path"
             type    string
             default { "$AYON_FOLDER_PATH" }
+            parmtag { "script_action" "from ayon_houdini.api.hda_utils import select_folder_path;select_folder_path(kwargs['node'])" }
+            parmtag { "script_action_icon" "BUTTONS_reselect" }
             parmtag { "script_callback" "hou.phm().on_representation_parms_changed(kwargs['node'])" }
             parmtag { "script_callback_language" "python" }
         }
@@ -48,6 +50,10 @@
             label   "Product"
             type    string
             default { "usdAsset" }
+            menureplace {
+                [ "hou.phm().get_products_menu_items(kwargs['node'])" ]
+                language python
+            }
             parmtag { "script_callback" "hou.phm().on_representation_parms_changed(kwargs['node'])" }
             parmtag { "script_callback_language" "python" }
         }
