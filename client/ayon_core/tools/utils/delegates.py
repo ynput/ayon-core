@@ -220,14 +220,14 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
             )
             focus_opt.backgroundColor = option.palette.color(
                 (
-                    QtWidgets.QPalette.Normal
+                    QtGui.QPalette.Normal
                     if option.state & QtWidgets.QStyle.State_Enabled
-                    else QtWidgets.QPalette.Disabled
+                    else QtGui.QPalette.Disabled
                 ),
                 (
-                    QtWidgets.QPalette.Highlight
+                    QtGui.QPalette.Highlight
                     if option.state & QtWidgets.QStyle.State_Selected
-                    else QtWidgets.QPalette.Window
+                    else QtGui.QPalette.Window
                 )
             )
             style.drawPrimitive(
