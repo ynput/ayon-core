@@ -62,6 +62,9 @@ class BaseLauncherController(
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
+    def get_assigned_folder_items(self, project_name, sender=None, assignee=None):
+        return self._hierarchy_model.get_assigned_folder_items(project_name, sender, assignee)
+
     def get_task_items(self, project_name, folder_id, sender=None):
         return self._hierarchy_model.get_task_items(
             project_name, folder_id, sender)

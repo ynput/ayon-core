@@ -49,12 +49,16 @@ class HierarchyPage(QtWidgets.QWidget):
         folders_filter_text = PlaceholderLineEdit(folders_wrapper)
         folders_filter_text.setPlaceholderText("Filter folders...")
 
+        show_only_assignments = QtWidgets.QCheckBox("Show only assignments")
+        show_only_assignments.setChecked(True)
+
         folders_widget = FoldersWidget(controller, folders_wrapper)
 
         folders_wrapper_layout = QtWidgets.QVBoxLayout(folders_wrapper)
         folders_wrapper_layout.setContentsMargins(0, 0, 0, 0)
         folders_wrapper_layout.addWidget(folders_filter_text, 0)
-        folders_wrapper_layout.addWidget(folders_widget, 1)
+        folders_wrapper_layout.addWidget(show_only_assignments, 1)
+        folders_wrapper_layout.addWidget(folders_widget, 2)
 
         # - Tasks widget
         tasks_widget = TasksWidget(controller, content_body)
@@ -71,6 +75,7 @@ class HierarchyPage(QtWidgets.QWidget):
 
         btn_back.clicked.connect(self._on_back_clicked)
         refresh_btn.clicked.connect(self._on_refreh_clicked)
+        show_only_assignments.stateChanged.connect(self._on_assigned_state_changed)
         folders_filter_text.textChanged.connect(self._on_filter_text_changed)
 
         self._is_visible = False
@@ -104,3 +109,6 @@ class HierarchyPage(QtWidgets.QWidget):
 
     def _on_filter_text_changed(self, text):
         self._folders_widget.set_name_filter(text)
+
+    def _on_assigned_state_changed(self, state):
+        self._folders_widget.set_assigned_only(state)

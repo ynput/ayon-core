@@ -261,6 +261,47 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self.refreshed.emit()
 
 
+class AssignedFilterProxyModel(QtCore.QSortFilterProxyModel):
+    def __init__(self, assigned_folder_names=None, parent=None):
+        super(AssignedFilterProxyModel, self).__init__(parent)
+        if not assigned_folder_names:
+            assigned_folder_names = []
+        self._active = True
+        self._assigned_folder_names = assigned_folder_names
+
+    @property
+    def active(self):
+        return self._active
+
+    @active.setter
+    def active(self, value):
+        if self._active != value:
+            self._active = value
+            self.invalidateFilter()
+
+    @property
+    def assigned_folder_names(self):
+        return self._assigned_folder_names
+
+    @assigned_folder_names.setter
+    def assigned_folder_names(self, value):
+        if self._assigned_folder_names != value:
+            self._assigned_folder_names = value
+            self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row, source_parent):
+        if not self._active:
+            return True
+        
+        model = self.sourceModel()
+        index = model.index(source_row, 0, source_parent)
+        folder_name = model.data(index, FOLDER_NAME_ROLE)
+        # Check if the folder_name is in the assigned_folder_names list
+        if folder_name in self._assigned_folder_names:
+            return True
+        return False
+
+
 class FoldersWidget(QtWidgets.QWidget):
     """Folders widget.
 
@@ -306,7 +347,10 @@ class FoldersWidget(QtWidgets.QWidget):
         folders_proxy_model.setSourceModel(folders_model)
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
-        folders_view.setModel(folders_proxy_model)
+        assigned_proxy_model = AssignedFilterProxyModel()
+        assigned_proxy_model.setSourceModel(folders_proxy_model)
+
+        folders_view.setModel(assigned_proxy_model)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -338,6 +382,7 @@ class FoldersWidget(QtWidgets.QWidget):
         self._folders_view = folders_view
         self._folders_model = folders_model
         self._folders_proxy_model = folders_proxy_model
+        self._assigned_proxy_model = assigned_proxy_model
 
         self._handle_expected_selection = handle_expected_selection
         self._expected_selection = None
@@ -372,6 +417,15 @@ class FoldersWidget(QtWidgets.QWidget):
         self._folders_proxy_model.setFilterFixedString(name)
         if name:
             self._folders_view.expandAll()
+
+    def set_assigned_only(self, state):
+        """Set whether to filter folders by assignment or not.
+
+        Args:
+            state (bool): Whether to filter folders by assignment or not
+        """
+
+        self._assigned_proxy_model.active = state
 
     def refresh(self):
         """Refresh folders model.
@@ -508,6 +562,12 @@ class FoldersWidget(QtWidgets.QWidget):
 
     def _on_project_selection_change(self, event):
         project_name = event["project_name"]
+        assigned_folder_items = self._controller.get_assigned_folder_items(project_name)
+        assigned_folder_names = set()
+        for folder_item in assigned_folder_items:
+            assigned_folder_names.update(folder_item.path.split("/"))
+        assigned_folder_names.discard("")
+        self._assigned_proxy_model.assigned_folder_names = assigned_folder_names
         self.set_project_name(project_name)
 
     def _on_folders_refresh_finished(self, event):

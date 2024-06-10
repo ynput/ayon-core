@@ -272,6 +272,33 @@ class HierarchyModel(object):
             self._refresh_folders_cache(project_name, sender)
         return self._folders_items[project_name].get_data()
 
+    def get_assigned_folder_items(self, project_name, sender, assignee=None):
+        """Get folder items assigned to user by project name.
+
+        The folders are cached per project name. If the cache is not valid
+        then the folders are queried from server.
+
+        Args:
+            project_name (str): Name of project where to look for folders.
+            sender (Union[str, None]): Who requested the folder ids.
+
+        Returns:
+            dict[str, FolderItem]: Folder items by id.
+        """
+        if not assignee:
+            assignee = ayon_api.get_user()["name"]
+
+        tasks = ayon_api.get_tasks(project_name, assignees=[assignee])
+        if not tasks:
+            return None
+        
+        folder_items = self.get_folder_items(project_name, sender)
+        assigned_folder_items = []
+        for task in tasks:
+            assigned_folder_items.append(folder_items[task["folderId"]])
+
+        return assigned_folder_items
+    
     def get_folder_items_by_id(self, project_name, folder_ids):
         """Get folder items by ids.
 
