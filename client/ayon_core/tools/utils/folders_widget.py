@@ -564,9 +564,10 @@ class FoldersWidget(QtWidgets.QWidget):
         project_name = event["project_name"]
         assigned_folder_items = self._controller.get_assigned_folder_items(project_name)
         assigned_folder_names = set()
-        for folder_item in assigned_folder_items:
-            assigned_folder_names.update(folder_item.path.split("/"))
-        assigned_folder_names.discard("")
+        if assigned_folder_items:
+            for folder_item in assigned_folder_items:
+                assigned_folder_names.update(folder_item.path.split("/"))
+            assigned_folder_names.discard("")
         self._assigned_proxy_model.assigned_folder_names = assigned_folder_names
         self.set_project_name(project_name)
 
