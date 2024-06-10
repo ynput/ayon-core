@@ -474,8 +474,6 @@ def select_folder_path(node):
         def on_confirm(self):
             self.close()
 
-    # Note: The following dialog doesn't support changing `the project_name`
-    #         But, having a semi-functional dialog is better than nothing.
     dialog = PickDialog(parent=main_window)
     dialog.folder_widget.set_project_name(project_name)
     if folder_path:
