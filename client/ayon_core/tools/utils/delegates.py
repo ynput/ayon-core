@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 import logging
 
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QtGui
 
 log = logging.getLogger(__name__)
 
@@ -106,3 +106,80 @@ class PrettyTimeDelegate(QtWidgets.QStyledItemDelegate):
     def displayText(self, value, locale):
         if value is not None:
             return pretty_timestamp(value)
+
+
+class StatusDelegate(QtWidgets.QStyledItemDelegate):
+    """Delegate showing status name and short name."""
+    def __init__(
+        self,
+        status_name_role,
+        status_short_name_role,
+        status_color_role,
+        status_icon_role,
+        *args, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.status_name_role = status_name_role
+        self.status_short_name_role = status_short_name_role
+        self.status_color_role = status_color_role
+        self.status_icon_role = status_icon_role
+
+    def paint(self, painter, option, index):
+        if option.widget:
+            style = option.widget.style()
+        else:
+            style = QtWidgets.QApplication.style()
+
+        style.drawControl(
+            QtWidgets.QCommonStyle.CE_ItemViewItem,
+            option,
+            painter,
+            option.widget
+        )
+
+        painter.save()
+
+        text_rect = style.subElementRect(
+            QtWidgets.QCommonStyle.SE_ItemViewItemText,
+            option
+        )
+        text_margin = style.proxy().pixelMetric(
+            QtWidgets.QCommonStyle.PM_FocusFrameHMargin,
+            option,
+            option.widget
+        ) + 1
+        padded_text_rect = text_rect.adjusted(
+            text_margin, 0, - text_margin, 0
+        )
+
+        fm = QtGui.QFontMetrics(option.font)
+        text = self._get_status_name(index)
+        if padded_text_rect.width() < fm.width(text):
+            text = self._get_status_short_name(index)
+
+        fg_color = self._get_status_color(index)
+        pen = painter.pen()
+        pen.setColor(fg_color)
+        painter.setPen(pen)
+
+        painter.drawText(
+            padded_text_rect,
+            option.displayAlignment,
+            text
+        )
+
+        painter.restore()
+
+    def _get_status_name(self, index):
+        return index.data(self.status_name_role)
+
+    def _get_status_short_name(self, index):
+        return index.data(self.status_short_name_role)
+
+    def _get_status_color(self, index):
+        return QtGui.QColor(index.data(self.status_color_role))
+
+    def _get_status_icon(self, index):
+        if self.status_icon_role is not None:
+            return index.data(self.status_icon_role)
+        return None
