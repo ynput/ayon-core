@@ -280,7 +280,10 @@ class LoadMedia(LoaderPlugin):
         item.SetMetadata(lib.pype_tag_name, json.dumps(data))
 
         self._set_metadata(media_pool_item=item, context=context)
-        self._set_colorspace_from_representation(item, representation)
+        self._set_colorspace_from_representation(
+            item,
+            representation=context["representation"]
+        )
 
         # If no specific colorspace is set then we want to preserve the
         # colorspace a user might have set before the clip replacement
