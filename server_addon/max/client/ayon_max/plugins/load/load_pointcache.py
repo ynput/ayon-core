@@ -7,7 +7,7 @@ Because of limited api, alembics can be only loaded, but not easily updated.
 import os
 from ayon_core.pipeline import load, get_representation_path
 from ayon_max.api import lib, maintained_selection
-from ayon_max.api.lib import unique_namespace
+from ayon_max.api.lib import unique_namespace, set_fps
 from ayon_max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
@@ -30,6 +30,8 @@ class AbcLoader(load.LoaderPlugin):
 
         file_path = self.filepath_from_context(context)
         file_path = os.path.normpath(file_path)
+
+        set_fps()
 
         abc_before = {
             c
