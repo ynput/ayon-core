@@ -62,15 +62,18 @@ def set_colorspace(media_pool_item,
                    colorspace,
                    mode="davinciYRGBColorManagedv2"):
     """Set MediaPoolItem colorspace.
+
     This implements a workaround that you cannot set the input colorspace
     unless the Resolve project's color science mode is set to
     `davinciYRGBColorManagedv2`.
+
     Args:
         media_pool_item (MediaPoolItem): The media pool item.
         colorspace (str): The colorspace to apply.
         mode (Optional[str]): The Resolve project color science mode to be in
             while setting the colorspace.
             Defaults to 'davinciYRGBColorManagedv2'
+
     Returns:
         bool: Whether applying the colorspace succeeded.
     """
