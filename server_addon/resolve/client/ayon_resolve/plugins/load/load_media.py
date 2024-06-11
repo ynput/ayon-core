@@ -12,8 +12,8 @@ from ayon_core.pipeline import (
     get_representation_path,
     registered_host
 )
-from ayon_core.hosts.resolve.api import lib
-from ayon_core.hosts.resolve.api.pipeline import AVALON_CONTAINER_ID
+from ayon_resolve.api import lib
+from ayon_resolve.api.pipeline import AVALON_CONTAINER_ID
 from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,
     IMAGE_EXTENSIONS
