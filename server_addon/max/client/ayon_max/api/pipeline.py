@@ -145,7 +145,27 @@ attributes "OpenPypeContext"
         rt.saveMaxFile(dst_path)
 
 
-def ls() -> list:
+def parse_container(container):
+    """Return the container node's full container data.
+
+    Args:
+        container (str): A container node name.
+
+    Returns:
+        dict: The container schema data for this container node.
+
+    """
+    data = lib.read(container)
+
+    # Backwards compatibility pre-schemas for containers
+    data["schema"] = data.get("schema", "openpype:container-1.0")
+
+    # Append transient data
+    data["objectName"] = container.Name
+    return data
+
+
+def ls():
     """Get all AYON containers."""
     objs = rt.objects
     containers = [
@@ -156,7 +176,7 @@ def ls() -> list:
     ]
 
     for container in sorted(containers, key=attrgetter("name")):
-        yield lib.read(container)
+        yield parse_container(container)
 
 
 def on_new():
