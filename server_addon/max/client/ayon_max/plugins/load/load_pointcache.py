@@ -7,7 +7,7 @@ Because of limited api, alembics can be only loaded, but not easily updated.
 import os
 from ayon_core.pipeline import load, get_representation_path
 from ayon_max.api import lib, maintained_selection
-from ayon_max.api.lib import unique_namespace, scene_fps
+from ayon_max.api.lib import unique_namespace
 from ayon_max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
@@ -42,10 +42,9 @@ class AbcLoader(load.LoaderPlugin):
         if product_fps is None:
             # Just stick to current scene FPS
             product_fps = float(rt.frameRate)
-        with scene_fps(product_fps):
-            rt.importFile(file_path,
-                          rt.name("noPrompt"),
-                          using=rt.AlembicImport)
+        # TODO: remove after the post-system fps setup
+        rt.frameRange = product_fps
+        rt.importFile(file_path, rt.name("noPrompt"), using=rt.AlembicImport)
 
         abc_after = {
             c
