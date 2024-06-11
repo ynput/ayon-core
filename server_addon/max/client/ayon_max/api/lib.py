@@ -616,8 +616,9 @@ def scene_fps(fps):
     Args:
         fps (float): fps value
     """
+    fps_before = rt.frameRate
     try:
-        rt.frameRate = float(get_fps_for_current_context())
+        rt.frameRate = float(fps)
         yield
     finally:
-        rt.frameRate = fps
+        rt.frameRate = fps_before
