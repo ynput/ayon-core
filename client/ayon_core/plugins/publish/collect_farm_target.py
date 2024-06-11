@@ -27,7 +27,7 @@ class CollectFarmTarget(pyblish.api.InstancePlugin):
             # addons that were searched for yet not found
             for farm_renderer in farm_renderer_addons:
                 self.log.error(f"Cannot find AYON addon '{farm_renderer}'.")
-            AssertionError("No AYON renderer addon found")
+            raise RuntimeError("No AYON renderer addon found.")
 
         self.log.debug("Collected render target: {0}".format(farm_name))
         instance.data["toBeRenderedOn"] = farm_name
