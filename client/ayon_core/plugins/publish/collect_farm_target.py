@@ -18,8 +18,8 @@ class CollectFarmTarget(pyblish.api.InstancePlugin):
 
         farm_renderer_addons = ["deadline", "royalrender"]
         for farm_renderer in farm_renderer_addons:
-            addon = addons_manager.get(farm_renderer, False)
-            if addon.enabled:
+            addon = addons_manager.get(farm_renderer)
+            if addon and addon.enabled:
                 farm_name = farm_renderer
                 break
         else:
