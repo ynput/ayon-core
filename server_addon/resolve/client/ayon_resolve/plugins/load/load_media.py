@@ -12,13 +12,13 @@ from ayon_core.pipeline import (
     get_representation_path,
     registered_host
 )
-from ayon_resolve.api import lib
-from ayon_resolve.api.pipeline import AVALON_CONTAINER_ID
 from ayon_core.lib.transcoding import (
     VIDEO_EXTENSIONS,
     IMAGE_EXTENSIONS
 )
 from ayon_core.lib import BoolDef
+from ayon_resolve.api import lib
+from ayon_resolve.api.pipeline import AVALON_CONTAINER_ID
 
 
 class MetadataEntry(TypedDict):
@@ -62,15 +62,18 @@ def set_colorspace(media_pool_item,
                    colorspace,
                    mode="davinciYRGBColorManagedv2"):
     """Set MediaPoolItem colorspace.
+
     This implements a workaround that you cannot set the input colorspace
     unless the Resolve project's color science mode is set to
     `davinciYRGBColorManagedv2`.
+
     Args:
         media_pool_item (MediaPoolItem): The media pool item.
         colorspace (str): The colorspace to apply.
         mode (Optional[str]): The Resolve project color science mode to be in
             while setting the colorspace.
             Defaults to 'davinciYRGBColorManagedv2'
+
     Returns:
         bool: Whether applying the colorspace succeeded.
     """
@@ -280,7 +283,10 @@ class LoadMedia(LoaderPlugin):
         item.SetMetadata(lib.pype_tag_name, json.dumps(data))
 
         self._set_metadata(media_pool_item=item, context=context)
-        self._set_colorspace_from_representation(item, representation)
+        self._set_colorspace_from_representation(
+            item,
+            representation=context["representation"]
+        )
 
         # If no specific colorspace is set then we want to preserve the
         # colorspace a user might have set before the clip replacement
