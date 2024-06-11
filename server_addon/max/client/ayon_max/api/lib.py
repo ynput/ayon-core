@@ -607,18 +607,3 @@ def suspended_refresh():
     finally:
         rt.enableSceneRedraw()
         rt.resumeEditing()
-
-
-@contextlib.contextmanager
-def scene_fps(fps):
-    """Set scene fps during context
-
-    Args:
-        fps (float): fps value
-    """
-    fps_before = rt.frameRate
-    try:
-        rt.frameRate = float(fps)
-        yield
-    finally:
-        rt.frameRate = fps_before
