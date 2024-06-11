@@ -158,7 +158,7 @@ def parse_container(container):
     data = lib.read(container)
 
     # Backwards compatibility pre-schemas for containers
-    data["schema"] = data.get("schema", "openpype:container-1.0")
+    data["schema"] = data.get("schema", "openpype:container-3.0")
 
     # Append transient data
     data["objectName"] = container.Name
