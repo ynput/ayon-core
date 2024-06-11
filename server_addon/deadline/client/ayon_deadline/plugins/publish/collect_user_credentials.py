@@ -14,6 +14,8 @@ import pyblish.api
 
 from ayon_api import get_server_api_connection
 
+from ayon_deadline.lib import FARM_FAMILIES
+
 
 class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
     """Collects user name and password for artist if DL requires authentication
@@ -31,19 +33,7 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
              "max",
              "houdini"]
 
-    families = ["render",
-                "rendering",
-                "render.farm",
-                "renderFarm",
-                "renderlayer",
-                "maxrender",
-                "usdrender",
-                "redshift_rop",
-                "arnold_rop",
-                "mantra_rop",
-                "karma_rop",
-                "vray_rop",
-                "publish.hou"]
+    families = FARM_FAMILIES
 
     def process(self, instance):
         if not instance.data.get("farm"):
