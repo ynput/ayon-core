@@ -202,10 +202,10 @@ class ExtractOIIOTranscode(publish.Extractor):
                 added_representations = True
 
             if added_representations:
-                self._mark_original_repre_for_deletion(repre, profile,
-                                                       added_review)
+                self._mark_original_repre_for_deletion(
+                    repre, profile, added_review
+                )
 
-        for repre in tuple(instance.data["representations"]):
             tags = repre.get("tags") or []
             if "delete" in tags and "thumbnail" not in tags:
                 instance.data["representations"].remove(repre)
