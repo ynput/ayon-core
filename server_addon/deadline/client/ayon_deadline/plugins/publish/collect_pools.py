@@ -3,6 +3,8 @@ import pyblish.api
 from ayon_core.lib import TextDef
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
 
+from ayon_deadline.lib import FARM_FAMILIES
+
 
 class CollectDeadlinePools(pyblish.api.InstancePlugin,
                            AYONPyblishPluginMixin):
@@ -36,22 +38,7 @@ class CollectDeadlinePools(pyblish.api.InstancePlugin,
         "nuke",
     ]
 
-    families = [
-        "render",
-        "prerender",
-        "rendering",
-        "render.farm",
-        "renderFarm",
-        "renderlayer",
-        "maxrender",
-        "usdrender",
-        "redshift_rop",
-        "arnold_rop",
-        "mantra_rop",
-        "karma_rop",
-        "vray_rop",
-        "publish.hou",
-    ]
+    families = FARM_FAMILIES
 
     primary_pool = None
     secondary_pool = None
