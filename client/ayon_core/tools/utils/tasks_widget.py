@@ -298,7 +298,7 @@ class AssignedFilterProxyModel(QtCore.QSortFilterProxyModel):
         super(AssignedFilterProxyModel, self).__init__(parent)
         if not assigned_task_names:
             assigned_task_names = []
-        self._active = True
+        self._active = False
         self._assigned_task_names = assigned_task_names
 
     @property

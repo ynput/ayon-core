@@ -59,7 +59,7 @@ class HierarchyPage(QtWidgets.QWidget):
         folders_wrapper_layout = QtWidgets.QVBoxLayout(folders_wrapper)
         folders_wrapper_layout.setContentsMargins(0, 0, 0, 0)
         folders_wrapper_layout.addWidget(folders_filter_text, 0)
-        folders_wrapper_layout.addWidget(show_only_my_assignments, 1)
+        folders_wrapper_layout.addWidget(show_only_my_assignments, 0)
         folders_wrapper_layout.addWidget(folders_widget, 2)
 
         # - Tasks widget
@@ -76,9 +76,9 @@ class HierarchyPage(QtWidgets.QWidget):
         main_layout.addWidget(content_body, 1)
 
         btn_back.clicked.connect(self._on_back_clicked)
-        refresh_btn.clicked.connect(self._on_refreh_clicked)
+        refresh_btn.clicked.connect(self._on_refresh_clicked)
         show_only_my_assignments.stateChanged.connect(
-            self._on_assigned_state_changed
+            self._show_only_assignments_changed
         )
         folders_filter_text.textChanged.connect(self._on_filter_text_changed)
 
@@ -92,6 +92,7 @@ class HierarchyPage(QtWidgets.QWidget):
 
         # Post init
         projects_combobox.set_listen_to_selection_change(self._is_visible)
+        self._show_only_assignments_changed(True)
 
     def set_page_visible(self, visible, project_name=None):
         if self._is_visible == visible:
@@ -108,12 +109,12 @@ class HierarchyPage(QtWidgets.QWidget):
     def _on_back_clicked(self):
         self._controller.set_selected_project(None)
 
-    def _on_refreh_clicked(self):
+    def _on_refresh_clicked(self):
         self._controller.refresh()
 
     def _on_filter_text_changed(self, text):
         self._folders_widget.set_name_filter(text)
 
-    def _on_assigned_state_changed(self, state):
+    def _show_only_assignments_changed(self, state):
         self._folders_widget.set_assigned_only(state)
         self._tasks_widget.set_assigned_only(state)

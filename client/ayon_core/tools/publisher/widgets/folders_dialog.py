@@ -40,6 +40,11 @@ class FoldersDialog(QtWidgets.QDialog):
         filter_input = PlaceholderLineEdit(self)
         filter_input.setPlaceholderText("Filter folders..")
 
+        show_only_my_assignments = QtWidgets.QCheckBox(
+            "Show only my assignments"
+        )
+        show_only_my_assignments.setChecked(False)
+
         folders_controller = FoldersDialogController(controller)
         folders_widget = FoldersWidget(folders_controller, self)
         folders_widget.set_deselectable(True)
@@ -54,6 +59,7 @@ class FoldersDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(filter_input, 0)
+        layout.addWidget(show_only_my_assignments, 0)
         layout.addWidget(folders_widget, 1)
         layout.addLayout(btns_layout, 0)
 
@@ -63,9 +69,12 @@ class FoldersDialog(QtWidgets.QDialog):
 
         folders_widget.double_clicked.connect(self._on_ok_clicked)
         filter_input.textChanged.connect(self._on_filter_change)
+        show_only_my_assignments.stateChanged.connect(
+            self._show_only_assignments_changed
+        )
         ok_btn.clicked.connect(self._on_ok_clicked)
-        cancel_btn.clicked.connect(self._on_cancel_clicked)
 
+        cancel_btn.clicked.connect(self._on_cancel_clicked)
         self._controller = controller
         self._filter_input = filter_input
         self._ok_btn = ok_btn
@@ -81,6 +90,9 @@ class FoldersDialog(QtWidgets.QDialog):
 
         self._first_show = True
         self._default_height = 500
+
+        # Post init
+        self._show_only_assignments_changed(False)
 
     def _on_first_show(self):
         center = self.rect().center()
@@ -119,6 +131,9 @@ class FoldersDialog(QtWidgets.QDialog):
     def _on_filter_change(self, text):
         """Trigger change of filter of folders."""
         self._folders_widget.set_name_filter(text)
+
+    def _show_only_assignments_changed(self, state):
+        self._folders_widget.set_assigned_only(state)
 
     def _on_cancel_clicked(self):
         self.done(0)

@@ -166,6 +166,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
     def _post_init(self):
         self._on_published_checkbox_changed()
 
+        self._show_only_assignments_changed(True)
+
         # Force focus on the open button by default, required for Houdini.
         self._files_widget.setFocus()
 
@@ -178,6 +180,11 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         folder_filter_input = PlaceholderLineEdit(header_widget)
         folder_filter_input.setPlaceholderText("Filter folders..")
 
+        show_only_my_assignments = QtWidgets.QCheckBox(
+            "Show only my assignments"
+        )
+        show_only_my_assignments.setChecked(True)
+
         go_to_current_btn = GoToCurrentButton(header_widget)
         refresh_btn = RefreshButton(header_widget)
 
@@ -185,11 +192,18 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             controller, col_widget, handle_expected_selection=True
         )
 
+        vertical_layout = QtWidgets.QVBoxLayout(header_widget)
+        vertical_layout.setContentsMargins(0, 0, 0, 0)
+
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.addWidget(folder_filter_input, 1)
         header_layout.addWidget(go_to_current_btn, 0)
         header_layout.addWidget(refresh_btn, 0)
+        vertical_layout.addLayout(header_layout)
+        
+        vertical_layout.addWidget(show_only_my_assignments)
+        header_widget.setLayout(vertical_layout)
 
         col_layout = QtWidgets.QVBoxLayout(col_widget)
         col_layout.setContentsMargins(0, 0, 0, 0)
@@ -197,6 +211,9 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         col_layout.addWidget(folder_widget, 1)
 
         folder_filter_input.textChanged.connect(self._on_folder_filter_change)
+        show_only_my_assignments.stateChanged.connect(
+            self._show_only_assignments_changed
+        )
         go_to_current_btn.clicked.connect(self._on_go_to_current_clicked)
         refresh_btn.clicked.connect(self._on_refresh_clicked)
 
@@ -321,6 +338,10 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
     def _on_folder_filter_change(self, text):
         self._folders_widget.set_name_filter(text)
+
+    def _show_only_assignments_changed(self, state):
+        self._folders_widget.set_assigned_only(state)
+        self._tasks_widget.set_assigned_only(state)
 
     def _on_go_to_current_clicked(self):
         self._controller.go_to_current_context()

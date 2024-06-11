@@ -266,7 +266,7 @@ class AssignedFilterProxyModel(QtCore.QSortFilterProxyModel):
         super(AssignedFilterProxyModel, self).__init__(parent)
         if not assigned_folder_paths:
             assigned_folder_paths = []
-        self._active = True
+        self._active = False
         self._assigned_folder_paths = assigned_folder_paths
 
     @property
@@ -453,7 +453,7 @@ class FoldersWidget(QtWidgets.QWidget):
         Args:
             project_name (str): Project name.
         """
-
+        self._refresh_folder_assignments(project_name)
         self._folders_model.set_project_name(project_name)
 
     def get_selected_folder_id(self):
@@ -562,17 +562,11 @@ class FoldersWidget(QtWidgets.QWidget):
 
     def _on_project_selection_change(self, event):
         project_name = event["project_name"]
-        assigned_folder_items = self._controller.get_assigned_folder_items(project_name)
-        assigned_folder_paths = set()
-        if assigned_folder_items:
-            for folder_item in assigned_folder_items:
-                folder_path = folder_item.path
-                # Add all parent hierarchy as individual entries so they don't get hidden
-                while "/" in folder_path:
-                    assigned_folder_paths.add(folder_path)
-                    folder_path, _ = folder_path.rsplit("/", 1)
-        self._assigned_proxy_model.assigned_folder_paths = assigned_folder_paths
         self.set_project_name(project_name)
+
+    def _refresh_folder_assignments(self, project_name):
+        assigned_folder_paths = self._controller.get_assigned_folder_paths(project_name)
+        self._assigned_proxy_model.assigned_folder_paths = assigned_folder_paths
 
     def _on_folders_refresh_finished(self, event):
         if event["sender"] != FOLDERS_MODEL_SENDER_NAME:

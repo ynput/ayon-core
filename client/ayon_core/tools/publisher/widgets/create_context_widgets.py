@@ -172,12 +172,18 @@ class CreateContextWidget(QtWidgets.QWidget):
         folder_filter_input = PlaceholderLineEdit(headers_widget)
         folder_filter_input.setPlaceholderText("Filter folders..")
 
+        show_only_my_assignments = QtWidgets.QCheckBox(
+            "Show only my assignments"
+        )
+        show_only_my_assignments.setChecked(False)
+
         current_context_btn = GoToCurrentButton(headers_widget)
         current_context_btn.setToolTip("Go to current context")
         current_context_btn.setVisible(False)
 
         headers_layout = QtWidgets.QHBoxLayout(headers_widget)
         headers_layout.setContentsMargins(0, 0, 0, 0)
+        headers_layout.addWidget(show_only_my_assignments, 2)
         headers_layout.addWidget(folder_filter_input, 1)
         headers_layout.addWidget(current_context_btn, 0)
 
@@ -203,12 +209,18 @@ class CreateContextWidget(QtWidgets.QWidget):
         tasks_widget.selection_changed.connect(self._on_task_change)
         current_context_btn.clicked.connect(self._on_current_context_click)
         folder_filter_input.textChanged.connect(self._on_folder_filter_change)
+        show_only_my_assignments.stateChanged.connect(
+            self._show_only_assignments_changed
+        )
 
         self._folder_filter_input = folder_filter_input
         self._current_context_btn = current_context_btn
         self._folders_widget = folders_widget
         self._tasks_widget = tasks_widget
         self._hierarchy_controller = hierarchy_controller
+
+        # Post init
+        self._show_only_assignments_changed(False)
 
     def get_selected_folder_id(self):
         return self._folders_widget.get_selected_folder_id()
@@ -294,3 +306,7 @@ class CreateContextWidget(QtWidgets.QWidget):
 
     def _on_folder_filter_change(self, text):
         self._folders_widget.set_name_filter(text)
+
+    def _show_only_assignments_changed(self, state):
+        self._folders_widget.set_assigned_only(state)
+        self._tasks_widget.set_assigned_only(state)
