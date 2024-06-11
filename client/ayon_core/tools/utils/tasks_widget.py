@@ -483,6 +483,10 @@ class TasksWidget(QtWidgets.QWidget):
         if not proxy_index.isValid():
             return False
 
+        proxy_index = self._assigned_proxy_model.mapFromSource(index)
+        if not proxy_index.isValid():
+            return False
+
         selection_model = self._folders_view.selectionModel()
         selection_model.setCurrentIndex(
             proxy_index, QtCore.QItemSelectionModel.SelectCurrent
@@ -553,6 +557,7 @@ class TasksWidget(QtWidgets.QWidget):
         if not self._set_expected_selection():
             self._on_selection_change()
         self._tasks_proxy_model.sort(0)
+        self._assigned_proxy_model.sort(0)
         self.refreshed.emit()
 
     def _get_selected_item_ids(self):
@@ -597,6 +602,7 @@ class TasksWidget(QtWidgets.QWidget):
             index = self._tasks_model.get_index_by_name(task_name)
             if index.isValid():
                 proxy_index = self._tasks_proxy_model.mapFromSource(index)
+                proxy_index = self._assigned_proxy_model.mapFromSource(proxy_index)
                 self._tasks_view.setCurrentIndex(proxy_index)
         self._controller.expected_task_selected(folder_id, task_name)
         return True

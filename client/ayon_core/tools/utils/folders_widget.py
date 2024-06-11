@@ -519,6 +519,10 @@ class FoldersWidget(QtWidgets.QWidget):
         if not proxy_index.isValid():
             return False
 
+        proxy_index = self._assigned_proxy_model.mapFromSource(proxy_index)
+        if not proxy_index.isValid():
+            return False
+
         selection_model = self._folders_view.selectionModel()
         selection_model.setCurrentIndex(
             proxy_index, QtCore.QItemSelectionModel.SelectCurrent
@@ -579,6 +583,7 @@ class FoldersWidget(QtWidgets.QWidget):
         if self._expected_selection:
             self._set_expected_selection()
         self._folders_proxy_model.sort(0)
+        self._assigned_proxy_model.sort(0)
         self.refreshed.emit()
 
     def _get_selected_item_id(self):
