@@ -337,7 +337,7 @@ class ExtractOIIOTranscode(publish.Extractor):
 
         if not repre.get("colorspaceData"):
             self.log.debug("Representation '{}' has no colorspace data. "
-                           "Skipped.")
+                           "Skipped.".format(repre["name"]))
             return False
 
         return True
