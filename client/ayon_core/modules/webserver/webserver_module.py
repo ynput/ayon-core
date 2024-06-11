@@ -26,9 +26,12 @@ import socket
 from ayon_core import resources
 from ayon_core.addon import AYONAddon, ITrayService
 
+from .version import __version__
+
 
 class WebServerAddon(AYONAddon, ITrayService):
     name = "webserver"
+    version = __version__
     label = "WebServer"
 
     webserver_url_env = "AYON_WEBSERVER_URL"
