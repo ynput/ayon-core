@@ -7,8 +7,11 @@ from typing import Any, Dict, Union
 
 import six
 
+import ayon_api
+
 from ayon_core.pipeline import (
     get_current_project_name,
+    get_current_folder_path,
     colorspace
 )
 from ayon_core.settings import get_project_settings
@@ -272,7 +275,7 @@ def reset_frame_range(fps: bool = True):
             scene frame rate in frames-per-second.
     """
     if fps:
-        set_fps()
+        rt.frameRate = float(get_fps_for_current_context())
 
     frame_range = get_frame_range()
 
@@ -282,13 +285,37 @@ def reset_frame_range(fps: bool = True):
         frame_range["frameStartHandle"], frame_range["frameEndHandle"])
 
 
-def set_fps():
-    """Set fps to current folder
+def get_fps_for_current_context():
+    """Get fps that should be set for current context.
+
+    Todos:
+        - Skip project value.
+        - Merge logic with 'get_frame_range' and 'reset_scene_resolution' ->
+            all the values in the functions can be collected at one place as
+            they have same requirements.
+
+    Returns:
+        Union[int, float]: FPS value.
     """
-    task_entity = get_current_task_entity()
-    task_attributes = task_entity["attrib"]
-    fps_number = float(task_attributes["fps"])
-    rt.frameRate = fps_number
+    task_entity = get_current_task_entity(fields={"attrib"})
+    fps = task_entity.get("attrib", {}).get("fps")
+    if not fps:
+        project_name = get_current_project_name()
+        folder_path = get_current_folder_path()
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields={"attrib.fps"}
+        ) or {}
+
+        fps = folder_entity.get("attrib", {}).get("fps")
+        if not fps:
+            project_entity = ayon_api.get_project(
+                project_name, fields=["attrib.fps"]
+            ) or {}
+            fps = project_entity.get("attrib", {}).get("fps")
+
+            if not fps:
+                fps = 25
+    return fps
 
 
 def reset_unit_scale():
@@ -580,3 +607,17 @@ def suspended_refresh():
     finally:
         rt.enableSceneRedraw()
         rt.resumeEditing()
+
+
+@contextlib.contextmanager
+def scene_fps(fps):
+    """Set scene fps during context
+
+    Args:
+        fps (float): fps value
+    """
+    try:
+        rt.frameRate = float(get_fps_for_current_context())
+        yield
+    finally:
+        rt.frameRate = fps
