@@ -94,8 +94,9 @@ class Commands:
             # NOTE: ayon-python-api does not have public api function to find
             #   out if is used service user. So we need to have try > except
             #   block.
+            con = ayon_api.get_server_api_connection()
             try:
-                ayon_api.set_default_service_username(username)
+                con.set_default_service_username(username)
             except ValueError:
                 pass
 
