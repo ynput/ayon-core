@@ -1,11 +1,14 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 HOUDINI_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class HoudiniAddon(AYONAddon, IHostAddon):
     name = "houdini"
+    version = __version__
     host_name = "houdini"
 
     def add_implementation_envs(self, env, _app):
