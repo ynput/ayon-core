@@ -123,6 +123,13 @@ class CreateHierarchyController:
     def get_folder_items(self, project_name, sender=None):
         return self._controller.get_folder_items(project_name, sender)
 
+    def get_assigned_folder_paths(
+        self, project_name, sender=None, assignee=None
+    ):
+        return self._controller.get_assigned_folder_paths(
+            project_name, sender, assignee
+        )
+    
     def get_task_items(self, project_name, folder_id, sender=None):
         return self._controller.get_task_items(
             project_name, folder_id, sender
@@ -181,11 +188,15 @@ class CreateContextWidget(QtWidgets.QWidget):
         current_context_btn.setToolTip("Go to current context")
         current_context_btn.setVisible(False)
 
+        vertical_layout = QtWidgets.QVBoxLayout(headers_widget)
+        vertical_layout.setContentsMargins(0, 0, 0, 0)
         headers_layout = QtWidgets.QHBoxLayout(headers_widget)
         headers_layout.setContentsMargins(0, 0, 0, 0)
-        headers_layout.addWidget(show_only_my_assignments, 2)
         headers_layout.addWidget(folder_filter_input, 1)
         headers_layout.addWidget(current_context_btn, 0)
+        vertical_layout.addLayout(headers_layout)
+        vertical_layout.addWidget(show_only_my_assignments)
+        headers_widget.setLayout(vertical_layout)
 
         hierarchy_controller = CreateHierarchyController(controller)
 

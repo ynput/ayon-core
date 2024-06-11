@@ -790,6 +790,29 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
+    def get_assigned_folder_paths(
+        self, project_name, sender=None, assignee=None
+    ):
+        """Get folder paths assigned to user by project name.
+
+        If a child folder is assigned (i.e. /season/seq/sh010) this
+        function will also return all the parent entities on the
+        hierarchy (i.e. ["/season", "/season/seq"]) as those are
+        implicitly assigned to the user as well.
+
+        Args:
+            project_name (str): Name of project where to look for folders.
+            sender (Union[str, None]): Who requested the folder ids.
+            assignee (Union[str, None]): User we want to check folders
+                assigned to.
+
+        Returns:
+            set[str]: Folder paths assigned to user.
+        """
+
+        pass
+
+    @abstractmethod
     def get_task_items(self, project_name, folder_id, sender):
         """Task items.
 

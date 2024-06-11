@@ -59,6 +59,13 @@ class ControllerWrap:
     def get_folder_items(self, *args, **kwargs):
         return self._controller.get_folder_items(*args, **kwargs)
 
+    def get_assigned_folder_paths(
+            self, project_name, sender=None, assignee=None
+        ):
+        return self._controller.get_assigned_folder_paths(
+            project_name, sender, assignee
+        )
+
     def set_selected_folder(self, folder_id):
         self._selected_folder_id = folder_id
 
