@@ -272,16 +272,23 @@ def reset_frame_range(fps: bool = True):
             scene frame rate in frames-per-second.
     """
     if fps:
-        task_entity = get_current_task_entity()
-        task_attributes = task_entity["attrib"]
-        fps_number = float(task_attributes["fps"])
-        rt.frameRate = fps_number
+        set_fps()
+
     frame_range = get_frame_range()
 
     set_timeline(
         frame_range["frameStartHandle"], frame_range["frameEndHandle"])
     set_render_frame_range(
         frame_range["frameStartHandle"], frame_range["frameEndHandle"])
+
+
+def set_fps():
+    """Set fps to current folder
+    """
+    task_entity = get_current_task_entity()
+    task_attributes = task_entity["attrib"]
+    fps_number = float(task_attributes["fps"])
+    rt.frameRate = fps_number
 
 
 def reset_unit_scale():
@@ -358,7 +365,7 @@ def is_headless():
 def set_timeline(frameStart, frameEnd):
     """Set frame range for timeline editor in Max
     """
-    rt.animationRange = rt.interval(frameStart, frameEnd)
+    rt.animationRange = rt.interval(int(frameStart), int(frameEnd))
     return rt.animationRange
 
 
