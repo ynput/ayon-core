@@ -135,8 +135,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         If a child folder is assigned (i.e. /season/seq/sh010) this
         function will also return all the parent entities on the
-        hierarchy (i.e. ["/season", "/season/seq"]) as those are
-        implicitly assigned to the user as well.
+        hierarchy (i.e. ["/season", "/season/seq"]) because it
+        contains children folders assigned to the user.
 
         Args:
             project_name (str): Name of project where to look for folders.
