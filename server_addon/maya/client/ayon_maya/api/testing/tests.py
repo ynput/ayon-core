@@ -71,6 +71,7 @@ def test_create():
         hierarchy = {}
         if "instance_node" in instance.data:
             members = cmds.sets(instance.data["instance_node"], query=True)
+            print(members)
             hierarchy[instance.data["instance_node"]] = cmds.ls(
                 members, type="dagNode"
             )
@@ -88,14 +89,13 @@ def test_create():
                 "creator_attributes": creator_attributes
             }
         )
-
         instances_to_remove.append(instance)
 
     context.remove_instances(instances_to_remove)
 
     for data in create_data:
         created_instance = context.create(
-            creator_identifier=creator_identifier,
+            creator_identifier=data["creator_identifier"],
             variant="Main",
             pre_create_data={"use_selection": True}
         )
@@ -105,7 +105,7 @@ def test_create():
 
             cmds.sets(nodes, forceElement=set)
         if created_instance:
-            for key, value in data.creator_attributes:
+            for key, value in data["creator_attributes"].items():
                created_instance.creator_attributes[key] = value
 
         context.save_changes()

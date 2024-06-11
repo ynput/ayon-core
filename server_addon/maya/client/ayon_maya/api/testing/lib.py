@@ -6,6 +6,8 @@ import pyblish.api
 import ayon_api
 from ayon_core.pipeline import (
     get_current_project_name,
+    get_current_folder_path,
+    get_current_task_name,
     Anatomy,
     get_current_context,
     get_current_host_name,
@@ -71,6 +73,16 @@ def recursive_validate(valid_action_names):
     """
     context = pyblish.api.Context()
     context.data["create_context"] = CreateContext(registered_host())
+    project_name = get_current_project_name()
+    folder_path = get_current_folder_path()
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path)
+    context.data["folderEntity"] = folder_entity
+    if folder_entity:
+        task_name = get_current_task_name
+        context.data["taskEntity"] = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
     context = pyblish.util.collect(context)
     pyblish.util.validate(context)
 
