@@ -268,7 +268,7 @@ def main(*args, **kwargs):
         os.path.join(AYON_CORE_ROOT, "tools"),
         # add common AYON vendor
         # (common for multiple Python interpreter versions)
-        os.path.join(AYON_CORE_ROOT, "vendor", "python", "common")
+        os.path.join(AYON_CORE_ROOT, "vendor", "python")
     ]
     for path in additional_paths:
         if path not in split_paths:
