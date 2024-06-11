@@ -410,6 +410,9 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             files = exp
             assembly_files = files
 
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
+
         # Define frame tile jobs
         frame_file_hash = {}
         frame_payloads = {}
@@ -459,9 +462,8 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         # Submit frame tile jobs
         frame_tile_job_id = {}
         for frame, tile_job_payload in frame_payloads.items():
-            job_id = self.submit(tile_job_payload,
-                                 instance.data["deadline"]["auth"],
-                                 instance.data["deadline"]["verify"])
+            job_id = self.submit(
+                tile_job_payload, auth, verify)
             frame_tile_job_id[frame] = job_id
 
         # Define assembly payloads
@@ -564,8 +566,6 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         # Submit assembly jobs
         assembly_job_ids = []
         num_assemblies = len(assembly_payloads)
-        auth = instance.data["deadline"]["auth"]
-        verify = instance.data["deadline"]["verify"]
         for i, payload in enumerate(assembly_payloads):
             self.log.debug(
                 "submitting assembly job {} of {}".format(i + 1,
