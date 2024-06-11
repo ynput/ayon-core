@@ -9,7 +9,7 @@ from ayon_tvpaint.api.communication_server import (
     BaseCommunicator,
     CommunicationWrapper
 )
-from ayon_core.modules.job_queue.job_workers import WorkerJobsConnection
+from ayon_jobqueue.job_workers import WorkerJobsConnection
 
 from .worker_job import ProcessTVPaintCommands
 
