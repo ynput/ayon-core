@@ -6,7 +6,7 @@ from ayon_core.pipeline.load.utils import remove_container
 
 class RemoveUnusedMedia(InventoryAction):
 
-    label = "Remove Unused Media"
+    label = "Remove Unused Selected Media"
     icon = "trash"
 
     @staticmethod
