@@ -166,8 +166,6 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
     def _post_init(self):
         self._on_published_checkbox_changed()
 
-        self._show_only_assignments_changed(True)
-
         # Force focus on the open button by default, required for Houdini.
         self._files_widget.setFocus()
 
@@ -183,7 +181,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         show_only_my_assignments = QtWidgets.QCheckBox(
             "Show only my assignments"
         )
-        show_only_my_assignments.setChecked(True)
+        show_only_my_assignments.setChecked(False)
 
         go_to_current_btn = GoToCurrentButton(header_widget)
         refresh_btn = RefreshButton(header_widget)

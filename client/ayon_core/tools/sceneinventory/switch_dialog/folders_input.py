@@ -131,9 +131,6 @@ class FoldersDialog(QtWidgets.QDialog):
         self._first_show = True
         self._default_height = 500
 
-        # Post init
-        self._show_only_assignments_changed(False)
-
     def showEvent(self, event):
         """Refresh asset model on show."""
         super(FoldersDialog, self).showEvent(event)

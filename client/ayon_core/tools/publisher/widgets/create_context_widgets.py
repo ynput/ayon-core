@@ -230,9 +230,6 @@ class CreateContextWidget(QtWidgets.QWidget):
         self._tasks_widget = tasks_widget
         self._hierarchy_controller = hierarchy_controller
 
-        # Post init
-        self._show_only_assignments_changed(False)
-
     def get_selected_folder_id(self):
         return self._folders_widget.get_selected_folder_id()
 

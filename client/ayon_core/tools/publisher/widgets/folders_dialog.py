@@ -80,7 +80,6 @@ class FoldersDialog(QtWidgets.QDialog):
             self._show_only_assignments_changed
         )
         ok_btn.clicked.connect(self._on_ok_clicked)
-
         cancel_btn.clicked.connect(self._on_cancel_clicked)
         self._controller = controller
         self._filter_input = filter_input
@@ -97,9 +96,6 @@ class FoldersDialog(QtWidgets.QDialog):
 
         self._first_show = True
         self._default_height = 500
-
-        # Post init
-        self._show_only_assignments_changed(False)
 
     def _on_first_show(self):
         center = self.rect().center()
