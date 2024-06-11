@@ -80,6 +80,7 @@ class HierarchyPage(QtWidgets.QWidget):
         show_only_my_assignments.stateChanged.connect(
             self._show_only_assignments_changed
         )
+
         folders_filter_text.textChanged.connect(self._on_filter_text_changed)
 
         self._is_visible = False
