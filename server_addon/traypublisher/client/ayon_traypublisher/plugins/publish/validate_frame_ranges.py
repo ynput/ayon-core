@@ -33,8 +33,12 @@ class ValidateFrameRange(OptionalPyblishPluginMixin,
             return
 
         # editorial would fail since they might not be in database yet
-        new_folder_publishing = instance.data.get("newAssetPublishing")
-        if new_folder_publishing:
+        new_hierarchy = (
+            instance.data.get("newHierarchyIntegration")
+            # Backwards compatible (Deprecated since 24/06/06)
+            or instance.data.get("newAssetPublishing")
+        )
+        if new_hierarchy:
             self.log.debug("Instance is creating new folder. Skipping.")
             return
 

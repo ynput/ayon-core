@@ -2,11 +2,14 @@
 import os
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 MAX_HOST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class MaxAddon(AYONAddon, IHostAddon):
     name = "max"
+    version = __version__
     host_name = "max"
 
     def add_implementation_envs(self, env, _app):
