@@ -143,7 +143,7 @@ class UsersModel:
             Union[UserItem, None]: User item or None if not found.
 
         """
-        self._invalidate_cache()
+        self._invalidate_cache(project_name)
         for user_item in self.get_user_items(project_name):
             if user_item.username == username:
                 return user_item
