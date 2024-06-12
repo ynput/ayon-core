@@ -7,11 +7,8 @@ from typing import Any, Dict, Union
 
 import six
 
-import ayon_api
-
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_current_folder_path,
     colorspace
 )
 from ayon_core.settings import get_project_settings
