@@ -55,12 +55,12 @@ class CreateHDA(plugin.HoudiniCreator):
             # selected nodes ...
             if self.selected_nodes[0].type().name() == "subnet":
                 to_hda = self.selected_nodes[0]
-                to_hda.setName("{}_HDA".format(node_name), unique_name=True)
+                to_hda.setName("{}_subnet".format(node_name), unique_name=True)
             else:
                 parent_node = self.selected_nodes[0].parent()
                 subnet = parent_node.collapseIntoSubnet(
                     self.selected_nodes,
-                    subnet_name="{}_HDA".format(node_name))
+                    subnet_name="{}_subnet".format(node_name))
                 subnet.moveToGoodPosition()
                 to_hda = subnet
         else:
@@ -73,7 +73,7 @@ class CreateHDA(plugin.HoudiniCreator):
                 parent_node = pane.pwd()
 
             to_hda = parent_node.createNode(
-                "subnet", node_name="{}_HDA".format(node_name))
+                "subnet", node_name="{}_subnet".format(node_name))
         if not to_hda.type().definition():
             # if node type has not its definition, it is not user
             # created hda. We test if hda can be created from the node.
