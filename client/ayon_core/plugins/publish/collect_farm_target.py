@@ -14,22 +14,20 @@ class CollectFarmTarget(pyblish.api.InstancePlugin):
         if not instance.data.get("farm"):
             return
 
-        context = instance.context
+        addons_manager = instance.context.data.get("ayonAddonsManager")
 
-        farm_name = ""
-        addons_manager = context.data.get("ayonAddonsManager")
-
-        for farm_renderer in ["deadline", "royalrender"]:
-            addon = addons_manager.get(farm_renderer, False)
-
-            if not addon:
-                self.log.error("Cannot find AYON addon '{0}'.".format(
-                    farm_renderer))
-            elif addon.enabled:
+        farm_renderer_addons = ["deadline", "royalrender"]
+        for farm_renderer in farm_renderer_addons:
+            addon = addons_manager.get(farm_renderer)
+            if addon and addon.enabled:
                 farm_name = farm_renderer
-
-        if farm_name:
-            self.log.debug("Collected render target: {0}".format(farm_name))
-            instance.data["toBeRenderedOn"] = farm_name
+                break
         else:
-            AssertionError("No AYON renderer addon found")
+            # No enabled farm render addon found, then report all farm
+            # addons that were searched for yet not found
+            for farm_renderer in farm_renderer_addons:
+                self.log.error(f"Cannot find AYON addon '{farm_renderer}'.")
+            raise RuntimeError("No AYON renderer addon found.")
+
+        self.log.debug("Collected render target: {0}".format(farm_name))
+        instance.data["toBeRenderedOn"] = farm_name
