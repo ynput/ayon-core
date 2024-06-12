@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa E402
 """AYON lib functions."""
-# add vendor to sys path based on Python version
-import sys
-import os
-import site
-from ayon_core import AYON_CORE_ROOT
 
-# Add Python version specific vendor folder
-python_version_dir = os.path.join(
-    AYON_CORE_ROOT, "vendor", "python", "python_{}".format(sys.version[0])
+from .local_settings import (
+    IniSettingRegistry,
+    JSONSettingRegistry,
+    AYONSecureRegistry,
+    AYONSettingsRegistry,
+    OpenPypeSecureRegistry,
+    OpenPypeSettingsRegistry,
+    get_local_site_id,
+    get_ayon_username,
+    get_openpype_username,
 )
-# Prepend path in sys paths
-sys.path.insert(0, python_version_dir)
-site.addsitedir(python_version_dir)
-
-
+from .ayon_connection import initialize_ayon_connection
+from .cache import (
+    CacheItem,
+    NestedCacheItem,
+)
 from .events import (
     emit_event,
     register_event_callback
@@ -70,11 +72,8 @@ from .log import (
 )
 
 from .path_templates import (
-    merge_dict,
-    TemplateMissingKey,
     TemplateUnsolved,
     StringTemplate,
-    TemplatesDict,
     FormatObject,
 )
 
@@ -112,34 +111,6 @@ from .transcoding import (
     get_rescaled_command_arguments,
 )
 
-from .local_settings import (
-    IniSettingRegistry,
-    JSONSettingRegistry,
-    AYONSecureRegistry,
-    AYONSettingsRegistry,
-    OpenPypeSecureRegistry,
-    OpenPypeSettingsRegistry,
-    get_local_site_id,
-    get_ayon_username,
-    get_openpype_username,
-)
-
-from .applications import (
-    ApplicationLaunchFailed,
-    ApplictionExecutableNotFound,
-    ApplicationNotFound,
-    ApplicationManager,
-
-    PreLaunchHook,
-    PostLaunchHook,
-
-    EnvironmentPrepData,
-    prepare_app_environments,
-    prepare_context_environments,
-    get_app_environments_for_context,
-    apply_project_environments_value
-)
-
 from .plugin_tools import (
     prepare_template_data,
     source_hash,
@@ -155,21 +126,32 @@ from .path_tools import (
 )
 
 from .ayon_info import (
+    is_in_ayon_launcher_process,
     is_running_from_build,
+    is_using_ayon_console,
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
 )
 
-
-from .connections import (
-    requests_get,
-    requests_post
-)
-
 terminal = Terminal
 
 __all__ = [
+    "IniSettingRegistry",
+    "JSONSettingRegistry",
+    "AYONSecureRegistry",
+    "AYONSettingsRegistry",
+    "OpenPypeSecureRegistry",
+    "OpenPypeSettingsRegistry",
+    "get_local_site_id",
+    "get_ayon_username",
+    "get_openpype_username",
+
+    "initialize_ayon_connection",
+
+    "CacheItem",
+    "NestedCacheItem",
+
     "emit_event",
     "register_event_callback",
 
@@ -228,28 +210,6 @@ __all__ = [
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
 
-    "IniSettingRegistry",
-    "JSONSettingRegistry",
-    "AYONSecureRegistry",
-    "AYONSettingsRegistry",
-    "OpenPypeSecureRegistry",
-    "OpenPypeSettingsRegistry",
-    "get_local_site_id",
-    "get_ayon_username",
-    "get_openpype_username",
-
-    "ApplicationLaunchFailed",
-    "ApplictionExecutableNotFound",
-    "ApplicationNotFound",
-    "ApplicationManager",
-    "PreLaunchHook",
-    "PostLaunchHook",
-    "EnvironmentPrepData",
-    "prepare_app_environments",
-    "prepare_context_environments",
-    "get_app_environments_for_context",
-    "apply_project_environments_value",
-
     "compile_list_of_regexes",
 
     "filter_profiles",
@@ -264,11 +224,8 @@ __all__ = [
     "get_version_from_path",
     "get_last_version_from_path",
 
-    "merge_dict",
-    "TemplateMissingKey",
     "TemplateUnsolved",
     "StringTemplate",
-    "TemplatesDict",
     "FormatObject",
 
     "terminal",
@@ -279,11 +236,10 @@ __all__ = [
 
     "Logger",
 
+    "is_in_ayon_launcher_process",
     "is_running_from_build",
+    "is_using_ayon_console",
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
-
-    "requests_get",
-    "requests_post"
 ]

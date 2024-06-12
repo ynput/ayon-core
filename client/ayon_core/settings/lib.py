@@ -5,7 +5,7 @@ import collections
 import copy
 import time
 
-from ayon_core.client import get_ayon_server_api_connection
+import ayon_api
 
 log = logging.getLogger(__name__)
 
@@ -46,8 +46,7 @@ class _AyonSettingsCache:
     @classmethod
     def _use_bundles(cls):
         if _AyonSettingsCache.use_bundles is None:
-            con = get_ayon_server_api_connection()
-            major, minor, _, _, _ = con.get_server_version_tuple()
+            major, minor, _, _, _ = ayon_api.get_server_version_tuple()
             use_bundles = True
             if (major, minor) < (0, 3):
                 use_bundles = False
@@ -69,8 +68,7 @@ class _AyonSettingsCache:
             _AyonSettingsCache.variant = variant
 
             # Set the variant to global ayon api connection
-            con = get_ayon_server_api_connection()
-            con.set_default_settings_variant(variant)
+            ayon_api.set_default_settings_variant(variant)
         return _AyonSettingsCache.variant
 
     @classmethod
@@ -81,23 +79,21 @@ class _AyonSettingsCache:
     def get_value_by_project(cls, project_name):
         cache_item = _AyonSettingsCache.cache_by_project_name[project_name]
         if cache_item.is_outdated:
-            con = get_ayon_server_api_connection()
             if cls._use_bundles():
-                value = con.get_addons_settings(
+                value = ayon_api.get_addons_settings(
                     bundle_name=cls._get_bundle_name(),
                     project_name=project_name,
                     variant=cls._get_variant()
                 )
             else:
-                value = con.get_addons_settings(project_name)
+                value = ayon_api.get_addons_settings(project_name)
             cache_item.update_value(value)
         return cache_item.get_value()
 
     @classmethod
     def _get_addon_versions_from_bundle(cls):
-        con = get_ayon_server_api_connection()
         expected_bundle = cls._get_bundle_name()
-        bundles = con.get_bundles()["bundles"]
+        bundles = ayon_api.get_bundles()["bundles"]
         bundle = next(
             (
                 bundle
@@ -117,8 +113,7 @@ class _AyonSettingsCache:
             if cls._use_bundles():
                 addons = cls._get_addon_versions_from_bundle()
             else:
-                con = get_ayon_server_api_connection()
-                settings_data = con.get_addons_settings(
+                settings_data = ayon_api.get_addons_settings(
                     only_values=False,
                     variant=cls._get_variant()
                 )
@@ -206,7 +201,7 @@ def get_current_project_settings():
     Project name should be stored in environment variable `AYON_PROJECT_NAME`.
     This function should be used only in host context where environment
     variable must be set and should not happen that any part of process will
-    change the value of the enviornment variable.
+    change the value of the environment variable.
     """
     project_name = os.environ.get("AYON_PROJECT_NAME")
     if not project_name:
@@ -214,6 +209,3 @@ def get_current_project_settings():
             "Missing context project in environemt variable `AYON_PROJECT_NAME`."
         )
     return get_project_settings(project_name)
-
-
-

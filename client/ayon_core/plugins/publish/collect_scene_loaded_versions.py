@@ -1,6 +1,6 @@
+import ayon_api
 import pyblish.api
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline import registered_host
 
 
@@ -42,22 +42,22 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
         }
 
         project_name = context.data["projectName"]
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
             representation_ids=repre_ids,
-            fields=["_id", "parent"]
+            fields={"id", "versionId"}
         )
-        repre_doc_by_str_id = {
-            str(doc["_id"]): doc
-            for doc in repre_docs
+        repre_entities_by_id = {
+            repre_entity["id"]: repre_entity
+            for repre_entity in repre_entities
         }
 
         # QUESTION should we add same representation id when loaded multiple
         #   times?
         for con in containers:
             repre_id = con["representation"]
-            repre_doc = repre_doc_by_str_id.get(repre_id)
-            if repre_doc is None:
+            repre_entity = repre_entities_by_id.get(repre_id)
+            if repre_entity is None:
                 self.log.warning((
                     "Skipping container,"
                     " did not find representation document. {}"
@@ -68,8 +68,8 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             # may have more then one representation that are same version
             version = {
                 "container_name": con["name"],
-                "representation_id": repre_doc["_id"],
-                "version_id": repre_doc["parent"],
+                "representation_id": repre_entity["id"],
+                "version_id": repre_entity["versionId"],
             }
             loaded_versions.append(version)
 

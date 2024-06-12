@@ -26,8 +26,7 @@ except ImportError:
 
 import six
 import appdirs
-
-from ayon_core.client import get_ayon_server_api_connection
+import ayon_api
 
 _PLACEHOLDER = object()
 
@@ -525,7 +524,7 @@ def get_ayon_appdirs(*args):
 def get_local_site_id():
     """Get local site identifier.
 
-    Identifier is created if does not exists yet.
+    Identifier is created if does not exist yet.
     """
     # used for background syncing
     site_id = os.environ.get("AYON_SITE_ID")
@@ -556,10 +555,9 @@ def get_ayon_username():
 
     Returns:
         str: Username.
-    """
 
-    con = get_ayon_server_api_connection()
-    return con.get_user()["name"]
+    """
+    return ayon_api.get_user()["name"]
 
 
 def get_openpype_username():

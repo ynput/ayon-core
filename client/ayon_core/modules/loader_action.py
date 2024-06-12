@@ -3,6 +3,7 @@ from ayon_core.addon import AYONAddon, ITrayAddon
 
 class LoaderAddon(AYONAddon, ITrayAddon):
     name = "loader_tool"
+    version = "1.0.0"
 
     def initialize(self, settings):
         # Tray attributes
@@ -13,7 +14,7 @@ class LoaderAddon(AYONAddon, ITrayAddon):
         # Add library tool
         self._loader_imported = False
         try:
-            from ayon_core.tools.loader.ui import LoaderWindow
+            from ayon_core.tools.loader.ui import LoaderWindow  # noqa F401
 
             self._loader_imported = True
         except Exception:

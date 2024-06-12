@@ -15,7 +15,7 @@ class LoadClipModel(BaseSettingsModel):
     )
 
 
-class LoaderPuginsModel(BaseSettingsModel):
+class LoaderPluginsModel(BaseSettingsModel):
     LoadClip: LoadClipModel = SettingsField(
         default_factory=LoadClipModel,
         title="Load Clip"

@@ -7,8 +7,6 @@ from __future__ import (
 
 import os
 import sys
-import numbers
-import copy
 import collections
 
 from qtpy import QtCore
@@ -39,7 +37,7 @@ def defer(delay, func):
 
     This aids in keeping the GUI responsive, but complicates logic
     when producing tests. To combat this, the environment variable ensures
-    that every operation is synchonous.
+    that every operation is synchronous.
 
     Arguments:
         delay (float): Delay multiplier; default 1, 0 means no delay

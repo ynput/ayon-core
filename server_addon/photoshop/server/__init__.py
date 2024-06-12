@@ -1,14 +1,9 @@
 from ayon_server.addons import BaseServerAddon
 
 from .settings import PhotoshopSettings, DEFAULT_PHOTOSHOP_SETTING
-from .version import __version__
 
 
 class Photoshop(BaseServerAddon):
-    name = "photoshop"
-    title = "Photoshop"
-    version = __version__
-
     settings_model = PhotoshopSettings
 
     async def get_default_settings(self):

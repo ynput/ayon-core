@@ -1,6 +1,8 @@
-from .site_sync import SiteSyncModel
+from .containers import ContainersModel
+from .sitesync import SiteSyncModel
 
 
 __all__ = (
+    "ContainersModel",
     "SiteSyncModel",
 )

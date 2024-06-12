@@ -118,8 +118,8 @@ def classes_from_module(superclass, module):
 
     Arguments:
         superclass (superclass): Superclass of subclasses to look for
-        module (types.ModuleType): Imported module from which to
-            parse valid Avalon plug-ins.
+        module (types.ModuleType): Imported module where to look for
+            'superclass' subclasses.
 
     Returns:
         List of plug-ins, or empty list if none is found.

@@ -56,6 +56,8 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.setLayoutDirection(QtCore.Qt.RightToLeft)
 
+        self.setObjectName("PublisherVerticalScrollArea")
+
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         # Background of scrollbar will be transparent
         scrollbar_bg = self.verticalScrollBar().parent()
@@ -500,7 +502,9 @@ class ValidationErrorsView(QtWidgets.QWidget):
         errors_scroll.setWidget(errors_widget)
 
         errors_layout = QtWidgets.QVBoxLayout(errors_widget)
-        errors_layout.setContentsMargins(0, 0, 0, 0)
+        # Add 5 margin to left so the is not directly on the edge of the
+        #   scroll widget
+        errors_layout.setContentsMargins(5, 0, 0, 0)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(errors_scroll, 1)

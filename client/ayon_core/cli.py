@@ -4,6 +4,7 @@ import os
 import sys
 import code
 import traceback
+from pathlib import Path
 
 import click
 import acre
@@ -11,6 +12,7 @@ import acre
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_general_environments
+from ayon_core.lib import initialize_ayon_connection, is_running_from_build
 
 from .cli_commands import Commands
 
@@ -80,7 +82,7 @@ main_cli.set_alias("addon", "module")
 @main_cli.command()
 @click.argument("output_json_path")
 @click.option("--project", help="Project name", default=None)
-@click.option("--asset", help="Asset name", default=None)
+@click.option("--asset", help="Folder path", default=None)
 @click.option("--task", help="Task name", default=None)
 @click.option("--app", help="Application name", default=None)
 @click.option(
@@ -95,6 +97,10 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
     environments will be extracted.
 
     Context options are "project", "asset", "task", "app"
+
+    Deprecated:
+        This function is deprecated and will be removed in future. Please use
+        'addon applications extractenvironments ...' instead.
     """
     Commands.extractenvironments(
         output_json_path, project, asset, task, app, envgroup
@@ -102,19 +108,18 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
 
 
 @main_cli.command()
-@click.argument("paths", nargs=-1)
-@click.option("-t", "--targets", help="Targets module", default=None,
+@click.argument("path", required=True)
+@click.option("-t", "--targets", help="Targets", default=None,
               multiple=True)
 @click.option("-g", "--gui", is_flag=True,
               help="Show Publish UI", default=False)
-def publish(paths, targets, gui):
+def publish(path, targets, gui):
     """Start CLI publishing.
 
-    Publish collects json from paths provided as an argument.
-    More than one path is allowed.
+    Publish collects json from path provided as an argument.
+S
     """
-
-    Commands.publish(list(paths), targets, gui)
+    Commands.publish(path, targets, gui)
 
 
 @main_cli.command(context_settings={"ignore_unknown_options": True})
@@ -127,7 +132,7 @@ def publish_report_viewer():
 @main_cli.command()
 @click.argument("output_path")
 @click.option("--project", help="Define project context")
-@click.option("--asset", help="Define asset in project (project must be set)")
+@click.option("--folder", help="Define folder in project (project must be set)")
 @click.option(
     "--strict",
     is_flag=True,
@@ -136,18 +141,18 @@ def publish_report_viewer():
 def contextselection(
     output_path,
     project,
-    asset,
+    folder,
     strict
 ):
     """Show Qt dialog to select context.
 
-    Context is project name, asset name and task name. The result is stored
+    Context is project name, folder path and task name. The result is stored
     into json file which path is passed in first argument.
     """
     Commands.contextselection(
         output_path,
         project,
-        asset,
+        folder,
         strict
     )
 
@@ -163,16 +168,27 @@ def run(script):
 
     if not script:
         print("Error: missing path to script file.")
+        return
+
+    # Remove first argument if it is the same as AYON executable
+    # - Forward compatibility with future AYON versions.
+    # - Current AYON launcher keeps the arguments with first argument but
+    #     future versions might remove it.
+    first_arg = sys.argv[0]
+    if is_running_from_build():
+        comp_path = os.getenv("AYON_EXECUTABLE")
     else:
+        comp_path = os.path.join(os.environ["AYON_ROOT"], "start.py")
+    # Compare paths and remove first argument if it is the same as AYON
+    if Path(first_arg).resolve() == Path(comp_path).resolve():
+        sys.argv.pop(0)
 
-        args = sys.argv
-        args.remove("run")
-        args.remove(script)
-        sys.argv = args
+    # Remove 'run' command from sys.argv
+    sys.argv.remove("run")
 
-        args_string = " ".join(args[1:])
-        print(f"... running: {script} {args_string}")
-        runpy.run_path(script, run_name="__main__", )
+    args_string = " ".join(sys.argv[1:])
+    print(f"... running: {script} {args_string}")
+    runpy.run_path(script, run_name="__main__")
 
 
 @main_cli.command()
@@ -243,6 +259,7 @@ def _set_addons_environments():
 
 
 def main(*args, **kwargs):
+    initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
 
@@ -251,7 +268,7 @@ def main(*args, **kwargs):
         os.path.join(AYON_CORE_ROOT, "tools"),
         # add common AYON vendor
         # (common for multiple Python interpreter versions)
-        os.path.join(AYON_CORE_ROOT, "vendor", "python", "common")
+        os.path.join(AYON_CORE_ROOT, "vendor", "python")
     ]
     for path in additional_paths:
         if path not in split_paths:

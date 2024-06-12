@@ -7,6 +7,7 @@ from ayon_core.addon import AYONAddon, ITrayAction
 class LauncherAction(AYONAddon, ITrayAction):
     label = "Launcher"
     name = "launcher_tool"
+    version = "1.0.0"
 
     def initialize(self, settings):
 
@@ -34,20 +35,6 @@ class LauncherAction(AYONAddon, ITrayAction):
 
         actions_paths = self.manager.collect_plugin_paths()["actions"]
         for path in actions_paths:
-            if path and os.path.exists(path):
-                register_launcher_action_path(path)
-
-        paths_str = os.environ.get("AVALON_ACTIONS") or ""
-        if paths_str:
-            self.log.warning(
-                "WARNING: 'AVALON_ACTIONS' is deprecated. Support of this"
-                " environment variable will be removed in future versions."
-                " Please consider using 'OpenPypeModule' to define custom"
-                " action paths. Planned version to drop the support"
-                " is 3.17.2 or 3.18.0 ."
-            )
-
-        for path in paths_str.split(os.pathsep):
             if path and os.path.exists(path):
                 register_launcher_action_path(path)
 

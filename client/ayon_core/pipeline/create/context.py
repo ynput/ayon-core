@@ -10,12 +10,8 @@ from contextlib import contextmanager
 
 import pyblish.logic
 import pyblish.api
+import ayon_api
 
-from ayon_core.client import (
-    get_assets,
-    get_asset_by_name,
-    get_asset_name_identifier,
-)
 from ayon_core.settings import get_project_settings
 from ayon_core.lib.attribute_definitions import (
     UnknownDef,
@@ -41,6 +37,7 @@ from .creator_plugins import (
 
 # Changes of instances and context are send as tuple of 2 information
 UpdateData = collections.namedtuple("UpdateData", ["instance", "changes"])
+_NOT_SET = object()
 
 
 class UnavailableSharedData(Exception):
@@ -533,7 +530,7 @@ class AttributeValues(object):
     Has dictionary like methods. Not all of them are allowed all the time.
 
     Args:
-        attr_defs(AbstractAttrDef): Defintions of value type and properties.
+        attr_defs(AbstractAttrDef): Definitions of value type and properties.
         values(dict): Values after possible conversion.
         origin_data(dict): Values loaded from host before conversion.
     """
@@ -685,7 +682,7 @@ class PublishAttributeValues(AttributeValues):
 
     @property
     def parent(self):
-        self.publish_attributes.parent
+        return self.publish_attributes.parent
 
 
 class PublishAttributes:
@@ -854,7 +851,7 @@ class CreatedInstance:
     """Instance entity with data that will be stored to workfile.
 
     I think `data` must be required argument containing all minimum information
-    about instance like "asset" and "task" and all data used for filling
+    about instance like "folderPath" and "task" and all data used for filling
     product name as creators may have custom data for product name filling.
 
     Notes:
@@ -982,7 +979,7 @@ class CreatedInstance:
         if not self._data.get("instance_id"):
             self._data["instance_id"] = str(uuid4())
 
-        self._asset_is_valid = self.has_set_asset
+        self._folder_is_valid = self.has_set_folder
         self._task_is_valid = self.has_set_task
 
     def __str__(self):
@@ -1283,8 +1280,8 @@ class CreatedInstance:
 
     # Context validation related methods/properties
     @property
-    def has_set_asset(self):
-        """Asset name is set in data."""
+    def has_set_folder(self):
+        """Folder path is set in data."""
 
         return "folderPath" in self._data
 
@@ -1298,15 +1295,15 @@ class CreatedInstance:
     def has_valid_context(self):
         """Context data are valid for publishing."""
 
-        return self.has_valid_asset and self.has_valid_task
+        return self.has_valid_folder and self.has_valid_task
 
     @property
-    def has_valid_asset(self):
-        """Asset set in context exists in project."""
+    def has_valid_folder(self):
+        """Folder set in context exists in project."""
 
-        if not self.has_set_asset:
+        if not self.has_set_folder:
             return False
-        return self._asset_is_valid
+        return self._folder_is_valid
 
     @property
     def has_valid_task(self):
@@ -1316,9 +1313,9 @@ class CreatedInstance:
             return False
         return self._task_is_valid
 
-    def set_asset_invalid(self, invalid):
-        # TODO replace with `set_asset_name`
-        self._asset_is_valid = not invalid
+    def set_folder_invalid(self, invalid):
+        # TODO replace with `set_folder_path`
+        self._folder_is_valid = not invalid
 
     def set_task_invalid(self, invalid):
         # TODO replace with `set_task_name`
@@ -1402,9 +1399,14 @@ class CreateContext:
             ).format(joined_methods))
 
         self._current_project_name = None
-        self._current_asset_name = None
+        self._current_folder_path = None
         self._current_task_name = None
         self._current_workfile_path = None
+        self._current_project_settings = None
+
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._current_task_type = _NOT_SET
 
         self._current_project_anatomy = None
 
@@ -1557,14 +1559,14 @@ class CreateContext:
 
         return self._current_project_name
 
-    def get_current_asset_name(self):
-        """Asset name which was used as current context on context reset.
+    def get_current_folder_path(self):
+        """Folder path which was used as current context on context reset.
 
         Returns:
-            Union[str, None]: Asset name.
+            Union[str, None]: Folder path.
         """
 
-        return self._current_asset_name
+        return self._current_folder_path
 
     def get_current_task_name(self):
         """Task name which was used as current context on context reset.
@@ -1574,6 +1576,64 @@ class CreateContext:
         """
 
         return self._current_task_name
+
+    def get_current_task_type(self):
+        """Task type which was used as current context on context reset.
+
+        Returns:
+            Union[str, None]: Task type.
+
+        """
+        if self._current_task_type is _NOT_SET:
+            task_type = None
+            task_entity = self.get_current_task_entity()
+            if task_entity:
+                task_type = task_entity["taskType"]
+            self._current_task_type = task_type
+        return self._current_task_type
+
+    def get_current_folder_entity(self):
+        """Folder entity for current context folder.
+
+        Returns:
+            Union[dict[str, Any], None]: Folder entity.
+
+        """
+        if self._current_folder_entity is not _NOT_SET:
+            return copy.deepcopy(self._current_folder_entity)
+        folder_entity = None
+        folder_path = self.get_current_folder_path()
+        if folder_path:
+            project_name = self.get_current_project_name()
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+        self._current_folder_entity = folder_entity
+        return copy.deepcopy(self._current_folder_entity)
+
+    def get_current_task_entity(self):
+        """Task entity for current context task.
+
+        Returns:
+            Union[dict[str, Any], None]: Task entity.
+
+        """
+        if self._current_task_entity is not _NOT_SET:
+            return copy.deepcopy(self._current_task_entity)
+        task_entity = None
+        task_name = self.get_current_task_name()
+        if task_name:
+            folder_entity = self.get_current_folder_entity()
+            if folder_entity:
+                project_name = self.get_current_project_name()
+                task_entity = ayon_api.get_task_by_name(
+                    project_name,
+                    folder_id=folder_entity["id"],
+                    task_name=task_name
+                )
+        self._current_task_entity = task_entity
+        return copy.deepcopy(self._current_task_entity)
+
 
     def get_current_workfile_path(self):
         """Workfile path which was opened on context reset.
@@ -1596,23 +1656,29 @@ class CreateContext:
                 self._current_project_name)
         return self._current_project_anatomy
 
+    def get_current_project_settings(self):
+        if self._current_project_settings is None:
+            self._current_project_settings = get_project_settings(
+                self.get_current_project_name())
+        return self._current_project_settings
+
     @property
     def context_has_changed(self):
         """Host context has changed.
 
-        As context is used project, asset, task name and workfile path if
+        As context is used project, folder, task name and workfile path if
         host does support workfiles.
 
         Returns:
             bool: Context changed.
         """
 
-        project_name, asset_name, task_name, workfile_path = (
+        project_name, folder_path, task_name, workfile_path = (
             self._get_current_host_context()
         )
         return (
             self._current_project_name != project_name
-            or self._current_asset_name != asset_name
+            or self._current_folder_path != folder_path
             or self._current_task_name != task_name
             or self._current_workfile_path != workfile_path
         )
@@ -1683,18 +1749,18 @@ class CreateContext:
         self.refresh_thumbnails()
 
     def _get_current_host_context(self):
-        project_name = asset_name = task_name = workfile_path = None
+        project_name = folder_path = task_name = workfile_path = None
         if hasattr(self.host, "get_current_context"):
             host_context = self.host.get_current_context()
             if host_context:
                 project_name = host_context.get("project_name")
-                asset_name = host_context.get("folder_path")
+                folder_path = host_context.get("folder_path")
                 task_name = host_context.get("task_name")
 
         if isinstance(self.host, IWorkfileHost):
             workfile_path = self.host.get_current_workfile()
 
-        return project_name, asset_name, task_name, workfile_path
+        return project_name, folder_path, task_name, workfile_path
 
     def reset_current_context(self):
         """Refresh current context.
@@ -1713,16 +1779,21 @@ class CreateContext:
                 are stored. We should store the workfile (if is available) too.
         """
 
-        project_name, asset_name, task_name, workfile_path = (
+        project_name, folder_path, task_name, workfile_path = (
             self._get_current_host_context()
         )
 
         self._current_project_name = project_name
-        self._current_asset_name = asset_name
+        self._current_folder_path = folder_path
         self._current_task_name = task_name
         self._current_workfile_path = workfile_path
 
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._current_task_type = _NOT_SET
+
         self._current_project_anatomy = None
+        self._current_project_settings = None
 
     def reset_plugins(self, discover_publish_plugins=True):
         """Reload plugins.
@@ -1776,7 +1847,7 @@ class CreateContext:
 
     def _reset_creator_plugins(self):
         # Prepare settings
-        project_settings = get_project_settings(self.project_name)
+        project_settings = self.get_current_project_settings()
 
         # Discover and prepare creators
         creators = {}
@@ -1794,10 +1865,10 @@ class CreateContext:
 
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
-                self.log.warning((
-                    "Duplicated Creator identifier. "
-                    "Using first and skipping following"
-                ))
+                self.log.warning(
+                    "Duplicate Creator identifier: '%s'. Using first Creator "
+                    "and skipping: %s", creator_identifier, creator_class
+                )
                 continue
 
             # Filter by host name
@@ -1950,43 +2021,52 @@ class CreateContext:
         self,
         creator_identifier,
         variant,
-        asset_doc=None,
-        task_name=None,
+        folder_entity=None,
+        task_entity=None,
         pre_create_data=None
     ):
         """Trigger create of plugins with standartized arguments.
 
-        Arguments 'asset_doc' and 'task_name' use current context as default
-        values. If only 'task_name' is provided it will be overriden by
-        task name from current context. If 'task_name' is not provided
-        when 'asset_doc' is, it is considered that task name is not specified,
-        which can lead to error if product name template requires task name.
+        Arguments 'folder_entity' and 'task_name' use current context as
+        default values. If only 'task_entity' is provided it will be
+        overridden by task name from current context. If 'task_name' is not
+        provided when 'folder_entity' is, it is considered that task name is
+        not specified, which can lead to error if product name template
+        requires task name.
 
         Args:
             creator_identifier (str): Identifier of creator plugin.
             variant (str): Variant used for product name.
-            asset_doc (Dict[str, Any]): Asset document which define context of
-                creation (possible context of created instance/s).
-            task_name (str): Name of task to which is context related.
+            folder_entity (Dict[str, Any]): Folder entity which define context
+                of creation (possible context of created instance/s).
+            task_entity (Dict[str, Any]): Task entity.
             pre_create_data (Dict[str, Any]): Pre-create attribute values.
 
         Returns:
             Any: Output of triggered creator's 'create' method.
 
         Raises:
-            CreatorError: If creator was not found or asset is empty.
+            CreatorError: If creator was not found or folder is empty.
         """
 
         creator = self._get_creator_in_create(creator_identifier)
 
         project_name = self.project_name
-        if asset_doc is None:
-            asset_name = self.get_current_asset_name()
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            task_name = self.get_current_task_name()
-            if asset_doc is None:
+        if folder_entity is None:
+            folder_path = self.get_current_folder_path()
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+            if folder_entity is None:
                 raise CreatorError(
-                    "Asset with name {} was not found".format(asset_name)
+                    "Folder '{}' was not found".format(folder_path)
+                )
+
+        if task_entity is None:
+            current_task_name = self.get_current_task_name()
+            if current_task_name:
+                task_entity = ayon_api.get_task_by_name(
+                    project_name, folder_entity["id"], current_task_name
                 )
 
         if pre_create_data is None:
@@ -2005,16 +2085,15 @@ class CreateContext:
 
         product_name = creator.get_product_name(
             project_name,
-            asset_doc,
-            task_name,
+            folder_entity,
+            task_entity,
             variant,
             self.host_name,
         )
-        asset_name = get_asset_name_identifier(asset_doc)
 
         instance_data = {
-            "folderPath": asset_name,
-            "task": task_name,
+            "folderPath": folder_entity["path"],
+            "task": task_entity["name"] if task_entity else None,
             "productType": creator.product_type,
             "variant": variant
         }
@@ -2049,7 +2128,7 @@ class CreateContext:
             exc_info = sys.exc_info()
             self.log.warning(error_message.format(identifier, exc_info[1]))
 
-        except:
+        except:  # noqa: E722
             add_traceback = True
             exc_info = sys.exc_info()
             self.log.warning(
@@ -2159,7 +2238,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2193,7 +2272,7 @@ class CreateContext:
             try:
                 convertor.find_instances()
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor.identifier, sys.exc_info()
@@ -2226,7 +2305,7 @@ class CreateContext:
             raise CreatorsCreateFailed(failed_info)
 
     def validate_instances_context(self, instances=None):
-        """Validate 'asset' and 'task' instance context."""
+        """Validate 'folder' and 'task' instance context."""
         # Use all instances from context if 'instances' are not passed
         if instances is None:
             instances = tuple(self._instances_by_id.values())
@@ -2235,54 +2314,83 @@ class CreateContext:
         if not instances:
             return
 
-        task_names_by_asset_name = {}
+        project_name = self.project_name
+
+        task_names_by_folder_path = {}
         for instance in instances:
-            asset_name = instance.get("folderPath")
+            folder_path = instance.get("folderPath")
             task_name = instance.get("task")
-            if asset_name:
-                task_names_by_asset_name[asset_name] = set()
+            if folder_path:
+                task_names_by_folder_path[folder_path] = set()
                 if task_name:
-                    task_names_by_asset_name[asset_name].add(task_name)
+                    task_names_by_folder_path[folder_path].add(task_name)
 
-        asset_names = {
-            asset_name
-            for asset_name in task_names_by_asset_name.keys()
-            if asset_name is not None
-        }
-        asset_docs = list(get_assets(
-            self.project_name,
-            asset_names=asset_names,
-            fields={"name", "data.tasks", "data.parents"}
-        ))
+        # Backwards compatibility for cases where folder name is set instead
+        #   of folder path
+        folder_names = set()
+        folder_paths = set()
+        for folder_path in task_names_by_folder_path.keys():
+            if folder_path is None:
+                pass
+            elif "/" in folder_path:
+                folder_paths.add(folder_path)
+            else:
+                folder_names.add(folder_path)
 
-        task_names_by_asset_name = {}
-        asset_docs_by_name = collections.defaultdict(list)
-        for asset_doc in asset_docs:
-            asset_name = get_asset_name_identifier(asset_doc)
-            tasks = asset_doc.get("data", {}).get("tasks") or {}
-            task_names_by_asset_name[asset_name] = set(tasks.keys())
-            asset_docs_by_name[asset_doc["name"]].append(asset_doc)
+        folder_paths_by_id = {}
+        if folder_paths:
+            for folder_entity in ayon_api.get_folders(
+                project_name,
+                folder_paths=folder_paths,
+                fields={"id", "path"}
+            ):
+                folder_id = folder_entity["id"]
+                folder_paths_by_id[folder_id] = folder_entity["path"]
+
+        folder_entities_by_name = collections.defaultdict(list)
+        if folder_names:
+            for folder_entity in ayon_api.get_folders(
+                project_name,
+                folder_names=folder_names,
+                fields={"id", "name", "path"}
+            ):
+                folder_id = folder_entity["id"]
+                folder_name = folder_entity["name"]
+                folder_paths_by_id[folder_id] = folder_entity["path"]
+                folder_entities_by_name[folder_name].append(folder_entity)
+
+        tasks_entities = ayon_api.get_tasks(
+            project_name,
+            folder_ids=folder_paths_by_id.keys(),
+            fields={"name", "folderId"}
+        )
+
+        task_names_by_folder_path = collections.defaultdict(set)
+        for task_entity in tasks_entities:
+            folder_id = task_entity["folderId"]
+            folder_path = folder_paths_by_id[folder_id]
+            task_names_by_folder_path[folder_path].add(task_entity["name"])
 
         for instance in instances:
-            if not instance.has_valid_asset or not instance.has_valid_task:
+            if not instance.has_valid_folder or not instance.has_valid_task:
                 continue
 
-            asset_name = instance["folderPath"]
-            if asset_name and "/" not in asset_name:
-                asset_docs = asset_docs_by_name.get(asset_name)
-                if len(asset_docs) == 1:
-                    asset_name = get_asset_name_identifier(asset_docs[0])
-                    instance["folderPath"] = asset_name
+            folder_path = instance["folderPath"]
+            if folder_path and "/" not in folder_path:
+                folder_entities = folder_entities_by_name.get(folder_path)
+                if len(folder_entities) == 1:
+                    folder_path = folder_entities[0]["path"]
+                    instance["folderPath"] = folder_path
 
-            if asset_name not in task_names_by_asset_name:
-                instance.set_asset_invalid(True)
+            if folder_path not in task_names_by_folder_path:
+                instance.set_folder_invalid(True)
                 continue
 
             task_name = instance["task"]
             if not task_name:
                 continue
 
-            if task_name not in task_names_by_asset_name[asset_name]:
+            if task_name not in task_names_by_folder_path[folder_path]:
                 instance.set_task_invalid(True)
 
     def save_changes(self):
@@ -2340,7 +2448,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2407,7 +2515,7 @@ class CreateContext:
                     error_message.format(identifier, exc_info[1])
                 )
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2513,7 +2621,7 @@ class CreateContext:
             try:
                 self.run_convertor(convertor_identifier)
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor_identifier, sys.exc_info()

@@ -355,7 +355,7 @@ class RedshiftSettingsModel(BaseSettingsModel):
     )
     additional_options: list[AdditionalOptionsModel] = SettingsField(
         default_factory=list,
-        title="Additional Vray Options",
+        title="Additional Redshift Options",
         description=(
             "Add additional options - put attribute and value, like "
             "reflectionMaxTraceDepth and 3"

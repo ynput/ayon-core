@@ -7,11 +7,11 @@ from ayon_core.tools.utils import (
 )
 from ayon_core.style import get_objected_colors
 
-from ayon_core.tools.ayon_utils.widgets import (
+from ayon_core.tools.utils import (
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
 )
-from ayon_core.tools.ayon_utils.widgets.folders_widget import FOLDER_ID_ROLE
+from ayon_core.tools.utils.folders_widget import FOLDER_ID_ROLE
 
 if qtpy.API == "pyside":
     from PySide.QtGui import QStyleOptionViewItemV4
@@ -321,6 +321,8 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         """
 
         self._folders_proxy_model.setFilterFixedString(name)
+        if name:
+            self._folders_view.expandAll()
 
     def set_merged_products_selection(self, items):
         """

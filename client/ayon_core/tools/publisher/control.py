@@ -8,16 +8,13 @@ import tempfile
 import shutil
 import inspect
 from abc import ABCMeta, abstractmethod
+import re
 
 import six
 import arrow
 import pyblish.api
 import ayon_api
 
-from ayon_core.client import (
-    get_asset_by_name,
-    get_subsets,
-)
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import (
     UIDef,
@@ -42,7 +39,8 @@ from ayon_core.pipeline.create.context import (
     ConvertorsOperationFailed,
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
-from ayon_core.tools.ayon_utils.models import HierarchyModel
+from ayon_core.tools.common_models import HierarchyModel
+from ayon_core.lib.profiles_filtering import filter_profiles
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
@@ -64,24 +62,6 @@ class MainThreadItem:
 
     def process(self):
         self.callback(*self.args, **self.kwargs)
-
-
-class AssetDocsCache:
-    """Cache asset documents for creation part."""
-
-    def __init__(self, controller):
-        self._controller = controller
-        self._asset_docs_by_path = {}
-
-    def reset(self):
-        self._asset_docs_by_path = {}
-
-    def get_asset_doc_by_folder_path(self, folder_path):
-        if folder_path not in self._asset_docs_by_path:
-            project_name = self._controller.project_name
-            asset_doc = get_asset_by_name(project_name, folder_path)
-            self._asset_docs_by_path[folder_path] = asset_doc
-        return copy.deepcopy(self._asset_docs_by_path[folder_path])
 
 
 class PublishReportMaker:
@@ -1653,7 +1633,6 @@ class PublisherController(BasePublisherController):
 
         # Cacher of avalon documents
         self._hierarchy_model = HierarchyModel(self)
-        self._asset_docs_cache = AssetDocsCache(self)
 
     @property
     def project_name(self):
@@ -1673,7 +1652,7 @@ class PublisherController(BasePublisherController):
             Union[str, None]: Folder path or None if folder is not set.
         """
 
-        return self._create_context.get_current_asset_name()
+        return self._create_context.get_current_folder_path()
 
     @property
     def current_task_name(self):
@@ -1708,6 +1687,15 @@ class PublisherController(BasePublisherController):
     def _publish_plugins(self):
         """Publish plugins."""
         return self._create_context.publish_plugins
+
+    def _get_current_project_settings(self):
+        """Current project settings.
+
+        Returns:
+            dict
+        """
+
+        return self._create_context.get_current_project_settings()
 
     # Hierarchy model
     def get_folder_items(self, project_name, sender=None):
@@ -1796,14 +1784,14 @@ class PublisherController(BasePublisherController):
         if not folder_item:
             return None
 
-        subset_docs = get_subsets(
+        product_entities = ayon_api.get_products(
             project_name,
-            asset_ids=[folder_item.entity_id],
-            fields=["name"]
+            folder_ids={folder_item.entity_id},
+            fields={"name"}
         )
         return {
-            subset_doc["name"]
-            for subset_doc in subset_docs
+            product_entity["name"]
+            for product_entity in product_entities
         }
 
     def reset(self):
@@ -1816,11 +1804,10 @@ class PublisherController(BasePublisherController):
 
         self._create_context.reset_preparation()
 
-        # Reset avalon context
+        # Reset current context
         self._create_context.reset_current_context()
 
         self._hierarchy_model.reset()
-        self._asset_docs_cache.reset()
 
         self._reset_plugins()
         # Publish part must be reset after plugins
@@ -1851,8 +1838,13 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
+        allowed_creator_pattern = self._get_allowed_creators_pattern()
         for identifier, creator in self._create_context.creators.items():
             try:
+                if (not self._is_label_allowed(
+                        creator.label, allowed_creator_pattern)):
+                    self.log.debug(f"{creator.label} not allowed for context")
+                    continue
                 output[identifier] = CreatorItem.from_creator(creator)
             except Exception:
                 self.log.error(
@@ -1862,6 +1854,60 @@ class PublisherController(BasePublisherController):
                 )
 
         return output
+
+    def _get_allowed_creators_pattern(self):
+        """Provide regex pattern for configured creator labels in this context
+
+        If no profile matches current context, it shows all creators.
+        Support usage of regular expressions for configured values.
+        Returns:
+            (re.Pattern)[optional]: None or regex compiled patterns
+                into single one ('Render|Image.*')
+        """
+
+        task_type = self._create_context.get_current_task_type()
+        project_settings = self._get_current_project_settings()
+
+        filter_creator_profiles = (
+            project_settings
+            ["core"]
+            ["tools"]
+            ["creator"]
+            ["filter_creator_profiles"]
+        )
+        filtering_criteria = {
+            "task_names": self.current_task_name,
+            "task_types": task_type,
+            "host_names": self._create_context.host_name
+        }
+        profile = filter_profiles(
+            filter_creator_profiles,
+            filtering_criteria,
+            logger=self.log
+        )
+
+        allowed_creator_pattern = None
+        if profile:
+            allowed_creator_labels = {
+                label
+                for label in profile["creator_labels"]
+                if label
+            }
+            self.log.debug(f"Only allowed `{allowed_creator_labels}` creators")
+            allowed_creator_pattern = (
+                re.compile("|".join(allowed_creator_labels)))
+        return allowed_creator_pattern
+
+    def _is_label_allowed(self, label, allowed_labels_regex):
+        """Implement regex support for allowed labels.
+
+        Args:
+            label (str): Label of creator - shown in Publisher
+            allowed_labels_regex (re.Pattern): compiled regular expression
+        """
+        if not allowed_labels_regex:
+            return True
+        return bool(allowed_labels_regex.match(label))
 
     def _reset_instances(self):
         """Reset create instances."""
@@ -2052,16 +2098,37 @@ class PublisherController(BasePublisherController):
         """
 
         creator = self._creators[creator_identifier]
-        project_name = self.project_name
-        asset_doc = self._asset_docs_cache.get_asset_doc_by_folder_path(
-            folder_path
-        )
+
         instance = None
         if instance_id:
             instance = self.instances[instance_id]
 
+        project_name = self.project_name
+        folder_item = self._hierarchy_model.get_folder_item_by_path(
+            project_name, folder_path
+        )
+        folder_entity = None
+        task_item = None
+        task_entity = None
+        if folder_item is not None:
+            folder_entity = self._hierarchy_model.get_folder_entity(
+                project_name, folder_item.entity_id
+            )
+            task_item = self._hierarchy_model.get_task_item_by_name(
+                project_name, folder_item.entity_id, task_name, "controller"
+            )
+
+        if task_item is not None:
+            task_entity = self._hierarchy_model.get_task_entity(
+                project_name, task_item.task_id
+            )
+
         return creator.get_product_name(
-            project_name, asset_doc, task_name, variant, instance=instance
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            instance=instance
         )
 
     def trigger_convertor_items(self, convertor_identifiers):

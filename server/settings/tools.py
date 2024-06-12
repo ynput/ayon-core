@@ -35,6 +35,28 @@ class ProductNameProfile(BaseSettingsModel):
     template: str = SettingsField("", title="Template")
 
 
+class FilterCreatorProfile(BaseSettingsModel):
+    """Provide list of allowed Creator identifiers for context"""
+
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names")
+    creator_labels: list[str] = SettingsField(
+        default_factory=list,
+        title="Allowed Creator Labels",
+        description="Copy creator label from Publisher, regex supported."
+    )
+
+
 class CreatorToolModel(BaseSettingsModel):
     # TODO this was dynamic dictionary '{name: task_names}'
     product_types_smart_select: list[ProductTypeSmartSelectModel] = (
@@ -46,6 +68,13 @@ class CreatorToolModel(BaseSettingsModel):
     product_name_profiles: list[ProductNameProfile] = SettingsField(
         default_factory=list,
         title="Product name profiles"
+    )
+
+    filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
+        default_factory=list,
+        title="Filter creator profiles",
+        description="Allowed list of creator labels that will be only shown if "
+                    "profile matches context."
     )
 
     @validator("product_types_smart_select")
@@ -118,6 +147,15 @@ class WorkfilesLockProfile(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
 
 
+class AYONMenuModel(BaseSettingsModel):
+    _layout = "expanded"
+    version_up_current_workfile: bool = SettingsField(
+        False,
+        title="Version Up Workfile",
+        description="Add 'Version Up Workfile' to AYON menu"
+    )
+
+
 class WorkfilesToolModel(BaseSettingsModel):
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -173,6 +211,7 @@ def _product_types_enum():
         "rig",
         "setdress",
         "take",
+        "usd",
         "usdShade",
         "vdbcache",
         "vrayproxy",
@@ -267,6 +306,10 @@ class PublishToolModel(BaseSettingsModel):
 
 
 class GlobalToolsModel(BaseSettingsModel):
+    ayon_menu: AYONMenuModel = SettingsField(
+        default_factory=AYONMenuModel,
+        title="AYON Menu"
+    )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,
         title="Creator"
@@ -286,6 +329,9 @@ class GlobalToolsModel(BaseSettingsModel):
 
 
 DEFAULT_TOOLS_VALUES = {
+    "ayon_menu": {
+        "version_up_current_workfile": False
+    },
     "creator": {
         "product_types_smart_select": [
             {
@@ -403,21 +449,22 @@ DEFAULT_TOOLS_VALUES = {
                 "tasks": [],
                 "template": "SK_{folder[name]}{variant}"
             }
-        ]
+        ],
+        "filter_creator_profiles": []
     },
     "Workfiles": {
         "workfile_template_profiles": [
             {
                 "task_types": [],
                 "hosts": [],
-                "workfile_template": "work"
+                "workfile_template": "default"
             },
             {
                 "task_types": [],
                 "hosts": [
                     "unreal"
                 ],
-                "workfile_template": "work_unreal"
+                "workfile_template": "unreal"
             }
         ],
         "last_workfile_on_startup": [
@@ -457,7 +504,7 @@ DEFAULT_TOOLS_VALUES = {
                 "hosts": [],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish"
+                "template_name": "default"
             },
             {
                 "product_types": [
@@ -468,7 +515,7 @@ DEFAULT_TOOLS_VALUES = {
                 "hosts": [],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_render"
+                "template_name": "render"
             },
             {
                 "product_types": [
@@ -479,7 +526,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_simpleUnrealTexture"
+                "template_name": "simpleUnrealTexture"
             },
             {
                 "product_types": [
@@ -491,7 +538,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_maya2unreal"
+                "template_name": "maya2unreal"
             },
             {
                 "product_types": [
@@ -502,7 +549,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_online"
+                "template_name": "online"
             },
             {
                 "product_types": [
@@ -513,7 +560,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "publish_tycache"
+                "template_name": "tycache"
             }
         ],
         "hero_template_name_profiles": [
@@ -526,7 +573,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "task_names": [],
-                "template_name": "hero_simpleUnrealTextureHero"
+                "template_name": "simpleUnrealTextureHero"
             }
         ]
     }

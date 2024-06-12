@@ -1206,7 +1206,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
             if folder_path is not None:
                 instance["folderPath"] = folder_path
-                instance.set_asset_invalid(False)
+                instance.set_folder_invalid(False)
 
             if task_name is not None:
                 instance["task"] = task_name or None

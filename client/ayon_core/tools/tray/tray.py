@@ -447,8 +447,10 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def initialize_addons(self):
         self._initializing_addons = True
-        self.tray_man.initialize_addons()
-        self._initializing_addons = False
+        try:
+            self.tray_man.initialize_addons()
+        finally:
+            self._initializing_addons = False
 
     def _click_timer_timeout(self):
         self._click_timer.stop()
@@ -552,7 +554,7 @@ class TrayStarter(QtCore.QObject):
 def main():
     app = get_ayon_qt_app()
 
-    starter = TrayStarter(app)
+    starter = TrayStarter(app)  # noqa F841
 
     if not is_running_from_build() and os.name == "nt":
         import ctypes
