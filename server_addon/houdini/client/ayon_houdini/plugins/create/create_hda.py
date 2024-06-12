@@ -4,8 +4,7 @@ import ayon_api
 
 from ayon_core.pipeline import (
     CreatorError,
-    get_current_project_name,
-    get_current_folder_path,
+    get_current_project_name
 )
 from ayon_houdini.api import plugin
 import hou
@@ -64,7 +63,7 @@ class CreateHDA(plugin.HoudiniCreator):
             type_name = (
                 "{project_name}{folder_path}_{node_name}".format(
                     project_name=get_current_project_name(),
-                    folder_path=get_current_folder_path().replace("/","_"),
+                    folder_path=folder_path.replace("/","_"),
                     node_name=node_name
                 )
             )
