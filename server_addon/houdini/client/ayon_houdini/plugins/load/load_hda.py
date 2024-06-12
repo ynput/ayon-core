@@ -35,9 +35,10 @@ class HdaLoader(plugin.HoudiniLoader):
 
         # Get the type name from the HDA definition.
         hda_defs = hou.hda.definitionsInFile(file_path)
-        for hda_def in hda_defs:
-            type_name = hda_def.nodeTypeName()
+        if not hda_defs:
+            raise RuntimeError(f"No HDA definitions found in file: {file_path}")
 
+        type_name = hda_defs[0].nodeTypeName()
         hda_node = obj.createNode(type_name, node_name)
 
         self[:] = [hda_node]
