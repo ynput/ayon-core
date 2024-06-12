@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating publishable Houdini Digital Assets."""
 import hou
+from assettools import setToolSubmenu
+
 import ayon_api
 from ayon_core.pipeline import CreatorError
 from ayon_core.lib import (
@@ -109,10 +111,7 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_def.setUserInfo(get_ayon_username())
 
         if pre_create_data.get("use_project"):
-            tool_name = hou.shelves.defaultToolName(
-                hda_def.nodeTypeCategory().name(), hda_def.nodeTypeName())
-            hou.shelves.tool(tool_name).setToolLocations(
-                ("AYON/{}".format(self.project_name),))
+            setToolSubmenu(hda_def, "AYON/{}".format(self.project_name))
 
         return hda_node
 
