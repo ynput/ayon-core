@@ -20,7 +20,6 @@ from ayon_core.lib.transcoding import (
 )
 from ayon_core.lib import BoolDef
 from ayon_resolve.api import lib
-from ayon_resolve.api import bmdvr
 from ayon_resolve.api.pipeline import AVALON_CONTAINER_ID
 
 
