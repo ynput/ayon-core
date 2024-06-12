@@ -298,24 +298,7 @@ def get_fps_for_current_context():
         Union[int, float]: FPS value.
     """
     task_entity = get_current_task_entity(fields={"attrib"})
-    fps = task_entity.get("attrib", {}).get("fps")
-    if not fps:
-        project_name = get_current_project_name()
-        folder_path = get_current_folder_path()
-        folder_entity = ayon_api.get_folder_by_path(
-            project_name, folder_path, fields={"attrib.fps"}
-        ) or {}
-
-        fps = folder_entity.get("attrib", {}).get("fps")
-        if not fps:
-            project_entity = ayon_api.get_project(
-                project_name, fields=["attrib.fps"]
-            ) or {}
-            fps = project_entity.get("attrib", {}).get("fps")
-
-            if not fps:
-                fps = 25
-    return fps
+    return task_entity["attrib"]["fps"]
 
 
 def reset_unit_scale():
