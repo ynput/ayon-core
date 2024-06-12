@@ -36,7 +36,7 @@ class Commands:
                 log.warning(
                     "Failed to add cli command for module \"{}\"".format(
                         addon.name
-                    )
+                    ), exc_info=True
                 )
         return click_func
 
@@ -64,9 +64,10 @@ class Commands:
             get_global_context,
         )
 
-        # Register target and host
+        import ayon_api
         import pyblish.util
 
+        # Register target and host
         if not isinstance(path, str):
             raise RuntimeError("Path to JSON must be a string.")
 
@@ -85,6 +86,19 @@ class Commands:
             os.environ.pop(src_key, None)
 
         log = Logger.get_logger("CLI-publish")
+
+        # Make public ayon api behave as other user
+        # - this works only if public ayon api is using service user
+        username = os.environ.get("AYON_USERNAME")
+        if username:
+            # NOTE: ayon-python-api does not have public api function to find
+            #   out if is used service user. So we need to have try > except
+            #   block.
+            con = ayon_api.get_server_api_connection()
+            try:
+                con.set_default_service_username(username)
+            except ValueError:
+                pass
 
         install_ayon_plugins()
 
