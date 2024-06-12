@@ -62,13 +62,6 @@ class HdaLoader(plugin.HoudiniLoader):
         hda_node = parent_node.createNode(name, node_name)
         hda_node.moveToGoodPosition()
 
-        # Set TAB Menu location interactively
-        # This shouldn't be needed if the Tool Location is saved in the HDA.
-        tool_name = hou.shelves.defaultToolName(
-                hda_def.nodeTypeCategory().name(), hda_def.nodeTypeName())
-        hou.shelves.tool(tool_name).setToolLocations(
-            ("AYON/{}".format(context["project"]["name"]),))
-
         # Imprint it manually
         data = {
             "schema": "openpype:container-2.0",

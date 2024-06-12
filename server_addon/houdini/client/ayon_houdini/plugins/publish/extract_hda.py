@@ -25,14 +25,6 @@ class ExtractHDA(plugin.HoudiniExtractorPlugin):
         hda_def.setOptions(hda_options)
         hda_def.save(hda_def.libraryFilePath(), hda_node, hda_options)
 
-        if instance.data["creator_attributes"].get("use_project"):
-            # Set TAB Menu location interactively
-            # This shouldn't be needed if the Tool Location is saved in the HDA.
-            tool_name = hou.shelves.defaultToolName(
-                hda_def.nodeTypeCategory().name(), hda_def.nodeTypeName())
-            hou.shelves.tool(tool_name).setToolLocations(
-                ("AYON/{}".format(instance.context.data["projectName"]),))
-
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
