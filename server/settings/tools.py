@@ -35,6 +35,28 @@ class ProductNameProfile(BaseSettingsModel):
     template: str = SettingsField("", title="Template")
 
 
+class FilterCreatorProfile(BaseSettingsModel):
+    """Provide list of allowed Creator identifiers for context"""
+
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names")
+    creator_labels: list[str] = SettingsField(
+        default_factory=list,
+        title="Allowed Creator Labels",
+        description="Copy creator label from Publisher, regex supported."
+    )
+
+
 class CreatorToolModel(BaseSettingsModel):
     # TODO this was dynamic dictionary '{name: task_names}'
     product_types_smart_select: list[ProductTypeSmartSelectModel] = (
@@ -46,6 +68,13 @@ class CreatorToolModel(BaseSettingsModel):
     product_name_profiles: list[ProductNameProfile] = SettingsField(
         default_factory=list,
         title="Product name profiles"
+    )
+
+    filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
+        default_factory=list,
+        title="Filter creator profiles",
+        description="Allowed list of creator labels that will be only shown if "
+                    "profile matches context."
     )
 
     @validator("product_types_smart_select")
@@ -420,7 +449,8 @@ DEFAULT_TOOLS_VALUES = {
                 "tasks": [],
                 "template": "SK_{folder[name]}{variant}"
             }
-        ]
+        ],
+        "filter_creator_profiles": []
     },
     "Workfiles": {
         "workfile_template_profiles": [
