@@ -278,7 +278,8 @@ class BaseWorkfileController(
         )
 
     def get_user_items_by_name(self):
-        return self._users_model.get_user_items_by_name()
+        project_name = self.get_current_project_name()
+        return self._users_model.get_user_items_by_name(project_name)
 
     # Host information
     def get_workfile_extensions(self):
