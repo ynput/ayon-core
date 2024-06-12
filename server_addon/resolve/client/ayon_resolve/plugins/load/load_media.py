@@ -20,6 +20,7 @@ from ayon_core.lib.transcoding import (
 )
 from ayon_core.lib import BoolDef
 from ayon_resolve.api import lib
+from ayon_resolve.api import bmdvr
 from ayon_resolve.api.pipeline import AVALON_CONTAINER_ID
 
 
@@ -214,46 +215,7 @@ class LoadMedia(LoaderPlugin):
                 item = container["_item"]
 
         if item is None:
-            # Create or set the bin folder, we add it in there
-            # If bin path is not set we just add into the current active bin
-            if self.media_pool_bin_path:
-                media_pool_bin_path = StringTemplate(
-                    self.media_pool_bin_path).format_strict(context)
-                folder = lib.create_bin(
-                    name=media_pool_bin_path,
-                    root=media_pool.GetRootFolder(),
-                    set_as_current=False
-                )
-                media_pool.SetCurrentFolder(folder)
-
-            # Import media
-            # Resolve API: ImportMedia function requires a list of dictionaries
-            # with keys "FilePath", "StartIndex" and "EndIndex" for sequences
-            # but only string with absolute path for single files.
-            is_sequence, file_info = self._get_file_info(context)
-            if is_sequence:
-                items = media_pool.ImportMedia([file_info])
-            else:
-                items = media_pool.ImportMedia([file_info["FilePath"]])
-
-            assert len(items) == 1, "Must import only one media item"
-
-            item = items[0]
-
-            self._set_metadata(item, context)
-            self._set_colorspace_from_representation(item, representation)
-
-            data = self._get_container_data(context)
-
-            # Add containerise data only needed on first load
-            data.update({
-                "schema": "openpype:container-2.0",
-                "id": AVALON_CONTAINER_ID,
-                "loader": str(self.__class__.__name__),
-            })
-
-            item.SetMetadata(lib.pype_tag_name, json.dumps(data))
-
+            item = self._import_media_to_bin(context, media_pool, representation)
         # Always update clip color - even if re-using existing clip
         color = self.get_item_color(context)
         item.SetClipColor(color)
@@ -266,6 +228,65 @@ class LoadMedia(LoaderPlugin):
                     media_pool_item=item,
                     timeline=timeline
                 )
+
+    def _import_media_to_bin(
+        self, context, media_pool, representation
+    ):
+        """Import media to Resolve Media Pool.
+
+        Also create a bin if `media_pool_bin_path` is set.
+
+        Args:
+            context (dict): The context dictionary.
+            media_pool (resolve.MediaPool): The Resolve Media Pool.
+            representation (dict): The representation data.
+
+        Returns:
+            resolve.MediaPoolItem: The imported media pool item.
+        """
+        # Create or set the bin folder, we add it in there
+        # If bin path is not set we just add into the current active bin
+        if self.media_pool_bin_path:
+            media_pool_bin_path = StringTemplate(
+                self.media_pool_bin_path).format_strict(context)
+
+            folder = lib.create_bin(
+                # double slashes will create unconnected folders
+                name=media_pool_bin_path.replace("//", "/"),
+                root=media_pool.GetRootFolder(),
+                set_as_current=False
+            )
+            media_pool.SetCurrentFolder(folder)
+
+        # Import media
+        # Resolve API: ImportMedia function requires a list of dictionaries
+        # with keys "FilePath", "StartIndex" and "EndIndex" for sequences
+        # but only string with absolute path for single files.
+        is_sequence, file_info = self._get_file_info(context)
+        items = (
+            media_pool.ImportMedia([file_info])
+            if is_sequence
+            else media_pool.ImportMedia([file_info["FilePath"]])
+        )
+        assert len(items) == 1, "Must import only one media item"
+
+        result = items[0]
+
+        self._set_metadata(result, context)
+        self._set_colorspace_from_representation(result, representation)
+
+        data = self._get_container_data(context)
+
+        # Add containerise data only needed on first load
+        data.update({
+            "schema": "openpype:container-2.0",
+            "id": AVALON_CONTAINER_ID,
+            "loader": str(self.__class__.__name__),
+        })
+
+        result.SetMetadata(lib.pype_tag_name, json.dumps(data))
+
+        return result
 
     def switch(self, container, context):
         self.update(container, context)
