@@ -31,7 +31,6 @@ class AbcLoader(load.LoaderPlugin):
         file_path = self.filepath_from_context(context)
         file_path = os.path.normpath(file_path)
 
-        rt.frameRate = get_fps_for_current_context()
 
         abc_before = {
             c
