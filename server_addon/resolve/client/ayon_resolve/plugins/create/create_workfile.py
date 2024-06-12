@@ -1,67 +1,65 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating workfiles."""
-from ayon_core.pipeline import CreatedInstance, AutoCreator
-from ayon_core.client import get_asset_by_name
+import ayon_api
+from ayon_core.pipeline import (
+    AutoCreator,
+    CreatedInstance,
+)
 
 
 class CreateWorkfile(AutoCreator):
     """Workfile auto-creator."""
+    settings_category = "resolve"
+
     identifier = "io.ayon.creators.resolve.workfile"
     label = "Workfile"
-    family = "workfile"
-    icon = "fa5.file"
+    product_type = "workfile"
 
     default_variant = "Main"
 
-    def create(self):
+    def collect_instances(self):
 
         variant = self.default_variant
-        current_instance = next(
-            (
-                instance for instance in self.create_context.instances
-                if instance.creator_identifier == self.identifier
-            ), None)
-
-        project_name = self.project_name
-        asset_name = self.create_context.get_current_asset_name()
+        project_name = self.create_context.get_current_project_name()
+        folder_path = self.create_context.get_current_folder_path()
         task_name = self.create_context.get_current_task_name()
         host_name = self.create_context.host_name
 
-        if current_instance is None:
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                variant, task_name, asset_doc, project_name, host_name
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path)
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+        product_name = self.get_product_name(
+            project_name,
+            folder_entity,
+            task_entity,
+            self.default_variant,
+            host_name,
+        )
+        data = {
+            "folderPath": folder_path,
+            "task": task_name,
+            "variant": variant,
+        }
+        data.update(
+            self.get_dynamic_data(
+                variant,
+                task_name,
+                folder_entity,
+                project_name,
+                host_name,
+                False,
             )
-            data = {
-                "asset": asset_name,
-                "task": task_name,
-                "variant": variant,
-            }
-            data.update(
-                self.get_dynamic_data(
-                    variant, task_name, asset_doc,
-                    project_name, host_name, current_instance)
-            )
-            self.log.info("Auto-creating workfile instance...")
-            current_instance = CreatedInstance(
-                self.family, subset_name, data, self
-            )
-            self._add_instance_to_context(current_instance)
-        elif (
-                current_instance["asset"] != asset_name
-                or current_instance["task"] != task_name
-        ):
-            # Update instance context if is not the same
-            asset_doc = get_asset_by_name(project_name, asset_name)
-            subset_name = self.get_subset_name(
-                variant, task_name, asset_doc, project_name, host_name
-            )
-            current_instance["asset"] = asset_name
-            current_instance["task"] = task_name
-            current_instance["subset"] = subset_name
+        )
+        self.log.info("Auto-creating workfile instance...")
+        current_instance = CreatedInstance(
+            self.product_type, product_name, data, self)
+        self._add_instance_to_context(current_instance)
 
-    def collect_instances(self):
-        # TODO: Implement
+    def create(self, options=None):
+        # no need to create if it is created
+        # in `collect_instances`
         pass
 
     def update_instances(self, update_list):

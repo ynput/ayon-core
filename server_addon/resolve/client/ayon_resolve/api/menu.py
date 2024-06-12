@@ -11,17 +11,6 @@ from ayon_core.resources import get_ayon_icon_filepath
 MENU_LABEL = os.environ["AYON_MENU_LABEL"]
 
 
-def load_stylesheet():
-    path = os.path.join(os.path.dirname(__file__), "menu_style.qss")
-    if not os.path.exists(path):
-        print("Unable to load stylesheet, file not found in resources")
-        return ""
-
-    with open(path, "r") as file_stream:
-        stylesheet = file_stream.read()
-    return stylesheet
-
-
 class Spacer(QtWidgets.QWidget):
     def __init__(self, height, *args, **kwargs):
         super(Spacer, self).__init__(*args, **kwargs)

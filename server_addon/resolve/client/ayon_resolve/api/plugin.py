@@ -3,8 +3,6 @@ import uuid
 
 import qargparse
 
-from ayon_core.pipeline.context_tools import get_current_project_asset
-
 from ayon_core.lib import BoolDef
 
 from ayon_core.pipeline import (
