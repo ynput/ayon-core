@@ -333,15 +333,16 @@ class ContainersModel:
         for container in containers:
             try:
                 item = ContainerItem.from_container_data(container)
-                containers_by_id[item.item_id] = container
-                container_items_by_id[item.item_id] = item
-                container_items.append(item)
             except Exception as e:
                 # skip item if required data are missing
                 self._controller.log_error(
                     f"Failed to create item: {e}"
                 )
                 continue
+
+            containers_by_id[item.item_id] = container
+            container_items_by_id[item.item_id] = item
+            container_items.append(item)
 
 
         self._containers_by_id = containers_by_id
