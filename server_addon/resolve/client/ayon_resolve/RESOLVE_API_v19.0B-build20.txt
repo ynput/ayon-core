@@ -1,8 +1,5 @@
-<<<<<<<< HEAD:server_addon/resolve/client/ayon_resolve/RESOLVE_API_v18.6.5-build7.txt
-Updated as of 18 December 2023
-========
+
 Last Updated: 1 April 2024
->>>>>>>> develop:server_addon/resolve/client/ayon_resolve/RESOLVE_API_v19.0B-build20.txt
 ----------------------------
 In this package, you will find a brief introduction to the Scripting API for DaVinci Resolve Studio. Apart from this README.txt file, this package contains folders containing the basic import
 modules for scripting access (DaVinciResolve.py) and some representative examples.
@@ -106,11 +103,8 @@ Resolve
   ExportRenderPreset(presetName, exportPath)      --> Bool               # Export a preset to a given path (string) if presetName(string) exists.
   ImportBurnInPreset(presetPath)                  --> Bool               # Import a data burn in preset from a given presetPath (string)
   ExportBurnInPreset(presetName, exportPath)      --> Bool               # Export a data burn in preset to a given path (string) if presetName (string) exists.
-<<<<<<<< HEAD:server_addon/resolve/client/ayon_resolve/RESOLVE_API_v18.6.5-build7.txt
-========
   GetKeyframeMode()                               --> keyframeMode       # Returns the currently set keyframe mode (int). Refer to section 'Keyframe Mode information' below for details.
   SetKeyframeMode(keyframeMode)                   --> Bool               # Returns True when 'keyframeMode'(enum) is successfully set. Refer to section 'Keyframe Mode information' below for details.
->>>>>>>> develop:server_addon/resolve/client/ayon_resolve/RESOLVE_API_v19.0B-build20.txt
 
 ProjectManager
   ArchiveProject(projectName,
@@ -370,10 +364,7 @@ Timeline
                                                                          # Returns True on success, False otherwise.
   DetectSceneCuts()                               --> Bool               # Detects and makes scene cuts along the timeline. Returns True if successful, False otherwise.
   ConvertTimelineToStereo()                       --> Bool               # Converts timeline to stereo. Returns True if successful; False otherwise.
-<<<<<<<< HEAD:server_addon/resolve/client/ayon_resolve/RESOLVE_API_v18.6.5-build7.txt
-========
   GetNodeGraph()                                  --> Graph              # Returns the timeline's node graph object.
->>>>>>>> develop:server_addon/resolve/client/ayon_resolve/RESOLVE_API_v19.0B-build20.txt
 
 TimelineItem
   GetName()                                       --> string             # Returns the item name.
@@ -489,8 +480,7 @@ Beside primitive data types, Resolve's Python API mainly uses list and dict data
 As Lua does not support list and dict data structures, the Lua API implements "list" as a table with indices, e.g. { [1] = listValue1, [2] = listValue2, ... }.
 Similarly the Lua API implements "dict" as a table with the dictionary key as first element, e.g. { [dictKey1] = dictValue1, [dictKey2] = dictValue2, ... }.
 
-<<<<<<<< HEAD:server_addon/resolve/client/ayon_resolve/RESOLVE_API_v18.6.5-build7.txt
-========
+
 Keyframe Mode information
 -------------------------
 This section covers additional notes for the functions Resolve.GetKeyframeMode() and Resolve.SetKeyframeMode(keyframeMode).
@@ -502,7 +492,6 @@ This section covers additional notes for the functions Resolve.GetKeyframeMode()
 
 Integer values returned by Resolve.GetKeyframeMode() will correspond to the enums above.
 
->>>>>>>> develop:server_addon/resolve/client/ayon_resolve/RESOLVE_API_v19.0B-build20.txt
 Cloud Projects Settings
 --------------------------------------
 This section covers additional notes for the functions "ProjectManager:CreateCloudProject," "ProjectManager:ImportCloudProject," and "ProjectManager:RestoreCloudProject"
