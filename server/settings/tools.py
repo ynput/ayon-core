@@ -458,7 +458,7 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "tasks": [],
-                "template": "{folder[label]}_{variant}"
+                "template": "{folder[name]}_{variant}"
             }
         ],
         "filter_creator_profiles": []
