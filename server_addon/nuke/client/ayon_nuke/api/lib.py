@@ -507,8 +507,8 @@ def get_avalon_knob_data(node, prefix="avalon:", create=True):
         # check if the node is avalon tracked
         try:
             # check if data available on the node
-            test = node[DATA_GROUP_KEY].value()
-        except NameError as e:
+            _ = node[DATA_GROUP_KEY].value()
+        except NameError:
             # if it doesn't then create it
             if create:
                 node = set_avalon_knob_data(node)

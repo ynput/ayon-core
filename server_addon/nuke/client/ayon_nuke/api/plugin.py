@@ -1,4 +1,3 @@
-import dis
 import nuke
 import re
 import os
@@ -845,7 +844,7 @@ class ExporterReviewMov(ExporterReview):
         with maintained_selection():
             self.log.info("Saving nodes as file...  ")
             # create nk path
-            path = os.path.splitext(self.path)[0] + ".nk"
+            path = f"{os.path.splitext(self.path)[0]}.nk"
             # save file to the path
             if not os.path.exists(os.path.dirname(path)):
                 os.makedirs(os.path.dirname(path))
@@ -882,8 +881,7 @@ class ExporterReviewMov(ExporterReview):
 
         add_custom_tags = kwargs.get("add_custom_tags", [])
 
-        self.log.info(
-            "__ add_custom_tags: `{0}`".format(add_custom_tags))
+        self.log.info(f"__ add_custom_tags: `{add_custom_tags}`")
 
         product_name = self.instance.data["productName"]
         self._temp_nodes[product_name] = []
@@ -1021,12 +1019,11 @@ class ExporterReviewMov(ExporterReview):
             self.log.info("`mov64_write_timecode` knob was not found")
 
         write_node["raw"].setValue(1)
+
         # connect
         write_node.setInput(0, self.previous_node)
         self._temp_nodes[product_name].append(write_node)
-        self.log.debug("Write...   `{}`".format(
-            self._temp_nodes[product_name])
-        )
+        self.log.debug(f"Write...   `{self._temp_nodes[product_name]}`")
         # ---------- end nodes creation
 
         # ---------- render or save to nk
@@ -1054,9 +1051,9 @@ class ExporterReviewMov(ExporterReview):
             colorspace=colorspace,
         )
 
-        self.log.debug("Representation...   `{}`".format(self.data))
+        self.log.debug(f"Representation...   `{self.data}`")
 
-        # self.clean_nodes(product_name)
+        self.clean_nodes(product_name)
         nuke.scriptSave()
 
         return self.data
