@@ -298,10 +298,15 @@ class HierarchyModel(object):
         Returns:
             set[str]: Folder paths assigned to user.
         """
+        assigned_folder_paths = set()
+
+        # Return early if project doesn't exist
+        project_entity = ayon_api.get_project(project_name)
+        if not project_entity:
+            return assigned_folder_paths
+
         if not assignee:
             assignee = ayon_api.get_user()["name"]
-
-        assigned_folder_paths = set()
 
         tasks = ayon_api.get_tasks(project_name, assignees=[assignee])
         if not tasks:
