@@ -958,7 +958,12 @@ def get_otio_temp_dir(project_name, anatomy=None, timeline=None) -> str:
         str: temporary otio filepath
     """
     resolve_project = get_current_resolve_project()
-    timeline = timeline or resolve_project.GetCurrentTimeline()
+
+    if timeline is None:
+        timeline = resolve_project.GetCurrentTimeline()
+        if not timeline:
+            raise RuntimeError("No current timeline")
+
     timeline_name = timeline.GetName()
 
     # get custom staging dir
