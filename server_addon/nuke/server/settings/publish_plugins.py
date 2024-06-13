@@ -270,6 +270,7 @@ class PublishPluginsModel(BaseSettingsModel):
         section="Integrators"
     )
 
+
 DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
     "CollectInstanceData": {
         "sync_workfile_version_on_product_types": [
