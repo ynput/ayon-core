@@ -161,10 +161,14 @@ class DisplayAndViewProfileModel(BaseSettingsModel):
 
 
 class ColorspaceConfigurationModel(BaseSettingsModel):
+    _isGroup: bool = True
+
     enabled: bool = SettingsField(
         False,
         title="Enabled",
-        description="Enable baking target (colorspace or display/view)",
+        description=(
+            "Enable baking target (colorspace or display/view)."
+        ),
     )
 
     type: str = SettingsField(
