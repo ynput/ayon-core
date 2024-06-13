@@ -946,8 +946,8 @@ def get_otio_clip_instance_data(otio_timeline, timeline_item_data):
     return None
 
 
-def get_timeline_otio_filepath(project_name, anatomy=None, timeline=None):
-    """Get timeline otio filepath.
+def get_otio_temp_dir(project_name, anatomy=None, timeline=None) -> str:
+    """Get otio temporary directory.
 
     Args:
         project_name (str): ayon project name
@@ -957,33 +957,48 @@ def get_timeline_otio_filepath(project_name, anatomy=None, timeline=None):
     Returns:
         str: temporary otio filepath
     """
-    from . import bmdvr
     resolve_project = get_current_resolve_project()
-    timeline = resolve_project.GetCurrentTimeline()
+    timeline = timeline or resolve_project.GetCurrentTimeline()
     timeline_name = timeline.GetName()
 
     # get custom staging dir
     custom_temp_dir = create_custom_tempdir(project_name, anatomy)
     staging_dir = os.path.normpath(
-        tempfile.mkdtemp(
-            prefix="resolve_otio_tmp_",
-            dir=custom_temp_dir
-        )
+        tempfile.mkdtemp(prefix="resolve_otio_tmp_", dir=custom_temp_dir)
     )
-    filename = os.path.join(staging_dir, f"{timeline_name}.otio")
+    return os.path.join(
+        staging_dir, f"{timeline_name}.otio"
+    )
 
-    # Native otio export is available from Resolve 18.5
-    # [major, minor, patch, build, suffix]
-    resolve_version = bmdvr.GetVersion()
-    if resolve_version[0] < 18 or resolve_version[1] < 5:
-        # if it is lower then use ayon's otio exporter
-        otio_timeline = otio_export.create_otio_timeline(
-            resolve_project, timeline=timeline)
-        otio_export.write_to_file(otio_timeline, filename)
 
-    timeline.Export(filename, bmdvr.EXPORT_OTIO)
+def export_timeline_otio(timeline, filepath):
+    """Get timeline otio filepath.
 
-    return filename
+    Only supported from Resolve 19.5
+
+    Example:
+        # Native otio export is available from Resolve 18.5
+        # [major, minor, patch, build, suffix]
+        resolve_version = bmdvr.GetVersion()
+        if resolve_version[0] < 18 or resolve_version[1] < 5:
+            # if it is lower then use ayon's otio exporter
+            otio_timeline = otio_export.create_otio_timeline(
+                resolve_project, timeline=timeline)
+            otio_export.write_to_file(otio_timeline, filepath)
+        else:
+            # use native otio export
+            export_timeline_otio(timeline, filepath)
+
+    Args:
+        timeline (resolve.Timeline): resolve's object
+        filepath (str): otio file path
+
+    Returns:
+        str: temporary otio filepath
+    """
+    from . import bmdvr
+
+    timeline.Export(filepath, bmdvr.EXPORT_OTIO)
 
 
 def get_reformated_path(path, padded=False, first=False):
