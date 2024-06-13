@@ -68,7 +68,7 @@ class HdaLoader(plugin.HoudiniLoader):
             "id": AVALON_CONTAINER_ID,
             "name": node_name,
             "namespace": namespace,
-            "loader": str(self.__class__.__name__),
+            "loader": self.__class__.__name__,
             "representation": context["representation"]["id"],
         }
 
