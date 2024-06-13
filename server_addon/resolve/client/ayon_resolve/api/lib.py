@@ -289,9 +289,11 @@ def create_timeline_item(
         object: resolve.TimelineItem
     """
     # get all variables
-    project = get_current_project()
-    media_pool = project.GetMediaPool()
+    resolve_project = get_current_resolve_project()
+    media_pool = resolve_project.GetMediaPool()
     clip_name = media_pool_item.GetClipProperty("File Name")
+    timeline = timeline or get_current_timeline()
+
     timeline = timeline or get_current_timeline()
 
     # timing variables
