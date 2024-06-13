@@ -432,8 +432,8 @@ class FoldersWidget(QtWidgets.QWidget):
 
         Force to update folders model from controller.
         """
-
         self._folders_model.refresh()
+        self._refresh_folder_assignments(self.get_project_name())
 
     def get_project_name(self):
         """Project name in which folders widget currently is.
