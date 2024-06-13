@@ -146,14 +146,6 @@ class IntermediateOutputModel(BaseSettingsModel):
         description="Override Baking target with colorspace or display/view",
         default_factory=ColorspaceConfigurationModel
     )
-    viewer_process_override: str = SettingsField(
-        "",
-        title="Viewer process override",
-        description=(
-            "[DEPRECATED - use 'Target baking colorspace override'] "
-            "Override viewer process node (LUT)"
-        ),
-    )
     bake_viewer_input_process: bool = SettingsField(
         True,
         title="Bake viewer input process node (LUT)",
@@ -278,7 +270,6 @@ class PublishPluginsModel(BaseSettingsModel):
         section="Integrators"
     )
 
-
 DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
     "CollectInstanceData": {
         "sync_workfile_version_on_product_types": [
@@ -344,7 +335,6 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
                     "product_names": []
                 },
                 "read_raw": False,
-                "viewer_process_override": "",
                 "colorspace_override": {
                     "enabled": False,
                     "type": "colorspace",
