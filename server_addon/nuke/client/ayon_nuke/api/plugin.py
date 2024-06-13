@@ -13,6 +13,7 @@ from ayon_core.lib import (
     BoolDef,
     EnumDef
 )
+from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import (
     LoaderPlugin,
     CreatorError,
@@ -39,7 +40,6 @@ from .lib import (
     set_node_data,
     get_node_data,
     get_view_process_node,
-    get_viewer_config_from_string,
     get_filenames_without_hash,
     link_knobs
 )
@@ -797,6 +797,7 @@ class ExporterReviewMov(ExporterReview):
         self.viewer_lut_raw = klass.viewer_lut_raw
         self.write_colorspace = instance.data["colorspace"]
         self.color_channels = instance.data["color_channels"]
+        self.formatting_data = instance.data["anatomyData"]
 
         self.name = name or "baked"
         self.ext = ext or "mov"
@@ -869,11 +870,11 @@ class ExporterReviewMov(ExporterReview):
         bake_viewer_input_process_node = kwargs[
             "bake_viewer_input_process"]
 
-        colorspace_override = kwargs["colorspace_override"]
-
         baking_colorspace = self.get_imageio_baking_profile()
+
+        colorspace_override = kwargs["colorspace_override"]
         if colorspace_override["enabled"]:
-            baking_colorspace = colorspace_override["colorspace"]
+            baking_colorspace = colorspace_override
 
         fps = self.instance.context.data["fps"]
 
@@ -945,27 +946,41 @@ class ExporterReviewMov(ExporterReview):
                     message = "OCIODisplay...   '{}'"
                     node = nuke.createNode("OCIODisplay")
 
-                    # assign display
+                    # assign display and view
                     display = display_view["display"]
                     view = display_view["view"]
 
+                    # display could not be set in nuke_default config
                     if display:
+                        # format display string with anatomy data
+                        display = StringTemplate(display).format_strict(
+                            self.formatting_data
+                        )
                         node["display"].setValue(display)
 
+                    # format view string with anatomy data
+                    view = StringTemplate(view).format_strict(
+                        self.formatting_data)
                     # assign viewer
                     node["view"].setValue(view)
+
                     if config_data:
                         # convert display and view to colorspace
                         colorspace = get_display_view_colorspace_name(
                             config_path=config_data["path"],
                             display=display, view=view
                         )
+
                 # OCIOColorSpace
                 elif baking_colorspace["type"] == "colorspace":
                     baking_colorspace = baking_colorspace["colorspace"]
+                    # format colorspace string with anatomy data
+                    baking_colorspace = StringTemplate(
+                        baking_colorspace).format_strict(self.formatting_data)
                     node = nuke.createNode("OCIOColorSpace")
                     message = "OCIOColorSpace...   '{}'"
-                    node["in_colorspace"].setValue(colorspace)
+                    # no need to set input colorspace since it is driven by
+                    # working colorspace
                     node["out_colorspace"].setValue(baking_colorspace)
                     colorspace = baking_colorspace
 
@@ -1041,10 +1056,12 @@ class ExporterReviewMov(ExporterReview):
 
         self.log.debug("Representation...   `{}`".format(self.data))
 
-        self.clean_nodes(product_name)
+        # self.clean_nodes(product_name)
         nuke.scriptSave()
 
         return self.data
+
+    def _shift_to_previous_node_and_temp(self, product_name, node, message):
         self._temp_nodes[product_name].append(node)
         self.previous_node = node
         self.log.debug(message.format(self._temp_nodes[product_name]))
