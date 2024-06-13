@@ -1,6 +1,7 @@
 import os
 import re
 import copy
+import uuid
 
 import arrow
 import ayon_api
@@ -587,6 +588,7 @@ class WorkfileEntitiesModel:
 
         username = self._get_current_username()
         workfile_info = {
+            "id": uuid.uuid4().hex,
             "path": rootless_path,
             "taskId": task_id,
             "attrib": {
