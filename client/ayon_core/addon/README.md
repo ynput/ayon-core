@@ -35,14 +35,14 @@ AYON addons should contain separated logic of specific kind of implementation, s
 - addon has more logic when used in a tray
  - it is possible that addon can be used only in the tray
 - abstract methods
- - `tray_init` - initialization triggered after `initialize` when used in `TrayModulesManager` and before `connect_with_addons`
+ - `tray_init` - initialization triggered after `initialize` when used in `TrayAddonsManager` and before `connect_with_addons`
  - `tray_menu` - add actions to tray widget's menu that represent the addon
  - `tray_start` - start of addon's login in tray
  - addon is initialized and connected with other addons
  - `tray_exit` - addon's cleanup like stop and join threads etc.
- - order of calling is based on implementation this order is how it works with `TrayModulesManager`
+ - order of calling is based on implementation this order is how it works with `TrayAddonsManager`
  - it is recommended to import and use GUI implementation only in these methods
-- has attribute `tray_initialized` (bool) which is set to False by default and is set by `TrayModulesManager` to True after `tray_init`
+- has attribute `tray_initialized` (bool) which is set to False by default and is set by `TrayAddonsManager` to True after `tray_init`
  - if addon has logic only in tray or for both then should be checking for `tray_initialized` attribute to decide how should handle situations
 
 ### ITrayService

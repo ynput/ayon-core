@@ -281,7 +281,7 @@ class HiddenDef(AbstractAttrDef):
     def __init__(self, key, default=None, **kwargs):
         kwargs["default"] = default
         kwargs["hidden"] = True
-        super(UnknownDef, self).__init__(key, **kwargs)
+        super(HiddenDef, self).__init__(key, **kwargs)
 
     def convert_value(self, value):
         return value
