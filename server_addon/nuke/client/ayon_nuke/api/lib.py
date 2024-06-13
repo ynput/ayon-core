@@ -1509,36 +1509,30 @@ class WorkfileSettings(object):
             for filter in nodes_filter:
                 return [n for n in self._nodes if filter in n.Class()]
 
-    def set_viewers_colorspace(self, viewer_dict):
+    def set_viewers_colorspace(self, imageio_nuke):
         ''' Adds correct colorspace to viewer
 
         Arguments:
-            viewer_dict (dict): adjustments from presets
+            imageio_nuke (dict): nuke colorspace configurations
 
         '''
-        if not isinstance(viewer_dict, dict):
-            msg = "set_viewers_colorspace(): argument should be dictionary"
-            log.error(msg)
-            nuke.message(msg)
-            return
+        viewer_config = imageio_nuke["viewer"]
+        monitor_config = imageio_nuke["monitor"]
 
         filter_knobs = [
             "viewerProcess",
             "wipe_position",
             "monitorOutOutputTransform"
         ]
-
-        display, viewer = get_viewer_config_from_string(
-            viewer_dict["viewerProcess"]
-        )
         viewer_process = create_viewer_profile_string(
-            viewer, display, path_like=False
-        )
-        display, viewer = get_viewer_config_from_string(
-            viewer_dict["output_transform"]
+            viewer_config["view"],
+            viewer_config["display"],
+            path_like=False,
         )
         output_transform = create_viewer_profile_string(
-            viewer, display, path_like=False
+            monitor_config["view"],
+            monitor_config["display"],
+            path_like=False,
         )
         erased_viewers = []
         for v in nuke.allNodes(filter="Viewer"):
@@ -1547,8 +1541,10 @@ class WorkfileSettings(object):
 
             if viewer_process not in v["viewerProcess"].value():
                 copy_inputs = v.dependencies()
-                copy_knobs = {k: v[k].value() for k in v.knobs()
-                              if k not in filter_knobs}
+                copy_knobs = {
+                    k: v[k].value() for k in v.knobs()
+                    if k not in filter_knobs
+                }
 
                 # delete viewer with wrong settings
                 erased_viewers.append(v["name"].value())
@@ -1590,12 +1586,12 @@ class WorkfileSettings(object):
         if not config_data:
             # no ocio config found and no custom path used
             if self._root_node["colorManagement"].value() \
-                    not in color_management:
+                        not in color_management:
                 self._root_node["colorManagement"].setValue(color_management)
 
             # second set ocio version
             if self._root_node["OCIO_config"].value() \
-                    not in native_ocio_config:
+                        not in native_ocio_config:
                 self._root_node["OCIO_config"].setValue(native_ocio_config)
 
         else:
@@ -1623,21 +1619,25 @@ class WorkfileSettings(object):
             if correct_settings:
                 self._set_ocio_config_path_to_workfile(config_data)
 
+        workfile_settings_output = {}
         # get monitor lut from settings respecting Nuke version differences
         monitor_lut_data = self._get_monitor_settings(
             workfile_settings["monitor_out_lut"],
             workfile_settings["monitor_lut"]
         )
-        monitor_lut_data.update({
-            "workingSpaceLUT": workfile_settings["working_space"],
-            "int8Lut": workfile_settings["int_8_lut"],
-            "int16Lut": workfile_settings["int_16_lut"],
-            "logLut": workfile_settings["log_lut"],
-            "floatLut": workfile_settings["float_lut"]
-        })
+        workfile_settings_output |= monitor_lut_data
+        workfile_settings_output.update(
+            {
+                "workingSpaceLUT": workfile_settings["working_space"],
+                "int8Lut": workfile_settings["int_8_lut"],
+                "int16Lut": workfile_settings["int_16_lut"],
+                "logLut": workfile_settings["log_lut"],
+                "floatLut": workfile_settings["float_lut"],
+            }
+        )
 
         # then set the rest
-        for knob, value_ in monitor_lut_data.items():
+        for knob, value_ in workfile_settings_output.items():
             # skip unfilled ocio config path
             # it will be dict in value
             if isinstance(value_, dict):
@@ -1972,7 +1972,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
 
         log.info("Setting colorspace to viewers...")
         try:
-            self.set_viewers_colorspace(nuke_colorspace["viewer"])
+            self.set_viewers_colorspace(nuke_colorspace)
         except AttributeError as _error:
             msg = "Set Colorspace to viewer error: {}".format(_error)
             nuke.message(msg)
