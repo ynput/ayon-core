@@ -64,6 +64,8 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
         expectedFiles = next(iter(instance.data["expectedFiles"]), {})
 
         product_type = "render"  # is always render
+        # TODO: Match the value of product_group with the value of
+        #        group_name in farm pyblish functions.
         product_group = get_product_name(
             context.data["projectName"],
             context.data["taskEntity"]["name"],
@@ -74,10 +76,18 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
         )
 
         for aov_name, aov_filepaths in expectedFiles.items():
-            product_name = product_group
-
-            if aov_name:
-                product_name = "{}_{}".format(product_name, aov_name)
+            product_name = get_product_name(
+                context.data["projectName"],
+                context.data["taskEntity"]["name"],
+                context.data["taskEntity"]["taskType"],
+                context.data["hostName"],
+                product_type,
+                instance.data["productName"],
+                dynamic_data={
+                    "renderlayer": instance.data["renderlayer"],
+                    "aov": aov_name
+                }
+            )
 
             # Create instance for each AOV
             aov_instance = context.create_instance(product_name)
@@ -119,6 +129,8 @@ class CollectLocalRenderInstances(pyblish.api.InstancePlugin):
                 "productGroup": product_group,
                 "families": ["render.local.hou", "review"],
                 "instance_node": instance.data["instance_node"],
+                "renderlayer": instance.data["renderlayer"],
+                "aov": aov_name,
                 "representations": [
                     {
                         "stagingDir": staging_dir,
