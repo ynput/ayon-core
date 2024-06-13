@@ -1,8 +1,6 @@
 import re
 from typing import Any
 
-from .publish_plugins import DEFAULT_PUBLISH_PLUGIN_SETTINGS
-
 
 def _get_viewer_config_from_string(input_string):
     """Convert string to display and viewer string
