@@ -278,7 +278,8 @@ class BaseWorkfileController(
         )
 
     def get_user_items_by_name(self):
-        return self._users_model.get_user_items_by_name()
+        project_name = self.get_current_project_name()
+        return self._users_model.get_user_items_by_name(project_name)
 
     # Host information
     def get_workfile_extensions(self):
@@ -410,9 +411,11 @@ class BaseWorkfileController(
         return self._workfiles_model.get_workarea_dir_by_context(
             folder_id, task_id)
 
-    def get_workarea_file_items(self, folder_id, task_id):
+    def get_workarea_file_items(self, folder_id, task_name, sender=None):
+        task_id = self._get_task_id(folder_id, task_name)
         return self._workfiles_model.get_workarea_file_items(
-            folder_id, task_id)
+            folder_id, task_id, task_name
+        )
 
     def get_workarea_save_as_data(self, folder_id, task_id):
         return self._workfiles_model.get_workarea_save_as_data(
@@ -447,12 +450,14 @@ class BaseWorkfileController(
         return self._workfiles_model.get_published_file_items(
             folder_id, task_name)
 
-    def get_workfile_info(self, folder_id, task_id, filepath):
+    def get_workfile_info(self, folder_id, task_name, filepath):
+        task_id = self._get_task_id(folder_id, task_name)
         return self._workfiles_model.get_workfile_info(
             folder_id, task_id, filepath
         )
 
-    def save_workfile_info(self, folder_id, task_id, filepath, note):
+    def save_workfile_info(self, folder_id, task_name, filepath, note):
+        task_id = self._get_task_id(folder_id, task_name)
         self._workfiles_model.save_workfile_info(
             folder_id, task_id, filepath, note
         )
@@ -627,6 +632,17 @@ class BaseWorkfileController(
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
 
+    def _get_task_id(self, folder_id, task_name, sender=None):
+        task_item = self._hierarchy_model.get_task_item_by_name(
+            self.get_current_project_name(),
+            folder_id,
+            task_name,
+            sender
+        )
+        if not task_item:
+            return None
+        return task_item.id
+
     # Expected selection
     # - expected selection is used to restore selection after refresh
     #   or when current context should be used
@@ -722,7 +738,7 @@ class BaseWorkfileController(
             self._host_save_workfile(dst_filepath)
 
         # Make sure workfile info exists
-        self.save_workfile_info(folder_id, task_id, dst_filepath, None)
+        self.save_workfile_info(folder_id, task_name, dst_filepath, None)
 
         # Create extra folders
         create_workdir_extra_folders(
