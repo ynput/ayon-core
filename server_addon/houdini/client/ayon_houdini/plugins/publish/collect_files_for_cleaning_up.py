@@ -1,6 +1,6 @@
 import pyblish.api
 import os
-import re
+import clique
 from ayon_core.pipeline import AYONPyblishPluginMixin
 from ayon_houdini.api import lib, plugin
 
@@ -18,22 +18,12 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         Artists are free to change the file path in the ROP node.
     """
 
-    order = pyblish.api.CollectorOrder + 0.2  # it should run after CollectFrames
+    # It should run after CollectFrames and Collect Render plugins,
+    # and before CollectLocalRenderInstances.
+    order = pyblish.api.CollectorOrder + 0.115
 
     hosts = ["houdini"]
-    families = [
-        "camera",
-        "ass",
-        "pointcache",
-        "imagesequence",
-        "mantraifd",
-        "redshiftproxy",
-        "review",
-        "staticMesh",
-        "usd",
-        "vdbcache",
-        "redshift_rop"
-    ]
+    families = ["*"]
     label = "Collect Files For Cleaning Up"
     intermediate_exported_render = False
 
@@ -73,13 +63,15 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
             files.extend(sum(aovs.values(), []))
 
         # Intermediate exported render files.
+        # Note: This only takes effect when setting render target to
+        #       "Farm Rendering - Split export & render jobs"
+        #       as it's the only case where "ifdFile" exists in instance data.
         # TODO : Clean up intermediate files of Karma product type.
         #        as "ifdFile" works for other render product types only.
         ifdFile = instance.data.get("ifdFile")
         if self.intermediate_exported_render and ifdFile:
-            start_frame = instance.data.get("frameStartHandle", None)
-            end_frame = instance.data.get("frameEndHandle", None)
-
+            start_frame = instance.data["frameStartHandle"]
+            end_frame = instance.data["frameEndHandle"]
             ifd_files = self._get_ifd_file_list(ifdFile,
                                                 start_frame, end_frame)
             files.extend(ifd_files)
@@ -94,28 +86,25 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         self.log.debug("Add files to 'cleanupFullPaths': {}".format(files))
         instance.context.data["cleanupFullPaths"] += files
 
-    @staticmethod
-    def _get_ifd_file_list(ifdFile, start_frame, end_frame):
+    def _get_ifd_file_list(self, ifdFile, start_frame, end_frame):
 
         file_name = os.path.basename(ifdFile)
         parent_path = os.path.dirname(ifdFile)
 
-        pattern = r"\w+\.(0+).\w+"  # It's always (0000)
-        match = re.match(pattern, file_name)
+        # Compute frames list
+        frame_collection, _ = clique.assemble(
+            [file_name],
+            patterns=[clique.PATTERNS["frames"]],
+            minimum_items=1
+        )
 
-        if match and start_frame is not None:
+        # It's always expected to be one collection.
+        frame_collection = frame_collection[0]
+        frame_collection.indexes.clear()
+        frame_collection.indexes.update(list(range(start_frame, (end_frame + 1))))
 
-            # Check if frames are bigger than 1 (file collection)
-            # override the result
-            if end_frame - start_frame > 0:
-                result = lib.create_file_list(
-                    match, int(start_frame), int(end_frame)
-                )
-                result = [
-                    os.path.join(parent_path, r).replace("\\", "/")
-                    for r in result
-                ]
-
-                return result
-
-        return []
+        result = [
+                    "{}/{}".format(parent_path, frame)
+                    for frame in frame_collection
+        ]
+        return result
