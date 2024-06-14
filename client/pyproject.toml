@@ -5,6 +5,7 @@ description="AYON core addon."
 [tool.poetry.dependencies]
 python = ">=3.9.1,<3.10"
 clique = "1.6.*"
+intspan = "1.6.*"
 jsonschema = "^2.6.0"
 pyblish-base = "^1.8.11"
 speedcopy = "^2.1"
