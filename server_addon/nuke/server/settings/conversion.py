@@ -46,7 +46,7 @@ def _get_viewer_config_from_string(input_string):
     return (display, viewer)
 
 
-def _convert_imageio_baking_0_2_2(overrides):
+def _convert_imageio_baking_0_2_3(overrides):
     if "baking" not in overrides:
         return
 
@@ -67,7 +67,7 @@ def _convert_imageio_baking_0_2_2(overrides):
     }
 
 
-def _convert_viewers_0_2_2(overrides):
+def _convert_viewers_0_2_3(overrides):
     if "viewer" not in overrides:
         return
 
@@ -89,7 +89,7 @@ def _convert_viewers_0_2_2(overrides):
         }
 
 
-def _convert_imageio_configs_0_2_2(overrides):
+def _convert_imageio_configs_0_2_3(overrides):
     """Image IO settings had changed.
 
     0.2.2. is the latest version using the old way.
@@ -99,11 +99,11 @@ def _convert_imageio_configs_0_2_2(overrides):
 
     imageio_overrides = overrides["imageio"]
 
-    _convert_imageio_baking_0_2_2(imageio_overrides)
-    _convert_viewers_0_2_2(imageio_overrides)
+    _convert_imageio_baking_0_2_3(imageio_overrides)
+    _convert_viewers_0_2_3(imageio_overrides)
 
 
-def _convert_extract_intermediate_files_0_2_2(publish_overrides):
+def _convert_extract_intermediate_files_0_2_3(publish_overrides):
     """Extract intermediate files settings had changed.
 
     0.2.2. is the latest version using the old way.
@@ -131,13 +131,13 @@ def _convert_extract_intermediate_files_0_2_2(publish_overrides):
 def _convert_publish_plugins(overrides):
     if "publish" not in overrides:
         return
-    _convert_extract_intermediate_files_0_2_2(overrides["publish"])
+    _convert_extract_intermediate_files_0_2_3(overrides["publish"])
 
 
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
-    _convert_imageio_configs_0_2_2(overrides)
+    _convert_imageio_configs_0_2_3(overrides)
     _convert_publish_plugins(overrides)
     return overrides
