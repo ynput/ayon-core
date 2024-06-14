@@ -40,8 +40,8 @@ class CollectDataforCache(plugin.HoudiniInstancePlugin):
         instance.data.setdefault("files", list())
         instance.data.setdefault("expectedFiles", list())
 
-        frames = instance.data.get("frames", [])
-        if not frames or isinstance(frames, str):
+        frames = instance.data.get("frames", "")
+        if isinstance(frames, str):
             # single file
             instance.data["files"].append(expected_filepath)
         else:
