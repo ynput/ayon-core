@@ -769,37 +769,6 @@ def attribute_values(attr_values):
             else:
                 cmds.setAttr(attr, value)
 
-@contextlib.contextmanager
-def attribute_values_from_list(attr_values):
-    """Remaps node attributes to values for ornatrix during context.
-
-    Arguments:
-        attr_values (dict): Dictionary with (attr, value)
-
-    """
-    for texture_attr in attr_values:
-        original = [(texture_attr[attr], cmds.getAttr(texture_attr[attr]))
-                    for attr in texture_attr.keys()]
-        try:
-            for attr, value in attr_values.items():
-                if isinstance(value, string_types):
-                    cmds.setAttr(attr, value, type="string")
-                else:
-                    cmds.setAttr(attr, value)
-            yield
-        finally:
-            for attr, value in original:
-                if isinstance(value, string_types):
-                    cmds.setAttr(attr, value, type="string")
-                elif value is None and cmds.getAttr(attr, type=True) == "string":
-                    # In some cases the maya.cmds.getAttr command returns None
-                    # for string attributes but this value cannot assigned.
-                    # Note: After setting it once to "" it will then return ""
-                    #       instead of None. So this would only happen once.
-                    cmds.setAttr(attr, "", type="string")
-                else:
-                    cmds.setAttr(attr, value)
-
 
 @contextlib.contextmanager
 def keytangent_default(in_tangent_type='auto',
