@@ -9,7 +9,7 @@ from ayon_core.lib import (
     get_ayon_username,
     BoolDef
 )
-from ayon_core.resources import get_ayon_icon_filepath
+
 from ayon_houdini.api import plugin
 
 
@@ -104,9 +104,6 @@ class CreateHDA(plugin.HoudiniCreator):
         # Set Custom settings.
         hda_def = hda_node.type().definition()
 
-        if pre_create_data.get("use_ayon_icon"):
-            hda_def.setIcon(get_ayon_icon_filepath())
-
         if pre_create_data.get("set_user"):
             hda_def.setUserInfo(get_ayon_username())
 
@@ -149,10 +146,6 @@ class CreateHDA(plugin.HoudiniCreator):
     def get_pre_create_attr_defs(self):
         attrs = super(CreateHDA, self).get_pre_create_attr_defs()
         return attrs + [
-            BoolDef("use_ayon_icon",
-                    tooltip="Use Ayon icon for the digital asset.",
-                    default=False,
-                    label="Use AYON Icon"),
             BoolDef("set_user",
                     tooltip="Set current user as the author of the HDA",
                     default=False,
