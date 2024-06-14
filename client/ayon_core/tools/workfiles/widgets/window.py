@@ -107,7 +107,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         split_widget.addWidget(tasks_widget)
         split_widget.addWidget(col_3_widget)
         split_widget.addWidget(side_panel)
-        split_widget.setSizes([255, 160, 455, 175])
+        split_widget.setSizes([255, 175, 550, 190])
 
         body_layout.addWidget(split_widget)
 
@@ -169,7 +169,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         # Force focus on the open button by default, required for Houdini.
         self._files_widget.setFocus()
 
-        self.resize(1200, 600)
+        self.resize(1260, 600)
 
     def _create_col_1_widget(self, controller, parent):
         col_widget = QtWidgets.QWidget(parent)
