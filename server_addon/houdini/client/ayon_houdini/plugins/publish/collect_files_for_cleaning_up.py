@@ -52,9 +52,9 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         frames = instance.data.get("frames", [])
         staging_dir, _ = os.path.split(filepath)
         if isinstance(frames, str):
-            files = [os.path.join(staging_dir, frames)]
+            files = ["{}/{}".format(staging_dir, frames)]
         else:
-            files = [os.path.join(staging_dir, f) for f in frames]
+            files = ["{}/{}".format(staging_dir, f) for f in frames]
 
         # Farm Products with expected files
         expectedFiles = instance.data.get("expectedFiles", [])
