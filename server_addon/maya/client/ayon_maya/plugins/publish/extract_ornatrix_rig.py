@@ -69,7 +69,7 @@ class ExtractOrnatrixRig(plugin.MayaExtractorPlugin):
                                           allDescendents=True,
                                           fullPath=True) or []
 
-        # Yeti related staging dirs
+        # Ornatrix related staging dirs
         maya_path = os.path.join(dirname,
                                  "ornatrix_rig.{}".format(self.scene_type))
         nodes = instance.data["setMembers"]
