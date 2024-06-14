@@ -1614,7 +1614,7 @@ class WorkfileSettings(object):
             workfile_settings["monitor_out_lut"],
             workfile_settings["monitor_lut"]
         )
-        workfile_settings_output |= monitor_lut_data
+        workfile_settings_output.update(monitor_lut_data)
         workfile_settings_output.update(
             {
                 "workingSpaceLUT": workfile_settings["working_space"],
