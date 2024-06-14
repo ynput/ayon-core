@@ -8,7 +8,7 @@ from ayon_core.lib import (
 )
 
 
-def _get_animation_attr_defs(cls):
+def _get_animation_attr_defs():
     """Get Animation generic definitions."""
     defs = lib.collect_animation_defs()
     defs.extend(
@@ -99,9 +99,7 @@ class CreateAnimation(plugin.MayaHiddenCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        defs = super(CreateAnimation, self).get_instance_attr_defs()
-        defs += _get_animation_attr_defs(self)
-        return defs
+        return _get_animation_attr_defs()
 
 
 class CreatePointCache(plugin.MayaCreator):
@@ -123,9 +121,7 @@ class CreatePointCache(plugin.MayaCreator):
         return node_data
 
     def get_instance_attr_defs(self):
-        defs = super(CreatePointCache, self).get_instance_attr_defs()
-        defs += _get_animation_attr_defs(self)
-        return defs
+        return _get_animation_attr_defs()
 
     def create(self, product_name, instance_data, pre_create_data):
         instance = super(CreatePointCache, self).create(

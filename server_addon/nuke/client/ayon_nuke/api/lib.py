@@ -1,5 +1,4 @@
 import os
-from pprint import pformat
 import re
 import json
 import six
@@ -37,6 +36,7 @@ from ayon_core.pipeline import (
     get_current_host_name,
     get_current_project_name,
     get_current_folder_path,
+    get_current_task_name,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
 )
@@ -154,15 +154,9 @@ def set_node_data(node, knobname, data):
     """
     # if exists then update data
     if knobname in node.knobs():
-        log.debug("Updating knobname `{}` on node `{}`".format(
-            knobname, node.name()
-        ))
         update_node_data(node, knobname, data)
         return
 
-    log.debug("Creating knobname `{}` on node `{}`".format(
-        knobname, node.name()
-    ))
     # else create new
     knob_value = JSON_PREFIX + json.dumps(data)
     knob = nuke.String_Knob(knobname)
@@ -513,11 +507,9 @@ def get_avalon_knob_data(node, prefix="avalon:", create=True):
         # check if the node is avalon tracked
         try:
             # check if data available on the node
-            test = node[DATA_GROUP_KEY].value()
-            log.debug("Only testing if data available: `{}`".format(test))
-        except NameError as e:
+            _ = node[DATA_GROUP_KEY].value()
+        except NameError:
             # if it doesn't then create it
-            log.debug("Creating avalon knob: `{}`".format(e))
             if create:
                 node = set_avalon_knob_data(node)
                 return get_avalon_knob_data(node)
@@ -678,8 +670,6 @@ def get_imageio_node_setting(node_class, plugin_name, product_name):
             imageio_node = node
             break
 
-    log.debug("__ imageio_node: {}".format(imageio_node))
-
     if not imageio_node:
         return
 
@@ -690,8 +680,6 @@ def get_imageio_node_setting(node_class, plugin_name, product_name):
         product_name,
         imageio_node["knobs"]
     )
-
-    log.info("ImageIO node: {}".format(imageio_node))
     return imageio_node
 
 
@@ -706,8 +694,6 @@ def get_imageio_node_override_setting(
     # find matching override node
     override_imageio_node = None
     for onode in override_nodes:
-        log.debug("__ onode: {}".format(onode))
-        log.debug("__ productName: {}".format(product_name))
         if node_class not in onode["nuke_node_class"]:
             continue
 
@@ -727,7 +713,6 @@ def get_imageio_node_override_setting(
         override_imageio_node = onode
         break
 
-    log.debug("__ override_imageio_node: {}".format(override_imageio_node))
     # add overrides to imageio_node
     if override_imageio_node:
         # get all knob names in imageio_node
@@ -740,7 +725,6 @@ def get_imageio_node_override_setting(
             for knob in knobs_settings:
                 # add missing knobs into imageio_node
                 if oknob_name not in knob_names:
-                    log.debug("_ adding knob: `{}`".format(oknob))
                     knobs_settings.append(oknob)
                     knob_names.append(oknob_name)
                     continue
@@ -750,9 +734,6 @@ def get_imageio_node_override_setting(
 
                 knob_type = knob["type"]
                 # override matching knob name
-                log.debug(
-                    "_ overriding knob: `{}` > `{}`".format(knob, oknob)
-                )
                 if not oknob_value:
                     # remove original knob if no value found in oknob
                     knobs_settings.remove(knob)
@@ -923,7 +904,6 @@ def writes_version_sync():
         new_version = "v" + str("{" + ":0>{}".format(padding) + "}").format(
             int(rootVersion)
         )
-        log.debug("new_version: {}".format(new_version))
     except Exception:
         return
 
@@ -936,13 +916,11 @@ def writes_version_sync():
 
         try:
             if avalon_knob_data["families"] not in ["render"]:
-                log.debug(avalon_knob_data["families"])
                 continue
 
             node_file = each["file"].value()
 
             node_version = "v" + get_version_from_path(node_file)
-            log.debug("node_version: {}".format(node_version))
 
             node_new_file = node_file.replace(node_version, new_version)
             each["file"].setValue(node_new_file)
@@ -1332,7 +1310,6 @@ def set_node_knobs_from_settings(node, knob_settings, **kwargs):
         kwargs (dict)[optional]: keys for formattable knob settings
     """
     for knob in knob_settings:
-        log.debug("__ knob: {}".format(pformat(knob)))
         knob_name = knob["name"]
         if knob_name not in node.knobs():
             continue
@@ -1486,13 +1463,17 @@ class WorkfileSettings(object):
         Context._project_entity = project_entity
         self._project_name = project_name
         self._folder_path = get_current_folder_path()
+        self._task_name = get_current_task_name()
         self._folder_entity = ayon_api.get_folder_by_path(
             project_name, self._folder_path
         )
         self._root_node = root_node or nuke.root()
         self._nodes = self.get_nodes(nodes=nodes)
 
-        self.data = kwargs
+        context_data = get_template_data_with_names(
+            project_name, self._folder_path, self._task_name, "nuke"
+        )
+        self.formatting_data = context_data
 
     def get_nodes(self, nodes=None, nodes_filter=None):
 
@@ -1509,36 +1490,23 @@ class WorkfileSettings(object):
             for filter in nodes_filter:
                 return [n for n in self._nodes if filter in n.Class()]
 
-    def set_viewers_colorspace(self, viewer_dict):
+    def set_viewers_colorspace(self, imageio_nuke):
         ''' Adds correct colorspace to viewer
 
         Arguments:
-            viewer_dict (dict): adjustments from presets
+            imageio_nuke (dict): nuke colorspace configurations
 
         '''
-        if not isinstance(viewer_dict, dict):
-            msg = "set_viewers_colorspace(): argument should be dictionary"
-            log.error(msg)
-            nuke.message(msg)
-            return
-
         filter_knobs = [
             "viewerProcess",
             "wipe_position",
             "monitorOutOutputTransform"
         ]
-
-        display, viewer = get_viewer_config_from_string(
-            viewer_dict["viewerProcess"]
+        viewer_process = self._display_and_view_formatted(
+            imageio_nuke["viewer"]
         )
-        viewer_process = create_viewer_profile_string(
-            viewer, display, path_like=False
-        )
-        display, viewer = get_viewer_config_from_string(
-            viewer_dict["output_transform"]
-        )
-        output_transform = create_viewer_profile_string(
-            viewer, display, path_like=False
+        output_transform = self._display_and_view_formatted(
+            imageio_nuke["monitor"]
         )
         erased_viewers = []
         for v in nuke.allNodes(filter="Viewer"):
@@ -1547,8 +1515,10 @@ class WorkfileSettings(object):
 
             if viewer_process not in v["viewerProcess"].value():
                 copy_inputs = v.dependencies()
-                copy_knobs = {k: v[k].value() for k in v.knobs()
-                              if k not in filter_knobs}
+                copy_knobs = {
+                    k: v[k].value() for k in v.knobs()
+                    if k not in filter_knobs
+                }
 
                 # delete viewer with wrong settings
                 erased_viewers.append(v["name"].value())
@@ -1574,6 +1544,21 @@ class WorkfileSettings(object):
                 "Attention! Viewer nodes {} were erased."
                 "It had wrong color profile".format(erased_viewers))
 
+    def _display_and_view_formatted(self, view_profile):
+        """ Format display and view profile string
+
+        Args:
+            view_profile (dict): view and display profile
+
+        Returns:
+            str: formatted display and view profile string
+        """
+        display_view = create_viewer_profile_string(
+            view_profile["view"], view_profile["display"], path_like=False
+        )
+        # format any template tokens used in the string
+        return StringTemplate(display_view).format_strict(self.formatting_data)
+
     def set_root_colorspace(self, imageio_host):
         ''' Adds correct colorspace to root
 
@@ -1590,12 +1575,12 @@ class WorkfileSettings(object):
         if not config_data:
             # no ocio config found and no custom path used
             if self._root_node["colorManagement"].value() \
-                    not in color_management:
+                        not in color_management:
                 self._root_node["colorManagement"].setValue(color_management)
 
             # second set ocio version
             if self._root_node["OCIO_config"].value() \
-                    not in native_ocio_config:
+                        not in native_ocio_config:
                 self._root_node["OCIO_config"].setValue(native_ocio_config)
 
         else:
@@ -1623,21 +1608,25 @@ class WorkfileSettings(object):
             if correct_settings:
                 self._set_ocio_config_path_to_workfile(config_data)
 
+        workfile_settings_output = {}
         # get monitor lut from settings respecting Nuke version differences
         monitor_lut_data = self._get_monitor_settings(
             workfile_settings["monitor_out_lut"],
             workfile_settings["monitor_lut"]
         )
-        monitor_lut_data.update({
-            "workingSpaceLUT": workfile_settings["working_space"],
-            "int8Lut": workfile_settings["int_8_lut"],
-            "int16Lut": workfile_settings["int_16_lut"],
-            "logLut": workfile_settings["log_lut"],
-            "floatLut": workfile_settings["float_lut"]
-        })
+        workfile_settings_output.update(monitor_lut_data)
+        workfile_settings_output.update(
+            {
+                "workingSpaceLUT": workfile_settings["working_space"],
+                "int8Lut": workfile_settings["int_8_lut"],
+                "int16Lut": workfile_settings["int_16_lut"],
+                "logLut": workfile_settings["log_lut"],
+                "floatLut": workfile_settings["float_lut"],
+            }
+        )
 
         # then set the rest
-        for knob, value_ in monitor_lut_data.items():
+        for knob, value_ in workfile_settings_output.items():
             # skip unfilled ocio config path
             # it will be dict in value
             if isinstance(value_, dict):
@@ -1646,7 +1635,6 @@ class WorkfileSettings(object):
             if not value_:
                 continue
             self._root_node[knob].setValue(str(value_))
-            log.debug("nuke.root()['{}'] changed to: {}".format(knob, value_))
 
     def _get_monitor_settings(self, viewer_lut, monitor_lut):
         """ Get monitor settings from viewer and monitor lut
@@ -1889,8 +1877,6 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
             elif node_data:
                 nuke_imageio_writes = get_write_node_template_attr(node)
 
-            log.debug("nuke_imageio_writes: `{}`".format(nuke_imageio_writes))
-
             if not nuke_imageio_writes:
                 return
 
@@ -1938,7 +1924,6 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
                         "to": future
                     }
 
-        log.debug(changes)
         if changes:
             msg = "Read nodes are not set to correct colorspace:\n\n"
             for nname, knobs in changes.items():
@@ -1972,7 +1957,7 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
 
         log.info("Setting colorspace to viewers...")
         try:
-            self.set_viewers_colorspace(nuke_colorspace["viewer"])
+            self.set_viewers_colorspace(nuke_colorspace)
         except AttributeError as _error:
             msg = "Set Colorspace to viewer error: {}".format(_error)
             nuke.message(msg)
@@ -2653,8 +2638,6 @@ class NukeDirmap(HostDirmap):
     def dirmap_routine(self, source_path, destination_path):
         source_path = source_path.lower().replace(os.sep, '/')
         destination_path = destination_path.lower().replace(os.sep, '/')
-        log.debug("Map: {} with: {}->{}".format(self.file_name,
-                                                source_path, destination_path))
         if platform.system().lower() == "windows":
             self.file_name = self.file_name.lower().replace(
                 source_path, destination_path)

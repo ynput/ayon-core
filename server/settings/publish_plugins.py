@@ -863,7 +863,8 @@ DEFAULT_PUBLISH_VALUES = {
             "nuke",
             "photoshop",
             "resolve",
-            "tvpaint"
+            "tvpaint",
+            "substancepainter"
         ],
         "skip_hosts_headless_publish": []
     },
@@ -890,6 +891,7 @@ DEFAULT_PUBLISH_VALUES = {
                     "maya",
                     "nuke",
                     "photoshop",
+                    "substancepainter"
                 ],
                 "enabled": True,
                 "optional": False,
