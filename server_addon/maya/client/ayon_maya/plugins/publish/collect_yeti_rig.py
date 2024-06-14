@@ -34,7 +34,7 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         yeti_nodes = cmds.ls(instance[:], type="pgYetiMaya", long=True)
         for node in yeti_nodes:
             # Get Yeti resources (textures)
-            resources = self.get_yeti_resources(node)
+            resources = self.get_texture_resources(node)
             yeti_resources.extend(resources)
 
         instance.data["rigsettings"] = {"inputs": input_connections}
@@ -304,3 +304,86 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
                     raise RuntimeError(msg)
             replaced.append(s)
         return replaced
+
+
+class CollectOrnatrixRig(CollectYetiRig):
+    """Collect all information of the Ornatrix Rig"""
+
+    order = pyblish.api.CollectorOrder + 0.4
+    label = "Collect Ornatrix Rig"
+    families = ["ornatrixRig"]
+
+    def process(self, instance):
+        assert "input_SET" in instance.data["setMembers"], (
+            "Ornatrix Rig must have an input_SET")
+
+        ornatrix_nodes = cmds.ls(instance[:], long=True)
+        self.log.debug(f"Getting ornatrix nodes: {ornatrix_nodes}")
+        # Force frame range for yeti cache export for the rig
+        # Collect any textures if used
+        ornatrix_resources = []
+        for node in ornatrix_nodes:
+            # Get Yeti resources (textures)
+            resources = self.get_texture_resources(node)
+            ornatrix_resources.extend(resources)
+        # avoid duplicate dictionary data
+        instance.data["resources"] = [
+            i for n, i in enumerate(ornatrix_resources)
+            if i not in ornatrix_resources[n + 1:]
+        ]
+        self.log.debug("{}".format(instance.data["resources"]))
+        start = cmds.playbackOptions(query=True, animationStartTime=True)
+        for key in ["frameStart", "frameEnd",
+                    "frameStartHandle", "frameEndHandle"]:
+            instance.data[key] = start
+
+    def get_texture_resources(self, node):
+        # add docstrings
+        resources = []
+        node_shape = cmds.listRelatives(node, shapes=True)
+        if not node_shape:
+            return []
+
+        ox_nodes = [
+            ox_node for ox_node in cmds.listConnections(node_shape, destination=True)
+                    if cmds.nodeType(ox_node) in {
+                        "HairFromGuidesNode", "GuidesFromMeshNode",
+                        "MeshFromStrandsNode", "SurfaceCombNode"
+                    }
+        ]
+        ox_imageFile = [
+            ox_img for ox_img in cmds.listConnections(ox_nodes, destination=False)
+            if cmds.nodeType(ox_img) == "file"
+        ]
+        if not ox_imageFile:
+            return []
+        for img in ox_imageFile:
+            texture_attr = "{}.fileTextureName".format(img)
+            texture = cmds.getAttr("{}.fileTextureName".format(img))
+            files = []
+            if os.path.isabs(texture):
+                self.log.debug("Texture is absolute path, ignoring "
+                               "image search paths for: %s" % texture)
+                files = self.search_textures(texture)
+            else:
+                root = os.environ["AYON_WORKDIR"]
+                filepath = os.path.join(root, texture)
+                files = self.search_textures(filepath)
+                if files:
+                    # Break out on first match in search paths..
+                    break
+
+            if not files:
+                raise KnownPublishError(
+                    "No texture found for: %s "
+                    "(searched: %s)" % (texture))
+
+            item = {
+                "files": files,
+                "source": texture,
+                "texture_attribute": texture_attr
+            }
+
+            resources.append(item)
+
+        return resources

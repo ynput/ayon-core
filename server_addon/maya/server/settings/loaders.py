@@ -39,6 +39,8 @@ class ColorsSetting(BaseSettingsModel):
         (99, 206, 220, 1.0), title="Yeti Cache:")
     yetiRig: ColorRGBA_uint8 = SettingsField(
         (0, 205, 125, 1.0), title="Yeti Rig:")
+    ornatrixRig: ColorRGBA_uint8 = SettingsField(
+        (206, 234, 195, 1.0), title="Ornatrix Rig:")
     # model: ColorRGB_float = SettingsField(
     #     (0.82, 0.52, 0.12), title="Model:"
     # )
@@ -108,6 +110,17 @@ class YetiRigLoaderModel(LoaderEnabledModel):
         title="Create Yeti Cache instance on load",
         description=(
             "When enabled, upon loading a Yeti Rig product a new Yeti cache "
+            "instance is automatically created as preparation to publishing "
+            "the output directly."
+        )
+    )
+
+
+class OrnatrixRigLoaderModel(LoaderEnabledModel):
+    create_cache_instance_on_load: bool = SettingsField(
+        title="Create Ornatrix Cache instance on load",
+        description=(
+            "When enabled, upon loading a Ornatrix Rig product a new Ornatrix cache "
             "instance is automatically created as preparation to publishing "
             "the output directly."
         )
@@ -210,6 +223,10 @@ class LoadersModel(BaseSettingsModel):
         default_factory=YetiRigLoaderModel,
         title="Yeti Rig Loader"
     )
+    OrnatrixRigLoader: OrnatrixRigLoaderModel = SettingsField(
+        default_factory=OrnatrixRigLoaderModel,
+        title="Ornatrix Rig Loader"
+    )
 
 
 DEFAULT_LOADERS_SETTING = {
@@ -278,6 +295,10 @@ DEFAULT_LOADERS_SETTING = {
     "XgenLoader": {"enabled": True},
     "YetiCacheLoader": {"enabled": True},
     "YetiRigLoader": {
+        "enabled": True,
+        "create_cache_instance_on_load": True
+    },
+    "OrnatrixRigLoader": {
         "enabled": True,
         "create_cache_instance_on_load": True
     },
