@@ -12,6 +12,7 @@ from ayon_core.lib import (
     BoolDef,
     EnumDef
 )
+from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import (
     LoaderPlugin,
     CreatorError,
@@ -38,7 +39,6 @@ from .lib import (
     set_node_data,
     get_node_data,
     get_view_process_node,
-    get_viewer_config_from_string,
     get_filenames_without_hash,
     link_knobs
 )
@@ -638,12 +638,15 @@ class ExporterReview(object):
         from . import lib as opnlib
         nuke_imageio = opnlib.get_nuke_imageio_settings()
 
-        # TODO: this is only securing backward compatibility lets remove
-        # this once all projects's anatomy are updated to newer config
-        if "baking" in nuke_imageio.keys():
-            return nuke_imageio["baking"]["viewerProcess"]
+        if nuke_imageio["baking_target"]["enabled"]:
+            return nuke_imageio["baking_target"]
         else:
-            return nuke_imageio["viewer"]["viewerProcess"]
+            # viewer is having display and view keys only and it is
+            # display_view type
+            return {
+                "type": "display_view",
+                "display_view": nuke_imageio["viewer"],
+            }
 
 
 class ExporterReviewLut(ExporterReview):
@@ -790,6 +793,7 @@ class ExporterReviewMov(ExporterReview):
         self.viewer_lut_raw = klass.viewer_lut_raw
         self.write_colorspace = instance.data["colorspace"]
         self.color_channels = instance.data["color_channels"]
+        self.formatting_data = instance.data["anatomyData"]
 
         self.name = name or "baked"
         self.ext = ext or "mov"
@@ -837,7 +841,7 @@ class ExporterReviewMov(ExporterReview):
         with maintained_selection():
             self.log.info("Saving nodes as file...  ")
             # create nk path
-            path = os.path.splitext(self.path)[0] + ".nk"
+            path = f"{os.path.splitext(self.path)[0]}.nk"
             # save file to the path
             if not os.path.exists(os.path.dirname(path)):
                 os.makedirs(os.path.dirname(path))
@@ -861,21 +865,20 @@ class ExporterReviewMov(ExporterReview):
         bake_viewer_process = kwargs["bake_viewer_process"]
         bake_viewer_input_process_node = kwargs[
             "bake_viewer_input_process"]
-        viewer_process_override = kwargs[
-            "viewer_process_override"]
 
-        baking_view_profile = (
-            viewer_process_override or self.get_imageio_baking_profile())
+        baking_colorspace = self.get_imageio_baking_profile()
+
+        colorspace_override = kwargs["colorspace_override"]
+        if colorspace_override["enabled"]:
+            baking_colorspace = colorspace_override
 
         fps = self.instance.context.data["fps"]
 
-        self.log.debug(">> baking_view_profile   `{}`".format(
-            baking_view_profile))
+        self.log.debug(f">> baking_view_profile   `{baking_colorspace}`")
 
         add_custom_tags = kwargs.get("add_custom_tags", [])
 
-        self.log.info(
-            "__ add_custom_tags: `{0}`".format(add_custom_tags))
+        self.log.info(f"__ add_custom_tags: `{add_custom_tags}`")
 
         product_name = self.instance.data["productName"]
         self._temp_nodes[product_name] = []
@@ -932,32 +935,64 @@ class ExporterReviewMov(ExporterReview):
 
             if not self.viewer_lut_raw:
                 # OCIODisplay
-                dag_node = nuke.createNode("OCIODisplay")
+                if baking_colorspace["type"] == "display_view":
+                    display_view = baking_colorspace["display_view"]
 
-                # assign display
-                display, viewer = get_viewer_config_from_string(
-                    str(baking_view_profile)
-                )
-                if display:
-                    dag_node["display"].setValue(display)
+                    message = "OCIODisplay...   '{}'"
+                    node = nuke.createNode("OCIODisplay")
 
-                # assign viewer
-                dag_node["view"].setValue(viewer)
+                    # assign display and view
+                    display = display_view["display"]
+                    view = display_view["view"]
 
-                if config_data:
-                    # convert display and view to colorspace
-                    colorspace = get_display_view_colorspace_name(
-                        config_path=config_data["path"],
-                        display=display,
-                        view=viewer
+                    # display could not be set in nuke_default config
+                    if display:
+                        # format display string with anatomy data
+                        display = StringTemplate(display).format_strict(
+                            self.formatting_data
+                        )
+                        node["display"].setValue(display)
+
+                    # format view string with anatomy data
+                    view = StringTemplate(view).format_strict(
+                        self.formatting_data)
+                    # assign viewer
+                    node["view"].setValue(view)
+
+                    if config_data:
+                        # convert display and view to colorspace
+                        colorspace = get_display_view_colorspace_name(
+                            config_path=config_data["path"],
+                            display=display, view=view
+                        )
+
+                # OCIOColorSpace
+                elif baking_colorspace["type"] == "colorspace":
+                    baking_colorspace = baking_colorspace["colorspace"]
+                    # format colorspace string with anatomy data
+                    baking_colorspace = StringTemplate(
+                        baking_colorspace).format_strict(self.formatting_data)
+                    node = nuke.createNode("OCIOColorSpace")
+                    message = "OCIOColorSpace...   '{}'"
+                    # no need to set input colorspace since it is driven by
+                    # working colorspace
+                    node["out_colorspace"].setValue(baking_colorspace)
+                    colorspace = baking_colorspace
+
+                else:
+                    raise ValueError(
+                        "Invalid baking color space type: "
+                        f"{baking_colorspace['type']}"
                     )
 
                 self._connect_to_above_nodes(
-                    dag_node, product_name, "OCIODisplay...   `{}`"
+                    node, product_name, message
                 )
+
         # Write node
         write_node = nuke.createNode("Write")
-        self.log.debug("Path: {}".format(self.path))
+        self.log.debug(f"Path: {self.path}")
+
         write_node["file"].setValue(str(self.path))
         write_node["file_type"].setValue(str(self.ext))
         write_node["channels"].setValue(str(self.color_channels))
@@ -981,12 +1016,11 @@ class ExporterReviewMov(ExporterReview):
             self.log.info("`mov64_write_timecode` knob was not found")
 
         write_node["raw"].setValue(1)
+
         # connect
         write_node.setInput(0, self.previous_node)
         self._temp_nodes[product_name].append(write_node)
-        self.log.debug("Write...   `{}`".format(
-            self._temp_nodes[product_name])
-        )
+        self.log.debug(f"Write...   `{self._temp_nodes[product_name]}`")
         # ---------- end nodes creation
 
         # ---------- render or save to nk
@@ -1014,7 +1048,7 @@ class ExporterReviewMov(ExporterReview):
             colorspace=colorspace,
         )
 
-        self.log.debug("Representation...   `{}`".format(self.data))
+        self.log.debug(f"Representation...   `{self.data}`")
 
         self.clean_nodes(product_name)
         nuke.scriptSave()
