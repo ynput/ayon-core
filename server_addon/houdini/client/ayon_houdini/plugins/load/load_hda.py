@@ -55,10 +55,10 @@ class HdaLoader(plugin.HoudiniLoader):
         if not hda_defs:
             raise LoadError(f"No HDA definitions found in file: {file_path}")
 
-        parent_node = self._create_dedicated_parent_node(hda_defs[0])
+        parent_node = self._create_dedicated_parent_node(hda_defs[-1])
 
         # Get the type name from the HDA definition.
-        type_name = hda_defs[0].nodeTypeName()
+        type_name = hda_defs[-1].nodeTypeName()
         hda_node = parent_node.createNode(type_name, node_name)
         hda_node.moveToGoodPosition()
 
