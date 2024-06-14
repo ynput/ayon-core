@@ -70,7 +70,6 @@ def main():
         anatomy,
         project_settings=project_settings
     )
-
     # Save current workfile.
     current_file = host.current_file()
     host.save_file(current_file)
@@ -109,8 +108,11 @@ def main():
         node["file"].setValue(path.replace("\\", "/"))
 
     # Save current workfile to new context.
-    basename = os.path.basename(current_file)
-    host.save_file(os.path.join(workdir, basename))
+    pushed_workfile = os.path.join(
+        workdir, os.path.basename(current_file))
+    host.save_file(pushed_workfile)
 
-    # Open current contex workfile.
+    # Open current context workfile.
     host.open_file(current_file)
+
+    nuke.message(f"Pushed to project: \n{pushed_workfile}")
