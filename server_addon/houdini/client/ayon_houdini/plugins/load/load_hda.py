@@ -5,6 +5,7 @@ from ayon_core.pipeline import (
     get_representation_path,
     AVALON_CONTAINER_ID
 )
+from ayon_core.pipeline.load import LoadError
 from ayon_houdini.api import (
     lib,
     pipeline,
@@ -45,21 +46,20 @@ class HdaLoader(plugin.HoudiniLoader):
         file_path = os.path.normpath(file_path)
         file_path = file_path.replace("\\", "/")
 
-        # Create a unique name
-        counter = 1
         namespace = namespace or context["folder"]["name"]
-        formatted = "{}_{}".format(namespace, name) if namespace else name
-        node_name = "{0}_{1:03d}".format(formatted, counter)
+        node_name = "{}_{}".format(namespace, name) if namespace else name
+
+        hou.hda.installFile(file_path)
 
         hda_defs = hou.hda.definitionsInFile(file_path)
         if not hda_defs:
-            raise RuntimeError ("No HDA definitions found!")
+            raise LoadError(f"No HDA definitions found in file: {file_path}")
 
-        hda_def = hda_defs[0]
-        parent_node = self._create_dedicated_parent_node(hda_def)
+        parent_node = self._create_dedicated_parent_node(hda_defs[0])
 
-        hou.hda.installFile(file_path)
-        hda_node = parent_node.createNode(name, node_name)
+        # Get the type name from the HDA definition.
+        type_name = hda_defs[0].nodeTypeName()
+        hda_node = parent_node.createNode(type_name, node_name)
         hda_node.moveToGoodPosition()
 
         # Imprint it manually

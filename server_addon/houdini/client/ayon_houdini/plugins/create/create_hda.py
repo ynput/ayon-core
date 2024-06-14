@@ -4,7 +4,10 @@ import hou
 from assettools import setToolSubmenu
 
 import ayon_api
-from ayon_core.pipeline import CreatorError
+from ayon_core.pipeline import (
+    CreatorError,
+    get_current_project_name
+)
 from ayon_core.lib import (
     get_ayon_username,
     BoolDef
@@ -81,8 +84,18 @@ class CreateHDA(plugin.HoudiniCreator):
                 raise CreatorError(
                     "cannot create hda from node {}".format(to_hda))
 
+            # Pick a unique type name for HDA product per folder path per project.
+            type_name = (
+                "{project_name}{folder_path}_{node_name}".format(
+                    project_name=get_current_project_name(),
+                    folder_path=folder_path.replace("/","_"),
+                    node_name=node_name
+                )
+            )
+
             hda_node = to_hda.createDigitalAsset(
-                name=node_name,
+                name=type_name,
+                description=node_name,
                 hda_file_name="$HIP/{}.hda".format(node_name),
                 ignore_external_references=True
             )

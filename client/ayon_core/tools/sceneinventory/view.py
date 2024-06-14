@@ -683,37 +683,51 @@ class SceneInventoryView(QtWidgets.QTreeView):
             repre_ids
         )
 
+        product_ids = {
+            repre_info.product_id
+            for repre_info in repre_info_by_id.values()
+        }
         active_repre_info = repre_info_by_id[active_repre_id]
-        active_product_id = active_repre_info.product_id
         active_version_id = active_repre_info.version_id
-        filtered_repre_info_by_id = {
-            repre_id: repre_info
-            for repre_id, repre_info in repre_info_by_id.items()
-            if repre_info.product_id == active_product_id
-        }
-        filtered_container_item_ids = {
-            item_id
-            for item_id, container_item in container_items_by_id.items()
-            if container_item.representation_id in filtered_repre_info_by_id
-        }
-        version_items_by_id = self._controller.get_version_items(
-            {active_product_id}
-        )[active_product_id]
+        active_product_id = active_repre_info.product_id
+        version_items_by_product_id = self._controller.get_version_items(
+            product_ids
+        )
+        version_items = list(
+            version_items_by_product_id[active_product_id].values()
+        )
+        versions = {version_item.version for version_item in version_items}
+        product_ids_by_version = collections.defaultdict(set)
+        for version_items_by_id in version_items_by_product_id.values():
+            for version_item in version_items_by_id.values():
+                version = version_item.version
+                _prod_version = version
+                if _prod_version < 0:
+                    _prod_version = -1
+                product_ids_by_version[_prod_version].add(
+                    version_item.product_id
+                )
+                if version in versions:
+                    continue
+                versions.add(version)
+                version_items.append(version_item)
 
         def version_sorter(item):
             hero_value = 0
-            version = item.version
-            if version < 0:
+            i_version = item.version
+            if i_version < 0:
                 hero_value = 1
-                version = abs(version)
-            return version, hero_value
+                i_version = abs(i_version)
+            return i_version, hero_value
 
-        version_items = list(version_items_by_id.values())
         version_items.sort(key=version_sorter, reverse=True)
-        status_items_by_name = {
-            status_item.name: status_item
-            for status_item in self._controller.get_project_status_items()
-        }
+        show_statuses = len(product_ids) == 1
+        status_items_by_name = {}
+        if show_statuses:
+            status_items_by_name = {
+                status_item.name: status_item
+                for status_item in self._controller.get_project_status_items()
+            }
 
         version_options = []
         active_version_idx = 0
@@ -743,17 +757,28 @@ class SceneInventoryView(QtWidgets.QTreeView):
         version_option = SelectVersionDialog.ask_for_version(
             version_options,
             active_version_idx,
+            show_statuses=show_statuses,
             parent=self
         )
         if version_option is None:
             return
 
-        version = version_option.version
+        product_version = version = version_option.version
         if version < 0:
+            product_version = -1
             version = HeroVersionType(version)
 
+        product_ids = product_ids_by_version[product_version]
+
+        filtered_item_ids = set()
+        for container_item in container_items_by_id.values():
+            repre_id = container_item.representation_id
+            repre_info = repre_info_by_id[repre_id]
+            if repre_info.product_id in product_ids:
+                filtered_item_ids.add(container_item.item_id)
+
         self._update_containers_to_version(
-            filtered_container_item_ids, version
+            filtered_item_ids, version
         )
 
     def _show_switch_dialog(self, item_ids):
