@@ -1193,39 +1193,3 @@ def prompt_reset_context():
         update_content_on_context_change()
 
     dialog.deleteLater()
-
-
-def create_file_list(match, start_frame, end_frame):
-    """Collect files based on frame range and `regex.match`
-
-    Args:
-        match(re.match): match object
-        start_frame(int): start of the animation
-        end_frame(int): end of the animation
-
-    Returns:
-        list
-
-    """
-
-    # Get the padding length
-    frame = match.group(1)
-    padding = len(frame)
-
-    # Get the parts of the filename surrounding the frame number,
-    # so we can put our own frame numbers in.
-    span = match.span(1)
-    prefix = match.string[: span[0]]
-    suffix = match.string[span[1]:]
-
-    # Generate filenames for all frames
-    result = []
-    for i in range(start_frame, end_frame + 1):
-
-        # Format frame number by the padding amount
-        str_frame = "{number:0{width}d}".format(number=i, width=padding)
-
-        file_name = prefix + str_frame + suffix
-        result.append(file_name)
-
-    return result
