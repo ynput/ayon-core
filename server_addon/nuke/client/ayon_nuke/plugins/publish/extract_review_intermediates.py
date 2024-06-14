@@ -28,29 +28,6 @@ class ExtractReviewIntermediates(publish.Extractor):
     viewer_lut_raw = None
     outputs = {}
 
-    @classmethod
-    def apply_settings(cls, project_settings):
-        """Apply the settings from the deprecated
-        ExtractReviewDataMov plugin for backwards compatibility
-        """
-        nuke_publish = project_settings["nuke"]["publish"]
-        deprecated_setting = nuke_publish["ExtractReviewDataMov"]
-        current_setting = nuke_publish.get("ExtractReviewIntermediates")
-        if not deprecated_setting["enabled"] and (
-            not current_setting["enabled"]
-        ):
-            cls.enabled = False
-
-        if deprecated_setting["enabled"]:
-            # Use deprecated settings if they are still enabled
-            cls.viewer_lut_raw = deprecated_setting["viewer_lut_raw"]
-            cls.outputs = deprecated_setting["outputs"]
-        elif current_setting is None:
-            pass
-        elif current_setting["enabled"]:
-            cls.viewer_lut_raw = current_setting["viewer_lut_raw"]
-            cls.outputs = current_setting["outputs"]
-
     def process(self, instance):
         # TODO 'families' should not be included for filtering of outputs
         families = set(instance.data["families"])
