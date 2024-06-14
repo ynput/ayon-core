@@ -19,6 +19,7 @@ class LoadImage(plugin.Loader):
 
     product_types = {"render", "image", "background", "plate", "review"}
     representations = {"*"}
+    settings_category = "tvpaint"
 
     label = "Load Image"
     order = 1

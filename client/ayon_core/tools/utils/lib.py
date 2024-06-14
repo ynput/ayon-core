@@ -1,6 +1,7 @@
 import os
 import sys
 import contextlib
+import collections
 from functools import partial
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -196,16 +197,16 @@ def get_openpype_qt_app():
     return get_ayon_qt_app()
 
 
-def iter_model_rows(model, column, include_root=False):
+def iter_model_rows(model, column=0, include_root=False):
     """Iterate over all row indices in a model"""
-    indices = [QtCore.QModelIndex()]  # start iteration at root
-
-    for index in indices:
+    indexes_queue = collections.deque()
+    # start iteration at root
+    indexes_queue.append(QtCore.QModelIndex())
+    while indexes_queue:
+        index = indexes_queue.popleft()
         # Add children to the iterations
-        child_rows = model.rowCount(index)
-        for child_row in range(child_rows):
-            child_index = model.index(child_row, column, index)
-            indices.append(child_index)
+        for child_row in range(model.rowCount(index)):
+            indexes_queue.append(model.index(child_row, column, index))
 
         if not include_root and not index.isValid():
             continue

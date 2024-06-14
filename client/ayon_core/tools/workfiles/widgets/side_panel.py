@@ -75,7 +75,7 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._btn_note_save = btn_note_save
 
         self._folder_id = None
-        self._task_id = None
+        self._task_name = None
         self._filepath = None
         self._orig_note = ""
         self._controller = controller
@@ -93,10 +93,10 @@ class SidePanelWidget(QtWidgets.QWidget):
 
     def _on_selection_change(self, event):
         folder_id = event["folder_id"]
-        task_id = event["task_id"]
+        task_name = event["task_name"]
         filepath = event["path"]
 
-        self._set_context(folder_id, task_id, filepath)
+        self._set_context(folder_id, task_name, filepath)
 
     def _on_note_change(self):
         text = self._note_input.toPlainText()
@@ -106,19 +106,19 @@ class SidePanelWidget(QtWidgets.QWidget):
         note = self._note_input.toPlainText()
         self._controller.save_workfile_info(
             self._folder_id,
-            self._task_id,
+            self._task_name,
             self._filepath,
             note
         )
         self._orig_note = note
         self._btn_note_save.setEnabled(False)
 
-    def _set_context(self, folder_id, task_id, filepath):
+    def _set_context(self, folder_id, task_name, filepath):
         workfile_info = None
         # Check if folder, task and file are selected
-        if bool(folder_id) and bool(task_id) and bool(filepath):
+        if bool(folder_id) and bool(task_name) and bool(filepath):
             workfile_info = self._controller.get_workfile_info(
-                folder_id, task_id, filepath
+                folder_id, task_name, filepath
             )
         enabled = workfile_info is not None
 
@@ -127,7 +127,7 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._btn_note_save.setEnabled(enabled)
 
         self._folder_id = folder_id
-        self._task_id = task_id
+        self._task_name = task_name
         self._filepath = filepath
 
         # Disable inputs and remove texts if any required arguments are
@@ -147,13 +147,38 @@ class SidePanelWidget(QtWidgets.QWidget):
             workfile_info.creation_time)
         modification_time = datetime.datetime.fromtimestamp(
             workfile_info.modification_time)
+
+        user_items_by_name = self._controller.get_user_items_by_name()
+
+        def convert_username(username):
+            user_item = user_items_by_name.get(username)
+            if user_item is not None and user_item.full_name:
+                return user_item.full_name
+            return username
+
+        created_lines = [
+            creation_time.strftime(datetime_format)
+        ]
+        if workfile_info.created_by:
+            created_lines.insert(
+                0, convert_username(workfile_info.created_by)
+            )
+
+        modified_lines = [
+            modification_time.strftime(datetime_format)
+        ]
+        if workfile_info.updated_by:
+            modified_lines.insert(
+                0, convert_username(workfile_info.updated_by)
+            )
+
         lines = (
             "<b>Size:</b>",
             size_value,
             "<b>Created:</b>",
-            creation_time.strftime(datetime_format),
+            "<br/>".join(created_lines),
             "<b>Modified:</b>",
-            modification_time.strftime(datetime_format)
+            "<br/>".join(modified_lines),
         )
         self._orig_note = note
         self._note_input.setPlainText(note)
