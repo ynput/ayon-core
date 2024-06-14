@@ -834,12 +834,13 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workarea_file_items(self, folder_id, task_id):
+    def get_workarea_file_items(self, folder_id, task_name, sender=None):
         """Get workarea file items.
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task name.
+            sender (Optional[str]): Who requested workarea file items.
 
         Returns:
             list[FileItem]: List of workarea file items.
@@ -905,12 +906,12 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workfile_info(self, folder_id, task_id, filepath):
+    def get_workfile_info(self, folder_id, task_name, filepath):
         """Workfile info from database.
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task id.
             filepath (str): Workfile path.
 
         Returns:
@@ -921,7 +922,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def save_workfile_info(self, folder_id, task_id, filepath, note):
+    def save_workfile_info(self, folder_id, task_name, filepath, note):
         """Save workfile info to database.
 
         At this moment the only information which can be saved about
@@ -932,7 +933,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task id.
             filepath (str): Workfile path.
             note (Union[str, None]): Note.
         """
