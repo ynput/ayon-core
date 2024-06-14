@@ -48,20 +48,28 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
             return
 
         files = []
-        # Products with frames
-        frames = instance.data.get("frames", [])
         staging_dir, _ = os.path.split(filepath)
-        if isinstance(frames, str):
-            files = [filepath]
-        else:
-            files = ["{}/{}".format(staging_dir, f) for f in frames]
 
-        # Products with expected files
-        # This can be Render products or submitted cache to farm.
         expectedFiles = instance.data.get("expectedFiles", [])
-        for expected in expectedFiles:
-            # expected.values() is a list of lists
-            files.extend(sum(expected.values(), []))
+
+        # 'expectedFiles' are preferred over 'frames'
+        if expectedFiles:
+            # Products with expected files
+            # This can be Render products or submitted cache to farm.
+            for expected in expectedFiles:
+                # expected.values() is a list of lists
+                files.extend(sum(expected.values(), []))
+        else:
+            # Products with frames or single file.
+            frames = instance.data.get("frames", "")
+            if isinstance(frames, str):
+                # single file.
+                files.append(filepath)
+            else:
+                # list of frame.
+                files.extend(
+                    ["{}/{}".format(staging_dir, f) for f in frames]
+                )
 
         # Intermediate exported render files.
         # Note: This only takes effect when setting render target to
@@ -77,15 +85,11 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
                                                 start_frame, end_frame)
             files.extend(ifd_files)
 
-        # Products with single output file/frame
-        if not files:
-            files.append(filepath)
-
         self.log.debug("Add directories to 'cleanupEmptyDir': {}".format(staging_dir))
         instance.context.data["cleanupEmptyDirs"].append(staging_dir)
 
         self.log.debug("Add files to 'cleanupFullPaths': {}".format(files))
-        instance.context.data["cleanupFullPaths"] += files
+        instance.context.data["cleanupFullPaths"].extend(files)
 
     def _get_ifd_file_list(self, ifdFile, start_frame, end_frame):
 
