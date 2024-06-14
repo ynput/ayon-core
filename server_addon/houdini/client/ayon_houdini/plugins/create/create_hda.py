@@ -128,13 +128,6 @@ class CreateHDA(plugin.HoudiniCreator):
     def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
 
-        # Transfer settings from pre create to instance
-        creator_attributes = instance_data.setdefault(
-            "creator_attributes", dict())
-        for key in {"use_project"}:
-            if key in pre_create_data:
-                creator_attributes[key] = pre_create_data[key]
-
         return super(CreateHDA, self).create(
             product_name,
             instance_data,
