@@ -791,3 +791,12 @@ def main(
     window.show()
     app.exec_()
     controller.store_output()
+
+
+def ask_for_context(strict=True):
+    controller = ContextDialogController()
+    controller.set_strict(strict)
+    window = ContextDialog(controller=controller)
+    window.exec_()
+
+    return controller.get_selected_context()

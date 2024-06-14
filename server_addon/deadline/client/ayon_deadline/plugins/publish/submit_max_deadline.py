@@ -182,8 +182,8 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
         self.log.debug("Submitting 3dsMax render..")
         project_settings = instance.context.data["project_settings"]
-        auth = instance.data["deadline"]["auth"]
-        verify = instance.data["deadline"]["verify"]
+        auth = self._instance.data["deadline"]["auth"]
+        verify = self._instance.data["deadline"]["verify"]
         if instance.data.get("multiCamera"):
             self.log.debug("Submitting jobs for multiple cameras..")
             payload = self._use_published_name_for_multiples(

@@ -454,9 +454,7 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
         self.plugin_info = self.get_plugin_info()
         self.aux_files = self.get_aux_files()
 
-        auth = instance.data["deadline"]["auth"]
-        verify = instance.data["deadline"]["verify"]
-        job_id = self.process_submission(auth, verify)
+        job_id = self.process_submission()
         self.log.info("Submitted job to Deadline: {}.".format(job_id))
 
         # TODO: Find a way that's more generic and not render type specific
@@ -469,10 +467,12 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
                 job_info=render_job_info,
                 plugin_info=render_plugin_info
             )
+            auth = instance.data["deadline"]["auth"]
+            verify = instance.data["deadline"]["verify"]
             render_job_id = self.submit(payload, auth, verify)
             self.log.info("Render job id: %s", render_job_id)
 
-    def process_submission(self, auth=None, verify=True):
+    def process_submission(self):
         """Process data for submission.
 
         This takes Deadline JobInfo, PluginInfo, AuxFile, creates payload
@@ -483,6 +483,8 @@ class AbstractSubmitDeadline(pyblish.api.InstancePlugin,
 
         """
         payload = self.assemble_payload()
+        auth = self._instance.data["deadline"]["auth"]
+        verify = self._instance.data["deadline"]["verify"]
         return self.submit(payload, auth, verify)
 
     @abstractmethod
