@@ -638,10 +638,7 @@ class ExporterReview(object):
         from . import lib as opnlib
         nuke_imageio = opnlib.get_nuke_imageio_settings()
 
-        if (
-            "baking_target" in nuke_imageio.keys()
-            and nuke_imageio["baking_target"]["enabled"]
-        ):
+        if nuke_imageio["baking_target"]["enabled"]:
             return nuke_imageio["baking_target"]
         else:
             # viewer is having display and view keys only and it is
