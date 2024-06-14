@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 from ayon_core.pipeline import get_representation_path
+from ayon_core.pipeline.load import LoadError
 from ayon_houdini.api import (
     pipeline,
     plugin
@@ -28,14 +29,18 @@ class HdaLoader(plugin.HoudiniLoader):
         # Get the root node
         obj = hou.node("/obj")
 
-        # Create a unique name
-        counter = 1
         namespace = namespace or context["folder"]["name"]
-        formatted = "{}_{}".format(namespace, name) if namespace else name
-        node_name = "{0}_{1:03d}".format(formatted, counter)
+        node_name = "{}_{}".format(namespace, name) if namespace else name
 
         hou.hda.installFile(file_path)
-        hda_node = obj.createNode(name, node_name)
+
+        # Get the type name from the HDA definition.
+        hda_defs = hou.hda.definitionsInFile(file_path)
+        if not hda_defs:
+            raise LoadError(f"No HDA definitions found in file: {file_path}")
+
+        type_name = hda_defs[0].nodeTypeName()
+        hda_node = obj.createNode(type_name, node_name)
 
         self[:] = [hda_node]
 
