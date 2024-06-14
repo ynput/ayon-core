@@ -37,8 +37,6 @@ from .lib import (
     INSTANCE_DATA_KNOB,
     get_main_window,
     WorkfileSettings,
-    # TODO: remove this once workfile builder will be removed
-    process_workfile_builder,
     start_workfile_template_builder,
     launch_workfiles_app,
     check_inventory_versions,
