@@ -1,7 +1,6 @@
-from openpype.pipeline.constants import AVALON_CONTAINER_ID
-from pxr import Sdf
-
+from ayon_core.pipeline.constants import AVALON_CONTAINER_ID
 from maya import cmds
+from pxr import Sdf
 
 
 def remove_spec(spec):
