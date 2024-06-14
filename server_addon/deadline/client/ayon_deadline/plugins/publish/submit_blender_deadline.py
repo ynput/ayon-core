@@ -175,8 +175,8 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         instance.data["toBeRenderedOn"] = "deadline"
 
         payload = self.assemble_payload()
-        auth = instance.data["deadline"]["auth"]
-        verify = instance.data["deadline"]["verify"]
+        auth = self._instance.data["deadline"]["auth"]
+        verify = self._instance.data["deadline"]["verify"]
         return self.submit(payload, auth=auth, verify=verify)
 
     def from_published_scene(self):
