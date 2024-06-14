@@ -177,7 +177,7 @@ class VersionItem:
         other_version = abs(other.version)
         # Hero version is greater than non-hero
         if version == other_version:
-            return self.is_hero
+            return not self.is_hero
         return version > other_version
 
     def __lt__(self, other):
@@ -188,7 +188,7 @@ class VersionItem:
         other_version = abs(other.version)
         # Non-hero version is lesser than hero
         if version == other_version:
-            return not self.is_hero
+            return self.is_hero
         return version < other_version
 
     def __ge__(self, other):
