@@ -52,15 +52,16 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         frames = instance.data.get("frames", [])
         staging_dir, _ = os.path.split(filepath)
         if isinstance(frames, str):
-            files = ["{}/{}".format(staging_dir, frames)]
+            files = [filepath]
         else:
             files = ["{}/{}".format(staging_dir, f) for f in frames]
 
-        # Farm Products with expected files
+        # Products with expected files
+        # This can be Render products or submitted cache to farm.
         expectedFiles = instance.data.get("expectedFiles", [])
-        for aovs in expectedFiles:
-            # aovs.values() is a list of lists
-            files.extend(sum(aovs.values(), []))
+        for expected in expectedFiles:
+            # expected.values() is a list of lists
+            files.extend(sum(expected.values(), []))
 
         # Intermediate exported render files.
         # Note: This only takes effect when setting render target to
