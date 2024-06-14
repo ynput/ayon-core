@@ -294,8 +294,6 @@ def create_timeline_item(
     clip_name = media_pool_item.GetClipProperty("File Name")
     timeline = timeline or get_current_timeline()
 
-    timeline = timeline or get_current_timeline()
-
     # timing variables
     if all([timeline_in, source_start, source_end]):
         fps = timeline.GetSetting("timelineFrameRate")
