@@ -160,9 +160,6 @@ def add_nuke_callbacks():
     # template builder callbacks
     nuke.addOnCreate(start_workfile_template_builder, nodeClass="Root")
 
-    # TODO: remove this callback once workfile builder will be removed
-    nuke.addOnCreate(process_workfile_builder, nodeClass="Root")
-
     # fix ffmpeg settings on script
     nuke.addOnScriptLoad(on_script_load)
 
