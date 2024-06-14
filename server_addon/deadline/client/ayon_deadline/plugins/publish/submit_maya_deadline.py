@@ -294,7 +294,7 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
         return plugin_payload
 
-    def process_submission(self, auth=None, verify=True):
+    def process_submission(self):
         from maya import cmds
         instance = self._instance
 
@@ -331,10 +331,11 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
                        for x in ['vrayscene', 'assscene']), (
             "Vray Scene and Ass Scene options are mutually exclusive")
 
+        auth = self._instance.data["deadline"]["auth"]
+        verify = self._instance.data["deadline"]["verify"]
         if "vrayscene" in instance.data["families"]:
             self.log.debug("Submitting V-Ray scene render..")
             vray_export_payload = self._get_vray_export_payload(payload_data)
-
             export_job = self.submit(vray_export_payload,
                                      auth=auth,
                                      verify=verify)
@@ -409,6 +410,9 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             files = exp
             assembly_files = files
 
+        auth = instance.data["deadline"]["auth"]
+        verify = instance.data["deadline"]["verify"]
+
         # Define frame tile jobs
         frame_file_hash = {}
         frame_payloads = {}
@@ -458,8 +462,8 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         # Submit frame tile jobs
         frame_tile_job_id = {}
         for frame, tile_job_payload in frame_payloads.items():
-            job_id = self.submit(tile_job_payload,
-                                 instance.data["deadline"]["auth"])
+            job_id = self.submit(
+                tile_job_payload, auth, verify)
             frame_tile_job_id[frame] = job_id
 
         # Define assembly payloads
@@ -562,8 +566,6 @@ class MayaSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
         # Submit assembly jobs
         assembly_job_ids = []
         num_assemblies = len(assembly_payloads)
-        auth = instance.data["deadline"]["auth"]
-        verify = instance.data["deadline"]["verify"]
         for i, payload in enumerate(assembly_payloads):
             self.log.debug(
                 "submitting assembly job {} of {}".format(i + 1,
