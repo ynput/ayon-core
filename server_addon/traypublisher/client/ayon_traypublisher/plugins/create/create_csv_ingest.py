@@ -172,7 +172,6 @@ class ProductItem:
         version: int,
         variant: str,
         product_type: str,
-        pre_product_name: str,
         task_type: Optional[str] = None,
     ):
         self.folder_path = folder_path
@@ -181,8 +180,20 @@ class ProductItem:
         self.version = version
         self.variant = variant
         self.product_type = product_type
-        self.pre_product_name = pre_product_name
         self.repre_items: List[RepreItem] = []
+        self._unique_name = None
+
+    @property
+    def unique_name(self) -> str:
+        if self._unique_name is None:
+            self._unique_name = "/".join([
+                self.folder_path,
+                self.task_name,
+                f"{self.variant}{self.product_type}{self.version}".replace(
+                    " ", ""
+                ).lower()
+            ])
+        return self._unique_name
 
     def add_repre_item(self, repre_item: RepreItem):
         self.repre_items.append(repre_item)
@@ -202,12 +213,6 @@ class ProductItem:
                 ("product_type", "Product Type"),
             )
         }
-
-        kwargs["pre_product_name"] = (
-            "{task_name}{variant}{product_type}{version}"
-            .format(**kwargs)
-            .replace(" ", "").lower()
-        )
         return cls(**kwargs)
 
 
@@ -420,10 +425,10 @@ configuration in project settings.
             _product_item: ProductItem = ProductItem.from_csv_row(
                 self.columns_config, row
             )
-            name = _product_item.pre_product_name
-            if name not in product_items_by_name:
-                product_items_by_name[name] = _product_item
-            product_item: ProductItem = product_items_by_name[name]
+            unique_name = _product_item.unique_name
+            if unique_name not in product_items_by_name:
+                product_items_by_name[unique_name] = _product_item
+            product_item: ProductItem = product_items_by_name[unique_name]
             product_item.add_repre_item(
                 RepreItem.from_csv_row(
                     self.columns_config,
