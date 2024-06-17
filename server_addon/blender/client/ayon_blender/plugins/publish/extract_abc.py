@@ -44,6 +44,20 @@ class ExtractABC(plugin.BlenderExtractor, publish.OptionalPyblishPluginMixin):
         context = plugin.create_blender_context(
             active=asset_group, selected=selected)
 
+        scene = bpy.context.scene
+        frame_start = scene.frame_start
+        frame_end = scene.frame_end
+        frame_step = scene.frame_step
+        fps = scene.render.fps
+        fps_base = scene.render.fps_base
+        scene.frame_start = instance.data.get("frameStart", frame_start)
+        scene.frame_end = instance.data.get("frameEnd", frame_end)
+        scene.frame_step = instance.data.get("frameStep", frame_step)
+        inst_fps = instance.data.get("fps")
+        if inst_fps:
+            scene.render.fps = inst_fps
+            scene.render.fps_base = 1
+
         with bpy.context.temp_override(**context):
             # We export the abc
             bpy.ops.wm.alembic_export(
@@ -52,6 +66,12 @@ class ExtractABC(plugin.BlenderExtractor, publish.OptionalPyblishPluginMixin):
                 flatten=False,
                 subdiv_schema=attr_values.get("subdiv_schema", False)
             )
+
+        scene.frame_start = frame_start
+        scene.frame_end = frame_end
+        scene.frame_step = frame_step
+        scene.render.fps = fps
+        scene.render.fps_base = fps_base
 
         plugin.deselect_all()
 

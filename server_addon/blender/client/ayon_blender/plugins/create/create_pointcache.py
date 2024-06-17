@@ -27,3 +27,8 @@ class CreatePointcache(plugin.BlenderCreator):
                     objects.extend(obj.children)
 
         return collection
+
+    def get_instance_attr_defs(self):
+        defs = lib.collect_animation_defs()
+
+        return defs

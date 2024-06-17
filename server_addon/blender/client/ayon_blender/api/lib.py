@@ -7,6 +7,7 @@ from typing import Dict, List, Union
 import bpy
 import addon_utils
 from ayon_core.lib import Logger
+from ayon_core.lib import NumberDef
 
 from . import pipeline
 
@@ -424,3 +425,44 @@ def get_highest_root(objects):
 
     minimum_parent = min(num_parents_to_obj)
     return num_parents_to_obj[minimum_parent]
+
+
+def collect_animation_defs(fps=False):
+    """
+    Get the basic animation attribute definitions for the publisher.
+
+    Returns:
+        OrderedDict
+    """
+
+    # get scene values as defaults
+    scene = bpy.context.scene
+    frame_start = scene.frame_start
+    frame_end = scene.frame_end
+
+    # build attributes
+    defs = [
+        NumberDef("frameStart",
+                  label="Frame Start",
+                  default=frame_start,
+                  decimals=0),
+        NumberDef("frameEnd",
+                  label="Frame End",
+                  default=frame_end,
+                  decimals=0),
+        NumberDef("step",
+                  label="Step size",
+                  tooltip="Number of frames to skip forward while rendering/"
+                          "playing back each frame",
+                  default=1,
+                  decimals=0),
+    ]
+
+    if fps:
+        current_fps = scene.render.fps / scene.render.fps_base
+        fps_def = NumberDef(
+            "fps", label="FPS", default=current_fps, decimals=5
+        )
+        defs.append(fps_def)
+
+    return defs
