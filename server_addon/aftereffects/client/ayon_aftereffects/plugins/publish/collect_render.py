@@ -181,24 +181,25 @@ class CollectAERender(publish.AbstractCollectRender):
             _, ext = os.path.splitext(os.path.basename(file_name))
             ext = ext.replace('.', '')
             version_str = "v{:03d}".format(render_instance.version)
-            if "#" not in file_name:  # single frame (mov)W
-                path = os.path.join(base_dir, "{}_{}_{}.{}".format(
-                    render_instance.folderPath,
+            if "#" not in file_name:  # single frame (mov)
+                file_name = "{}_{}.{}".format(
                     render_instance.productName,
                     version_str,
                     ext
-                ))
-                expected_files.append(path)
+                )
+                file_path = os.path.join(base_dir, file_name)
+                expected_files.append(file_path)
             else:
                 for frame in range(start, end + 1):
-                    path = os.path.join(base_dir, "{}_{}_{}.{}.{}".format(
-                        render_instance.folderPath,
+                    file_name = "{}_{}.{}.{}".format(
                         render_instance.productName,
                         version_str,
                         str(frame).zfill(self.padding_width),
                         ext
-                    ))
-                    expected_files.append(path)
+                    )
+
+                file_path = os.path.join(base_dir, file_name)
+                expected_files.append(file_path)
         return expected_files
 
     def _get_output_dir(self, render_instance):
