@@ -1,6 +1,7 @@
-import pyblish.api
 import os
+
 import clique
+import pyblish.api
 from ayon_core.pipeline import AYONPyblishPluginMixin
 from ayon_houdini.api import lib, plugin
 
@@ -28,18 +29,19 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
     intermediate_exported_render = False
 
     def process(self, instance):
-
-        import hou
+        import hou  # noqa: E402
 
         node = hou.node(instance.data.get("instance_node", ""))
         if not node:
-            self.log.debug("Skipping Collector. Instance has no instance_node")
+            self.log.debug(
+                "Skipping Collector. Instance has no instance_node")
             return
 
         output_parm = lib.get_output_parameter(node)
         if not output_parm:
-            self.log.debug("ROP node type '{}' is not supported for cleaning up."
-                           .format(node.type().name()))
+            self.log.debug(
+                f"ROP node type '{node.type().name()}' is not "
+                "supported for cleaning up.")
             return
 
         filepath = output_parm.eval()
@@ -50,13 +52,13 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         files = []
         staging_dir, _ = os.path.split(filepath)
 
-        expectedFiles = instance.data.get("expectedFiles", [])
+        expected_files = instance.data.get("expectedFiles", [])
 
         # 'expectedFiles' are preferred over 'frames'
-        if expectedFiles:
+        if expected_files:
             # Products with expected files
             # This can be Render products or submitted cache to farm.
-            for expected in expectedFiles:
+            for expected in expected_files:
                 # expected.values() is a list of lists
                 files.extend(sum(expected.values(), []))
         else:
@@ -68,7 +70,7 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
             else:
                 # list of frame.
                 files.extend(
-                    ["{}/{}".format(staging_dir, f) for f in frames]
+                    [f"{staging_dir}/{frame}" for frame in frames]
                 )
 
         # Intermediate exported render files.
@@ -77,24 +79,25 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         #       as it's the only case where "ifdFile" exists in instance data.
         # TODO : Clean up intermediate files of Karma product type.
         #        as "ifdFile" works for other render product types only.
-        ifdFile = instance.data.get("ifdFile")
-        if self.intermediate_exported_render and ifdFile:
+        ifd_file = instance.data.get("ifdFile")
+        if self.intermediate_exported_render and ifd_file:
             start_frame = instance.data["frameStartHandle"]
             end_frame = instance.data["frameEndHandle"]
-            ifd_files = self._get_ifd_file_list(ifdFile,
+            ifd_files = self._get_ifd_file_list(ifd_file,
                                                 start_frame, end_frame)
             files.extend(ifd_files)
 
-        self.log.debug("Add directories to 'cleanupEmptyDir': {}".format(staging_dir))
+        self.log.debug(
+            f"Add directories to 'cleanupEmptyDir': {staging_dir}")
         instance.context.data["cleanupEmptyDirs"].append(staging_dir)
 
         self.log.debug("Add files to 'cleanupFullPaths': {}".format(files))
         instance.context.data["cleanupFullPaths"].extend(files)
 
-    def _get_ifd_file_list(self, ifdFile, start_frame, end_frame):
+    def _get_ifd_file_list(self, ifd_file, start_frame, end_frame):
 
-        file_name = os.path.basename(ifdFile)
-        parent_path = os.path.dirname(ifdFile)
+        file_name = os.path.basename(ifd_file)
+        parent_path = os.path.dirname(ifd_file)
 
         # Compute frames list
         frame_collection, _ = clique.assemble(
@@ -106,10 +109,7 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         # It's always expected to be one collection.
         frame_collection = frame_collection[0]
         frame_collection.indexes.clear()
-        frame_collection.indexes.update(list(range(start_frame, (end_frame + 1))))
+        frame_collection.indexes.update(
+            list(range(start_frame, (end_frame + 1))))
 
-        result = [
-                    "{}/{}".format(parent_path, frame)
-                    for frame in frame_collection
-        ]
-        return result
+        return [f"{parent_path}/{frame}" for frame in frame_collection]
