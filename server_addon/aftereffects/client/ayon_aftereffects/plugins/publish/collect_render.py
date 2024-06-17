@@ -23,8 +23,16 @@ class AERenderInstance(RenderInstance):
 
 
 class CollectAERender(publish.AbstractCollectRender):
+    """Prepares RenderInstance.
 
-    order = pyblish.api.CollectorOrder + 0.100
+    RenderInstance is meant to replace simple dictionaries to provide code
+    assist and typing. (Currently used only in AE, Harmony though.)
+
+    This must run after `collect_review`, but before Deadline plugins (which
+    should be run only on renderable instances.)
+    """
+
+    order = pyblish.api.CollectorOrder + 0.125
     label = "Collect After Effects Render Layers"
     hosts = ["aftereffects"]
 
