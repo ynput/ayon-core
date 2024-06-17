@@ -70,8 +70,12 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
         self._combo_view = combo_view
         self._status_delegate = status_delegate
         self._items_by_id = {}
+        self._status_visible = True
 
     def paintEvent(self, event):
+        if not self._status_visible:
+            return super().paintEvent(event)
+
         painter = QtWidgets.QStylePainter(self)
         option = QtWidgets.QStyleOptionComboBox()
         self.initStyleOption(option)
@@ -142,6 +146,12 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             return
 
         self.setCurrentIndex(index)
+
+    def set_status_visible(self, visible):
+        header = self._combo_view.header()
+        header.setSectionHidden(1, not visible)
+        self._status_visible = visible
+        self.update()
 
     def get_item_by_id(self, item_id):
         return self._items_by_id[item_id]
@@ -229,10 +239,16 @@ class SelectVersionDialog(QtWidgets.QDialog):
     def select_index(self, index):
         self._versions_combobox.set_current_index(index)
 
+    def set_status_visible(self, visible):
+        self._versions_combobox.set_status_visible(visible)
+
     @classmethod
-    def ask_for_version(cls, version_options, index=None, parent=None):
+    def ask_for_version(
+        cls, version_options, index=None, show_statuses=True, parent=None
+    ):
         dialog = cls(parent)
         dialog.set_versions(version_options)
+        dialog.set_status_visible(show_statuses)
         if index is not None:
             dialog.select_index(index)
         dialog.exec_()
