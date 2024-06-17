@@ -37,8 +37,6 @@ from .lib import (
     INSTANCE_DATA_KNOB,
     get_main_window,
     WorkfileSettings,
-    # TODO: remove this once workfile builder will be removed
-    process_workfile_builder,
     start_workfile_template_builder,
     launch_workfiles_app,
     check_inventory_versions,
@@ -67,6 +65,7 @@ from .workio import (
     current_file
 )
 from .constants import ASSIST
+from . import push_to_project
 
 log = Logger.get_logger(__name__)
 
@@ -158,9 +157,6 @@ def add_nuke_callbacks():
 
     # template builder callbacks
     nuke.addOnCreate(start_workfile_template_builder, nodeClass="Root")
-
-    # TODO: remove this callback once workfile builder will be removed
-    nuke.addOnCreate(process_workfile_builder, nodeClass="Root")
 
     # fix ffmpeg settings on script
     nuke.addOnScriptLoad(on_script_load)
@@ -331,6 +327,11 @@ def _install_menu():
             "Update Place Holder",
             lambda: update_placeholder()
         )
+
+    menu.addCommand(
+        "Push to Project",
+        lambda: push_to_project.main()
+    )
 
     menu.addSeparator()
     menu.addCommand(

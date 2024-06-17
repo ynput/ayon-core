@@ -1,6 +1,7 @@
 import os
 import re
 import copy
+import uuid
 
 import arrow
 import ayon_api
@@ -173,7 +174,7 @@ class WorkareaModel:
         folder_mapping[task_id] = workdir
         return workdir
 
-    def get_file_items(self, folder_id, task_id):
+    def get_file_items(self, folder_id, task_id, task_name):
         items = []
         if not folder_id or not task_id:
             return items
@@ -192,7 +193,7 @@ class WorkareaModel:
                 continue
 
             workfile_info = self._controller.get_workfile_info(
-                folder_id, task_id, filepath
+                folder_id, task_name, filepath
             )
             modified = os.path.getmtime(filepath)
             items.append(FileItem(
@@ -587,6 +588,7 @@ class WorkfileEntitiesModel:
 
         username = self._get_current_username()
         workfile_info = {
+            "id": uuid.uuid4().hex,
             "path": rootless_path,
             "taskId": task_id,
             "attrib": {
@@ -770,19 +772,21 @@ class WorkfilesModel:
         return self._workarea_model.get_workarea_dir_by_context(
             folder_id, task_id)
 
-    def get_workarea_file_items(self, folder_id, task_id):
+    def get_workarea_file_items(self, folder_id, task_id, task_name):
         """Workfile items for passed context from workarea.
 
         Args:
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
+            task_name (Union[str, None]): Task name.
 
         Returns:
             list[FileItem]: List of file items matching workarea of passed
                 context.
         """
-
-        return self._workarea_model.get_file_items(folder_id, task_id)
+        return self._workarea_model.get_file_items(
+            folder_id, task_id, task_name
+        )
 
     def get_workarea_save_as_data(self, folder_id, task_id):
         return self._workarea_model.get_workarea_save_as_data(
