@@ -4,12 +4,12 @@ from ayon_maya.api import (
 )
 
 
-class CreateOrnatrixCache(plugin.MayaCreator):
+class CreateOxCache(plugin.MayaCreator):
     """Output for procedural plugin nodes of Yeti """
 
-    identifier = "io.openpype.creators.maya.ornatrixcache"
+    identifier = "io.openpype.creators.maya.OxCache"
     label = "Ornatrix Cache"
-    product_type = "ornatrixCache"
+    product_type = "OxCache"
     icon = "pagelines"
 
     def get_instance_attr_defs(self):

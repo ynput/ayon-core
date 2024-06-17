@@ -116,7 +116,7 @@ class YetiRigLoaderModel(LoaderEnabledModel):
     )
 
 
-class OrnatrixRigLoaderModel(LoaderEnabledModel):
+class OxRigLoaderModel(LoaderEnabledModel):
     create_cache_instance_on_load: bool = SettingsField(
         title="Create Ornatrix Cache instance on load",
         description=(
@@ -223,8 +223,8 @@ class LoadersModel(BaseSettingsModel):
         default_factory=YetiRigLoaderModel,
         title="Yeti Rig Loader"
     )
-    OrnatrixRigLoader: OrnatrixRigLoaderModel = SettingsField(
-        default_factory=OrnatrixRigLoaderModel,
+    OxRigLoader: OxRigLoaderModel = SettingsField(
+        default_factory=OxRigLoaderModel,
         title="Ornatrix Rig Loader"
     )
 
@@ -298,7 +298,7 @@ DEFAULT_LOADERS_SETTING = {
         "enabled": True,
         "create_cache_instance_on_load": True
     },
-    "OrnatrixRigLoader": {
+    "OxRigLoader": {
         "enabled": True,
         "create_cache_instance_on_load": True
     },
