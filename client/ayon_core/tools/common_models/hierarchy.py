@@ -5,7 +5,6 @@ from abc import ABCMeta, abstractmethod
 import ayon_api
 import six
 
-from ayon_core.style import get_default_entity_icon_color
 from ayon_core.lib import NestedCacheItem
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
@@ -31,11 +30,10 @@ class FolderItem:
         path (str): Folder path.
         folder_type (str): Type of folder.
         label (Union[str, None]): Folder label.
-        icon (Union[dict[str, Any], None]): Icon definition.
     """
 
     def __init__(
-        self, entity_id, parent_id, name, path, folder_type, label, icon
+        self, entity_id, parent_id, name, path, folder_type, label
     ):
         self.entity_id = entity_id
         self.parent_id = parent_id
@@ -43,13 +41,6 @@ class FolderItem:
         self.path = path
         self.folder_type = folder_type
         self.label = label or name
-        if not icon:
-            icon = {
-                "type": "awesome-font",
-                "name": "fa.folder",
-                "color": get_default_entity_icon_color()
-            }
-        self.icon = icon
 
     def to_data(self):
         """Converts folder item to data.
@@ -65,7 +56,6 @@ class FolderItem:
             "path": self.path,
             "folder_type": self.folder_type,
             "label": self.label,
-            "icon": self.icon,
         }
 
     @classmethod
@@ -95,23 +85,15 @@ class TaskItem:
         name (str): Name of task.
         task_type (str): Type of task.
         parent_id (str): Parent folder id.
-        icon (Union[dict[str, Any], None]): Icon definitions.
     """
 
     def __init__(
-        self, task_id, name, task_type, parent_id, icon
+        self, task_id, name, task_type, parent_id
     ):
         self.task_id = task_id
         self.name = name
         self.task_type = task_type
         self.parent_id = parent_id
-        if icon is None:
-            icon = {
-                "type": "awesome-font",
-                "name": "fa.male",
-                "color": get_default_entity_icon_color()
-            }
-        self.icon = icon
 
         self._label = None
 
@@ -149,7 +131,6 @@ class TaskItem:
             "name": self.name,
             "parent_id": self.parent_id,
             "task_type": self.task_type,
-            "icon": self.icon,
         }
 
     @classmethod
@@ -180,8 +161,7 @@ def _get_task_items_from_tasks(tasks):
             task["id"],
             task["name"],
             task["type"],
-            folder_id,
-            None
+            folder_id
         ))
     return output
 
@@ -197,8 +177,7 @@ def _get_folder_item_from_hierarchy_item(item):
         name,
         path,
         item["folderType"],
-        item["label"],
-        None,
+        item["label"]
     )
 
 
@@ -210,8 +189,7 @@ def _get_folder_item_from_entity(entity):
         name,
         entity["path"],
         entity["folderType"],
-        entity["label"] or name,
-        None,
+        entity["label"] or name
     )
 
 
