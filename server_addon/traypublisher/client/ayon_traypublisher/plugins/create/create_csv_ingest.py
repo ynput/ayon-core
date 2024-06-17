@@ -121,7 +121,7 @@ class RepreItem:
             dst_key: _get_row_value_with_validation(
                 columns_config, column_name, row
             )
-            for column_name, dst_key in (
+            for dst_key, column_name in (
                 # Representation information
                 ("filepath", "File Path"),
                 ("frame_start", "Frame Start"),
@@ -193,7 +193,7 @@ class ProductItem:
             dst_key: _get_row_value_with_validation(
                 columns_config, column_name, row
             )
-            for column_name, dst_key in (
+            for dst_key, column_name in (
                 # Context information
                 ("folder_path", "Folder Path"),
                 ("task_name", "Task Name"),
