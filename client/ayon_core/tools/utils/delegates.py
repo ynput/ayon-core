@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 import logging
 
-from qtpy import QtWidgets, QtGui
+from qtpy import QtWidgets, QtGui, QtCore
 
 log = logging.getLogger(__name__)
 
@@ -130,32 +130,65 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
         else:
             style = QtWidgets.QApplication.style()
 
-        style.drawControl(
-            QtWidgets.QCommonStyle.CE_ItemViewItem,
+        self.initStyleOption(option, index)
+
+        mode = QtGui.QIcon.Normal
+        if not (option.state & QtWidgets.QStyle.State_Enabled):
+            mode = QtGui.QIcon.Disabled
+        elif option.state & QtWidgets.QStyle.State_Selected:
+            mode = QtGui.QIcon.Selected
+        state = QtGui.QIcon.Off
+        if option.state & QtWidgets.QStyle.State_Open:
+            state = QtGui.QIcon.On
+        icon = self._get_status_icon(index)
+        option.features |= QtWidgets.QStyleOptionViewItem.HasDecoration
+        option.icon = icon
+        act_size = icon.actualSize(option.decorationSize, mode, state)
+        option.decorationSize = QtCore.QSize(
+            min(option.decorationSize.width(), act_size.width()),
+            min(option.decorationSize.height(), act_size.height())
+        )
+
+        text = self._get_status_name(index)
+        if text:
+            option.features |= QtWidgets.QStyleOptionViewItem.HasDisplay
+            option.text = text
+
+        painter.save()
+        painter.setClipRect(option.rect)
+
+        icon_rect = style.subElementRect(
+            QtWidgets.QCommonStyle.SE_ItemViewItemDecoration,
+            option,
+            option.widget
+        )
+        text_rect = style.subElementRect(
+            QtWidgets.QCommonStyle.SE_ItemViewItemText,
+            option,
+            option.widget
+        )
+
+        # Draw background
+        style.drawPrimitive(
+            QtWidgets.QCommonStyle.PE_PanelItemViewItem,
             option,
             painter,
             option.widget
         )
 
-        painter.save()
-
-        text_rect = style.subElementRect(
-            QtWidgets.QCommonStyle.SE_ItemViewItemText,
-            option
+        # Draw icon
+        option.icon.paint(
+            painter,
+            icon_rect,
+            option.decorationAlignment,
+            mode,
+            state
         )
-        text_margin = style.proxy().pixelMetric(
-            QtWidgets.QCommonStyle.PM_FocusFrameHMargin,
-            option,
-            option.widget
-        ) + 1
-        padded_text_rect = text_rect.adjusted(
-            text_margin, 0, - text_margin, 0
-        )
-
         fm = QtGui.QFontMetrics(option.font)
-        text = self._get_status_name(index)
-        if padded_text_rect.width() < fm.width(text):
+        if text_rect.width() < fm.width(text):
             text = self._get_status_short_name(index)
+            if text_rect.width() < fm.width(text):
+                text = ""
 
         fg_color = self._get_status_color(index)
         pen = painter.pen()
@@ -163,10 +196,46 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
         painter.setPen(pen)
 
         painter.drawText(
-            padded_text_rect,
+            text_rect,
             option.displayAlignment,
             text
         )
+
+        if option.state & QtWidgets.QStyle.State_HasFocus:
+            focus_opt = QtWidgets.QStyleOptionFocusRect()
+            focus_opt.state = option.state
+            focus_opt.direction = option.direction
+            focus_opt.rect = option.rect
+            focus_opt.fontMetrics = option.fontMetrics
+            focus_opt.palette = option.palette
+
+            focus_opt.rect = style.subElementRect(
+                QtWidgets.QCommonStyle.SE_ItemViewItemFocusRect,
+                option,
+                option.widget
+            )
+            focus_opt.state |= (
+                QtWidgets.QStyle.State_KeyboardFocusChange
+                | QtWidgets.QStyle.State_Item
+            )
+            focus_opt.backgroundColor = option.palette.color(
+                (
+                    QtGui.QPalette.Normal
+                    if option.state & QtWidgets.QStyle.State_Enabled
+                    else QtGui.QPalette.Disabled
+                ),
+                (
+                    QtGui.QPalette.Highlight
+                    if option.state & QtWidgets.QStyle.State_Selected
+                    else QtGui.QPalette.Window
+                )
+            )
+            style.drawPrimitive(
+                QtWidgets.QCommonStyle.PE_FrameFocusRect,
+                focus_opt,
+                painter,
+                option.widget
+            )
 
         painter.restore()
 
@@ -180,6 +249,9 @@ class StatusDelegate(QtWidgets.QStyledItemDelegate):
         return QtGui.QColor(index.data(self.status_color_role))
 
     def _get_status_icon(self, index):
+        icon = None
         if self.status_icon_role is not None:
-            return index.data(self.status_icon_role)
-        return None
+            icon = index.data(self.status_icon_role)
+        if icon is None:
+            return QtGui.QIcon()
+        return icon

@@ -60,6 +60,74 @@ class StatusItem:
         )
 
 
+class FolderTypeItem:
+    """Item representing folder type of project.
+
+    Args:
+        name (str): Folder type name ("Shot").
+        short (str): Short folder type name ("sh").
+        icon (str): Icon name in MaterialIcons ("fiber_new").
+
+    """
+    def __init__(self, name, short, icon):
+        self.name = name
+        self.short = short
+        self.icon = icon
+
+    def to_data(self):
+        return {
+            "name": self.name,
+            "short": self.short,
+            "icon": self.icon,
+        }
+
+    @classmethod
+    def from_data(cls, data):
+        return cls(**data)
+
+    @classmethod
+    def from_project_item(cls, folder_type_data):
+        return cls(
+            name=folder_type_data["name"],
+            short=folder_type_data["shortName"],
+            icon=folder_type_data["icon"],
+        )
+
+
+class TaskTypeItem:
+    """Item representing task type of project.
+
+    Args:
+        name (str): Task type name ("Shot").
+        short (str): Short task type name ("sh").
+        icon (str): Icon name in MaterialIcons ("fiber_new").
+
+    """
+    def __init__(self, name, short, icon):
+        self.name = name
+        self.short = short
+        self.icon = icon
+
+    def to_data(self):
+        return {
+            "name": self.name,
+            "short": self.short,
+            "icon": self.icon,
+        }
+
+    @classmethod
+    def from_data(cls, data):
+        return cls(**data)
+
+    @classmethod
+    def from_project_item(cls, task_type_data):
+        return cls(
+            name=task_type_data["name"],
+            short=task_type_data["shortName"],
+            icon=task_type_data["icon"],
+        )
+
+
 class ProjectItem:
     """Item representing folder entity on a server.
 
@@ -147,19 +215,21 @@ def _get_project_items_from_entitiy(projects):
 class ProjectsModel(object):
     def __init__(self, controller):
         self._projects_cache = CacheItem(default_factory=list)
-        self._project_statuses_cache = NestedCacheItem(
-            levels=1, default_factory=list
-        )
         self._projects_by_name = NestedCacheItem(
             levels=1, default_factory=list
         )
+        self._project_statuses_cache = {}
+        self._folder_types_cache = {}
+        self._task_types_cache = {}
 
         self._is_refreshing = False
         self._controller = controller
 
     def reset(self):
+        self._project_statuses_cache = {}
+        self._folder_types_cache = {}
+        self._task_types_cache = {}
         self._projects_cache.reset()
-        self._project_statuses_cache.reset()
         self._projects_by_name.reset()
 
     def refresh(self):
@@ -217,22 +287,87 @@ class ProjectsModel(object):
             list[StatusItem]: Status items for project.
 
         """
-        statuses_cache = self._project_statuses_cache[project_name]
-        if not statuses_cache.is_valid:
-            with self._project_statuses_refresh_event_manager(
-                sender, project_name
+        if project_name is None:
+            return []
+
+        statuses_cache = self._project_statuses_cache.get(project_name)
+        if (
+            statuses_cache is not None
+            and not self._projects_cache.is_valid
+        ):
+            statuses_cache = None
+
+        if statuses_cache is None:
+            with self._project_items_refresh_event_manager(
+                sender, project_name, "statuses"
             ):
-                project_entity = None
-                if project_name:
-                    project_entity = self.get_project_entity(project_name)
+                project_entity = self.get_project_entity(project_name)
                 statuses = []
                 if project_entity:
                     statuses = [
                         StatusItem.from_project_item(status)
                         for status in project_entity["statuses"]
                     ]
-                statuses_cache.update_data(statuses)
-        return statuses_cache.get_data()
+                statuses_cache = statuses
+            self._project_statuses_cache[project_name] = statuses_cache
+        return list(statuses_cache)
+
+    def get_folder_type_items(self, project_name, sender):
+        """Get project status items.
+
+        Args:
+            project_name (str): Project name.
+            sender (Union[str, None]): Name of sender who asked for items.
+
+        Returns:
+            list[FolderType]: Folder type items for project.
+
+        """
+        return self._get_project_items(
+            project_name,
+            sender,
+            "folder_types",
+            self._folder_types_cache,
+            self._folder_type_items_getter,
+        )
+
+    def get_task_type_items(self, project_name, sender):
+        """Get project task type items.
+
+        Args:
+            project_name (str): Project name.
+            sender (Union[str, None]): Name of sender who asked for items.
+
+        Returns:
+            list[TaskTypeItem]: Task type items for project.
+
+        """
+        return self._get_project_items(
+            project_name,
+            sender,
+            "task_types",
+            self._task_types_cache,
+            self._task_type_items_getter,
+        )
+
+    def _get_project_items(
+        self, project_name, sender, item_type, cache_obj, getter
+    ):
+        if (
+            project_name in cache_obj
+            and (
+                project_name is None
+                or self._projects_by_name[project_name].is_valid
+            )
+        ):
+            return cache_obj[project_name]
+
+        with self._project_items_refresh_event_manager(
+            sender, project_name, item_type
+        ):
+            cache_value = getter(self.get_project_entity(project_name))
+        cache_obj[project_name] = cache_value
+        return cache_value
 
     @contextlib.contextmanager
     def _project_refresh_event_manager(self, sender):
@@ -254,9 +389,11 @@ class ProjectsModel(object):
             self._is_refreshing = False
 
     @contextlib.contextmanager
-    def _project_statuses_refresh_event_manager(self, sender, project_name):
+    def _project_items_refresh_event_manager(
+        self, sender, project_name, item_type
+    ):
         self._controller.emit_event(
-            "projects.statuses.refresh.started",
+            f"projects.{item_type}.refresh.started",
             {"sender": sender, "project_name": project_name},
             PROJECTS_MODEL_SENDER
         )
@@ -265,7 +402,7 @@ class ProjectsModel(object):
 
         finally:
             self._controller.emit_event(
-                "projects.statuses.refresh.finished",
+                f"projects.{item_type}.refresh.finished",
                 {"sender": sender, "project_name": project_name},
                 PROJECTS_MODEL_SENDER
             )
@@ -282,3 +419,27 @@ class ProjectsModel(object):
     def _query_projects(self):
         projects = ayon_api.get_projects(fields=["name", "active", "library"])
         return _get_project_items_from_entitiy(projects)
+
+    def _status_items_getter(self, project_entity):
+        if not project_entity:
+            return []
+        return [
+            StatusItem.from_project_item(status)
+            for status in project_entity["statuses"]
+        ]
+
+    def _folder_type_items_getter(self, project_entity):
+        if not project_entity:
+            return []
+        return [
+            FolderTypeItem.from_project_item(folder_type)
+            for folder_type in project_entity["folderTypes"]
+        ]
+
+    def _task_type_items_getter(self, project_entity):
+        if not project_entity:
+            return []
+        return [
+            TaskTypeItem.from_project_item(task_type)
+            for task_type in project_entity["taskTypes"]
+        ]
