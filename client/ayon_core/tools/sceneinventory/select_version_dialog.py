@@ -95,8 +95,8 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             QtWidgets.QStyle.SC_ComboBoxEditField
         ).adjusted(1, 0, -1, 0)
 
-        metrics = QtGui.QFontMetrics(self.font())
-        version_text_width = metrics.width(option.currentText)
+        metrics = option.fontMetrics
+        version_text_width = metrics.width(option.currentText) + 2
         version_text_rect = QtCore.QRect(content_field_rect)
         version_text_rect.setWidth(version_text_width)
 
@@ -110,8 +110,13 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
         status_text_rect.setLeft(version_text_rect.right() + 2)
         if status_icon is not None and not status_icon.isNull():
             icon_rect = QtCore.QRect(status_text_rect)
-            icon_rect.adjust(0, 2, 0, -2)
-            icon_rect.setWidth(icon_rect.height())
+            diff = icon_rect.height() - metrics.height()
+            if diff < 0:
+                diff = 0
+            top_offset = diff // 2
+            bottom_offset = diff - top_offset
+            icon_rect.adjust(0, top_offset, 0, -bottom_offset)
+            icon_rect.setWidth(metrics.height())
             status_icon.paint(
                 painter,
                 icon_rect,
