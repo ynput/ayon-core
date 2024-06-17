@@ -337,7 +337,6 @@ configuration in project settings.
         csv_instance = CreatedInstance(
             self.product_type, product_name, instance_data, self
         )
-        self._store_new_instance(csv_instance)
 
         csv_instance["csvFileData"] = {
             "filename": filename,
@@ -345,7 +344,10 @@ configuration in project settings.
         }
 
         # create instances from csv data via self function
-        self._create_instances_from_csv_data(csv_dir, filename)
+        instances = self._create_instances_from_csv_data(csv_dir, filename)
+        for instance in instances:
+            self._store_new_instance(instance)
+        self._store_new_instance(csv_instance)
 
     def _resolve_repre_path(
         self, csv_dir: str, filepath: Union[str, None]
@@ -728,6 +730,7 @@ configuration in project settings.
             self._get_data_from_csv(csv_dir, filename)
         )
 
+        instances = []
         project_name: str = self.create_context.get_current_project_name()
         for instance_name, product_item in product_items_by_name.items():
             folder_path: str = product_item.folder_path
@@ -789,5 +792,6 @@ configuration in project settings.
                 self
             )
             self._prepare_representations(product_item, new_instance)
+            instances.append(new_instance)
 
-            self._store_new_instance(new_instance)
+        return instances
