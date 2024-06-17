@@ -75,14 +75,17 @@ def install(project_settings):
 
         cmds.setParent("..", menu=True)
 
-        ayon_menu = project_settings["core"]["tools"].get("ayon_menu")
-        if ayon_menu:
-            if ayon_menu.get("version_up_current_workfile"):
-                cmds.menuItem(divider=True)
-                cmds.menuItem(
-                    "Version Up Workfile",
-                    command=lambda *args: version_up_current_workfile()
-                )
+        try:
+            if project_settings["core"]["tools"]["ayon_menu"].get(
+                "version_up_current_workfile"):
+                    cmds.menuItem(divider=True)
+                    cmds.menuItem(
+                        "Version Up Workfile",
+                        command=lambda *args: version_up_current_workfile()
+                    )
+        except KeyError:
+            print("Version Up Workfile setting not found in "
+                  "Core Settings. Please update Core Addon")
 
         cmds.menuItem(divider=True)
 
