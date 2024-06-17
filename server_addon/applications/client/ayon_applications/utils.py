@@ -11,7 +11,6 @@ from ayon_core import AYON_CORE_ROOT
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.addon import AddonsManager
-from ayon_core.pipeline import HOST_WORKFILE_EXTENSIONS
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.workfile import (
     get_workfile_template_key,
@@ -573,10 +572,9 @@ def _prepare_last_workfile(data, workdir, addons_manager):
     last_workfile_path = data.get("last_workfile_path") or ""
     if not last_workfile_path:
         host_addon = addons_manager.get_host_addon(app.host_name)
+        extensions = None
         if host_addon:
             extensions = host_addon.get_workfile_extensions()
-        else:
-            extensions = HOST_WORKFILE_EXTENSIONS.get(app.host_name)
 
         if extensions:
             anatomy = data["anatomy"]
