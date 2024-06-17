@@ -336,17 +336,16 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     settings_category = getattr(plugin, "settings_category", None)
     if settings_category:
         try:
-            return (
-                project_settings
-                [settings_category]
-                ["publish"]
-                [plugin.__name__]
-            )
+            category_settings = project_settings[settings_category]
         except KeyError:
             log.warning((
-                "Couldn't find plugin '{}' settings"
-                " under settings category '{}'"
-            ).format(plugin.__name__, settings_category))
+                "Couldn't find settings category '{}' in project settings"
+            ).format(settings_category))
+            return {}
+
+        try:
+            return category_settings["publish"][plugin.__name__]
+        except KeyError:
             return {}
 
     # Use project settings based on a category name
