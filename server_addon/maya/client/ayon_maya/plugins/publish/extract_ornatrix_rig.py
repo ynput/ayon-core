@@ -10,11 +10,11 @@ from maya import cmds
 
 
 
-class ExtractOrnatrixRig(plugin.MayaExtractorPlugin):
+class ExtractxRig(plugin.MayaExtractorPlugin):
     """Extract the Ornatrix rig to a Maya Scene and write the Ornatrix rig data."""
 
     label = "Extract Ornatrix Rig"
-    families = ["ornatrixRig"]
+    families = ["OxRig"]
     scene_type = "ma"
 
     def process(self, instance):

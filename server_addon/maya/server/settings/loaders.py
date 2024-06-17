@@ -39,7 +39,7 @@ class ColorsSetting(BaseSettingsModel):
         (99, 206, 220, 1.0), title="Yeti Cache:")
     yetiRig: ColorRGBA_uint8 = SettingsField(
         (0, 205, 125, 1.0), title="Yeti Rig:")
-    ornatrixRig: ColorRGBA_uint8 = SettingsField(
+    OxRig: ColorRGBA_uint8 = SettingsField(
         (206, 234, 195, 1.0), title="Ornatrix Rig:")
     # model: ColorRGB_float = SettingsField(
     #     (0.82, 0.52, 0.12), title="Model:"

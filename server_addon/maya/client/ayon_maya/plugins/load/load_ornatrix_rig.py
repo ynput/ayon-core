@@ -8,10 +8,10 @@ from ayon_core.pipeline.create import CreateContext
 from ayon_maya.api import lib, plugin
 
 
-class OrnatrixRigLoader(plugin.ReferenceLoader):
+class OxRigLoader(plugin.ReferenceLoader):
     """This loader will load Ornatix rig."""
 
-    product_types = {"ornatrixRig"}
+    product_types = {"OxRig"}
     representations = {"ma"}
 
     label = "Load Ornatrix Rig"
@@ -47,7 +47,7 @@ class OrnatrixRigLoader(plugin.ReferenceLoader):
                 groupName=group_name
             )
 
-        color = plugin.get_load_color_for_product_type("ornatrixRig")
+        color = plugin.get_load_color_for_product_type("OxRig")
         if color is not None:
             red, green, blue = color
             cmds.setAttr(group_name + ".useOutlinerColor", 1)

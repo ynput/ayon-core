@@ -6,18 +6,18 @@ from ayon_maya.api import (
 )
 
 
-class CreateOrnatrixRig(plugin.MayaCreator):
+class CreateOxRig(plugin.MayaCreator):
     """Output for Ornatrix nodes"""
 
-    identifier = "io.openpype.creators.maya.ornatrixrig"
+    identifier = "io.openpype.creators.maya.OxRig"
     label = "Ornatrix Rig"
-    product_type = "ornatrixRig"
+    product_type = "OxRig"
     icon = "usb"
 
     def create(self, product_name, instance_data, pre_create_data):
 
         with lib.undo_chunk():
-            instance = super(CreateOrnatrixRig, self).create(product_name,
+            instance = super(CreateOxRig, self).create(product_name,
                                                              instance_data,
                                                              pre_create_data)
             instance_node = instance.get("instance_node")

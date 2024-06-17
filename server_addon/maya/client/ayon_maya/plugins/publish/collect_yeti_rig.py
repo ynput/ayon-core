@@ -306,12 +306,12 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         return replaced
 
 
-class CollectOrnatrixRig(CollectYetiRig):
+class CollectOxRig(CollectYetiRig):
     """Collect all information of the Ornatrix Rig"""
 
     order = pyblish.api.CollectorOrder + 0.4
     label = "Collect Ornatrix Rig"
-    families = ["ornatrixRig"]
+    families = ["OxRig"]
 
     def process(self, instance):
         assert "input_SET" in instance.data["setMembers"], (
