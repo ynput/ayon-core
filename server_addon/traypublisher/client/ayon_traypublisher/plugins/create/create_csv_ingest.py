@@ -16,6 +16,198 @@ from ayon_core.pipeline.create import CreatorError
 from ayon_traypublisher.api.plugin import TrayPublishCreator
 
 
+def _get_row_value_with_validation(
+    columns_config: Dict[str, Any],
+    column_name: str,
+    row_data: Dict[str, Any],
+):
+    """Get row value with validation"""
+
+    # get column data from column config
+    column_data = None
+    for column in columns_config["columns"]:
+        if column["name"] == column_name:
+            column_data = column
+            break
+
+    if not column_data:
+        raise CreatorError(
+            f"Column '{column_name}' not found in column config."
+        )
+
+    # get column value from row
+    column_value = row_data.get(column_name)
+    column_required = column_data["required_column"]
+
+    # check if column value is not empty string and column is required
+    if column_value == "" and column_required:
+        raise CreatorError(
+            f"Value in column '{column_name}' is required."
+        )
+
+    # get column type
+    column_type = column_data["type"]
+    # get column validation regex
+    column_validation = column_data["validation_pattern"]
+    # get column default value
+    column_default = column_data["default"]
+
+    if column_type in ["number", "decimal"] and column_default == 0:
+        column_default = None
+
+    # check if column value is not empty string
+    if column_value == "":
+        # set default value if column value is empty string
+        column_value = column_default
+
+    # set column value to correct type following column type
+    if column_type == "number" and column_value is not None:
+        column_value = int(column_value)
+    elif column_type == "decimal" and column_value is not None:
+        column_value = float(column_value)
+    elif column_type == "bool":
+        column_value = column_value in ["true", "True"]
+
+    # check if column value matches validation regex
+    if (
+        column_value is not None and
+        not re.match(str(column_validation), str(column_value))
+    ):
+        raise CreatorError(
+            f"Column '{column_name}' value '{column_value}'"
+            f" does not match validation regex '{column_validation}'"
+            f"\nRow data: {row_data}"
+            f"\nColumn data: {column_data}"
+        )
+
+    return column_value
+
+
+class RepreItem:
+    def __init__(
+        self,
+        name,
+        filepath,
+        frame_start,
+        frame_end,
+        handle_start,
+        handle_end,
+        fps,
+        thumbnail_path,
+        colorspace,
+        comment,
+        slate_exists,
+        tags,
+    ):
+        self.name = name
+        self.filepath = filepath
+        self.frame_start = frame_start
+        self.frame_end = frame_end
+        self.handle_start = handle_start
+        self.handle_end = handle_end
+        self.fps = fps
+        self.thumbnail_path = thumbnail_path
+        self.colorspace = colorspace
+        self.comment = comment
+        self.slate_exists = slate_exists
+        self.tags = tags
+
+    @classmethod
+    def from_csv_row(cls, columns_config, repre_config, row):
+        kwargs = {
+            dst_key: _get_row_value_with_validation(
+                columns_config, column_name, row
+            )
+            for column_name, dst_key in (
+                # Representation information
+                ("filepath", "File Path"),
+                ("frame_start", "Frame Start"),
+                ("frame_end", "Frame End"),
+                ("handle_start", "Handle Start"),
+                ("handle_end", "Handle End"),
+                ("fps", "FPS"),
+
+                # Optional representation information
+                ("thumbnail_path", "Version Thumbnail"),
+                ("colorspace", "Representation Colorspace"),
+                ("comment", "Version Comment"),
+                ("name", "Representation"),
+                ("slate_exists", "Slate Exists"),
+                ("repre_tags", "Representation Tags"),
+            )
+        }
+
+        # Should the 'int' and 'float' conversion happen?
+        # - looks like '_get_row_value_with_validation' is already handling it
+        for key in {"frame_start", "frame_end", "handle_start", "handle_end"}:
+            kwargs[key] = int(kwargs[key])
+
+        kwargs["fps"] = float(kwargs["fps"])
+
+        # Convert tags value to list
+        tags_list = copy(repre_config["default_tags"])
+        repre_tags: Optional[str] = kwargs.pop("repre_tags")
+        if repre_tags:
+            tags_list = []
+            tags_delimiter = repre_config["tags_delimiter"]
+            # strip spaces from repre_tags
+            if tags_delimiter in repre_tags:
+                tags = repre_tags.split(tags_delimiter)
+                for _tag in tags:
+                    tags_list.append(_tag.strip().lower())
+            else:
+                tags_list.append(repre_tags)
+        kwargs["tags"] = tags_list
+        return cls(**kwargs)
+
+
+class ProductItem:
+    def __init__(
+        self,
+        folder_path: str,
+        task_name: str,
+        version: int,
+        variant: str,
+        product_type: str,
+        pre_product_name: str,
+        task_type: Optional[str] = None,
+    ):
+        self.folder_path = folder_path
+        self.task_name = task_name
+        self.task_type = task_type
+        self.version = version
+        self.variant = variant
+        self.product_type = product_type
+        self.pre_product_name = pre_product_name
+        self.repre_items: List[RepreItem] = []
+
+    def add_repre_item(self, repre_item: RepreItem):
+        self.repre_items.append(repre_item)
+
+    @classmethod
+    def from_csv_row(cls, columns_config, row):
+        kwargs = {
+            dst_key: _get_row_value_with_validation(
+                columns_config, column_name, row
+            )
+            for column_name, dst_key in (
+                # Context information
+                ("folder_path", "Folder Path"),
+                ("task_name", "Task Name"),
+                ("version", "Version"),
+                ("variant", "Variant"),
+                ("product_type", "Product Type"),
+            )
+        }
+
+        kwargs["pre_product_name"] = (
+            "{task_name}{variant}{product_type}{version}"
+            .format(**kwargs)
+            .replace(" ", "").lower()
+        )
+        return cls(**kwargs)
+
+
 class IngestCSV(TrayPublishCreator):
     """CSV ingest creator class"""
 
