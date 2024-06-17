@@ -57,7 +57,7 @@ class AfterEffectsSubmitDeadline(
         dln_job_info.Plugin = "AfterEffects"
         dln_job_info.UserName = context.data.get(
             "deadlineUser", getpass.getuser())
-        if self._instance.data["frameEnd"] > self._instance.data["frameStart"]:
+        if self._instance.data["frameEnd"] >= self._instance.data["frameStart"]:  # noqa
             # Deadline requires integers in frame range
             frame_range = "{}-{}".format(
                 int(round(self._instance.data["frameStart"])),
