@@ -86,7 +86,7 @@ class OxRigLoader(plugin.ReferenceLoader):
                          node.endswith("input_SET")), None)
         self.log.info("Creating variant: {}".format(variant))
 
-        creator_identifier = "io.openpype.creators.maya.ornatrixcache"
+        creator_identifier = "io.openpype.creators.maya.OxCache"
 
         host = registered_host()
         create_context = CreateContext(host)
