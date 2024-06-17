@@ -1,8 +1,11 @@
 import os
 import json
 
+import ayon_api
+
 from ayon_core.addon import AYONAddon, IPluginPaths, click_wrap
 
+from .version import __version__
 from .constants import APPLICATIONS_ADDON_ROOT
 from .defs import LaunchTypes
 from .manager import ApplicationManager
@@ -10,6 +13,7 @@ from .manager import ApplicationManager
 
 class ApplicationsAddon(AYONAddon, IPluginPaths):
     name = "applications"
+    version = __version__
 
     def initialize(self, settings):
         # TODO remove when addon is removed from ayon-core
@@ -110,6 +114,95 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
             ]
         }
 
+    def get_app_icon_path(self, icon_filename):
+        """Get icon path.
+
+        Args:
+            icon_filename (str): Icon filename.
+
+        Returns:
+            Union[str, None]: Icon path or None if not found.
+
+        """
+        if not icon_filename:
+            return None
+        icon_name = os.path.basename(icon_filename)
+        path = os.path.join(APPLICATIONS_ADDON_ROOT, "icons", icon_name)
+        if os.path.exists(path):
+            return path
+        return None
+
+    def get_app_icon_url(self, icon_filename, server=False):
+        """Get icon path.
+
+        Method does not validate if icon filename exist on server.
+
+        Args:
+            icon_filename (str): Icon name.
+            server (Optional[bool]): Return url to AYON server.
+
+        Returns:
+            Union[str, None]: Icon path or None is server url is not
+                available.
+
+        """
+        if not icon_filename:
+            return None
+        icon_name = os.path.basename(icon_filename)
+        if server:
+            base_url = ayon_api.get_base_url()
+            return (
+                f"{base_url}/addons/{self.name}/{self.version}"
+                f"/public/icons/{icon_name}"
+            )
+        server_url = os.getenv("AYON_WEBSERVER_URL")
+        if not server_url:
+            return None
+        return "/".join([
+            server_url, "addons", self.name, self.version, "icons", icon_name
+        ])
+
+    def get_applications_action_classes(self):
+        """Get application action classes for launcher tool.
+
+        This method should be used only by launcher tool. Please do not use it
+        in other places as its implementation is not optimal, and might
+        change or be removed.
+
+        Returns:
+            list[ApplicationAction]: List of application action classes.
+
+        """
+        from .action import ApplicationAction
+
+        actions = []
+
+        manager = self.get_applications_manager()
+        for full_name, application in manager.applications.items():
+            if not application.enabled:
+                continue
+
+            icon = self.get_app_icon_path(application.icon)
+
+            action = type(
+                "app_{}".format(full_name),
+                (ApplicationAction,),
+                {
+                    "identifier": "application.{}".format(full_name),
+                    "application": application,
+                    "name": application.name,
+                    "label": application.group.label,
+                    "label_variant": application.label,
+                    "group": None,
+                    "icon": icon,
+                    "color": getattr(application, "color", None),
+                    "order": getattr(application, "order", None) or 0,
+                    "data": {}
+                }
+            )
+            actions.append(action)
+        return actions
+
     def launch_application(
         self, app_name, project_name, folder_path, task_name
     ):
@@ -128,6 +221,18 @@ class ApplicationsAddon(AYONAddon, IPluginPaths):
             project_name=project_name,
             folder_path=folder_path,
             task_name=task_name,
+        )
+
+    def webserver_initialization(self, manager):
+        """Initialize webserver.
+
+        Args:
+            manager (WebServerManager): Webserver manager.
+
+        """
+        static_prefix = f"/addons/{self.name}/{self.version}/icons"
+        manager.add_static(
+            static_prefix, os.path.join(APPLICATIONS_ADDON_ROOT, "icons")
         )
 
     # --- CLI ---

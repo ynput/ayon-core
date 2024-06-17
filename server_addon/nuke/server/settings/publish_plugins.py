@@ -5,7 +5,11 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum
 )
-from .common import KnobModel, validate_json_dict
+from .common import (
+    KnobModel,
+    ColorspaceConfigurationModel,
+    validate_json_dict,
+)
 
 
 def nuke_render_publish_types_enum():
@@ -125,23 +129,27 @@ class ReformatNodesConfigModel(BaseSettingsModel):
 
 class IntermediateOutputModel(BaseSettingsModel):
     name: str = SettingsField(title="Output name")
+    publish: bool = SettingsField(title="Publish")
     filter: BakingStreamFilterModel = SettingsField(
         title="Filter", default_factory=BakingStreamFilterModel)
     read_raw: bool = SettingsField(
         False,
-        title="Read raw switch"
-    )
-    viewer_process_override: str = SettingsField(
-        "",
-        title="Viewer process override"
+        title="Input read node RAW switch"
     )
     bake_viewer_process: bool = SettingsField(
         True,
-        title="Bake viewer process"
+        title="Bake viewer process",
+        section="Baking target",
+    )
+    colorspace_override: ColorspaceConfigurationModel = SettingsField(
+        title="Target baking colorspace override",
+        description="Override Baking target with colorspace or display/view",
+        default_factory=ColorspaceConfigurationModel
     )
     bake_viewer_input_process: bool = SettingsField(
         True,
-        title="Bake viewer input process node (LUT)"
+        title="Bake viewer input process node (LUT)",
+        section="Baking additional",
     )
     reformat_nodes_config: ReformatNodesConfigModel = SettingsField(
         default_factory=ReformatNodesConfigModel,
@@ -152,18 +160,6 @@ class IntermediateOutputModel(BaseSettingsModel):
     )
     add_custom_tags: list[str] = SettingsField(
         title="Custom tags", default_factory=list)
-
-
-class ExtractReviewDataMovModel(BaseSettingsModel):
-    """[deprecated] use Extract Review Data Baking
-    Streams instead.
-    """
-    enabled: bool = SettingsField(title="Enabled")
-    viewer_lut_raw: bool = SettingsField(title="Viewer lut raw")
-    outputs: list[IntermediateOutputModel] = SettingsField(
-        default_factory=list,
-        title="Baking streams"
-    )
 
 
 class ExtractReviewIntermediatesModel(BaseSettingsModel):
@@ -230,10 +226,6 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=OptionalPluginModel,
         section="Validators"
     )
-    ValidateContainers: OptionalPluginModel = SettingsField(
-        title="Validate Containers",
-        default_factory=OptionalPluginModel
-    )
     ValidateKnobs: ValidateKnobsModel = SettingsField(
         title="Validate Knobs",
         default_factory=ValidateKnobsModel
@@ -261,10 +253,6 @@ class PublishPluginsModel(BaseSettingsModel):
     ExtractReviewDataLut: ExtractReviewDataLutModel = SettingsField(
         title="Extract Review Data Lut",
         default_factory=ExtractReviewDataLutModel
-    )
-    ExtractReviewDataMov: ExtractReviewDataMovModel = SettingsField(
-        title="Extract Review Data Mov",
-        default_factory=ExtractReviewDataMovModel
     )
     ExtractReviewIntermediates: ExtractReviewIntermediatesModel = (
         SettingsField(
@@ -295,11 +283,6 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
         ]
     },
     "ValidateCorrectAssetContext": {
-        "enabled": True,
-        "optional": True,
-        "active": True
-    },
-    "ValidateContainers": {
         "enabled": True,
         "optional": True,
         "active": True
@@ -340,74 +323,28 @@ DEFAULT_PUBLISH_PLUGIN_SETTINGS = {
     "ExtractReviewDataLut": {
         "enabled": False
     },
-    "ExtractReviewDataMov": {
-        "enabled": False,
-        "viewer_lut_raw": False,
-        "outputs": [
-            {
-                "name": "baking",
-                "filter": {
-                    "task_types": [],
-                    "product_types": [],
-                    "product_names": []
-                },
-                "read_raw": False,
-                "viewer_process_override": "",
-                "bake_viewer_process": True,
-                "bake_viewer_input_process": True,
-                "reformat_nodes_config": {
-                    "enabled": False,
-                    "reposition_nodes": [
-                        {
-                            "node_class": "Reformat",
-                            "knobs": [
-                                {
-                                    "type": "text",
-                                    "name": "type",
-                                    "text": "to format"
-                                },
-                                {
-                                    "type": "text",
-                                    "name": "format",
-                                    "text": "HD_1080"
-                                },
-                                {
-                                    "type": "text",
-                                    "name": "filter",
-                                    "text": "Lanczos6"
-                                },
-                                {
-                                    "type": "boolean",
-                                    "name": "black_outside",
-                                    "boolean": True
-                                },
-                                {
-                                    "type": "boolean",
-                                    "name": "pbb",
-                                    "boolean": False
-                                }
-                            ]
-                        }
-                    ]
-                },
-                "extension": "mov",
-                "add_custom_tags": []
-            }
-        ]
-    },
     "ExtractReviewIntermediates": {
         "enabled": True,
         "viewer_lut_raw": False,
         "outputs": [
             {
                 "name": "baking",
+                "publish": False,
                 "filter": {
                     "task_types": [],
                     "product_types": [],
                     "product_names": []
                 },
                 "read_raw": False,
-                "viewer_process_override": "",
+                "colorspace_override": {
+                    "enabled": False,
+                    "type": "colorspace",
+                    "colorspace": "",
+                    "display_view": {
+                        "display": "",
+                        "view": ""
+                    }
+                },
                 "bake_viewer_process": True,
                 "bake_viewer_input_process": True,
                 "reformat_nodes_config": {
