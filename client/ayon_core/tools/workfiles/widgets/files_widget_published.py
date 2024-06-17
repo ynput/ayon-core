@@ -10,7 +10,6 @@ from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 from .utils import BaseOverlayFrame
 
-
 REPRE_ID_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
 AUTHOR_ROLE = QtCore.Qt.UserRole + 3
@@ -249,7 +248,7 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
 
         # Handle roles for first column
         col = index.column()
-        if col != 1:
+        if col == 0:
             return super().data(index, role)
 
         if role == QtCore.Qt.DecorationRole:
