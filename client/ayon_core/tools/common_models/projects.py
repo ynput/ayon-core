@@ -89,7 +89,7 @@ class FolderTypeItem:
     def from_project_item(cls, folder_type_data):
         return cls(
             name=folder_type_data["name"],
-            short=folder_type_data["shortName"],
+            short=folder_type_data.get("shortName", ""),
             icon=folder_type_data["icon"],
         )
 
