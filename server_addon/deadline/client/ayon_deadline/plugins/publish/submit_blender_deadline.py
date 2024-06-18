@@ -41,17 +41,6 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
     group = None
     job_delay = "00:00:00:00"
 
-    @classmethod
-    def apply_settings(cls, project_settings):
-        settings = project_settings["deadline"]["publish"]["BlenderSubmitDeadline"]  # noqa
-
-        # Take some defaults from settings
-        cls.asset_dependencies = settings.get("asset_dependencies",
-                                              cls.asset_dependencies)
-        cls.use_published = settings.get("use_published", cls.use_published)
-        cls.priority = settings.get("priority", cls.priority)
-        cls.group = settings.get("group", cls.group)
-
     def get_job_info(self):
         job_info = DeadlineJobInfo(Plugin="Blender")
 
