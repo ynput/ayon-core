@@ -3,14 +3,13 @@ import uuid
 
 import ayon_api
 
+from ayon_core.lib import NestedCacheItem, CacheItem
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
-    NestedCacheItem,
-    CacheItem,
     ThumbnailsModel,
 )
 
