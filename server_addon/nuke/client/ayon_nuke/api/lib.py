@@ -655,8 +655,7 @@ def get_nuke_imageio_settings():
 
 
 def get_imageio_node_setting(node_class, plugin_name, product_name):
-    ''' Get preset data for dataflow (fileType, compression, bitDepth)
-    '''
+    """Get preset data for dataflow (fileType, compression, bitDepth)"""
     imageio_nodes = get_nuke_imageio_settings()["nodes"]
     required_nodes = imageio_nodes["required_nodes"]
 
@@ -686,8 +685,8 @@ def get_imageio_node_setting(node_class, plugin_name, product_name):
 def get_imageio_node_override_setting(
     node_class, plugin_name, product_name, knobs_settings
 ):
-    ''' Get imageio node overrides from settings
-    '''
+    """ Get imageio node overrides from settings
+    """
     imageio_nodes = get_nuke_imageio_settings()["nodes"]
     override_nodes = imageio_nodes["override_nodes"]
 
@@ -745,8 +744,7 @@ def get_imageio_node_override_setting(
 
 
 def get_imageio_input_colorspace(filename):
-    ''' Get input file colorspace based on regex in settings.
-    '''
+    """Get input file colorspace based on regex in settings."""
     imageio_regex_inputs = (
         get_nuke_imageio_settings()["regex_inputs"]["inputs"])
 
@@ -791,8 +789,7 @@ def get_view_process_node():
 
 
 def on_script_load():
-    ''' Callback for ffmpeg support
-    '''
+    """Callback for ffmpeg support"""
     if nuke.env["LINUX"]:
         nuke.tcl('load ffmpegReader')
         nuke.tcl('load ffmpegWriter')
@@ -815,7 +812,7 @@ def check_inventory_versions():
     # get all Loader nodes by avalon attribute metadata
     node_with_repre_id = []
     repre_ids = set()
-    # Find all containers and collect it's node and representation ids
+    # Find all containers and collect its node and representation ids
     for node in nuke.allNodes():
         container = parse_container(node)
 
@@ -896,8 +893,7 @@ def check_inventory_versions():
 
 
 def writes_version_sync():
-    ''' Callback synchronizing version of publishable write nodes
-    '''
+    """Callback synchronizing version of publishable write nodes"""
     try:
         rootVersion = get_version_from_path(nuke.root().name())
         padding = len(rootVersion)
@@ -934,8 +930,7 @@ def writes_version_sync():
 
 
 def version_up_script():
-    ''' Raising working script's version
-    '''
+    """Raising working script's version"""
     import nukescripts
     nukescripts.script_and_write_nodes_version_up()
 
@@ -996,9 +991,8 @@ def format_anatomy(data):
     return anatomy.format(data)
 
 
-def script_name():
-    ''' Returns nuke script path
-    '''
+def script_name() -> str:
+    """Returns nuke script path"""
     return nuke.root().knob("name").value()
 
 
@@ -1300,7 +1294,7 @@ def create_write_node(
 
 
 def set_node_knobs_from_settings(node, knob_settings, **kwargs):
-    """ Overriding knob values from settings
+    """Overriding knob values from settings
 
     Using `schema_nuke_knob_inputs` for knob type definitions.
 
@@ -1393,8 +1387,7 @@ def color_gui_to_int(color_gui):
 
 def create_backdrop(label="", color=None, layer=0,
                     nodes=None):
-    """
-    Create Backdrop node
+    """Create Backdrop node
 
     Arguments:
         color (str): nuke compatible string with color code
@@ -1494,12 +1487,12 @@ class WorkfileSettings(object):
                 return [n for n in self._nodes if filter in n.Class()]
 
     def set_viewers_colorspace(self, imageio_nuke):
-        ''' Adds correct colorspace to viewer
+        """Adds correct colorspace to viewer
 
         Arguments:
             imageio_nuke (dict): nuke colorspace configurations
 
-        '''
+        """
         filter_knobs = [
             "viewerProcess",
             "wipe_position",
@@ -1563,12 +1556,12 @@ class WorkfileSettings(object):
         return StringTemplate(display_view).format_strict(self.formatting_data)
 
     def set_root_colorspace(self, imageio_host):
-        ''' Adds correct colorspace to root
+        """Adds correct colorspace to root
 
         Arguments:
             imageio_host (dict): host colorspace configurations
 
-        '''
+        """
         config_data = get_current_context_imageio_config_preset()
 
         workfile_settings = imageio_host["workfile"]
@@ -1822,9 +1815,8 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
         return new_path
 
     def set_writes_colorspace(self):
-        ''' Adds correct colorspace to write node dict
-
-        '''
+        """ Adds correct colorspace to write node dict
+        """
         for node in nuke.allNodes(filter="Group", group=self._root_node):
             log.info("Setting colorspace to `{}`".format(node.name()))
 
@@ -1946,8 +1938,8 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
                             knobs["to"]))
 
     def set_colorspace(self):
-        ''' Setting colorspace following presets
-        '''
+        """ Setting colorspace following presets
+        """
         # get imageio
         nuke_colorspace = get_nuke_imageio_settings()
 
@@ -2155,9 +2147,8 @@ Reopening Nuke should synchronize these paths and resolve any discrepancies.
 
 
 def get_write_node_template_attr(node):
-    ''' Gets all defined data from presets
-
-    '''
+    """ Gets all defined data from presets
+    """
 
     # TODO: add identifiers to settings and rename settings key
     plugin_names_mapping = {
