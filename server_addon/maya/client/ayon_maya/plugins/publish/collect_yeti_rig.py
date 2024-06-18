@@ -15,6 +15,12 @@ SETTINGS = {"renderDensity",
             "cbId"}
 
 
+ORNATRIX_NODES = {
+    "HairFromGuidesNode", "GuidesFromMeshNode",
+    "MeshFromStrandsNode", "SurfaceCombNode"
+}
+
+
 class CollectYetiRig(plugin.MayaInstancePlugin):
     """Collect all information of the Yeti Rig"""
 
@@ -346,10 +352,7 @@ class CollectOxRig(CollectYetiRig):
 
         ox_nodes = [
             ox_node for ox_node in cmds.listConnections(node_shape, destination=True)
-                    if cmds.nodeType(ox_node) in {
-                        "HairFromGuidesNode", "GuidesFromMeshNode",
-                        "MeshFromStrandsNode", "SurfaceCombNode"
-                    }
+                    if cmds.nodeType(ox_node) in ORNATRIX_NODES
         ]
         ox_imageFile = [
             ox_img for ox_img in cmds.listConnections(ox_nodes, destination=False)
@@ -357,6 +360,7 @@ class CollectOxRig(CollectYetiRig):
         ]
         if not ox_imageFile:
             return []
+
         for img in ox_imageFile:
             texture_attr = "{}.fileTextureName".format(img)
             texture = cmds.getAttr("{}.fileTextureName".format(img))
