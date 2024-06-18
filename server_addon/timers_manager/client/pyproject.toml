@@ -1,0 +1,6 @@
+[project]
+name="timers_manager"
+description="AYON TimersManager addon."
+
+[ayon.runtimeDependencies]
+pynput = "^1.7.2"

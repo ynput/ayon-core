@@ -1,6 +1,8 @@
 name = "applications"
 title = "Applications"
-version = "0.2.2"
+version = "0.2.4"
+
+client_dir = "ayon_applications"
 
 ayon_server_version = ">=1.0.7"
 ayon_launcher_version = ">=1.0.2"

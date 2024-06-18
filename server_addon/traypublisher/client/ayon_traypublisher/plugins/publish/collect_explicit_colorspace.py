@@ -75,6 +75,7 @@ class CollectColorspace(pyblish.api.InstancePlugin,
         colorspace_items = list(cls.default_colorspace_items)
         config_items = None
         if config_data:
+            enabled = True
             filepath = config_data["path"]
             config_items = colorspace.get_ocio_config_colorspaces(filepath)
             labeled_colorspaces = colorspace.get_colorspaces_enumerator_items(

@@ -104,8 +104,48 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Returns:
             list[ProjectItem]: Minimum possible information needed
                 for visualisation of folder hierarchy.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_folder_type_items(self, project_name, sender=None):
+        """Folder type items for a project.
+
+        This function may trigger events with topics
+        'projects.folder_types.refresh.started' and
+        'projects.folder_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested folder type items.
+
+        Returns:
+            list[FolderTypeItem]: Folder type information.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_type_items(self, project_name, sender=None):
+        """Task type items for a project.
+
+        This function may trigger events with topics
+        'projects.task_types.refresh.started' and
+        'projects.task_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested task type items.
+
+        Returns:
+            list[TaskTypeItem]: Task type information.
+
+        """
         pass
 
     @abstractmethod
