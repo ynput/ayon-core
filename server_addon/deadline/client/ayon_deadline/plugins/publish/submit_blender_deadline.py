@@ -162,7 +162,7 @@ class BlenderSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
 
         return plugin_payload
 
-    def process_submission(self):
+    def process_submission(self, auth=None):
         instance = self._instance
 
         expected_files = instance.data["expectedFiles"]
