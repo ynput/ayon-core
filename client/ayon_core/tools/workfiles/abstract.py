@@ -546,6 +546,46 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         """
         pass
 
+    @abstractmethod
+    def get_folder_type_items(self, project_name, sender=None):
+        """Folder type items for a project.
+
+        This function may trigger events with topics
+        'projects.folder_types.refresh.started' and
+        'projects.folder_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested folder type items.
+
+        Returns:
+            list[FolderTypeItem]: Folder type information.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_type_items(self, project_name, sender=None):
+        """Task type items for a project.
+
+        This function may trigger events with topics
+        'projects.task_types.refresh.started' and
+        'projects.task_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested task type items.
+
+        Returns:
+            list[TaskTypeItem]: Task type information.
+
+        """
+        pass
+
     # Host information
     @abstractmethod
     def get_workfile_extensions(self):
@@ -834,12 +874,13 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workarea_file_items(self, folder_id, task_id):
+    def get_workarea_file_items(self, folder_id, task_name, sender=None):
         """Get workarea file items.
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task name.
+            sender (Optional[str]): Who requested workarea file items.
 
         Returns:
             list[FileItem]: List of workarea file items.
@@ -905,12 +946,12 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workfile_info(self, folder_id, task_id, filepath):
+    def get_workfile_info(self, folder_id, task_name, filepath):
         """Workfile info from database.
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task id.
             filepath (str): Workfile path.
 
         Returns:
@@ -921,7 +962,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def save_workfile_info(self, folder_id, task_id, filepath, note):
+    def save_workfile_info(self, folder_id, task_name, filepath, note):
         """Save workfile info to database.
 
         At this moment the only information which can be saved about
@@ -932,7 +973,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task id.
             filepath (str): Workfile path.
             note (Union[str, None]): Note.
         """

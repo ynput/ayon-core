@@ -2,6 +2,7 @@ import uuid
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.delegates import StatusDelegate
 
 from .model import (
@@ -20,13 +21,15 @@ class VersionOption:
         label,
         status_name,
         status_short,
-        status_color
+        status_color,
+        status_icon,
     ):
         self.version = version
         self.label = label
         self.status_name = status_name
         self.status_short = status_short
         self.status_color = status_color
+        self.status_icon = status_icon
 
 
 class SelectVersionModel(QtGui.QStandardItemModel):
@@ -67,8 +70,12 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
         self._combo_view = combo_view
         self._status_delegate = status_delegate
         self._items_by_id = {}
+        self._status_visible = True
 
     def paintEvent(self, event):
+        if not self._status_visible:
+            return super().paintEvent(event)
+
         painter = QtWidgets.QStylePainter(self)
         option = QtWidgets.QStyleOptionComboBox()
         self.initStyleOption(option)
@@ -80,27 +87,52 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             return
 
         painter.save()
-        text_field_rect = self.style().subControlRect(
+
+        status_icon = self.itemData(idx, STATUS_ICON_ROLE)
+        content_field_rect = self.style().subControlRect(
             QtWidgets.QStyle.CC_ComboBox,
             option,
             QtWidgets.QStyle.SC_ComboBoxEditField
-        )
-        adj_rect = text_field_rect.adjusted(1, 0, -1, 0)
+        ).adjusted(1, 0, -1, 0)
+
+        metrics = option.fontMetrics
+        version_text_width = metrics.width(option.currentText) + 2
+        version_text_rect = QtCore.QRect(content_field_rect)
+        version_text_rect.setWidth(version_text_width)
+
         painter.drawText(
-            adj_rect,
+            version_text_rect,
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
             option.currentText
         )
-        metrics = QtGui.QFontMetrics(self.font())
-        text_width = metrics.width(option.currentText)
-        x_offset = text_width + 2
-        diff_width = adj_rect.width() - x_offset
-        if diff_width <= 0:
+
+        status_text_rect = QtCore.QRect(content_field_rect)
+        status_text_rect.setLeft(version_text_rect.right() + 2)
+        if status_icon is not None and not status_icon.isNull():
+            icon_rect = QtCore.QRect(status_text_rect)
+            diff = icon_rect.height() - metrics.height()
+            if diff < 0:
+                diff = 0
+            top_offset = diff // 2
+            bottom_offset = diff - top_offset
+            icon_rect.adjust(0, top_offset, 0, -bottom_offset)
+            icon_rect.setWidth(metrics.height())
+            status_icon.paint(
+                painter,
+                icon_rect,
+                QtCore.Qt.AlignCenter,
+                QtGui.QIcon.Normal,
+                QtGui.QIcon.On
+            )
+            status_text_rect.setLeft(icon_rect.right() + 2)
+
+        if status_text_rect.width() <= 0:
             return
 
-        status_rect = adj_rect.adjusted(x_offset + 2, 0, 0, 0)
-        if diff_width < metrics.width(status_name):
+        if status_text_rect.width() < metrics.width(status_name):
             status_name = self.itemData(idx, STATUS_SHORT_ROLE)
+            if status_text_rect.width() < metrics.width(status_name):
+                status_name = ""
 
         color = QtGui.QColor(self.itemData(idx, STATUS_COLOR_ROLE))
 
@@ -108,7 +140,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
         pen.setColor(color)
         painter.setPen(pen)
         painter.drawText(
-            status_rect,
+            status_text_rect,
             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
             status_name
         )
@@ -120,6 +152,12 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
 
         self.setCurrentIndex(index)
 
+    def set_status_visible(self, visible):
+        header = self._combo_view.header()
+        header.setSectionHidden(1, not visible)
+        self._status_visible = visible
+        self.update()
+
     def get_item_by_id(self, item_id):
         return self._items_by_id[item_id]
 
@@ -130,7 +168,17 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
         root_item.removeRows(0, root_item.rowCount())
 
         new_items = []
+        icons_by_name = {}
         for version_option in version_options:
+            icon = icons_by_name.get(version_option.status_icon)
+            if icon is None:
+                icon = get_qt_icon({
+                    "type": "material-symbols",
+                    "name": version_option.status_icon,
+                    "color": version_option.status_color
+                })
+                icons_by_name[version_option.status_icon] = icon
+
             item_id = uuid.uuid4().hex
             item = QtGui.QStandardItem(version_option.label)
             item.setColumnCount(root_item.columnCount())
@@ -143,6 +191,7 @@ class SelectVersionComboBox(QtWidgets.QComboBox):
             item.setData(
                 version_option.status_color, STATUS_COLOR_ROLE
             )
+            item.setData(icon, STATUS_ICON_ROLE)
             item.setData(item_id, ITEM_ID_ROLE)
 
             new_items.append(item)
@@ -195,10 +244,16 @@ class SelectVersionDialog(QtWidgets.QDialog):
     def select_index(self, index):
         self._versions_combobox.set_current_index(index)
 
+    def set_status_visible(self, visible):
+        self._versions_combobox.set_status_visible(visible)
+
     @classmethod
-    def ask_for_version(cls, version_options, index=None, parent=None):
+    def ask_for_version(
+        cls, version_options, index=None, show_statuses=True, parent=None
+    ):
         dialog = cls(parent)
         dialog.set_versions(version_options)
+        dialog.set_status_visible(show_statuses)
         if index is not None:
             dialog.select_index(index)
         dialog.exec_()

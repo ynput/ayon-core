@@ -28,41 +28,42 @@ from .interfaces import (
 )
 
 # Files that will be always ignored on addons import
-IGNORED_FILENAMES = (
+IGNORED_FILENAMES = {
     "__pycache__",
-)
+}
 # Files ignored on addons import from "./ayon_core/modules"
-IGNORED_DEFAULT_FILENAMES = (
+IGNORED_DEFAULT_FILENAMES = {
     "__init__.py",
     "base.py",
     "interfaces.py",
     "click_wrap.py",
-    "example_addons",
-    "default_modules",
-)
-IGNORED_HOSTS_IN_AYON = {
-    "flame",
-    "harmony",
 }
-IGNORED_MODULES_IN_AYON = set()
 
 # When addon was moved from ayon-core codebase
 # - this is used to log the missing addon
 MOVED_ADDON_MILESTONE_VERSIONS = {
+    "aftereffects": VersionInfo(0, 2, 0),
     "applications": VersionInfo(0, 2, 0),
+    "blender": VersionInfo(0, 2, 0),
     "celaction": VersionInfo(0, 2, 0),
     "clockify": VersionInfo(0, 2, 0),
+    "deadline": VersionInfo(0, 2, 0),
     "flame": VersionInfo(0, 2, 0),
     "fusion": VersionInfo(0, 2, 0),
+    "harmony": VersionInfo(0, 2, 0),
+    "hiero": VersionInfo(0, 2, 0),
     "max": VersionInfo(0, 2, 0),
     "photoshop": VersionInfo(0, 2, 0),
+    "timers_manager": VersionInfo(0, 2, 0),
     "traypublisher": VersionInfo(0, 2, 0),
     "tvpaint": VersionInfo(0, 2, 0),
     "maya": VersionInfo(0, 2, 0),
     "nuke": VersionInfo(0, 2, 0),
     "resolve": VersionInfo(0, 2, 0),
+    "royalrender": VersionInfo(0, 2, 0),
     "substancepainter": VersionInfo(0, 2, 0),
     "houdini": VersionInfo(0, 3, 0),
+    "unreal": VersionInfo(0, 2, 0),
 }
 
 
@@ -410,95 +411,59 @@ def _load_addons_in_core(
 ):
     # Add current directory at first place
     #   - has small differences in import logic
-    hosts_dir = os.path.join(AYON_CORE_ROOT, "hosts")
     modules_dir = os.path.join(AYON_CORE_ROOT, "modules")
+    if not os.path.exists(modules_dir):
+        log.warning(
+            f"Could not find path when loading AYON addons \"{modules_dir}\""
+        )
+        return
 
-    ignored_host_names = set(IGNORED_HOSTS_IN_AYON)
-    ignored_module_dir_filenames = (
-        set(IGNORED_DEFAULT_FILENAMES)
-        | IGNORED_MODULES_IN_AYON
-    )
+    ignored_filenames = IGNORED_FILENAMES | IGNORED_DEFAULT_FILENAMES
 
-    for dirpath in {hosts_dir, modules_dir}:
-        if not os.path.exists(dirpath):
-            log.warning((
-                "Could not find path when loading AYON addons \"{}\""
-            ).format(dirpath))
+    for filename in os.listdir(modules_dir):
+        # Ignore filenames
+        if filename in ignored_filenames:
             continue
 
-        is_in_modules_dir = dirpath == modules_dir
-        if is_in_modules_dir:
-            ignored_filenames = ignored_module_dir_filenames
-        else:
-            ignored_filenames = ignored_host_names
+        fullpath = os.path.join(modules_dir, filename)
+        basename, ext = os.path.splitext(filename)
 
-        for filename in os.listdir(dirpath):
-            # Ignore filenames
-            if filename in IGNORED_FILENAMES or filename in ignored_filenames:
+        if basename in ignore_addon_names:
+            continue
+
+        # Validations
+        if os.path.isdir(fullpath):
+            # Check existence of init file
+            init_path = os.path.join(fullpath, "__init__.py")
+            if not os.path.exists(init_path):
+                log.debug((
+                    "Addon directory does not contain __init__.py"
+                    f" file {fullpath}"
+                ))
                 continue
 
-            fullpath = os.path.join(dirpath, filename)
-            basename, ext = os.path.splitext(filename)
+        elif ext != ".py":
+            continue
 
-            if basename in ignore_addon_names:
-                continue
+        # TODO add more logic how to define if folder is addon or not
+        # - check manifest and content of manifest
+        try:
+            # Don't import dynamically current directory modules
+            new_import_str = f"{modules_key}.{basename}"
 
-            # Validations
-            if os.path.isdir(fullpath):
-                # Check existence of init file
-                init_path = os.path.join(fullpath, "__init__.py")
-                if not os.path.exists(init_path):
-                    log.debug((
-                        "Addon directory does not contain __init__.py"
-                        " file {}"
-                    ).format(fullpath))
-                    continue
+            import_str = f"ayon_core.modules.{basename}"
+            default_module = __import__(import_str, fromlist=("", ))
+            sys.modules[new_import_str] = default_module
+            setattr(openpype_modules, basename, default_module)
 
-            elif ext not in (".py", ):
-                continue
-
-            # TODO add more logic how to define if folder is addon or not
-            # - check manifest and content of manifest
-            try:
-                # Don't import dynamically current directory modules
-                new_import_str = "{}.{}".format(modules_key, basename)
-                if is_in_modules_dir:
-                    import_str = "ayon_core.modules.{}".format(basename)
-                    default_module = __import__(import_str, fromlist=("", ))
-                    sys.modules[new_import_str] = default_module
-                    setattr(openpype_modules, basename, default_module)
-
-                else:
-                    import_str = "ayon_core.hosts.{}".format(basename)
-                    # Until all hosts are converted to be able use them as
-                    #   modules is this error check needed
-                    try:
-                        default_module = __import__(
-                            import_str, fromlist=("", )
-                        )
-                        sys.modules[new_import_str] = default_module
-                        setattr(openpype_modules, basename, default_module)
-
-                    except Exception:
-                        log.warning(
-                            "Failed to import host folder {}".format(basename),
-                            exc_info=True
-                        )
-
-            except Exception:
-                if is_in_modules_dir:
-                    msg = "Failed to import in-core addon '{}'.".format(
-                        basename
-                    )
-                else:
-                    msg = "Failed to import addon '{}'.".format(fullpath)
-                log.error(msg, exc_info=True)
+        except Exception:
+            log.error(
+                f"Failed to import in-core addon '{basename}'.",
+                exc_info=True
+            )
 
 
 def _load_addons():
-    # Support to use 'openpype' imports
-    sys.modules["openpype"] = sys.modules["ayon_core"]
-
     # Key under which will be modules imported in `sys.modules`
     modules_key = "openpype_modules"
 
