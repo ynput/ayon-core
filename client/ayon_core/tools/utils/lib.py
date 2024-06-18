@@ -6,7 +6,6 @@ import traceback
 from functools import partial
 from typing import Union, Any
 
-
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 import qtmaterialsymbols
