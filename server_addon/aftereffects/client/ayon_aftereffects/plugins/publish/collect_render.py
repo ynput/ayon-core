@@ -23,8 +23,16 @@ class AERenderInstance(RenderInstance):
 
 
 class CollectAERender(publish.AbstractCollectRender):
+    """Prepares RenderInstance.
 
-    order = pyblish.api.CollectorOrder + 0.100
+    RenderInstance is meant to replace simple dictionaries to provide code
+    assist and typing. (Currently used only in AE, Harmony though.)
+
+    This must run after `collect_review`, but before Deadline plugins (which
+    should be run only on renderable instances.)
+    """
+
+    order = pyblish.api.CollectorOrder + 0.125
     label = "Collect After Effects Render Layers"
     hosts = ["aftereffects"]
 
@@ -173,24 +181,25 @@ class CollectAERender(publish.AbstractCollectRender):
             _, ext = os.path.splitext(os.path.basename(file_name))
             ext = ext.replace('.', '')
             version_str = "v{:03d}".format(render_instance.version)
-            if "#" not in file_name:  # single frame (mov)W
-                path = os.path.join(base_dir, "{}_{}_{}.{}".format(
-                    render_instance.folderPath,
+            if "#" not in file_name:  # single frame (mov)
+                file_name = "{}_{}.{}".format(
                     render_instance.productName,
                     version_str,
                     ext
-                ))
-                expected_files.append(path)
+                )
+                file_path = os.path.join(base_dir, file_name)
+                expected_files.append(file_path)
             else:
                 for frame in range(start, end + 1):
-                    path = os.path.join(base_dir, "{}_{}_{}.{}.{}".format(
-                        render_instance.folderPath,
+                    file_name = "{}_{}.{}.{}".format(
                         render_instance.productName,
                         version_str,
                         str(frame).zfill(self.padding_width),
                         ext
-                    ))
-                    expected_files.append(path)
+                    )
+
+                    file_path = os.path.join(base_dir, file_name)
+                    expected_files.append(file_path)
         return expected_files
 
     def _get_output_dir(self, render_instance):

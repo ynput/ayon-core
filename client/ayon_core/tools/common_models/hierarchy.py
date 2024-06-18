@@ -1,3 +1,4 @@
+import time
 import collections
 import contextlib
 from abc import ABCMeta, abstractmethod
@@ -535,13 +536,15 @@ class HierarchyModel(object):
 
     def _refresh_tasks_cache(self, project_name, folder_id, sender=None):
         if folder_id in self._tasks_refreshing:
+            while folder_id in self._tasks_refreshing:
+                time.sleep(0.01)
             return
 
+        cache = self._task_items[project_name][folder_id]
         with self._task_refresh_event_manager(
             project_name, folder_id, sender
         ):
-            task_items = self._query_tasks(project_name, folder_id)
-            self._task_items[project_name][folder_id] = task_items
+            cache.update_data(self._query_tasks(project_name, folder_id))
 
     def _query_tasks(self, project_name, folder_id):
         tasks = list(ayon_api.get_tasks(
