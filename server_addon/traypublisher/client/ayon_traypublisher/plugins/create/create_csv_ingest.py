@@ -182,6 +182,7 @@ class ProductItem:
         self.product_type = product_type
         self.repre_items: List[RepreItem] = []
         self._unique_name = None
+        self._pre_product_name = None
 
     @property
     def unique_name(self) -> str:
@@ -194,6 +195,15 @@ class ProductItem:
                 ).lower()
             ])
         return self._unique_name
+
+    @property
+    def instance_name(self):
+        if self._pre_product_name is None:
+            self._pre_product_name = (
+                f"{self.task_name}{self.variant}"
+                f"{self.product_type}{self.version}"
+            ).replace(" ", "").lower()
+        return self._pre_product_name
 
     def add_repre_item(self, repre_item: RepreItem):
         self.repre_items.append(repre_item)
@@ -737,7 +747,7 @@ configuration in project settings.
 
         instances = []
         project_name: str = self.create_context.get_current_project_name()
-        for instance_name, product_item in product_items_by_name.items():
+        for product_item in product_items_by_name.values():
             folder_path: str = product_item.folder_path
             version: int = product_item.version
             product_name: str = get_product_name(
@@ -772,7 +782,7 @@ configuration in project settings.
                 families.append("slate")
 
             instance_data = {
-                "name": instance_name,
+                "name": product_item.instance_name,
                 "folderPath": folder_path,
                 "families": families,
                 "label": label,
