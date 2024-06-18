@@ -270,6 +270,7 @@ class BlenderSubmitDeadlineModel(BaseSettingsModel):
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     use_published: bool = SettingsField(title="Use Published scene")
+    asset_dependencies: bool = SettingsField(title="Use Asset dependencies")
     priority: int = SettingsField(title="Priority")
     chunk_size: int = SettingsField(title="Frame per Task")
     group: str = SettingsField("", title="Group Name")
@@ -413,6 +414,7 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "optional": False,
         "active": True,
         "use_published": True,
+        "asset_dependencies": True,
         "priority": 50,
         "chunk_size": 10,
         "group": "none",
