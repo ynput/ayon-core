@@ -99,12 +99,16 @@ class TasksModel(QtGui.QStandardItemModel):
             root_item.removeRows(0, self.rowCount())
             return
 
-        task_names_by_folder_path = (
-            self._controller.get_task_names_by_folder_paths(
+        task_items_by_folder_path = (
+            self._controller.get_task_items_by_folder_paths(
                 self._folder_paths
             )
         )
 
+        task_names_by_folder_path = {
+            folder_path: {item.name for item in task_items}
+            for folder_path, task_items in task_items_by_folder_path.items()
+        }
         self._task_names_by_folder_path = task_names_by_folder_path
 
         new_task_names = self.get_intersection_of_tasks(
@@ -122,22 +126,54 @@ class TasksModel(QtGui.QStandardItemModel):
                 item = self._items_by_name.pop(task_name)
                 root_item.removeRow(item.row())
 
-        icon = get_qt_icon({
+        default_icon = get_qt_icon({
             "type": "awesome-font",
             "name": "fa.male",
             "color": get_default_entity_icon_color(),
         })
         new_items = []
+        task_type_items = {
+            task_type_item.name: task_type_item
+            for task_type_item in self._controller.get_task_type_items(
+                self._controller.project_name
+            )
+        }
+        icon_name_by_task_name = {}
+        for task_items in task_items_by_folder_path.values():
+            for task_item in task_items:
+                task_name = task_item.name
+                if (
+                    task_name not in new_task_names
+                    or task_name in icon_name_by_task_name
+                ):
+                    continue
+                task_type_name = task_item.task_type
+                task_type_item = task_type_items.get(task_type_name)
+                if task_type_item:
+                    icon_name_by_task_name[task_name] = task_type_item.icon
+
         for task_name in new_task_names:
-            if task_name in self._items_by_name:
+            item = self._items_by_name.get(task_name)
+            if item is None:
+                item = QtGui.QStandardItem(task_name)
+                item.setData(task_name, TASK_NAME_ROLE)
+                self._items_by_name[task_name] = item
+                new_items.append(item)
+
+            if not task_name:
                 continue
 
-            item = QtGui.QStandardItem(task_name)
-            item.setData(task_name, TASK_NAME_ROLE)
-            if task_name:
-                item.setData(icon, QtCore.Qt.DecorationRole)
-            self._items_by_name[task_name] = item
-            new_items.append(item)
+            icon_name = icon_name_by_task_name.get(task_name)
+            icon = None
+            if icon_name:
+                icon = get_qt_icon({
+                    "type": "material-symbols",
+                    "name": icon_name,
+                    "color": get_default_entity_icon_color(),
+                })
+            if icon is None:
+                icon = default_icon
+            item.setData(icon, QtCore.Qt.DecorationRole)
 
         if new_items:
             root_item.appendRows(new_items)

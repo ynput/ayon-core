@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import inspect
 from abc import ABCMeta, abstractmethod
+import re
 
 import six
 import arrow
@@ -38,7 +39,8 @@ from ayon_core.pipeline.create.context import (
     ConvertorsOperationFailed,
 )
 from ayon_core.pipeline.publish import get_publish_instance_label
-from ayon_core.tools.common_models import HierarchyModel
+from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from ayon_core.lib.profiles_filtering import filter_profiles
 
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
@@ -1630,6 +1632,7 @@ class PublisherController(BasePublisherController):
         self._resetting_instances = False
 
         # Cacher of avalon documents
+        self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
 
     @property
@@ -1686,6 +1689,25 @@ class PublisherController(BasePublisherController):
         """Publish plugins."""
         return self._create_context.publish_plugins
 
+    def _get_current_project_settings(self):
+        """Current project settings.
+
+        Returns:
+            dict
+        """
+
+        return self._create_context.get_current_project_settings()
+
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
     # Hierarchy model
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
@@ -1714,14 +1736,14 @@ class PublisherController(BasePublisherController):
             return folder_item.entity_id
         return None
 
-    def get_task_names_by_folder_paths(self, folder_paths):
+    def get_task_items_by_folder_paths(self, folder_paths):
         if not folder_paths:
             return {}
         folder_items = self._hierarchy_model.get_folder_items_by_paths(
             self.project_name, folder_paths
         )
         output = {
-            folder_path: set()
+            folder_path: []
             for folder_path in folder_paths
         }
         project_name = self.project_name
@@ -1729,10 +1751,7 @@ class PublisherController(BasePublisherController):
             task_items = self._hierarchy_model.get_task_items(
                 project_name, folder_item.entity_id, None
             )
-            output[folder_item.path] = {
-                task_item.name
-                for task_item in task_items
-            }
+            output[folder_item.path] = task_items
 
         return output
 
@@ -1827,8 +1846,13 @@ class PublisherController(BasePublisherController):
     def _collect_creator_items(self):
         # TODO add crashed initialization of create plugins to report
         output = {}
+        allowed_creator_pattern = self._get_allowed_creators_pattern()
         for identifier, creator in self._create_context.creators.items():
             try:
+                if (not self._is_label_allowed(
+                        creator.label, allowed_creator_pattern)):
+                    self.log.debug(f"{creator.label} not allowed for context")
+                    continue
                 output[identifier] = CreatorItem.from_creator(creator)
             except Exception:
                 self.log.error(
@@ -1838,6 +1862,60 @@ class PublisherController(BasePublisherController):
                 )
 
         return output
+
+    def _get_allowed_creators_pattern(self):
+        """Provide regex pattern for configured creator labels in this context
+
+        If no profile matches current context, it shows all creators.
+        Support usage of regular expressions for configured values.
+        Returns:
+            (re.Pattern)[optional]: None or regex compiled patterns
+                into single one ('Render|Image.*')
+        """
+
+        task_type = self._create_context.get_current_task_type()
+        project_settings = self._get_current_project_settings()
+
+        filter_creator_profiles = (
+            project_settings
+            ["core"]
+            ["tools"]
+            ["creator"]
+            ["filter_creator_profiles"]
+        )
+        filtering_criteria = {
+            "task_names": self.current_task_name,
+            "task_types": task_type,
+            "host_names": self._create_context.host_name
+        }
+        profile = filter_profiles(
+            filter_creator_profiles,
+            filtering_criteria,
+            logger=self.log
+        )
+
+        allowed_creator_pattern = None
+        if profile:
+            allowed_creator_labels = {
+                label
+                for label in profile["creator_labels"]
+                if label
+            }
+            self.log.debug(f"Only allowed `{allowed_creator_labels}` creators")
+            allowed_creator_pattern = (
+                re.compile("|".join(allowed_creator_labels)))
+        return allowed_creator_pattern
+
+    def _is_label_allowed(self, label, allowed_labels_regex):
+        """Implement regex support for allowed labels.
+
+        Args:
+            label (str): Label of creator - shown in Publisher
+            allowed_labels_regex (re.Pattern): compiled regular expression
+        """
+        if not allowed_labels_regex:
+            return True
+        return bool(allowed_labels_regex.match(label))
 
     def _reset_instances(self):
         """Reset create instances."""

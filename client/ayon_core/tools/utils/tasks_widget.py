@@ -1,6 +1,9 @@
 from qtpy import QtWidgets, QtGui, QtCore
 
-from ayon_core.style import get_disabled_entity_icon_color
+from ayon_core.style import (
+    get_disabled_entity_icon_color,
+    get_default_entity_icon_color,
+)
 
 from .views import DeselectableTreeView
 from .lib import RefreshThread, get_qt_icon
@@ -17,8 +20,9 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-    """
 
+    """
+    _default_task_icon = None
     refreshed = QtCore.Signal()
 
     def __init__(self, controller):
@@ -176,7 +180,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             return
         thread = RefreshThread(
             folder_id,
-            self._controller.get_task_items,
+            self._thread_getter,
             project_name,
             folder_id
         )
@@ -185,8 +189,55 @@ class TasksQtModel(QtGui.QStandardItemModel):
         thread.refresh_finished.connect(self._on_refresh_thread)
         thread.start()
 
+    def _thread_getter(self, project_name, folder_id):
+        task_items = self._controller.get_task_items(
+            project_name, folder_id, sender=TASKS_MODEL_SENDER_NAME
+        )
+        task_type_items = {}
+        if hasattr(self._controller, "get_task_type_items"):
+            task_type_items = self._controller.get_task_type_items(
+                project_name, sender=TASKS_MODEL_SENDER_NAME
+            )
+        return task_items, task_type_items
+
+    @classmethod
+    def _get_default_task_icon(cls):
+        if cls._default_task_icon is None:
+            cls._default_task_icon = get_qt_icon({
+                "type": "awesome-font",
+                "name": "fa.male",
+                "color": get_default_entity_icon_color()
+            })
+        return cls._default_task_icon
+
+    def _get_task_item_icon(
+        self,
+        task_item,
+        task_type_item_by_name,
+        task_type_icon_cache
+    ):
+        icon = task_type_icon_cache.get(task_item.task_type)
+        if icon is not None:
+            return icon
+
+        task_type_item = task_type_item_by_name.get(
+            task_item.task_type
+        )
+        icon = None
+        if task_type_item is not None:
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": task_type_item.icon,
+                "color": get_default_entity_icon_color()
+            })
+
+        if icon is None:
+            icon = self._get_default_task_icon()
+        task_type_icon_cache[task_item.task_type] = icon
+        return icon
+
     def _fill_data_from_thread(self, thread):
-        task_items = thread.get_result()
+        task_items, task_type_items = thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return
@@ -197,6 +248,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
             return
         self._remove_invalid_items()
 
+        task_type_item_by_name = {
+            task_type_item.name: task_type_item
+            for task_type_item in task_type_items
+        }
+        task_type_icon_cache = {}
         new_items = []
         new_names = set()
         for task_item in task_items:
@@ -209,8 +265,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 new_items.append(item)
                 self._items_by_name[name] = item
 
-            # TODO cache locally
-            icon = get_qt_icon(task_item.icon)
+            icon = self._get_task_item_icon(
+                task_item,
+                task_type_item_by_name,
+                task_type_icon_cache
+            )
             item.setData(task_item.label, QtCore.Qt.DisplayRole)
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
@@ -521,6 +580,7 @@ class TasksWidget(QtWidgets.QWidget):
             return
         if expected_data is None:
             expected_data = self._controller.get_expected_selection_data()
+
         folder_data = expected_data.get("folder")
         task_data = expected_data.get("task")
         if (
