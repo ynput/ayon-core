@@ -188,16 +188,6 @@ class LoaderFoldersModel(FoldersQtModel):
 
         self._colored_items = set()
 
-    def _fill_item_data(self, item, folder_item):
-        """
-
-        Args:
-            item (QtGui.QStandardItem): Item to fill data.
-            folder_item (FolderItem): Folder item.
-        """
-
-        super(LoaderFoldersModel, self)._fill_item_data(item, folder_item)
-
     def set_merged_products_selection(self, items):
         changes = {
             folder_id: None
@@ -321,6 +311,8 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         """
 
         self._folders_proxy_model.setFilterFixedString(name)
+        if name:
+            self._folders_view.expandAll()
 
     def set_merged_products_selection(self, items):
         """

@@ -128,6 +128,16 @@ class CreateHierarchyController:
             project_name, folder_id, sender
         )
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._controller.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._controller.get_task_type_items(
+            project_name, sender
+        )
+
     # Selection model
     def set_selected_project(self, project_name):
         self._selection_model.set_selected_project(project_name)

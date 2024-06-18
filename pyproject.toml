@@ -78,13 +78,12 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 exclude = [
-    "client/ayon_core/hosts/unreal/integration/*",
-    "client/ayon_core/hosts/aftereffects/api/extension/js/libs/*",
-    "client/ayon_core/hosts/hiero/api/startup/*",
-    "client/ayon_core/modules/deadline/repository/custom/plugins/CelAction/*",
-    "client/ayon_core/modules/deadline/repository/custom/plugins/HarmonyAYON/*",
     "client/ayon_core/modules/click_wrap.py",
-    "client/ayon_core/scripts/slates/__init__.py"
+    "client/ayon_core/scripts/slates/__init__.py",
+    "server_addon/deadline/client/ayon_deadline/repository/custom/plugins/CelAction/*",
+    "server_addon/deadline/client/ayon_deadline/repository/custom/plugins/HarmonyAYON/*",
+    "server_addon/hiero/client/ayon_hiero/api/startup/*",
+    "server_addon/aftereffects/client/ayon_aftereffects/api/extension/js/libs/*"
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -106,7 +105,7 @@ line-ending = "auto"
 
 [tool.codespell]
 # Ignore words that are not in the dictionary.
-ignore-words-list = "ayon,ynput,parms,parm,hda,developpement,ue"
+ignore-words-list = "ayon,ynput,parms,parm,hda,developpement"
 
 # Ignore lines that contain this regex. This is hack for missing inline ignore.
 # Remove with next codespell release (>2.2.6)

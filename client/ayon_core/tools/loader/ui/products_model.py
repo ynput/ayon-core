@@ -126,6 +126,7 @@ class ProductsModel(QtGui.QStandardItemModel):
         self._last_project_name = None
         self._last_folder_ids = []
         self._last_project_statuses = {}
+        self._last_status_icons_by_name = {}
 
     def get_product_item_indexes(self):
         return [
@@ -181,6 +182,13 @@ class ProductsModel(QtGui.QStandardItemModel):
             return status_item.color
 
         col = index.column()
+        if col == self.status_col and role == QtCore.Qt.DecorationRole:
+            role = VERSION_STATUS_ICON_ROLE
+
+        if role == VERSION_STATUS_ICON_ROLE:
+            status_name = self.data(index, VERSION_STATUS_NAME_ROLE)
+            return self._get_status_icon(status_name)
+
         if col == 0:
             return super(ProductsModel, self).data(index, role)
 
@@ -199,7 +207,9 @@ class ProductsModel(QtGui.QStandardItemModel):
             product_item = self._product_items_by_id.get(product_id)
             if product_item is None:
                 return None
-            return list(product_item.version_items.values())
+            product_items = list(product_item.version_items.values())
+            product_items.sort(reverse=True)
+            return product_items
 
         if role == QtCore.Qt.EditRole:
             return None
@@ -257,6 +267,25 @@ class ProductsModel(QtGui.QStandardItemModel):
                     self._reset_merge_color = False
                     break
                 yield color
+
+    def _get_status_icon(self, status_name):
+        icon = self._last_status_icons_by_name.get(status_name)
+        if icon is not None:
+            return icon
+
+        status_item = self._last_project_statuses.get(status_name)
+        if status_item is not None:
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": status_item.icon,
+                "color": status_item.color,
+            })
+
+        if icon is None:
+            icon = QtGui.QIcon()
+
+        self._last_status_icons_by_name[status_name] = icon
+        return icon
 
     def _clear(self):
         root_item = self.invisibleRootItem()
@@ -417,6 +446,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             status_item.name: status_item
             for status_item in status_items
         }
+        self._last_status_icons_by_name = {}
 
         active_site_icon_def = self._controller.get_active_site_icon_def(
             project_name

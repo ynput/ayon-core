@@ -90,7 +90,6 @@ class ContainerItem:
         representation_id,
         loader_name,
         namespace,
-        name,
         object_name,
         item_id
     ):
@@ -98,7 +97,6 @@ class ContainerItem:
         self.loader_name = loader_name
         self.object_name = object_name
         self.namespace = namespace
-        self.name = name
         self.item_id = item_id
 
     @classmethod
@@ -107,7 +105,6 @@ class ContainerItem:
             representation_id=container["representation"],
             loader_name=container["loader"],
             namespace=container["namespace"],
-            name=container["name"],
             object_name=container["objectName"],
             item_id=uuid.uuid4().hex,
         )
@@ -204,7 +201,7 @@ class ContainersModel:
     def get_container_items(self):
         self._update_cache()
         return list(self._items_cache)
-    
+
     def get_container_items_by_id(self, item_ids):
         return {
             item_id: self._container_items_by_id.get(item_id)
@@ -329,14 +326,24 @@ class ContainersModel:
             containers = list(host.ls())
         else:
             containers = []
+
         container_items = []
         containers_by_id = {}
         container_items_by_id = {}
         for container in containers:
-            item = ContainerItem.from_container_data(container)
+            try:
+                item = ContainerItem.from_container_data(container)
+            except Exception as e:
+                # skip item if required data are missing
+                self._controller.log_error(
+                    f"Failed to create item: {e}"
+                )
+                continue
+
             containers_by_id[item.item_id] = container
             container_items_by_id[item.item_id] = item
             container_items.append(item)
+
 
         self._containers_by_id = containers_by_id
         self._container_items_by_id = container_items_by_id
