@@ -191,12 +191,12 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
     def _thread_getter(self, project_name, folder_id):
         task_items = self._controller.get_task_items(
-            project_name, folder_id
+            project_name, folder_id, sender=TASKS_MODEL_SENDER_NAME
         )
         task_type_items = {}
         if hasattr(self._controller, "get_task_type_items"):
             task_type_items = self._controller.get_task_type_items(
-                project_name
+                project_name, sender=TASKS_MODEL_SENDER_NAME
             )
         return task_items, task_type_items
 
@@ -580,6 +580,7 @@ class TasksWidget(QtWidgets.QWidget):
             return
         if expected_data is None:
             expected_data = self._controller.get_expected_selection_data()
+
         folder_data = expected_data.get("folder")
         task_data = expected_data.get("task")
         if (
