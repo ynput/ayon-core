@@ -28,7 +28,16 @@ class ExtractImportReference(plugin.MayaExtractorPlugin,
 
     @classmethod
     def apply_settings(cls, project_settings):
-        cls.active = project_settings["deadline"]["publish"]["MayaSubmitDeadline"]["import_reference"] # noqa
+        if "deadline" not in project_settings:
+            cls.enabled = False
+            return
+        cls.active = (
+            project_settings
+            ["deadline"]
+            ["publish"]
+            ["MayaSubmitDeadline"]
+            ["import_reference"]
+        )
 
     def process(self, instance):
         if not self.is_active(instance.data):

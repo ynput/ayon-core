@@ -6,6 +6,7 @@ from functools import partial
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
+import qtmaterialsymbols
 
 from ayon_core.style import (
     get_objected_colors,
@@ -468,7 +469,7 @@ class _IconsCache:
         if icon_type == "path":
             parts = [icon_type, icon_def["path"]]
 
-        elif icon_type == "awesome-font":
+        elif icon_type in {"awesome-font", "material-symbols"}:
             parts = [icon_type, icon_def["name"], icon_def["color"]]
         return "|".join(parts)
 
@@ -495,6 +496,13 @@ class _IconsCache:
             if icon is None:
                 icon = cls.get_qta_icon_by_name_and_color(
                     "fa.{}".format(icon_name), icon_color)
+
+        elif icon_type == "material-symbols":
+            icon_name = icon_def["name"]
+            icon_color = icon_def["color"]
+            if qtmaterialsymbols.get_icon_name_char(icon_name) is not None:
+                icon = qtmaterialsymbols.get_icon(icon_name, icon_color)
+
         if icon is None:
             icon = cls.get_default()
         cls._cache[cache_key] = icon

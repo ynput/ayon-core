@@ -59,12 +59,23 @@ class BaseLauncherController(
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
     def get_task_items(self, project_name, folder_id, sender=None):
         return self._hierarchy_model.get_task_items(
-            project_name, folder_id, sender)
+            project_name, folder_id, sender
+        )
 
     # Project settings for applications actions
     def get_project_settings(self, project_name):

@@ -105,6 +105,8 @@ def find_files_in_subdir(
         List[Tuple[str, str]]: List of tuples with path to file and parent
             directories relative to 'src_path'.
     """
+    if not os.path.exists(src_path):
+        return []
 
     if ignore_file_patterns is None:
         ignore_file_patterns = IGNORE_FILE_PATTERNS
@@ -210,6 +212,7 @@ def _get_server_mapping(
     addon_dir: Path, addon_version: str
 ) -> List[Tuple[str, str]]:
     server_dir = addon_dir / "server"
+    public_dir = addon_dir / "public"
     src_package_py = addon_dir / "package.py"
     pyproject_toml = addon_dir / "client" / "pyproject.toml"
 
@@ -217,6 +220,10 @@ def _get_server_mapping(
         (src_path, f"server/{sub_path}")
         for src_path, sub_path in find_files_in_subdir(str(server_dir))
     ]
+    mapping.extend([
+        (src_path, f"public/{sub_path}")
+        for src_path, sub_path in find_files_in_subdir(str(public_dir))
+    ])
     mapping.append((src_package_py.as_posix(), "package.py"))
     if pyproject_toml.exists():
         mapping.append((pyproject_toml.as_posix(), "private/pyproject.toml"))

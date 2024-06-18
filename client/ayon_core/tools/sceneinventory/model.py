@@ -116,6 +116,9 @@ class InventoryModel(QtGui.QStandardItemModel):
 
         self._default_icon_color = get_default_entity_icon_color()
 
+        self._last_project_statuses = {}
+        self._last_status_icons_by_name = {}
+
     def outdated(self, item):
         return item.get("isOutdated", True)
 
@@ -159,10 +162,11 @@ class InventoryModel(QtGui.QStandardItemModel):
                 self._controller.get_site_provider_icons().items()
             )
         }
-        status_items_by_name = {
+        self._last_project_statuses = {
             status_item.name: status_item
             for status_item in self._controller.get_project_status_items()
         }
+        self._last_status_icons_by_name = {}
 
         group_item_icon = qtawesome.icon(
             "fa.folder", color=self._default_icon_color
@@ -186,7 +190,6 @@ class InventoryModel(QtGui.QStandardItemModel):
         remote_site_icon = site_icons.get(sites_info["remote_site_provider"])
 
         root_item = self.invisibleRootItem()
-
         group_items = []
         for repre_id, container_items in items_by_repre_id.items():
             repre_info = repre_info_by_id[repre_id]
@@ -195,8 +198,6 @@ class InventoryModel(QtGui.QStandardItemModel):
             is_latest = False
             is_hero = False
             status_name = None
-            status_color = None
-            status_short = None
             if not repre_info.is_valid:
                 group_name = "< Entity N/A >"
                 item_icon = invalid_item_icon
@@ -219,10 +220,10 @@ class InventoryModel(QtGui.QStandardItemModel):
                 if not is_latest:
                     version_color = self.OUTDATED_COLOR
                 status_name = version_item.status
-                status_item = status_items_by_name.get(status_name)
-                if status_item:
-                    status_short = status_item.short
-                    status_color = status_item.color
+
+            status_color, status_short, status_icon = self._get_status_data(
+                status_name
+            )
 
             container_model_items = []
             for container_item in container_items:
@@ -273,6 +274,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             group_item.setData(status_name, STATUS_NAME_ROLE)
             group_item.setData(status_short, STATUS_SHORT_ROLE)
             group_item.setData(status_color, STATUS_COLOR_ROLE)
+            group_item.setData(status_icon, STATUS_ICON_ROLE)
 
             group_item.setData(
                 active_site_progress, ACTIVE_SITE_PROGRESS_ROLE
@@ -354,6 +356,32 @@ class InventoryModel(QtGui.QStandardItemModel):
     def _clear_items(self):
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
+
+    def _get_status_data(self, status_name):
+        status_item = self._last_project_statuses.get(status_name)
+        status_icon = self._get_status_icon(status_name, status_item)
+        status_color = status_short = None
+        if status_item is not None:
+            status_color = status_item.color
+            status_short = status_item.short
+        return status_color, status_short, status_icon
+
+    def _get_status_icon(self, status_name, status_item):
+        icon = self._last_status_icons_by_name.get(status_name)
+        if icon is not None:
+            return icon
+
+        icon = None
+        if status_item is not None:
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": status_item.icon,
+                "color": status_item.color,
+            })
+        if icon is None:
+            icon = QtGui.QIcon()
+        self._last_status_icons_by_name[status_name] = icon
+        return icon
 
 
 class FilterProxyModel(QtCore.QSortFilterProxyModel):
