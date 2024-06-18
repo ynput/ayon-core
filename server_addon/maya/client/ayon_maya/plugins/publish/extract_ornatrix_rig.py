@@ -9,16 +9,16 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-
 class ExtractxRig(plugin.MayaExtractorPlugin):
     """Extract the Ornatrix rig to a Maya Scene and write the Ornatrix rig data."""
 
     label = "Extract Ornatrix Rig"
-    families = ["OxRig"]
+    families = ["oxrig"]
     scene_type = "ma"
 
     def process(self, instance):
         """Plugin entry point."""
+        cmds.loadPlugin("Ornatrix.mll", quiet=True)
         maya_settings = instance.context.data["project_settings"]["maya"]
         ext_mapping = {
             item["name"]: item["value"]

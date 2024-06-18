@@ -9,9 +9,9 @@ from ayon_maya.api import (
 class CreateOxRig(plugin.MayaCreator):
     """Output for Ornatrix nodes"""
 
-    identifier = "io.openpype.creators.maya.OxRig"
+    identifier = "io.openpype.creators.maya.oxrig"
     label = "Ornatrix Rig"
-    product_type = "OxRig"
+    product_type = "oxrig"
     icon = "usb"
 
     def create(self, product_name, instance_data, pre_create_data):

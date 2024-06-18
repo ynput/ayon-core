@@ -39,7 +39,9 @@ class ColorsSetting(BaseSettingsModel):
         (99, 206, 220, 1.0), title="Yeti Cache:")
     yetiRig: ColorRGBA_uint8 = SettingsField(
         (0, 205, 125, 1.0), title="Yeti Rig:")
-    OxRig: ColorRGBA_uint8 = SettingsField(
+    oxCache: ColorRGBA_uint8 = SettingsField(
+        (156, 234, 195, 1.0), title="Ornatrix Cache:")
+    oxRig: ColorRGBA_uint8 = SettingsField(
         (206, 234, 195, 1.0), title="Ornatrix Rig:")
     # model: ColorRGB_float = SettingsField(
     #     (0.82, 0.52, 0.12), title="Model:"
@@ -223,6 +225,10 @@ class LoadersModel(BaseSettingsModel):
         default_factory=YetiRigLoaderModel,
         title="Yeti Rig Loader"
     )
+    OxCacheLoader: LoaderEnabledModel = SettingsField(
+        default_factory=LoaderEnabledModel,
+        title="Ornatrix Cache Loader"
+    )
     OxRigLoader: OxRigLoaderModel = SettingsField(
         default_factory=OxRigLoaderModel,
         title="Ornatrix Rig Loader"
@@ -246,7 +252,9 @@ DEFAULT_LOADERS_SETTING = {
         "vrayproxy": [255, 150, 12, 1.0],
         "vrayscene_layer": [255, 150, 12, 1.0],
         "yeticache": [99, 206, 220, 1.0],
-        "yetiRig": [0, 205, 125, 1.0]
+        "yetiRig": [0, 205, 125, 1.0],
+        "oxCache": [156, 234, 195, 1.0],
+        "oxRig": [206, 234, 195, 1.0]
         # "model": [0.82, 0.52, 0.12],
         # "rig": [0.23, 0.89, 0.92],
         # "pointcache": [0.37, 0.82, 0.12],
@@ -294,6 +302,7 @@ DEFAULT_LOADERS_SETTING = {
     "VRaySceneLoader": {"enabled": True},
     "XgenLoader": {"enabled": True},
     "YetiCacheLoader": {"enabled": True},
+    "OxCacheLoader": {"enabled": True},
     "YetiRigLoader": {
         "enabled": True,
         "create_cache_instance_on_load": True

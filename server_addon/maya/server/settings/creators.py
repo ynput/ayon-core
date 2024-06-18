@@ -205,6 +205,14 @@ class CreatorsModel(BaseSettingsModel):
         default_factory=BasicCreatorModel,
         title="Create Maya Scene"
     )
+    CreateOxRig: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Ornatrix Rig"
+    )
+    CreateOxCache: BasicCreatorModel = SettingsField(
+        default_factory=BasicCreatorModel,
+        title="Create Ornatrix Cache"
+    )
     CreateRenderSetup: BasicCreatorModel = SettingsField(
         default_factory=BasicCreatorModel,
         title="Create Render Setup"
@@ -369,6 +377,18 @@ DEFAULT_CREATORS_SETTINGS = {
     },
     "CreateMayaScene": {
         "enabled": True,
+        "default_variants": [
+            "Main"
+        ]
+    },
+    "CreateOxRig": {
+        "enabled": False,
+        "default_variants": [
+            "Main"
+        ]
+    },
+    "CreateOxCache": {
+        "enabled": False,
         "default_variants": [
             "Main"
         ]

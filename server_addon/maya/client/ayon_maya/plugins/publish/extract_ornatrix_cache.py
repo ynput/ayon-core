@@ -12,9 +12,10 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
     """
 
     label = "Extract Ornatrix Cache"
-    families = ["OxRig", "OxCache"]
+    families = ["oxrig", "oxcache"]
 
     def process(self, instance):
+        cmds.loadPlugin("Ornatrix.mll", quiet=True)
         # Define extract output file path
         ox_nodes = cmds.ls(instance[:], long=True)
         dirname = self.staging_dir(instance)

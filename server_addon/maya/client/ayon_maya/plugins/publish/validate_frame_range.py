@@ -33,7 +33,7 @@ class ValidateFrameRange(plugin.MayaInstancePlugin,
                 "renderlayer",
                 "review",
                 "yeticache",
-                "OxCache"]
+                "oxcache"]
     optional = True
     actions = [RepairAction]
     exclude_product_types = []

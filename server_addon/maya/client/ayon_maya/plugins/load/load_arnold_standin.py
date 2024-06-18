@@ -34,7 +34,7 @@ class ArnoldStandinLoader(plugin.Loader):
         "proxyAbc",
         "pointcache",
         "usd",
-        "OxCache"
+        "oxcache"
     }
     representations = {"ass", "abc", "usda", "usdc", "usd"}
 

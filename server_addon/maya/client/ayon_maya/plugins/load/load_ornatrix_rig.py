@@ -11,7 +11,7 @@ from ayon_maya.api import lib, plugin
 class OxRigLoader(plugin.ReferenceLoader):
     """This loader will load Ornatix rig."""
 
-    product_types = {"OxRig"}
+    product_types = {"oxrig"}
     representations = {"ma"}
 
     label = "Load Ornatrix Rig"
@@ -26,6 +26,13 @@ class OxRigLoader(plugin.ReferenceLoader):
         self, context, name=None, namespace=None, options=None
     ):
         path = self.filepath_from_context(context)
+
+        # Check if the plugin for Ornatrix is available on the pc
+        try:
+            cmds.loadPlugin("Ornatrix.mll", quiet=True)
+        except Exception as exc:
+            self.log.error("Encountered exception:\n%s" % exc)
+            return
 
         attach_to_root = options.get("attach_to_root", True)
         group_name = options["group_name"]
@@ -86,7 +93,7 @@ class OxRigLoader(plugin.ReferenceLoader):
                          node.endswith("input_SET")), None)
         self.log.info("Creating variant: {}".format(variant))
 
-        creator_identifier = "io.openpype.creators.maya.OxCache"
+        creator_identifier = "io.openpype.creators.maya.oxcache"
 
         host = registered_host()
         create_context = CreateContext(host)
@@ -99,7 +106,6 @@ class OxRigLoader(plugin.ReferenceLoader):
                 pre_create_data={"use_selection": True}
             )
 
-
     def use_resources_textures(self, namespace, path):
         """Use texture maps from resources directories
 
@@ -107,15 +113,16 @@ class OxRigLoader(plugin.ReferenceLoader):
             namespace (str): namespace
             path (str): published filepath
         """
-        _, maya_extension = os.path.splitext(path)
-        settings_path = path.replace(maya_extension, ".rigsettings")
+        path_no_ext, _ = os.path.splitext(path)
+        settings_path = f"{path_no_ext}.rigsettings"
         with open(settings_path, "r") as fp:
             image_attributes = json.load(fp)
-            fp.close()
-        if image_attributes:
-            for image_attribute in image_attributes:
-                texture_attribute = "{}:{}".format(
-                    namespace, image_attribute["texture_attribute"])
-                cmds.setAttr(texture_attribute,
-                             image_attribute["destination_file"],
-                             type="string")
+
+        if not image_attributes:
+            return
+        for image_attribute in image_attributes:
+            texture_attribute = "{}:{}".format(
+                namespace, image_attribute["texture_attribute"])
+            cmds.setAttr(texture_attribute,
+                         image_attribute["destination_file"],
+                         type="string")

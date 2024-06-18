@@ -15,12 +15,6 @@ SETTINGS = {"renderDensity",
             "cbId"}
 
 
-ORNATRIX_NODES = {
-    "HairFromGuidesNode", "GuidesFromMeshNode",
-    "MeshFromStrandsNode", "SurfaceCombNode"
-}
-
-
 class CollectYetiRig(plugin.MayaInstancePlugin):
     """Collect all information of the Yeti Rig"""
 
@@ -156,11 +150,11 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             if os.path.isabs(texture):
                 self.log.debug("Texture is absolute path, ignoring "
                                "image search paths for: %s" % texture)
-                files = self.search_textures(texture)
+                files = lib.search_textures(texture)
             else:
                 for root in image_search_paths:
                     filepath = os.path.join(root, texture)
-                    files = self.search_textures(filepath)
+                    files = lib.search_textures(filepath)
                     if files:
                         # Break out on first match in search paths..
                         break
@@ -207,7 +201,7 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
 
             ref_file_name = os.path.basename(ref_file)
             if "%04d" in ref_file_name:
-                item["files"] = self.get_sequence(ref_file)
+                item["files"] = lib.get_sequence(ref_file)
             else:
                 if os.path.exists(ref_file) and os.path.isfile(ref_file):
                     item["files"] = [ref_file]
@@ -217,176 +211,6 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
                                  "path set: %s" % (reference_node, ref_file))
                 # TODO: This should allow to pass and fail in Validator instead
                 raise RuntimeError("Reference node  must be a full file path!")
-
-            resources.append(item)
-
-        return resources
-
-    def search_textures(self, filepath):
-        """Search all texture files on disk.
-
-        This also parses to full sequences for those with dynamic patterns
-        like <UDIM> and %04d in the filename.
-
-        Args:
-            filepath (str): The full path to the file, including any
-                dynamic patterns like <UDIM> or %04d
-
-        Returns:
-            list: The files found on disk
-
-        """
-        filename = os.path.basename(filepath)
-
-        # Collect full sequence if it matches a sequence pattern
-        if len(filename.split(".")) > 2:
-
-            # For UDIM based textures (tiles)
-            if "<UDIM>" in filename:
-                sequences = self.get_sequence(filepath,
-                                              pattern="<UDIM>")
-                if sequences:
-                    return sequences
-
-            # Frame/time - Based textures (animated masks f.e)
-            elif "%04d" in filename:
-                sequences = self.get_sequence(filepath,
-                                              pattern="%04d")
-                if sequences:
-                    return sequences
-
-        # Assuming it is a fixed name (single file)
-        if os.path.exists(filepath):
-            return [filepath]
-
-        return []
-
-    def get_sequence(self, filepath, pattern="%04d"):
-        """Get sequence from filename.
-
-        This will only return files if they exist on disk as it tries
-        to collect the sequence using the filename pattern and searching
-        for them on disk.
-
-        Supports negative frame ranges like -001, 0000, 0001 and -0001,
-        0000, 0001.
-
-        Arguments:
-            filepath (str): The full path to filename containing the given
-            pattern.
-            pattern (str): The pattern to swap with the variable frame number.
-
-        Returns:
-            list: file sequence.
-
-        """
-        import clique
-
-        escaped = re.escape(filepath)
-        re_pattern = escaped.replace(pattern, "-?[0-9]+")
-
-        source_dir = os.path.dirname(filepath)
-        files = [f for f in os.listdir(source_dir)
-                 if re.match(re_pattern, f)]
-
-        pattern = [clique.PATTERNS["frames"]]
-        collection, remainder = clique.assemble(files, patterns=pattern)
-
-        return collection
-
-    def _replace_tokens(self, strings):
-        env_re = re.compile(r"\$\{(\w+)\}")
-
-        replaced = []
-        for s in strings:
-            matches = re.finditer(env_re, s)
-            for m in matches:
-                try:
-                    s = s.replace(m.group(), os.environ[m.group(1)])
-                except KeyError:
-                    msg = "Cannot find requested {} in environment".format(
-                        m.group(1))
-                    self.log.error(msg)
-                    raise RuntimeError(msg)
-            replaced.append(s)
-        return replaced
-
-
-class CollectOxRig(CollectYetiRig):
-    """Collect all information of the Ornatrix Rig"""
-
-    order = pyblish.api.CollectorOrder + 0.4
-    label = "Collect Ornatrix Rig"
-    families = ["OxRig"]
-
-    def process(self, instance):
-        assert "input_SET" in instance.data["setMembers"], (
-            "Ornatrix Rig must have an input_SET")
-
-        ornatrix_nodes = cmds.ls(instance[:], long=True)
-        self.log.debug(f"Getting ornatrix nodes: {ornatrix_nodes}")
-        # Force frame range for yeti cache export for the rig
-        # Collect any textures if used
-        ornatrix_resources = []
-        for node in ornatrix_nodes:
-            # Get Yeti resources (textures)
-            resources = self.get_texture_resources(node)
-            ornatrix_resources.extend(resources)
-        # avoid duplicate dictionary data
-        instance.data["resources"] = [
-            i for n, i in enumerate(ornatrix_resources)
-            if i not in ornatrix_resources[n + 1:]
-        ]
-        self.log.debug("{}".format(instance.data["resources"]))
-        start = cmds.playbackOptions(query=True, animationStartTime=True)
-        for key in ["frameStart", "frameEnd",
-                    "frameStartHandle", "frameEndHandle"]:
-            instance.data[key] = start
-
-    def get_texture_resources(self, node):
-        # add docstrings
-        resources = []
-        node_shape = cmds.listRelatives(node, shapes=True)
-        if not node_shape:
-            return []
-
-        ox_nodes = [
-            ox_node for ox_node in cmds.listConnections(node_shape, destination=True)
-                    if cmds.nodeType(ox_node) in ORNATRIX_NODES
-        ]
-        ox_imageFile = [
-            ox_img for ox_img in cmds.listConnections(ox_nodes, destination=False)
-            if cmds.nodeType(ox_img) == "file"
-        ]
-        if not ox_imageFile:
-            return []
-
-        for img in ox_imageFile:
-            texture_attr = "{}.fileTextureName".format(img)
-            texture = cmds.getAttr("{}.fileTextureName".format(img))
-            files = []
-            if os.path.isabs(texture):
-                self.log.debug("Texture is absolute path, ignoring "
-                               "image search paths for: %s" % texture)
-                files = self.search_textures(texture)
-            else:
-                root = os.environ["AYON_WORKDIR"]
-                filepath = os.path.join(root, texture)
-                files = self.search_textures(filepath)
-                if files:
-                    # Break out on first match in search paths..
-                    break
-
-            if not files:
-                raise KnownPublishError(
-                    "No texture found for: %s "
-                    "(searched: %s)" % (texture))
-
-            item = {
-                "files": files,
-                "source": texture,
-                "texture_attribute": texture_attr
-            }
 
             resources.append(item)
 
