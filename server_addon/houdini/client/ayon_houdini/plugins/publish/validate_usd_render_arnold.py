@@ -27,6 +27,13 @@ class ValidateUSDRenderSingleFile(plugin.HoudiniInstancePlugin):
     actions = [SelectROPAction, RepairAction]
 
     def process(self, instance):
+
+        if instance.data.get("creator_attributes",
+                             {}).get("render_target") != "farm_split":
+            # Validation is only relevant when submitting a farm job where the
+            # export and render are separate jobs.
+            return
+
         # Get configured settings for this instance
         submission_data = (
             instance.data
@@ -35,11 +42,7 @@ class ValidateUSDRenderSingleFile(plugin.HoudiniInstancePlugin):
         )
         render_chunk_size = submission_data.get("chunk", 1)
         export_chunk_size = submission_data.get("export_chunk", 1)
-        usd_file_per_frame = (
-            instance.data["creator_attributes"].get("render_target") == "farm_split"
-            and
-            "$F" in instance.data["ifdFile"]
-        )
+        usd_file_per_frame = "$F" in instance.data["ifdFile"]
         frame_start_handle = instance.data["frameStartHandle"]
         frame_end_handle = instance.data["frameEndHandle"]
         num_frames = frame_end_handle - frame_start_handle + 1
