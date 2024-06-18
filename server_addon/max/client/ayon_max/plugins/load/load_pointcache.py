@@ -7,7 +7,7 @@ Because of limited api, alembics can be only loaded, but not easily updated.
 import os
 from ayon_core.pipeline import load, get_representation_path
 from ayon_max.api import lib, maintained_selection
-from ayon_max.api.lib import unique_namespace
+from ayon_max.api.lib import unique_namespace, reset_frame_range
 from ayon_max.api.pipeline import (
     containerise,
     get_previous_loaded_object,
@@ -38,6 +38,9 @@ class AbcLoader(load.LoaderPlugin):
         }
 
         rt.AlembicImport.ImportToRoot = False
+        # TODO: it will be removed after the improvement
+        # on the post-system setup
+        reset_frame_range()
         rt.importFile(file_path, rt.name("noPrompt"), using=rt.AlembicImport)
 
         abc_after = {
