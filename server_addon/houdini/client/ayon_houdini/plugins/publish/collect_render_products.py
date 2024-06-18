@@ -25,7 +25,9 @@ class CollectRenderProducts(plugin.HoudiniInstancePlugin):
     """
 
     label = "Collect Render Products"
-    order = pyblish.api.CollectorOrder + 0.4
+    # This plugin should run after CollectUsdRender
+    #   and, before CollectLocalRenderInstances
+    order = pyblish.api.CollectorOrder + 0.04
     families = ["usdrender"]
 
     def process(self, instance):
@@ -135,8 +137,15 @@ class CollectRenderProducts(plugin.HoudiniInstancePlugin):
         instance.data["files"] = filenames
         instance.data.setdefault("expectedFiles", []).append(files_by_product)
 
+        # Farm Publishing add review logic expects this key to exist and
+        #   be True if render is a multipart Exr.
+        # otherwise it will most probably fail the AOV filter as multipartExr
+        #   files mostly don't include aov name in the file path.
+        # Assume multipartExr is 'True' as long as we have one AOV.
+        instance.data["multipartExr"] = len(files_by_product) <= 1
+
     def get_aov_identifier(self, render_product):
-        """Return the AOV identfier for a Render Product
+        """Return the AOV identifier for a Render Product
 
         A Render Product does not really define what 'AOV' it is, it
         defines the product name (output path) and the render vars to
