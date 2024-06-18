@@ -1,5 +1,4 @@
 import os
-import re
 
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
