@@ -798,7 +798,7 @@ class PublishPuginsModel(BaseSettingsModel):
     )
     ValidateOutdatedContainers: PluginStateByHostModel = SettingsField(
         default_factory=PluginStateByHostModel,
-        title="Validate Containers"
+        title="Validate Outdated Containers"
     )
     ValidateIntent: ValidateIntentModel = SettingsField(
         default_factory=ValidateIntentModel,
@@ -863,7 +863,8 @@ DEFAULT_PUBLISH_VALUES = {
             "nuke",
             "photoshop",
             "resolve",
-            "tvpaint"
+            "tvpaint",
+            "substancepainter"
         ],
         "skip_hosts_headless_publish": []
     },
@@ -890,6 +891,7 @@ DEFAULT_PUBLISH_VALUES = {
                     "maya",
                     "nuke",
                     "photoshop",
+                    "substancepainter"
                 ],
                 "enabled": True,
                 "optional": False,

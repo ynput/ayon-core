@@ -70,7 +70,7 @@ class HierarchyPage(QtWidgets.QWidget):
         main_layout.addWidget(content_body, 1)
 
         btn_back.clicked.connect(self._on_back_clicked)
-        refresh_btn.clicked.connect(self._on_refreh_clicked)
+        refresh_btn.clicked.connect(self._on_refresh_clicked)
         folders_filter_text.textChanged.connect(self._on_filter_text_changed)
 
         self._is_visible = False
@@ -99,7 +99,7 @@ class HierarchyPage(QtWidgets.QWidget):
     def _on_back_clicked(self):
         self._controller.set_selected_project(None)
 
-    def _on_refreh_clicked(self):
+    def _on_refresh_clicked(self):
         self._controller.refresh()
 
     def _on_filter_text_changed(self, text):
