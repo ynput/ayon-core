@@ -561,7 +561,7 @@ def read_avalon_data(node):
         node (nuke.Node): Nuke node object
 
     Returns:
-        list: A list of nuke.Knob object
+        Dict[str, nuke.Knob]: A dictionary of knob name to nuke.Knob objects
 
     """
     def compat_prefixed(knob_name):
@@ -613,7 +613,7 @@ def get_node_path(path, padding=4):
         path (str): The path to render to.
 
     Returns:
-        tuple: head, padding, tail (extension)
+        Tuple[str, int, str]: head, padding, tail (extension)
 
     Examples:
         >>> get_frame_path("test.exr")
@@ -957,14 +957,14 @@ def check_product_name_exists(nodes, product_name):
 
 
 def format_anatomy(data):
-    ''' Helping function for formatting of anatomy paths
+    """Helping function for formatting of anatomy paths
 
     Arguments:
         data (dict): dictionary with attributes used for formatting
 
     Return:
-        path (str)
-    '''
+        str: Formatted path.
+    """
 
     project_name = get_current_project_name()
     anatomy = Anatomy(project_name)
@@ -1100,7 +1100,7 @@ def create_write_node(
     linked_knobs=None,
     **kwargs
 ):
-    ''' Creating write node which is group node
+    """Creating write node which is group node
 
     Arguments:
         name (str): name of node
@@ -1134,8 +1134,8 @@ def create_write_node(
 
 
     Return:
-        node (obj): group node with avalon data as Knobs
-    '''
+        node (nuke.Node): group node with avalon data as Knobs
+    """
     # Ensure name does not contain any invalid characters.
     special_chars = re.escape("!@#$%^&*()=[]{}|\\;',.<>/?~+-")
     special_chars_regex = re.compile(f"[{special_chars}]")
@@ -1401,6 +1401,9 @@ def create_backdrop(label="", color=None, layer=0,
         layer (int): layer of node usually used (self.pos_layer - 1)
         label (str): the message
         nodes (list): list of nodes to be wrapped into backdrop
+
+    Returns:
+        nuke.Node: The created backdrop node.
 
     """
     assert isinstance(nodes, list), "`nodes` should be a list of nodes"
