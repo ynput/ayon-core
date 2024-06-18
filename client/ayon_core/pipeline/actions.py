@@ -3,6 +3,7 @@ import warnings
 
 import ayon_api
 
+from ayon_core.settings import get_studio_settings, get_project_settings
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -40,7 +41,8 @@ class LauncherActionSelection:
         task_name=None,
         project_entity=None,
         folder_entity=None,
-        task_entity=None
+        task_entity=None,
+        project_settings=None,
     ):
         self._project_name = project_name
         self._folder_id = folder_id
@@ -52,6 +54,8 @@ class LauncherActionSelection:
         self._project_entity = project_entity
         self._folder_entity = folder_entity
         self._task_entity = task_entity
+
+        self._project_settings = project_settings
 
     def __getitem__(self, key):
         warnings.warn(
@@ -254,6 +258,22 @@ class LauncherActionSelection:
                 self._project_name, self._task_id
             )
         return self._task_entity
+
+    def get_project_settings(self):
+        """Project settings for the selection.
+
+        Returns:
+            dict[str, Any]: Project settings or studio settings if
+                project is not selected.
+
+        """
+        if self._project_settings is None:
+            if self._project_name is None:
+                settings = get_studio_settings()
+            else:
+                settings = get_project_settings(self._project_name)
+            self._project_settings = settings
+        return self._project_settings
 
     @property
     def is_project_selected(self):
