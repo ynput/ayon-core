@@ -198,8 +198,8 @@ class CollectAERender(publish.AbstractCollectRender):
                         ext
                     )
 
-                file_path = os.path.join(base_dir, file_name)
-                expected_files.append(file_path)
+                    file_path = os.path.join(base_dir, file_name)
+                    expected_files.append(file_path)
         return expected_files
 
     def _get_output_dir(self, render_instance):
