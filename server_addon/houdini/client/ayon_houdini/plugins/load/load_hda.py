@@ -96,7 +96,7 @@ class HdaLoader(plugin.HoudiniLoader):
         parent = node.parent()
         node.destroy()
 
-        if parent.type().category() == hou.objNodeTypeCategory():
+        if parent.path() == pipeline.AVALON_CONTAINERS:
             return
 
         # Remove parent if empty.
