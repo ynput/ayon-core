@@ -112,7 +112,6 @@ class ExtractOpenGL(ExtractROP,
     def update_representation_data(self,
                                    instance: pyblish.api.Instance,
                                    representation: dict):
-
         tags = ["review"]
         if not instance.data.get("keepImages"):
             tags.append("delete")
@@ -126,7 +125,6 @@ class ExtractOpenGL(ExtractROP,
             "preview": True,
             "camera_name": instance.data.get("review_camera")
         })
-        return representation
 
 
 class ExtractComposite(ExtractROP,
