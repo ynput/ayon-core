@@ -96,7 +96,7 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
                           "preserve_references"
                       ],
                       constructionHistory=True,
-                      shader=True if instance.data.get("shader", False) else False,
+                      shader=True if instance.data.get("shader", True) else False,
                       constraints=True,
                       expressions=True)
 
