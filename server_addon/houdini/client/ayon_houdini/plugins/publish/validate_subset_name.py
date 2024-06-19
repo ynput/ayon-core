@@ -26,7 +26,6 @@ class ValidateSubsetName(plugin.HoudiniInstancePlugin,
     """
 
     families = ["staticMesh", "hda"]
-    hosts = ["houdini"]
     label = "Validate Product Name"
     order = ValidateContentsOrder + 0.1
     actions = [FixProductNameAction, SelectInvalidAction]
