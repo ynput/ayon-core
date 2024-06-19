@@ -60,7 +60,10 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
 
         # todo: `frames` currently conflicts with "explicit frames" for a
         #       for a custom frame list. So this should be refactored.
-        instance.data["frames"] = result
+        instance.data.update({
+            "frames": result,
+            "stagingDir": os.path.dirname(output)
+        })
 
     @staticmethod
     def create_file_list(match, start_frame, end_frame):

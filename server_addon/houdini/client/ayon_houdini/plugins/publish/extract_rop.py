@@ -24,17 +24,16 @@ class ExtractROP(plugin.HoudiniExtractorPlugin):
 
         rop_node = hou.node(instance.data["instance_node"])
 
-        parm = get_output_parameter(rop_node)
-        filepath = parm.eval()
-        staging_dir = os.path.dirname(filepath)
+        files = instance.data["frames"]
+        first_file = files[0] if isinstance(files, (list, tuple)) else files
         _, ext = splitext(
-            filepath, allowed_multidot_extensions=[
+            first_file, allowed_multidot_extensions=[
                 ".ass.gz", ".bgeo.sc", ".bgeo.gz",
                 ".bgeo.lzma", ".bgeo.bz2"]
         )
 
         render_rop(rop_node)
-        self.validate_expected_frames(instance, staging_dir)
+        self.validate_expected_frames(instance)
 
         # In some cases representation name is not the the extension
         # TODO: Preferably we remove this very specific naming
@@ -49,30 +48,29 @@ class ExtractROP(plugin.HoudiniExtractorPlugin):
             "name": name,
             "ext": ext,
             "files": instance.data["frames"],
-            "stagingDir": staging_dir,
+            "stagingDir": instance.data["stagingDir"],
             "frameStart": instance.data["frameStartHandle"],
             "frameEnd": instance.data["frameEndHandle"],
         }
         representation = self.update_representation_data(instance,
                                                          representation)
         instance.data.setdefault("representations", []).append(representation)
-        instance.data["stagingDir"] = staging_dir
 
-    def validate_expected_frames(self, instance, staging_dir):
+    def validate_expected_frames(self, instance: pyblish.api.Instance):
         """
         Validate all expected files in `instance.data["frames"]` exist in
         the staging directory.
         """
         filenames = instance.data["frames"]
+        staging_dir = instance.data["stagingDir"]
         if isinstance(filenames, str):
             # Single frame
             filenames = [filenames]
 
-        missing_filenames = []
-        for filename in filenames:
-            path = os.path.join(staging_dir, filename)
-            if not os.path.isfile(path):
-                missing_filenames.append(filename)
+        missing_filenames = [
+            filename for filename in filenames
+            if not os.path.isfile(os.path.join(staging_dir, filename))
+        ]
         if missing_filenames:
             raise RuntimeError(f"Missing frames: {missing_filenames}")
 
