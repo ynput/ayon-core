@@ -3,14 +3,13 @@ import uuid
 
 import ayon_api
 
+from ayon_core.lib import NestedCacheItem, CacheItem
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
-    NestedCacheItem,
-    CacheItem,
     ThumbnailsModel,
 )
 
@@ -179,6 +178,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     # Entity model wrappers
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
+
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
 
     def get_project_status_items(self, project_name, sender=None):
         return self._projects_model.get_project_status_items(
