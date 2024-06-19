@@ -33,6 +33,8 @@ class ExtractROP(plugin.HoudiniExtractorPlugin):
         )
         ext = ext.lstrip(".")
 
+        self.log.debug(f"Rendering {rop_node.path()} to {first_file}..")
+
         render_rop(rop_node)
         self.validate_expected_frames(instance)
 
