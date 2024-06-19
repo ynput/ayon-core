@@ -18,14 +18,16 @@ class CollectOxCache(plugin.MayaInstancePlugin):
         for ox_shape in ox_shapes:
             # Get transform data
             parent = cmds.listRelatives(ox_shape, parent=True)[0]
-            transform_data = {"name": parent, "cbId": lib.get_id(parent)}
+            mesh_shape_data = {"name": parent, "cbId": lib.get_id(parent)}
             ox_cache_nodes = [
                 ox_node for ox_node in cmds.listConnections(ox_shape, destination=True)
                 if cmds.nodeType(ox_node) == "HairFromGuidesNode"
             ]
             # transfer cache file
+            if not lib.get_id(ox_shape):
+                return
             shape_data = {
-                "transform": transform_data,
+                "shape": mesh_shape_data,
                 "name": ox_shapes,
                 "cbId": lib.get_id(ox_shape),
                 "ox_nodes": ox_cache_nodes,

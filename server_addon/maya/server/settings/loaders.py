@@ -39,9 +39,7 @@ class ColorsSetting(BaseSettingsModel):
         (99, 206, 220, 1.0), title="Yeti Cache:")
     yetiRig: ColorRGBA_uint8 = SettingsField(
         (0, 205, 125, 1.0), title="Yeti Rig:")
-    oxCache: ColorRGBA_uint8 = SettingsField(
-        (156, 234, 195, 1.0), title="Ornatrix Cache:")
-    oxRig: ColorRGBA_uint8 = SettingsField(
+    oxrig: ColorRGBA_uint8 = SettingsField(
         (206, 234, 195, 1.0), title="Ornatrix Rig:")
     # model: ColorRGB_float = SettingsField(
     #     (0.82, 0.52, 0.12), title="Model:"
@@ -253,8 +251,7 @@ DEFAULT_LOADERS_SETTING = {
         "vrayscene_layer": [255, 150, 12, 1.0],
         "yeticache": [99, 206, 220, 1.0],
         "yetiRig": [0, 205, 125, 1.0],
-        "oxCache": [156, 234, 195, 1.0],
-        "oxRig": [206, 234, 195, 1.0]
+        "oxrig": [206, 234, 195, 1.0]
         # "model": [0.82, 0.52, 0.12],
         # "rig": [0.23, 0.89, 0.92],
         # "pointcache": [0.37, 0.82, 0.12],
