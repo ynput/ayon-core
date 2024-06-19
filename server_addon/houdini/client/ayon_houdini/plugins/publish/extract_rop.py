@@ -58,6 +58,24 @@ class ExtractROP(plugin.HoudiniExtractorPlugin):
         instance.data.setdefault("representations", []).append(representation)
         instance.data["stagingDir"] = staging_dir
 
+    def validate_expected_frames(self, instance, staging_dir):
+        """
+        Validate all expected files in `instance.data["frames"]` exist in
+        the staging directory.
+        """
+        filenames = instance.data["frames"]
+        if isinstance(filenames, str):
+            # Single frame
+            filenames = [filenames]
+
+        missing_filenames = []
+        for filename in filenames:
+            path = os.path.join(staging_dir, filename)
+            if not os.path.isfile(path):
+                missing_filenames.append(filename)
+        if missing_filenames:
+            raise RuntimeError(f"Missing frames: {missing_filenames}")
+
     def update_representation_data(self,
                                    instance: pyblish.api.Instance,
                                    representation: dict):
