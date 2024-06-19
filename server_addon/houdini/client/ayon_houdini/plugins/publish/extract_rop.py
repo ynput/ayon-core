@@ -43,6 +43,7 @@ class ExtractROP(plugin.HoudiniExtractorPlugin):
             "bgeo": "bgeo",
             "rs": "rs",
             "ass": "ass",
+            "usd": "usd"
         }.get(product_type, ext)
 
         representation = {
