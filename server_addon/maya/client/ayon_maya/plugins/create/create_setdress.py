@@ -15,5 +15,8 @@ class CreateSetDress(plugin.MayaCreator):
         return [
             BoolDef("exactSetMembersOnly",
                     label="Exact Set Members Only",
+                    default=True),
+            BoolDef("shader",
+                    label="Include shader",
                     default=True)
         ]
