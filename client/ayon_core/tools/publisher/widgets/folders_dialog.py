@@ -26,6 +26,11 @@ class FoldersDialogController:
     def get_folder_items(self, project_name, sender=None):
         return self._controller.get_folder_items(project_name, sender)
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._controller.get_folder_type_items(
+            project_name, sender
+        )
+
     def set_selected_folder(self, folder_id):
         pass
 
