@@ -26,15 +26,8 @@ class ExtractAlembic(plugin.HoudiniExtractorPlugin):
         staging_dir = os.path.dirname(output)
         instance.data["stagingDir"] = staging_dir
 
-        if instance.data.get("frames"):
-            # list of files
-            files = instance.data["frames"]
-        else:
-            # single file
-            files = os.path.basename(output)
-
         # We run the render
-        self.log.info("Writing alembic '%s' to '%s'" % (files,
+        self.log.info("Writing alembic '%s' to '%s'" % (output,
                                                         staging_dir))
 
         render_rop(ropnode)
@@ -45,7 +38,7 @@ class ExtractAlembic(plugin.HoudiniExtractorPlugin):
         representation = {
             'name': 'abc',
             'ext': 'abc',
-            'files': files,
+            'files': instance.data["frames"],
             "stagingDir": staging_dir,
         }
         instance.data["representations"].append(representation)

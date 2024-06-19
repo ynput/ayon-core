@@ -30,15 +30,13 @@ class ExtractVDBCache(plugin.HoudiniExtractorPlugin):
 
         render_rop(ropnode)
 
-        output = instance.data["frames"]
-
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
         representation = {
             "name": "vdb",
             "ext": "vdb",
-            "files": output,
+            "files": instance.data["frames"],
             "stagingDir": staging_dir,
             "frameStart": instance.data["frameStartHandle"],
             "frameEnd": instance.data["frameEndHandle"],

@@ -20,17 +20,16 @@ class ExtractComposite(plugin.HoudiniExtractorPlugin,
 
         # Get the filename from the copoutput parameter
         # `.evalParm(parameter)` will make sure all tokens are resolved
-        output = ropnode.evalParm("copoutput")
-        staging_dir = os.path.dirname(output)
+        cop_output = ropnode.evalParm("copoutput")
+        staging_dir, file_name = os.path.split(cop_output)
         instance.data["stagingDir"] = staging_dir
-        file_name = os.path.basename(output)
 
         self.log.info("Writing comp '%s' to '%s'" % (file_name, staging_dir))
 
         render_rop(ropnode)
 
         output = instance.data["frames"]
-        _, ext = splitext(output[0], [])
+        _, ext = splitext(file_name, [])
         ext = ext.lstrip(".")
 
         if "representations" not in instance.data:

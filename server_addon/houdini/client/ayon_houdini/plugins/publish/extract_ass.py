@@ -35,16 +35,7 @@ class ExtractAss(plugin.HoudiniExtractorPlugin):
         # Unfortunately user interrupting the extraction does not raise an
         # error and thus still continues to the integrator. To capture that
         # we make sure all files exist
-        files = instance.data["frames"]
-        missing = []
-        for file_name in files:
-            full_path = os.path.normpath(os.path.join(staging_dir, file_name))
-            if not os.path.exists(full_path):
-                missing.append(full_path)
-
-        if missing:
-            raise RuntimeError("Failed to complete Arnold ass extraction. "
-                               "Missing output files: {}".format(missing))
+        self.validate_expected_frames(instance, staging_dir)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
@@ -55,7 +46,7 @@ class ExtractAss(plugin.HoudiniExtractorPlugin):
         representation = {
             'name': 'ass',
             'ext': ext,
-            "files": files,
+            "files": instance.data["frames"],
             "stagingDir": staging_dir,
             "frameStart": instance.data["frameStartHandle"],
             "frameEnd": instance.data["frameEndHandle"],

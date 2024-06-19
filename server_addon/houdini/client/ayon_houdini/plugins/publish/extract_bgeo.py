@@ -19,8 +19,8 @@ class ExtractBGEO(plugin.HoudiniExtractorPlugin):
         ropnode = hou.node(instance.data["instance_node"])
 
         # Get the filename from the filename parameter
-        output = ropnode.evalParm("sopoutput")
-        staging_dir, file_name = os.path.split(output)
+        sop_output = ropnode.evalParm("sopoutput")
+        staging_dir, file_name = os.path.split(sop_output)
         instance.data["stagingDir"] = staging_dir
 
         # We run the render
@@ -30,10 +30,8 @@ class ExtractBGEO(plugin.HoudiniExtractorPlugin):
         # write files
         lib.render_rop(ropnode)
 
-        output = instance.data["frames"]
-
         _, ext = lib.splitext(
-            output[0], allowed_multidot_extensions=[
+            sop_output, allowed_multidot_extensions=[
                 ".ass.gz", ".bgeo.sc", ".bgeo.gz",
                 ".bgeo.lzma", ".bgeo.bz2"])
 
@@ -43,7 +41,7 @@ class ExtractBGEO(plugin.HoudiniExtractorPlugin):
         representation = {
             "name": "bgeo",
             "ext": ext.lstrip("."),
-            "files": output,
+            "files": instance.data["frames"],
             "stagingDir": staging_dir,
             "frameStart": instance.data["frameStartHandle"],
             "frameEnd": instance.data["frameEndHandle"]
