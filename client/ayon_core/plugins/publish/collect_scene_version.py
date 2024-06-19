@@ -28,7 +28,8 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
         "photoshop",
         "resolve",
         "tvpaint",
-        "motionbuilder"
+        "motionbuilder",
+        "substancepainter"
     ]
 
     # in some cases of headless publishing (for example webpublisher using PS)

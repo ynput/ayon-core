@@ -94,7 +94,7 @@ class RenderCreator(Creator):
                 new_instance.creator_attributes["farm"] = use_farm
 
             review = pre_create_data["mark_for_review"]
-            new_instance. creator_attributes["mark_for_review"] = review
+            new_instance.creator_attributes["mark_for_review"] = review
 
             api.get_stub().imprint(new_instance.id,
                                    new_instance.data_to_store())
