@@ -1,9 +1,11 @@
 import json
 import os
 from ayon_core.pipeline import get_representation_path
+from ayon_core.settings import get_project_settings
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
+from ayon_maya.api.plugin import get_load_color_for_product_type
 from maya import cmds, mel
 
 
@@ -27,6 +29,7 @@ class OxCacheLoader(plugin.Loader):
         and allow published looks to also work for Ornatrix rigs and its caches.
 
         """
+        product_type = context["product"]["productType"]
         # Build namespace
         folder_name = context["folder"]["name"]
         if namespace is None:
@@ -42,6 +45,19 @@ class OxCacheLoader(plugin.Loader):
         nodes = []
         for setting in settings["nodes"]:
             nodes.extend(self.create_node(namespace, path, setting))
+
+        group_name = "{}:{}".format(namespace, name)
+        group_node = cmds.group(nodes, name=group_name)
+        project_name = context["project"]["name"]
+
+        settings = get_project_settings(project_name)
+        color = get_load_color_for_product_type(product_type, settings)
+        if color is not None:
+            red, green, blue = color
+            cmds.setAttr(group_node + ".useOutlinerColor", 1)
+            cmds.setAttr(group_node + ".outlinerColor", red, green, blue)
+
+        nodes.append(group_node)
 
         self[:] = nodes
 
@@ -102,6 +118,17 @@ class OxCacheLoader(plugin.Loader):
         return namespace
 
     def create_node(self, namespace, filepath, node_settings):
+        """Use the cachesettings to create a shape node which
+        connects to HairFromGuidesNode with abc file cache.
+
+        Args:
+            namespace (str): namespace
+            filepath (str): filepath
+            node_settings (dict): node settings
+
+        Returns:
+            _type_: _description_
+        """
         nodes = []
         orig_guide_name = node_settings["name"]
         orig_shape_name = node_settings["shape"]["name"]
@@ -122,6 +149,13 @@ class OxCacheLoader(plugin.Loader):
         return nodes
 
     def read_setting(self, path):
+        """Read the ornatrix-related parameters from the cachesettings.
+        Args:
+            path (str): filepath of cachesettings
+
+        Returns:
+            dict: setting attributes
+        """
         path_no_ext, _ = os.path.splitext(path)
         settings_path = f"{path_no_ext}.cachesettings"
         with open(settings_path, "r") as fp:
