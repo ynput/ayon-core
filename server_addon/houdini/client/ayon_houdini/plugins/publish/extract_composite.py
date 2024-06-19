@@ -28,7 +28,6 @@ class ExtractComposite(plugin.HoudiniExtractorPlugin,
 
         render_rop(ropnode)
 
-        output = instance.data["frames"]
         _, ext = splitext(file_name, [])
         ext = ext.lstrip(".")
 
@@ -38,7 +37,7 @@ class ExtractComposite(plugin.HoudiniExtractorPlugin,
         representation = {
             "name": ext,
             "ext": ext,
-            "files": output,
+            "files": instance.data["frames"],
             "stagingDir": staging_dir,
             "frameStart": instance.data["frameStartHandle"],
             "frameEnd": instance.data["frameEndHandle"],
