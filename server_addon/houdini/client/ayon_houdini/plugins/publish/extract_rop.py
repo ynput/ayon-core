@@ -31,6 +31,7 @@ class ExtractROP(plugin.HoudiniExtractorPlugin):
                 ".ass.gz", ".bgeo.sc", ".bgeo.gz",
                 ".bgeo.lzma", ".bgeo.bz2"]
         )
+        ext = ext.lstrip(".")
 
         render_rop(rop_node)
         self.validate_expected_frames(instance)
