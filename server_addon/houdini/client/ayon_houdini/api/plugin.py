@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Houdini specific Avalon/Pyblish plugin definitions."""
+import os
 import sys
 from abc import (
     ABCMeta
@@ -392,3 +393,22 @@ class HoudiniExtractorPlugin(publish.Extractor):
 
     hosts = ["houdini"]
     settings_category = SETTINGS_CATEGORY
+
+    def validate_expected_frames(self, instance, staging_dir):
+        """
+        Validate all expected files in `instance.data["frames"]` exist in
+        the staging directory.
+        """
+        filenames = instance.data["frames"]
+        if isinstance(filenames, str):
+            # Single frame
+            filenames = [filenames]
+
+        missing_filenames = []
+        for filename in filenames:
+            path = os.path.join(staging_dir, filename)
+            if not os.path.isfile(path):
+                missing_filenames.append(filename)
+        if missing_filenames:
+            raise RuntimeError(f"Missing frames: {missing_filenames}")
+

@@ -32,15 +32,13 @@ class ExtractRedshiftProxy(plugin.HoudiniExtractorPlugin):
 
         render_rop(ropnode)
 
-        output = instance.data["frames"]
-
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
         representation = {
             "name": "rs",
             "ext": "rs",
-            "files": output,
+            "files": instance.data["frames"],
             "stagingDir": staging_dir,
         }
 

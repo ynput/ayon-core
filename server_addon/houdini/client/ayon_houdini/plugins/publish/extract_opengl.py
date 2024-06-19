@@ -38,8 +38,6 @@ class ExtractOpenGL(plugin.HoudiniExtractorPlugin,
 
         render_rop(ropnode)
 
-        output = instance.data["frames"]
-
         tags = ["review"]
         if not instance.data.get("keepImages"):
             tags.append("delete")
@@ -47,7 +45,7 @@ class ExtractOpenGL(plugin.HoudiniExtractorPlugin,
         representation = {
             "name": instance.data["imageFormat"],
             "ext": instance.data["imageFormat"],
-            "files": output,
+            "files": instance.data["frames"],
             "stagingDir": staging_dir,
             "frameStart": instance.data["frameStartHandle"],
             "frameEnd": instance.data["frameEndHandle"],
