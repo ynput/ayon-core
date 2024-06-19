@@ -25,16 +25,19 @@ class ProductGroupDialog(QtWidgets.QDialog):
         group_btn.setAutoDefault(True)
         group_btn.setDefault(True)
 
-        name_layout = QtWidgets.QHBoxLayout()
-        name_layout.addWidget(group_name_input)
-        name_layout.addWidget(group_picker_btn)
+        name_widget = QtWidgets.QWidget()
+        name_layout = QtWidgets.QHBoxLayout(name_widget)
+        name_layout.setContentsMargins(0, 0, 0, 0)
+        name_layout.addWidget(group_name_input, 1)
+        name_layout.addWidget(group_picker_btn, 0)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(main_label, 0)
-        layout.addLayout(name_layout, 0)
+        layout.addWidget(name_widget, 0)
         layout.addWidget(group_btn, 0)
 
         group_btn.clicked.connect(self._on_apply_click)
+        group_picker_menu.triggered.connect(self._on_picker_clicked)
 
         self._project_name = None
         self._product_ids = set()
@@ -44,7 +47,6 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._group_name_input = group_name_input
         self._group_picker_btn = group_picker_btn
         self._group_picker_menu = group_picker_menu
-        self._group_picker_menu.triggered.connect(self._on_picker_clicked)
 
     def set_product_ids(self, project_name, product_ids):
         self._project_name = project_name
