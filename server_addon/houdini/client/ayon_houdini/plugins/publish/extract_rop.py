@@ -13,7 +13,7 @@ class ExtractROP(plugin.HoudiniExtractorPlugin):
     label = "Extract ROP"
     order = pyblish.api.ExtractorOrder
 
-    families = ["abc", "camera", "bgeo", "pointcache", "fbx", "imagesequence",
+    families = ["abc", "camera", "bgeo", "pointcache", "fbx",
                 "vdbcache", "ass", "redshiftproxy", "mantraifd"]
     targets = ["local", "remote"]
 
