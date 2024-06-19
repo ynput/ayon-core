@@ -133,3 +133,63 @@ class KnobModel(BaseSettingsModel):
         "",
         title="Expression"
     )
+
+
+colorspace_types_enum = [
+    {"value": "colorspace", "label": "Use Colorspace"},
+    {"value": "display_view", "label": "Use Display & View"},
+]
+
+
+class DisplayAndViewProfileModel(BaseSettingsModel):
+    _layout = "expanded"
+
+    display: str = SettingsField(
+        "",
+        title="Display",
+        description="What display to use",
+    )
+
+    view: str = SettingsField(
+        "",
+        title="View",
+        description=(
+            "What view to use. Anatomy context tokens can "
+            "be used to dynamically set the value."
+        ),
+    )
+
+
+class ColorspaceConfigurationModel(BaseSettingsModel):
+    _isGroup: bool = True
+
+    enabled: bool = SettingsField(
+        False,
+        title="Enabled",
+        description=(
+            "Enable baking target (colorspace or display/view)."
+        ),
+    )
+
+    type: str = SettingsField(
+        "colorspace",
+        title="Target baking type",
+        description="Switch between different knob types",
+        enum_resolver=lambda: colorspace_types_enum,
+        conditionalEnum=True,
+    )
+
+    colorspace: str = SettingsField(
+        "",
+        title="Colorspace",
+        description=(
+            "What colorspace name to use. Anatomy context tokens can "
+            "be used to dynamically set the value."
+        ),
+    )
+
+    display_view: DisplayAndViewProfileModel = SettingsField(
+        title="Display & View",
+        description="What display & view to use",
+        default_factory=DisplayAndViewProfileModel,
+    )
