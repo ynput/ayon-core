@@ -52,8 +52,7 @@ class ExtractROP(plugin.HoudiniExtractorPlugin):
             "frameStart": instance.data["frameStartHandle"],
             "frameEnd": instance.data["frameEndHandle"],
         }
-        representation = self.update_representation_data(instance,
-                                                         representation)
+        self.update_representation_data(instance, representation)
         instance.data.setdefault("representations", []).append(representation)
 
     def validate_expected_frames(self, instance: pyblish.api.Instance):
