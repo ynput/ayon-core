@@ -221,12 +221,8 @@ def containerise(name,
 
     """
 
-    # Ensure AVALON_CONTAINERS subnet exists
-    subnet = hou.node(AVALON_CONTAINERS)
-    if subnet is None:
-        obj_network = hou.node("/obj")
-        subnet = obj_network.createNode("subnet",
-                                        node_name="AVALON_CONTAINERS")
+    # Get AVALON_CONTAINERS subnet
+    subnet = get_avalon_container()
 
     # Create proper container name
     container_name = "{}_{}".format(name, suffix or "CON")
@@ -399,6 +395,23 @@ def on_new():
         # Run without execute deferred when no UI is available because
         # without UI `hdefereval` is not available to import
         _enforce_start_frame()
+
+
+def get_avalon_container():
+    path = AVALON_CONTAINERS
+    avalon_container = hou.node(path)
+    if not avalon_container:
+        # Let's create avalon container secretly
+        # but make sure the pipeline still is built the
+        # way we anticipate it was built, asserting it.
+        assert path == "/obj/AVALON_CONTAINERS"
+
+        parent = hou.node("/obj")
+        avalon_container = parent.createNode(
+            "subnet", node_name="AVALON_CONTAINERS"
+        )
+
+    return avalon_container
 
 
 def _set_context_settings():
