@@ -1,11 +1,15 @@
+import typing
+
 from qtpy import QtWidgets
 
 from ayon_core.tools.utils import PlaceholderLineEdit
-import ayon_api
+
+if typing.TYPE_CHECKING:
+    from ..control import LoaderController
 
 
 class ProductGroupDialog(QtWidgets.QDialog):
-    def __init__(self, controller, parent):
+    def __init__(self, controller: "LoaderController", parent):
         super(ProductGroupDialog, self).__init__(parent)
         self.setWindowTitle("Grouping products")
         self.setMinimumWidth(250)
@@ -42,7 +46,7 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._project_name = None
         self._product_ids = set()
 
-        self._controller = controller
+        self._controller: "LoaderController" = controller
         self._group_btn = group_btn
         self._group_name_input = group_name_input
         self._group_picker_btn = group_picker_btn
@@ -52,23 +56,15 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._project_name = project_name
         self._product_ids = product_ids
 
-        # Get parent folders, then for all products under those folders
-        # get all product groups so we can provide those as 'predefined'
-        # entries
-        folder_ids = {
-            product["folderId"] for product in
-            ayon_api.get_products(
-                project_name, product_ids=product_ids, fields={"folderId"})
+        # Update the product groups
+        folder_ids = self._controller.get_selected_folder_ids()
+        product_items = self._controller.get_product_items(
+            project_name=self._controller.get_selected_project_name(),
+            folder_ids=folder_ids)
+        product_groups = {
+            product_item.group_name for product_item in product_items
         }
-        product_groups = set()
-        for product in ayon_api.get_products(
-            project_name,
-            folder_ids=folder_ids,
-            fields={"attrib.productGroup"}
-        ):
-            product_group = product.get("attrib", {}).get("productGroup")
-            if product_group:
-                product_groups.add(product_group)
+        product_groups.discard(None)
 
         self._set_product_groups(product_groups)
 
