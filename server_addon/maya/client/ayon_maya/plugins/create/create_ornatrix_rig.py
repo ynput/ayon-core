@@ -18,8 +18,8 @@ class CreateOxRig(plugin.MayaCreator):
 
         with lib.undo_chunk():
             instance = super(CreateOxRig, self).create(product_name,
-                                                             instance_data,
-                                                             pre_create_data)
+                                                       instance_data,
+                                                       pre_create_data)
             instance_node = instance.get("instance_node")
 
             self.log.info("Creating Rig instance set up ...")
