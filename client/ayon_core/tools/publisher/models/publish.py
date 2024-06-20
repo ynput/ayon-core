@@ -1,6 +1,7 @@
 import uuid
 import copy
 import traceback
+import collections
 
 import arrow
 
@@ -264,3 +265,412 @@ class PublishReportMaker:
             })
 
         return output
+
+
+class PublishPluginsProxy:
+    """Wrapper around publish plugin.
+
+    Prepare mapping for publish plugins and actions. Also can create
+    serializable data for plugin actions so UI don't have to have access to
+    them.
+
+    This object is created in process where publishing is actually running.
+
+    Notes:
+        Actions have id but single action can be used on multiple plugins so
+            to run an action is needed combination of plugin and action.
+
+    Args:
+        plugins [List[pyblish.api.Plugin]]: Discovered plugins that will be
+            processed.
+    """
+
+    def __init__(self, plugins):
+        plugins_by_id = {}
+        actions_by_plugin_id = {}
+        action_ids_by_plugin_id = {}
+        for plugin in plugins:
+            plugin_id = plugin.id
+            plugins_by_id[plugin_id] = plugin
+
+            action_ids = []
+            actions_by_id = {}
+            action_ids_by_plugin_id[plugin_id] = action_ids
+            actions_by_plugin_id[plugin_id] = actions_by_id
+
+            actions = getattr(plugin, "actions", None) or []
+            for action in actions:
+                action_id = action.id
+                action_ids.append(action_id)
+                actions_by_id[action_id] = action
+
+        self._plugins_by_id = plugins_by_id
+        self._actions_by_plugin_id = actions_by_plugin_id
+        self._action_ids_by_plugin_id = action_ids_by_plugin_id
+
+    def get_action(self, plugin_id, action_id):
+        return self._actions_by_plugin_id[plugin_id][action_id]
+
+    def get_plugin(self, plugin_id):
+        return self._plugins_by_id[plugin_id]
+
+    def get_plugin_id(self, plugin):
+        """Get id of plugin based on plugin object.
+
+        It's used for validation errors report.
+
+        Args:
+            plugin (pyblish.api.Plugin): Publish plugin for which id should be
+                returned.
+
+        Returns:
+            str: Plugin id.
+        """
+
+        return plugin.id
+
+    def get_plugin_action_items(self, plugin_id):
+        """Get plugin action items for plugin by its id.
+
+        Args:
+            plugin_id (str): Publish plugin id.
+
+        Returns:
+            List[PublishPluginActionItem]: Items with information about publish
+                plugin actions.
+        """
+
+        return [
+            self._create_action_item(
+                self.get_action(plugin_id, action_id), plugin_id
+            )
+            for action_id in self._action_ids_by_plugin_id[plugin_id]
+        ]
+
+    def _create_action_item(self, action, plugin_id):
+        label = action.label or action.__name__
+        icon = getattr(action, "icon", None)
+        return PublishPluginActionItem(
+            action.id,
+            plugin_id,
+            action.active,
+            action.on,
+            label,
+            icon
+        )
+
+
+class PublishPluginActionItem:
+    """Representation of publish plugin action.
+
+    Data driven object which is used as proxy for controller and UI.
+
+    Args:
+        action_id (str): Action id.
+        plugin_id (str): Plugin id.
+        active (bool): Action is active.
+        on_filter (str): Actions have 'on' attribte which define when can be
+            action triggered (e.g. 'all', 'failed', ...).
+        label (str): Action's label.
+        icon (Union[str, None]) Action's icon.
+    """
+
+    def __init__(self, action_id, plugin_id, active, on_filter, label, icon):
+        self.action_id = action_id
+        self.plugin_id = plugin_id
+        self.active = active
+        self.on_filter = on_filter
+        self.label = label
+        self.icon = icon
+
+    def to_data(self):
+        """Serialize object to dictionary.
+
+        Returns:
+            Dict[str, Union[str,bool,None]]: Serialized object.
+        """
+
+        return {
+            "action_id": self.action_id,
+            "plugin_id": self.plugin_id,
+            "active": self.active,
+            "on_filter": self.on_filter,
+            "label": self.label,
+            "icon": self.icon
+        }
+
+    @classmethod
+    def from_data(cls, data):
+        """Create object from data.
+
+        Args:
+            data (Dict[str, Union[str,bool,None]]): Data used to recreate
+                object.
+
+        Returns:
+            PublishPluginActionItem: Object created using data.
+        """
+
+        return cls(**data)
+
+
+class ValidationErrorItem:
+    """Data driven validation error item.
+
+    Prepared data container with information about validation error and it's
+    source plugin.
+
+    Can be converted to raw data and recreated should be used for controller
+    and UI connection.
+
+    Args:
+        instance_id (str): Id of pyblish instance to which is validation error
+            connected.
+        instance_label (str): Prepared instance label.
+        plugin_id (str): Id of pyblish Plugin which triggered the validation
+            error. Id is generated using 'PublishPluginsProxy'.
+    """
+
+    def __init__(
+        self,
+        instance_id,
+        instance_label,
+        plugin_id,
+        context_validation,
+        title,
+        description,
+        detail
+    ):
+        self.instance_id = instance_id
+        self.instance_label = instance_label
+        self.plugin_id = plugin_id
+        self.context_validation = context_validation
+        self.title = title
+        self.description = description
+        self.detail = detail
+
+    def to_data(self):
+        """Serialize object to dictionary.
+
+        Returns:
+            Dict[str, Union[str, bool, None]]: Serialized object data.
+        """
+
+        return {
+            "instance_id": self.instance_id,
+            "instance_label": self.instance_label,
+            "plugin_id": self.plugin_id,
+            "context_validation": self.context_validation,
+            "title": self.title,
+            "description": self.description,
+            "detail": self.detail,
+        }
+
+    @classmethod
+    def from_result(cls, plugin_id, error, instance):
+        """Create new object based on resukt from controller.
+
+        Returns:
+            ValidationErrorItem: New object with filled data.
+        """
+
+        instance_label = None
+        instance_id = None
+        if instance is not None:
+            instance_label = (
+                instance.data.get("label") or instance.data.get("name")
+            )
+            instance_id = instance.id
+
+        return cls(
+            instance_id,
+            instance_label,
+            plugin_id,
+            instance is None,
+            error.title,
+            error.description,
+            error.detail,
+        )
+
+    @classmethod
+    def from_data(cls, data):
+        return cls(**data)
+
+
+class PublishValidationErrorsReport:
+    """Publish validation errors report that can be parsed to raw data.
+
+    Args:
+        error_items (List[ValidationErrorItem]): List of validation errors.
+        plugin_action_items (Dict[str, PublishPluginActionItem]): Action items
+            by plugin id.
+    """
+
+    def __init__(self, error_items, plugin_action_items):
+        self._error_items = error_items
+        self._plugin_action_items = plugin_action_items
+
+    def __iter__(self):
+        for item in self._error_items:
+            yield item
+
+    def group_items_by_title(self):
+        """Group errors by plugin and their titles.
+
+        Items are grouped by plugin and title -> same title from different
+        plugin is different item. Items are ordered by plugin order.
+
+        Returns:
+            List[Dict[str, Any]]: List where each item title, instance
+                information related to title and possible plugin actions.
+        """
+
+        ordered_plugin_ids = []
+        error_items_by_plugin_id = collections.defaultdict(list)
+        for error_item in self._error_items:
+            plugin_id = error_item.plugin_id
+            if plugin_id not in ordered_plugin_ids:
+                ordered_plugin_ids.append(plugin_id)
+            error_items_by_plugin_id[plugin_id].append(error_item)
+
+        grouped_error_items = []
+        for plugin_id in ordered_plugin_ids:
+            plugin_action_items = self._plugin_action_items[plugin_id]
+            error_items = error_items_by_plugin_id[plugin_id]
+
+            titles = []
+            error_items_by_title = collections.defaultdict(list)
+            for error_item in error_items:
+                title = error_item.title
+                if title not in titles:
+                    titles.append(error_item.title)
+                error_items_by_title[title].append(error_item)
+
+            for title in titles:
+                grouped_error_items.append({
+                    "id": uuid.uuid4().hex,
+                    "plugin_id": plugin_id,
+                    "plugin_action_items": list(plugin_action_items),
+                    "error_items": error_items_by_title[title],
+                    "title": title
+                })
+        return grouped_error_items
+
+    def to_data(self):
+        """Serialize object to dictionary.
+
+        Returns:
+            Dict[str, Any]: Serialized data.
+        """
+
+        error_items = [
+            item.to_data()
+            for item in self._error_items
+        ]
+
+        plugin_action_items = {
+            plugin_id: [
+                action_item.to_data()
+                for action_item in action_items
+            ]
+            for plugin_id, action_items in self._plugin_action_items.items()
+        }
+
+        return {
+            "error_items": error_items,
+            "plugin_action_items": plugin_action_items
+        }
+
+    @classmethod
+    def from_data(cls, data):
+        """Recreate object from data.
+
+        Args:
+            data (dict[str, Any]): Data to recreate object. Can be created
+                using 'to_data' method.
+
+        Returns:
+            PublishValidationErrorsReport: New object based on data.
+        """
+
+        error_items = [
+            ValidationErrorItem.from_data(error_item)
+            for error_item in data["error_items"]
+        ]
+        plugin_action_items = [
+            PublishPluginActionItem.from_data(action_item)
+            for action_item in data["plugin_action_items"]
+        ]
+        return cls(error_items, plugin_action_items)
+
+
+class PublishValidationErrors:
+    """Object to keep track about validation errors by plugin."""
+
+    def __init__(self):
+        self._plugins_proxy = None
+        self._error_items = []
+        self._plugin_action_items = {}
+
+    def __bool__(self):
+        return self.has_errors
+
+    @property
+    def has_errors(self):
+        """At least one error was added."""
+
+        return bool(self._error_items)
+
+    def reset(self, plugins_proxy):
+        """Reset object to default state.
+
+        Args:
+            plugins_proxy (PublishPluginsProxy): Proxy which store plugins,
+                actions by ids and create mapping of action ids by plugin ids.
+        """
+
+        self._plugins_proxy = plugins_proxy
+        self._error_items = []
+        self._plugin_action_items = {}
+
+    def create_report(self):
+        """Create report based on currently existing errors.
+
+        Returns:
+            PublishValidationErrorsReport: Validation error report with all
+                error information and publish plugin action items.
+        """
+
+        return PublishValidationErrorsReport(
+            self._error_items, self._plugin_action_items
+        )
+
+    def add_error(self, plugin, error, instance):
+        """Add error from pyblish result.
+
+        Args:
+            plugin (pyblish.api.Plugin): Plugin which triggered error.
+            error (ValidationException): Validation error.
+            instance (Union[pyblish.api.Instance, None]): Instance on which was
+                error raised or None if was raised on context.
+        """
+
+        # Make sure the cached report is cleared
+        plugin_id = self._plugins_proxy.get_plugin_id(plugin)
+        if not error.title:
+            if hasattr(plugin, "label") and plugin.label:
+                plugin_label = plugin.label
+            else:
+                plugin_label = plugin.__name__
+            error.title = plugin_label
+
+        self._error_items.append(
+            ValidationErrorItem.from_result(plugin_id, error, instance)
+        )
+        if plugin_id in self._plugin_action_items:
+            return
+
+        plugin_actions = self._plugins_proxy.get_plugin_action_items(
+            plugin_id
+        )
+        self._plugin_action_items[plugin_id] = plugin_actions
