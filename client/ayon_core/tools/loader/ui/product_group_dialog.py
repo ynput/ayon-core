@@ -57,15 +57,10 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._product_ids = product_ids
 
         # Update the product groups
-        folder_ids = self._controller.get_selected_folder_ids()
-        product_items = self._controller.get_product_items(
+        product_groups = self._controller.get_folder_product_group_names(
             project_name=self._controller.get_selected_project_name(),
-            folder_ids=folder_ids)
-        product_groups = {
-            product_item.group_name for product_item in product_items
-        }
-        product_groups.discard(None)
-
+            folder_ids=self._controller.get_selected_folder_ids()
+        )
         self._set_product_groups(product_groups)
 
     def _set_product_groups(self, product_groups):
