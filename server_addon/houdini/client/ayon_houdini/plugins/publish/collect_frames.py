@@ -16,8 +16,7 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
     order = pyblish.api.CollectorOrder + 0.1
     label = "Collect Frames"
     families = ["vdbcache", "imagesequence", "ass",
-                "mantraifd", "redshiftproxy", "review",
-                "pointcache"]
+                "redshiftproxy", "review", "pointcache"]
 
     def process(self, instance):
 
