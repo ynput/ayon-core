@@ -21,7 +21,6 @@ class ExtractOxCache(plugin.MayaExtractorPlugin):
         dirname = self.staging_dir(instance)
         attr_values = instance.data["creator_attributes"]
         # Start writing the files for snap shot
-        # <NAME> will be replace by the Yeti node name
         ox_abc_path = os.path.join(dirname, "{}ornatrix.abc".format(
             instance.name))
         ox_export_option = self.ox_option(attr_values)

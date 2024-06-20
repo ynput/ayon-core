@@ -61,7 +61,7 @@ class OxRigLoader(plugin.ReferenceLoader):
             cmds.setAttr(
                 group_name + ".outlinerColor", red, green, blue
             )
-        self.use_resources_textures(namespace, path)
+
         self[:] = nodes
 
         if self.create_cache_instance_on_load:
@@ -105,24 +105,3 @@ class OxRigLoader(plugin.ReferenceLoader):
                 variant=variant,
                 pre_create_data={"use_selection": True}
             )
-
-    def use_resources_textures(self, namespace, path):
-        """Use texture maps from resources directories
-
-        Args:
-            namespace (str): namespace
-            path (str): published filepath
-        """
-        path_no_ext, _ = os.path.splitext(path)
-        settings_path = f"{path_no_ext}.rigsettings"
-        with open(settings_path, "r") as fp:
-            image_attributes = json.load(fp)
-
-        if not image_attributes:
-            return
-        for image_attribute in image_attributes:
-            texture_attribute = "{}:{}".format(
-                namespace, image_attribute["texture_attribute"])
-            cmds.setAttr(texture_attribute,
-                         image_attribute["destination_file"],
-                         type="string")

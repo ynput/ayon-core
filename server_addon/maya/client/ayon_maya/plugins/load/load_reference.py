@@ -124,7 +124,7 @@ class ReferenceLoader(plugin.ReferenceLoader):
         "skeletalMesh",
         "mvLook",
         "matchmove",
-        "OxCache",
+        "oxcache",
     }
 
     representations = {"ma", "abc", "fbx", "mb"}

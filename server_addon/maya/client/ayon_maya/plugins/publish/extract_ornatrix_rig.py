@@ -9,7 +9,7 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ExtractxRig(plugin.MayaExtractorPlugin):
+class ExtractOxRig(plugin.MayaExtractorPlugin):
     """Extract the Ornatrix rig to a Maya Scene and write the Ornatrix rig data."""
 
     label = "Extract Ornatrix Rig"
@@ -47,7 +47,7 @@ class ExtractxRig(plugin.MayaExtractorPlugin):
             instance.data['transfers'] = []
 
         resources = instance.data.get("resources", [])
-        for resource in instance.data.get('resources', []):
+        for resource in resources:
             for file in resource['files']:
                 src = file
                 dst = os.path.join(image_search_path, os.path.basename(file))
@@ -69,19 +69,25 @@ class ExtractxRig(plugin.MayaExtractorPlugin):
                                           allDescendents=True,
                                           fullPath=True) or []
 
+        texture_attributes = {
+            resource["texture_attribute"]: resource["destination_file"]
+            for resource in resources
+        }
+
         # Ornatrix related staging dirs
         maya_path = os.path.join(dirname,
                                  "ornatrix_rig.{}".format(self.scene_type))
         nodes = instance.data["setMembers"]
         with lib.maintained_selection():
-            cmds.select(nodes, noExpand=True)
-            cmds.file(maya_path,
-                      force=True,
-                      exportSelected=True,
-                      typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
-                      preserveReferences=False,
-                      constructionHistory=True,
-                      shader=False)
+            with lib.attribute_values(texture_attributes):
+                cmds.select(nodes, noExpand=True)
+                cmds.file(maya_path,
+                          force=True,
+                          exportSelected=True,
+                          type="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                          preserveReferences=False,
+                          constructionHistory=True,
+                          shader=False)
 
         # Ensure files can be stored
         # build representations
@@ -109,5 +115,3 @@ class ExtractxRig(plugin.MayaExtractorPlugin):
         )
 
         self.log.debug("Extracted {} to {}".format(instance, dirname))
-
-        cmds.select(clear=True)

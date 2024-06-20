@@ -4299,7 +4299,7 @@ def get_sequence(filepath, pattern="%04d"):
         pattern (str): The pattern to swap with the variable frame number.
 
     Returns:
-        list: file sequence.
+        list: clique.Collection.
 
     """
     import clique

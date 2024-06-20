@@ -1,5 +1,5 @@
 import os
-
+from typing import List, Dict, Any
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_maya.api import lib
@@ -39,12 +39,8 @@ class CollectOxRig(plugin.MayaInstancePlugin):
             if i not in ornatrix_resources[n + 1:]
         ]
         self.log.debug("{}".format(instance.data["resources"]))
-        start = cmds.playbackOptions(query=True, animationStartTime=True)
-        for key in ["frameStart", "frameEnd",
-                    "frameStartHandle", "frameEndHandle"]:
-            instance.data[key] = start
 
-    def get_texture_resources(self, node):
+    def get_texture_resources(self, node: str) -> List[Dict[str, Any]]:
         resources = []
         node_shape = cmds.listRelatives(node, shapes=True)
         if not node_shape:

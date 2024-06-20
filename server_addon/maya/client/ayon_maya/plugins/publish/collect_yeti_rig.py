@@ -33,7 +33,7 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         yeti_nodes = cmds.ls(instance[:], type="pgYetiMaya", long=True)
         for node in yeti_nodes:
             # Get Yeti resources (textures)
-            resources = self.get_texture_resources(node)
+            resources = self.get_yeti_resources(node)
             yeti_resources.extend(resources)
 
         instance.data["rigsettings"] = {"inputs": input_connections}

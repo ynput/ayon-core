@@ -21,10 +21,10 @@ class OxCacheLoader(plugin.Loader):
     color = "orange"
 
     def load(self, context, name=None, namespace=None, data=None):
-        """Loads a .fursettings file defining how to load .abc into
+        """Loads a .cachesettings file defining how to load .abc into
         HairGuideFromMesh nodes
 
-        The .fursettings file defines what the node names should be and also
+        The .cachesettings file defines what the node names should be and also
         what "cbId" attribute they should receive to match the original source
         and allow published looks to also work for Ornatrix rigs and its caches.
 
@@ -35,9 +35,8 @@ class OxCacheLoader(plugin.Loader):
         if namespace is None:
             namespace = self.create_namespace(folder_name)
 
-        # Ensure Onratrix is loaded
-        if not cmds.pluginInfo("Ornatrix.mll", query=True, loaded=True):
-            cmds.loadPlugin("Ornatrix.mll", quiet=True)
+        # Ensure Ornatrix is loaded
+        cmds.loadPlugin("Ornatrix.mll", quiet=True)
 
         path = self.filepath_from_context(context)
         settings = self.read_settings(path)
@@ -134,21 +133,16 @@ class OxCacheLoader(plugin.Loader):
         orig_shape_name = node_settings["shape"]["name"]
         mesh_shape_name = "{}:{}".format(namespace, orig_shape_name)
         guide_name = "{}:{}".format(namespace, orig_guide_name)
-        mesh_shape_node = cmds.ls(guide_name, type="mesh")
-        if not mesh_shape_node:
-            mesh_shape_node = cmds.createNode("mesh", name=guide_name)
-        hair_guide_node = cmds.ls(guide_name, type="HairFromGuidesNode")
-        if not hair_guide_node:
-            hair_guide_node = cmds.createNode(
-                "HairFromGuidesNode", name=guide_name)
+        mesh_shape_node = cmds.createNode("mesh", name=guide_name)
+        hair_guide_node = cmds.createNode("HairFromGuidesNode", name=guide_name)
 
-            lib.set_id(hair_guide_node, node_settings["cbId"])
-            mel.eval(f"OxAddStrandOperator {mesh_shape_name} {guide_name};")
+        lib.set_id(hair_guide_node, node_settings["cbId"])
+        mel.eval(f"OxAddStrandOperator {mesh_shape_name} {guide_name};")
         cmds.setAttr(f"{guide_name}.cacheFilePath", filepath)
-        nodes.append(hair_guide_node)
+        nodes.extend([mesh_shape_node, hair_guide_node])
         return nodes
 
-    def read_setting(self, path):
+    def read_settings(self, path):
         """Read the ornatrix-related parameters from the cachesettings.
         Args:
             path (str): filepath of cachesettings
