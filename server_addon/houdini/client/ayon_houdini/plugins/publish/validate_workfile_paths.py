@@ -71,6 +71,12 @@ class ValidateWorkfilePaths(
             if param.node().type().name() not in cls.node_types:
                 continue
 
+            if param.keyframes():
+                # Calling `.unexpandedString()` below fails if param has
+                # keyframes - so for now we will skip those params. These are
+                # e.g. present in `filecache` nodes.
+                continue
+
             if any(
                     v for v in cls.prohibited_vars
                     if v in param.unexpandedString()):
