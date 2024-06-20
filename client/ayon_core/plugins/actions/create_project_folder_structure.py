@@ -1,5 +1,4 @@
-from ayon_core.pipeline import LauncherAction
-from ayon_core.pipeline import project_folders
+from ayon_core.pipeline import LauncherAction, project_folders
 
 
 class CreateProjectStructureAction(LauncherAction):
