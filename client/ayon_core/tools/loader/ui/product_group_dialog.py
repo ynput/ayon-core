@@ -5,7 +5,7 @@ from qtpy import QtWidgets
 from ayon_core.tools.utils import PlaceholderLineEdit
 
 if typing.TYPE_CHECKING:
-    from ..control import LoaderController
+    from ayon_core.tools.loader.control import LoaderController
 
 
 class ProductGroupDialog(QtWidgets.QDialog):
