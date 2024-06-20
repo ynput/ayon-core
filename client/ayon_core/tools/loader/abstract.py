@@ -177,7 +177,7 @@ class VersionItem:
         other_version = abs(other.version)
         # Hero version is greater than non-hero
         if version == other_version:
-            return self.is_hero
+            return not self.is_hero
         return version > other_version
 
     def __lt__(self, other):
@@ -188,7 +188,7 @@ class VersionItem:
         other_version = abs(other.version)
         # Non-hero version is lesser than hero
         if version == other_version:
-            return not self.is_hero
+            return self.is_hero
         return version < other_version
 
     def __ge__(self, other):
@@ -508,6 +508,26 @@ class FrontendLoaderController(_BaseLoaderController):
             list[ProjectItem]: List of project items.
         """
 
+        pass
+
+    @abstractmethod
+    def get_folder_type_items(self, project_name, sender=None):
+        """Folder type items for a project.
+
+        This function may trigger events with topics
+        'projects.folder_types.refresh.started' and
+        'projects.folder_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested folder type items.
+
+        Returns:
+            list[FolderTypeItem]: Folder type information.
+
+        """
         pass
 
     @abstractmethod

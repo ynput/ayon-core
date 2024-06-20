@@ -4,13 +4,28 @@ from ayon_server.settings.validators import ensure_unique_names
 
 
 class ImageIOConfigModel(BaseSettingsModel):
+    """[DEPRECATED] Addon OCIO config settings. Please set the OCIO config
+    path in the Core addon profiles here
+    (ayon+settings://core/imageio/ocio_config_profiles).
+    """
+
     override_global_config: bool = SettingsField(
         False,
-        title="Override global OCIO config"
+        title="Override global OCIO config",
+        description=(
+            "DEPRECATED functionality. Please set the OCIO config path in the "
+            "Core addon profiles here (ayon+settings://core/imageio/"
+            "ocio_config_profiles)."
+        ),
     )
     filepath: list[str] = SettingsField(
         default_factory=list,
-        title="Config path"
+        title="Config path",
+        description=(
+            "DEPRECATED functionality. Please set the OCIO config path in the "
+            "Core addon profiles here (ayon+settings://core/imageio/"
+            "ocio_config_profiles)."
+        ),
     )
 
 
