@@ -90,7 +90,7 @@ class HdaLoader(plugin.HoudiniLoader):
     def _create_dedicated_parent_node(self, hda_def):
 
         # Get the root node
-        parent_node = pipeline.get_avalon_container()
+        parent_node = pipeline.get_or_create_avalon_container()
         node = None
         node_type = None
         if hda_def.nodeTypeCategory() == hou.objNodeTypeCategory():

@@ -222,7 +222,7 @@ def containerise(name,
     """
 
     # Get AVALON_CONTAINERS subnet
-    subnet = get_avalon_container()
+    subnet = get_or_create_avalon_container()
 
     # Create proper container name
     container_name = "{}_{}".format(name, suffix or "CON")
