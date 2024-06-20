@@ -185,8 +185,14 @@ class CreateHDA(plugin.HoudiniCreator):
             instance
         )
 
-        dynamic_data["folder"] = {
-            "label": folder_entity["label"],
-            "name": folder_entity["name"]
-        }
+        dynamic_data.update(
+            {
+                "asset": folder_entity["name"],
+                "folder": {
+                            "label": folder_entity["label"],
+                            "name": folder_entity["name"]
+                }
+            }
+        )
+
         return dynamic_data
