@@ -53,17 +53,13 @@ class CollectOxRig(plugin.MayaInstancePlugin):
         ox_nodes = [
             ox_node for ox_node in cmds.listConnections(node_shape, destination=True)
                     if cmds.nodeType(ox_node) in ORNATRIX_NODES
-        ]
-        ox_image_file = [
-            ox_img for ox_img in cmds.listConnections(ox_nodes, destination=False)
-            if cmds.nodeType(ox_img) == "file"
-        ]
-        if not ox_image_file:
+        ] or []
+        ox_file_nodes = cmds.listConnections(ox_nodes, destination=False, type="file") or []
+        if not ox_file_nodes:
             return []
-
-        for img in ox_image_file:
-            texture_attr = "{}.fileTextureName".format(img)
-            texture = cmds.getAttr("{}.fileTextureName".format(img))
+        for file_node in ox_file_nodes:
+            texture_attr = "{}.fileTextureName".format(file_node)
+            texture = cmds.getAttr("{}.fileTextureName".format(file_node))
             files = []
             if os.path.isabs(texture):
                 self.log.debug("Texture is absolute path, ignoring "

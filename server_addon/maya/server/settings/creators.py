@@ -382,13 +382,13 @@ DEFAULT_CREATORS_SETTINGS = {
         ]
     },
     "CreateOxRig": {
-        "enabled": False,
+        "enabled": True,
         "default_variants": [
             "Main"
         ]
     },
     "CreateOxCache": {
-        "enabled": False,
+        "enabled": True,
         "default_variants": [
             "Main"
         ]
