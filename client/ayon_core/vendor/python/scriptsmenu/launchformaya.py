@@ -130,7 +130,10 @@ def main(title="Scripts", parent=None, objectName=None):
 
     # Register control + shift callback to add to shelf (maya behavior)
     modifiers = QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier
-    menu.register_callback(int(modifiers), to_shelf)
+    if int(cmds.about(version=True)) <= 2025:
+        modifiers = int(modifiers)
+
+    menu.register_callback(modifiers, to_shelf)
 
     menu.register_callback(0, register_repeat_last)
 
