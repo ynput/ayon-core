@@ -397,21 +397,16 @@ def on_new():
         _enforce_start_frame()
 
 
-def get_avalon_container():
-    path = AVALON_CONTAINERS
-    avalon_container = hou.node(path)
-    if not avalon_container:
-        # Let's create avalon container secretly
-        # but make sure the pipeline still is built the
-        # way we anticipate it was built, asserting it.
-        assert path == "/obj/AVALON_CONTAINERS"
+def get_or_create_avalon_container() -> "hou.OpNode":
+    avalon_container = hou.node(AVALON_CONTAINERS)
+    if avalon_container:
+        return avalon_container
 
-        parent = hou.node("/obj")
-        avalon_container = parent.createNode(
-            "subnet", node_name="AVALON_CONTAINERS"
-        )
-
-    return avalon_container
+    parent_path, name = AVALON_CONTAINERS.rsplit("/", 1)
+    parent = hou.node(parent_path)
+    return parent.createNode(
+        "subnet", node_name=name
+    )
 
 
 def _set_context_settings():
