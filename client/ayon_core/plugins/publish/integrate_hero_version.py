@@ -87,7 +87,9 @@ class IntegrateHeroVersion(
     ]
     # QUESTION/TODO this process should happen on server if crashed due to
     # permissions error on files (files were used or user didn't have perms)
-    # *but all other plugins must be sucessfully completed
+    # *but all other plugins must be successfully completed
+
+    use_hardlinks = False
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -621,19 +623,21 @@ class IntegrateHeroVersion(
             src_path, dst_path
         ))
 
-        # First try hardlink and copy if paths are cross drive
-        try:
-            create_hard_link(src_path, dst_path)
-            # Return when successful
-            return
+        if self.use_hardlinks:
+            # First try hardlink and copy if paths are cross drive
+            try:
+                create_hard_link(src_path, dst_path)
+                # Return when successful
+                return
 
-        except OSError as exc:
-            # re-raise exception if different than
-            # EXDEV - cross drive path
-            # EINVAL - wrong format, must be NTFS
-            self.log.debug("Hardlink failed with errno:'{}'".format(exc.errno))
-            if exc.errno not in [errno.EXDEV, errno.EINVAL]:
-                raise
+            except OSError as exc:
+                # re-raise exception if different than
+                # EXDEV - cross drive path
+                # EINVAL - wrong format, must be NTFS
+                self.log.debug(
+                    "Hardlink failed with errno:'{}'".format(exc.errno))
+                if exc.errno not in [errno.EXDEV, errno.EINVAL]:
+                    raise
 
         shutil.copy(src_path, dst_path)
 
